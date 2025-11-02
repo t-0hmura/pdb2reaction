@@ -19,7 +19,8 @@ dependencies = [
     "numpy",
     "biopython",
     "ase>=3.25.0",
-    "pyyaml"
+    "pyyaml",
+    "click"
 ]
 
 [project.scripts]

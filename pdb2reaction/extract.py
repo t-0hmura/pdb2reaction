@@ -1,11 +1,11 @@
-# pdb2reaction/path_opt.py
+# pdb2reaction/extract.py
 from __future__ import annotations
 
 from pathlib import Path
 import click
 
 
-@click.command(help="経路最適化のプレースホルダ")
+@click.command(help="構造抽出のプレースホルダ")
 @click.option(
     "-i", "--input", "input_path",
     type=click.Path(path_type=Path, dir_okay=False),
@@ -13,4 +13,4 @@ import click
     help="入力構造ファイル（PDB/XYZ 等）"
 )
 def cli(input_path: Path) -> None:
-    print(f"path_opt {input_path.resolve()}")
+    print(f"extract {input_path.resolve()}")
