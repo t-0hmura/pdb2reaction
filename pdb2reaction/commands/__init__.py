@@ -1,11 +1,8 @@
-"""
-- __init__.py
-"""
-from .uma_pysis import uma_pysis
+# pdb2reaction/commands/__init__.py
+"""Command subpackage for pdb2reaction.
 
-__version__ = "0.0.1"
 
-__all__ = [
-    "__version__", 
-    "uma_pysis"
-]
+This package exposes subcommands like `all`, `opt`, etc.
+
+"""
+__all__ = []
