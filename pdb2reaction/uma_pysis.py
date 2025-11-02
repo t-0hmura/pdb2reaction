@@ -1,5 +1,5 @@
 """
-- uma_pysis.py
+# pdb2reaction/uma_pysis.py
 
 UMA Calculator Wrapper for PySisyphus.
 Return Energy, Force, Analytic Hessian.
