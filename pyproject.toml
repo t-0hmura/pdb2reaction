@@ -3,8 +3,8 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uma_pysis"
-description = "UMA - Pysisyphus Interface"
+name = "pdb2reaction"
+description = "pdb2reaction"
 readme = "README.md"
 authors = [{name = "Takuto Ohmura"}]
 license = {file = "LICENSE"}
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-uma_pysis = "pdb2reaction.uma_pysis:run_pysis"
+pdb2reaction = "pdb2reaction.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
