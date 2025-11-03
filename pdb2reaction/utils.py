@@ -78,7 +78,5 @@ def freeze_links(pdb_path):
     for (x, y, z, line) in lkhs:
         idx, dist = nearest_index((x, y, z), others)
         indices.append(idx)
-
-    print("freeze_links --> ,".join(map(str, indices)))
     return indices
 

@@ -29,7 +29,7 @@ from .extract import cli as extract_cmd
 @click.group(
     cls=DefaultGroup,
     default="all",
-    help="pdb2reaction: Execute each step by subcommands",
+    help="pdb2reaction: Execute each step by subcommands.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 def cli() -> None:
