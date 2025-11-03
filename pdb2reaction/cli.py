@@ -1,10 +1,7 @@
 # pdb2reaction/cli.py
-from __future__ import annotations
-
 import click
 
 class DefaultGroup(click.Group):
-    """引数が空、または先頭がオプションのとき既定サブコマンドを挿入する Group"""
     def __init__(self, *args, default: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._default_cmd = default
@@ -13,11 +10,9 @@ class DefaultGroup(click.Group):
         if any(a in ("-h", "--help") for a in args):
             return super().parse_args(ctx, args)
 
-        # 引数が空 もしくは 先頭引数がオプション（- 始まり）の場合は既定サブコマンドを先頭に挿入
         if self._default_cmd is not None:
             if not args or args[0].startswith("-"):
                 args.insert(0, self._default_cmd)
-
         return super().parse_args(ctx, args)
 
 
@@ -34,7 +29,8 @@ from .extract import cli as extract_cmd
 @click.group(
     cls=DefaultGroup,
     default="all",
-    help="pdb2reaction: サブコマンドで各処理を起動します。例: pdb2reaction opt -i a.pdb",
+    help="pdb2reaction: Execute each step by subcommands",
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 def cli() -> None:
     pass

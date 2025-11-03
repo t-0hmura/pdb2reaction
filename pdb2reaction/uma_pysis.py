@@ -4,8 +4,6 @@
 UMA Calculator Wrapper for PySisyphus.
 Return Energy, Force, Analytic Hessian.
 """
-
-from __future__ import annotations
 from typing import List, Sequence, Optional
 
 import numpy as np

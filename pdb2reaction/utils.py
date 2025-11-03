@@ -1,5 +1,4 @@
 # pdb2reaction/utils.py
-
 import sys
 import math
 from pathlib import Path
@@ -7,7 +6,7 @@ from pathlib import Path
 from ase.io import read, write
 
 # ---------------------------------------------------------------------
-# xyz_geom2pdb                                                               
+# convert_xyz_to_pdb                                                         
 # ---------------------------------------------------------------------
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto *ref_pdb_path* topology and write *out_pdb_path*.
