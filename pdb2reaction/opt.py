@@ -1,4 +1,4 @@
-# pdb2reaction/commands/opt.py
+# pdb2reaction/opt.py
 
 """
 Single-structure optimization entrypoint (LBFGS or RFO).

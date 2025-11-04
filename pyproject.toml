@@ -20,7 +20,9 @@ dependencies = [
     "biopython",
     "ase>=3.25.0",
     "pyyaml",
-    "click"
+    "click",
+    "plotly",
+    "kaleido"
 ]
 
 [project.scripts]

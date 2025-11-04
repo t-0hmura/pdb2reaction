@@ -24,6 +24,7 @@ from .ts_opt import cli as ts_opt_cmd
 from .irc import cli as irc_cmd
 from .thermo import cli as thermo_cmd
 from .extract import cli as extract_cmd
+from .trj2fig import cli as trj2fig_cmd
 
 
 @click.group(
@@ -44,6 +45,7 @@ cli.add_command(ts_opt_cmd, name="ts_opt")
 cli.add_command(irc_cmd, name="irc")
 cli.add_command(thermo_cmd, name="thermo")
 cli.add_command(extract_cmd, name="extract")
+cli.add_command(trj2fig_cmd, name="trj2fig")
 
 
 if __name__ == "__main__":
