@@ -23,8 +23,8 @@ from .path_opt import cli as path_opt_cmd
 from .ts_opt import cli as ts_opt_cmd
 from .irc import cli as irc_cmd
 from .thermo import cli as thermo_cmd
-from .extract import cli as extract_cmd
 from .trj2fig import cli as trj2fig_cmd
+from .add_elem_info import cli as add_elem_info_cmd
 
 
 @click.group(
@@ -37,6 +37,35 @@ def cli() -> None:
     pass
 
 
+@click.command(
+    name="extract",
+    help="Extract a binding pocket.",
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+        "help_option_names": [],
+    },
+)
+@click.pass_context
+def extract_cmd(ctx: click.Context) -> None:
+    """
+    Click -> argparse の薄いブリッジ。
+    ctx.args に残っている引数列を、そのまま argparse ベースの
+    `pdb2reaction.extract.extract()` へ渡す。
+    """
+    import sys
+    import os
+    from . import extract as _extract_mod
+
+    argv_backup = sys.argv[:]
+    try:
+        prog_base = (ctx.find_root().info_name or os.path.basename(sys.argv[0]))
+        sys.argv = [f"{prog_base} extract"] + list(ctx.args)
+        _extract_mod.extract()
+    finally:
+        sys.argv = argv_backup
+
+
 cli.add_command(all_cmd, name="all")
 cli.add_command(scan_cmd, name="scan")
 cli.add_command(opt_cmd, name="opt")
@@ -46,6 +75,7 @@ cli.add_command(irc_cmd, name="irc")
 cli.add_command(thermo_cmd, name="thermo")
 cli.add_command(extract_cmd, name="extract")
 cli.add_command(trj2fig_cmd, name="trj2fig")
+cli.add_command(add_elem_info_cmd, name="add_elem_info")
 
 
 if __name__ == "__main__":

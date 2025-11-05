@@ -61,31 +61,32 @@ CALC_KW: Dict[str, Any] = {
 
 # GrowingString（経路表現）
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 10,            # 端点含めて max_nodes+2 画像
+    "max_nodes": 30,            # 端点含めて max_nodes+2 画像
     "perp_thresh": 5e-3,        # フロンティア成長判定（⊥力のRMS/NORM）
-    "reparam_check": "rms",     # "rms" | "norm"
-    "reparam_every": 2,
-    "reparam_every_full": 3,
-    "param": "equi",
-    "max_micro_cycles": 5,
+    "reparam_check": "rms",     # "rms" | "norm", reparam後の収束条件(構造変化のrms)
+    "reparam_every": 1,         # Nステップごとにimageを再配置
+    "reparam_every_full": 1,    # pathが成長しきった後に、Nステップごとにimageを再配置
+    "param": "equi",            # equi (均等に配置) | energy (Peak近辺にノードが密集するよう重みづけ), 
+    "max_micro_cycles": 10,
     "reset_dlc": True,
     "climb": True,              # climbing image 有効
-    "climb_rms": 5e-3,          # CI 開始の閾値（RMS(force)）
+    "climb_rms": 5e-4,          # CI 開始の閾値（RMS(force)）
     "climb_lanczos": True,      # HEI 接線を Lanczos で
-    "climb_lanczos_rms": 5e-3,
-    "scheduler": None,         # 直列計算（同一 calculator 使い回し前提）
+    "climb_lanczos_rms": 5e-4,
+    "climb_fixed": False,       # HEI画像位置を固定
+    "scheduler": None,          # 直列計算（同一 calculator 使い回し前提）
 }
 
 # StringOptimizer（最適化制御）
 OPT_KW: Dict[str, Any] = {
     "type": "string",           # 記録用タグ
-    "stop_in_when_full": 20,    # fully grown 後に N サイクルで停止
+    "stop_in_when_full": 1000,  # fully grown 後に N サイクルで停止
     "align": False,             # Kabsch アライン（cart では通常 True 推奨だが既定 False）
-    "scale_step": "global",
-    "max_cycles": 10000,
+    "scale_step": "global",     # global | per_image
+    "max_cycles": 1000,
     "dump": False,
     "dump_restart": False,
-    "reparam_thresh": 0.0,      # 連続 reparam 後のRMS座標差チェック無効化
+    "reparam_thresh": 3e-4,     # reparam後の収束条件(構造変化のrms)
     "coord_diff_thresh": 0.0,   # 近接画像チェック（0で無効）
     "out_dir": "./result_path_opt/",
     "print_every": 1,
@@ -180,8 +181,9 @@ def _load_two_endpoints(
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If PDB, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=10, show_default=True, help="Internal nodes (string has max_nodes+2 images incl. endpoints)")
-@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max optimization cycles")
+@click.option("--max-nodes", type=int, default=30, show_default=True, help="Internal nodes (string has max_nodes+2 images incl. endpoints)")
+@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Max optimization cycles")
+@click.option("--climb", type=click.BOOL, default=True, show_default=True, help="Search for transition state after path growth")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True, help="Dump optimizer trajectory/restarts during run")
 @click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True, help="Output directory")
 @click.option(
@@ -197,6 +199,7 @@ def cli(
     freeze_links_flag: bool,
     max_nodes: int,
     max_cycles: int,
+    climb: bool,
     dump: bool,
     out_dir: str,
     args_yaml: Optional[Path],
@@ -222,8 +225,11 @@ def cli(
         calc_cfg["spin"]   = int(spin)
 
         gs_cfg["max_nodes"] = int(max_nodes)
-
         opt_cfg["max_cycles"] = int(max_cycles)
+        opt_cfg["stop_in_when_full"] = int(max_cycles)
+        gs_cfg["climb"] = bool(climb)
+        gs_cfg["climb_lanczos"] = bool(climb)
+
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir  # CLI では --out-dir を受け取り Optimizer には out_dir を渡す
 
