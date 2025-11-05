@@ -3,7 +3,9 @@
 UMA Calculator Wrapper for PySisyphus.
 Return Energy, Force, Analytic Hessian.
 """
-from typing import List, Sequence, Optional
+
+from __future__ import annotations
+from typing import List, Sequence, Optional, Dict, Any
 
 import numpy as np
 import torch
@@ -23,12 +25,16 @@ EV2AU          = 1.0 / AU2EV                     # eV → Hartree
 F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr⁻¹
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
+# Unified host/GPU dtypes for this implementation
+_ndtype = np.float32
+_tdtype = torch.float32
+
 
 # ===================================================================
 #                         UMA core wrapper
 # ===================================================================
 class UMAcore:
-    """Thin wrapper around fairchem‑UMA predict_unit."""
+    """Thin wrapper around fairchem-UMA predict_unit."""
 
     def __init__(
         self,
@@ -52,9 +58,11 @@ class UMAcore:
         self._AtomicData = AtomicData
         self._collater   = data_list_collater
 
-        # Predictor in double precision -------------------------------
+        # Load predictor and place it on *target device & dtype* ------
         self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
+        self.predict.model.to(self.device, dtype=_tdtype)
         self.predict.model.eval()
+        # Disable dropout hard
         for m in self.predict.model.modules():
             if isinstance(m, nn.Dropout):
                 m.p = 0.0
@@ -69,11 +77,18 @@ class UMAcore:
         self._r_edges_user   = r_edges
 
     # ----------------------------------------------------------------
+    def _model_backbone(self):
+        """Handle both plain and (D)DP-wrapped models."""
+        mdl = self.predict.model
+        mod = getattr(mdl, "module", mdl)
+        return mod.backbone
+
+    # ----------------------------------------------------------------
     def _ase_to_batch(self, atoms: Atoms):
         """Convert ASE Atoms → UMA AtomicData(Batch)."""
-
-        default_max_neigh = self.predict.model.module.backbone.max_neighbors
-        default_radius    = self.predict.model.module.backbone.cutoff
+        backbone = self._model_backbone()
+        default_max_neigh = getattr(backbone, "max_neighbors", None)
+        default_radius    = getattr(backbone, "cutoff", None)
 
         max_neigh = self._max_neigh_user if self._max_neigh_user is not None else default_max_neigh
         radius    = self._radius_user    if self._radius_user    is not None else default_radius
@@ -87,7 +102,8 @@ class UMAcore:
             r_edges  =r_edges,
         ).to(self.device)
         data.dataset = self.task_name
-        return self._collater([data], otf_graph=True).to(self.device)
+        batch = self._collater([data], otf_graph=True).to(self.device)
+        return batch
 
     # ----------------------------------------------------------------
     def compute(
@@ -96,40 +112,67 @@ class UMAcore:
         *,
         forces: bool = False,
         hessian: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         """
         coord_ang : (N,3) Å
         forces / hessian : return toggles
-        Returns dict with keys energy (eV), forces (eV/Å), hessian (torch)
+        Returns dict with keys:
+          - energy  (float, eV)
+          - forces  (np.ndarray, eV/Å) or None
+          - hessian (torch.Tensor, eV/Å^2) or None
         """
         atoms = Atoms(self.elem, positions=coord_ang)
         batch = self._ase_to_batch(atoms)
 
-        batch.pos = batch.pos.detach().clone().requires_grad_(True)
+        need_grad = bool(forces or hessian)
+        pos = batch.pos.detach().clone().to(self.device, dtype=_tdtype)
+        pos.requires_grad_(need_grad)
+        batch.pos = pos
 
-        res      = self.predict.predict(batch)
-        energy   = float(res["energy"].double().squeeze().item())
-        forces_np = res["forces"].double().cpu().numpy() if (forces or hessian) else None
+        if need_grad:
+            res = self.predict.predict(batch)
+        else:
+            with torch.no_grad():
+                res = self.predict.predict(batch)
+
+        energy = float(res["energy"].squeeze().detach().item())
+        forces_np = (
+            res["forces"].detach().cpu().numpy().astype(_ndtype, copy=False)
+            if (forces or hessian)
+            else None
+        )
 
         if hessian:
-            self.predict.model.train()
-            def e_fn(flat):
-                batch.pos = flat.view(-1, 3)
-                return self.predict.predict(batch)["energy"].double().squeeze()
-            H_flat   = torch.autograd.functional.hessian(e_fn, batch.pos.view(-1))
-            hess_t   = H_flat.view(len(atoms), 3, len(atoms), 3).detach()
-            self.predict.model.eval()
-        else:
-            hess_t = None
+            p_flags = [p.requires_grad for p in self.predict.model.parameters()]
+            for p in self.predict.model.parameters():
+                p.requires_grad_(False)
 
-        return {"energy": energy, "forces": forces_np, "hessian": hess_t}
+            self.predict.model.train()
+            try:
+                def e_fn(flat):
+                    batch.pos = flat.view(-1, 3)
+                    out = self.predict.predict(batch)["energy"].squeeze()
+                    return out
+
+                H = torch.autograd.functional.hessian(e_fn, batch.pos.view(-1), vectorize=False)
+                H = H.view(len(atoms), 3, len(atoms), 3).detach()
+            finally:
+                self.predict.model.eval()
+                for p, flag in zip(self.predict.model.parameters(), p_flags):
+                    p.requires_grad_(flag)
+                if self.device.type == "cuda":
+                    torch.cuda.empty_cache()
+        else:
+            H = None
+
+        return {"energy": energy, "forces": forces_np, "hessian": H}
 
 
 # ===================================================================
 #                    PySisyphus calculator class
 # ===================================================================
 class uma_pysis(Calculator):
-    """PySisyphus‑compatible UMA calculator."""
+    """PySisyphus-compatible UMA calculator."""
 
     implemented_properties = ["energy", "forces", "hessian"]
 
@@ -167,29 +210,37 @@ class uma_pysis(Calculator):
             self._core = UMAcore(elem, **self._core_kw)
 
     @staticmethod
-    def _au_energy(e_eV: float) -> float:
-        return e_eV * EV2AU
+    def _au_energy(E: float) -> float:
+        return E * EV2AU
 
     @staticmethod
-    def _au_forces(f_eV_A: np.ndarray) -> np.ndarray:
-        return (f_eV_A * F_EVAA_2_AU).reshape(-1)
+    def _au_forces(F: np.ndarray) -> np.ndarray:
+        return (F * F_EVAA_2_AU).reshape(-1)
 
-    def _au_hessian(self, H_eV_AA: torch.Tensor):
-        H = H_eV_AA.view(H_eV_AA.size(0)*3, H_eV_AA.size(2)*3) * H_EVAA_2_AU
-        H = 0.5 * (H + H.T)
+    def _au_hessian(self, H: torch.Tensor):
+        """
+        H: (N,3,N,3) tensor on device.
+        - reshape to (3N,3N)
+        - symmetrize
+        - scale with same-device/dtype scalar to avoid FP64 promotion
+        - return numpy or torch depending on out_hess_torch
+        """
+        n = H.size(0)
+        H = H.view(n * 3, n * 3)
+        H = H * H_EVAA_2_AU
         return H.detach().cpu().numpy() if not self.out_hess_torch else H.detach()
 
     # ---------- PySisyphus API --------------------------------------
     def get_energy(self, elem, coords):
         self._ensure_core(elem)
-        coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
-        res = self._core.compute(coord_ang)
+        coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
+        res = self._core.compute(coord_ang, forces=False, hessian=False)
         return {"energy": self._au_energy(res["energy"])}
 
     def get_forces(self, elem, coords):
         self._ensure_core(elem)
-        coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
-        res = self._core.compute(coord_ang, forces=True)
+        coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
+        res = self._core.compute(coord_ang, forces=True, hessian=False)
         return {
             "energy": self._au_energy(res["energy"]),
             "forces": self._au_forces(res["forces"]),
@@ -197,7 +248,7 @@ class uma_pysis(Calculator):
 
     def get_hessian(self, elem, coords):
         self._ensure_core(elem)
-        coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
+        coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
         res = self._core.compute(coord_ang, forces=True, hessian=True)
         return {
             "energy": self._au_energy(res["energy"]),

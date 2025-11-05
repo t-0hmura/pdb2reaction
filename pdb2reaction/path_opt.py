@@ -74,8 +74,6 @@ GS_KW: Dict[str, Any] = {
     "climb_lanczos": True,      # HEI 接線を Lanczos で
     "climb_lanczos_rms": 5e-3,
     "scheduler": None,         # 直列計算（同一 calculator 使い回し前提）
-    # GrowingChainOfStates 側:
-    # fix_first=True, fix_last=True はデフォルトのまま
 }
 
 # StringOptimizer（最適化制御）

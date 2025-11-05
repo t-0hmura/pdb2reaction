@@ -121,7 +121,7 @@ LBFGS_KW = {
     "gamma_mult": False,         # bool, estimate β from prev cycle (Nocedal Eq. 7.20)
 
     # Step-size control
-    "max_step": 0.10,            # float, max step for structual changes
+    "max_step": 0.30,            # float, max step for structual changes
     "control_step": True,        # bool, scale down step to satisfy |max component| <= max_step
 
     # Safeguards & line search
@@ -138,10 +138,10 @@ RFO_KW = {
     **OPT_BASE_KW,
 
     # Trust-region (Step-size) control.
-    "trust_radius": 0.05,         # float, initial trust radius (in working coords)
+    "trust_radius": 0.30,         # float, initial trust radius (in working coords)
     "trust_update": True,        # bool, enable adaptive trust radius update
     "trust_min": 0.01,           # float, lower bound for trust radius
-    "trust_max": 0.10,           # float, upper bound for trust radius
+    "trust_max": 0.30,           # float, upper bound for trust radius
     "max_energy_incr": None,     # Optional[float], abort if ΔE > this after a bad step
 
     # Hessian model / refresh
