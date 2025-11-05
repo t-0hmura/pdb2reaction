@@ -70,7 +70,7 @@ GS_KW: Dict[str, Any] = {
     "max_micro_cycles": 10,
     "reset_dlc": True,
     "climb": True,              # climbing image 有効
-    "climb_rms": 5e-4,          # CI 開始の閾値（RMS(force)）
+    "climb_rms": 5e-4,          # CI 開始の閾値（rms(force)）
     "climb_lanczos": True,      # HEI 接線を Lanczos で
     "climb_lanczos_rms": 5e-4,
     "climb_fixed": False,       # HEI画像位置を固定
@@ -86,7 +86,7 @@ OPT_KW: Dict[str, Any] = {
     "max_cycles": 1000,
     "dump": False,
     "dump_restart": False,
-    "reparam_thresh": 3e-4,     # reparam後の収束条件(構造変化のrms)
+    "reparam_thresh": 1e-3,     # reparam後の収束条件(rms(step))
     "coord_diff_thresh": 0.0,   # 近接画像チェック（0で無効）
     "out_dir": "./result_path_opt/",
     "print_every": 1,
