@@ -21,6 +21,7 @@ from .scan import cli as scan_cmd
 from .opt import cli as opt_cmd
 from .path_opt import cli as path_opt_cmd
 from .ts_opt import cli as ts_opt_cmd
+from .freq import cli as freq_cmd
 from .irc import cli as irc_cmd
 from .thermo import cli as thermo_cmd
 from .trj2fig import cli as trj2fig_cmd
@@ -71,6 +72,7 @@ cli.add_command(scan_cmd, name="scan")
 cli.add_command(opt_cmd, name="opt")
 cli.add_command(path_opt_cmd, name="path_opt")
 cli.add_command(ts_opt_cmd, name="ts_opt")
+cli.add_command(freq_cmd, name="freq")
 cli.add_command(irc_cmd, name="irc")
 cli.add_command(thermo_cmd, name="thermo")
 cli.add_command(extract_cmd, name="extract")

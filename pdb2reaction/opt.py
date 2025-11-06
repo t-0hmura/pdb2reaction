@@ -126,7 +126,7 @@ LBFGS_KW = {
 
     # Safeguards & line search
     "double_damp": True,         # bool, double-damping to ensure s·y > 0
-    "line_search": False,        # bool, polynomial line search on last step (disabled by default)
+    "line_search": True,         # bool, polynomial line search on last step
 
     # Regularized L-BFGS (μ_reg)
     "mu_reg": None,              # Optional[float], initial regularization; if set: disables double_damp, control_step, and line_search
@@ -147,7 +147,7 @@ RFO_KW = {
     # Hessian model / refresh
     "hessian_update": "bfgs",    # "bfgs" (fast convergence) | "bofill" (robust)
     "hessian_init": "calc",      # Initial Hessian calculation, don't change.
-    "hessian_recalc": 10,        # Optional[int], recalc exact Hessian every N cycles
+    "hessian_recalc": 100,       # Optional[int], recalc exact Hessian every N cycles
     "hessian_recalc_adapt": 2.0, # If norm(force) become 1/hessian_recalc_adapt, recalc hessian
 
     # Numerical hygiene & mode filtering

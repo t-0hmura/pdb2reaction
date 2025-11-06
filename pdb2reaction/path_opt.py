@@ -301,9 +301,26 @@ def cli(
         # --------------------------
         final_trj = out_dir_path / "final_geometries.trj"
         try:
-            with open(final_trj, "w") as f:
-                f.write(gs.as_xyz())
-            click.echo(f"[write] Wrote '{final_trj}'.")
+            try:
+                energies = np.array(gs.energy, dtype=float)
+                blocks = []
+                for idx, (geom, E) in enumerate(zip(gs.images, energies)):
+                    s = geom.as_xyz()
+                    lines = s.splitlines()
+                    if len(lines) >= 2 and lines[0].strip().isdigit():
+                        lines[1] = f"{E:.12f}"
+                    s_mod = "\n".join(lines)
+                    if not s_mod.endswith("\n"):
+                        s_mod += "\n"
+                    blocks.append(s_mod)
+                annotated = "".join(blocks)
+                with open(final_trj, "w") as f:
+                    f.write(annotated)
+                click.echo(f"[write] Wrote '{final_trj}' with energy.")
+            except Exception as e:
+                with open(final_trj, "w") as f:
+                    f.write(gs.as_xyz())
+                click.echo(f"[write] Wrote '{final_trj}'.")
 
             if input_paths[0].suffix.lower() == ".pdb":
                 ref_pdb = input_paths[0].resolve()
@@ -329,7 +346,7 @@ def cli(
             s = hei_geom.as_xyz()
             lines = s.splitlines()
             if len(lines) >= 2 and lines[0].strip().isdigit():
-                lines[1] = f"HEI idx={hei_idx}; E={hei_E:.12f}"
+                lines[1] = f"{hei_E:.12f}"
                 s = "\n".join(lines) + ("\n" if not s.endswith("\n") else "")
             with open(hei_xyz, "w") as f:
                 f.write(s)
@@ -362,11 +379,9 @@ def cli(
         sys.exit(1)
 
 
-# PDB link 親検出の補助（opt.py と同様に名前衝突回避用）
 def freeze_links_helper(pdb_path: Path):
     return freeze_links(pdb_path)
 
 
-# 直接実行対応
 if __name__ == "__main__":
     cli()
