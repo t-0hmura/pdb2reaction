@@ -1,4 +1,5 @@
 # pdb2reaction/freq.py
+
 """
 Vibrational frequency analysis CLI for pdb2reaction.
 

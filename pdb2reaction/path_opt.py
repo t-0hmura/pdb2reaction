@@ -1,4 +1,5 @@
 # pdb2reaction/path_opt.py
+
 """
 MEP optimization by Growing String.
 
@@ -7,7 +8,11 @@ MEP optimization by Growing String.
 - Path optimizer: GrowingString + StringOptimizer (pysisyphus).
 - YAML config with sub-sections: geom, calc, gs, opt  （CLI > YAML > defaults）
 - If inputs are PDB and --freeze-links=True, freeze parent atoms of link hydrogens.
+- **Default behavior:** Before optimization, perform a Kabsch alignment of the
+  second endpoint to the first (external alignment). Do **not** use
+  StringOptimizer's internal `align` option (bug-prone).
 - Dump the highest-energy image (HEI) as gsm_hei.xyz and gsm_hei.pdb (if a PDB reference is available).
+
 Examples
 --------
 pdb2reaction path_opt -i reac.pdb prod.pdb -q 0 -s 1 \
@@ -18,7 +23,7 @@ pdb2reaction path_opt -i reac.pdb prod.pdb -q 0 -s 1 \
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 import sys
 import traceback
@@ -66,7 +71,7 @@ GS_KW: Dict[str, Any] = {
     "reparam_check": "rms",     # "rms" | "norm", reparam後の収束条件(構造変化のrms)
     "reparam_every": 1,         # Nステップごとにimageを再配置
     "reparam_every_full": 1,    # pathが成長しきった後に、Nステップごとにimageを再配置
-    "param": "equi",            # equi (均等に配置) | energy (Peak近辺にノードが密集するよう重みづけ), 
+    "param": "equi",            # equi (均等に配置) | energy (Peak近辺にノードが密集するよう重みづけ),
     "max_micro_cycles": 10,
     "reset_dlc": True,
     "climb": True,              # climbing image 有効
@@ -81,7 +86,7 @@ GS_KW: Dict[str, Any] = {
 OPT_KW: Dict[str, Any] = {
     "type": "string",           # 記録用タグ
     "stop_in_when_full": 1000,  # fully grown 後に N サイクルで停止
-    "align": False,             # Kabsch アライン（cart では通常 True 推奨だが既定 False）
+    "align": False,             # 内部 align はバグにつながる恐れがあるため既定 False（外部でKabschアライン）
     "scale_step": "global",     # global | per_image
     "max_cycles": 1000,
     "dump": False,
@@ -161,6 +166,92 @@ def _load_two_endpoints(
     return geoms
 
 
+# ---------- Kabsch alignment (external, robust, minimal) ----------
+
+def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute optimal rotation R and translation t that aligns Q onto P
+    (minimizing ||P - (Q R + t)||_F) via Kabsch.
+
+    Parameters
+    ----------
+    P, Q : (N, 3) arrays
+
+    Returns
+    -------
+    R : (3, 3) rotation matrix
+    t : (3,) translation vector
+    """
+    P = np.asarray(P, dtype=float)
+    Q = np.asarray(Q, dtype=float)
+    if P.shape != Q.shape or P.ndim != 2 or P.shape[1] != 3:
+        raise ValueError("Kabsch expects P, Q with shape (N, 3).")
+    mu_P = P.mean(axis=0)
+    mu_Q = Q.mean(axis=0)
+    Pc = P - mu_P
+    Qc = Q - mu_Q
+    # NOTE: covariance order is Pc.T @ Qc (maps Q -> P). Do not swap!
+    H = Pc.T @ Qc
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+    # Ensure right-handed rotation
+    if np.linalg.det(R) < 0.0:
+        Vt[-1, :] *= -1.0
+        R = Vt.T @ U.T
+    t = mu_P - mu_Q @ R
+    return R, t
+
+
+def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float, int]:
+    """
+    Align geom_to_align onto geom_ref using Kabsch (rigid body, no scaling).
+
+    - Use all atoms by default. If freeze_atoms are specified, ignore those during
+      alignment determination but apply the rigid transform to all atoms.
+
+    Returns
+    -------
+    rmsd_before, rmsd_after, n_used
+    """
+    P = np.array(geom_ref.coords3d, dtype=float)    # (N, 3)
+    Q = np.array(geom_to_align.coords3d, dtype=float)
+    if P.shape != Q.shape:
+        raise ValueError(f"Different atom counts for endpoints: {P.shape[0]} vs {Q.shape[0]}")
+
+    N = P.shape[0]
+    # Determine indices to use (exclude frozen atoms if present)
+    fa0 = getattr(geom_ref, "freeze_atoms", np.array([], dtype=int))
+    fa1 = getattr(geom_to_align, "freeze_atoms", np.array([], dtype=int))
+    frozen = set(map(int, fa0)) | set(map(int, fa1))
+    if len(frozen) >= N:
+        # Fallback: use all atoms if everything would be excluded
+        use_mask = np.ones(N, dtype=bool)
+    else:
+        use_mask = np.ones(N, dtype=bool)
+        if frozen:
+            use_mask[list(sorted(frozen))] = False
+
+    P_sel = P[use_mask]
+    Q_sel = Q[use_mask]
+    n_used = int(P_sel.shape[0])
+
+    # Pre-align RMSD (on selected set)
+    def _rmsd(A: np.ndarray, B: np.ndarray) -> float:
+        return float(np.sqrt(np.mean(np.sum((A - B) ** 2, axis=1)))) if len(A) else float("nan")
+
+    rmsd_before = _rmsd(P_sel, Q_sel)
+
+    R, t = _kabsch_R_t(P_sel, Q_sel)
+    Q_aligned = (Q @ R) + t  # apply to all atoms
+
+    # Set back (expects flattened 1D of length 3N)
+    geom_to_align.set_coords(Q_aligned.reshape(-1))
+
+    rmsd_after = _rmsd(P[use_mask], Q_aligned[use_mask])
+
+    return rmsd_before, rmsd_after, n_used
+
+
 # -----------------------------------------------
 # CLI
 # -----------------------------------------------
@@ -233,6 +324,9 @@ def cli(
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir  # CLI では --out-dir を受け取り Optimizer には out_dir を渡す
 
+        # **重要**：内部 align は使用しない（Kabsch による外部アラインに統一）
+        opt_cfg["align"] = False
+
         # 表示用：解決後の設定
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = _format_geom_for_echo(geom_cfg)
@@ -261,6 +355,14 @@ def cli(
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
         )
+
+        # --- 追加: 既定で Kabsch による外部アラインを実施 ---
+        try:
+            rmsd_before, rmsd_after, n_used = _align_second_to_first_kabsch(geoms[0], geoms[1])
+            click.echo(f"[align] Kabsch alignment applied to 2nd endpoint → 1st endpoint "
+                       f"(used {n_used} atoms; RMSD {rmsd_before:.4f} Å → {rmsd_after:.4f} Å).")
+        except Exception as e:
+            click.echo(f"[align] WARNING: Kabsch alignment skipped: {e}", err=True)
 
         # 共通 UMA 計算器（同一インスタンスを全画像で共有）
         shared_calc = uma_pysis(**calc_cfg)
@@ -365,7 +467,6 @@ def cli(
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
             sys.exit(5)
-
 
     except OptimizationError as e:
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)

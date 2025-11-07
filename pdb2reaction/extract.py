@@ -1,5 +1,7 @@
+# pdb2reaction/extract.py
+
 """
-pdb2reaction/extract.py - Automated binding‑pocket (active‑site) extractor
+Automated binding‑pocket (active‑site) extractor
 ====================================================================
 
 Purpose

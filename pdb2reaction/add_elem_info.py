@@ -1,9 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# add_elem_info.py
-"""
-add_elem_info.py
+# pdb2reaction/add_elem_info.py
 
+"""
 PDB の元素列（columns 77–78）が無い/不完全なファイルに元素情報を付与します。
 - Biopython で PDB を読み込み、atom.element を設定してから PDBIO で書き出し
 - 原子名だけでなく残基名（タンパク/核酸/水/イオン）も併用して判定

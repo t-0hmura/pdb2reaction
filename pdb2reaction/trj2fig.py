@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# ---------------------------------------------------------------------
+# pdb2reaction/trj2fig.py
+
 """
-trj2fig  –  Energy-profile utility for XYZ trajectories
+Energy-profile utility for XYZ trajectories
 ======================================================
 
 機能
