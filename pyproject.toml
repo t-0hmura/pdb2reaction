@@ -22,7 +22,9 @@ dependencies = [
     "pyyaml",
     "click",
     "plotly",
-    "kaleido"
+    "kaleido",
+    "gpu4pyscf-cuda12x",
+    "pyscf"
 ]
 
 [project.scripts]
