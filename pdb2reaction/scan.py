@@ -431,13 +431,13 @@ def _norm_opt_mode(mode: str) -> str:
     help="Python-like list of tuples per stage, repeatable. Example: "
          "\"[(0,1,1.50),(2,3,2.00)]\" \"[(5,7,1.20)]\"",
 )
-@click.option("--one-based/--zero-based", "one_based", default=False, show_default=True,
-              help="Interpret (i,j) indices in --scan-lists as 1-based (default: 0-based).")
+@click.option("--one-based/--zero-based", "one_based", default=True, show_default=True,
+              help="Interpret (i,j) indices in --scan-lists as 1-based (default: 1-based).")
 @click.option("--max-step-size", type=float, default=0.30, show_default=True,
               help="Maximum change in any bond length per step [Å].")
-@click.option("--bias-k", type=float, default=None, show_default=False,
-              help="Harmonic well strength per Å^2 (overrides YAML 'bias.k').")
-@click.option("--relax-max-cycles", type=int, default=300, show_default=True,
+@click.option("--bias-k", type=float, default=10.0, show_default=True,
+              help="Harmonic well strength per Å^2.")
+@click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
               help="Max optimizer cycles per step relaxation.")
 @click.option("--opt-mode", type=str, default="light", show_default=True,
               help="Relaxation mode per step: light (=LBFGS) or heavy (=RFO).")

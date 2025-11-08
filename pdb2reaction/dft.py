@@ -236,8 +236,9 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     "--func-basis",
     "func_basis",
     type=str,
-    required=True,
-    help='Functional and basis as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wB97m-v/def2-tzvpd").',
+    default="wb97m-v/6-31g**",
+    show_default=True,
+    help='Functional and basis as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").',
 )
 @click.option("--max-cycle", type=int, default=DFT_KW["max_cycle"], show_default=True, help="Max SCF iterations")
 @click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh)")
