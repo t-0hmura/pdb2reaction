@@ -1,19 +1,18 @@
 # pdb2reaction/path_opt.py
 
 """
-MEP optimization by Growing String.
+MEP optimization via the Growing String method.
 
-- Endpoints: two structures (e.g. reactant/product) given by -i/--input.
-- Calculator: UMA (via uma_pysis wrapper).
+- Endpoints: two structures (e.g., reactant/product) given by -i/--input.
+- Calculator: UMA (through the uma_pysis wrapper).
 - Path optimizer: GrowingString + StringOptimizer (pysisyphus).
-- YAML config with sub-sections: geom, calc, gs, opt  （CLI > YAML > defaults）
-- If inputs are PDB and --freeze-links=True, freeze parent atoms of link hydrogens.
-- **Default behavior:** Before optimization, perform a Kabsch alignment of the
-  second endpoint to the first (external alignment). Do **not** use
-  StringOptimizer's internal `align` option (bug-prone).
-- **When `freeze_atoms` exist on either endpoint, alignment is determined
-  **only** from those atoms (RMSD over `freeze_atoms`), and the resulting rigid
-  transform is applied to **all** atoms.**
+- Configuration: YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > defaults.
+- If inputs are PDB and --freeze-links=True, freeze the parent atoms of link hydrogens.
+- **Default behavior:** Before optimization, rigidly align the second endpoint to the first
+  using an external Kabsch alignment. Do **not** use StringOptimizer’s internal `align` option
+  (known to be fragile).
+- **If either endpoint specifies `freeze_atoms`, the alignment is determined using *only* those
+  atoms (RMSD over `freeze_atoms`), and the resulting rigid transform is applied to *all* atoms.**
 - Dump the highest-energy image (HEI) as gsm_hei.xyz and gsm_hei.pdb (if a PDB reference is available).
 
 Examples
@@ -46,19 +45,19 @@ from .utils import convert_xyz_to_pdb, freeze_links
 
 
 # -----------------------------------------------
-# Defaults (YAML/CLI で上書き)
+# Defaults (overridden by YAML/CLI)
 # -----------------------------------------------
 
-# 幾何（入力の扱い）
+# Geometry (input handling)
 GEOM_KW: Dict[str, Any] = {
-    "coord_type": "cart",   # GrowingString は cart 推奨
-    "freeze_atoms": [],     # 0-based indices
+    "coord_type": "cart",   # GrowingString works best with Cartesian coordinates
+    "freeze_atoms": [],     # 0-based atom indices
 }
 
-# UMA 計算条件
+# UMA calculator settings
 CALC_KW: Dict[str, Any] = {
     "charge": 0,
-    "spin": 1,                  # multiplicity (=2S+1)
+    "spin": 1,                  # multiplicity (= 2S + 1)
     "model": "uma-s-1p1",
     "task_name": "omol",
     "device": "auto",
@@ -67,35 +66,35 @@ CALC_KW: Dict[str, Any] = {
     "r_edges": False,
 }
 
-# GrowingString（経路表現）
+# GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 30,            # 端点含めて max_nodes+2 画像
-    "perp_thresh": 5e-3,        # フロンティア成長判定（⊥力のRMS/NORM）
-    "reparam_check": "rms",     # "rms" | "norm", reparam後の収束条件(構造変化のrms)
-    "reparam_every": 1,         # Nステップごとにimageを再配置
-    "reparam_every_full": 1,    # pathが成長しきった後に、Nステップごとにimageを再配置
-    "param": "equi",            # equi (均等に配置) | energy (Peak近辺にノードが密集するよう重みづけ),
+    "max_nodes": 30,            # Including endpoints, the string has max_nodes + 2 images
+    "perp_thresh": 5e-3,        # Frontier growth criterion (RMS/NORM of perpendicular force)
+    "reparam_check": "rms",     # "rms" | "norm"; convergence check after reparam (RMS of structural change)
+    "reparam_every": 1,         # Reparametrize every N steps
+    "reparam_every_full": 1,    # After the path is fully grown, reparametrize every N steps
+    "param": "equi",            # "equi" (even spacing) | "energy" (denser near the peak via weighting)
     "max_micro_cycles": 10,
-    "reset_dlc": True,
-    "climb": True,              # climbing image 有効
-    "climb_rms": 5e-4,          # CI 開始の閾値（rms(force)）
-    "climb_lanczos": True,      # HEI 接線を Lanczos で
+    "reset_dlc": True,          # Reset DLC coordinates when appropriate
+    "climb": True,              # Enable climbing image
+    "climb_rms": 5e-4,          # Threshold (RMS of force) to start CI
+    "climb_lanczos": True,      # Use Lanczos to estimate the HEI tangent
     "climb_lanczos_rms": 5e-4,
-    "climb_fixed": False,       # HEI画像位置を固定
-    "scheduler": None,          # 直列計算（同一 calculator 使い回し前提）
+    "climb_fixed": False,       # Fix the HEI image index
+    "scheduler": None,          # Serial execution (assumes a shared calculator instance)
 }
 
-# StringOptimizer（最適化制御）
+# StringOptimizer (optimization control)
 OPT_KW: Dict[str, Any] = {
-    "type": "string",           # 記録用タグ
-    "stop_in_when_full": 1000,  # fully grown 後に N サイクルで停止
-    "align": False,             # 内部 align はバグにつながる恐れがあるため既定 False（外部でKabschアライン）
-    "scale_step": "global",     # global | per_image
+    "type": "string",           # Tag for bookkeeping
+    "stop_in_when_full": 1000,  # After fully grown, stop after N additional cycles
+    "align": False,             # Keep internal align disabled; use external Kabsch alignment instead
+    "scale_step": "global",     # "global" | "per_image"
     "max_cycles": 1000,
     "dump": False,
     "dump_restart": False,
-    "reparam_thresh": 1e-3,     # reparam後の収束条件(rms(step))
-    "coord_diff_thresh": 0.0,   # 近接画像チェック（0で無効）
+    "reparam_thresh": 1e-3,     # Convergence after reparam (RMS of step)
+    "coord_diff_thresh": 0.0,   # Near-duplicate image check (0 disables)
     "out_dir": "./result_path_opt/",
     "print_every": 1,
 }
@@ -116,6 +115,7 @@ def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
+    """Load a YAML mapping from *path*. Return an empty dict if *path* is None."""
     if not path:
         return {}
     with open(path, "r") as f:
@@ -126,11 +126,13 @@ def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
 
 
 def _pretty_block(title: str, content: Dict[str, Any]) -> str:
+    """Format a titled YAML block for echoing resolved configuration."""
     body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
     return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
 
 
 def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Pretty-print helper for geom config (joins freeze_atoms as CSV)."""
     g = dict(geom_cfg)
     fa = g.get("freeze_atoms")
     if isinstance(fa, (list, tuple, np.ndarray)):
@@ -139,7 +141,7 @@ def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
-    """PDB の link 水素の親原子を検出し 0-based index を返す。"""
+    """Detect the parent atoms of link hydrogens in a PDB and return 0‑based indices."""
     try:
         return freeze_links(pdb_path)
     except Exception as e:
@@ -153,11 +155,11 @@ def _load_two_endpoints(
     base_freeze: Sequence[int],
     auto_freeze_links: bool,
 ) -> Sequence:
-    """2 つの端点構造を読み込み、必要に応じて freeze_atoms を設定。"""
+    """Load the two endpoint structures and set `freeze_atoms` as needed."""
     geoms = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
-        # freeze_atoms は Geometry に後付けで設定
+        # Attach freeze_atoms to the Geometry object
         freeze = list(base_freeze)
         if auto_freeze_links and p.suffix.lower() == ".pdb":
             detected = _freeze_links_for_pdb(p)
@@ -207,11 +209,11 @@ def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float, int]:
     """
-    Align geom_to_align onto geom_ref using Kabsch (rigid body, no scaling).
+    Rigidly align geom_to_align onto geom_ref using Kabsch (no scaling).
 
-    - If either endpoint specifies `freeze_atoms`, determine the alignment using
-      **only** those atoms (union of indices), then apply the rigid transform to
-      all atoms. Otherwise, use all atoms for alignment.
+    - If either endpoint provides `freeze_atoms`, determine the transform using the
+      union of those atoms only, then apply the same rigid transform to *all* atoms.
+      Otherwise, use all atoms to determine the transform.
 
     Returns
     -------
@@ -223,7 +225,7 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
         raise ValueError(f"Different atom counts for endpoints: {P.shape[0]} vs {Q.shape[0]}")
 
     N = P.shape[0]
-    # Determine indices to use
+    # Indices to use for alignment
     fa0 = getattr(geom_ref, "freeze_atoms", np.array([], dtype=int))
     fa1 = getattr(geom_to_align, "freeze_atoms", np.array([], dtype=int))
     freeze_union = sorted(set(map(int, fa0)) | set(map(int, fa1)))
@@ -251,7 +253,7 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
     R, t = _kabsch_R_t(P_sel, Q_sel)
     Q_aligned = (Q @ R) + t  # apply to all atoms
 
-    # Set back (expects flattened 1D of length 3N)
+    # Write back (expects flattened 1D array of length 3N)
     geom_to_align.set_coords(Q_aligned.reshape(-1))
 
     rmsd_after = _rmsd(P[use_mask], Q_aligned[use_mask])
@@ -264,7 +266,7 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
 # -----------------------------------------------
 
 @click.command(
-    help="MEP optimization by Growing String.",
+    help="MEP optimization via the Growing String method.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -273,17 +275,21 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     nargs=2,
     required=True,
-    help="Two endpoint structures (reactant and product), e.g. .pdb / .xyz",
+    help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
+@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
+@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1).")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
-              help="If PDB, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=30, show_default=True, help="Internal nodes (string has max_nodes+2 images incl. endpoints)")
-@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Max optimization cycles")
-@click.option("--climb", type=click.BOOL, default=True, show_default=True, help="Search for transition state after path growth")
-@click.option("--dump", type=click.BOOL, default=False, show_default=True, help="Dump optimizer trajectory/restarts during run")
-@click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True, help="Output directory")
+              help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
+@click.option("--max-nodes", type=int, default=30, show_default=True,
+              help="Number of internal nodes (string has max_nodes+2 images including endpoints).")
+@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum optimization cycles.")
+@click.option("--climb", type=click.BOOL, default=True, show_default=True,
+              help="Search for a transition state (climbing image) after path growth.")
+@click.option("--dump", type=click.BOOL, default=False, show_default=True,
+              help="Dump optimizer trajectory/restarts during the run.")
+@click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True,
+              help="Output directory.")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -304,7 +310,7 @@ def cli(
 ) -> None:
     try:
         # --------------------------
-        # 1) 設定の組み立て（defaults ← YAML ← CLI）
+        # 1) Assemble final config (defaults ← YAML ← CLI)
         # --------------------------
         yaml_cfg = _load_yaml(args_yaml)
 
@@ -329,12 +335,12 @@ def cli(
         gs_cfg["climb_lanczos"] = bool(climb)
 
         opt_cfg["dump"]       = bool(dump)
-        opt_cfg["out_dir"]    = out_dir  # CLI では --out-dir を受け取り Optimizer には out_dir を渡す
+        opt_cfg["out_dir"]    = out_dir  # Pass --out-dir to the optimizer via "out_dir"
 
-        # **重要**：内部 align は使用しない（Kabsch による外部アラインに統一）
+        # Important: do not use internal alignment; use external Kabsch alignment instead
         opt_cfg["align"] = False
 
-        # 表示用：解決後の設定
+        # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = _format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
@@ -348,14 +354,14 @@ def cli(
         click.echo(_pretty_block("opt",  echo_opt))
 
         # --------------------------
-        # 2) 構造の準備（端点2つの読み込みと freeze）
+        # 2) Prepare structures (load two endpoints and apply freezing)
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        # 入力パス
+        # Input paths
         p0, p1 = Path(input_paths[0]), Path(input_paths[1])
 
-        # 端点の読み込み（PDB の場合は link 親凍結を合流）
+        # Load endpoints (if PDB, merge in link-parent freezing)
         geoms = _load_two_endpoints(
             paths=[p0, p1],
             coord_type=geom_cfg.get("coord_type", "cart"),
@@ -363,25 +369,25 @@ def cli(
             auto_freeze_links=bool(freeze_links_flag),
         )
 
-        # --- 既定で Kabsch による外部アラインを実施（freeze_atoms があればそれらのみで決定） ---
+        # By default, apply external Kabsch alignment (if freeze_atoms exist, use only them)
         try:
             rmsd_before, rmsd_after, n_used = _align_second_to_first_kabsch(geoms[0], geoms[1])
-            click.echo(f"[align] Kabsch alignment applied to 2nd endpoint → 1st endpoint "
-                       f"(used {n_used} atoms; RMSD {rmsd_before:.4f} Å → {rmsd_after:.4f} Å).")
+            click.echo(f"[align] Applied Kabsch alignment: 2nd endpoint -> 1st endpoint "
+                       f"(used {n_used} atoms; RMSD {rmsd_before:.4f} Å -> {rmsd_after:.4f} Å).")
         except Exception as e:
             click.echo(f"[align] WARNING: Kabsch alignment skipped: {e}", err=True)
 
-        # 共通 UMA 計算器（同一インスタンスを全画像で共有）
+        # Shared UMA calculator (reuse the same instance for all images)
         shared_calc = uma_pysis(**calc_cfg)
         for g in geoms:
             g.set_calculator(shared_calc)
 
         def calc_getter():
-            # GrowingString が新規ノードを生成する際に使う
+            # Used when GrowingString generates new nodes
             return shared_calc
 
         # --------------------------
-        # 3) 経路オブジェクトとオプティマイザの構築
+        # 3) Build path object and optimizer
         # --------------------------
         gs = GrowingString(
             images=geoms,
@@ -389,24 +395,24 @@ def cli(
             **gs_cfg,
         )
 
-        # StringOptimizer は out_dir を "out_dir" で受け取る
+        # StringOptimizer expects 'out_dir' under the key "out_dir"
         opt_args = dict(opt_cfg)
         opt_args["out_dir"] = str(out_dir_path)
 
         optimizer = StringOptimizer(
             geometry=gs,
-            **{k: v for k, v in opt_args.items() if k != "type"}  # type は単なるタグ
+            **{k: v for k, v in opt_args.items() if k != "type"}  # 'type' is just a tag
         )
 
         # --------------------------
-        # 4) 最適化実行
+        # 4) Run optimization
         # --------------------------
         click.echo("\n=== Growing String optimization started ===\n")
         optimizer.run()
         click.echo("\n=== Growing String optimization finished ===\n")
 
         # --------------------------
-        # 5) 最終経路の書き出し（final_geometries.trj）
+        # 5) Write final path (final_geometries.trj)
         # --------------------------
         final_trj = out_dir_path / "final_geometries.trj"
         try:
@@ -447,13 +453,15 @@ def cli(
 
         try:
             energies = np.array(gs.energy, dtype=float)
-            # --- HEI 判定の修正 ---
-            # 「end point以外で、両隣がそのノードよりエネルギーが低いノード」(内部極大)
-            # のうち、最もエネルギーが高いノードを HEI とする。
+            # --- HEI identification logic ---
+            # Choose the internal local maximum (exclude endpoints) with the highest energy,
+            # i.e., nodes whose immediate neighbors have lower energy.
+            # Fallback 1: if none exist, pick the maximum among internal nodes (exclude endpoints).
+            # Fallback 2: if internal nodes are unavailable, pick the global maximum.
             nE = int(len(energies))
             hei_idx = None
             if nE >= 3:
-                # 内部極大（厳密に両隣より高い）
+                # Strict internal local maxima (both neighbors lower)
                 candidates = [i for i in range(1, nE - 1)
                               if energies[i] > energies[i - 1] and energies[i] > energies[i + 1]]
                 if candidates:
@@ -461,12 +469,12 @@ def cli(
                     rel = int(np.argmax(cand_es))
                     hei_idx = int(candidates[rel])
                 else:
-                    # フォールバック：内部ノードの中で最大（端点は除外）
+                    # Fallback 1: maximum over internal nodes (exclude endpoints)
                     if nE > 2:
                         rel = int(np.argmax(energies[1:-1]))
                         hei_idx = 1 + rel
             if hei_idx is None:
-                # さらにフォールバック（内部ノードが存在しない等）：全体最大
+                # Fallback 2: global maximum
                 hei_idx = int(np.argmax(energies))
 
             hei_geom = gs.images[hei_idx]
@@ -509,6 +517,7 @@ def cli(
 
 
 def freeze_links_helper(pdb_path: Path):
+    """Expose freeze_links for external callers/tests."""
     return freeze_links(pdb_path)
 
 

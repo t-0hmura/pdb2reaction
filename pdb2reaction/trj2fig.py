@@ -2,42 +2,42 @@
 
 """
 Energy-profile utility for XYZ trajectories
-======================================================
+==========================================
 
-機能
-----
-
-• XYZ各フレームの2行目コメントから Hartree エネルギーを抽出
-• 参照指定に応じて「ΔE」または「絶対E」を出力（kcal mol⁻¹ or hartree）
-  - `-r init` : 初期フレームを基準（--reverse-x のときは最後のフレーム）
-  - `-r None` : 絶対エネルギー（基準なし）
-  - `-r <int>`: 指定フレームを基準
-• 目盛太字・フォント・スプライン曲線など整えた Plotly 図を生成
-  （PNG[default] / HTML / SVG / PDF）
-• 表データを CSV で書き出し可能
-• `--reverse-x` は x 軸を反転（最後のフレームが左側）
-
-使い方例
+Features
 --------
 
-図（PNG高解像度）を生成（x軸を反転、基準は左端＝最後のフレーム）
+• Extract Hartree energies from the second-line comment of each XYZ frame.
+• Output either ΔE (relative to a reference) or absolute E (in kcal/mol or hartree).
+  - `-r init`  : use the initial frame as the reference (or the last frame when `--reverse-x` is set).
+  - `-r None`  : use absolute energies (no reference).
+  - `-r <int>` : use the specified frame index as the reference.
+• Generate a polished Plotly figure (PNG [default] / HTML / SVG / PDF) with bold ticks, consistent fonts,
+  and a spline curve.
+• Optionally write tabular data to CSV.
+• `--reverse-x` flips the x-axis so the last frame appears on the left.
+
+Examples
+--------
+
+Generate a high-resolution PNG figure (x-axis reversed; the reference is the leftmost point = last frame):
 
     trj2fig -i traj.xyz --reverse-x
 
-CSV と 図を同時出力（基準フレーム #5、単位 hartree）
+Write both CSV and a figure (reference frame #5, output in hartree):
 
     trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
-複数出力（PNG, HTML, PDF を一括出力）
+Produce multiple outputs at once (PNG, HTML, and PDF):
 
     trj2fig -i traj.xyz -o energy.png energy.html energy.pdf
 
-備考
-----
+Notes
+-----
 
-• 旧版の `--output-peak` 機能は削除しました。
-• 既定の出力は `energy.png` です。`-o` に複数ファイル名を与えるか、
-  `-o` を繰り返し指定すると複数出力できます。
+• The legacy `--output-peak` option has been removed.
+• The default output is `energy.png`. You can pass multiple filenames to `-o`, and/or
+  repeat `-o` to produce multiple outputs.
 """
 from __future__ import annotations
 
@@ -51,24 +51,24 @@ import click
 import plotly.graph_objs as go
 from pysisyphus.constants import AU2KCALPERMOL
 
-AXIS_WIDTH = 3    # axis & tick thickness
-FONT_SIZE = 18    # tick-label font size
-AXIS_TITLE_SIZE = 20  # axis-label font size
-LINE_WIDTH = 2    # curve width
-MARKER_SIZE = 6   # marker size
+AXIS_WIDTH = 3         # axis and tick thickness
+FONT_SIZE = 18         # tick-label font size
+AXIS_TITLE_SIZE = 20   # axis-title font size
+LINE_WIDTH = 2         # curve width
+MARKER_SIZE = 6        # marker size
 
 
 # ---------------------------------------------------------------------
 #  File helpers
 # ---------------------------------------------------------------------
 def read_energies_xyz(fname: Path | str) -> List[float]:
-    """Return a list of Hartree energies extracted from 2-line comments."""
+    """Extract Hartree energies from the second-line comment of each XYZ frame."""
     energies: List[float] = []
     with open(fname, encoding="utf-8") as fh:
         while (hdr := fh.readline()):
             try:
                 nat = int(hdr.strip())
-            except ValueError:  # non-XYZ header reached
+            except ValueError:  # reached a non-XYZ header
                 break
             comment = fh.readline().strip()
             m = re.search(r"(-?\d+(?:\.\d+)?)", comment)
@@ -87,10 +87,10 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
 # ---------------------------------------------------------------------
 def _parse_reference_spec(spec: str | None) -> str | int | None:
     """
-    Normalize reference spec:
+    Normalize the reference specification:
       - "init" (case-insensitive) -> "init"
-      - "none"/"null" -> None
-      - integer-like string -> int
+      - "none"/"null"             -> None
+      - integer-like string       -> int
     """
     if spec is None:
         return "init"
@@ -112,9 +112,9 @@ def _resolve_reference_index(
     n_frames: int, ref_spec: str | int | None, reverse_x: bool
 ) -> Tuple[Optional[int], bool]:
     """
-    Decide reference index and whether to produce delta.
+    Decide the reference index and whether to compute a ΔE series.
 
-    Returns (ref_index or None, is_delta)
+    Returns (reference_index or None, is_delta)
     """
     if ref_spec is None:
         return None, False  # absolute energies
@@ -135,7 +135,7 @@ def transform_series(
     reverse_x: bool,
 ) -> Tuple[List[float], str, bool]:
     """
-    Compute y-series and label.
+    Compute the y-series and its axis label.
 
     Returns (values, ylabel, is_delta)
     """
@@ -174,7 +174,7 @@ def _axis_template() -> dict:
 
 
 def build_figure(delta_or_abs: Sequence[float], ylabel: str, reverse_x: bool) -> go.Figure:
-    """Build a title-less Plotly figure."""
+    """Build a Plotly figure without a title."""
     fig = go.Figure(
         go.Scatter(
             x=list(range(len(delta_or_abs)))),
@@ -220,14 +220,14 @@ def save_outputs(
         elif ext == ".html":
             assert fig is not None
             fig.write_html(out)
-            print(f"[trj2fig] Figure → {out}")
+            print(f"[trj2fig] Saved figure -> {out}")
         elif ext in {".png", ".jpg", ".jpeg", ".pdf", ".svg"}:
             assert fig is not None
             kw = {"engine": "kaleido"}
             if ext == ".png":
-                kw["scale"] = 2  # hi-res PNG
+                kw["scale"] = 2  # high-resolution PNG
             fig.write_image(out, **kw)
-            print(f"[trj2fig] Figure → {out}")
+            print(f"[trj2fig] Saved figure -> {out}")
         else:
             raise ValueError(f"Unsupported format: {ext}")
 
@@ -246,7 +246,7 @@ def write_csv(
         w.writerow(["frame", "energy_hartree", colname])
         for i, (eh, y) in enumerate(zip(energies_hartree, series)):
             w.writerow([i, f"{eh:.8f}", f"{y:.6f}"])
-    print(f"[trj2fig] CSV → {out}")
+    print(f"[trj2fig] Saved CSV -> {out}")
 
 
 # ---------------------------------------------------------------------
@@ -256,7 +256,7 @@ def parse_cli() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="trj2fig",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Plot ΔE/E from an XYZ trajectory, and export figure/CSV (no title).",
+        description="Plot ΔE or E from an XYZ trajectory and export a figure and/or CSV (no title).",
     )
     p.add_argument("-i", "--input", required=True, help="XYZ trajectory file")
     p.add_argument(
@@ -271,7 +271,7 @@ def parse_cli() -> argparse.Namespace:
         "-r",
         "--reference",
         default="init",
-        help='Reference: "init" (or "None" for absolute E, or integer frame index)',
+        help='Reference: "init" (initial frame; last frame if --reverse-x), "None" (absolute E), or an integer index.',
     )
     p.add_argument(
         "--reverse-x",
@@ -306,13 +306,13 @@ def main() -> None:
 # ---------------------------------------------------------------------
 @click.command(
     name="trj2fig",
-    help="Plot ΔE/E from an XYZ trajectory and export figure/CSV.",
+    help="Plot ΔE or E from an XYZ trajectory and export figure/CSV.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
     "-i",
     "--input",
-    "input_path",  # 内部引数名を明示
+    "input_path",  # explicit internal argument name
     required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="XYZ trajectory file",
@@ -321,14 +321,14 @@ def main() -> None:
     "-o",
     "--out",
     "outs",
-    multiple=True,                      # -o を繰り返し指定できる
-    default=(),                         # 既定は空（後で自前で既定値を補う）
+    multiple=True,                      # allow repeating -o
+    default=(),                         # default is empty (we inject the fallback later)
     type=click.Path(dir_okay=False, path_type=Path),
     help="Output file(s). You can repeat -o, and/or list extra filenames after options "
          "(.png/.html/.svg/.pdf/.csv). If nothing is given, defaults to energy.png.",
 )
 @click.argument(
-    "extra_outs",                        # -o の後ろに続く余剰のファイル名も受け取る
+    "extra_outs",                        # also accept extra filenames provided positionally after options
     nargs=-1,
     type=click.Path(dir_okay=False, path_type=Path),
 )
@@ -342,7 +342,7 @@ def main() -> None:
     "-r",
     "--reference",
     default="init",
-    help='Reference: "init" (or "None" for absolute E, or integer frame index).',
+    help='Reference: "init" (initial frame; last frame if --reverse-x), "None" (absolute E), or an integer index.',
 )
 @click.option(
     "--reverse-x",
@@ -357,9 +357,10 @@ def cli(
     reference: str,
     reverse_x: bool,
 ) -> None:
-    # -o で与えられたもの + 位置引数で与えられたものを結合
+    # Combine outputs from -o with positional filenames that follow the options
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
+        # Use the default when nothing is specified
         all_outs = [Path("energy.png")]
     run_trj2fig(input_path, all_outs, unit, reference, reverse_x)
 

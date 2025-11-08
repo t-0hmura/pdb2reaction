@@ -7,16 +7,23 @@ from pathlib import Path
 from ase.io import read, write
 
 # ---------------------------------------------------------------------
-# convert_xyz_to_pdb                                                         
+# convert_xyz_to_pdb
 # ---------------------------------------------------------------------
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
-    """Overlay coordinates from *xyz_path* onto *ref_pdb_path* topology and write *out_pdb_path*.
+    """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
 
-    *xyz_path* may contain one or many frames.  For multi‑frame trajectories a
-    MODEL/ENDMDL block is appended for each subsequent frame.
+    Notes:
+        - *xyz_path* may contain one or many frames. For multi‑frame trajectories,
+          a MODEL/ENDMDL block is appended for each subsequent frame in the output PDB.
+        - On the first frame the output file is created/overwritten; subsequent frames are appended.
+
+    Args:
+        xyz_path: Path to an XYZ file (single or multi-frame).
+        ref_pdb_path: Path to a reference PDB providing atom ordering/topology.
+        out_pdb_path: Destination PDB file to write.
     """
-    ref_atoms = read(ref_pdb_path)  # Reference topology (single frame)
-    traj = read(xyz_path, index=":", format="xyz")  # All XYZ frames
+    ref_atoms = read(ref_pdb_path)  # Reference topology/ordering (single frame)
+    traj = read(xyz_path, index=":", format="xyz")  # Load all frames from the XYZ
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
 
@@ -24,14 +31,27 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         atoms = ref_atoms.copy()
         atoms.set_positions(frame.get_positions())
         if step == 0:
-            write(out_pdb_path, atoms)  # overwrite / create
+            write(out_pdb_path, atoms)  # Create/overwrite on the first frame
         else:
-            write(out_pdb_path, atoms, append=True)
+            write(out_pdb_path, atoms, append=True)  # Append subsequent frames using MODEL/ENDMDL
 
 # ---------------------------------------------------------------------
-# freeze_links                                                            
+# freeze_links
 # ---------------------------------------------------------------------
 def parse_pdb_coords(pdb_path):
+    """Parse ATOM/HETATM records from *pdb_path* and separate link hydrogen (HL) atoms.
+
+    Returns:
+        A tuple (others, lkhs) where:
+            - others: list of tuples (x, y, z, line) for all atoms except the 'HL' atom
+              of residue 'LKH'.
+            - lkhs: list of tuples (x, y, z, line) for atoms where residue name is 'LKH'
+              and atom name is 'HL'.
+
+    Notes:
+        - Coordinates are read from standard PDB columns:
+          X: columns 31–38, Y: 39–46, Z: 47–54 (1-based indexing).
+    """
     with open(pdb_path, "r") as f:
         lines = f.readlines()
 
@@ -56,6 +76,17 @@ def parse_pdb_coords(pdb_path):
     return others, lkhs
 
 def nearest_index(point, pool):
+    """Find the nearest point in *pool* to *point* using Euclidean distance.
+
+    Args:
+        point: Tuple (x, y, z) representing the query coordinate.
+        pool: Iterable of tuples (x, y, z, line) to search.
+
+    Returns:
+        A tuple (index, distance) where:
+            - index is the 0-based index of the nearest entry in *pool* (or -1 if *pool* is empty).
+            - distance is the Euclidean distance to that entry.
+    """
     x, y, z = point
     best_i = -1
     best_d2 = float("inf")
@@ -67,8 +98,18 @@ def nearest_index(point, pool):
     return best_i, math.sqrt(best_d2)
 
 def freeze_links(pdb_path):
-    """
-    Listup indices of link-parent atoms.
+    """Identify link-parent atom indices for 'LKH'/'HL' link hydrogens.
+
+    For each 'HL' atom in residue 'LKH', find the nearest atom among all other
+    ATOM/HETATM records and return the indices of those nearest neighbors.
+
+    Args:
+        pdb_path: Path to the input PDB file.
+
+    Returns:
+        List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
+        to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
+        are present.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
@@ -80,4 +121,3 @@ def freeze_links(pdb_path):
         idx, dist = nearest_index((x, y, z), others)
         indices.append(idx)
     return indices
-

@@ -51,11 +51,6 @@ def cli() -> None:
 )
 @click.pass_context
 def extract_cmd(ctx: click.Context) -> None:
-    """
-    Click -> argparse の薄いブリッジ。
-    ctx.args に残っている引数列を、そのまま argparse ベースの
-    `pdb2reaction.extract.extract()` へ渡す。
-    """
     import sys
     import os
     from . import extract as _extract_mod

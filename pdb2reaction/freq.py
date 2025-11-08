@@ -11,12 +11,12 @@ pdb2reaction freq \
   --out-dir ./result_freq/ \
   --args-yaml ./args.yaml
 
-YAML で上書き可能なセクション:
+Sections that can be overridden via YAML:
   geom, calc, freq
 
-出力:
-- out_dir に、低い振動数（値の昇順）から max-write 個までを
-  'mode_XXXX_{±freq}cm-1.trj' および '.pdb' で保存します。
+Output:
+- In out_dir, write up to max-write modes in ascending order of frequency
+  as 'mode_XXXX_{±freq}cm-1.trj' and '.pdb'.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ def _torch_device(auto: str = "auto") -> torch.device:
 
 def _build_tr_basis(coords_bohr_t: torch.Tensor,
                     masses_au_t: torch.Tensor) -> torch.Tensor:
-    """Mass‐weighted translation/rotation basis (Tx,Ty,Tz,Rx,Ry,Rz), shape (3N, r<=6)."""
+    """Mass-weighted translation/rotation basis (Tx, Ty, Tz, Rx, Ry, Rz), shape (3N, r<=6)."""
     device, dtype = coords_bohr_t.device, coords_bohr_t.dtype
     N = coords_bohr_t.shape[0]
     m_au = masses_au_t.to(dtype=dtype, device=device)
@@ -131,8 +131,9 @@ def _mw_projected_hessian(H_t: torch.Tensor,
     Project out translations/rotations in mass-weighted space:
     Hmw = M^{-1/2} H M^{-1/2};  P = I - QQ^T;  Hmw_proj = P Hmw P
 
-    メモリ節約のため、Hessian を clone せず **H_t を in-place** に更新し、その結果を返す。
-    対称化（0.5*(H+H^T)）は行わない。固有分解では下三角のみを使用する（UPLO="L"）。
+    To save memory, update **H_t in-place** (no clone) and return it.
+    No explicit symmetrization (0.5*(H+H^T)). The eigen-decomposition uses
+    only the lower triangle (UPLO="L").
     """
     dtype, device = H_t.dtype, H_t.device
     with torch.no_grad():
@@ -167,10 +168,10 @@ def _mw_projected_hessian(H_t: torch.Tensor,
         return H_t
 
 
-# ---- PHVA helper: mass-weighted Hessian without TR projection (active-subspace用) ----
+# ---- PHVA helper: mass-weighted Hessian without TR projection (for active subspace) ----
 def _mass_weighted_hessian(H_t: torch.Tensor,
                            masses_au_t: torch.Tensor) -> torch.Tensor:
-    """Return Hmw = M^{-1/2} H M^{-1/2}（対称化・TR 射影なし, in-place 更新）。"""
+    """Return Hmw = M^{-1/2} H M^{-1/2} (no symmetrization/TR projection; in-place)."""
     dtype, device = H_t.dtype, H_t.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
@@ -197,8 +198,8 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
     If `freeze_idx` is provided (list of 0-based atom indices), perform
     Partial Hessian Vibrational Analysis (PHVA):
       1) build Hmw = M^{-1/2} H M^{-1/2}
-      2) take active subspace by removing DOF of frozen atoms
-      3) TR-projection in the **active subspace only**（常に射影。0/1/2 固定でも対応）
+      2) take the active subspace by removing DOF of frozen atoms
+      3) perform TR projection **only in the active subspace** (always applied; works for 0/1/2 frozen atoms)
       4) diagonalize and embed eigenvectors back to 3N by zero-filling frozen DOF
 
     Returns:
@@ -222,12 +223,12 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
 
             n_active = len(active_idx)
             if n_active == 0:
-                # 全原子固定 → モードなし
+                # All atoms are frozen → no modes
                 freqs_cm = np.zeros((0,), dtype=float)
-                modes = torch.zeros((0, 3 * N), dtype=H_t.dtype, device=device)
+                modes = torch.zeros((0, 3 * N), dtype=H_t.dtype, device=H_t.device)
                 return freqs_cm, modes
 
-            # Mass-weighted Hessian (full, in-place) → active DOF サブマトリクス
+            # Mass-weighted Hessian (full, in-place) → active-DOF submatrix
             H_t = _mass_weighted_hessian(H_t, masses_au_t)
             mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
             for i in frozen_set:
@@ -236,7 +237,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            # Active-only TR basis and projection in mass-weighted space（常に実施, in-place）
+            # Active-only TR basis and projection in mass-weighted space (always applied; in-place)
             coords_act = coords_bohr_t[active_idx, :]
             masses_act = masses_au_t[active_idx]
             Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
@@ -252,7 +253,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
 
             del Q, Qt, QtH
 
-            # 対称化は行わず、下三角のみで固有分解
+            # No symmetrization; diagonalize using lower triangle only
             omega2, Vsub = torch.linalg.eigh(H_t, UPLO="L")
 
             sel = torch.abs(omega2) > tol
@@ -264,7 +265,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
             del Vsub, mask_dof
 
         else:
-            # 既存挙動：全DOFでTR射影 → 対角化（いずれも in-place、対称化なし）
+            # Legacy behavior: TR-projection in full DOF → diagonalization (both in-place; no symmetrization)
             H_t = _mw_projected_hessian(H_t, coords_bohr_t, masses_au_t)
             omega2, V = torch.linalg.eigh(H_t, UPLO="L")
 
@@ -273,7 +274,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
             modes = V[:, sel].T
             del V
 
-        # 周波数（cm^-1）へ変換
+        # Convert to frequencies (cm^-1)
         s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
         hnu = s_new * torch.sqrt(torch.abs(omega2))
         hnu = torch.where(omega2 < 0, -hnu, hnu)
@@ -317,16 +318,16 @@ def _write_mode_trj_and_pdb(geom,
                             ref_pdb: Optional[Path] = None) -> None:
     """Write a single mode animation as .trj (XYZ-like) and .pdb.
 
-    ref_pdb が指定されている場合、.pdb は入力 PDB をテンプレートに
-    utils.convert_xyz_to_pdb() で変換して書き出します（path_opt と同様）。
+    If `ref_pdb` is provided and is a .pdb file, the .pdb is generated by
+    converting the .trj using the input PDB as the template (same as path_opt).
     """
     ref_ang = geom.coords.reshape(-1, 3) * BOHR2ANG
     mode = mode_vec_3N.reshape(-1, 3).copy()
     mode /= np.linalg.norm(mode)
 
-    # .trj（XYZ-like 連結）
+    # .trj (concatenated XYZ-like trajectory)
     if ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb":
-        # 変換器に合わせて Å 単位のシンプルな XYZ 風トラジェクトリを出力
+        # Emit a simple XYZ-like trajectory in Å for the converter
         with out_trj.open("w", encoding="utf-8") as f:
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
@@ -334,11 +335,11 @@ def _write_mode_trj_and_pdb(geom,
                 f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
                 for sym, (x, y, z) in zip(geom.atoms, coords):
                     f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
-        # 入力 PDB をテンプレートにして PDB を生成
+        # Generate PDB using the input PDB as template
         try:
             _convert_xyz_to_pdb(out_trj, ref_pdb, out_pdb)
         except Exception:
-            # フォールバック：ASE で MODEL/ENDMDL を生成
+            # Fallback: generate MODEL/ENDMDL using ASE
             atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
@@ -347,7 +348,7 @@ def _write_mode_trj_and_pdb(geom,
                 write(out_pdb, ai, append=(i != 0))
         return
 
-    # ref_pdb が無い場合は従来動作（pysisyphus の make_trj_str が使えればそれを使用）
+    # If no ref_pdb is given, use the legacy behavior (use pysisyphus.make_trj_str if available)
     try:
         from pysisyphus.xyzloader import make_trj_str  # type: ignore
         amp_ang = amplitude_ang
@@ -366,7 +367,7 @@ def _write_mode_trj_and_pdb(geom,
                 for sym, (x, y, z) in zip(geom.atoms, coords):
                     f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
 
-    # .pdb（MODEL/ENDMDL, ASE ベース）
+    # .pdb (MODEL/ENDMDL via ASE)
     atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
     for i in range(n_frames):
         phase = np.sin(2.0 * np.pi * i / n_frames)
@@ -395,15 +396,15 @@ CALC_KW = {
     "max_neigh": None,        # Optional[int]
     "radius": None,           # Optional[float] (Å)
     "r_edges": False,         # bool
-    "out_hess_torch": True,   # 必須: torch の Hessian を返す
+    "out_hess_torch": True,   # Required: return Hessian as a torch tensor
 }
 
 # Freq writer defaults
 FREQ_KW = {
-    "amplitude_ang": 0.8,     # float, アニメーションの振幅 (Å)
-    "n_frames": 20,           # int, フレーム数
-    "max_write": 20,          # int, 書き出しモード数
-    "sort": "value",          # "value" (値の昇順) | "abs" (絶対値の昇順)
+    "amplitude_ang": 0.8,     # float, animation amplitude (Å) for both .trj and .pdb
+    "n_frames": 20,           # int, number of frames
+    "max_write": 20,          # int, number of modes to write
+    "sort": "value",          # "value" (ascending by value) | "abs" (ascending by absolute value)
 }
 
 
@@ -516,7 +517,7 @@ def cli(
         H_t = _calc_full_hessian_torch(geometry, calc_cfg, device)
         coords_bohr = geometry.coords.reshape(-1, 3)
 
-        # PHVA: 凍結原子リストで active-subspace を切り出し、そこで TR 射影を実施
+        # PHVA: use the freeze list to carve out the active subspace and apply TR projection there
         freeze_list = list(geom_cfg.get("freeze_atoms", []))
         freqs_cm, modes_mw = _frequencies_cm_and_modes(
             H_t,
@@ -535,7 +536,7 @@ def cli(
         n_write = int(min(freq_cfg["max_write"], len(order)))
         click.echo(f"[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).")
 
-        # 参照 PDB（入力が PDB のときのみ）
+        # Reference PDB (only when input is PDB)
         ref_pdb = input_path if input_path.suffix.lower() == ".pdb" else None
 
         # write modes

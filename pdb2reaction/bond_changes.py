@@ -73,7 +73,7 @@ def compare_structures(
     delta_fraction: float = 0.05,
 ) -> BondChangeResult:
 
-    assert geom1.atoms == geom2.atoms, "原子の順序・種類が一致している必要があります。"
+    assert geom1.atoms == geom2.atoms, "Atom types and ordering must be identical."
     N = len(geom1.atoms)
 
     elems, cov_np = _element_arrays(geom1.atoms)
@@ -124,7 +124,7 @@ def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) ->
 
     def pairs_to_lines(title: str, pairs: Set[Pair]):
         if not pairs:
-            lines.append(f"{title}: なし")
+            lines.append(f"{title}: None")
             return
         lines.append(f"{title} ({len(pairs)}):")
         for i, j in sorted(pairs):

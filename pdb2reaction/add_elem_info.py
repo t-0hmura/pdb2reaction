@@ -1,17 +1,20 @@
 # pdb2reaction/add_elem_info.py
 
 """
-PDB の元素列（columns 77–78）が無い/不完全なファイルに元素情報を付与します。
-- Biopython で PDB を読み込み、atom.element を設定してから PDBIO で書き出し
-- 原子名だけでなく残基名（タンパク/核酸/水/イオン）も併用して判定
-- 出力パス未指定時は入力ファイルへ上書き保存
-- 【新機能】入力に既に element 情報がある原子は、--overwrite を付けない限り「上書きせずにスキップ」
+Add or repair PDB element symbols (columns 77–78) in files that lack or have incomplete
+element fields.
 
-使い方:
-  # 単体スクリプトとして
+- Reads a PDB with Biopython, sets `atom.element`, then writes with `PDBIO`.
+- Infers elements using both atom names and residue names (protein / nucleic acid / water / ions).
+- If no output path is given, the input file is overwritten in place.
+- NEW: Atoms that already have an element field in the input are left unchanged unless
+  `--overwrite` is specified.
+
+Usage:
+  # As a standalone script
   python add_elem_info.py input.pdb [-o fixed.pdb] [--overwrite]
 
-  # pdb2reaction サブコマンドとして
+  # As a pdb2reaction subcommand
   pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
 """
 from __future__ import annotations
@@ -28,7 +31,7 @@ import click
 from Bio.PDB import PDBParser, PDBIO
 
 # -----------------------------
-# 元素シンボル（IUPAC, 1–118）
+# Element symbols (IUPAC, 1–118)
 # -----------------------------
 ELEMENTS: Set[str] = {
     "H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar",
@@ -41,7 +44,7 @@ ELEMENTS: Set[str] = {
 }
 
 # -----------------------------
-# ご提示の辞書（そのまま使用）
+# Residue charge dictionary (used as-is)
 # -----------------------------
 AMINO_ACIDS: Dict[str, int] = {
     # --- Standard 20 (L) ---
@@ -135,22 +138,25 @@ ION: Dict[str, int] = {
     "F": -1, "CL": -1, "BR": -1, "I": -1, "Cl-": -1, "IOD": -1,
 }
 
-# よく使う残基クラス
+# Common residue classes
 PROTEIN_RES = set(AMINO_ACIDS.keys())
 NUCLEIC_RES = {
-    # DNA/RNA（最低限）
+    # DNA/RNA (minimum set)
     "DA","DT","DG","DC","DI",
     "A","U","G","C","I",
 }
 WATER_RES = {"HOH","WAT","H2O","DOD","TIP","TIP3","SOL"}
 
 # -----------------------------
-# ヘルパー: 文字列→元素シンボル正規化
+# Helper: normalize strings to element symbols
 # -----------------------------
 _re_letters = re.compile(r"[A-Za-z]+")
 
 def _normalize_symbol(s: str) -> Optional[str]:
-    """英字以外を除去し、2文字優先で既知元素にマッチしたらシンボル（正しい大小）を返す。"""
+    """Remove non-letters; prefer a 2-letter match, then 1-letter, against known elements.
+    Returns the correctly cased symbol if matched.
+    Treat deuterium 'D' as hydrogen 'H' (PDB often uses D interchangeably with H).
+    """
     if not s:
         return None
     m = _re_letters.findall(s)
@@ -164,13 +170,13 @@ def _normalize_symbol(s: str) -> Optional[str]:
     cand1 = letters[0].upper()
     if cand1 in ELEMENTS:
         return cand1
-    # Deuterium を H として扱う（PDB では D を H と同等に扱うことが多い）
+    # Deuterium -> Hydrogen fallback
     if letters[0].upper() == "D":
         return "H"
     return None
 
 def _symbol_from_resname(resname: str) -> Optional[str]:
-    """イオン残基名（例: CA, FE2, Cl-, YB2, IOD）から元素シンボルを抽出。"""
+    """Extract an element symbol from an ion residue name (e.g., CA, FE2, Cl-, YB2, IOD)."""
     res = resname.strip()
     sym = _normalize_symbol(res)
     if sym is None and res.upper().startswith("IOD"):
@@ -178,34 +184,35 @@ def _symbol_from_resname(resname: str) -> Optional[str]:
     return sym
 
 # -----------------------------
-# 元素推定ロジック（残基名を使って曖昧さを解消）
+# Element inference (use residue to disambiguate)
 # -----------------------------
 def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
     """
-    原子名 + 残基名 から元素を推定。
-    優先順位:
-      1) 残基がイオン: 残基名から元素（NH4/H3O+などの多原子種は原子名で H/N/O へ）
-      2) タンパク/核酸/水: 慣例に従い H/C/N/O/S/P/Se を優先（CA=Carbon, HG=Hydrogen）
-      3) その他リガンド: 原子名先頭で推定、ただし C* や P* パターンは Carbon/Phosphorus を優先
-      4) それでも曖昧なら 2文字→1文字の順で元素候補にフォールバック
+    Infer the element from atom name + residue name.
+    Priority:
+      1) Ion residues: prefer the residue name (NH4 / H3O+ handled per-atom as H/N/O)
+      2) Polymers (protein/nucleic acid) and water: follow convention (H/C/N/O/S/P/Se)
+         - e.g., CA = Carbon (Cα), HG = Hydrogen, etc.
+      3) Other ligands: use atom-name prefix; prioritize Carbon for C* (except CL) and P for P*
+      4) Fallback to 2-letter then 1-letter normalization; return None if still ambiguous
     """
     name_u = atom_name.strip().upper()
     res_u = resname.strip().upper()
 
-    # 1) イオン残基（残基名→元素を強く優先）
+    # 1) Ion residues — strongly prefer the residue-derived element
     if res_u in {k.upper() for k in ION.keys()}:
-        # 多原子イオン（NH4, H3O+, …）は原子名で個々判定（D* も H とみなす）
+        # Polyatomic ions (NH4, H3O+, …): decide per atom name (treat D* as H)
         if name_u.startswith(("H", "D")):
             return "H"
         if name_u.startswith("N"):
             return "N"
         if name_u.startswith("O"):
             return "O"
-        # 単原子金属/ハロゲンなどは残基名から
+        # Monatomic metals/halogens: from residue name
         sym = _symbol_from_resname(res_u)
         if sym:
             return sym
-        # 残基名が例外的でも、原子名が CL/BR/I/F ならそのハロゲン
+        # If residue is atypical, allow atom-name halogens (CL/BR/I/F)
         if name_u.startswith("CL"):
             return "Cl"
         if name_u.startswith("BR"):
@@ -215,26 +222,26 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
         if name_u.startswith("F"):
             return "F"
 
-    # 2) ポリマー（タンパク/核酸）/水
+    # 2) Polymers (protein/nucleic) / water
     is_protein = res_u in PROTEIN_RES
     is_nucl = res_u in NUCLEIC_RES
     is_water = res_u in WATER_RES
     if is_protein or is_nucl or is_water:
-        # 水は O と H のみ（D* も H とみなす）
+        # Water: only O and H (treat D* as H)
         if is_water:
             if name_u.startswith(("H", "D")):
                 return "H"
             return "O"
 
-        # 水素（D* を含む）
+        # Hydrogen (including D*)
         if name_u.startswith(("H", "D")):
             return "H"
 
-        # セレノメチオニン/セレノシステイン等
+        # Selenium (e.g., selenomethionine/selenocysteine)
         if name_u.startswith("SE"):
             return "Se"
 
-        # P, N, O, S は素直に先頭文字で
+        # P, N, O, S map directly by first letter
         if name_u.startswith("P"):
             return "P"
         if name_u.startswith("N"):
@@ -244,38 +251,39 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
         if name_u.startswith("S"):
             return "S"
 
-        # Cα/側鎖（CA, CB, CG, CD, CE, CZ, CH* など）は Carbon
+        # Carbon for Cα/sidechain labels (CA, CB, CG, CD, CE, CZ, CH*, etc.)
         if name_u.startswith("C"):
             return "C"
 
-        # まれにハロゲンを持つ場合もあるため最後にフォールバック
+        # Rare halogens in polymers: final fallback to normalization
         sym = _normalize_symbol(name_u)
         if sym:
             return sym
 
-    # 3) 非ポリマー（リガンド/補欠分子族など）
-    #    炭素/リン様ラベル（C*, P*）は Carbon/Phosphorus を優先（ただし CL は除外）
+    # 3) Non-polymers (ligands / cofactors)
+    #    Carbon/Phosphorus-like labels (C*, P*) -> C/P (exclude CL)
     if name_u.startswith("C") and not name_u.startswith("CL"):
         return "C"
     if name_u.startswith("P"):
         return "P"
 
-    # 金属やハロゲンがそのまま原子名のことも多い（FE, ZN, MG, HG, CL, BR, I, F ...）
+    # Metals and halogens often appear as the atom name (FE, ZN, MG, HG, CL, BR, I, F ...)
     sym = _normalize_symbol(name_u)
     if sym:
         return sym
 
-    # 4) どうしても決め打てない場合は None（呼び出し側で警告）
+    # 4) Unresolved
     return None
 
 # -----------------------------
-# 入力 PDB の element 列が「元々」存在していたかを
-# シリアル番号（columns 7–11）で判定するヘルパー
+# Detect whether the input originally had element fields,
+# keyed by atom serial number (columns 7–11)
 # -----------------------------
 def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
     """
-    PDB 行を直接スキャンし、element フィールド（columns 77–78）が空ではない ATOM/HETATM
-    のシリアル番号を返す。Biopython の自動推定に影響されない「原ファイルの実際の有無」を見る。
+    Scan the raw PDB lines and return the serial numbers of ATOM/HETATM records whose
+    element field (columns 77–78) was non-empty in the original file.
+    This avoids Biopython side effects and reflects the true presence/absence in the input.
     """
     serials_with_elem: Set[int] = set()
     try:
@@ -284,7 +292,7 @@ def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
                 if not (line.startswith("ATOM") or line.startswith("HETATM")):
                     continue
                 if len(line) < 78:
-                    # element 列が存在しない
+                    # No element field present
                     continue
                 serial_str = line[6:11].strip()
                 elem_raw = line[76:78].strip()
@@ -294,16 +302,17 @@ def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
                     serial = int(serial_str)
                 except ValueError:
                     continue
-                # 空でなければ「element 情報があった」とみなす（D などの同位体表記も保持したい）
+                # If non-empty, consider that the original file had an element entry
+                # (keep isotopic labels like D as-is)
                 if elem_raw:
                     serials_with_elem.add(serial)
     except Exception:
-        # 読めない場合は空集合（= すべて未設定扱い）
+        # If the file can't be read, return empty (treat all as unset)
         pass
     return serials_with_elem
 
 def _get_atom_serial(atom) -> Optional[int]:
-    """Biopython Atom からシリアル番号を安全に取得。バージョン差異を吸収。"""
+    """Safely obtain the serial number from a Biopython Atom, handling version differences."""
     sn = getattr(atom, "serial_number", None)
     if sn is None and hasattr(atom, "get_serial_number"):
         try:
@@ -313,10 +322,10 @@ def _get_atom_serial(atom) -> Optional[int]:
     return sn
 
 # -----------------------------
-# メイン処理
+# Main processing
 # -----------------------------
 def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False) -> None:
-    # 入力の element 列の「生有無」をスキャン
+    # Scan the input file for the original presence of element fields
     existing_by_serial = scan_existing_elements_by_serial(in_pdb)
 
     parser = PDBParser(QUIET=True)
@@ -324,17 +333,17 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     structure = parser.get_structure(structure_id, in_pdb)
 
     total = 0
-    assigned_new = 0          # element フィールドが無かった原子に新規設定
-    overwritten = 0           # element フィールドが元々あったが --overwrite により再設定
-    kept_existing = 0         # element フィールドが元々あり、--overwrite 無しで保持
-    unknown = []              # 推定不能（未変更）
+    assigned_new = 0          # newly set for atoms that lacked an element field
+    overwritten = 0           # element existed originally but was re-inferred due to --overwrite
+    kept_existing = 0         # element existed originally and was preserved (no --overwrite)
+    unknown = []              # could not infer (left unchanged)
 
     by_element = collections.Counter()
 
     for model in structure:
         for chain in model:
             for residue in chain:
-                hetflag = residue.id[0].strip()  # '' (空) なら標準、'W' は水、'H_' は HETATM
+                hetflag = residue.id[0].strip()  # '' (empty) = standard; 'W' = water; 'H_' = HETATM
                 is_het = (hetflag != "")
                 resname = residue.get_resname()
                 for atom in residue:
@@ -346,15 +355,15 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
                     if had_element_in_input and not overwrite:
                         kept_existing += 1
-                        continue  # 既存の element を尊重して一切変更しない
+                        continue  # Respect existing element: do not modify without --overwrite
 
                     sym = guess_element(name, resname, is_het)
                     if sym is None:
                         unknown.append((model.id, chain.id, residue.id, resname, name, serial))
-                        # 推定不可：既存値があるなら温存、なければ未設定のまま
+                        # If inference failed: keep the previous value (if any), otherwise leave unset
                         continue
 
-                    # Biopython は atom.element を見て列 77–78 を出力
+                    # Biopython uses atom.element to populate columns 77–78 on output
                     prev = getattr(atom, "element", None)
                     atom.element = sym
                     by_element[sym] += 1
@@ -366,18 +375,18 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
     io = PDBIO()
     io.set_structure(structure)
-    out_path = out_pdb if out_pdb else in_pdb  # 指定なしは上書き
+    out_path = out_pdb if out_pdb else in_pdb  # overwrite input if not specified
     io.save(out_path)
 
-    # サマリ
+    # Summary
     print(f"[OK] Wrote: {out_path}")
-    print(f"  atoms total            : {total}")
-    print(f"  newly assigned         : {assigned_new}")
-    print(f"  kept existing (no ow)  : {kept_existing}")
-    print(f"  overwritten (--overwrite): {overwritten}")
+    print(f"  total atoms                 : {total}")
+    print(f"  newly assigned              : {assigned_new}")
+    print(f"  kept existing (no overwrite): {kept_existing}")
+    print(f"  overwritten (--overwrite)   : {overwritten}")
     if by_element:
         top = ", ".join(f"{k}:{v}" for k, v in by_element.most_common())
-        print(f"  assigned breakdown     : {top}")
+        print(f"  assignment breakdown        : {top}")
     if unknown:
         print(f"[WARN] Could not confidently assign {len(unknown)} atoms; left unchanged.")
         for (mid, chid, resid, resn, aname, serial) in unknown[:50]:
@@ -400,7 +409,7 @@ def main():
     ap.add_argument(
         "--overwrite",
         action="store_true",
-        help="既に element 列がある原子も再推定して上書きする（指定が無い場合は既存を保持）",
+        help="Re-infer and overwrite element fields even if present (by default, existing values are preserved).",
     )
     args = ap.parse_args()
 
@@ -415,7 +424,7 @@ def main():
         sys.exit(2)
 
 # -----------------------------
-# Click サブコマンド（pdb2reaction add_elem_info）
+# Click subcommand (pdb2reaction add_elem_info)
 # -----------------------------
 @click.command(
     help="Add/repair element columns (77–78) in a PDB using Biopython.",
@@ -438,14 +447,14 @@ def main():
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="既に element 列がある原子も再推定して上書きする（指定が無い場合は既存を保持）",
+    help="Re-infer and overwrite element fields even if present (by default, existing values are preserved).",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
-    """pdb2reaction のサブコマンド経由で実行するための Click ラッパー。"""
+    """Click wrapper to run via the `pdb2reaction add_elem_info` subcommand."""
     try:
         assign_elements(str(in_pdb), (str(out_pdb) if out_pdb else None), overwrite=overwrite)
     except SystemExit as e:
-        # argparse 互換の main() と行儀を合わせるため、SystemExit はそのまま伝播
+        # Match argparse-like behavior: propagate SystemExit as-is
         raise e
     except Exception as e:
         click.echo(f"[ERR] Failed: {e}", err=True)

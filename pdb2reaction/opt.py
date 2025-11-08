@@ -1,17 +1,20 @@
 # pdb2reaction/opt.py
 
 """
-Single-structure optimization entrypoint (LBFGS or RFO).
+Single-structure geometry optimization entry point (LBFGS or RFO).
 
-- Supports .pdb, .xyz, etc. via pysisyphus' geom_loader.
-- Calculator: UMA (via uma_pysis wrapper).
+Features
+--------
+- Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
+- Calculator: UMA (through the `uma_pysis` wrapper).
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
-- YAML config with sub-sections: geom, calc, opt, lbfgs, rfo (CLI > YAML > defaults).
-- If the input is a PDB, convert outputs (final_geometry.xyz and, if dump=True,
-  optimization.trj) to PDB using the reference input topology.
+- Configuration: YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo` with precedence
+  CLI > YAML > built-in defaults.
+- If the input is a PDB, convert outputs (`final_geometry.xyz` and, if `dump=True`,
+  `optimization.trj`) to PDB using the input PDB as topology reference.
 
-Example
--------
+Examples
+--------
 pdb2reaction opt -i input.pdb -q 0
 pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump --out-dir ./result_opt/ --args-yaml ./args.yaml
 """
@@ -37,140 +40,140 @@ from .uma_pysis import uma_pysis
 from .utils import convert_xyz_to_pdb, freeze_links
 
 # -----------------------------------------------
-# Defaults variables (overridable via YAML/CLI)
+# Default settings (overridable via YAML/CLI)
 # -----------------------------------------------
 
-# Freeze atoms except indicies selected by freeze_links (yaml: geom)
+# Geometry options (YAML key: geom)
 GEOM_KW = {
-    "coord_type"  : "cart", # Coordinate type: "cart" | "dlc". dlc is sometimies better for small molecules. 
-    'freeze_atoms': []      # 0-based freeze atom indiceis
+    "coord_type"  : "cart",  # Coordinate type: "cart" | "dlc". "dlc" can be better for small molecules.
+    "freeze_atoms": []       # 0-based indices of atoms to freeze.
 }
 
-# Calculator: UMA / uma_pysis  (yaml: calc)
+# Calculator: UMA / uma_pysis  (YAML key: calc)
 CALC_KW = {
     # Charge and multiplicity
     "charge": 0,                 # int, total charge
     "spin": 1,                   # int, multiplicity (= 2S+1); 1 for singlet
 
     # Model selection
-    "model": "uma-s-1p1",        # str, UMA pretrained model name. "uma-s-1p1" | "uma-m-1p1"
-    "task_name": "omol",         # str, UMA dataset/task tag carried into AtomicData. (Use "omol" for molecular systems.)
+    "model": "uma-s-1p1",        # str, UMA pretrained model name: "uma-s-1p1" | "uma-m-1p1"
+    "task_name": "omol",         # str, UMA dataset/task tag stored in AtomicData ("omol" for molecules)
 
     # Device & graph construction
     "device": "auto",            # "cuda" | "cpu" | "auto"
     "max_neigh": None,           # Optional[int], override model's max neighbors
-    "radius": None,              # Optional[float], cutoff radius (Å); default = model cutoff
-    "r_edges": False,            # bool, store edge vectors in graph (UMA option)
+    "radius": None,              # Optional[float], cutoff radius (Å); defaults to model cutoff
+    "r_edges": False,            # bool, store edge vectors in the graph (UMA option)
 
     # Hessian output form
-    "out_hess_torch": False,     # bool, if True return torch.Tensor Hessian on CUDA device; otherwise numpy on CPU
+    "out_hess_torch": False,     # bool, True: return torch.Tensor Hessian on CUDA; False: numpy on CPU
 }
 
-# Optimizer base (common to LBFGS & RFO,  (yaml: opt)
+# Optimizer base (common to LBFGS & RFO)  (YAML key: opt)
 OPT_BASE_KW = {
-    # Convergence threshold set
-    "thresh": "gau",             # "gau_loose"|"gau"|"gau_tight"|"gau_vtight"|"baker"|"never"
+    # Convergence threshold preset
+    "thresh": "gau",             # "gau_loose" | "gau" | "gau_tight" | "gau_vtight" | "baker" | "never"
 
-    # Convergence Presets (forces: Hartree/bohr, steps : bohr)
-    # +------------+--------------------------------------------------------------+---------+--------+-----------+-------------+
-    # |  Preset    | Purpose                                                      | max|F|  | RMS(F) | max|step| | RMS(step)   |
-    # +------------+--------------------------------------------------------------+---------+--------+-----------+-------------+
-    # | gau_loose  | Loose/quick pre-optimization; rough path searches            | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
-    # | gau        | Standard “Gaussian-like” tightness for routine work          | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
-    # | gau_tight  | Tighter; for higher-quality structures / freq / TS refine    | 1.5e-5  | 1.0e-5 | 6.0e-5    | 4.0e-5      |
-    # | gau_vtight | Very tight; benchmarking/high-precision final structures     | 2.0e-6  | 1.0e-6 | 6.0e-6    | 4.0e-6      |
-    # | baker      | Baker-style rule (special stopping condition, see below)     | 3.0e-4* | 2.0e-4 | 3.0e-4*   | 2.0e-4      |
-    # | never      | Disable auto convergence (debug/external stopping)           | —       | —      | —         | —           |
-    # +------------+--------------------------------------------------------------+---------+--------+-----------+-------------+
-    # * Baker rule in this implementation: Converged if ( max|F| < 3.0e-4 ) AND ( |ΔE| < 1.0e-6  OR  max|step| < 3.0e-4 ).
+    # Convergence presets (forces in Hartree/bohr, steps in bohr)
+    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
+    # |  Preset    | Purpose                                                    | max|F|  | RMS(F) | max|step| | RMS(step)   |
+    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
+    # | gau_loose  | Loose/quick pre-optimization; rough path searches          | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
+    # | gau        | Standard "Gaussian-like" tightness for routine work        | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
+    # | gau_tight  | Tighter; better structures / freq / TS refinement          | 1.5e-5  | 1.0e-5 | 6.0e-5    | 4.0e-5      |
+    # | gau_vtight | Very tight; benchmarking/high-precision final structures    | 2.0e-6  | 1.0e-6 | 6.0e-6    | 4.0e-6      |
+    # | baker      | Baker-style rule (special condition; see below)            | 3.0e-4* | 2.0e-4 | 3.0e-4*   | 2.0e-4      |
+    # | never      | Disable built-in convergence (debug/external stopping)     |   —     |   —    |    —      |    —        |
+    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
+    # * Baker rule in this implementation: Converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
 
     "max_cycles": 10000,         # int, hard cap on optimization cycles (tool default)
-    "print_every": 1,            # int, reporting cadence (cycles)
+    "print_every": 1,            # int, progress print frequency in cycles
 
     # Step-size safeguarding
-    "min_step_norm": 1e-8,       # float, min ||step|| before raising ZeroStepLength
+    "min_step_norm": 1e-8,       # float, minimum ||step|| before raising ZeroStepLength
     "assert_min_step": True,     # bool, enforce the min_step_norm check
 
     # Convergence criteria toggles
     "rms_force": None,           # Optional[float], if set, derive thresholds from this RMS(F)
     "rms_force_only": False,     # bool, only check RMS(force)
     "max_force_only": False,     # bool, only check max(|force|)
-    "force_only": False,         # bool, check both RMS(force) and max(|force|) only
+    "force_only": False,         # bool, check RMS(force) and max(|force|) only
 
     # Extra convergence mechanisms
     "converge_to_geom_rms_thresh": 0.05,  # float, RMSD to reference geometry (Growing-NT)
-    "overachieve_factor": 0.0,            # float, signal conv. if forces < thresh/this factor
-    "check_eigval_structure": False,      # bool, TS-search: require desired negative modes
+    "overachieve_factor": 0.0,            # float, consider converged if forces < thresh/this_factor
+    "check_eigval_structure": False,      # bool, TS search: require expected negative modes
 
     # Dumping / restart / bookkeeping
     "dump": False,               # bool, write optimization trajectory
-    "dump_restart": False,       # False | int, every N cycles dump restart YAML (False disables)
+    "dump_restart": False,       # False | int, write restart YAML every N cycles (False disables)
     "prefix": "",                # str, file name prefix
     "out_dir": "./result_opt/",  # str, output directory (tool default)
 }
 
-# LBFGS-specific (yaml: lbfgs)
-LBFGS_KW = {    
+# LBFGS-specific (YAML key: lbfgs)
+LBFGS_KW = {
     **OPT_BASE_KW,
 
     # History / memory
-    "keep_last": 7,              # int, number of (s, y) pairs to keep
+    "keep_last": 7,              # int, number of (s, y) pairs to retain
 
     # Preconditioner / initial scaling
     "beta": 1.0,                 # float, β in -(H + βI)^{-1} g
-    "gamma_mult": False,         # bool, estimate β from prev cycle (Nocedal Eq. 7.20)
+    "gamma_mult": False,         # bool, estimate β from previous cycle (Nocedal Eq. 7.20)
 
     # Step-size control
-    "max_step": 0.30,            # float, max step for structual changes
-    "control_step": True,        # bool, scale down step to satisfy |max component| <= max_step
+    "max_step": 0.30,            # float, maximum allowed component-wise step (structural change limiter)
+    "control_step": True,        # bool, scale step to satisfy |max component| <= max_step
 
     # Safeguards & line search
-    "double_damp": True,         # bool, double-damping to ensure s·y > 0
-    "line_search": True,         # bool, polynomial line search on last step
+    "double_damp": True,         # bool, double-damping to enforce s·y > 0
+    "line_search": True,         # bool, polynomial line search on the last step
 
     # Regularized L-BFGS (μ_reg)
-    "mu_reg": None,              # Optional[float], initial regularization; if set: disables double_damp, control_step, and line_search
-    "max_mu_reg_adaptions": 10,  # int, max trial steps for μ adaptation
+    "mu_reg": None,              # Optional[float], initial regularization; if set: disables double_damp, control_step, line_search
+    "max_mu_reg_adaptions": 10,  # int, maximum trial steps for μ adaptation
 }
 
-# RFOptimizer-specific (yaml: rfo)
+# RFO-specific (YAML key: rfo)
 RFO_KW = {
     **OPT_BASE_KW,
 
-    # Trust-region (Step-size) control.
-    "trust_radius": 0.30,         # float, initial trust radius (in working coords)
-    "trust_update": True,        # bool, enable adaptive trust radius update
+    # Trust-region (step-size) control
+    "trust_radius": 0.30,        # float, initial trust radius (in working coordinates)
+    "trust_update": True,        # bool, adapt the trust radius based on step quality
     "trust_min": 0.01,           # float, lower bound for trust radius
     "trust_max": 0.30,           # float, upper bound for trust radius
-    "max_energy_incr": None,     # Optional[float], abort if ΔE > this after a bad step
+    "max_energy_incr": None,     # Optional[float], abort if ΔE exceeds this after a bad step
 
     # Hessian model / refresh
-    "hessian_update": "bfgs",    # "bfgs" (fast convergence) | "bofill" (robust)
-    "hessian_init": "calc",      # Initial Hessian calculation, don't change.
-    "hessian_recalc": 100,       # Optional[int], recalc exact Hessian every N cycles
-    "hessian_recalc_adapt": 2.0, # If norm(force) become 1/hessian_recalc_adapt, recalc hessian
+    "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
+    "hessian_init": "calc",      # Initial Hessian calculation (do not change)
+    "hessian_recalc": 100,       # Optional[int], recompute exact Hessian every N cycles
+    "hessian_recalc_adapt": 2.0, # Heuristic: trigger exact Hessian recompute based on force norm thresholding
 
     # Numerical hygiene & mode filtering
-    "small_eigval_thresh": 1e-8, # float, eigenvalues |λ| < thresh are treated as zero / removed
+    "small_eigval_thresh": 1e-8, # float, treat |λ| < threshold as zero / remove corresponding modes
 
     # RFO/RS micro-iterations
     "line_search": True,         # bool, enable polynomial line search fallback (RFOptimizer)
     "alpha0": 1.0,               # float, initial α for restricted-step RFO
-    "max_micro_cycles": 25,      # int, max inner cycles to hit trust radius
-    "rfo_overlaps": False,       # bool, mode-following via eigenvector overlap across cycles
+    "max_micro_cycles": 25,      # int, max inner iterations to hit the trust radius
+    "rfo_overlaps": False,       # bool, mode following via eigenvector overlap across cycles
 
     # Inter/Extrapolation helpers
     "gediis": False,             # bool, enable GEDIIS (energy-based DIIS)
     "gdiis": True,               # bool, enable GDIIS (gradient-based DIIS)
 
-    # Thresholds for enabling DIIS (note the semantics!)
+    # Thresholds for enabling DIIS (semantics matter)
     "gdiis_thresh": 2.5e-3,      # float, compared to RMS(step)  → enable GDIIS when small
-    "gediis_thresh": 1.0e-2,     # float, compared to RMS(forces) → enable GEDIIS when small
+    "gediis_thresh": 1.0e-2,     # float, compared to RMS(force) → enable GEDIIS when small
 
-    "gdiis_test_direction": True,# bool, compare DIIS step direction to RFO step
+    "gdiis_test_direction": True,# bool, compare DIIS step direction to the RFO step
 
     # Choice of step model
-    "adapt_step_func": False,    # bool, switch to shifted-Newton on trust when PD & small grad
+    "adapt_step_func": False,    # bool, switch to shifted-Newton on trust when PD & gradient is small
 }
 
 
@@ -179,7 +182,7 @@ RFO_KW = {
 # -----------------------------------------------
 
 def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively update dict *dst* with *src*, returning *dst*."""
+    """Recursively update dict *dst* with *src*, return *dst*."""
     for k, v in (src or {}).items():
         if isinstance(v, dict) and isinstance(dst.get(k), dict):
             _deep_update(dst[k], v)
@@ -204,7 +207,7 @@ def _norm_opt_mode(mode: str) -> str:
         return "lbfgs"
     if m in ("heavy", "rfo"):
         return "rfo"
-    raise click.BadParameter(f"Unknown --opt-mode '{mode}'. Use: light|lbfgs|heavy|rfo")
+    raise click.BadParameter(f"Unknown value for --opt-mode '{mode}'. Allowed: light|lbfgs|heavy|rfo")
 
 
 def _maybe_convert_outputs_to_pdb(
@@ -214,7 +217,7 @@ def _maybe_convert_outputs_to_pdb(
     get_trj_fn,
     final_xyz_path: Path,
 ) -> None:
-    """If input is PDB, convert outputs (final_geometry.xyz and, if dump, optimization.trj) to PDB."""
+    """If the input is a PDB, convert outputs (final_geometry.xyz and, if dump, optimization.trj) to PDB."""
     if input_path.suffix.lower() != ".pdb":
         return
 
@@ -236,7 +239,7 @@ def _maybe_convert_outputs_to_pdb(
                 convert_xyz_to_pdb(trj_path, ref_pdb, opt_pdb)
                 click.echo(f"[convert] Wrote '{opt_pdb}'.")
             else:
-                click.echo("[convert] WARNING: 'optimization.trj' not found; skip PDB conversion.", err=True)
+                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping PDB conversion.", err=True)
         except Exception as e:
             click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
 
@@ -257,7 +260,7 @@ def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
 # -----------------------------------------------
 
 @click.command(
-    help="Single-structure optimization (LBFGS or RFO).",
+    help="Single-structure geometry optimization using LBFGS or RFO.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -265,23 +268,23 @@ def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, .trj, ...)",
+    help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
+@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
+@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
-              help="Freeze parent atoms of link hydrogens (PDB only).")
-@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles")
+              help="Freeze the parent atoms of link hydrogens (PDB only).")
+@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Maximum number of optimization cycles.")
 @click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="light (=LBFGS) or heavy (=RFO). Aliases: light|lbfgs|heavy|rfo")
+              help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO). Aliases: light|lbfgs|heavy|rfo.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump optimization trajectory (optimization.trj)")
-@click.option("--out-dir", type=str, default="./result_opt/", show_default=True, help="Output directory")
+              help="Write optimization trajectory to 'optimization.trj'.")
+@click.option("--out-dir", type=str, default="./result_opt/", show_default=True, help="Output directory.")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, opt, lbfgs, rfo).",
+    help="YAML with extra arguments (sections: geom, calc, opt, lbfgs, rfo).",
 )
 def cli(
     input_path: Path,
@@ -324,7 +327,7 @@ def cli(
             try:
                 detected = freeze_links_indices = freeze_links_helper(input_path)
             except NameError:
-                # The helper is named freeze_links in utils.py; avoid shadowing option name
+                # The helper is named freeze_links in utils.py; avoid shadowing the option name
                 detected = freeze_links(input_path)
             except Exception as e:
                 click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
@@ -333,12 +336,12 @@ def cli(
             merged = sorted(set(base_freeze).union(set(detected)))
             geom_cfg["freeze_atoms"] = merged
             if merged:
-                click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+                click.echo(f"[freeze-links] Frozen atoms (0-based): {','.join(map(str, merged))}")
 
-        # Normalize and pick optimizer kind
+        # Normalize and select optimizer kind
         kind = _norm_opt_mode(opt_mode)
 
-        # Pretty-print config summary (after precedence resolution)
+        # Pretty-print the resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         click.echo(_pretty_block("geom", _format_geom_for_echo(geom_cfg)))
         click.echo(_pretty_block("calc", calc_cfg))
@@ -372,7 +375,7 @@ def cli(
         # 3) Build optimizer
         # --------------------------
         common_kwargs = dict(opt_cfg)
-        # Ensure paths (strings) are ok, Optimizer takes str, not Path
+        # Ensure paths (strings) are OK; Optimizer expects str, not Path
         common_kwargs["out_dir"] = str(out_dir_path)
 
         if kind == "lbfgs":
@@ -391,9 +394,9 @@ def cli(
         click.echo("\n=== Optimization finished ===\n")
 
         # --------------------------
-        # 5) Post: PDB conversions (if input is PDB)
+        # 5) Post-processing: PDB conversions (if input is PDB)
         # --------------------------
-        # final geometry location (Optimizer final_fn is set during run)
+        # Final geometry location (Optimizer sets final_fn during run)
         final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
         _maybe_convert_outputs_to_pdb(
             input_path=input_path,
@@ -404,23 +407,23 @@ def cli(
         )
 
     except ZeroStepLength:
-        click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
+        click.echo("ERROR: Step length fell below the minimum allowed (ZeroStepLength).", err=True)
         sys.exit(2)
     except OptimizationError as e:
-        click.echo(f"ERROR: Optimization failed — {e}", err=True)
+        click.echo(f"ERROR: Optimization failed - {e}", err=True)
         sys.exit(3)
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
+        click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
 
 
 # Avoid shadowing the click option name `freeze_links` above
 def freeze_links_helper(pdb_path: Path):
-    """Small shim to keep the code intent readable."""
+    """Small shim to keep the intent readable."""
     return freeze_links(pdb_path)
 
 

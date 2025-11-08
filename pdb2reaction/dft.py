@@ -1,20 +1,23 @@
-# -*- coding: utf-8 -*-
-"""
-Single-point DFT on GPU (GPU4PySCF).
+# pdb2reaction/dft.py
 
-- Input formats: anything supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, ...)
-- Engine: GPU4PySCF + PySCF (RKS / UKS auto-selected from multiplicity)
-- Functional / basis: pass as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wB97m-v/def2-tzvpd")
-- No checkpoint or MO dumps are created unless --dump is True (Molden file).
-- Outputs:
-    - result.yaml       : energies (Hartree & kcal/mol) and atomic charges (Mulliken / Löwdin / IAO)
-    - input_geometry.xyz: geometry snapshot used for SCF (for provenance; unchanged)
-    - mo.molden         : (only if --dump True) MO data in Molden format
+"""
+Single-point DFT using GPU4PySCF (falls back to CPU PySCF).
+
+Features
+--------
+- Input formats: any format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
+- Engine: GPU4PySCF + PySCF; RKS/UKS is chosen automatically from the spin multiplicity.
+- Functional / basis: pass as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").
+- Checkpoints / MOs: no checkpoint or MO dump unless --dump is True (writes a Molden file).
+- Outputs (in out_dir):
+    - result.yaml        : total energy (Hartree & kcal/mol), SCF metadata, and atomic charges (Mulliken / Löwdin / IAO)
+    - input_geometry.xyz : the geometry snapshot used for SCF (as read; unchanged)
+    - mo.molden          : (only if --dump True) molecular orbital data in Molden format
 
 Examples
 --------
 pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
-pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wB97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --dump True
+pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --dump True
 """
 
 from __future__ import annotations
@@ -35,15 +38,15 @@ from pysisyphus.helpers import geom_loader
 
 
 # -----------------------------------------------
-# Defaults (can be overridden by CLI / YAML)
+# Defaults (override via CLI / YAML)
 # -----------------------------------------------
 
 DFT_KW: Dict[str, Any] = {
     "conv_tol": 1e-9,          # SCF convergence tolerance (Eh)
-    "max_cycle": 100,          # Max SCF iterations
+    "max_cycle": 100,          # Maximum number of SCF iterations
     "grid_level": 3,           # Numerical integration grid level (PySCF grids.level)
     "verbose": 4,              # PySCF verbosity (0..9)
-    "out_dir": "./result_dft/",# Output dir
+    "out_dir": "./result_dft/",# Output directory
 }
 
 
@@ -51,11 +54,11 @@ DFT_KW: Dict[str, Any] = {
 # Utilities
 # -----------------------------------------------
 
-HARTREE_TO_KCALMOL = 627.5094740631  # NIST-like commonly used factor
+HARTREE_TO_KCALMOL = 627.5094740631  # Commonly used Hartree → kcal/mol conversion factor
 
 
 def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively update dict *dst* with *src*, returning *dst*."""
+    """Recursively update dict 'dst' with 'src', returning 'dst'."""
     for k, v in (src or {}).items():
         if isinstance(v, dict) and isinstance(dst.get(k), dict):
             _deep_update(dst[k], v)
@@ -70,7 +73,7 @@ def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
     with open(path, "r") as f:
         data = yaml.safe_load(f) or {}
     if not isinstance(data, dict):
-        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
+        raise ValueError(f"YAML top-level must be a mapping; got: {type(data)}")
     return data
 
 
@@ -81,8 +84,8 @@ def _pretty_block(title: str, content: Dict[str, Any]) -> str:
 
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
-    Parse "func/basis" into (xc, basis).
-    Accepts mixed case (PySCF is case-insensitive for common names).
+    Parse "FUNC/BASIS" into (xc, basis).
+    Mixed case is accepted (PySCF is case-insensitive for common names).
     """
     if not s or "/" not in s:
         raise click.BadParameter("Expected 'FUNC/BASIS' (e.g., 'wb97m-v/def2-tzvpd').")
@@ -96,7 +99,7 @@ def _parse_func_basis(s: str) -> Tuple[str, str]:
 
 def _geometry_to_pyscf_atoms_string(geometry) -> Tuple[str, Sequence[Tuple[str, Tuple[float, float, float]]]]:
     """
-    Convert pysisyphus Geometry to (xyz_string, PySCF atom list).
+    Convert a pysisyphus Geometry to (xyz_string, PySCF atom list).
     The atom list is [(symbol, (x, y, z)), ...] in Angstrom.
     """
     s = geometry.as_xyz()  # trusted by other tools in this package
@@ -117,30 +120,30 @@ def _hartree_to_kcalmol(Eh: float) -> float:
 
 def _maybe_enable_vv10(mf, xc: str) -> None:
     """
-    Try to enable VV10 when using "-v" functionals (e.g., wb97m-v).
-    If GPU backend does not support nlc, just warn and continue.
+    Attempt to enable VV10 for "-v" functionals (e.g., wb97m-v).
+    If the GPU backend does not support nlc, print a warning and continue.
     """
     xcl = xc.lower()
     if xcl.endswith("-v") or "vv10" in xcl:
         try:
             # PySCF style for VV10 nonlocal correlation
             mf.nlc = "vv10"
-            # Use library defaults for parameters; users can fine-tune via args-yaml if needed
+            # Use library defaults for parameters; users can override via args-yaml if needed
         except Exception as e:
-            click.echo(f"[vv10] WARNING: Could not enable VV10 nonlocal correlation on GPU: {e}", err=True)
+            click.echo(f"[vv10] WARNING: Could not enable VV10 nonlocal correlation on the GPU backend: {e}", err=True)
 
 
 def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
-    Return dict with atomic charges:
+    Compute atomic charges:
       - 'mulliken': Mulliken charges per atom
       - 'lowdin'  : Löwdin charges per atom
-      - 'iao'     : IAO charges per atom (or None if IAO failed)
+      - 'iao'     : IAO charges per atom (None if IAO construction fails)
     """
-    # Total density matrix (AO basis)
+    # Total density matrix in the AO basis
     dm = mf.make_rdm1()
     if isinstance(dm, np.ndarray) and dm.ndim == 3:
-        # UKS: (2, nao, nao)
+        # UKS: dm has shape (2, nao, nao); sum α and β
         dm_tot = dm[0] + dm[1]
     else:
         dm_tot = dm
@@ -174,16 +177,16 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     iao_q: Optional[List[float]] = None
     try:
         from pyscf.lo import iao, orth
-        # For UKS, use alpha coefficients as a reference to construct IAOs
+        # For UKS, use the alpha coefficients as the reference to build IAOs
         mo_coeff = mf.mo_coeff
         if isinstance(mo_coeff, (list, tuple)) or (hasattr(mo_coeff, "ndim") and getattr(mo_coeff, "ndim", 0) == 3):
             mo_for_iao = mo_coeff[0]
         else:
             mo_for_iao = mo_coeff
         C_iao = iao.iao(mol, mo_for_iao, minao="minao")
-        C_iao = orth.vec_lowdin(C_iao, S)  # orthonormalize IAOs in AO metric
+        C_iao = orth.vec_lowdin(C_iao, S)  # orthonormalize IAOs in the AO metric
 
-        # Population in IAO basis: diag(C^T D C)
+        # Population in the IAO basis: diag(C^T D C)
         D_iao = C_iao.T @ dm_tot @ C_iao
         pop_iao_orb = np.diag(D_iao)
 
@@ -220,7 +223,7 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
 # -----------------------------------------------
 
 @click.command(
-    help="Single-point DFT on GPU (GPU4PySCF).",
+    help="Single-point DFT using GPU4PySCF (CPU PySCF fallback).",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -228,34 +231,34 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, .trj, ...; via pysisyphus geom_loader).",
+    help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
+@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
+@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1).")
 @click.option(
     "--func-basis",
     "func_basis",
     type=str,
     default="wb97m-v/6-31g**",
     show_default=True,
-    help='Functional and basis as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").',
+    help='Exchange–correlation functional and basis set as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").',
 )
-@click.option("--max-cycle", type=int, default=DFT_KW["max_cycle"], show_default=True, help="Max SCF iterations")
-@click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh)")
-@click.option("--grid-level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level")
-@click.option("--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory")
+@click.option("--max-cycle", type=int, default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
+@click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh).")
+@click.option("--grid-level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level (PySCF grids.level).")
+@click.option("--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='Optional YAML to override settings (section "dft": conv_tol, max_cycle, grid_level, verbose, out_dir).',
+    help='Optional YAML overrides under key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).',
 )
 @click.option(
     "--dump",
     type=click.BOOL,
     default=False,
     show_default=True,
-    help="If True, write MO data (Molden format: mo.molden) into out_dir.",
+    help="If True, write molecular orbital data to mo.molden (Molden format).",
 )
 def cli(
     input_path: Path,
@@ -295,7 +298,7 @@ def cli(
         echo_cfg = {
             "charge": int(charge),
             "multiplicity": multiplicity,
-            "spin (PySCF=2S)": spin2s,
+            "spin (PySCF expects 2S)": spin2s,
             "xc": xc,
             "basis": basis,
             "conv_tol": dft_cfg["conv_tol"],
@@ -313,7 +316,7 @@ def cli(
         xyz_s, atoms_list = _geometry_to_pyscf_atoms_string(geometry)
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
-        # For provenance
+        # Write a provenance snapshot of the input geometry
         (out_dir_path / "input_geometry.xyz").write_text(xyz_s if xyz_s.endswith("\n") else (xyz_s + "\n"))
         click.echo(f"[write] Wrote '{out_dir_path / 'input_geometry.xyz'}'.")
 
@@ -365,7 +368,7 @@ def cli(
         mf.max_cycle = int(dft_cfg["max_cycle"])
         mf.conv_tol = float(dft_cfg["conv_tol"])
         try:
-            # grids.level is standard PySCF knob; supported by GPU4PySCF
+            # grids.level is the standard PySCF knob; supported by GPU4PySCF
             mf.grids.level = int(dft_cfg["grid_level"])
         except Exception as e:
             click.echo(f"[grids] WARNING: Could not set grids.level={dft_cfg['grid_level']}: {e}", err=True)
@@ -376,13 +379,13 @@ def cli(
         except Exception:
             pass
 
-        # Try enabling VV10 for "-v" functionals; ignore if unsupported on GPU.
+        # Attempt to enable VV10 for "-v" functionals; ignore if unsupported on GPU
         _maybe_enable_vv10(mf, xc)
 
         # --------------------------
         # 5) Run SCF
         # --------------------------
-        click.echo("\n=== DFT single-point (GPU preferred) started ===\n")
+        click.echo("\n=== DFT single-point started (GPU if available) ===\n")
         tic_scf = time.time()
         e_tot = mf.kernel()
         toc_scf = time.time()
@@ -390,7 +393,7 @@ def cli(
 
         converged = bool(getattr(mf, "converged", False))
         if e_tot is None:
-            # PySCF returns None if not converged (depending on version)
+            # Some PySCF versions return None on non-convergence
             e_tot = float(getattr(mf, "e_tot", np.nan))
 
         e_h = float(e_tot)
@@ -415,7 +418,7 @@ def cli(
         # --------------------------
         # 7) Save result.yaml
         # --------------------------
-        # per-atom metadata
+        # Per-atom metadata for mapping indices to elements
         atoms_meta = [{"index": i, "element": mol.atom_symbol(i)} for i in range(mol.natm)]
 
         result_yaml = {
@@ -438,12 +441,12 @@ def cli(
         click.echo(f"[write] Wrote '{out_dir_path / 'result.yaml'}'.")
 
         # --------------------------
-        # 8) Final print (as requested): Energy in Hartree and kcal/mol
+        # 8) Final print: energies
         # --------------------------
         click.echo(f"E_total (Hartree): {e_h:.12f}")
         click.echo(f"E_total (kcal/mol): {e_kcal:.6f}")
 
-        # Exit code policy: 0 if converged, 3 otherwise (matching prior style)
+        # Exit codes: 0 if converged, 3 otherwise (for compatibility with prior behavior)
         if not converged:
             click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
             sys.exit(3)
@@ -452,7 +455,7 @@ def cli(
         click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
     except click.ClickException:
-        # re-raise click-specific errors
+        # Re-raise click-specific errors
         raise
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
@@ -460,6 +463,6 @@ def cli(
         sys.exit(1)
 
 
-# Allow `python -m pdb2reaction.dft` direct execution
+# Enable `python -m pdb2reaction.dft` execution
 if __name__ == "__main__":
     cli()

@@ -1,36 +1,44 @@
 # pdb2reaction/scan.py
 
 """
-Bond-length driven staged scan with harmonic (well) restraints and full relaxation.
+Bond-length driven staged scan with harmonic distance restraints and full relaxation.
 
-- Input geometry: .pdb / .xyz / ... via pysisyphus.geom_loader (cart recommended).
-- Calculator: UMA (via uma_pysis) wrapped by HarmonicBiasCalculator to add per-step
-  harmonic distance wells toward the evolving targets for specified atom pairs.
-- Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
-- Scheduling per stage:
-    * For a given list of scan tuples [(i,j,target), ...], compute each pair's
-      displacement Δ = (target - current_distance). Let d_max = max(|Δ|).
-      With --max-step-size = h, set N = ceil(d_max / h). Per-pair step width is
-      δ_k = Δ / N. At step s (1..N), the temporary target becomes
-      r_k(s) = r_k(0) + s * δ_k. Relax the whole structure under harmonic wells.
-- Outputs per stage (k = 1..K):
-    stage_{k:02d}/result.xyz
-    (input was PDB) stage_{k:02d}/result.pdb
-    If --dump:
-      stage_{k:02d}/scan.trj
-      (input was PDB) stage_{k:02d}/scan.pdb
-
-Examples
+Overview
 --------
+- Input geometry: .pdb / .xyz / ... via pysisyphus.geom_loader (Cartesian recommended).
+- Calculator: UMA (via uma_pysis) wrapped by HarmonicBiasCalculator to add per-step
+  harmonic distance wells toward evolving targets for specified atom pairs.
+- Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
+
+Per‑stage scheduling
+--------------------
+For a given list of scan tuples [(i, j, target), ...]:
+
+1) Compute each pair's displacement Δ = (target − current_distance).
+2) Let d_max = max(|Δ|). With --max-step-size = h, set N = ceil(d_max / h).
+3) Per-pair step width is δ_k = Δ / N.
+4) At step s (1..N), the temporary target becomes r_k(s) = r_k(0) + s * δ_k.
+5) Relax the full structure under the harmonic wells.
+
+Outputs per stage (k = 1..K)
+----------------------------
+  stage_{k:02d}/result.xyz
+  (if the input was PDB) stage_{k:02d}/result.pdb
+  If --dump:
+    stage_{k:02d}/scan.trj
+    (if the input was PDB) stage_{k:02d}/scan.pdb
+
+Example
+-------
 pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]" \
   --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
   --max-step-size 0.3 --dump True --out-dir ./result_scan/ --opt-mode rfo
 
 Notes
 -----
-- Indices are 0-based by default. Pass --one-based if your tuples use 1-based.
-- Units: Angstrom for distances; the bias strength 'k' is in the calculator's
-  native energy units per Å^2. Start with k=10.0 and adjust if needed.
+- Indices are 1-based by default. Use --zero-based if your tuples are 0-based.
+- Units: distances in Å. The bias strength 'k' is in the calculator's
+  native energy units per Å^2. Start with k=10.0 and adjust as needed.
 """
 
 from __future__ import annotations
@@ -61,13 +69,13 @@ from .utils import convert_xyz_to_pdb, freeze_links as _freeze_links_util
 # Defaults (merge order: defaults ← YAML ← CLI)
 # --------------------------------------------------------------------------------------
 
-# Geometry handling (cartesian recommended)
+# Geometry handling (Cartesian recommended for scans)
 GEOM_KW: Dict[str, Any] = {
-    "coord_type": "cart",  # "cart" | "dlc" （scan は cart 推奨）
+    "coord_type": "cart",  # "cart" | "dlc" (Cartesians recommended for scans)
     "freeze_atoms": [],    # 0-based indices to freeze (optional)
 }
 
-# UMA calculator defaults (same spirit as opt.py)
+# UMA calculator defaults (aligned with opt.py)
 CALC_KW: Dict[str, Any] = {
     "charge": 0,
     "spin": 1,                # multiplicity (= 2S+1)
@@ -106,7 +114,7 @@ LBFGS_KW: Dict[str, Any] = {
     "keep_last": 7,
     "beta": 1.0,
     "gamma_mult": False,
-    "max_step": 0.30,      # cart step cap
+    "max_step": 0.30,      # Cartesian step cap
     "control_step": True,
     "double_damp": True,
     "line_search": True,
@@ -210,7 +218,7 @@ def _coords3d_to_xyz_string(geom, energy: Optional[float] = None) -> str:
 
 def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[int, int, float]]]:
     """
-    Parse multiple python-like list strings:
+    Parse multiple Python-like list strings:
       ["[(0,1,1.5), (2,3,2.0)]", "[(5,7,1.2)]", ...]
     Returns: [[(i,j,t), ...], [(i,j,t), ...], ...] with 0-based indices.
     """
@@ -248,7 +256,7 @@ def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[i
 
 
 def _pair_distances(coords: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
-    """coords: (N,3) in Å; returns list of distances for pairs."""
+    """coords: (N,3) in Å; returns a list of distances for the given pairs."""
     dists: List[float] = []
     for i, j in pairs:
         v = coords[i] - coords[j]
@@ -266,7 +274,7 @@ def _schedule_for_stage(
     Given current coords and stage tuples, compute:
       N: number of steps
       r0: initial distances per tuple
-      rT: targets per tuple
+      rT: target distances per tuple
       step_widths: δ_k per tuple (signed)
     """
     pairs = [(i, j) for (i, j, _) in tuples]
@@ -284,15 +292,15 @@ def _schedule_for_stage(
 
 
 # --------------------------------------------------------------------------------------
-# Harmonic bias (井戸型) calculator wrapper
+# Harmonic bias (well) calculator wrapper
 # --------------------------------------------------------------------------------------
 
 class HarmonicBiasCalculator:
     """
     Wrap a base calculator and add harmonic distance wells:
-        E_bias = sum_k 0.5 * k * (|r_i - r_j| - target_k)^2
+        E_bias = sum_k 0.5 * k * (|r_i − r_j| − target_k)^2
 
-    Implements multiple method names to be robust against different calculator APIs:
+    Supports several method names to be compatible with different calculator APIs:
       - get_energy_and_forces(geometry) -> (E, forces_flat or (N,3))
       - get_energy_and_gradient(geometry) -> (E, grad_flat)
       - get_energy(geometry) -> E
@@ -423,35 +431,35 @@ def _norm_opt_mode(mode: str) -> str:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
+@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
+@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,
-    help="Python-like list of tuples per stage, repeatable. Example: "
-         "\"[(0,1,1.50),(2,3,2.00)]\" \"[(5,7,1.20)]\"",
+    help='Python-like list of (i,j,target) per stage. Repeatable. Example: '
+         '"[(0,1,1.50),(2,3,2.00)]" "[(5,7,1.20)]".',
 )
 @click.option("--one-based/--zero-based", "one_based", default=True, show_default=True,
-              help="Interpret (i,j) indices in --scan-lists as 1-based (default: 1-based).")
+              help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
 @click.option("--max-step-size", type=float, default=0.30, show_default=True,
-              help="Maximum change in any bond length per step [Å].")
+              help="Maximum change in any scanned bond length per step [Å].")
 @click.option("--bias-k", type=float, default=10.0, show_default=True,
-              help="Harmonic well strength per Å^2.")
+              help="Harmonic well strength k [energy/Å^2].")
 @click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
-              help="Max optimizer cycles per step relaxation.")
+              help="Maximum optimizer cycles per step.")
 @click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="Relaxation mode per step: light (=LBFGS) or heavy (=RFO).")
+              help="Per-step relaxation mode: light (=LBFGS) or heavy (=RFO).")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump stage trajectory as scan.trj (and scan.pdb if input was PDB).")
+              help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).")
 @click.option("--out-dir", type=str, default="./result_scan/", show_default=True,
               help="Base output directory.")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
+    help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
 )
 def cli(
     input_path: Path,
@@ -492,15 +500,15 @@ def cli(
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
         opt_cfg["out_dir"] = out_dir
-        # We will not use optimizer's dump per step; we control stage dumping separately
+        # Do not use the optimizer's own dump per step; stage dumping is controlled separately.
         opt_cfg["dump"]    = False
         kind = _norm_opt_mode(opt_mode)
 
-        # bias strength override
+        # Bias strength override
         if bias_k is not None:
             bias_cfg["k"] = float(bias_k)
 
-        # present final config
+        # Present final config
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = _format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
@@ -520,13 +528,13 @@ def cli(
         click.echo(f"[scan] Received {K} stage(s).")
 
         # ------------------------------------------------------------------
-        # 3) Load geometry (cart) and set calculator (UMA → harmonic-bias wrapper)
+        # 3) Load geometry (Cartesian) and set calculator (UMA → harmonic-bias wrapper)
         # ------------------------------------------------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
         # Load
         coord_type = geom_cfg.get("coord_type", "cart")
-        # Pass only kwargs geom_loader understands; set freeze later
+        # Pass only kwargs geom_loader understands; set freezes later.
         geom = geom_loader(input_path, coord_type=coord_type)
 
         # Merge freeze_atoms with link parents (PDB)
@@ -537,7 +545,7 @@ def cli(
                 freeze = sorted(set(freeze).union(detected))
                 if freeze:
                     click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
-        # Attach freeze indices into Geometry for optimizer awareness
+        # Attach freeze indices to Geometry for optimizer awareness
         if freeze:
             try:
                 import numpy as _np
@@ -553,7 +561,7 @@ def cli(
         except TypeError:
             base_calc = calc_builder_or_instance
 
-        # Wrap by bias calculator
+        # Wrap with bias calculator
         biased = HarmonicBiasCalculator(base_calc=base_calc, k=float(bias_cfg["k"]))
         geom.set_calculator(biased)
 
@@ -570,13 +578,13 @@ def cli(
             # Tighten step control to the global --max-step-size
             if kind == "lbfgs":
                 args = {**lbfgs_cfg, **common}
-                # Keep LBFGS step size conservative
+                # Keep the LBFGS step size conservative.
                 args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), float(max_step_size))
                 args["max_cycles"] = int(relax_max_cycles)
                 return LBFGS(geom, **args)
             else:
                 args = {**rfo_cfg, **common}
-                # Trust radius no larger than max_step_size
+                # Trust radius no larger than --max-step-size
                 tr = float(rfo_cfg.get("trust_radius", 0.30))
                 args["trust_radius"] = min(tr, float(max_step_size))
                 args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), float(max_step_size))
@@ -587,19 +595,19 @@ def cli(
         for k, tuples in enumerate(stages, start=1):
             stage_dir = _ensure_stage_dir(out_dir_path, k)
             click.echo(f"\n--- Stage {k}/{K} ---")
-            click.echo(f"Targets: {tuples}")
+            click.echo(f"Targets (i,j,target Å): {tuples}")
 
             # Current coordinates and schedule
             R = np.array(geom.coords3d, dtype=float)  # (N,3)
             Nsteps, r0, rT, step_widths = _schedule_for_stage(R, tuples, float(max_step_size))
             click.echo(f"[stage {k}] initial distances = {['{:.3f}'.format(x) for x in r0]}")
-            click.echo(f"[stage {k}] target  distances = {['{:.3f}'.format(x) for x in rT]}")
+            click.echo(f"[stage {k}] target distances  = {['{:.3f}'.format(x) for x in rT]}")
             click.echo(f"[stage {k}] steps N = {Nsteps}")
 
             trj_blocks: List[str] = []
 
             if Nsteps == 0:
-                # Nothing to do: just write current geometry as stage result
+                # Nothing to do: just write current geometry as the stage result
                 final_xyz = stage_dir / "result.xyz"
                 with open(final_xyz, "w") as f:
                     f.write(_coords3d_to_xyz_string(geom))
@@ -618,13 +626,13 @@ def cli(
             for s in range(1, Nsteps + 1):
                 # Compute per-pair step target for this step
                 step_targets = [r0_i + s * dw for (r0_i, dw) in zip(r0, step_widths)]
-                # Update bias (井戸) targets
+                # Update bias well targets
                 biased.set_pairs([(i, j, t) for ((i, j), t) in zip(pairs, step_targets)])
 
                 # Build optimizer and relax
                 prefix = f"scan_s{s:04d}_"
                 optimizer = _make_optimizer(kind, stage_dir, prefix)
-                click.echo(f"[stage {k}] step {s}/{Nsteps} relax ({kind}) ...")
+                click.echo(f"[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
                 try:
                     optimizer.run()
                 except ZeroStepLength:
