@@ -11,6 +11,9 @@ MEP optimization by Growing String.
 - **Default behavior:** Before optimization, perform a Kabsch alignment of the
   second endpoint to the first (external alignment). Do **not** use
   StringOptimizer's internal `align` option (bug-prone).
+- **When `freeze_atoms` exist on either endpoint, alignment is determined
+  **only** from those atoms (RMSD over `freeze_atoms`), and the resulting rigid
+  transform is applied to **all** atoms.**
 - Dump the highest-energy image (HEI) as gsm_hei.xyz and gsm_hei.pdb (if a PDB reference is available).
 
 Examples
@@ -206,8 +209,9 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
     """
     Align geom_to_align onto geom_ref using Kabsch (rigid body, no scaling).
 
-    - Use all atoms by default. If freeze_atoms are specified, ignore those during
-      alignment determination but apply the rigid transform to all atoms.
+    - If either endpoint specifies `freeze_atoms`, determine the alignment using
+      **only** those atoms (union of indices), then apply the rigid transform to
+      all atoms. Otherwise, use all atoms for alignment.
 
     Returns
     -------
@@ -219,17 +223,20 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
         raise ValueError(f"Different atom counts for endpoints: {P.shape[0]} vs {Q.shape[0]}")
 
     N = P.shape[0]
-    # Determine indices to use (exclude frozen atoms if present)
+    # Determine indices to use
     fa0 = getattr(geom_ref, "freeze_atoms", np.array([], dtype=int))
     fa1 = getattr(geom_to_align, "freeze_atoms", np.array([], dtype=int))
-    frozen = set(map(int, fa0)) | set(map(int, fa1))
-    if len(frozen) >= N:
-        # Fallback: use all atoms if everything would be excluded
-        use_mask = np.ones(N, dtype=bool)
+    freeze_union = sorted(set(map(int, fa0)) | set(map(int, fa1)))
+
+    if len(freeze_union) > 0:
+        # Use ONLY the frozen atoms to determine the rigid transform
+        use_mask = np.zeros(N, dtype=bool)
+        # Clip any out-of-range indices defensively
+        valid_idx = [i for i in freeze_union if 0 <= i < N]
+        use_mask[valid_idx] = True
     else:
+        # No frozen atoms specified -> use all atoms
         use_mask = np.ones(N, dtype=bool)
-        if frozen:
-            use_mask[list(sorted(frozen))] = False
 
     P_sel = P[use_mask]
     Q_sel = Q[use_mask]
@@ -356,7 +363,7 @@ def cli(
             auto_freeze_links=bool(freeze_links_flag),
         )
 
-        # --- 追加: 既定で Kabsch による外部アラインを実施 ---
+        # --- 既定で Kabsch による外部アラインを実施（freeze_atoms があればそれらのみで決定） ---
         try:
             rmsd_before, rmsd_after, n_used = _align_second_to_first_kabsch(geoms[0], geoms[1])
             click.echo(f"[align] Kabsch alignment applied to 2nd endpoint → 1st endpoint "
@@ -419,7 +426,7 @@ def cli(
                 with open(final_trj, "w") as f:
                     f.write(annotated)
                 click.echo(f"[write] Wrote '{final_trj}' with energy.")
-            except Exception as e:
+            except Exception:
                 with open(final_trj, "w") as f:
                     f.write(gs.as_xyz())
                 click.echo(f"[write] Wrote '{final_trj}'.")

@@ -134,21 +134,3 @@ def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) ->
     pairs_to_lines("Bond broken", result.broken_covalent)
 
     return "\n".join(lines)
-
-
-# if __name__ == "__main__":
-#     from pysisyphus.helpers import geom_loader
-
-#     geom1 = geom_loader("./reac.pdb", coord_type="cart")
-#     geom2 = geom_loader("./prod.pdb", coord_type="cart")
-
-#     res = compare_structures(
-#         geom1, geom2,
-#         device="cuda",
-#         bond_factor=1.20,
-#         margin_fraction=0.05,
-#         delta_fraction=0.05,
-#     )
-
-#     print(summarize_changes(geom1, res, one_based=True))
-#     pass
