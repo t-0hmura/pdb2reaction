@@ -15,9 +15,10 @@ Starting from two endpoint structures (reactant, product):
 
 **Support for multiple input structures (new)**
 ----------------------------------------------
-- You can pass two or more structures to `-i/--input` **in reaction order**
-  (e.g., `reac.pdb im1.pdb im2.pdb prod.pdb`). Due to Click constraints, specify by repeating `-i`:
-  `-i reac.pdb -i im1.pdb -i im2.pdb -i prod.pdb`.
+- You can pass two or more structures to `-i/--input` **in reaction order**.
+  - **Both forms are accepted**:
+    - Repeating `-i`: `-i reac.pdb -i im1.pdb -i im2.pdb -i prod.pdb`
+    - Single `-i` + space-separated: `-i reac.pdb im1.pdb im2.pdb prod.pdb`
 - The above procedure is applied to each adjacent pair (A→I1, I1→I2, I2→B, ...). All per-pair paths are then
   concatenated (with duplicate removal and automatic bridge/recursive segment insertion) to build one MEP.
 - Pre-optimization and Kabsch pre-alignment are performed **per adjacent pair** sequentially.
@@ -1146,15 +1147,23 @@ def _build_multistep_path(
 
 @click.command(
     help="Multistep MEP search by recursive GSM segmentation.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        # >>> Allow a single '-i' followed by multiple paths (as extra args)
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    },
 )
 @click.option(
     "-i", "--input",
     "input_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    multiple=True,   # <<< FIX: In Click, options can't have nargs=-1; use multiple=True with repeated -i.
+    multiple=True,   # allow: -i A -i B -i C
     required=True,
-    help="Two or more structures in reaction order (repeat -i: e.g., -i reactant.pdb -i im1.pdb -i product.pdb).",
+    help=("Two or more structures in reaction order. "
+          "You may either repeat '-i' (e.g., '-i A -i B -i C') "
+          "or give a single '-i' followed by multiple space‑separated paths "
+          "(e.g., '-i A B C').")
 )
 @click.option("-q", "--charge", type=int, required=True, help="Total charge")
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
@@ -1186,7 +1195,9 @@ def _build_multistep_path(
     help="If True, SKIP initial single-structure optimizations of inputs (i.e., do not pre-opt). "
          "Default False keeps the original behavior (perform pre-optimization).",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_paths: Sequence[Path],
     charge: int,
     spin: int,
@@ -1200,6 +1211,23 @@ def cli(
     args_yaml: Optional[Path],
     pre_opt: bool,
 ) -> None:
+    # --- Accept both styles for -i: repeated and single -i + space-separated paths.
+    #     When the latter is used, the "extra" tokens arrive in ctx.args.
+    if getattr(ctx, "args", None):
+        extra_tokens = [tok for tok in ctx.args if not tok.startswith("-")]
+        if extra_tokens:
+            extras: List[Path] = []
+            for tok in extra_tokens:
+                p = Path(tok)
+                if (not p.exists()) or p.is_dir():
+                    raise click.BadParameter(
+                        f"Extra input path '{tok}' not found or is a directory. "
+                        f"When using a single '-i', list only existing file paths separated by spaces."
+                    )
+                extras.append(p)
+            # Merge extras after the explicitly parsed ones
+            input_paths = tuple(list(input_paths) + extras)
+
     time_start = time.perf_counter()  # <<< start timing
     try:
         # --------------------------
