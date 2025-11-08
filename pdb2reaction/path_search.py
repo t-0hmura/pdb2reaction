@@ -42,10 +42,9 @@ Key specifications
 - **Separate `max_nodes` can be set for segments and bridges
   (`search.max_nodes_segment` / `search.max_nodes_bridge`).**
   Bridge GSM enforces `climb=False` (except for the “connective” GSM at max-depth, which keeps `climb=True`).
-- **Kink detection**: If the maximum per-atom displacement between the End1/End2 optimized structures is
-  ≤ `search.kink_disp_thresh` (default 0.2 Å), treat the vicinity as a “kink” and **skip GSM**.
-  Instead, generate `search.kink_max_nodes` (default 3) linear interpolation structures, then single-structure optimize
-  them (using common `freeze_atoms`) and insert them as images.
+- **Kink detection**: If **no covalent-bond formation/breaking is detected** between the optimized End1 and End2,
+  treat the vicinity as a “kink” and **skip GSM**. Instead, generate `search.kink_max_nodes` (default 3) linear
+  interpolation structures, then single-structure optimize them (using common `freeze_atoms`) and insert them as images.
 
 Output
 ------
@@ -85,7 +84,8 @@ from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
-from pysisyphus.constants import AU2KCALPERMOL  # <<< for kcal conversion
+from pysisyphus.constants import AU2KCALPERMOL, BOHR2ANG
+
 
 from .uma_pysis import uma_pysis
 from .utils import convert_xyz_to_pdb, freeze_links
@@ -216,8 +216,6 @@ SEARCH_KW: Dict[str, Any] = {
     "rmsd_align": True,            # use Kabsch alignment when computing RMSD
     "max_nodes_segment": 20,
     "max_nodes_bridge": 5,
-    # --- kink detection thresholds and interpolation count (new) ---
-    "kink_disp_thresh": 0.25,      # Å: if max atomic displacement between End1–End2 ≤ this, skip GSM; use interpolation + sopt
     "kink_max_nodes": 3,           # number of linear interpolation internal nodes to create
 }
 
@@ -454,7 +452,8 @@ def _kabsch_aligned_clone(ref_geom, mob_geom, coord_type: str, use_indices: Opti
 
     atoms = [a for a in mob_geom.atoms]
     lines = [str(len(atoms)), ""]
-    for sym, (x, y, z) in zip(atoms, B_aligned):
+    B_aligned_ang = B_aligned * BOHR2ANG  # Bohr→Å
+    for sym, (x, y, z) in zip(atoms, B_aligned_ang):
         lines.append(f"{sym} {x:.15f} {y:.15f} {z:.15f}")
     xyz_str = "\n".join(lines) + "\n"
 
@@ -575,7 +574,7 @@ def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, 
     return cfg
 # -----------------------------------------------
 
-# ---------- Kink detection & interpolation (new) ----------
+# ---------- Kink detection & interpolation (helpers retained) ----------
 
 def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
     """
@@ -603,7 +602,8 @@ def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequ
 def _new_geom_from_coords(atoms: Sequence[str], coords: np.ndarray, coord_type: str, freeze_atoms: Sequence[int]) -> Any:
     """Create a Geometry from coordinates via an XYZ string, attach freeze_atoms, and return it."""
     lines = [str(len(atoms)), ""]
-    for sym, (x, y, z) in zip(atoms, coords):
+    coords_ang = np.asarray(coords, dtype=float) * BOHR2ANG
+    for sym, (x, y, z) in zip(atoms, coords_ang):
         lines.append(f"{sym} {x:.15f} {y:.15f} {z:.15f}")
     s = "\n".join(lines) + "\n"
     tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
@@ -708,6 +708,18 @@ def _run_gsm_between(
     # energies & images
     energies = list(map(float, np.array(gs.energy, dtype=float)))
     images = list(gs.images)
+
+    # Determine HEI as the highest-energy *local* maximum among non-endpoints
+    # (i where E[i] > E[i-1] and E[i] > E[i+1]). If none exists, fall back to the
+    # highest-energy internal node.
+    E = np.array(energies, dtype=float)
+    nE = len(E)
+    local_max_candidates = [i for i in range(1, nE - 1) if (E[i] > E[i - 1] and E[i] > E[i + 1])]
+    if local_max_candidates:
+        hei_idx = int(max(local_max_candidates, key=lambda i: E[i]))
+    else:
+        hei_idx = int(np.argmax(E[1:-1])) + 1 if nE >= 3 else int(np.argmax(E))
+
     # write trajectory
     final_trj = seg_dir / "final_geometries.trj"
     wrote_with_energy = True
@@ -733,10 +745,8 @@ def _run_gsm_between(
     # If input is PDB, convert intermediate .trj to PDB
     _maybe_convert_to_pdb(final_trj, ref_pdb_path, seg_dir / "final_geometries.pdb")
 
-    # write HEI
+    # write HEI (based on local-maximum definition)
     try:
-        E = np.array(energies, dtype=float)
-        hei_idx = int(np.argmax(E))
         hei_geom = images[hei_idx]
         hei_E = float(E[hei_idx])
 
@@ -751,8 +761,8 @@ def _run_gsm_between(
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
         # also convert HEI to PDB
         _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
-    except Exception:
-        hei_idx = int(np.argmax(np.array(energies, dtype=float)))
+    except Exception as e:
+        click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
     return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
 
@@ -1006,27 +1016,19 @@ def _build_multistep_path(
     # 3) Orient ends so that left_end is closer to A and right_end closer to B
     left_end, right_end = _orient_two_by_closeness(gA, gB, left_opt, right_opt, align=bool(search_cfg.get("rmsd_align", True)))
 
-    # --- 3.5) Kink detection (new) ---
-    # If the max per-atom displacement between End1 and End2 is ≤ threshold, skip GSM and do interpolation + sopt
+    # --- 3.5) Kink detection (bond-change based) ---
+    # Treat as kink if *no* covalent-bond changes are detected between the optimized End1 and End2.
     try:
-        fa_union = sorted(set(map(int, getattr(left_end, "freeze_atoms", []))) |
-                          set(map(int, getattr(right_end, "freeze_atoms", []))))
-        max_disp = _max_displacement_between(
-            left_end, right_end,
-            align=False,
-            indices=fa_union if len(fa_union) > 0 else None
-        )
+        lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
-        click.echo(f"[{tag0}] WARNING: Failed to evaluate max displacement for kink detection: {e}", err=True)
-        max_disp = float("inf")
-
-    kink_thresh = float(search_cfg.get("kink_disp_thresh", 0.2))
-    use_kink = (max_disp <= kink_thresh)
+        click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
+        lr_changed, lr_summary = True, ""
+    use_kink = (not lr_changed)
 
     # 4) Refined GSM between End1–End2 (or replace with kink interpolation path)
     if use_kink:
         n_inter = int(search_cfg.get("kink_max_nodes", 3))
-        click.echo(f"[{tag0}] Kink detected (max disp = {max_disp:.4f} Å ≤ {kink_thresh:.4f} Å). "
+        click.echo(f"[{tag0}] Kink detected (no covalent-bond changes between End1 and End2). "
                    f"Using {n_inter} linear interpolation nodes + single-structure optimization instead of GSM.")
         # generate linear interpolation structures
         inter_geoms = _make_linear_interpolations(left_end, right_end, n_inter)
@@ -1044,6 +1046,9 @@ def _build_multistep_path(
         ref1 = GSMResult(images=step_imgs, energies=step_E, hei_idx=int(np.argmax(step_E)))
         step_tag_for_report = f"{tag0}_kink"
     else:
+        click.echo(f"[{tag0}] Kink not detected (covalent-bond changes detected between End1 and End2).")
+        if lr_summary:
+            click.echo(textwrap.indent(lr_summary, prefix="  "))
         ref1 = _refine_between(left_end, right_end, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
         step_tag_for_report = f"{tag0}_refine"
 
@@ -1169,7 +1174,7 @@ def _build_multistep_path(
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If PDB, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=30, show_default=True,
+@click.option("--max-nodes", type=int, default=20, show_default=True,
               help="Internal nodes (string has max_nodes+2 images incl. endpoints). "
                    "This value is used for *segment* GSM unless overridden by YAML search.max_nodes_segment.")
 @click.option("--max-cycles", type=int, default=1000, show_default=True, help="Max GSM optimization cycles")
@@ -1502,13 +1507,6 @@ def cli(
         # Segment-by-segment report (in output order)
         click.echo("\n=== MEP Summary ===\n")
 
-        # elapsed time
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
-
         # overall covalent changes
         click.echo("\n[overall] Covalent-bond changes between first and last image:")
         if overall_changed and overall_summary.strip():
@@ -1525,6 +1523,13 @@ def cli(
                     click.echo(textwrap.indent(seg.summary.strip(), prefix="      "))
         else:
             click.echo("\n[segments] (no segment reports)")
+
+        # elapsed time
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)

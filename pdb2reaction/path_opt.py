@@ -447,7 +447,28 @@ def cli(
 
         try:
             energies = np.array(gs.energy, dtype=float)
-            hei_idx = int(np.argmax(energies))
+            # --- HEI 判定の修正 ---
+            # 「end point以外で、両隣がそのノードよりエネルギーが低いノード」(内部極大)
+            # のうち、最もエネルギーが高いノードを HEI とする。
+            nE = int(len(energies))
+            hei_idx = None
+            if nE >= 3:
+                # 内部極大（厳密に両隣より高い）
+                candidates = [i for i in range(1, nE - 1)
+                              if energies[i] > energies[i - 1] and energies[i] > energies[i + 1]]
+                if candidates:
+                    cand_es = energies[candidates]
+                    rel = int(np.argmax(cand_es))
+                    hei_idx = int(candidates[rel])
+                else:
+                    # フォールバック：内部ノードの中で最大（端点は除外）
+                    if nE > 2:
+                        rel = int(np.argmax(energies[1:-1]))
+                        hei_idx = 1 + rel
+            if hei_idx is None:
+                # さらにフォールバック（内部ノードが存在しない等）：全体最大
+                hei_idx = int(np.argmax(energies))
+
             hei_geom = gs.images[hei_idx]
             hei_E = float(energies[hei_idx])
 
