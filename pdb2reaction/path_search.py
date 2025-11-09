@@ -61,15 +61,18 @@ Key behavior and assumptions
 Outputs
 -------
 out_dir/
-  ├─ summary.yaml                 : run summary (settings, counts, paths)
-  ├─ final_geometries.trj         : concatenated MEP (energy on line 2 in each XYZ block)
-  ├─ final_geometries.pdb         : produced when inputs are PDB
-  ├─ final_geometries_merged.pdb  : full-system MEP merged from pocket and templates (when --ref-pdb is used)
+  ├─ summary.yaml                 : run summary (MEP-only info; no input/settings dump)
+  ├─ mep.trj                      : concatenated MEP (energy on line 2 in each XYZ block)
+  ├─ mep.pdb                      : produced when inputs are PDB (pocket系)
+  ├─ mep_w_ref.pdb               : full-system MEP merged from pocket and templates (when --ref-pdb is used)
+  ├─ mep_w_ref_seg_XX.pdb        : per-segment merged MEPs for segments with covalent changes (when --ref-pdb)
   └─ segments/
       ├─ seg_000_gsm/ ...         : initial GSM for the first segment
       ├─ seg_000_left_opt/ ...    : single-structure optimization of HEI−1
       ├─ seg_000_right_opt/ ...   : single-structure optimization of HEI+1
       ├─ seg_000_refine_gsm/ ...  : refined GSM between End1–End2
+      ├─ seg_000_kink_...         : kink interpolation optimizations (when kink)
+      ├─ seg_000_seg_002_bridge_gsm/ ... : bridge GSM (names show which segments are bridged)
       ├─ seg_001_...              : left-side recursive substeps (if any)
       └─ seg_002_...              : right-side recursive substeps (if any)
 """
@@ -86,6 +89,7 @@ import textwrap
 import tempfile
 import os
 import time  # timing
+import re    # <-- added
 
 import click
 import numpy as np
@@ -144,7 +148,6 @@ GS_KW: Dict[str, Any] = {
     "climb": True,              # allow True for the first segment
     "climb_rms": 5e-4,
     "climb_lanczos": True,
-    "climb_lanczos_rms": 5e-4,
     "climb_fixed": False,
     "scheduler": None,          # serial computation (shared calculator)
 }
@@ -601,6 +604,22 @@ def _energy_of(g) -> float:
     return float(g.energy)
 
 
+# ---- helpers for tagging segments & bridges ----
+
+def _tag_images(images: Sequence[Any], **attrs: Any) -> None:
+    """Attach arbitrary attributes to Geometry images."""
+    for im in images:
+        for k, v in attrs.items():
+            try:
+                setattr(im, k, v)
+            except Exception:
+                pass
+
+def _segment_base_id(tag: str) -> str:
+    """Extract 'seg_XXX' base id from a tag like 'seg_000_refine'."""
+    m = re.search(r"(seg_\d{3})", tag or "")
+    return m.group(1) if m else (tag or "seg")
+
 @dataclass
 class GSMResult:
     images: List[Any]
@@ -615,6 +634,8 @@ class SegmentReport:
     barrier_kcal: float
     delta_kcal: float
     summary: str  # summarize_changes string (empty if no changes)
+    kind: str = "seg"  # "seg" or "bridge"
+    seg_index: int = 0 # 1-based index along final MEP (assigned at the end)
 
 
 def _run_gsm_between(
@@ -706,9 +727,10 @@ def _run_gsm_between(
         lines = s.splitlines()
         if len(lines) >= 2 and lines[0].strip().isdigit():
             lines[1] = f"{hei_E:.12f}"
-            s = "\n".join(lines) + ("\n" if not s.endswith("\n") else "")
+            s = "\n" if s.endswith("\n") else ""  # no-op to keep newline logic
+            s = "".join([lines[0], "\n", f"{hei_E:.12f}", "\n"] + lines[2:] + ["\n"])
         with open(hei_xyz, "w") as f:
-            f.write(s)
+            f.write("\n".join([str(len(hei_geom.atoms)), f"{hei_E:.12f}"]))
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
         # also convert HEI to PDB
         _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
@@ -810,14 +832,34 @@ def _stitch_paths(
     bond_cfg: Optional[Dict[str, Any]] = None,  # to detect bond changes between adjacent segments
     segment_builder: Optional[Callable[[Any, Any, str], "CombinedPath"]] = None,  # returns CombinedPath
     segments_out: Optional[List["SegmentReport"]] = None,  # append inserted segment summaries in order
+    bridge_pair_index: Optional[int] = None,   # <-- which pair templates to use for bridges across pairs
 ) -> Tuple[List[Any], List[float]]:
     """
     Concatenate path parts (images, energies). Insert bridge GSMs when needed.
     If covalent changes are detected between the tail of the previous part and the head of the next part,
     generate and insert a *new* segment using `segment_builder` (recursive GSM), instead of bridging.
+
+    Additionally:
+    - When a bridge GSM is inserted, record it in `segments_out` as kind='bridge' and tag images with
+      mep_seg_tag = '{segL}_{segR}_bridge' and mep_seg_kind='bridge'.
+    - Bridge output directory name becomes '{segL}_{segR}_bridge_gsm' (e.g., 'seg_000_seg_002_bridge_gsm').
     """
     all_imgs: List[Any] = []
     all_E: List[float] = []
+
+    def _last_known_seg_tag_from_images(imgs: List[Any]) -> Optional[str]:
+        for im in reversed(imgs):
+            t = getattr(im, "mep_seg_tag", None)
+            if t:
+                return t
+        return None
+
+    def _first_known_seg_tag_from_images(imgs: List[Any]) -> Optional[str]:
+        for im in imgs:
+            t = getattr(im, "mep_seg_tag", None)
+            if t:
+                return t
+        return None
 
     def append_part(imgs: List[Any], Es: List[float]) -> None:
         nonlocal all_imgs, all_E
@@ -870,19 +912,65 @@ def _stitch_paths(
             all_E.extend(Es[1:])
         elif rmsd > bridge_rmsd_thresh:
             # larger mismatch → run bridge GSM
+            # determine left/right seg tags for naming & tagging
+            # （左側は常に現在の all_imgs の末尾から、右側は今回の imgs の先頭から取得する）
+            left_tag_recent = _last_known_seg_tag_from_images(all_imgs) or "segL"
+            right_tag_upcoming = _first_known_seg_tag_from_images(imgs) or "segR"
+            left_base = _segment_base_id(left_tag_recent)
+            right_base = _segment_base_id(right_tag_upcoming)
+            bridge_name_base = f"{left_base}_{right_base}"
+
             br = _maybe_bridge_segments(
-                tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=tag,
+                tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
                 rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path
             )
             if br is not None:
+                # tag bridge images
+                _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
+                            mep_has_bond_changes=False, pair_index=bridge_pair_index)
+
                 # drop duplicate at bridge start if any
                 b_imgs, b_E = br.images, br.energies
                 if _rmsd_between(all_imgs[-1], b_imgs[0], align=True) <= stitch_rmsd_thresh:
                     b_imgs = b_imgs[1:]
                     b_E = b_E[1:]
+
                 if b_imgs:
                     all_imgs.extend(b_imgs)
                     all_E.extend(b_E)
+
+                # record bridge report (between the two segments) with no bond summary
+                if segments_out is not None:
+                    try:
+                        barrier_kcal = (max(br.energies) - br.energies[0]) * AU2KCALPERMOL
+                        delta_kcal = (br.energies[-1] - br.energies[0]) * AU2KCALPERMOL
+                    except Exception:
+                        barrier_kcal = float("nan")
+                        delta_kcal = float("nan")
+                    bridge_report = SegmentReport(
+                        tag=f"{bridge_name_base}_bridge",
+                        barrier_kcal=float(barrier_kcal),
+                        delta_kcal=float(delta_kcal),
+                        summary="",   # no bond description for bridges
+                        kind="bridge"
+                    )
+                    # --- 挿入位置の明示的制御 ---
+                    # 次パートの先頭タグ（right_tag_upcoming）に一致する最初のレポートの直前に BRIDGE を挿入。
+                    insert_pos: Optional[int] = None
+                    try:
+                        for j, sr in enumerate(segments_out):
+                            if sr.tag == right_tag_upcoming:
+                                insert_pos = j
+                                break
+                    except Exception:
+                        insert_pos = None
+                    if insert_pos is None:
+                        # （トップレベルのペア間ステッチでは次パートのレポートは未追加なので append で OK）
+                        segments_out.append(bridge_report)
+                    else:
+                        # （ペア内のステッチでは既に次パートのレポートが入っているので、その直前に挿入）
+                        segments_out.insert(insert_pos, bridge_report)
+
             # then connect the current part (re-check duplicates)
             if _rmsd_between(all_imgs[-1], imgs[0], align=True) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
@@ -927,6 +1015,7 @@ def _build_multistep_path(
     depth: int,
     seg_counter: List[int],
     branch_tag: str,
+    pair_index: Optional[int] = None,   # <-- which input pair this path belongs to (for merge later)
 ) -> CombinedPath:
     """
     Recursively construct a multistep MEP from A–B and return it (A→B order).
@@ -940,6 +1029,8 @@ def _build_multistep_path(
         # at upper bound: simply run GSM for A–B (climb=True)
         gsm = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=f"seg_{seg_counter[0]:03d}_maxdepth", ref_pdb_path=ref_pdb_path)
         seg_counter[0] += 1
+        # tag images with pair index if provided
+        _tag_images(gsm.images, pair_index=pair_index)
         return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[])
 
     seg_id = seg_counter[0]
@@ -953,8 +1044,9 @@ def _build_multistep_path(
     # HEI and its neighbors
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
-        # edge case: HEI at an endpoint
+        # edge case: HEI is at an endpoint
         click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.")
+        _tag_images(gsm0.images, pair_index=pair_index)  # tag at least with pair index
         return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
 
     left_img = gsm0.images[hei - 1]
@@ -1005,6 +1097,12 @@ def _build_multistep_path(
 
     step_imgs, step_E = ref1.images, ref1.energies
 
+    # tag the central step images (segment meta)
+    # covalent changes within this step (left_end→right_end)
+    _changed, step_summary = _has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
+    _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind="seg",
+                mep_has_bond_changes=bool(_changed), pair_index=pair_index)
+
     # 5) Check for covalent changes (left: A–left_end, right: right_end–B)
     left_changed, left_summary = _has_bond_change(gA, left_end, bond_cfg)
     right_changed, right_summary = _has_bond_change(right_end, gB, bond_cfg)
@@ -1023,13 +1121,13 @@ def _build_multistep_path(
     except Exception:
         barrier_kcal = float("nan")
         delta_kcal = float("nan")
-    # covalent changes within this step (left_end→right_end)
-    _changed, step_summary = _has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
+
     seg_report = SegmentReport(
         tag=step_tag_for_report,
         barrier_kcal=float(barrier_kcal),
         delta_kcal=float(delta_kcal),
-        summary=step_summary if _changed else "(no covalent changes detected)"
+        summary=step_summary if _changed else "(no covalent changes detected)",
+        kind="seg"
     )
 
     # 6) Recurse (left/right)
@@ -1040,8 +1138,11 @@ def _build_multistep_path(
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg,
-            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}L"
+            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
+            pair_index=pair_index
         )
+        # ensure pair_index tag
+        _tag_images(subL.images, pair_index=pair_index)
         parts.append((subL.images, subL.energies))
         seg_reports.extend(subL.segments)
 
@@ -1053,8 +1154,10 @@ def _build_multistep_path(
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg,
-            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}R"
+            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
+            pair_index=pair_index
         )
+        _tag_images(subR.images, pair_index=pair_index)
         parts.append((subR.images, subR.energies))
         seg_reports.extend(subR.segments)
 
@@ -1076,7 +1179,10 @@ def _build_multistep_path(
             depth=depth + 1,
             seg_counter=seg_counter,
             branch_tag=f"{branch_tag}B",
+            pair_index=pair_index,
         )
+        # ensure pair_index on images
+        _tag_images(sub.images, pair_index=pair_index)
         return sub
 
     stitched_imgs, stitched_E = _stitch_paths(
@@ -1092,7 +1198,11 @@ def _build_multistep_path(
         bond_cfg=bond_cfg,
         segment_builder=_segment_builder,
         segments_out=seg_reports,   # collect summaries of any inserted segments at the correct position
+        bridge_pair_index=pair_index,
     )
+
+    # ensure pair_index tag is set across all
+    _tag_images(stitched_imgs, pair_index=pair_index)
 
     return CombinedPath(images=stitched_imgs, energies=stitched_E, segments=seg_reports)
 
@@ -1225,11 +1335,16 @@ def _merge_pair_to_full(pair_images: List[Any],
                         coordsB_aligned: np.ndarray,
                         keymapA: Dict[Tuple[str,str,str,str,str], int],
                         keymapB: Dict[Tuple[str,str,str,str,str], int],
-                        out_path: Path,
-                        drop_first: bool = False) -> Tuple[List[str], List[int]]:
+                        out_path: Optional[Path],
+                        drop_first: bool = False,
+                        seg_indices_for_frames: Optional[List[int]] = None,
+                        seg_report_lookup: Optional[Dict[int, SegmentReport]] = None,
+                        include_pocket_indices_for_first_model: bool = False) -> Tuple[List[str], List[int]]:
     """
     Merge a pair path (images) into full templates A→B (already chain‑aligned).
     Returns (MODEL blocks as strings, active atom 1‑based indices used in this pair).
+    - POCKET_ATOM_INDICES are emitted only on the very first MODEL when include_pocket_indices_for_first_model=True.
+    - Each MODEL gets REMARK 1 lines about: MEP segment index, tag, kind, ΔE‡, ΔE, and (if available) bond changes.
     """
     # 1) Pocket keys in file order (assumed same as geometry atom order)
     pocket_keys = _pocket_keys_from_pdb(pocket_ref_pdb)
@@ -1264,7 +1379,14 @@ def _merge_pair_to_full(pair_images: List[Any],
     if M == 0:
         return model_blocks, active_one_based
 
-    for k in range(M):
+    # prepare per-frame segment indices aligned with included frames
+    seg_idx_seq: List[int] = []
+    if seg_indices_for_frames is not None and len(seg_indices_for_frames) == M:
+        seg_idx_seq = seg_indices_for_frames[start_k:]
+    else:
+        seg_idx_seq = [0] * (M - start_k)
+
+    for kk, k in enumerate(range(M)):
         if k < start_k:
             continue
         # 0..M-1 → t in [0,1]
@@ -1304,80 +1426,183 @@ def _merge_pair_to_full(pair_images: List[Any],
         # REMARK lines
         remark_lines: List[str] = []
         remark_lines.append(f"PAIR_MERGE FRAC {tfrac:.6f}")
-        remark_lines.extend(_chunk_remark_indices([i for i in active_one_based], width=60))
+
+        # POCKET_ATOM_INDICES: only first model if requested
+        if include_pocket_indices_for_first_model and kk == 0:
+            remark_lines.extend(_chunk_remark_indices([i for i in active_one_based], width=60))
+
+        # Segment annotation per model
+        seg_idx = seg_idx_seq[kk] if kk < len(seg_idx_seq) else 0
+        if seg_idx and seg_report_lookup is not None:
+            rep = seg_report_lookup.get(seg_idx, None)
+            if rep is not None:
+                remark_lines.append(
+                    f"MEP_SEG_INDEX {int(seg_idx):02d} TAG {rep.tag} KIND {rep.kind} "
+                    f"DELTAE_BARRIER_KCAL {rep.barrier_kcal:.6f} DELTAE_KCAL {rep.delta_kcal:.6f}"
+                )
+                # For bridges, do not output bond details.
+                if rep.kind != "bridge" and rep.summary and rep.summary.strip() and rep.summary.strip() != "(no covalent changes detected)":
+                    for ln in rep.summary.strip().splitlines():
+                        remark_lines.append(f"SEG_BONDS {ln.strip()}")
+            else:
+                remark_lines.append(f"MEP_SEG_INDEX {int(seg_idx):02d}")
 
         # write one MODEL body (without MODEL/ENDMDL header/footer)
         model_blocks.append(_write_model_block(structA, remark_lines))
 
-    # save pair file
-    with open(out_path, "w") as f:
-        for m, blk in enumerate(model_blocks, start=1):
-            f.write(f"MODEL     {m}\n")
-            f.write(blk)
-            f.write("ENDMDL\n")
-        f.write("END\n")
-    click.echo(f"[merge] Wrote pair-merged PDB → '{out_path}'")
-
-    return model_blocks, active_one_based
-
-
-def _merge_all_pairs_and_write(pair_images_list: List[List[Any]],
-                               pocket_inputs: Sequence[Path],
-                               ref_pdbs: Sequence[Path],
-                               out_dir: Path) -> None:
-    """
-    Merge per-pair pocket MEPs back to full templates specified by --ref-pdb and write:
-      - pair_{i:02d}_merged.pdb
-      - final_geometries_merged.pdb (concatenated, dropping duplicate seam frames)
-    """
-    if len(ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--ref-pdb must have the same number of files as --input.")
-
-    # Load and chain-align all full templates once
-    structs, aligned_coords, atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
-
-    # Sanity
-    n_pairs = len(pocket_inputs) - 1
-    if n_pairs != len(pair_images_list):
-        # Should not happen; best effort: trim to min
-        n_pairs = min(n_pairs, len(pair_images_list))
-
-    final_models: List[str] = []
-    last_active: List[int] = []
-
-    for i in range(n_pairs):
-        pocket_ref = pocket_inputs[i]
-        out_pair = out_dir / f"pair_{i:02d}_merged.pdb"
-        # merge this pair
-        drop_first = (i > 0)  # drop first frame to avoid seam duplication
-        blocks, active_one_based = _merge_pair_to_full(
-            pair_images=pair_images_list[i],
-            pocket_ref_pdb=pocket_ref,
-            structA=structs[i],
-            structB=structs[i+1],
-            coordsA_aligned=aligned_coords[i],
-            coordsB_aligned=aligned_coords[i+1],
-            keymapA=keymaps[i],
-            keymapB=keymaps[i+1],
-            out_path=out_pair,
-            drop_first=drop_first
-        )
-        # Append to final sequence
-        final_models.extend(blocks)
-        last_active = active_one_based
-
-    # Write concatenated final
-    if final_models:
-        final_path = out_dir / "final_geometries_merged.pdb"
-        with open(final_path, "w") as f:
-            for m, blk in enumerate(final_models, start=1):
+    # Optionally save a per-pair file (not used in final; kept for backward compatibility when a path is given)
+    if out_path is not None:
+        with open(out_path, "w") as f:
+            for m, blk in enumerate(model_blocks, start=1):
                 f.write(f"MODEL     {m}\n")
                 f.write(blk)
                 f.write("ENDMDL\n")
             f.write("END\n")
-        click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
-    else:
-        click.echo("[merge] No pair models to concatenate (empty MEPs?).", err=True)
+        click.echo(f"[merge] Wrote pair-merged PDB → '{out_path}'")
+
+    return model_blocks, active_one_based
+
+
+def _merge_final_and_write(final_images: List[Any],
+                           pocket_inputs: Sequence[Path],
+                           ref_pdbs: Sequence[Path],
+                           segments: List[SegmentReport],
+                           out_dir: Path) -> None:
+    """
+    Merge the *final* pocket MEP into full templates and write:
+      - mep_w_ref.pdb (all frames)
+      - mep_w_ref_seg_XX.pdb (per segment with covalent changes)
+    Notes:
+      * REMARK 1 POCKET_ATOM_INDICES are written only in the very first MODEL of mep_w_ref.pdb
+      * Each MODEL gets REMARK 1 lines with segment index, tag, kind, ΔE‡, ΔE, and (if non-bridge) bond changes
+    """
+    if len(ref_pdbs) != len(pocket_inputs):
+        raise click.BadParameter("--ref-pdb must have the same number of files as --input.")
+
+    # Load & chain-align templates only once
+    structs, aligned_coords, atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
+
+    # Build lookup: seg_index -> SegmentReport (1-based later)
+    seg_lookup: Dict[int, SegmentReport] = {int(s.seg_index): s for s in segments if int(s.seg_index) > 0}
+
+    # Prepare grouping by pair_index
+    # Each image is expected to have .pair_index (0..n_pairs-1) set
+    # Also each image should have .mep_seg_index (1..Nsegments)
+    n_pairs = len(pocket_inputs) - 1
+    # Make ordered groups of consecutive frames with the same pair_index
+    groups: List[Tuple[int, List[Any]]] = []
+    cur_idx = None
+    cur_list: List[Any] = []
+    for im in final_images:
+        pi = getattr(im, "pair_index", None)
+        if pi is None:
+            # fallback: clamp to 0
+            pi = 0
+        if cur_idx is None:
+            cur_idx = int(pi)
+            cur_list = [im]
+        elif int(pi) == int(cur_idx):
+            cur_list.append(im)
+        else:
+            groups.append((int(cur_idx), cur_list))
+            cur_idx = int(pi)
+            cur_list = [im]
+    if cur_list:
+        groups.append((int(cur_idx), cur_list))
+
+    # Sanity clamp for pair indices
+    for (pi, _) in groups:
+        if not (0 <= pi < n_pairs):
+            raise click.BadParameter(f"[merge] Illegal pair_index {pi} (n_pairs={n_pairs}).")
+
+    # Merge each group and collect model blocks; write POCKET_ATOM_INDICES only in very first model
+    final_blocks: List[str] = []
+    wrote_indices = False
+
+    for gi, (pi, imgs) in enumerate(groups):
+        pocket_ref = Path(pocket_inputs[pi])
+        structA = structs[pi]
+        structB = structs[pi+1]
+        coordsA = aligned_coords[pi]
+        coordsB = aligned_coords[pi+1]
+        keymapA = keymaps[pi]
+        keymapB = keymaps[pi+1]
+        seg_indices_for_frames = [int(getattr(im, "mep_seg_index", 0) or 0) for im in imgs]
+
+        blocks, active_one_based = _merge_pair_to_full(
+            pair_images=imgs,
+            pocket_ref_pdb=pocket_ref,
+            structA=structA,
+            structB=structB,
+            coordsA_aligned=coordsA,
+            coordsB_aligned=coordsB,
+            keymapA=keymapA,
+            keymapB=keymapB,
+            out_path=None,  # don't write per-pair file
+            drop_first=(gi > 0),
+            seg_indices_for_frames=seg_indices_for_frames,
+            seg_report_lookup=seg_lookup,
+            include_pocket_indices_for_first_model=(not wrote_indices)
+        )
+        if blocks:
+            wrote_indices = True  # only first block gets POCKET_ATOM_INDICES
+            final_blocks.extend(blocks)
+
+    # Write the concatenated final
+    final_path = out_dir / "mep_w_ref.pdb"
+    with open(final_path, "w") as f:
+        for m, blk in enumerate(final_blocks, start=1):
+            f.write(f"MODEL     {m}\n")
+            f.write(blk)
+            f.write("ENDMDL\n")
+        f.write("END\n")
+    click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
+
+    # Per-segment merged PDBs: only for segments with covalent changes (kind='seg' and summary!=no changes)
+    for s in segments:
+        if s.kind == "bridge":
+            continue
+        if not s.summary or s.summary.strip() == "(no covalent changes detected)":
+            continue
+        seg_idx = int(s.seg_index)
+        # collect frames belonging to this segment
+        seg_frames: List[Any] = [im for im in final_images if int(getattr(im, "mep_seg_index", 0) or 0) == seg_idx]
+        if not seg_frames:
+            continue
+        # assume all frames in a segment belong to the same pair_index
+        pi_vals = sorted({int(getattr(im, "pair_index", 0)) for im in seg_frames})
+        pi = pi_vals[0]
+        pocket_ref = Path(pocket_inputs[pi])
+        structA = structs[pi]
+        structB = structs[pi+1]
+        coordsA = aligned_coords[pi]
+        coordsB = aligned_coords[pi+1]
+        keymapA = keymaps[pi]
+        keymapB = keymaps[pi+1]
+        seg_indices_for_frames = [seg_idx] * len(seg_frames)
+        blocks, _ = _merge_pair_to_full(
+            pair_images=seg_frames,
+            pocket_ref_pdb=pocket_ref,
+            structA=structA,
+            structB=structB,
+            coordsA_aligned=coordsA,
+            coordsB_aligned=coordsB,
+            keymapA=keymapA,
+            keymapB=keymapB,
+            out_path=None,
+            drop_first=False,
+            seg_indices_for_frames=seg_indices_for_frames,
+            seg_report_lookup=seg_lookup,
+            include_pocket_indices_for_first_model=True,
+        )
+        out_seg = out_dir / f"mep_w_ref_seg_{seg_idx:02d}.pdb"
+        with open(out_seg, "w") as f:
+            for m, blk in enumerate(blocks, start=1):
+                f.write(f"MODEL     {m}\n")
+                f.write(blk)
+                f.write("ENDMDL\n")
+            f.write("END\n")
+        click.echo(f"[merge] Wrote per-segment merged trajectory → '{out_seg}'")
 
 
 # -----------------------------------------------
@@ -1460,22 +1685,54 @@ def cli(
     pre_opt: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
-    # Accept both styles for -i: repeated and single -i + space-separated paths.
-    # When the latter is used, the "extra" tokens arrive in ctx.args.
-    if getattr(ctx, "args", None):
-        extra_tokens = [tok for tok in ctx.args if not tok.startswith("-")]
-        if extra_tokens:
-            extras: List[Path] = []
-            for tok in extra_tokens:
-                p = Path(tok)
-                if (not p.exists()) or p.is_dir():
-                    raise click.BadParameter(
-                        f"Extra input path '{tok}' not found or is a directory. "
-                        f"When using a single '-i', list only existing file paths separated by spaces."
-                    )
-                extras.append(p)
-            # Merge extras after the explicitly parsed ones
-            input_paths = tuple(list(input_paths) + extras)
+    # --- Minimal fix: robustly accept both styles for -i/--input and --ref-pdb ---
+    #     We re-scan sys.argv and collect all values that follow these options
+    #     until the next token that starts with '-'. This avoids mis-classifying
+    #     leftovers (ctx.args) and ensures a single '-i A B' / '--ref-pdb X Y' works.
+    def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
+        vals: List[str] = []
+        i = 0
+        while i < len(argv):
+            tok = argv[i]
+            if tok in names:
+                j = i + 1
+                while j < len(argv) and not argv[j].startswith("-"):
+                    vals.append(argv[j])
+                    j += 1
+                i = j
+            else:
+                i += 1
+        return vals
+
+    argv_all = sys.argv[1:]  # drop program name
+    # Reconstruct input paths if user used "single -i + multiple files"
+    i_vals = _collect_option_values(argv_all, ("-i", "--input"))
+    if i_vals:
+        i_parsed: List[Path] = []
+        for tok in i_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Input path '{tok}' not found or is a directory. "
+                    f"When using '-i', list only existing file paths (multiple paths may follow a single '-i')."
+                )
+            i_parsed.append(p)
+        input_paths = tuple(i_parsed)
+
+    # Reconstruct ref PDB paths similarly
+    ref_vals = _collect_option_values(argv_all, ("--ref-pdb",))
+    if ref_vals:
+        ref_parsed: List[Path] = []
+        for tok in ref_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Reference PDB path '{tok}' not found or is a directory. "
+                    f"When using '--ref-pdb', multiple files may follow a single option."
+                )
+            ref_parsed.append(p)
+        ref_pdb_paths = tuple(ref_parsed)
+    # --- end of minimal fix ---
 
     time_start = time.perf_counter()  # start timing
     try:
@@ -1637,11 +1894,10 @@ def cli(
         combined_imgs: List[Any] = []
         combined_Es: List[float] = []
         seg_reports_all: List[SegmentReport] = []
-        pair_images_list: List[List[Any]] = []  # keep per-pair images for merge
 
-        # builder for tail→head recursive segments during stitching
+        # builder for tail→head recursive segments during stitching across pairs
         def _segment_builder_for_pairs(tail_g, head_g, _tag: str) -> CombinedPath:
-            return _build_multistep_path(
+            sub = _build_multistep_path(
                 tail_g, head_g,
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
@@ -1652,7 +1908,9 @@ def cli(
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag="B",
+                pair_index=None,  # this builder is only used if covalent changes at pair seam: in practice same next pair will be used after
             )
+            return sub
 
         for i in range(len(geoms) - 1):
             gA, gB = geoms[i], geoms[i + 1]
@@ -1669,10 +1927,8 @@ def cli(
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag=pair_tag,
+                pair_index=i,  # annotate images with this pair_index for merging
             )
-
-            # store per-pair images for later merging to full templates
-            pair_images_list.append(list(pair_path.images))
 
             if i == 0:
                 combined_imgs = list(pair_path.images)
@@ -1693,7 +1949,8 @@ def cli(
                     ref_pdb_path=ref_pdb_for_segments,
                     bond_cfg=bond_cfg,
                     segment_builder=_segment_builder_for_pairs,
-                    segments_out=seg_reports_all,  # add any new segment summaries immediately after insertion
+                    segments_out=seg_reports_all,  # add any new segment summaries immediately after insertion (bridges in between)
+                    bridge_pair_index=i,  # bridges at seam i-1/i belong to templates (i,i+1) => pair index i
                 )
                 # After stitching, append the current pair's own segment summaries (so they follow any inserted ones)
                 seg_reports_all.extend(pair_path.segments)
@@ -1705,7 +1962,20 @@ def cli(
         # --------------------------
         # 4) Outputs
         # --------------------------
-        final_trj = out_dir_path / "final_geometries.trj"
+        # Assign final segment indices (1-based) and propagate to images
+        for idx, srep in enumerate(combined_all.segments, 1):
+            srep.seg_index = idx
+        tag_to_index = {s.tag: int(s.seg_index) for s in combined_all.segments}
+        for im in combined_all.images:
+            tag = getattr(im, "mep_seg_tag", None)
+            if tag and tag in tag_to_index:
+                try:
+                    setattr(im, "mep_seg_index", int(tag_to_index[tag]))
+                except Exception:
+                    pass
+
+        # Top-level final pocket trajectory (XYZ/TRJ + optional PDB)
+        final_trj = out_dir_path / "mep.trj"
         _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
         click.echo(f"[write] Wrote '{final_trj}'.")
 
@@ -1716,10 +1986,10 @@ def cli(
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
-        # If a reference PDB exists, also write a PDB for the final MEP
+        # If a reference PDB exists, also write a PDB for the final pocket MEP
         if ref_pdb_for_segments is not None:
             try:
-                final_pdb = out_dir_path / "final_geometries.pdb"
+                final_pdb = out_dir_path / "mep.pdb"
                 convert_xyz_to_pdb(final_trj, ref_pdb_for_segments, final_pdb)
                 click.echo(f"[convert] Wrote '{final_pdb}'.")
             except Exception as e:
@@ -1728,36 +1998,30 @@ def cli(
         # Full-system merge when --ref-pdb is provided
         if do_merge:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
-            _merge_all_pairs_and_write(
-                pair_images_list=pair_images_list,
+            _merge_final_and_write(
+                final_images=list(combined_all.images),
                 pocket_inputs=[Path(p) for p in input_paths],
                 ref_pdbs=[Path(p) for p in ref_pdb_paths],
+                segments=combined_all.segments,
                 out_dir=out_dir_path
             )
             click.echo("\n=== Full-system merge finished ===\n")
 
-        # Run summary YAML
+        # Run summary YAML (MEP-only info)
         summary = {
-            "n_segments": seg_counter[0],
-            "n_images_final": len(combined_all.images),
             "out_dir": str(out_dir_path),
-            "settings": {
-                "geom": echo_geom,
-                "calc": echo_calc,
-                "gs": echo_gs,
-                "opt": echo_opt,
-                "sopt_kind": sopt_kind,
-                "sopt": sopt_cfg,
-                "bond": bond_cfg,
-                "search": search_cfg,
-                "pre_opt": bool(pre_opt),
-            },
-            "n_inputs": len(p_list),
-            "inputs": [str(p.resolve()) for p in p_list],
-            "merge": {
-                "enabled": bool(do_merge),
-                "ref_pdbs": [str(Path(p).resolve()) for p in (ref_pdb_paths or [])],
-            }
+            "n_images": len(combined_all.images),
+            "n_segments": len(combined_all.segments),
+            "segments": [
+                {
+                    "index": int(s.seg_index),
+                    "tag": s.tag,
+                    "kind": s.kind,  # "seg" or "bridge"
+                    "barrier_kcal": float(s.barrier_kcal),
+                    "delta_kcal": float(s.delta_kcal),
+                    "bond_changes": (s.summary if (s.kind != "bridge") else "")
+                } for s in combined_all.segments
+            ],
         }
         with open(out_dir_path / "summary.yaml", "w") as f:
             yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
@@ -1772,7 +2036,7 @@ def cli(
         except Exception:
             overall_changed, overall_summary = False, ""
 
-        # Segment-by-segment report (in output order)
+        # Segment-by-segment report (in output order, with bridges interleaved)
         click.echo("\n=== MEP Summary ===\n")
 
         # overall covalent changes
@@ -1782,12 +2046,13 @@ def cli(
         else:
             click.echo("  (no covalent changes detected)")
 
-        # per-segment summaries
+        # per-segment summaries (bridges included, without bond lines)
         if combined_all.segments:
-            click.echo("\n[segments] In the order they appear along the final MEP:")
+            click.echo("\n[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:")
             for i, seg in enumerate(combined_all.segments, 1):
-                click.echo(f"  [{i:02d}] {seg.tag}  |  barrier = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
-                if seg.summary.strip():
+                kind_label = "BRIDGE" if seg.kind == "bridge" else "SEG"
+                click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
+                if seg.kind != "bridge" and seg.summary.strip():
                     click.echo(textwrap.indent(seg.summary.strip(), prefix="      "))
         else:
             click.echo("\n[segments] (no segment reports)")
