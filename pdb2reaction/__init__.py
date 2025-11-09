@@ -1,6 +1,5 @@
-"""
-pdb2reaction/__init__.py
-"""
+# pdb2reaction/__init__.py
+
 from .uma_pysis import uma_pysis
 
 __version__ = "0.0.1"

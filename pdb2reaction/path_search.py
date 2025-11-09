@@ -150,7 +150,7 @@ CALC_KW: Dict[str, Any] = {
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 30,            # including endpoints: total images = max_nodes + 2
+    "max_nodes": 10,            # including endpoints: total images = max_nodes + 2
     "perp_thresh": 5e-3,
     "reparam_check": "rms",     # "rms" | "norm"
     "reparam_every": 1,
@@ -1529,7 +1529,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For PDB input, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=20, show_default=True,
+@click.option("--max-nodes", type=int, default=10, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
 @click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum GSM optimization cycles.")
