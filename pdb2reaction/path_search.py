@@ -66,6 +66,9 @@ out_dir/
   ├─ mep.pdb                      : produced when inputs are PDB (pocket系)
   ├─ mep_w_ref.pdb               : full-system MEP merged from pocket and templates (when --ref-pdb is used)
   ├─ mep_w_ref_seg_XX.pdb        : per-segment merged MEPs for segments with covalent changes (when --ref-pdb)
+  ├─ energy.png                  : per-image energy profile (from trj2fig; ΔE vs image index)
+  ├─ energy_diagram.html         : state-level energy diagram (Plotly, ΔE from R in kcal/mol)
+  ├─ energy_diagram.png          : PNG export of the energy diagram (if 'kaleido' is available)
   └─ segments/
       ├─ seg_000_gsm/ ...         : initial GSM for the first segment
       ├─ seg_000_left_opt/ ...    : single-structure optimization of HEI−1
@@ -75,6 +78,12 @@ out_dir/
       ├─ seg_000_seg_002_bridge_gsm/ ... : bridge GSM (names show which segments are bridged)
       ├─ seg_001_...              : left-side recursive substeps (if any)
       └─ seg_002_...              : right-side recursive substeps (if any)
+
+Notes
+-----
+- The linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) **is printed to the console log**
+  instead of being written to a separate file.
+- The `labels` and `energies (kcal/mol)` actually passed to `build_energy_diagram` are also **printed to the log**.
 """
 
 from __future__ import annotations
@@ -89,7 +98,7 @@ import textwrap
 import tempfile
 import os
 import time  # timing
-import re    # <-- added
+import re    # <-- used in _segment_base_id
 
 import click
 import numpy as np
@@ -112,6 +121,10 @@ from .utils import convert_xyz_to_pdb, freeze_links
 from .trj2fig import run_trj2fig  # Auto-generate an energy plot when a .trj is produced
 
 from .bond_changes import compare_structures, summarize_changes
+
+# ==== Plotly diagram builder ====
+from .utils import build_energy_diagram
+# =================================
 
 # -----------------------------------------------
 # Defaults
@@ -512,9 +525,7 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
     R, t = _kabsch_R_t(P_sel, Q_sel)
     Q_aligned = (Q @ R) + t  # apply to all atoms
 
-    # set_coords expects a 1D array (length 3N)
     geom_to_align.set_coords(Q_aligned.reshape(-1))
-
     rmsd_after = _rmsd(P[use_mask], Q_aligned[use_mask])
 
     return rmsd_before, rmsd_after, n_used
@@ -586,7 +597,6 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
     assert A.shape == B.shape and A.shape[1] == 3, "Atom counts must match for interpolation."
     atoms = [a for a in gL.atoms]
     coord_type = gL.coord_type
-    # union of freeze_atoms
     faL = getattr(gL, "freeze_atoms", np.array([], dtype=int))
     faR = getattr(gR, "freeze_atoms", np.array([], dtype=int))
     freeze_union = sorted(set(map(int, faL)) | set(map(int, faR)))
@@ -656,14 +666,12 @@ def _run_gsm_between(
     def calc_getter():
         return shared_calc
 
-    # Setup GrowingString
     gs = GrowingString(
         images=[gA, gB],
         calc_getter=calc_getter,
         **gs_cfg,
     )
 
-    # Prepare optimizer
     _opt_args = dict(opt_cfg)
     seg_dir = out_dir / f"{tag}_gsm"
     seg_dir.mkdir(parents=True, exist_ok=True)
@@ -678,12 +686,10 @@ def _run_gsm_between(
     optimizer.run()
     click.echo(f"\n=== [{tag}] GSM finished ===\n")
 
-    # energies & images
     energies = list(map(float, np.array(gs.energy, dtype=float)))
     images = list(gs.images)
 
-    # Determine HEI as the highest-energy *local* maximum among non-endpoints.
-    # If none exists, fall back to the highest-energy internal node.
+    # local maximum (non-endpoints) as HEI; fallback: highest internal node
     E = np.array(energies, dtype=float)
     nE = len(E)
     local_max_candidates = [i for i in range(1, nE - 1) if (E[i] > E[i - 1] and E[i] > E[i + 1])]
@@ -717,22 +723,20 @@ def _run_gsm_between(
     # If input is PDB, convert intermediate .trj to PDB
     _maybe_convert_to_pdb(final_trj, ref_pdb_path, seg_dir / "final_geometries.pdb")
 
-    # write HEI (based on the local-maximum definition)
+    # write HEI
     try:
         hei_geom = images[hei_idx]
         hei_E = float(E[hei_idx])
-
         hei_xyz = seg_dir / "gsm_hei.xyz"
         s = hei_geom.as_xyz()
         lines = s.splitlines()
         if len(lines) >= 2 and lines[0].strip().isdigit():
             lines[1] = f"{hei_E:.12f}"
-            s = "\n" if s.endswith("\n") else ""  # no-op to keep newline logic
+            s = "\n" if s.endswith("\n") else ""
             s = "".join([lines[0], "\n", f"{hei_E:.12f}", "\n"] + lines[2:] + ["\n"])
         with open(hei_xyz, "w") as f:
-            f.write("\n".join([str(len(hei_geom.atoms)), f"{hei_E:.12f}"]))
+            f.write(s)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
-        # also convert HEI to PDB
         _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
@@ -750,7 +754,6 @@ def _optimize_single(
     ref_pdb_path: Optional[Path],  # for PDB conversion
 ):
     """Run single-structure optimization (LBFGS/RFO) and return the final Geometry."""
-    # Attach calculator
     _ensure_calc_on_geom(g, shared_calc)
 
     seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
@@ -767,13 +770,10 @@ def _optimize_single(
     opt.run()
     click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} finished ===\n")
 
-    # Optimizers write the final structure to file (final_fn)
     try:
         final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else Path(opt.final_fn)
-        # if inputs are PDB, also convert final .xyz/.trj to PDB
         _maybe_convert_to_pdb(final_xyz, ref_pdb_path)
         g_final = geom_loader(final_xyz, coord_type=g.coord_type)
-        # propagate freeze atoms
         try:
             g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
         except Exception:
@@ -781,7 +781,6 @@ def _optimize_single(
         _ensure_calc_on_geom(g_final, shared_calc)
         return g_final
     except Exception:
-        # fallback: return the current geometry
         return g
 
 
@@ -869,11 +868,9 @@ def _stitch_paths(
             all_imgs.extend(imgs)
             all_E.extend(Es)
             return
-        # previous tail and current head
         tail = all_imgs[-1]
         head = imgs[0]
 
-        # check covalent changes between adjacent endpoints
         adj_changed, adj_summary = False, ""
         if segment_builder is not None and bond_cfg is not None:
             try:
@@ -885,35 +882,28 @@ def _stitch_paths(
             click.echo(f"[{tag}] Covalent changes detected at interface — inserting a new recursive segment.")
             if adj_summary:
                 click.echo(textwrap.indent(adj_summary, prefix="  "))
-            # build and insert a new segment (tail→head)
             sub = segment_builder(tail, head, f"{tag}_mid")
             seg_imgs, seg_E = sub.images, sub.energies
             if segments_out is not None and getattr(sub, "segments", None):
-                segments_out.extend(sub.segments)  # append in the appearance order
+                segments_out.extend(sub.segments)
             if seg_imgs:
-                # remove duplicate with existing tail
                 if _rmsd_between(all_imgs[-1], seg_imgs[0], align=True) <= stitch_rmsd_thresh:
                     seg_imgs = seg_imgs[1:]
                     seg_E = seg_E[1:]
                 all_imgs.extend(seg_imgs)
                 all_E.extend(seg_E)
-            # then connect the current part (deduplicate again)
             if _rmsd_between(all_imgs[-1], imgs[0], align=True) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
                 Es = Es[1:]
             all_imgs.extend(imgs)
             all_E.extend(Es)
-            return  # done for this part
+            return
 
         rmsd = _rmsd_between(tail, head, align=True)
         if rmsd <= stitch_rmsd_thresh:
-            # perfect duplicate → drop head and concatenate
             all_imgs.extend(imgs[1:])
             all_E.extend(Es[1:])
         elif rmsd > bridge_rmsd_thresh:
-            # larger mismatch → run bridge GSM
-            # determine left/right seg tags for naming & tagging
-            # （左側は常に現在の all_imgs の末尾から、右側は今回の imgs の先頭から取得する）
             left_tag_recent = _last_known_seg_tag_from_images(all_imgs) or "segL"
             right_tag_upcoming = _first_known_seg_tag_from_images(imgs) or "segR"
             left_base = _segment_base_id(left_tag_recent)
@@ -925,21 +915,16 @@ def _stitch_paths(
                 rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path
             )
             if br is not None:
-                # tag bridge images
                 _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
                             mep_has_bond_changes=False, pair_index=bridge_pair_index)
-
-                # drop duplicate at bridge start if any
                 b_imgs, b_E = br.images, br.energies
                 if _rmsd_between(all_imgs[-1], b_imgs[0], align=True) <= stitch_rmsd_thresh:
                     b_imgs = b_imgs[1:]
                     b_E = b_E[1:]
-
                 if b_imgs:
                     all_imgs.extend(b_imgs)
                     all_E.extend(b_E)
 
-                # record bridge report (between the two segments) with no bond summary
                 if segments_out is not None:
                     try:
                         barrier_kcal = (max(br.energies) - br.energies[0]) * AU2KCALPERMOL
@@ -951,11 +936,9 @@ def _stitch_paths(
                         tag=f"{bridge_name_base}_bridge",
                         barrier_kcal=float(barrier_kcal),
                         delta_kcal=float(delta_kcal),
-                        summary="",   # no bond description for bridges
+                        summary="",
                         kind="bridge"
                     )
-                    # --- 挿入位置の明示的制御 ---
-                    # 次パートの先頭タグ（right_tag_upcoming）に一致する最初のレポートの直前に BRIDGE を挿入。
                     insert_pos: Optional[int] = None
                     try:
                         for j, sr in enumerate(segments_out):
@@ -965,20 +948,16 @@ def _stitch_paths(
                     except Exception:
                         insert_pos = None
                     if insert_pos is None:
-                        # （トップレベルのペア間ステッチでは次パートのレポートは未追加なので append で OK）
                         segments_out.append(bridge_report)
                     else:
-                        # （ペア内のステッチでは既に次パートのレポートが入っているので、その直前に挿入）
                         segments_out.insert(insert_pos, bridge_report)
 
-            # then connect the current part (re-check duplicates)
             if _rmsd_between(all_imgs[-1], imgs[0], align=True) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
                 Es = Es[1:]
             all_imgs.extend(imgs)
             all_E.extend(Es)
         else:
-            # minor mismatch → connect directly
             all_imgs.extend(imgs)
             all_E.extend(Es)
 
@@ -1015,21 +994,18 @@ def _build_multistep_path(
     depth: int,
     seg_counter: List[int],
     branch_tag: str,
-    pair_index: Optional[int] = None,   # <-- which input pair this path belongs to (for merge later)
+    pair_index: Optional[int] = None,
 ) -> CombinedPath:
     """
     Recursively construct a multistep MEP from A–B and return it (A→B order).
     """
-    # GS config for *segment* (apply search.max_nodes_segment)
     seg_max_nodes = int(search_cfg.get("max_nodes_segment", gs_cfg.get("max_nodes", 30)))
     gs_seg_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=seg_max_nodes)
 
     if depth > int(search_cfg.get("max_depth", 10)):
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
-        # at upper bound: simply run GSM for A–B (climb=True)
         gsm = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=f"seg_{seg_counter[0]:03d}_maxdepth", ref_pdb_path=ref_pdb_path)
         seg_counter[0] += 1
-        # tag images with pair index if provided
         _tag_images(gsm.images, pair_index=pair_index)
         return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[])
 
@@ -1037,30 +1013,23 @@ def _build_multistep_path(
     seg_counter[0] += 1
     tag0 = f"seg_{seg_id:03d}"
 
-    # 1) Initial GSM A–B (segment settings)
     gs_seg_cfg_first = _gs_cfg_with_overrides(gs_seg_cfg, climb=True, climb_lanczos=True)
     gsm0 = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg_first, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
 
-    # HEI and its neighbors
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
-        # edge case: HEI is at an endpoint
         click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.")
-        _tag_images(gsm0.images, pair_index=pair_index)  # tag at least with pair index
+        _tag_images(gsm0.images, pair_index=pair_index)
         return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
 
     left_img = gsm0.images[hei - 1]
     right_img = gsm0.images[hei + 1]
 
-    # 2) Single-structure optimizations of both neighbors
     left_opt = _optimize_single(left_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_left", ref_pdb_path=ref_pdb_path)
     right_opt = _optimize_single(right_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_right", ref_pdb_path=ref_pdb_path)
 
-    # 3) Orient ends so that left_end is closer to A and right_end closer to B
     left_end, right_end = _orient_two_by_closeness(gA, gB, left_opt, right_opt, align=bool(search_cfg.get("rmsd_align", True)))
 
-    # 3.5) Kink detection (based on covalent changes)
-    # Treat as a kink if *no* covalent-bond changes are detected between the optimized End1 and End2.
     try:
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
@@ -1068,24 +1037,18 @@ def _build_multistep_path(
         lr_changed, lr_summary = True, ""
     use_kink = (not lr_changed)
 
-    # 4) Refined GSM between End1–End2 (or replace with kink interpolation path)
     if use_kink:
         n_inter = int(search_cfg.get("kink_max_nodes", 3))
         click.echo(f"[{tag0}] Kink detected (no covalent changes between End1 and End2). "
                    f"Using {n_inter} linear interpolation nodes + single-structure optimizations instead of GSM.")
-        # generate linear interpolation structures
         inter_geoms = _make_linear_interpolations(left_end, right_end, n_inter)
-        # optimize each interpolation
         opt_inters: List[Any] = []
         for i, g_int in enumerate(inter_geoms, 1):
             g_int.set_calculator(shared_calc)
             g_opt = _optimize_single(g_int, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_kink_int{i}", ref_pdb_path=ref_pdb_path)
             opt_inters.append(g_opt)
-        # images for the step: left_end, [opt inters], right_end
         step_imgs = [left_end] + opt_inters + [right_end]
-        # energies
         step_E = [float(img.energy) for img in step_imgs]
-        # wrap in a GSMResult-like form
         ref1 = GSMResult(images=step_imgs, energies=step_E, hei_idx=int(np.argmax(step_E)))
         step_tag_for_report = f"{tag0}_kink"
     else:
@@ -1097,13 +1060,10 @@ def _build_multistep_path(
 
     step_imgs, step_E = ref1.images, ref1.energies
 
-    # tag the central step images (segment meta)
-    # covalent changes within this step (left_end→right_end)
     _changed, step_summary = _has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
     _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind="seg",
                 mep_has_bond_changes=bool(_changed), pair_index=pair_index)
 
-    # 5) Check for covalent changes (left: A–left_end, right: right_end–B)
     left_changed, left_summary = _has_bond_change(gA, left_end, bond_cfg)
     right_changed, right_summary = _has_bond_change(right_end, gB, bond_cfg)
 
@@ -1114,7 +1074,6 @@ def _build_multistep_path(
     if right_changed:
         click.echo(textwrap.indent(right_summary, prefix="  "))
 
-    # Segment summary (this step)
     try:
         barrier_kcal = (max(step_E) - step_E[0]) * AU2KCALPERMOL
         delta_kcal = (step_E[-1] - step_E[0]) * AU2KCALPERMOL
@@ -1130,7 +1089,6 @@ def _build_multistep_path(
         kind="seg"
     )
 
-    # 6) Recurse (left/right)
     parts: List[Tuple[List[Any], List[float]]] = []
     seg_reports: List[SegmentReport] = []
 
@@ -1141,12 +1099,10 @@ def _build_multistep_path(
             out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
-        # ensure pair_index tag
         _tag_images(subL.images, pair_index=pair_index)
         parts.append((subL.images, subL.energies))
         seg_reports.extend(subL.segments)
 
-    # central step (this one)
     parts.append((step_imgs, step_E))
     seg_reports.append(seg_report)
 
@@ -1161,12 +1117,9 @@ def _build_multistep_path(
         parts.append((subR.images, subR.energies))
         seg_reports.extend(subR.segments)
 
-    # 7) Stitch (remove duplicates; optionally insert bridge/new segments)
-    #    GS config for bridges (max_nodes_bridge, climb=False)
     bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 10))
     gs_bridge_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=bridge_max_nodes, climb=False, climb_lanczos=False)
 
-    # Builder to create a new recursive segment when tail–head shows covalent changes
     def _segment_builder(tail_g, head_g, _tag: str) -> CombinedPath:
         sub = _build_multistep_path(
             tail_g, head_g,
@@ -1181,7 +1134,6 @@ def _build_multistep_path(
             branch_tag=f"{branch_tag}B",
             pair_index=pair_index,
         )
-        # ensure pair_index on images
         _tag_images(sub.images, pair_index=pair_index)
         return sub
 
@@ -1190,18 +1142,17 @@ def _build_multistep_path(
         stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-3)),
         bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-2)),
         shared_calc=shared_calc,
-        gs_cfg=gs_bridge_cfg,   # bridges: climb=False and dedicated max_nodes
+        gs_cfg=gs_bridge_cfg,
         opt_cfg=opt_cfg,
         out_dir=out_dir,
         tag=tag0,
         ref_pdb_path=ref_pdb_path,
         bond_cfg=bond_cfg,
         segment_builder=_segment_builder,
-        segments_out=seg_reports,   # collect summaries of any inserted segments at the correct position
+        segments_out=seg_reports,
         bridge_pair_index=pair_index,
     )
 
-    # ensure pair_index tag is set across all
     _tag_images(stitched_imgs, pair_index=pair_index)
 
     return CombinedPath(images=stitched_imgs, energies=stitched_E, segments=seg_reports)
@@ -1233,14 +1184,13 @@ def _structure_to_arrays(struct: PDB.Structure.Structure) -> Tuple[np.ndarray, L
     Keys are (RESNAME, RESSEQ, ICODE, CHAIN, ATOMNAME).
     """
     atoms: List[PDB.Atom.Atom] = [a for a in struct.get_atoms()]
-    coords = np.array([a.get_coord() for a in atoms], dtype=float)  # (N, 3) in Å
+    coords = np.array([a.get_coord() for a in atoms], dtype=float)
     keys: List[Tuple[str, str, str, str, str]] = []
     key2idx: Dict[Tuple[str,str,str,str,str], int] = {}
     for idx, a in enumerate(atoms):
         res = a.get_parent()
         k = _atom_key_from_res_atom(res, a)
         keys.append(k)
-        # keep first occurrence when duplicated
         if k not in key2idx:
             key2idx[k] = idx
     return coords, atoms, keys, key2idx
@@ -1249,7 +1199,6 @@ def _structure_to_arrays(struct: PDB.Structure.Structure) -> Tuple[np.ndarray, L
 def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PDB.Structure.Structure], List[np.ndarray], List[List[PDB.Atom.Atom]], List[Dict[Tuple[str,str,str,str,str], int]]]:
     """
     Load all full templates and chain-align them into the coordinate frame of the first template.
-    Returns list of structures, aligned coords list, atoms list per structure, and key2idx maps per structure.
     """
     parser = PDBParser(QUIET=True)
     structs: List[PDB.Structure.Structure] = [parser.get_structure(f"ref{i:02d}", str(p)) for i, p in enumerate(ref_paths)]
@@ -1269,12 +1218,11 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
         atoms_list.append(atoms)
         keymaps.append(key2idx)
 
-    # Chain alignment: bring each template into the frame of the previous aligned (0 is reference).
     aligned_coords: List[np.ndarray] = []
     aligned_coords.append(coords_list[0].copy())
     for j in range(1, len(coords_list)):
-        P = aligned_coords[j-1]  # target (previous aligned)
-        Q = coords_list[j]       # current raw
+        P = aligned_coords[j-1]
+        Q = coords_list[j]
         R, t = _kabsch_R_t(P, Q)
         Qa = (Q @ R) + t
         aligned_coords.append(Qa)
@@ -1283,7 +1231,6 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
 
 
 def _pocket_keys_from_pdb(pocket_pdb: Path) -> List[Tuple[str, str, str, str, str]]:
-    """Read a pocket PDB and return the list of keys (RESNAME, RESSEQ, ICODE, CHAIN, ATOMNAME) in file order."""
     parser = PDBParser(QUIET=True)
     st = parser.get_structure("pocket", str(pocket_pdb))
     keys: List[Tuple[str, str, str, str, str]] = []
@@ -1296,14 +1243,12 @@ def _pocket_keys_from_pdb(pocket_pdb: Path) -> List[Tuple[str, str, str, str, st
 
 def _write_model_block(structure: PDB.Structure.Structure,
                        remark_lines: List[str]) -> str:
-    """Write a structure to PDB text (single MODEL body) with additional REMARK 1 lines."""
     io = PDBIO()
     io.set_structure(structure)
     from io import StringIO
     buf = StringIO()
-    io.save(buf)  # writes ATOM/HETATM + 'END'
+    io.save(buf)
     body = "\n".join([ln for ln in buf.getvalue().splitlines() if ln.strip() != "END"])
-    # Prepend REMARK lines
     rem = ""
     for line in remark_lines:
         rem += f"REMARK   1 {line}\n"
@@ -1311,7 +1256,6 @@ def _write_model_block(structure: PDB.Structure.Structure,
 
 
 def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
-    """Split a long index list across multiple REMARK 1 lines."""
     s = ",".join(map(str, indices))
     out: List[str] = []
     cur = ""
@@ -1340,37 +1284,26 @@ def _merge_pair_to_full(pair_images: List[Any],
                         seg_indices_for_frames: Optional[List[int]] = None,
                         seg_report_lookup: Optional[Dict[int, SegmentReport]] = None,
                         include_pocket_indices_for_first_model: bool = False) -> Tuple[List[str], List[int]]:
-    """
-    Merge a pair path (images) into full templates A→B (already chain‑aligned).
-    Returns (MODEL blocks as strings, active atom 1‑based indices used in this pair).
-    - POCKET_ATOM_INDICES are emitted only on the very first MODEL when include_pocket_indices_for_first_model=True.
-    - Each MODEL gets REMARK 1 lines about: MEP segment index, tag, kind, ΔE‡, ΔE, and (if available) bond changes.
-    """
-    # 1) Pocket keys in file order (assumed same as geometry atom order)
     pocket_keys = _pocket_keys_from_pdb(pocket_ref_pdb)
 
-    # 2) Build match list to template indices (require existence both in A and B)
     match_tpl_idx: List[int] = []
     for k in pocket_keys:
         ia = keymapA.get(k, None)
         ib = keymapB.get(k, None)
         if ia is None or ib is None:
-            match_tpl_idx.append(-1)  # unmatched (e.g., link atoms or missing)
+            match_tpl_idx.append(-1)
         else:
             match_tpl_idx.append(int(ia))
 
     active_full_idx = sorted({i for i in match_tpl_idx if i >= 0})
-    # 1-based file-order indices for remark
     active_one_based = [i+1 for i in active_full_idx]
 
     Nfull = coordsA_aligned.shape[0]
     if Nfull != coordsB_aligned.shape[0]:
         raise click.BadParameter("[merge] Template A/B atom count mismatch.")
 
-    # for writing: we will update structA in place per frame (geometry only)
     atomsA: List[PDB.Atom.Atom] = [a for a in structA.get_atoms()]
 
-    # frame range (optionally drop first to avoid duplicate seam)
     start_k = 1 if drop_first and len(pair_images) > 0 else 0
 
     model_blocks: List[str] = []
@@ -1379,7 +1312,6 @@ def _merge_pair_to_full(pair_images: List[Any],
     if M == 0:
         return model_blocks, active_one_based
 
-    # prepare per-frame segment indices aligned with included frames
     seg_idx_seq: List[int] = []
     if seg_indices_for_frames is not None and len(seg_indices_for_frames) == M:
         seg_idx_seq = seg_indices_for_frames[start_k:]
@@ -1389,49 +1321,38 @@ def _merge_pair_to_full(pair_images: List[Any],
     for kk, k in enumerate(range(M)):
         if k < start_k:
             continue
-        # 0..M-1 → t in [0,1]
         tfrac = 0.0 if M == 1 else (k / (M - 1.0))
 
-        # linear interpolation of full template coords (already same frame)
-        C = (1.0 - tfrac) * coordsA_aligned + tfrac * coordsB_aligned  # (N, 3)
+        C = (1.0 - tfrac) * coordsA_aligned + tfrac * coordsB_aligned
 
-        # build target template subset (for Kabsch) on matched atoms
         idx_sel = [j for j in range(len(match_tpl_idx)) if match_tpl_idx[j] >= 0]
         if len(idx_sel) >= 3:
-            Y = np.array([C[match_tpl_idx[j]] for j in idx_sel], dtype=float)   # template target (Å)
-            # pocket coords from Geometry (Bohr→Å), in same atom order as pocket_keys
+            Y = np.array([C[match_tpl_idx[j]] for j in idx_sel], dtype=float)
             P_bohr = np.array(pair_images[k].coords3d, dtype=float)
             P = P_bohr * BOHR2ANG
             P_sel = np.array([P[j] for j in idx_sel], dtype=float)
-            # align pocket->template on matched subset
             R, t = _kabsch_R_t(Y, P_sel)
-            Paligned = (P @ R) + t  # apply to all pocket atoms
-            # overwrite full coords for matched atoms
+            Paligned = (P @ R) + t
             for jj, pidx in enumerate(idx_sel):
                 full_i = match_tpl_idx[pidx]
                 if 0 <= full_i < Nfull:
                     C[full_i] = Paligned[pidx]
         else:
-            # too few points to align -> direct overwrite without alignment (best effort)
             P = np.array(pair_images[k].coords3d, dtype=float) * BOHR2ANG
             for j, full_i in enumerate(match_tpl_idx):
                 if full_i >= 0 and 0 <= full_i < Nfull and j < P.shape[0]:
                     C[full_i] = P[j]
 
-        # set coordinates & B-factors into structA
         for i, a in enumerate(atomsA):
             a.set_coord(C[i])
             a.set_bfactor(100.0 if i in active_full_idx else 0.0)
 
-        # REMARK lines
         remark_lines: List[str] = []
         remark_lines.append(f"PAIR_MERGE FRAC {tfrac:.6f}")
 
-        # POCKET_ATOM_INDICES: only first model if requested
         if include_pocket_indices_for_first_model and kk == 0:
             remark_lines.extend(_chunk_remark_indices([i for i in active_one_based], width=60))
 
-        # Segment annotation per model
         seg_idx = seg_idx_seq[kk] if kk < len(seg_idx_seq) else 0
         if seg_idx and seg_report_lookup is not None:
             rep = seg_report_lookup.get(seg_idx, None)
@@ -1440,17 +1361,14 @@ def _merge_pair_to_full(pair_images: List[Any],
                     f"MEP_SEG_INDEX {int(seg_idx):02d} TAG {rep.tag} KIND {rep.kind} "
                     f"DELTAE_BARRIER_KCAL {rep.barrier_kcal:.6f} DELTAE_KCAL {rep.delta_kcal:.6f}"
                 )
-                # For bridges, do not output bond details.
                 if rep.kind != "bridge" and rep.summary and rep.summary.strip() and rep.summary.strip() != "(no covalent changes detected)":
                     for ln in rep.summary.strip().splitlines():
                         remark_lines.append(f"SEG_BONDS {ln.strip()}")
             else:
                 remark_lines.append(f"MEP_SEG_INDEX {int(seg_idx):02d}")
 
-        # write one MODEL body (without MODEL/ENDMDL header/footer)
         model_blocks.append(_write_model_block(structA, remark_lines))
 
-    # Optionally save a per-pair file (not used in final; kept for backward compatibility when a path is given)
     if out_path is not None:
         with open(out_path, "w") as f:
             for m, blk in enumerate(model_blocks, start=1):
@@ -1468,35 +1386,20 @@ def _merge_final_and_write(final_images: List[Any],
                            ref_pdbs: Sequence[Path],
                            segments: List[SegmentReport],
                            out_dir: Path) -> None:
-    """
-    Merge the *final* pocket MEP into full templates and write:
-      - mep_w_ref.pdb (all frames)
-      - mep_w_ref_seg_XX.pdb (per segment with covalent changes)
-    Notes:
-      * REMARK 1 POCKET_ATOM_INDICES are written only in the very first MODEL of mep_w_ref.pdb
-      * Each MODEL gets REMARK 1 lines with segment index, tag, kind, ΔE‡, ΔE, and (if non-bridge) bond changes
-    """
     if len(ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--ref-pdb must have the same number of files as --input.")
+        raise click.BadParameter("--ref-pdb must be given for each --input.")
 
-    # Load & chain-align templates only once
     structs, aligned_coords, atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
-    # Build lookup: seg_index -> SegmentReport (1-based later)
     seg_lookup: Dict[int, SegmentReport] = {int(s.seg_index): s for s in segments if int(s.seg_index) > 0}
 
-    # Prepare grouping by pair_index
-    # Each image is expected to have .pair_index (0..n_pairs-1) set
-    # Also each image should have .mep_seg_index (1..Nsegments)
     n_pairs = len(pocket_inputs) - 1
-    # Make ordered groups of consecutive frames with the same pair_index
     groups: List[Tuple[int, List[Any]]] = []
     cur_idx = None
     cur_list: List[Any] = []
     for im in final_images:
         pi = getattr(im, "pair_index", None)
         if pi is None:
-            # fallback: clamp to 0
             pi = 0
         if cur_idx is None:
             cur_idx = int(pi)
@@ -1510,12 +1413,10 @@ def _merge_final_and_write(final_images: List[Any],
     if cur_list:
         groups.append((int(cur_idx), cur_list))
 
-    # Sanity clamp for pair indices
     for (pi, _) in groups:
         if not (0 <= pi < n_pairs):
             raise click.BadParameter(f"[merge] Illegal pair_index {pi} (n_pairs={n_pairs}).")
 
-    # Merge each group and collect model blocks; write POCKET_ATOM_INDICES only in very first model
     final_blocks: List[str] = []
     wrote_indices = False
 
@@ -1538,17 +1439,16 @@ def _merge_final_and_write(final_images: List[Any],
             coordsB_aligned=coordsB,
             keymapA=keymapA,
             keymapB=keymapB,
-            out_path=None,  # don't write per-pair file
+            out_path=None,
             drop_first=(gi > 0),
             seg_indices_for_frames=seg_indices_for_frames,
             seg_report_lookup=seg_lookup,
             include_pocket_indices_for_first_model=(not wrote_indices)
         )
         if blocks:
-            wrote_indices = True  # only first block gets POCKET_ATOM_INDICES
+            wrote_indices = True
             final_blocks.extend(blocks)
 
-    # Write the concatenated final
     final_path = out_dir / "mep_w_ref.pdb"
     with open(final_path, "w") as f:
         for m, blk in enumerate(final_blocks, start=1):
@@ -1558,18 +1458,15 @@ def _merge_final_and_write(final_images: List[Any],
         f.write("END\n")
     click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
 
-    # Per-segment merged PDBs: only for segments with covalent changes (kind='seg' and summary!=no changes)
     for s in segments:
         if s.kind == "bridge":
             continue
         if not s.summary or s.summary.strip() == "(no covalent changes detected)":
             continue
         seg_idx = int(s.seg_index)
-        # collect frames belonging to this segment
         seg_frames: List[Any] = [im for im in final_images if int(getattr(im, "mep_seg_index", 0) or 0) == seg_idx]
         if not seg_frames:
             continue
-        # assume all frames in a segment belong to the same pair_index
         pi_vals = sorted({int(getattr(im, "pair_index", 0)) for im in seg_frames})
         pi = pi_vals[0]
         pocket_ref = Path(pocket_inputs[pi])
@@ -1686,9 +1583,6 @@ def cli(
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
     # --- Minimal fix: robustly accept both styles for -i/--input and --ref-pdb ---
-    #     We re-scan sys.argv and collect all values that follow these options
-    #     until the next token that starts with '-'. This avoids mis-classifying
-    #     leftovers (ctx.args) and ensures a single '-i A B' / '--ref-pdb X Y' works.
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
         i = 0
@@ -1705,7 +1599,6 @@ def cli(
         return vals
 
     argv_all = sys.argv[1:]  # drop program name
-    # Reconstruct input paths if user used "single -i + multiple files"
     i_vals = _collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []
@@ -1719,7 +1612,6 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    # Reconstruct ref PDB paths similarly
     ref_vals = _collect_option_values(argv_all, ("--ref-pdb",))
     if ref_vals:
         ref_parsed: List[Path] = []
@@ -1742,7 +1634,6 @@ def cli(
         if len(input_paths) < 2:
             raise click.BadParameter("Provide at least two structures for --input in reaction order (reactant [intermediates ...] product).")
 
-        # Validate ref_pdb_paths length if provided
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
         if do_merge and (len(ref_pdb_paths) != len(input_paths)):
             raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
@@ -1770,11 +1661,10 @@ def cli(
         _deep_update(bond_cfg,  yaml_cfg.get("bond", {}))
         _deep_update(search_cfg,yaml_cfg.get("search", {}))
 
-        # CLI overrides
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
 
-        gs_cfg["max_nodes"] = int(max_nodes)           # base (mainly for display/back-compat)
+        gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
@@ -1783,13 +1673,11 @@ def cli(
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir
 
-        # Keep dump/out_dir consistent for single-structure optimizers
         lbfgs_cfg["dump"] = bool(dump)
         rfo_cfg["dump"]   = bool(dump)
         lbfgs_cfg["out_dir"] = out_dir
         rfo_cfg["out_dir"]   = out_dir
 
-        # normalize sopt kind
         sopt_kind = sopt_mode.strip().lower()
         if sopt_kind in ("light", "lbfgs"):
             sopt_kind = "lbfgs"
@@ -1800,13 +1688,9 @@ def cli(
         else:
             raise click.BadParameter(f"Unknown --sopt-mode '{sopt_mode}'.")
 
-        # finalize max_nodes for segment/bridge
-        # - If YAML(search.max_nodes_segment) is absent, use CLI --max-nodes
         if "max_nodes_segment" not in yaml_cfg.get("search", {}):
             search_cfg["max_nodes_segment"] = int(max_nodes)
-        # - For bridge, respect YAML/defaults (override via YAML search.max_nodes_bridge if needed)
 
-        # For display: resolved settings
         out_dir_path = Path(out_dir).resolve()
         echo_geom = _format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
@@ -1814,7 +1698,6 @@ def cli(
         echo_opt  = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
 
-        # pre_opt display
         click.echo(_pretty_block("geom", echo_geom))
         click.echo(_pretty_block("calc", echo_calc))
         click.echo(_pretty_block("gs",   echo_gs))
@@ -1826,10 +1709,6 @@ def cli(
 
         # --------------------------
         # 2) Prepare inputs
-        #    (a) Load structures (multi)
-        #    (b) Prepare calculator
-        #    (c) Pre-optimize endpoints (optional; all inputs)
-        #    (d) Freeze-aware Kabsch pre-alignment per adjacent pair
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -1842,19 +1721,16 @@ def cli(
             auto_freeze_links=bool(freeze_links_flag),
         )
 
-        # Shared UMA calculator (used across all optimizations and GSM)
         shared_calc = uma_pysis(**calc_cfg)
         for g in geoms:
             _ensure_calc_on_geom(g, shared_calc)
 
-        # pick first PDB path as reference (if any)
         ref_pdb_for_segments: Optional[Path] = None
         for p in p_list:
             if p.suffix.lower() == ".pdb":
                 ref_pdb_for_segments = p.resolve()
                 break
 
-        # Single-structure optimization before alignment (unless disabled)
         if pre_opt:
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
@@ -1865,7 +1741,6 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre_opt/--pre-opt False.")
 
-        # Per-pair freeze-aware Kabsch pre-alignment (transform decided on selection → applied to all atoms)
         for i in range(len(geoms) - 1):
             gi, gj = geoms[i], geoms[i + 1]
             N = int(np.asarray(gi.coords3d).shape[0])
@@ -1884,18 +1759,15 @@ def cli(
         # 3) Run recursive search for each adjacent pair and incrementally stitch
         # --------------------------
         click.echo("\n=== Multistep MEP search (multi-structure) started ===\n")
-        seg_counter = [0]  # counter (by reference)
+        seg_counter = [0]
 
-        # GS config for bridges (max_nodes_bridge, climb=False)
         bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 10))
         gs_bridge_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=bridge_max_nodes, climb=False, climb_lanczos=False)
 
-        # containers for incremental stitching
         combined_imgs: List[Any] = []
         combined_Es: List[float] = []
         seg_reports_all: List[SegmentReport] = []
 
-        # builder for tail→head recursive segments during stitching across pairs
         def _segment_builder_for_pairs(tail_g, head_g, _tag: str) -> CombinedPath:
             sub = _build_multistep_path(
                 tail_g, head_g,
@@ -1908,7 +1780,7 @@ def cli(
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag="B",
-                pair_index=None,  # this builder is only used if covalent changes at pair seam: in practice same next pair will be used after
+                pair_index=None,
             )
             return sub
 
@@ -1927,7 +1799,7 @@ def cli(
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag=pair_tag,
-                pair_index=i,  # annotate images with this pair_index for merging
+                pair_index=i,
             )
 
             if i == 0:
@@ -1935,7 +1807,6 @@ def cli(
                 combined_Es = list(pair_path.energies)
                 seg_reports_all.extend(pair_path.segments)
             else:
-                # connect previous result + current pair as two parts (insert bridge/recursive segments if needed)
                 parts = [(combined_imgs, combined_Es), (pair_path.images, pair_path.energies)]
                 combined_imgs, combined_Es = _stitch_paths(
                     parts=parts,
@@ -1949,10 +1820,9 @@ def cli(
                     ref_pdb_path=ref_pdb_for_segments,
                     bond_cfg=bond_cfg,
                     segment_builder=_segment_builder_for_pairs,
-                    segments_out=seg_reports_all,  # add any new segment summaries immediately after insertion (bridges in between)
-                    bridge_pair_index=i,  # bridges at seam i-1/i belong to templates (i,i+1) => pair index i
+                    segments_out=seg_reports_all,
+                    bridge_pair_index=i,
                 )
-                # After stitching, append the current pair's own segment summaries (so they follow any inserted ones)
                 seg_reports_all.extend(pair_path.segments)
 
         click.echo("\n=== Multistep MEP search (multi-structure) finished ===\n")
@@ -1962,7 +1832,6 @@ def cli(
         # --------------------------
         # 4) Outputs
         # --------------------------
-        # Assign final segment indices (1-based) and propagate to images
         for idx, srep in enumerate(combined_all.segments, 1):
             srep.seg_index = idx
         tag_to_index = {s.tag: int(s.seg_index) for s in combined_all.segments}
@@ -1974,19 +1843,16 @@ def cli(
                 except Exception:
                     pass
 
-        # Top-level final pocket trajectory (XYZ/TRJ + optional PDB)
         final_trj = out_dir_path / "mep.trj"
         _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
         click.echo(f"[write] Wrote '{final_trj}'.")
 
-        # final MEP energy figure
         try:
             run_trj2fig(final_trj, [out_dir_path / "energy.png"], unit="kcal", reference="init", reverse_x=False)
             click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'energy.png'}'")
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
-        # If a reference PDB exists, also write a PDB for the final pocket MEP
         if ref_pdb_for_segments is not None:
             try:
                 final_pdb = out_dir_path / "mep.pdb"
@@ -1995,7 +1861,6 @@ def cli(
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final MEP to PDB: {e}", err=True)
 
-        # Full-system merge when --ref-pdb is provided
         if do_merge:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
             _merge_final_and_write(
@@ -2007,7 +1872,6 @@ def cli(
             )
             click.echo("\n=== Full-system merge finished ===\n")
 
-        # Run summary YAML (MEP-only info)
         summary = {
             "out_dir": str(out_dir_path),
             "n_images": len(combined_all.images),
@@ -2016,7 +1880,7 @@ def cli(
                 {
                     "index": int(s.seg_index),
                     "tag": s.tag,
-                    "kind": s.kind,  # "seg" or "bridge"
+                    "kind": s.kind,
                     "barrier_kcal": float(s.barrier_kcal),
                     "delta_kcal": float(s.delta_kcal),
                     "bond_changes": (s.summary if (s.kind != "bridge") else "")
@@ -2030,23 +1894,19 @@ def cli(
         # --------------------------
         # 5) Console summary
         # --------------------------
-        # Overall (first vs last image) covalent changes
         try:
             overall_changed, overall_summary = _has_bond_change(combined_all.images[0], combined_all.images[-1], bond_cfg)
         except Exception:
             overall_changed, overall_summary = False, ""
 
-        # Segment-by-segment report (in output order, with bridges interleaved)
         click.echo("\n=== MEP Summary ===\n")
 
-        # overall covalent changes
         click.echo("\n[overall] Covalent-bond changes between first and last image:")
         if overall_changed and overall_summary.strip():
             click.echo(textwrap.indent(overall_summary.strip(), prefix="  "))
         else:
             click.echo("  (no covalent changes detected)")
 
-        # per-segment summaries (bridges included, without bond lines)
         if combined_all.segments:
             click.echo("\n[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:")
             for i, seg in enumerate(combined_all.segments, 1):
@@ -2057,7 +1917,122 @@ def cli(
         else:
             click.echo("\n[segments] (no segment reports)")
 
-        # elapsed time
+        # --------------------------
+        # 6) Energy diagram from bond-change segments (state labeling; **compressed**)
+        # --------------------------
+        try:
+            # Map each segment index -> list of frame indices
+            frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
+            seg_to_frames: Dict[int, List[int]] = {}
+            for ii, sidx in enumerate(frame_seg_indices):
+                if sidx <= 0:
+                    continue
+                seg_to_frames.setdefault(int(sidx), []).append(ii)
+
+            # Build TS groups (bond-change segments start a group)
+            ts_groups: List[Dict[str, Any]] = []
+            ts_count = 0
+            current: Optional[Dict[str, Any]] = None
+
+            for s in combined_all.segments:
+                idxs = seg_to_frames.get(int(s.seg_index), [])
+                if not idxs:
+                    continue
+
+                if s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+                    # New TS group
+                    ts_count += 1
+                    imax = max(idxs, key=lambda j: combined_all.energies[j])
+                    ts_e = float(combined_all.energies[imax])
+                    first_im_e = float(combined_all.energies[idxs[-1]])
+                    current = {
+                        "ts_label": f"TS{ts_count}",
+                        "ts_energy": ts_e,
+                        "first_im_energy": first_im_e,
+                        "tail_im_energy": first_im_e,
+                        "has_extra": False,
+                        "index": ts_count,
+                    }
+                    ts_groups.append(current)
+                else:
+                    # Kink/bridge: fold into current group as "extra" and update tail energy
+                    if current is not None:
+                        current["tail_im_energy"] = float(combined_all.energies[idxs[-1]])
+                        current["has_extra"] = True
+                    else:
+                        # pre-TS region without bond change → ignore
+                        pass
+
+            # Compose compressed labels/energies & human-readable chain
+            labels: List[str] = ["R"]
+            energies_eh: List[float] = [float(combined_all.energies[0])]
+            chain_tokens: List[str] = ["R"]
+
+            for i, g in enumerate(ts_groups, start=1):
+                last_group = (i == len(ts_groups))
+
+                # TS
+                labels.append(g["ts_label"])
+                energies_eh.append(g["ts_energy"])
+                chain_tokens.extend(["-->", g["ts_label"]])
+
+                # For the **last** TS group: compress directly to P (no IMs)
+                if last_group:
+                    continue
+
+                # IM1 (always keep)
+                labels.append(f"IM{i}_1")
+                energies_eh.append(g["first_im_energy"])
+                chain_tokens.extend(["-->", f"IM{i}_1"])
+
+                # IM2 (keep only one, representing all extra kink/bridge before next TS)
+                if g["has_extra"]:
+                    labels.append(f"IM{i}_2")
+                    energies_eh.append(g["tail_im_energy"])
+                    chain_tokens.extend(["-|-->", f"IM{i}_2"])
+
+            # Product
+            labels.append("P")
+            energies_eh.append(float(combined_all.energies[-1]))
+            chain_tokens.extend(["-->", "P"])
+
+            # Convert to kcal/mol relative to R
+            e0 = energies_eh[0]
+            energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
+
+            # Log exact inputs to build_energy_diagram, and the human-readable chain
+            labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
+            energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
+            click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
+            click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
+
+            fig = build_energy_diagram(
+                energies=energies_kcal,
+                labels=labels,
+                ylabel="ΔE (kcal/mol)",
+                baseline=True,
+                showgrid=False,
+            )
+            html_path = out_dir_path / "energy_diagram.html"
+            fig.write_html(str(html_path))
+            click.echo(f"[diagram] Wrote energy diagram (HTML) → '{html_path}'")
+
+            try:
+                png_path = out_dir_path / "energy_diagram.png"
+                fig.write_image(str(png_path), scale=2)
+                click.echo(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'")
+            except Exception as e:
+                click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}", err=True)
+
+            chain_text = " ".join(chain_tokens)
+            click.echo(f"[diagram] State label sequence: {chain_text}")
+
+        except Exception as e:
+            click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
+
+        # --------------------------
+        # 7) Elapsed time
+        # --------------------------
         elapsed = time.perf_counter() - time_start
         hh = int(elapsed // 3600)
         mm = int((elapsed % 3600) // 60)
