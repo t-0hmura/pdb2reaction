@@ -60,6 +60,10 @@ Charge summary
 * **ION** supplies charges for common ions (if `resname` matches, e.g., ZN, MG, FE2).
 * **Waters** (HOH/WAT/TIP3/SOL) are **0**.
 * **Unknown residues** (not in AMINO_ACIDS/ION/WATER) are **0** unless `--ligand_charge` is given.
+  - `--ligand_charge <number>`: treat as the **total** charge for unknown residues in the pocket
+    (preferentially distributed across **unknown substrate** residues, else across all unknowns).
+  - `--ligand_charge "RES1:Q1,RES2:Q2,..."`: set **per‑resname** charges (e.g., `"GPP:-3,MMT:-1"`).
+    In this **mapping mode**, any other unknown residues remain **0**.
 * **Multi‑structure note:** the **charge summary is computed on the first input PDB**.
 
 Multi‑structure mode
@@ -81,7 +85,7 @@ Single structure:
                [-r 2.6] [--radius_het2het 2.6]
                [--include_H2O true|false] [--exclude_backbone true|false]
                [--add_linkH true|false] [--selected_resn '123,124']
-               [--ligand_charge Q]
+               [--ligand_charge Q | --ligand_charge 'RES1:Q1,RES2:Q2']
                [-v]
 
 Multiple structures → single multi‑MODEL:
@@ -327,9 +331,10 @@ def parse_args() -> argparse.Namespace:
               "insertion codes allowed: '123A' / 'A:123A').")
     )
     p.add_argument(
-        "--ligand_charge", type=float, default=None,
-        help=("If provided, use this as the **total** charge for residues not present in "
-              "AMINO_ACIDS/ION within the pocket. ")
+        "--ligand_charge", type=str, default=None,
+        help=("Either a single **number** giving the **total** charge to distribute across unknown residues "
+              "(preferring unknown substrate), or a comma/space‑separated **per‑resname** list like "
+              "'GPP:-3,MMT:-1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
         "-v", "--verbose", action="store_true", default=True,
@@ -1030,10 +1035,56 @@ def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
     res = structure[fid[1]][fid[2]].child_dict[fid[3]]
     return _residue_key_from_res(res)
 
+# ---- helper for parsing --ligand_charge (number or 'RES:Q' mapping) ----
+def _parse_ligand_charge_option(ligand_charge: float | str | Dict[str, float] | None
+                                ) -> Tuple[Optional[float], Optional[Dict[str, float]]]:
+    """
+    Returns
+    -------
+    (total_charge, mapping)
+      total_charge : float | None
+      mapping      : dict[RESNAME -> float] | None
+    """
+    if ligand_charge is None:
+        return None, None
+    if isinstance(ligand_charge, (int, float)):
+        return float(ligand_charge), None
+    if isinstance(ligand_charge, dict):
+        mapping = {str(k).upper(): float(v) for k, v in ligand_charge.items()}
+        return None, mapping
+    if isinstance(ligand_charge, str):
+        s = ligand_charge.strip()
+        if not s:
+            return None, None
+        # try numeric
+        try:
+            return float(s), None
+        except ValueError:
+            pass
+        # mapping: tokens "RES:Q"
+        tokens = [t for t in re.split(r"[,\s]+", s) if t]
+        mapping: Dict[str, float] = {}
+        for tok in tokens:
+            if ":" not in tok:
+                raise ValueError(f"Invalid --ligand_charge token '{tok}'. Use 'RES:Q' (e.g., GPP:-3) or a number (e.g., -3).")
+            res, qtxt = tok.split(":", 1)
+            resname = res.strip().upper()
+            if not resname:
+                raise ValueError(f"Invalid --ligand_charge token '{tok}': empty residue name.")
+            try:
+                qval = float(qtxt.strip())
+            except ValueError:
+                raise ValueError(f"Invalid --ligand_charge token '{tok}': '{qtxt}' is not a number.")
+            mapping[resname] = qval
+        if not mapping:
+            raise ValueError("Empty --ligand_charge mapping.")
+        return None, mapping
+    raise TypeError(f"Unsupported type for ligand_charge: {type(ligand_charge)!r}")
+
 def compute_charge_summary(structure,
                            selected_ids: Set[Tuple],
                            substrate_ids: Set[Tuple],
-                           ligand_charge: Optional[float] = None) -> Dict[str, Any]:
+                           ligand_charge: float | str | Dict[str, float] | None = None) -> Dict[str, Any]:
     """
     Compute pocket charge summary.
 
@@ -1045,19 +1096,20 @@ def compute_charge_summary(structure,
         Residues included in the pocket.
     substrate_ids : set[tuple]
         Residues designated as substrate.
-    ligand_charge : float | None
-        Total charge to assign across **unknown residues** (not in AMINO_ACIDS/ION).
+    ligand_charge : float | str | dict[str,float] | None
+        - float: total charge to assign across **unknown residues** (preferring unknown substrate).
+        - str  : numeric string (total) or mapping like "GPP:-3,MMT:-1" (per‑resname).
+        - dict : mapping {RESNAME: charge}. In mapping mode, other unknown residues remain 0.
 
     Returns
     -------
     dict with keys:
       - total_charge : float
-      - protein_charge : float               (net charge from amino acids in pocket)
-      - ligand_total_charge : float          (net charge from unknown residues/ligands)
-      - ion_total_charge : float             (sum of ion charges)
-      - ion_charges : list[(str tag, float)] (each ion printed individually)
-      - per_residue : list[(str tag, float charge)]      # kept for API compatibility
-      - per_residue_map : dict[ResidueKey -> float]      # kept for API compatibility
+      - protein_charge : float
+      - ligand_total_charge : float
+      - ion_total_charge : float
+      - ion_charges : list[(str tag, float)]
+      - unknown_residue_charges : dict[str -> float]  # for verbose one‑line log
     """
     per_map: Dict[ResidueKey, float] = {}
     aa_charge = 0.0
@@ -1090,21 +1142,44 @@ def compute_charge_summary(structure,
         per_map[key] = q
         total += q
 
-    # Second pass: ligand_charge override for unknown residues (if any)
-    if ligand_charge is not None:
+    # Apply --ligand_charge if provided
+    total_spec, mapping_spec = _parse_ligand_charge_option(ligand_charge)
+
+    if total_spec is not None:
+        # Original behavior: distribute total across unknown substrate if present, else across all unknowns
         targets = unknown_substrate_fids if unknown_substrate_fids else unknown_fids
         if targets:
-            per_res_val = float(ligand_charge) / float(len(targets))
+            per_res_val = float(total_spec) / float(len(targets))
             for fid in targets:
                 key = _residue_key_from_fid(structure, fid)
                 per_map[key] = per_res_val
+            # recompute totals
             total = sum(per_map.values())
             aa_charge = sum(q for k, q in per_map.items() if k[4] in AMINO_ACIDS)
+    elif mapping_spec is not None:
+        # New behavior: per‑resname mapping. Unspecified unknown residues remain 0.
+        for fid in unknown_fids:
+            res = structure[fid[1]][fid[2]].child_dict[fid[3]]
+            rn = res.get_resname().upper()
+            if rn in mapping_spec:
+                key = _residue_key_from_fid(structure, fid)
+                per_map[key] = float(mapping_spec[rn])
+        # recompute totals
+        total = sum(per_map.values())
+        aa_charge = sum(q for k, q in per_map.items() if k[4] in AMINO_ACIDS)
 
     # Net ligand and ion charges
     unknown_keys = {_residue_key_from_fid(structure, fid) for fid in unknown_fids}
     ligand_total = sum(per_map[k] for k in unknown_keys)
     ion_total = sum(q for _, q in ion_entries)
+
+    # Build per‑resname mapping for unknown residues (after applying any overrides)
+    unknown_residue_charges: Dict[str, float] = {}
+    for fid in unknown_fids:
+        res = structure[fid[1]][fid[2]].child_dict[fid[3]]
+        rn = res.get_resname().upper()
+        key = _residue_key_from_fid(structure, fid)
+        unknown_residue_charges[rn] = float(per_map[key])
 
     return {
         "total_charge": float(total),
@@ -1112,6 +1187,7 @@ def compute_charge_summary(structure,
         "ligand_total_charge": float(ligand_total),
         "ion_total_charge": float(ion_total),
         "ion_charges": [(tag, float(q)) for tag, q in ion_entries],
+        "unknown_residue_charges": unknown_residue_charges,
     }
 
 def log_charge_summary(prefix: str,
@@ -1122,6 +1198,15 @@ def log_charge_summary(prefix: str,
     ligand = summary.get("ligand_total_charge", 0.0)
     ion_list: List[Tuple[str, float]] = summary.get("ion_charges", [])
     ion_total = summary.get("ion_total_charge", sum(q for _, q in ion_list))
+    unk_map: Dict[str, float] = summary.get("unknown_residue_charges", {}) or {}
+
+    # ---- New one‑line verbose output of specified/unknown residue charges ----
+    # Example: "GPP: -3, MMT: -1, OPP: 0"
+    if unk_map:
+        items = ", ".join(f"{res}: {q:g}" for res, q in sorted(unk_map.items()))
+        logging.info("%s Each ligand charges: %s", prefix, items)
+    else:
+        logging.info("%s Each ligand residue charges: (none)", prefix)
 
     logging.info("%s Net protein charge: %+g", prefix, protein)
     logging.info("%s Net ligand charge: %+g", prefix, ligand)
@@ -1709,7 +1794,7 @@ def extract_api(complex_pdb: List[str],
                    exclude_backbone: bool = True,
                    add_linkH: bool = True,
                    selected_resn: str = "",
-                   ligand_charge: Optional[float] = None,
+                   ligand_charge: Optional[float | str | Dict[str, float]] = None,
                    verbose: bool = False) -> Dict[str, Any]:
     """
     Convenience API for programmatic use.
@@ -1726,7 +1811,7 @@ def extract_api(complex_pdb: List[str],
     radius : float
         Atom–atom cutoff (Å) for inclusion around substrate atoms.
     radius_het2het : float
-        Independent hetero–hetero cutoff (Å) for non‑C/H pairs.
+        Independent hetero‑hetero cutoff (Å) for non‑C/H pairs.
     include_H2O : bool
         Include waters in the selection.
     exclude_backbone : bool
@@ -1735,8 +1820,9 @@ def extract_api(complex_pdb: List[str],
         Add link‑H atoms for cut bonds (carbon‑only) and append as HL/LKH HETATM records.
     selected_resn : str
         Additional residues to force‑include (comma/space separated).
-    ligand_charge : float | None
-        Total charge of unknown residues (preferring unknown substrate).
+    ligand_charge : float | str | dict[str,float] | None
+        Either a total charge (float/str) for unknown residues (prefer unknown substrate),
+        or a mapping like {'GPP': -3, 'MMT': -1}. In mapping mode, other unknown residues remain 0.
     verbose : bool
         Enable INFO logging.
 
