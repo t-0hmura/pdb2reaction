@@ -87,10 +87,10 @@ GS_KW: Dict[str, Any] = {
 # StringOptimizer (optimization control)
 OPT_KW: Dict[str, Any] = {
     "type": "string",           # Tag for bookkeeping
-    "stop_in_when_full": 1000,  # After fully grown, stop after N additional cycles
+    "stop_in_when_full": 100,  # After fully grown, stop after N additional cycles
     "align": False,             # Keep internal align disabled; use external Kabsch alignment instead
     "scale_step": "global",     # "global" | "per_image"
-    "max_cycles": 1000,
+    "max_cycles": 100,
     "dump": False,
     "dump_restart": False,
     "reparam_thresh": 1e-3,     # Convergence after reparam (RMS of step)

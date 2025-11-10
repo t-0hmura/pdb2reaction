@@ -1031,7 +1031,14 @@ class HessianDimer:
             torch.cuda.empty_cache()
 
         # (2) Loose loop
-        print("Loose Dimer Loop...")
+        if self.root!=0:
+            print("[WARNING] root != 0. Use this 'root' in first dimer loop")
+            print(f"Dimer Loop with initial direction from mode {self.root}...")
+            self.root==0
+            self.thresh_loose = self.thresh
+        else:
+            print("Loose Dimer Loop...")
+
         self._dimer_loop(self.thresh_loose)
 
         # (3) Update mode & normal loop

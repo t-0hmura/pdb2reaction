@@ -11,6 +11,7 @@ import numpy as np
 from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
 )
+from pysisyphus.constants import BOHR2ANG  # ← 追加：長さをÅ表示するため
 
 Pair = Tuple[int, int]
 
@@ -119,8 +120,29 @@ def _bond_str(i: int, j: int, elems: List[str], one_based: bool = True) -> str:
 
 
 def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) -> str:
+    """
+    結合の形成/解離を列挙。さらに、対応する結合長の変化を
+    'x.xxx Å --> y.yyy Å' 形式で出力する（Å表示）。
+    """
     elems = [a.capitalize() for a in geom.atoms]
     lines: List[str] = []
+
+    # 距離行列（Bohr）→ Å に変換して使う（利用可能な場合のみ）
+    D1 = result.distances_1
+    D2 = result.distances_2
+    have_lengths = (
+        isinstance(D1, np.ndarray)
+        and isinstance(D2, np.ndarray)
+        and D1.shape == D2.shape
+    )
+
+    def _len_str(i: int, j: int) -> str:
+        if not have_lengths:
+            return ""
+        # coords3d は Bohr 前提。Å に変換。
+        d1 = float(D1[i, j]) * BOHR2ANG
+        d2 = float(D2[i, j]) * BOHR2ANG
+        return f" : {d1:.3f} Å --> {d2:.3f} Å"
 
     def pairs_to_lines(title: str, pairs: Set[Pair]):
         if not pairs:
@@ -128,7 +150,7 @@ def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) ->
             return
         lines.append(f"{title} ({len(pairs)}):")
         for i, j in sorted(pairs):
-            lines.append(f"  - {_bond_str(i, j, elems, one_based)}")
+            lines.append(f"  - {_bond_str(i, j, elems, one_based)}{_len_str(i, j)}")
 
     pairs_to_lines("Bond formed", result.formed_covalent)
     pairs_to_lines("Bond broken", result.broken_covalent)

@@ -167,9 +167,9 @@ def _round_charge_with_note(q: float) -> int:
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For pocket PDB input, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=10, show_default=True,
+@click.option("--max-nodes", type=int, default=20, show_default=True,
               help="Max internal nodes for **segment** GSM (String has max_nodes+2 images including endpoints).")
-@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum GSM optimization cycles.")
+@click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Enable transition-state climbing after growth for the **first** segment in each pair.")
 @click.option("--sopt-mode", type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),

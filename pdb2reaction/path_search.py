@@ -62,13 +62,17 @@ Outputs
 -------
 out_dir/
   ├─ summary.yaml                 : run summary (MEP-only info; no input/settings dump)
-  ├─ mep.trj                      : concatenated MEP (energy on line 2 in each XYZ block)
-  ├─ mep.pdb                      : produced when inputs are PDB (pocket系)
-  ├─ mep_w_ref.pdb               : full-system MEP merged from pocket and templates (when --ref-pdb is used)
-  ├─ mep_w_ref_seg_XX.pdb        : per-segment merged MEPs for segments with covalent changes (when --ref-pdb)
-  ├─ energy.png                  : per-image energy profile (from trj2fig; ΔE vs image index)
-  ├─ energy_diagram.html         : state-level energy diagram (Plotly, ΔE from R in kcal/mol)
-  ├─ energy_diagram.png          : PNG export of the energy diagram (if 'kaleido' is available)
+  ├─ mep.trj **or** mep.pdb       : final MEP; if inputs are XYZ → write `mep.trj`; if inputs are PDB → write **only** `mep.pdb`
+  ├─ mep_w_ref.pdb                : full-system MEP merged from pocket and templates (when --ref-pdb is used)
+  ├─ mep_w_ref_seg_XX.pdb         : per-segment merged MEPs **only for segments with covalent changes** (when --ref-pdb)
+  ├─ mep_seg_XX.trj               : pocket-only per-segment trajectory **only for segments with covalent changes**
+  ├─ mep_seg_XX.pdb               : pocket-only per-segment PDB (from .trj; when pocket PDB is available)
+  ├─ hei_seg_XX.trj               : **(Changed)** pocket HEI **only for segments with covalent changes**
+  ├─ hei_seg_XX.pdb               : **(Changed)** pocket PDB HEI **only for segments with covalent changes** (when pocket PDB is available)
+  ├─ hei_w_ref_seg_XX.pdb         : **(Changed)** merged PDB HEI **only for segments with covalent changes** (when --ref-pdb)
+  ├─ mep_plot.png                 : per-image energy profile (from trj2fig; ΔE vs image index)
+  ├─ energy_diagram.html          : state-level energy diagram (Plotly, ΔE from R in kcal/mol)
+  ├─ energy_diagram.png           : PNG export of the energy diagram (if 'kaleido' is available)
   └─ segments/
       ├─ seg_000_gsm/ ...         : initial GSM for the first segment
       ├─ seg_000_left_opt/ ...    : single-structure optimization of HEI−1
@@ -150,7 +154,7 @@ CALC_KW: Dict[str, Any] = {
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 10,            # including endpoints: total images = max_nodes + 2
+    "max_nodes": 20,            # including endpoints: total images = max_nodes + 2
     "perp_thresh": 5e-3,
     "reparam_check": "rms",     # "rms" | "norm"
     "reparam_every": 1,
@@ -168,10 +172,10 @@ GS_KW: Dict[str, Any] = {
 # StringOptimizer (GSM optimization control)
 OPT_KW: Dict[str, Any] = {
     "type": "string",
-    "stop_in_when_full": 1000,  # tolerance after fully grown
+    "stop_in_when_full": 100,   # tolerance after fully grown
     "align": False,             # do not use StringOptimizer’s align
     "scale_step": "global",     # "global" | "per_image"
-    "max_cycles": 1000,
+    "max_cycles": 100,
     "dump": False,
     "dump_restart": False,
     "reparam_thresh": 1e-3,
@@ -243,8 +247,8 @@ BOND_KW: Dict[str, Any] = {
 # Global search control
 SEARCH_KW: Dict[str, Any] = {
     "max_depth": 10,               # maximum recursive depth
-    "stitch_rmsd_thresh": 1.0e-4,  # RMSD (Å) threshold to treat endpoints as duplicates during stitching
-    "bridge_rmsd_thresh": 1.0e-4,  # if endpoint mismatch exceeds this, run a bridge GSM
+    "stitch_rmsd_thresh": 0.001,   # RMSD (Å) threshold to treat endpoints as duplicates during stitching
+    "bridge_rmsd_thresh": 0.010,   # if endpoint mismatch exceeds this, run a bridge GSM
     "rmsd_align": True,            # use Kabsch alignment for RMSD
     "max_nodes_segment": 20,
     "max_nodes_bridge": 5,
@@ -422,17 +426,6 @@ def _rmsd_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] =
     return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), align=align, indices=indices)
 
 
-def _orient_two_by_closeness(a, b, end1, end2, align: bool = True) -> Tuple:
-    """Return (left, right) where left is closer to a and right is closer to b."""
-    r1a = _rmsd_between(end1, a, align)
-    r2a = _rmsd_between(end2, a, align)
-    if r1a <= r2a:
-        left, right = end1, end2
-    else:
-        left, right = end2, end1
-    return left, right
-
-
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     """Return (bool, summary) indicating whether covalent bonds form/break between x and y."""
     res = compare_structures(
@@ -522,13 +515,26 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
 
     rmsd_before = _rmsd(P_sel, Q_sel)
 
+    # Solve Kabsch on the selection only
     R, t = _kabsch_R_t(P_sel, Q_sel)
-    Q_aligned = (Q @ R) + t  # apply to all atoms
 
-    geom_to_align.set_coords(Q_aligned.reshape(-1))
+    # Apply the rigid-body transform to ALL atoms
+    Q_aligned = (Q @ R) + t
+
+    # set_coords() は凍結原子を元位置へ戻すため、この一回に限って freeze を無効化し、
+    # 変換を全原子へ適用する。その後ただちに凍結設定を復元する。
+    old_freeze = np.array(getattr(geom_to_align, "freeze_atoms", []), dtype=int)
+    try:
+        geom_to_align.freeze_atoms = np.array([], dtype=int)
+        geom_to_align.set_coords(Q_aligned.reshape(-1), cartesian=True)
+    finally:
+        geom_to_align.freeze_atoms = old_freeze
+    # --- /FIX ---
+
     rmsd_after = _rmsd(P[use_mask], Q_aligned[use_mask])
 
     return rmsd_before, rmsd_after, n_used
+
 
 
 # ---------- GS configuration utility (minimal) ----------
@@ -713,8 +719,8 @@ def _run_gsm_between(
     # Energy plot for the segment
     try:
         if wrote_with_energy:
-            run_trj2fig(final_trj, [seg_dir / "energy.png"], unit="kcal", reference="init", reverse_x=False)
-            click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'energy.png'}'")
+            run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
         else:
             click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
     except Exception as e:
@@ -733,7 +739,7 @@ def _run_gsm_between(
         if len(lines) >= 2 and lines[0].strip().isdigit():
             lines[1] = f"{hei_E:.12f}"
             s = "\n" if s.endswith("\n") else ""
-            s = "".join([lines[0], "\n", f"{hei_E:.12f}", "\n"] + lines[2:] + ["\n"])
+            s = "\n".join([lines[0], f"{hei_E:.12f}"] + lines[2:] + [""])
         with open(hei_xyz, "w") as f:
             f.write(s)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
@@ -1025,10 +1031,8 @@ def _build_multistep_path(
     left_img = gsm0.images[hei - 1]
     right_img = gsm0.images[hei + 1]
 
-    left_opt = _optimize_single(left_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_left", ref_pdb_path=ref_pdb_path)
-    right_opt = _optimize_single(right_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_right", ref_pdb_path=ref_pdb_path)
-
-    left_end, right_end = _orient_two_by_closeness(gA, gB, left_opt, right_opt, align=bool(search_cfg.get("rmsd_align", True)))
+    left_end = _optimize_single(left_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_left", ref_pdb_path=ref_pdb_path)
+    right_end = _optimize_single(right_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_right", ref_pdb_path=ref_pdb_path)
 
     try:
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
@@ -1458,15 +1462,15 @@ def _merge_final_and_write(final_images: List[Any],
         f.write("END\n")
     click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
 
+    # Per-segment merged MEPs (bond-change segments only) + **HEI merged only for bond-change segments**
     for s in segments:
-        if s.kind == "bridge":
-            continue
-        if not s.summary or s.summary.strip() == "(no covalent changes detected)":
-            continue
+        # Collect frames for this segment
         seg_idx = int(s.seg_index)
         seg_frames: List[Any] = [im for im in final_images if int(getattr(im, "mep_seg_index", 0) or 0) == seg_idx]
         if not seg_frames:
             continue
+
+        # Determine pair index for this segment (assume consistent within the segment)
         pi_vals = sorted({int(getattr(im, "pair_index", 0)) for im in seg_frames})
         pi = pi_vals[0]
         pocket_ref = Path(pocket_inputs[pi])
@@ -1476,30 +1480,66 @@ def _merge_final_and_write(final_images: List[Any],
         coordsB = aligned_coords[pi+1]
         keymapA = keymaps[pi]
         keymapB = keymaps[pi+1]
-        seg_indices_for_frames = [seg_idx] * len(seg_frames)
-        blocks, _ = _merge_pair_to_full(
-            pair_images=seg_frames,
-            pocket_ref_pdb=pocket_ref,
-            structA=structA,
-            structB=structB,
-            coordsA_aligned=coordsA,
-            coordsB_aligned=coordsB,
-            keymapA=keymapA,
-            keymapB=keymapB,
-            out_path=None,
-            drop_first=False,
-            seg_indices_for_frames=seg_indices_for_frames,
-            seg_report_lookup=seg_lookup,
-            include_pocket_indices_for_first_model=True,
-        )
-        out_seg = out_dir / f"mep_w_ref_seg_{seg_idx:02d}.pdb"
-        with open(out_seg, "w") as f:
-            for m, blk in enumerate(blocks, start=1):
-                f.write(f"MODEL     {m}\n")
-                f.write(blk)
-                f.write("ENDMDL\n")
-            f.write("END\n")
-        click.echo(f"[merge] Wrote per-segment merged trajectory → '{out_seg}'")
+
+        # Existing output: per-segment merged MEP only when bond-changes are present (keep behavior)
+        if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+            seg_indices_for_frames = [seg_idx] * len(seg_frames)
+            blocks, _ = _merge_pair_to_full(
+                pair_images=seg_frames,
+                pocket_ref_pdb=pocket_ref,
+                structA=structA,
+                structB=structB,
+                coordsA_aligned=coordsA,
+                coordsB_aligned=coordsB,
+                keymapA=keymapA,
+                keymapB=keymapB,
+                out_path=None,
+                drop_first=False,
+                seg_indices_for_frames=seg_indices_for_frames,
+                seg_report_lookup=seg_lookup,
+                include_pocket_indices_for_first_model=True,
+            )
+            out_seg = out_dir / f"mep_w_ref_seg_{seg_idx:02d}.pdb"
+            with open(out_seg, "w") as f:
+                for m, blk in enumerate(blocks, start=1):
+                    f.write(f"MODEL     {m}\n")
+                    f.write(blk)
+                    f.write("ENDMDL\n")
+                f.write("END\n")
+            click.echo(f"[merge] Wrote per-segment merged trajectory → '{out_seg}'")
+
+        # **Changed**: per-segment HEI merged to reference **only for segments with covalent changes**
+        if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+            try:
+                # use energies stored on images
+                energies_eh = [float(getattr(im, "energy")) for im in seg_frames]
+                imax = int(np.argmax(np.array(energies_eh, dtype=float)))
+                hei_frame = seg_frames[imax]
+                blocks_hei, _ = _merge_pair_to_full(
+                    pair_images=[hei_frame],
+                    pocket_ref_pdb=pocket_ref,
+                    structA=structA,
+                    structB=structB,
+                    coordsA_aligned=coordsA,
+                    coordsB_aligned=coordsB,
+                    keymapA=keymapA,
+                    keymapB=keymapB,
+                    out_path=None,
+                    drop_first=False,
+                    seg_indices_for_frames=[seg_idx],
+                    seg_report_lookup=seg_lookup,
+                    include_pocket_indices_for_first_model=True,
+                )
+                out_hei = out_dir / f"hei_w_ref_seg_{seg_idx:02d}.pdb"
+                with open(out_hei, "w") as f:
+                    for m, blk in enumerate(blocks_hei, start=1):
+                        f.write(f"MODEL     {m}\n")
+                        f.write(blk)
+                        f.write("ENDMDL\n")
+                    f.write("END\n")
+                click.echo(f"[merge] Wrote merged HEI for segment → '{out_hei}'")
+            except Exception as e:
+                click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}", err=True)
 
 
 # -----------------------------------------------
@@ -1529,10 +1569,10 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For PDB input, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=10, show_default=True,
+@click.option("--max-nodes", type=int, default=20, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
-@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum GSM optimization cycles.")
+@click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Enable transition-state search after path growth.")
 @click.option("--sopt-mode", type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),
@@ -1725,6 +1765,7 @@ def cli(
         for g in geoms:
             _ensure_calc_on_geom(g, shared_calc)
 
+        # If any input is PDB, we consider "PDB input" for final output handling.
         ref_pdb_for_segments: Optional[Path] = None
         for p in p_list:
             if p.suffix.lower() == ".pdb":
@@ -1748,8 +1789,8 @@ def cli(
             fa_j = getattr(gj, "freeze_atoms", np.array([], dtype=int))
             use_idx = sorted({int(x) for x in list(fa_i) + list(fa_j) if 0 <= int(x) < N})
             idx_for_msg = f"{len(use_idx)} (freeze_atoms)" if len(use_idx) > 0 else f"{N} (all atoms)"
-            try:
-                rmsd_before, rmsd_after, _n_used = _align_second_to_first_kabsch(gi, gj)
+            try:               
+                rmsd_before, rmsd_after, n_used = _align_second_to_first_kabsch(gi, gj)
                 click.echo(f"[align {i:02d}->{i+1:02d}] Kabsch pre-alignment (used {idx_for_msg}): "
                            f"RMSD_before={rmsd_before:.6f} Å → RMSD_after={rmsd_after:.6f} Å")
             except Exception as e:
@@ -1843,23 +1884,85 @@ def cli(
                 except Exception:
                     pass
 
-        final_trj = out_dir_path / "mep.trj"
-        _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
-        click.echo(f"[write] Wrote '{final_trj}'.")
+        # Final MEP output rule:
+        # - If inputs are XYZ → write 'mep.trj'
+        # - If inputs are PDB → write **only** 'mep.pdb' (no 'mep.trj' left in out_dir)
+        pdb_input = ref_pdb_for_segments is not None
 
-        try:
-            run_trj2fig(final_trj, [out_dir_path / "energy.png"], unit="kcal", reference="init", reverse_x=False)
-            click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'energy.png'}'")
-        except Exception as e:
-            click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
-
-        if ref_pdb_for_segments is not None:
+        if not pdb_input:
+            final_trj = out_dir_path / "mep.trj"
+            _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
+            click.echo(f"[write] Wrote '{final_trj}'.")
             try:
-                final_pdb = out_dir_path / "mep.pdb"
-                convert_xyz_to_pdb(final_trj, ref_pdb_for_segments, final_pdb)
-                click.echo(f"[convert] Wrote '{final_pdb}'.")
+                run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+                click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
             except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final MEP to PDB: {e}", err=True)
+                click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+        else:
+            # Create a temporary .trj for plotting/conversion, but do not keep it in out_dir
+            tmp_trj = tempfile.NamedTemporaryFile("w+", suffix=".trj", delete=False)
+            tmp_trj_path = Path(tmp_trj.name)
+            tmp_trj.close()
+            try:
+                _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, tmp_trj_path)
+                try:
+                    run_trj2fig(tmp_trj_path, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+                    click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
+                except Exception as e:
+                    click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+                try:
+                    final_pdb = out_dir_path / "mep.pdb"
+                    convert_xyz_to_pdb(tmp_trj_path, ref_pdb_for_segments, final_pdb)
+                    click.echo(f"[convert] Wrote '{final_pdb}'.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert final MEP to PDB: {e}", err=True)
+            finally:
+                try:
+                    os.unlink(tmp_trj_path)
+                except Exception:
+                    pass
+
+        # ---- NEW: pocket-only per-segment trajectories & HEIs ----
+        try:
+            # Map frames -> segment indices
+            frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
+            seg_to_frames: Dict[int, List[int]] = {}
+            for ii, sidx in enumerate(frame_seg_indices):
+                if sidx <= 0:
+                    continue
+                seg_to_frames.setdefault(int(sidx), []).append(ii)
+
+            for s in combined_all.segments:
+                seg_idx = int(s.seg_index)
+                idxs = seg_to_frames.get(seg_idx, [])
+                if not idxs:
+                    continue
+
+                # (A) Only for bond-change segments: pocket-only per-segment path (existing behavior)
+                if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+                    seg_imgs = [combined_all.images[j] for j in idxs]
+                    seg_Es = [combined_all.energies[j] for j in idxs]
+                    seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}.trj"
+                    _write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
+                    click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
+                    if ref_pdb_for_segments is not None:
+                        _maybe_convert_to_pdb(seg_trj, ref_pdb_for_segments, out_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb")
+
+                # (B) **Changed**: HEI pocket files only for bond-change segments (no bridges / no non-changing kinks)
+                if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+                    energies_seg = [combined_all.energies[j] for j in idxs]
+                    imax_rel = int(np.argmax(np.array(energies_seg, dtype=float)))
+                    imax_abs = idxs[imax_rel]
+                    hei_img = combined_all.images[imax_abs]
+                    hei_E = [combined_all.energies[imax_abs]]
+                    hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
+                    _write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
+                    click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
+                    if ref_pdb_for_segments is not None:
+                        _maybe_convert_to_pdb(hei_trj, ref_pdb_for_segments, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb")
+        except Exception as e:
+            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
+        # ---- END NEW ----
 
         if do_merge:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
