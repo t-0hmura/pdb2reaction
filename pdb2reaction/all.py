@@ -64,6 +64,7 @@ from typing import List, Sequence, Optional
 import sys
 import math
 import click
+import time  # timing
 
 # Local imports from the package
 from .extract import extract_api
@@ -208,6 +209,8 @@ def cli(
     The **all** command composes `extract` → `path_search` and hides ref-template bookkeeping.
     It also accepts the sloppy `-i A B C` style like `path_search` does.
     """
+    time_start = time.perf_counter()
+
     # --- Robustly accept a single "-i" followed by multiple paths (like path_search.cli) ---
     argv_all = sys.argv[1:]
     i_vals = _collect_option_values(argv_all, ("-i", "--input"))
@@ -343,8 +346,16 @@ def cli(
     click.echo("  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
     click.echo("  - energy.png / energy_diagram.*")
-
     click.echo("\n=== [all] Pipeline finished successfully ===\n")
+
+    # --------------------------
+    # Elapsed time
+    # --------------------------
+    elapsed = time.perf_counter() - time_start
+    hh = int(elapsed // 3600)
+    mm = int((elapsed % 3600) // 60)
+    ss = elapsed - (hh * 3600 + mm * 60)
+    click.echo(f"[all] Total Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
 
 if __name__ == "__main__":
