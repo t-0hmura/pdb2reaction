@@ -9,7 +9,10 @@ pdb2reaction freq \
   -i a.pdb -q 0 -s 1 \
   --max-write 20 \
   --out-dir ./result_freq/ \
-  --args-yaml ./args.yaml
+  --args-yaml ./args.yaml \
+  --temperature 298.15 \
+  --pressure 1.0 \
+  --dump False
 
 Sections that can be overridden via YAML:
   geom, calc, freq
@@ -17,6 +20,14 @@ Sections that can be overridden via YAML:
 Output:
 - In out_dir, write up to max-write modes in ascending order of frequency
   as 'mode_XXXX_{±freq}cm-1.trj' and '.pdb'.
+
+Thermochemistry (default on):
+- Prints a Gaussian-style summary at the end.
+- When --dump True, writes 'thermoanalysis.yaml' under out_dir.
+
+Notes:
+- Thermochemistry uses frequencies computed here (PHVA respecting freeze_atoms).
+- Pressure is specified in atm at CLI and converted to Pa internally.
 """
 
 from __future__ import annotations
@@ -308,6 +319,15 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
     return H_t
 
 
+def _calc_energy(geom, uma_kwargs: dict) -> float:
+    """Compute electronic energy (Hartree) from UMA calculator."""
+    calc = uma_pysis(out_hess_torch=False, **uma_kwargs)
+    geom.set_calculator(calc)
+    E = float(geom.energy)
+    geom.set_calculator(None)
+    return E
+
+
 def _write_mode_trj_and_pdb(geom,
                             mode_vec_3N: np.ndarray,
                             out_trj: Path,
@@ -407,13 +427,20 @@ FREQ_KW = {
     "sort": "value",          # "value" (ascending by value) | "abs" (ascending by absolute value)
 }
 
+# Thermochemistry defaults (added)
+THERMO_KW = {
+    "temperature": 298.15,    # float, Kelvin
+    "pressure_atm": 1.0,      # float, atm (converted to Pa internally)
+    "dump": False,            # bool, write thermoanalysis.yaml when True
+}
+
 
 # ===================================================================
 #                            CLI
 # ===================================================================
 
 @click.command(
-    help="Vibrational frequency analysis and mode writer.",
+    help="Vibrational frequency analysis and mode writer (+ default thermochemistry summary).",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -442,6 +469,13 @@ FREQ_KW = {
     default=None,
     help="YAML with extra args (sections: geom, calc, freq).",
 )
+# ---- Thermochemistry options (added) ----
+@click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,
+              help="Temperature (K) for thermochemistry summary.")
+@click.option("--pressure", type=float, default=THERMO_KW["pressure_atm"], show_default=True,
+              help="Pressure (atm) for thermochemistry summary.")
+@click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
+              help="When True, write 'thermoanalysis.yaml' under out-dir.")
 def cli(
     input_path: Path,
     charge: int,
@@ -453,6 +487,10 @@ def cli(
     sort: str,
     out_dir: str,
     args_yaml: Optional[Path],
+    # thermo
+    temperature: float,
+    pressure_atm: float,
+    dump: bool,
 ) -> None:
 
     # --------------------------
@@ -462,6 +500,7 @@ def cli(
     geom_cfg = dict(GEOM_KW)
     calc_cfg = dict(CALC_KW)
     freq_cfg = dict(FREQ_KW)
+    thermo_cfg = dict(THERMO_KW)
 
     _deep_update(geom_cfg, yaml_cfg.get("geom", {}))
     _deep_update(calc_cfg, yaml_cfg.get("calc", {}))
@@ -474,6 +513,10 @@ def cli(
     freq_cfg["amplitude_ang"] = float(amplitude_ang)
     freq_cfg["n_frames"]      = int(n_frames)
     freq_cfg["sort"]          = sort
+
+    thermo_cfg["temperature"]   = float(temperature)
+    thermo_cfg["pressure_atm"]  = float(pressure_atm)
+    thermo_cfg["dump"]          = bool(dump)
 
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
@@ -495,6 +538,11 @@ def cli(
     click.echo(_pretty_block("geom", _format_geom_for_echo(geom_cfg)))
     click.echo(_pretty_block("calc", calc_cfg))
     click.echo(_pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
+    click.echo(_pretty_block("thermo", {
+        "temperature": thermo_cfg["temperature"],
+        "pressure_atm": thermo_cfg["pressure_atm"],
+        "dump": thermo_cfg["dump"],
+    }))
 
     # --------------------------
     # 2) Load geometry
@@ -552,7 +600,7 @@ def cli(
                 out_pdb,
                 amplitude_ang=freq_cfg["amplitude_ang"],
                 n_frames=freq_cfg["n_frames"],
-                comment=f"mode {k}  {freq:+.2f} cm^-1",
+                comment=f"mode {k}  {freq:+.2f} cm-1",
                 ref_pdb=ref_pdb,
             )
         # also write a simple list
@@ -563,6 +611,114 @@ def cli(
 
         if torch.cuda.is_available() and H_t.is_cuda:
             torch.cuda.empty_cache()
+
+        # --------------------------
+        # 4) Thermochemistry summary (default on)
+        # --------------------------
+        try:
+            # Lazy import so that freq-only users can still run without thermoanalysis installed
+            from thermoanalysis.QCData import QCData
+            from thermoanalysis.thermo import thermochemistry
+            from thermoanalysis.constants import J2AU, NA, J2CAL
+
+            # Prepare QCData dict
+            qc_data = {
+                "coords3d": geometry.coords.reshape(-1, 3) * BOHR2ANG,  # Å
+                "wavenumbers": freqs_cm,                                 # cm^-1
+                "scf_energy": _calc_energy(geometry, calc_cfg),          # Hartree
+                "masses": masses_amu,
+                "mult": int(spin),
+            }
+            qc = QCData(qc_data, point_group="c1", mult=int(spin))
+
+            T = float(thermo_cfg["temperature"])
+            p_atm = float(thermo_cfg["pressure_atm"])
+            p_pa = p_atm * 101325.0  # Pa
+
+            tr = thermochemistry(qc, T, pressure=p_pa)  # default: QRRHO
+
+            # Converters
+            au2CalMol = (1.0 / J2AU) * NA * J2CAL
+            to_cal_per_mol = lambda x: float(x) * au2CalMol
+            J_per_Kmol_to_cal_per_Kmol = lambda j: float(j) * J2CAL
+
+            # Counts
+            n_imag = int(np.sum(freqs_cm < 0.0))
+
+            # Compose summary
+            EE = float(tr.U_el)
+            ZPE = float(tr.ZPE)
+            dE_therm = float(tr.U_therm)               # Thermal correction to Energy (includes ZPE)
+            dH_therm = float(tr.H - tr.U_el)           # Thermal correction to Enthalpy (= U_therm + kBT)
+            dG_therm = float(tr.dG)                    # Thermal correction to Free Energy (= G - EE)
+
+            sum_EE_ZPE = EE + ZPE
+            sum_EE_thermal_E = float(tr.U_tot)         # = EE + U_therm
+            sum_EE_thermal_H = float(tr.H)             # = H
+            sum_EE_thermal_G = float(tr.G)             # = G
+
+            E_thermal_cal = to_cal_per_mol(tr.U_therm)               # cal/mol
+            Cv_cal_per_Kmol = J_per_Kmol_to_cal_per_Kmol(tr.c_tot)   # cal/(mol*K)
+            S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)               # cal/(mol*K)
+
+            # Echo summary (Gaussian-like)
+            click.echo("\nThermochemistry Summary")
+            click.echo("------------------------")
+            click.echo(f"Temperature (K)         = {T:.2f}")
+            click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
+            if freeze_list:
+                click.echo("[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.")
+            click.echo(f"Number of Imaginary Freq = {n_imag:d}\n")
+
+            def _ha(x): return f"{float(x): .6f} Ha"
+            def _cal(x): return f"{float(x): .2f} cal/mol"
+            def _calK(x): return f"{float(x): .2f} cal/(mol*K)"
+
+            click.echo(f"Electronic Energy (EE)                 = {_ha(EE)}")
+            click.echo(f"Zero-point Energy Correction           = {_ha(ZPE)}")
+            click.echo(f"Thermal Correction to Energy           = {_ha(dE_therm)}")
+            click.echo(f"Thermal Correction to Enthalpy         = {_ha(dH_therm)}")
+            click.echo(f"Thermal Correction to Free Energy      = {_ha(dG_therm)}")
+            click.echo(f"EE + Zero-point Energy                 = {_ha(sum_EE_ZPE)}")
+            click.echo(f"EE + Thermal Energy Correction         = {_ha(sum_EE_thermal_E)}")
+            click.echo(f"EE + Thermal Enthalpy Correction       = {_ha(sum_EE_thermal_H)}")
+            click.echo(f"EE + Thermal Free Energy Correction    = {_ha(sum_EE_thermal_G)}")
+            click.echo("")
+            click.echo(f"E (Thermal)                            = {_cal(E_thermal_cal)}")
+            click.echo(f"Heat Capacity (Cv)                     = {_calK(Cv_cal_per_Kmol)}")
+            click.echo(f"Entropy (S)                            = {_calK(S_cal_per_Kmol)}")
+            click.echo("")
+
+            # Dump YAML when requested
+            if bool(thermo_cfg["dump"]):
+                out_yaml = out_dir_path / "thermoanalysis.yaml"
+                payload = {
+                    "temperature_K": T,
+                    "pressure_atm": p_atm,
+                    "num_imag_freq": n_imag,
+                    "electronic_energy_ha": EE,
+                    "zpe_correction_ha": ZPE,
+                    "thermal_correction_energy_ha": dE_therm,
+                    "thermal_correction_enthalpy_ha": dH_therm,
+                    "thermal_correction_free_energy_ha": dG_therm,
+                    "sum_EE_and_ZPE_ha": sum_EE_ZPE,
+                    "sum_EE_and_thermal_energy_ha": sum_EE_thermal_E,
+                    "sum_EE_and_thermal_enthalpy_ha": sum_EE_thermal_H,
+                    "sum_EE_and_thermal_free_energy_ha": sum_EE_thermal_G,
+                    "E_thermal_cal_per_mol": E_thermal_cal,
+                    "Cv_cal_per_mol_K": Cv_cal_per_Kmol,
+                    "S_cal_per_mol_K": S_cal_per_Kmol,
+                }
+                with out_yaml.open("w", encoding="utf-8") as f:
+                    yaml.safe_dump(payload, f, sort_keys=False, allow_unicode=True)
+                click.echo(f"[dump] Wrote thermoanalysis summary → {out_yaml}")
+
+        except ImportError:
+            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.", err=True)
+        except Exception as e:
+            import traceback
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "), err=True)
 
         click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
 

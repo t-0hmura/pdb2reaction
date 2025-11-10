@@ -25,7 +25,6 @@ from .path_search import cli as path_search_cmd
 from .ts_opt import cli as ts_opt_cmd
 from .freq import cli as freq_cmd
 from .irc import cli as irc_cmd
-from .thermo import cli as thermo_cmd
 from .trj2fig import cli as trj2fig_cmd
 from .add_elem_info import cli as add_elem_info_cmd
 from .dft import cli as dft_cmd
@@ -72,7 +71,6 @@ cli.add_command(path_search_cmd, name="path_search")
 cli.add_command(ts_opt_cmd, name="ts_opt")
 cli.add_command(freq_cmd, name="freq")
 cli.add_command(irc_cmd, name="irc")
-cli.add_command(thermo_cmd, name="thermo")
 cli.add_command(extract_cmd, name="extract")
 cli.add_command(trj2fig_cmd, name="trj2fig")
 cli.add_command(add_elem_info_cmd, name="add_elem_info")

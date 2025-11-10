@@ -476,15 +476,67 @@ def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return R, t
 
 
+# === Helpers for axis/anchor-constrained alignment (minimal additions) ===
+
+def _rodrigues(axis_unit: np.ndarray, theta: float) -> np.ndarray:
+    """Rotation matrix (3x3) for rotation of angle *theta* around unit axis."""
+    u = np.asarray(axis_unit, dtype=float)
+    u = u / (np.linalg.norm(u) + 1e-16)
+    ux, uy, uz = u
+    K = np.array([[0, -uz, uy],
+                  [uz, 0, -ux],
+                  [-uy, ux, 0]], dtype=float)
+    I = np.eye(3)
+    return I + np.sin(theta) * K + (1.0 - np.cos(theta)) * (K @ K)
+
+
+def _rotation_align_vectors(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Return rotation matrix that maps unit vector a -> unit vector b."""
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    a = a / (np.linalg.norm(a) + 1e-16)
+    b = b / (np.linalg.norm(b) + 1e-16)
+    v = np.cross(a, b)
+    c = float(np.clip(np.dot(a, b), -1.0, 1.0))
+    s = np.linalg.norm(v)
+    if s < 1e-12:
+        # parallel or anti-parallel
+        if c > 0.0:
+            return np.eye(3)
+        # 180°: rotate around any axis ⟂ a
+        # choose an orthonormal vector
+        tmp = np.array([1.0, 0.0, 0.0])
+        if np.abs(a[0]) > 0.9:
+            tmp = np.array([0.0, 1.0, 0.0])
+        axis = np.cross(a, tmp)
+        axis = axis / (np.linalg.norm(axis) + 1e-16)
+        return _rodrigues(axis, np.pi)
+    axis = v / s
+    theta = np.arctan2(s, c)
+    return _rodrigues(axis, theta)
+
+
+def _orth_proj_perp(u: np.ndarray) -> np.ndarray:
+    """Projection matrix onto plane perpendicular to unit vector u."""
+    u = u / (np.linalg.norm(u) + 1e-16)
+    return np.eye(3) - np.outer(u, u)
+
+
 def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float, int]:
     """
-    Rigidly align *geom_to_align* to *geom_ref* with Kabsch (no scaling).
-    If either endpoint has freeze_atoms, the transform is determined on that subset only,
-    and then applied to all atoms.
+    Rigidly align *geom_to_align* to *geom_ref*.
+
+    標準: Kabsch（選択された原子で最小二乗）
+    特別扱い:
+      - freeze_atoms が **1 個**のとき: その原子座標を一致させ、（その点を通る）回転のみで
+        **全原子 RMSD** を最小化するように回転を求める。
+      - freeze_atoms が **2 個**のとき: 2 原子が張る軸（2 点を結ぶ直線）を一致させた後、
+        その軸 **周り**の回転角を最適化し、**全原子 RMSD** を最小化する。
 
     Returns
     -------
-    rmsd_before, rmsd_after, n_used  (RMSDs are evaluated on the selection)
+    rmsd_before, rmsd_after, n_used
+      （rmsd は上記特殊ケースでは全原子、通常ケースでは選択原子で評価）
     """
     P = np.array(geom_ref.coords3d, dtype=float)    # (N, 3)
     Q = np.array(geom_to_align.coords3d, dtype=float)
@@ -497,6 +549,111 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
     fa1 = getattr(geom_to_align, "freeze_atoms", np.array([], dtype=int))
     freeze_union = sorted(set(map(int, fa0)) | set(map(int, fa1)))
 
+    # Helper: RMSD over all atoms
+    def _rmsd_all(X: np.ndarray, Y: np.ndarray) -> float:
+        diff = X - Y
+        return float(np.sqrt(np.mean(np.sum(diff * diff, axis=1))))
+
+    # --- Special case: 1 anchor (rotate about that point, minimize ALL-atom RMSD) ---
+    if len(freeze_union) == 1 and 0 <= freeze_union[0] < N:
+        idx = int(freeze_union[0])
+        p0 = P[idx].copy()
+        q0 = Q[idx].copy()
+
+        # Before RMSD (all atoms; no alignment)
+        rmsd_before = _rmsd_all(P, Q)
+
+        # Translate Q so that the anchor coincides: q0 -> p0
+        Q_shift = Q + (p0 - q0)
+
+        # Find rotation R (no re-centering to centroid): solve min || (Q - q0) R - (P - p0) ||_F
+        P_rel = P - p0
+        Q_rel = Q_shift - p0  # equals (Q - q0)
+        H = P_rel.T @ Q_rel
+        U, S, Vt = np.linalg.svd(H)
+        R = Vt.T @ U.T
+        if np.linalg.det(R) < 0.0:
+            Vt[-1, :] *= -1.0
+            R = Vt.T @ U.T
+
+        # Apply rotation around p0
+        Q_aligned = (Q_rel @ R) + p0
+
+        # Commit coordinates (apply to all atoms; temporarily disable freeze)
+        old_freeze = np.array(getattr(geom_to_align, "freeze_atoms", []), dtype=int)
+        try:
+            geom_to_align.freeze_atoms = np.array([], dtype=int)
+            geom_to_align.set_coords(Q_aligned.reshape(-1), cartesian=True)
+        finally:
+            geom_to_align.freeze_atoms = old_freeze
+
+        rmsd_after = _rmsd_all(P, Q_aligned)
+        return rmsd_before, rmsd_after, 1
+
+    # --- Special case: 2 anchors (align axis, then optimize rotation about that axis for ALL-atom RMSD) ---
+    if len(freeze_union) >= 2:
+        # take first two valid indices
+        valid = [i for i in freeze_union if 0 <= int(i) < N]
+        if len(valid) >= 2:
+            i0, i1 = int(valid[0]), int(valid[1])
+
+            p0 = P[i0].copy()
+            p1 = P[i1].copy()
+            q0 = Q[i0].copy()
+            q1 = Q[i1].copy()
+
+            rmsd_before = _rmsd_all(P, Q)
+
+            # Step 1: bring midpoints together and align axis direction (q1-q0 -> p1-p0)
+            pm = 0.5 * (p0 + p1)
+            qm = 0.5 * (q0 + q1)
+
+            vP = p1 - p0
+            vQ = q1 - q0
+            if np.linalg.norm(vP) < 1e-16 or np.linalg.norm(vQ) < 1e-16:
+                # Degenerate axis; fall back to standard Kabsch on the 2 anchors
+                P_sel = np.stack([p0, p1], axis=0)
+                Q_sel = np.stack([q0, q1], axis=0)
+                R0, t0 = _kabsch_R_t(P_sel, Q_sel)
+                Q0 = (Q @ R0) + t0
+            else:
+                # translate to P midpoint
+                Q0 = Q + (pm - qm)
+                # rotate around midpoint so that axis directions coincide
+                R_align = _rotation_align_vectors(vQ, vP)
+                Q0 = ((Q0 - pm) @ R_align) + pm
+
+            # Step 2: optimize rotation angle around the (now aligned) axis (through p0->p1)
+            u = vP / (np.linalg.norm(vP) + 1e-16)  # unit axis
+            c = p0  # any point on axis works; use p0
+
+            # Projections onto plane perpendicular to u
+            P_perp = _orth_proj_perp(u)
+            A = (P - c) @ P_perp.T        # target projections
+            B = (Q0 - c) @ P_perp.T       # current projections
+
+            # Compute optimal theta maximizing Σ a_i⋅R_u(θ)b_i
+            # a⋅R_u(θ)b = (a⋅b)cosθ + (a⋅(u×b))sinθ (since a,b ⟂ u)
+            cross_u_B = np.cross(u, B)
+            sum_ab = float(np.sum(A * B))
+            sum_a_uxb = float(np.sum(A * cross_u_B))
+            theta = np.arctan2(sum_a_uxb, sum_ab) if (np.abs(sum_ab) + np.abs(sum_a_uxb)) > 1e-16 else 0.0
+
+            R_axis = _rodrigues(u, theta)
+            Q1 = ((Q0 - c) @ R_axis) + c
+
+            # Apply
+            old_freeze = np.array(getattr(geom_to_align, "freeze_atoms", []), dtype=int)
+            try:
+                geom_to_align.freeze_atoms = np.array([], dtype=int)
+                geom_to_align.set_coords(Q1.reshape(-1), cartesian=True)
+            finally:
+                geom_to_align.freeze_atoms = old_freeze
+
+            rmsd_after = _rmsd_all(P, Q1)
+            return rmsd_before, rmsd_after, 2
+
+    # --- Default behavior (unchanged): Kabsch on selection (union of freeze or all atoms) ---
     if len(freeze_union) > 0:
         use_mask = np.zeros(N, dtype=bool)
         # defensively ignore out-of-range indices
@@ -509,7 +666,7 @@ def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float
     Q_sel = Q[use_mask]
     n_used = int(P_sel.shape[0])
 
-    # RMSD before alignment (on the selection; no extra alignment)
+    # RMSD before alignment (on the selection)
     def _rmsd(A: np.ndarray, B: np.ndarray) -> float:
         return float(np.sqrt(np.mean(np.sum((A - B) ** 2, axis=1)))) if len(A) else float("nan")
 
@@ -1038,7 +1195,7 @@ def _build_multistep_path(
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
         click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
-        lr_changed, lr_summary = True, ""
+    lr_changed, lr_summary = lr_changed, lr_summary
     use_kink = (not lr_changed)
 
     if use_kink:
@@ -2066,9 +2223,31 @@ def cli(
                         # pre-TS region without bond change → ignore
                         pass
 
+            # --- CHANGE: Clamp energy-diagram endpoints to the first/last bond-change segment edges ---
+            # If any bond-change segments exist, set the diagram's left endpoint to the first frame of the
+            # first bond-change segment and the right endpoint to the last frame of the last bond-change segment.
+            start_idx_for_diag = 0
+            end_idx_for_diag = len(combined_all.energies) - 1
+            bc_segments_in_order = [
+                s for s in combined_all.segments
+                if (s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)")
+            ]
+            if bc_segments_in_order:
+                first_bc = bc_segments_in_order[0]
+                last_bc = bc_segments_in_order[-1]
+                idxs_first_bc = seg_to_frames.get(int(first_bc.seg_index), [])
+                idxs_last_bc = seg_to_frames.get(int(last_bc.seg_index), [])
+                if idxs_first_bc:
+                    start_idx_for_diag = int(idxs_first_bc[0])   # left edge of the first bond-change segment
+                if idxs_last_bc:
+                    end_idx_for_diag = int(idxs_last_bc[-1])     # right edge of the last bond-change segment
+            # --- /CHANGE ---
+
             # Compose compressed labels/energies & human-readable chain
             labels: List[str] = ["R"]
-            energies_eh: List[float] = [float(combined_all.energies[0])]
+            # --- CHANGE: start energy from clamped left endpoint ---
+            energies_eh: List[float] = [float(combined_all.energies[start_idx_for_diag])]
+            # --- /CHANGE ---
             chain_tokens: List[str] = ["R"]
 
             for i, g in enumerate(ts_groups, start=1):
@@ -2096,7 +2275,9 @@ def cli(
 
             # Product
             labels.append("P")
-            energies_eh.append(float(combined_all.energies[-1]))
+            # --- CHANGE: end energy from clamped right endpoint ---
+            energies_eh.append(float(combined_all.energies[end_idx_for_diag]))
+            # --- /CHANGE ---
             chain_tokens.extend(["-->", "P"])
 
             # Convert to kcal/mol relative to R

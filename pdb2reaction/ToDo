@@ -1,15 +1,15 @@
 [Proceeding...]
-trj2fig --energy-diagram Trueを追加（bond_changeがあるとこだけ―）
-dft
-irc
-scan
 thermo
-all: extract --> path_search --> merge -->
 
 [Proceeding... (Tier 2)]
 ts_opt: Use bolgfil update in Flatten loop
 
 [Debugging...]
+trj2fig
+dft
+irc
+scan
+all
 ts_opt
 add_elem_info
 bond_changes

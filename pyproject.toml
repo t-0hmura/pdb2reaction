@@ -13,6 +13,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fairchem-core",
     "pysisyphus @ git+https://github.com/t-0hmura/torch_pysis.git", 
+    "thermoanalysis @ git+https://github.com/t-0hmura/thermoanalysis.git",
     "torch>=2.6.0",
     "torch_geometric",
     "torch_scatter",
@@ -24,7 +25,7 @@ dependencies = [
     "plotly",
     "kaleido",
     "gpu4pyscf-cuda12x",
-    "pyscf"
+    "pyscf",
 ]
 
 [project.scripts]
