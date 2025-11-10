@@ -1,11 +1,14 @@
 # pdb2reaction/all.py
-
+# -*- coding: utf-8 -*-
 """
-Pipeline driver:  **extract active-site pockets → run MEP search → merge back to full systems**
+Pipeline driver:  **extract active‑site pockets → run MEP search → merge back to full systems**
 
 Usage (example)
 ---------------
-pdb2reaction -i a.pdb b.pdb c.pdb -c "308,309" --ligand-charge "GPP:-3,MMT:-1"
+pdb2reaction all -i a.pdb b.pdb c.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
+
+# Also works with residue-id lists as the substrate specification:
+#   -c "308,309"
 
 What this does
 --------------
@@ -46,7 +49,7 @@ Notes
 CLI parity with underlying tools
 --------------------------------
 - Extractor options exposed:
-  center, radius, radius_het2het, include_H2O, exclude_backbone, add_linkH,
+  center (PDB path / residue-ID list / residue-name list), radius, radius_het2het, include_H2O, exclude_backbone, add_linkH,
   selected_resn, ligand_charge, verbose.
 - Path search options exposed:
   spin, freeze-links, max-nodes, max-cycles, climb, sopt-mode, dump,
@@ -131,8 +134,11 @@ def _round_charge_with_note(q: float) -> int:
 @click.option(
     "-c", "--center", "center_spec",
     type=str, required=True,
-    help=("Substrate spec for the extractor: a PDB path or a residue list like '123,124' or 'A:123,B:456' "
-          "(insertion codes OK: '123A' / 'A:123A').")
+    help=("Substrate specification for the extractor: "
+          "a PDB path, a residue-ID list like '123,124' or 'A:123,B:456' "
+          "(insertion codes OK: '123A' / 'A:123A'), "
+          "or a residue-name list like 'GPP,MMT'.")
+          "(insertion codes OK: '123A' / 'A:123A')."
 )
 @click.option(
     "--out-dir", "out_dir",
@@ -156,12 +162,12 @@ def _round_charge_with_note(q: float) -> int:
 @click.option("--ligand_charge", "--ligand-charge", type=str, default=None,
               help=("Either a total charge (number) to distribute across unknown residues "
                     "or a mapping like 'GPP:-3,MMT:-1'."))
-@click.option("--verbose", is_flag=True, default=True, show_default=True, help="Enable INFO-level logging inside extractor.")
+@click.option("--verbose", type=click.BOOL, default=True, show_default=True, help="Enable INFO-level logging inside extractor.")
 # ===== Path search knobs (subset of path_search.cli) =====
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For pocket PDB input, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=20, show_default=True,
+@click.option("--max-nodes", type=int, default=10, show_default=True,
               help="Max internal nodes for **segment** GSM (String has max_nodes+2 images including endpoints).")
 @click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
@@ -271,7 +277,7 @@ def cli(
         q_lig = float(cs.get("ligand_total_charge", 0.0))
         q_ion = float(cs.get("ion_total_charge", 0.0))
         click.echo("\n[all] Charge summary from extractor (model #1):")
-        click.echo(f"  Protein: {q_prot:+g},  Ligand (unknowns): {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}")
+        click.echo(f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}")
         q_int = _round_charge_with_note(q_total)
     except Exception as e:
         raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
@@ -281,40 +287,52 @@ def cli(
     # --------------------------
     click.echo("\n=== [all] Stage 2/3 — MEP search on pocket structures (recursive GSM) ===\n")
 
-    # Build path_search CLI args
+    # Build path_search CLI args using *repeated* options (robust for Click)
     ps_args: List[str] = []
-    # Inputs (allow one -i followed by many, mirroring its own robust parser)
-    ps_args.extend(["-i"] + [str(p) for p in pocket_outputs])
+
+    # Inputs: repeat "-i" per pocket to satisfy Click even without their argv aggregator
+    for p in pocket_outputs:
+        ps_args.extend(["-i", str(p)])
+
     # Charge & spin
     ps_args.extend(["-q", str(q_int)])
     ps_args.extend(["-s", str(int(spin))])
-    # Freeze-links, nodes, cycles, climb, optimizer, dump, out-dir, pre-opt
-    ps_args.extend(["--freeze-links", str(bool(freeze_links_flag))])
+
+    # Freeze-links, nodes, cycles, climb, optimizer, dump, out-dir, pre-opt, args-yaml
+    ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
     ps_args.extend(["--max-nodes", str(int(max_nodes))])
     ps_args.extend(["--max-cycles", str(int(max_cycles))])
-    ps_args.extend(["--climb", str(bool(climb))])
+    ps_args.extend(["--climb", "True" if climb else "False"])
     ps_args.extend(["--sopt-mode", str(sopt_mode)])
-    ps_args.extend(["--dump", str(bool(dump))])
+    ps_args.extend(["--dump", "True" if dump else "False"])
     ps_args.extend(["--out-dir", str(path_dir)])
+    ps_args.extend(["--pre-opt", "True" if pre_opt else "False"])
     if args_yaml is not None:
         ps_args.extend(["--args-yaml", str(args_yaml)])
-    ps_args.extend(["--pre-opt", str(bool(pre_opt))])
-    # Auto-provide ref templates (original full PDBs) for full-system merge
-    ps_args.extend(["--ref-pdb"] + [str(p) for p in input_paths])
+
+    # Auto-provide ref templates (original full PDBs) for full-system merge. Repeat "--ref-pdb" per file.
+    for p in input_paths:
+        ps_args.extend(["--ref-pdb", str(p)])
 
     click.echo("[all] Invoking path_search with arguments:")
     click.echo("  " + " ".join(ps_args))
 
+    # CRITICAL FIX:
+    # path_search.cli re-parses sys.argv internally to support the style "-i A B C".
+    # When calling it programmatically, we temporarily replace sys.argv so its internal
+    # collector sees *our* args (pockets + ref templates), not the outer "all" CLI args.
+    _saved_argv = list(sys.argv)
     try:
-        # Call click command programmatically; keep exceptions for non-zero exits
+        sys.argv = ["pdb2reaction", "path_search"] + ps_args
         _path_search.cli.main(args=ps_args, standalone_mode=False)
     except SystemExit as e:
-        # Non-zero exit code indicates failure inside path_search
         code = getattr(e, "code", 1)
         if code not in (None, 0):
             raise click.ClickException(f"[all] path_search terminated with exit code {code}.")
     except Exception as e:
         raise click.ClickException(f"[all] path_search failed: {e}")
+    finally:
+        sys.argv = _saved_argv
 
     # --------------------------
     # Stage 3: Merge (performed by path_search when --ref-pdb was supplied)

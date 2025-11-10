@@ -99,8 +99,11 @@ Multiple structures → per‑structure outputs:
 
 Substrate specification
 -----------------------
-`-c/--center` accepts a **PDB path** (exact coordinate match on the first input; IDs propagated)
-or a list of residue IDs: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes ok).
+`-c/--center` accepts:
+* a **PDB path** (exact coordinate match on the first input; IDs propagated),
+* a list of **residue IDs**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes ok),
+* or a list of **residue names** (case‑insensitive), e.g. `'GPP,MMT'`.  
+  If multiple residues share the same name, **all** matches are used and a **WARNING** is logged.
 
 Notes on defaults / behavior
 ----------------------------
@@ -278,7 +281,7 @@ def parse_args() -> argparse.Namespace:
     """
     p = argparse.ArgumentParser(
         description=(
-            "Extract a binding pocket around substrate residues (from a PDB or residue IDs), "
+            "Extract a binding pocket around substrate residues (from a PDB or residue IDs/names), "
             "with biochemically aware truncation and optional link‑H; supports multi‑structure input "
             "and multi‑MODEL output. Also logs pocket charge summary."
         )
@@ -291,10 +294,12 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "-c", "--center", dest="substrate_pdb", required=True,
-        metavar="substrate.pdb | '123,124' | 'A:123,B:456'",
-        help=("Substrate specification: either a PDB containing exactly the substrate residue(s) "
-              "or a comma/space‑separated residue list like '123,124' or 'A:123,B:456'. "
-              "Insertion codes supported: '123A' / 'A:123A'.")
+        metavar="substrate.pdb | '123,124' | 'A:123,B:456' | 'GPP,MMT'",
+        help=("Substrate specification: either a PDB containing exactly the substrate residue(s), "
+              "a comma/space‑separated residue‑ID list like '123,124' or 'A:123,B:456' "
+              "(insertion codes supported: '123A' / 'A:123A'), "
+              "or a comma/space‑separated **residue‑name** list like 'GPP,MMT'. "
+              "When residue names are used and multiple residues share a name, all are used and a WARNING is logged.")
     )
     p.add_argument(
         "-o", "--output", dest="output_pdb", required=False, nargs="+",
@@ -477,13 +482,54 @@ def find_substrate_by_idspec(complex_struct, spec: str) -> List[PDB.Residue.Resi
 
     return found
 
+# ---------- NEW: Residue‑name–based substrate selection ----------
+
+def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Residue]:
+    """
+    Resolve a comma/space-separated residue-name list (e.g., 'GPP,MMT') into residues in the complex.
+
+    Behavior
+    --------
+    * Case-insensitive match against residue `resname`.
+    * If multiple residues share the same name, **all** are included and a **WARNING** is logged.
+    """
+    if not spec or not spec.strip():
+        raise ValueError("Empty -c/--center specification.")
+    tokens = [t.strip().upper() for t in re.split(r"[,\s]+", spec) if t.strip()]
+    found: List[PDB.Residue.Residue] = []
+    seen_fids: Set[Tuple] = set()
+    for rn in tokens:
+        matches = [r for r in complex_struct.get_residues() if r.get_resname().upper() == rn]
+        if not matches:
+            raise ValueError(f"Residue name '{rn}' not found in complex.")
+        if len(matches) > 1:
+            # Log once per residue name
+            try:
+                sample = ", ".join(_fmt_res_id(r) for r in matches[:5])
+            except Exception:
+                sample = "(list omitted)"
+            logging.warning("[extract] Multiple residues with resname '%s' found (%d). Using all: %s",
+                            rn, len(matches), sample)
+        for r in matches:
+            fid = r.get_full_id()
+            if fid not in seen_fids:
+                seen_fids.add(fid)
+                found.append(r)
+    return found
+
 
 def resolve_substrate_residues(complex_struct, center_spec: str) -> List[PDB.Residue.Residue]:
-    """Determine substrate residues from a PDB path or residue-ID list."""
+    """Determine substrate residues from a PDB path, residue-ID list, or residue-name list."""
     if os.path.exists(center_spec):
         substrate_struct = load_structure(center_spec, "substrate")
         return find_substrate_residues(complex_struct, substrate_struct)
-    return find_substrate_by_idspec(complex_struct, center_spec)
+    # If it parses as ID-spec, treat as IDs (and propagate any not-found errors).
+    try:
+        _parse_res_tokens(center_spec)
+        return find_substrate_by_idspec(complex_struct, center_spec)
+    except ValueError:
+        # Otherwise, interpret as residue-name list (e.g., 'GPP,MMT').
+        return find_substrate_by_resname(complex_struct, center_spec)
 
 
 # ---------------------------------------------------------------------
@@ -1266,6 +1312,8 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
     * If `center_spec` is a PDB path: exact‑match on the first structure only,
       then propagate to others by a residue‑ID list derived from the first match.
     * If `center_spec` is an ID list: apply to all structures.
+    * If `center_spec` is a residue‑name list: apply to all structures; names may match multiple residues
+      (all included; WARNING logged per structure).
     """
     if os.path.exists(center_spec):
         sub_first = resolve_substrate_residues(structs[0], center_spec)
@@ -1285,7 +1333,12 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
             out.append(find_substrate_by_idspec(st, idspec))
         return out
     else:
-        return [find_substrate_by_idspec(st, center_spec) for st in structs]
+        # Distinguish ID-spec vs resname list by attempting to parse as IDs first.
+        try:
+            _parse_res_tokens(center_spec)
+            return [find_substrate_by_idspec(st, center_spec) for st in structs]
+        except ValueError:
+            return [find_substrate_by_resname(st, center_spec) for st in structs]
 
 def _disulfide_partner_keys(structure, candidate_keys: Set[ResidueKey],
                             cutoff: float = DISULFIDE_CUTOFF) -> Set[ResidueKey]:
@@ -1669,7 +1722,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
     if len(args.complex_pdb) == 1:
         complex_struct = load_structure(args.complex_pdb[0], "complex")
 
-        # Resolve substrate residues from PDB path or residue-ID list
+        # Resolve substrate residues from PDB path or residue-ID/name list
         substrate_residues = resolve_substrate_residues(complex_struct, args.substrate_pdb)
         substrate_ids = {r.get_full_id() for r in substrate_residues}
         logging.info("[extract] Substrate residues matched: resseq %s",
@@ -1804,7 +1857,8 @@ def extract_api(complex_pdb: List[str],
     complex_pdb : list[str]
         Input PDB path(s). len==1 → single, len>1 → multi.
     center : str
-        Substrate spec: a PDB path, or an ID list 'A:123,456' (insertion codes OK).
+        Substrate spec: a PDB path, a residue‑ID list 'A:123,456' (insertion codes OK),
+        or a residue‑name list 'GPP,MMT'.
     output : list[str] | None
         Output path(s): one path for multi‑MODEL PDB, or N paths for per‑file outputs.
         If None, defaults to ['pocket.pdb'].
