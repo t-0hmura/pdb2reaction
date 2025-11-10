@@ -138,7 +138,6 @@ def _round_charge_with_note(q: float) -> int:
           "a PDB path, a residue-ID list like '123,124' or 'A:123,B:456' "
           "(insertion codes OK: '123A' / 'A:123A'), "
           "or a residue-name list like 'GPP,MMT'.")
-          "(insertion codes OK: '123A' / 'A:123A')."
 )
 @click.option(
     "--out-dir", "out_dir",
