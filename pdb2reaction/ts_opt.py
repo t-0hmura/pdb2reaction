@@ -96,23 +96,13 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignor
 from .uma_pysis import uma_pysis
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as _freeze_links_from_utils,
+    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
+    pretty_block,
+    format_geom_for_echo,
+    merge_freeze_atom_indices,
 )
-
-
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
-def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    g = dict(geom_cfg)
-    fa = g.get("freeze_atoms")
-    if isinstance(fa, (list, tuple)):
-        g["freeze_atoms"] = ",".join(map(str, fa)) if fa else ""
-    return g
 
 
 def _norm_opt_mode(mode: str) -> str:
@@ -1382,13 +1372,11 @@ def cli(
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
         try:
-            detected = _freeze_links_from_utils(input_path)
+            detected = detect_freeze_links(input_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
-        base_freeze = list(geom_cfg.get("freeze_atoms", []))
-        merged = sorted(set(base_freeze).union(set(detected)))
-        geom_cfg["freeze_atoms"] = merged
+        merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
             click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
@@ -1396,17 +1384,17 @@ def cli(
     out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
     # Pretty-print config summary
-    click.echo(_pretty_block("geom", _format_geom_for_echo(geom_cfg)))
-    click.echo(_pretty_block("calc", calc_cfg))
-    click.echo(_pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
+    click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+    click.echo(pretty_block("calc", calc_cfg))
+    click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
     if kind == "light":
         # Split out pass-through dicts for readability
         sd_cfg_for_echo = dict(simple_cfg)
         sd_cfg_for_echo["dimer"] = dict(simple_cfg.get("dimer", {}))
         sd_cfg_for_echo["lbfgs"] = dict(simple_cfg.get("lbfgs", {}))
-        click.echo(_pretty_block("hessian_dimer", sd_cfg_for_echo))
+        click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
     else:
-        click.echo(_pretty_block("rsirfo", rsirfo_cfg))
+        click.echo(pretty_block("rsirfo", rsirfo_cfg))
 
     # --------------------------
     # 2) Prepare geometry dir

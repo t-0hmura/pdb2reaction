@@ -56,28 +56,12 @@ from .uma_pysis import uma_pysis
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
-    freeze_links as _freeze_links_from_utils,
+    freeze_links as detect_freeze_links,
     convert_xyz_to_pdb as _convert_xyz_to_pdb,
+    pretty_block,
+    format_geom_for_echo,
+    merge_freeze_atom_indices,
 )
-
-
-# ===================================================================
-#                         Generic helpers
-# ===================================================================
-
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
-def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    g = dict(geom_cfg)
-    fa = g.get("freeze_atoms")
-    if isinstance(fa, (list, tuple)):
-        g["freeze_atoms"] = ",".join(map(str, fa)) if fa else ""
-    return g
-
-
 def _torch_device(auto: str = "auto") -> torch.device:
     if auto == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -513,13 +497,11 @@ def cli(
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
         try:
-            detected = _freeze_links_from_utils(input_path)
+            detected = detect_freeze_links(input_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
-        base_freeze = list(geom_cfg.get("freeze_atoms", []))
-        merged = sorted(set(base_freeze).union(set(detected)))
-        geom_cfg["freeze_atoms"] = merged
+        merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
             click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
@@ -527,10 +509,10 @@ def cli(
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
     # Pretty-print config summary
-    click.echo(_pretty_block("geom", _format_geom_for_echo(geom_cfg)))
-    click.echo(_pretty_block("calc", calc_cfg))
-    click.echo(_pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
-    click.echo(_pretty_block("thermo", {
+    click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+    click.echo(pretty_block("calc", calc_cfg))
+    click.echo(pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
+    click.echo(pretty_block("thermo", {
         "temperature": thermo_cfg["temperature"],
         "pressure_atm": thermo_cfg["pressure_atm"],
         "dump": thermo_cfg["dump"],

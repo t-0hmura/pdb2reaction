@@ -44,9 +44,12 @@ from pysisyphus.optimizers.exceptions import OptimizationError
 from .uma_pysis import uma_pysis
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links,
+    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
+    pretty_block,
+    format_geom_for_echo,
+    merge_freeze_atom_indices,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 
@@ -106,30 +109,10 @@ OPT_KW: Dict[str, Any] = {
     "print_every": 1,
 }
 
-
-# -----------------------------------------------
-# Utilities (kept local: pretty printing, small wrappers)
-# -----------------------------------------------
-
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    """Format a titled YAML block for echoing resolved configuration."""
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
-def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Pretty-print helper for geom config (joins freeze_atoms as CSV)."""
-    g = dict(geom_cfg)
-    fa = g.get("freeze_atoms")
-    if isinstance(fa, (list, tuple, np.ndarray)):
-        g["freeze_atoms"] = ",".join(map(str, fa)) if len(fa) else ""
-    return g
-
-
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
     """Detect the parent atoms of link hydrogens in a PDB and return 0‑based indices."""
     try:
-        return freeze_links(pdb_path)
+        return detect_freeze_links(pdb_path)
     except Exception as e:
         click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
         return []
@@ -145,13 +128,14 @@ def _load_two_endpoints(
     geoms = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
-        # Attach freeze_atoms to the Geometry object
-        freeze = list(base_freeze)
+        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and p.suffix.lower() == ".pdb":
             detected = _freeze_links_for_pdb(p)
-            if detected:
-                freeze = sorted(set(freeze).union(detected))
+            freeze = merge_freeze_atom_indices(cfg, detected)
+            if detected and freeze:
                 click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+        else:
+            freeze = merge_freeze_atom_indices(cfg)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
     return geoms
@@ -246,16 +230,16 @@ def cli(
 
         # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        echo_geom = _format_geom_for_echo(geom_cfg)
+        echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
         echo_gs   = dict(gs_cfg)
         echo_opt  = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
 
-        click.echo(_pretty_block("geom", echo_geom))
-        click.echo(_pretty_block("calc", echo_calc))
-        click.echo(_pretty_block("gs",   echo_gs))
-        click.echo(_pretty_block("opt",  echo_opt))
+        click.echo(pretty_block("geom", echo_geom))
+        click.echo(pretty_block("calc", echo_calc))
+        click.echo(pretty_block("gs",   echo_gs))
+        click.echo(pretty_block("opt",  echo_opt))
 
         # --------------------------
         # 2) Prepare structures (load two endpoints and apply freezing)

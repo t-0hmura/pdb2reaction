@@ -94,9 +94,12 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 from .uma_pysis import uma_pysis
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as _freeze_links_util,
+    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
+    pretty_block,
+    format_geom_for_echo,
+    merge_freeze_atom_indices,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -195,24 +198,9 @@ BOND_KW: Dict[str, Any] = {
     "margin_fraction": 0.05,
     "delta_fraction": 0.05,
 }
-
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    import yaml as _yaml
-    body = _yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
-def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    g = dict(geom_cfg)
-    fa = g.get("freeze_atoms")
-    if isinstance(fa, (list, tuple, np.ndarray)):
-        g["freeze_atoms"] = ",".join(map(str, fa)) if fa else ""
-    return g
-
-
 def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
     try:
-        return list(_freeze_links_util(pdb_path))
+        return list(detect_freeze_links(pdb_path))
     except Exception as e:
         click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
         return []
@@ -559,17 +547,17 @@ def cli(
 
         # Present final config
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        echo_geom = _format_geom_for_echo(geom_cfg)
+        echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
         echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)
         echo_bond = dict(bond_cfg)  # <-- added
-        click.echo(_pretty_block("geom", echo_geom))
-        click.echo(_pretty_block("calc", echo_calc))
-        click.echo(_pretty_block("opt",  echo_opt))
-        click.echo(_pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
-        click.echo(_pretty_block("bias", echo_bias))
-        click.echo(_pretty_block("bond", echo_bond))  # <-- added
+        click.echo(pretty_block("geom", echo_geom))
+        click.echo(pretty_block("calc", echo_calc))
+        click.echo(pretty_block("opt",  echo_opt))
+        click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
+        click.echo(pretty_block("bias", echo_bias))
+        click.echo(pretty_block("bond", echo_bond))  # <-- added
 
         # ------------------------------------------------------------------
         # 2) Parse scan lists
@@ -591,11 +579,11 @@ def cli(
         geom = geom_loader(input_path, coord_type=coord_type)
 
         # Merge freeze_atoms with link parents (PDB)
-        freeze = list(geom_cfg.get("freeze_atoms", []))
+        freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links and input_path.suffix.lower() == ".pdb":
             detected = _freeze_links_for_pdb(input_path)
             if detected:
-                freeze = sorted(set(freeze).union(detected))
+                freeze = merge_freeze_atom_indices(geom_cfg, detected)
                 if freeze:
                     click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
         # Attach freeze indices to Geometry for optimizer awareness
