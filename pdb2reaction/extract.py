@@ -18,16 +18,16 @@ Key behavior
 ----------------------
 Residue inclusion
 * Include any residue with a qualifying atom within `--radius` Å of **any substrate atom**.
-  - When `--exclude_backbone false`: **any atom** qualifies (original behavior).
-  - When `--exclude_backbone true` (default): for **amino‑acid residues**, the qualifying
+  - When `--exclude-backbone false`: **any atom** qualifies (original behavior).
+  - When `--exclude-backbone true` (default): for **amino‑acid residues**, the qualifying
     atom must be **non‑backbone** (i.e., not in {N, H*, CA, HA*, C, O, OXT}). Non‑amino‑acid
     residues (e.g., ligands/ions/waters) still qualify by **any atom**.
-* Independent **hetero–hetero** proximity (`--radius_het2het`): add residues if a
+* Independent **hetero–hetero** proximity (`--radius-het2het`): add residues if a
   **substrate hetero atom (non‑C/H)** is within the cutoff of a **protein hetero atom**.
-  When `--exclude_backbone true`, for amino acids the protein atom must be **non‑backbone**.
-* Waters are included by default (`--include_H2O true`).
-* `--selected_resn` **force‑includes** residues (chain / insertion codes supported).
-* (When `--exclude_backbone false`) If a selected residue’s **backbone atom**
+  When `--exclude-backbone true`, for amino acids the protein atom must be **non‑backbone**.
+* Waters are included by default (`--include-H2O true`).
+* `--selected-resn` **force‑includes** residues (chain / insertion codes supported).
+* (When `--exclude-backbone false`) If a selected residue’s **backbone atom**
   (N, H*, CA, HA*, C, O, OXT) contacts the substrate within either cutoff, include its
   **peptide‑adjacent** N‑side and C‑side neighbors (C–N ≤ 1.9 Å). If a real terminus,
   keep the respective terminal cap atoms (N/H* or C/O/OXT).
@@ -41,28 +41,28 @@ Truncation
   **PRO/HYP** retain N, CA, HA, H* to keep the ring.
 * **Continuous peptide stretches** keep internal backbone; only **terminal caps** are removed
   (N‑cap: N/H*; C‑cap: C/O/OXT).
-* With `--exclude_backbone true` (default), delete main‑chain atoms on all **non‑substrate amino acids**,
+* With `--exclude-backbone true` (default), delete main‑chain atoms on all **non‑substrate amino acids**,
   except the **PRO/HYP** retention and **PRO‑adjacency** preservation above.
 * **New safeguard:** For **non‑amino‑acid residues** (e.g., ligands), atoms named like protein
   backbone ({"N","CA","HA","H","H1","H2","H3"}) are **never deleted** by capping logic.
 
-Link hydrogens (`--add_linkH`)
+Link hydrogens (`--add-linkH`)
 * Adds **carbon‑only** link H at **1.09 Å** along the cut‑bond vector.
   Normal residues: check **CB–CA**, **CA–N**, **CA–C**; **PRO/HYP**: **CA–C** only.
 * If any are added, append a **TER** then a contiguous **`HETATM` block** of
   atoms named **`HL`** in residue **`LKH`** (chain `L`), with serials continued from the main block.
 * In multi‑structure mode, link‑H **targets and ordering** are enforced to be
-  **identical across models**; coordinates remain model‑specific. The `--add_linkH`
+  **identical across models**; coordinates remain model‑specific. The `--add-linkH`
   flag is honored in **both** single‑ and multi‑structure modes.
 
 Charge summary
 * **AMINO_ACIDS** (dict) supplies the charge for amino‑acid residues (including common variants).
 * **ION** supplies charges for common ions (if `resname` matches, e.g., ZN, MG, FE2).
 * **Waters** (HOH/WAT/TIP3/SOL) are **0**.
-* **Unknown residues** (not in AMINO_ACIDS/ION/WATER) are **0** unless `--ligand_charge` is given.
-  - `--ligand_charge <number>`: treat as the **total** charge for unknown residues in the pocket
+* **Unknown residues** (not in AMINO_ACIDS/ION/WATER) are **0** unless `--ligand-charge` is given.
+  - `--ligand-charge <number>`: treat as the **total** charge for unknown residues in the pocket
     (preferentially distributed across **unknown substrate** residues, else across all unknowns).
-  - `--ligand_charge "RES1:Q1,RES2:Q2,..."`: set **per‑resname** charges (e.g., `"GPP:-3,MMT:-1"`).
+  - `--ligand-charge "RES1:Q1,RES2:Q2,..."`: set **per‑resname** charges (e.g., `"GPP:-3,MMT:-1"`).
     In this **mapping mode**, any other unknown residues remain **0**.
 * **Multi‑structure note:** the **charge summary is computed on the first input PDB**.
 
@@ -82,10 +82,10 @@ CLI (synopsis)
 --------------
 Single structure:
     pdb2reaction extract -i complex.pdb -c substrate.pdb [-o pocket.pdb]
-               [-r 2.6] [--radius_het2het 2.6]
-               [--include_H2O true|false] [--exclude_backbone true|false]
-               [--add_linkH true|false] [--selected_resn '123,124']
-               [--ligand_charge Q | --ligand_charge 'RES1:Q1,RES2:Q2']
+               [-r 2.6] [--radius-het2het 2.6]
+               [--include-H2O true|false] [--exclude-backbone true|false]
+               [--add-linkH true|false] [--selected-resn '123,124']
+               [--ligand-charge Q | --ligand-charge 'RES1:Q1,RES2:Q2']
                [-v]
 
 Multiple structures → single multi‑MODEL:
@@ -109,11 +109,11 @@ Notes on defaults / behavior
 ----------------------------
 * `--radius` default: **2.6 Å**. If you pass `0`, it is internally nudged to **0.001 Å**
   (non‑zero search radius).
-* `--radius_het2het` default: **0 Å** (off). Internally treated as **0.001 Å** if `0` is given.
-* `--include_H2O` default: **true**.
-* `--exclude_backbone` default: **true**.
-* `--add_linkH` default: **true**.
-* `--ligand_charge` default: **None** (unknown residues counted as 0 unless set).
+* `--radius-het2het` default: **0 Å** (off). Internally treated as **0.001 Å** if `0` is given.
+* `--include-H2O` default: **true**.
+* `--exclude-backbone` default: **true**.
+* `--add-linkH` default: **true**.
+* `--ligand-charge` default: **None** (unknown residues counted as 0 unless set).
 * **Output default:** if `-o` is omitted → single input: `pocket.pdb`; multiple inputs:
   per‑file `pocket_{original_filename}.pdb`.
 
@@ -154,7 +154,7 @@ BACKBONE_ATOMS: Set[str] = {
     "N", "C", "O", "CA", "OXT",
     "H", "H1", "H2", "H3", "HN", "HA", "HA2", "HA3",
 }
-# When --exclude_backbone true, remove the full main-chain set:
+# When --exclude-backbone true, remove the full main-chain set:
 BACKBONE_ALL: Set[str] = BACKBONE_ATOMS
 
 # Unified amino-acid dictionary: resname -> nominal integer charge
@@ -313,30 +313,30 @@ def parse_args() -> argparse.Namespace:
         help="Cutoff (Å): include any residue with any atom within this distance of a substrate atom. (default: 2.6)"
     )
     p.add_argument(
-        "--radius_het2het", type=float, default=0,
+        "--radius-het2het", type=float, default=0,
         help=("Cutoff (Å) for substrate–protein hetero‑atom proximity (non‑C/H on both sides); "
               "applied independently of --radius. 0 conceptually disables this rule, "
               "but is internally treated as 0.001 Å. (default: 0)")
     )
     p.add_argument(
-        "--include_H2O", type=str2bool, default=True,
+        "--include-H2O", type=str2bool, default=True,
         help="Include waters (HOH/WAT/TIP3/SOL). (default: true)"
     )
     p.add_argument(
-        "--exclude_backbone", type=str2bool, default=True,
+        "--exclude-backbone", type=str2bool, default=True,
         help="Delete main‑chain atoms (N, H*, CA, HA*, C, O) from non‑substrate amino acids; PRO/HYP keep N, CA, HA, H*. (default: true)"
     )
     p.add_argument(
-        "--add_linkH", type=str2bool, default=True,
+        "--add-linkH", type=str2bool, default=True,
         help="Add carbon‑only link‑H at 1.09 Å along cut‑bond directions; appended after a TER as HL/LKH HETATM records. (default: true)"
     )
     p.add_argument(
-        "--selected_resn", dest="selected_resn", required=False, default="",
+        "--selected-resn", dest="selected_resn", required=False, default="",
         help=("Comma/space‑separated residue IDs to force‑include (e.g., '123,124', 'A:123,B:456'; "
               "insertion codes allowed: '123A' / 'A:123A').")
     )
     p.add_argument(
-        "--ligand_charge", type=str, default=None,
+        "--ligand-charge", type=str, default=None,
         help=("Either a single **number** giving the **total** charge to distribute across unknown residues "
               "(preferring unknown substrate), or a comma/space‑separated **per‑resname** list like "
               "'GPP:-3,MMT:-1'. In mapping mode, any other unknown residues remain 0.")
@@ -914,7 +914,7 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
                     if nm in sk:
                         sk.remove(nm)
 
-    # Always keep CA on the N-side neighbor of PRO (independent of --exclude_backbone)
+    # Always keep CA on the N-side neighbor of PRO (independent of --exclude-backbone)
     for fid in selected_ids:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
         if res.get_resname() != "PRO":
@@ -1081,7 +1081,7 @@ def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
     res = structure[fid[1]][fid[2]].child_dict[fid[3]]
     return _residue_key_from_res(res)
 
-# ---- helper for parsing --ligand_charge (number or 'RES:Q' mapping) ----
+# ---- helper for parsing --ligand-charge (number or 'RES:Q' mapping) ----
 def _parse_ligand_charge_option(ligand_charge: float | str | Dict[str, float] | None
                                 ) -> Tuple[Optional[float], Optional[Dict[str, float]]]:
     """
@@ -1112,18 +1112,18 @@ def _parse_ligand_charge_option(ligand_charge: float | str | Dict[str, float] | 
         mapping: Dict[str, float] = {}
         for tok in tokens:
             if ":" not in tok:
-                raise ValueError(f"Invalid --ligand_charge token '{tok}'. Use 'RES:Q' (e.g., GPP:-3) or a number (e.g., -3).")
+                raise ValueError(f"Invalid --ligand-charge token '{tok}'. Use 'RES:Q' (e.g., GPP:-3) or a number (e.g., -3).")
             res, qtxt = tok.split(":", 1)
             resname = res.strip().upper()
             if not resname:
-                raise ValueError(f"Invalid --ligand_charge token '{tok}': empty residue name.")
+                raise ValueError(f"Invalid --ligand-charge token '{tok}': empty residue name.")
             try:
                 qval = float(qtxt.strip())
             except ValueError:
-                raise ValueError(f"Invalid --ligand_charge token '{tok}': '{qtxt}' is not a number.")
+                raise ValueError(f"Invalid --ligand-charge token '{tok}': '{qtxt}' is not a number.")
             mapping[resname] = qval
         if not mapping:
-            raise ValueError("Empty --ligand_charge mapping.")
+            raise ValueError("Empty --ligand-charge mapping.")
         return None, mapping
     raise TypeError(f"Unsupported type for ligand_charge: {type(ligand_charge)!r}")
 
@@ -1188,7 +1188,7 @@ def compute_charge_summary(structure,
         per_map[key] = q
         total += q
 
-    # Apply --ligand_charge if provided
+    # Apply --ligand-charge if provided
     total_spec, mapping_spec = _parse_ligand_charge_option(ligand_charge)
 
     if total_spec is not None:
@@ -1490,14 +1490,14 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     logging.info("[extract:multi] Initial union selection: %d residues; backbone-contact: %d residues.",
                  len(union_sel_keys), len(union_bb_contact_keys))
 
-    # 1a) Force-include residues via --selected_resn (OR across structures)
+    # 1a) Force-include residues via --selected-resn (OR across structures)
     if getattr(args, "selected_resn", ""):
         forced_union: Set[ResidueKey] = set()
         for st in structs:
             forced_res = find_substrate_by_idspec(st, args.selected_resn)
             forced_union |= {_residue_key_from_res(r) for r in forced_res}
         if forced_union:
-            logging.info("[extract:multi] Force-include (--selected_resn): +%d residues.", len(forced_union))
+            logging.info("[extract:multi] Force-include (--selected-resn): +%d residues.", len(forced_union))
             union_sel_keys |= forced_union
 
     # 2) Disulfide partners (OR across structures)
@@ -1597,7 +1597,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         logging.info("[extract:multi] Atoms after truncation (model %d): %d", m, kept_atoms)
         model_counts.append({"raw_atoms": raw_atoms, "kept_atoms": kept_atoms})
 
-        # Append TER + link‑H block (honor --add_linkH)
+        # Append TER + link‑H block (honor --add-linkH)
         link_coords = [coord for (_, coord) in linkdefs_per_struct[m-1]]
         if args.add_linkH and link_coords:
             if not main_text.endswith("\n"):
@@ -1735,7 +1735,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
             args.exclude_backbone
         )
 
-        # Force-include residues via --selected_resn
+        # Force-include residues via --selected-resn
         if getattr(args, "selected_resn", ""):
             forced_res = find_substrate_by_idspec(complex_struct, args.selected_resn)
             add_n = 0
@@ -1745,7 +1745,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
                     selected_ids.add(fid)
                     add_n += 1
             if add_n:
-                logging.info("[extract] Force-include (--selected_resn): +%d residues.", add_n)
+                logging.info("[extract] Force-include (--selected-resn): +%d residues.", add_n)
 
         augment_disulfides(complex_struct, selected_ids)
 
