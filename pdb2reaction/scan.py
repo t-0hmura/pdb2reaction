@@ -522,7 +522,7 @@ def cli(
         # ------------------------------------------------------------------
         # 1) Assemble configuration (defaults ← YAML ← CLI)
         # ------------------------------------------------------------------
-    yaml_cfg = load_yaml_dict(args_yaml)
+        yaml_cfg = load_yaml_dict(args_yaml)
 
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
