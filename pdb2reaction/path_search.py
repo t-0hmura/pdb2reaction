@@ -1093,7 +1093,7 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
     for j in range(1, len(coords_list)):
         P = aligned_coords[j-1]
         Q = coords_list[j]
-        R, t = _kabsch_R_t(P, Q)
+        R, t = kabsch_R_t(P, Q)
         Qa = (Q @ R) + t
         aligned_coords.append(Qa)
 
@@ -1208,7 +1208,7 @@ def _merge_pair_to_full(pair_images: List[Any],
             P_bohr = np.array(pair_images[k].coords3d, dtype=float)
             P = P_bohr * BOHR2ANG
             P_sel = np.array([P[j] for j in idx_sel], dtype=float)
-            R, t = _kabsch_R_t(Y, P_sel)
+            R, t = kabsch_R_t(Y, P_sel)
             Paligned = (P @ R) + t
             for jj, pidx in enumerate(idx_sel):
                 full_i = match_tpl_idx[pidx]
