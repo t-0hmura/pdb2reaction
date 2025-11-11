@@ -94,31 +94,12 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignor
 
 # local helpers from pdb2reaction
 from .uma_pysis import uma_pysis
-from .utils import convert_xyz_to_pdb, freeze_links as _freeze_links_from_utils
-
-
-# ===================================================================
-#                         Generic helpers
-# ===================================================================
-
-def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively update dict *dst* with *src*, returning *dst*."""
-    for k, v in (src or {}).items():
-        if isinstance(v, dict) and isinstance(dst.get(k), dict):
-            _deep_update(dst[k], v)
-        else:
-            dst[k] = v
-    return dst
-
-
-def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
-    if not path:
-        return {}
-    with open(path, "r") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
-    return data
+from .utils import (
+    convert_xyz_to_pdb,
+    freeze_links as _freeze_links_from_utils,
+    deep_update,
+    load_yaml_dict,
+)
 
 
 def _pretty_block(title: str, content: Dict[str, Any]) -> str:
@@ -1372,7 +1353,7 @@ def cli(
     # --------------------------
     # 1) Assemble configuration
     # --------------------------
-    yaml_cfg = _load_yaml(args_yaml)
+    yaml_cfg = load_yaml_dict(args_yaml)
     geom_cfg = dict(GEOM_KW)
     calc_cfg = dict(CALC_KW)
     opt_cfg  = dict(OPT_BASE_KW)
@@ -1380,11 +1361,11 @@ def cli(
     rsirfo_cfg = dict(RSIRFO_KW)
 
     # YAML → defaults
-    _deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-    _deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-    _deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-    _deep_update(simple_cfg, yaml_cfg.get("hessian_dimer", {}))
-    _deep_update(rsirfo_cfg, yaml_cfg.get("rsirfo", {}))
+    deep_update(geom_cfg, yaml_cfg.get("geom", {}))
+    deep_update(calc_cfg, yaml_cfg.get("calc", {}))
+    deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
+    deep_update(simple_cfg, yaml_cfg.get("hessian_dimer", {}))
+    deep_update(rsirfo_cfg, yaml_cfg.get("rsirfo", {}))
 
     # CLI overrides
     calc_cfg["charge"] = int(charge)

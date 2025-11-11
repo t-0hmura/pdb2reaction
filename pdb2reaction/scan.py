@@ -92,7 +92,12 @@ EV2AU = 1.0 / AU2EV  # eV → Hartree
 H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 
 from .uma_pysis import uma_pysis
-from .utils import convert_xyz_to_pdb, freeze_links as _freeze_links_util
+from .utils import (
+    convert_xyz_to_pdb,
+    freeze_links as _freeze_links_util,
+    deep_update,
+    load_yaml_dict,
+)
 from .bond_changes import compare_structures, summarize_changes
 
 
@@ -190,31 +195,6 @@ BOND_KW: Dict[str, Any] = {
     "margin_fraction": 0.05,
     "delta_fraction": 0.05,
 }
-
-
-# --------------------------------------------------------------------------------------
-# Utilities
-# --------------------------------------------------------------------------------------
-
-def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively update dict *dst* with *src*, returning *dst*."""
-    for k, v in (src or {}).items():
-        if isinstance(v, dict) and isinstance(dst.get(k), dict):
-            _deep_update(dst[k], v)
-        else:
-            dst[k] = v
-    return dst
-
-
-def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
-    if not path:
-        return {}
-    with open(path, "r") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
-    return data
-
 
 def _pretty_block(title: str, content: Dict[str, Any]) -> str:
     import yaml as _yaml
@@ -542,7 +522,7 @@ def cli(
         # ------------------------------------------------------------------
         # 1) Assemble configuration (defaults ← YAML ← CLI)
         # ------------------------------------------------------------------
-        yaml_cfg = _load_yaml(args_yaml)
+    yaml_cfg = load_yaml_dict(args_yaml)
 
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
@@ -552,13 +532,13 @@ def cli(
         bias_cfg  = dict(BIAS_KW)
         bond_cfg  = dict(BOND_KW)  # <-- added
 
-        _deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        _deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        _deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-        _deep_update(lbfgs_cfg, yaml_cfg.get("lbfgs", {}))
-        _deep_update(rfo_cfg,   yaml_cfg.get("rfo",   {}))
-        _deep_update(bias_cfg,  yaml_cfg.get("bias",  {}))
-        _deep_update(bond_cfg,  yaml_cfg.get("bond",  {}))  # <-- added
+        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
+        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
+        deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
+        deep_update(lbfgs_cfg, yaml_cfg.get("lbfgs", {}))
+        deep_update(rfo_cfg,   yaml_cfg.get("rfo",   {}))
+        deep_update(bias_cfg,  yaml_cfg.get("bias",  {}))
+        deep_update(bond_cfg,  yaml_cfg.get("bond",  {}))  # <-- added
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)

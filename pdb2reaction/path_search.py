@@ -138,7 +138,7 @@ from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis
-from .utils import convert_xyz_to_pdb, freeze_links
+from .utils import convert_xyz_to_pdb, freeze_links, deep_update, load_yaml_dict
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
 from .utils import build_energy_diagram  # Plotly energy diagram
@@ -267,31 +267,6 @@ SEARCH_KW: Dict[str, Any] = {
     "max_nodes_bridge": 5,
     "kink_max_nodes": 3,           # nodes for linear interpolation when skipping GSM at a kink
 }
-
-# -----------------------------------------------
-# Utilities
-# -----------------------------------------------
-
-def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively overwrite mapping *dst* with *src* and return *dst*."""
-    for k, v in (src or {}).items():
-        if isinstance(v, dict) and isinstance(dst.get(k), dict):
-            _deep_update(dst[k], v)
-        else:
-            dst[k] = v
-    return dst
-
-
-def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
-    """Load YAML as dict (empty dict if *path* is None). Raise if top level is not a mapping."""
-    if not path:
-        return {}
-    with open(path, "r") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
-    return data
-
 
 def _pretty_block(title: str, content: Dict[str, Any]) -> str:
     """Render a titled YAML block for console echo."""
@@ -1626,7 +1601,7 @@ def cli(
         # --------------------------
         # 1) Resolve settings (defaults ← YAML ← CLI)
         # --------------------------
-        yaml_cfg = _load_yaml(args_yaml)
+        yaml_cfg = load_yaml_dict(args_yaml)
 
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
@@ -1637,14 +1612,14 @@ def cli(
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
 
-        _deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        _deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        _deep_update(gs_cfg,   yaml_cfg.get("gs",   {}))
-        _deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-        _deep_update(lbfgs_cfg, yaml_cfg.get("sopt", {}).get("lbfgs", yaml_cfg.get("lbfgs", {})))
-        _deep_update(rfo_cfg,   yaml_cfg.get("sopt", {}).get("rfo",   yaml_cfg.get("rfo",   {})))
-        _deep_update(bond_cfg,  yaml_cfg.get("bond", {}))
-        _deep_update(search_cfg,yaml_cfg.get("search", {}))
+        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
+        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
+        deep_update(gs_cfg,   yaml_cfg.get("gs",   {}))
+        deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
+        deep_update(lbfgs_cfg, yaml_cfg.get("sopt", {}).get("lbfgs", yaml_cfg.get("lbfgs", {})))
+        deep_update(rfo_cfg,   yaml_cfg.get("sopt", {}).get("rfo",   yaml_cfg.get("rfo",   {})))
+        deep_update(bond_cfg,  yaml_cfg.get("bond", {}))
+        deep_update(search_cfg,yaml_cfg.get("search", {}))
 
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
