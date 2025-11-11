@@ -3,10 +3,42 @@
 import sys
 import math
 from pathlib import Path
-from typing import Sequence, List
+from typing import Any, Dict, Optional, Sequence, List
 
+import yaml
 from ase.io import read, write
 import plotly.graph_objs as go
+
+
+# =============================================================================
+# Generic helpers
+# =============================================================================
+
+
+def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Recursively update mapping *dst* with *src*, returning *dst*."""
+
+    for k, v in (src or {}).items():
+        if isinstance(v, dict) and isinstance(dst.get(k), dict):
+            deep_update(dst[k], v)
+        else:
+            dst[k] = v
+    return dst
+
+
+def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
+    """Load a YAML file whose root must be a mapping. Return an empty dict if *path* is None."""
+
+    if not path:
+        return {}
+
+    with open(path, "r") as f:
+        data = yaml.safe_load(f) or {}
+
+    if not isinstance(data, dict):
+        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
+
+    return data
 
 
 # =============================================================================

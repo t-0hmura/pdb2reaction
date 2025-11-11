@@ -34,6 +34,8 @@ import numpy as np
 
 from pysisyphus.helpers import geom_loader
 
+from .utils import deep_update, load_yaml_dict
+
 
 # -----------------------------------------------
 # Defaults (override via CLI / YAML)
@@ -53,26 +55,6 @@ DFT_KW: Dict[str, Any] = {
 # -----------------------------------------------
 
 HARTREE_TO_KCALMOL = 627.5094740631  # Commonly used Hartree → kcal/mol conversion factor
-
-
-def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively update dict 'dst' with 'src', returning 'dst'."""
-    for k, v in (src or {}).items():
-        if isinstance(v, dict) and isinstance(dst.get(k), dict):
-            _deep_update(dst[k], v)
-        else:
-            dst[k] = v
-    return dst
-
-
-def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
-    if not path:
-        return {}
-    with open(path, "r") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML top-level must be a mapping; got: {type(data)}")
-    return data
 
 
 def _pretty_block(title: str, content: Dict[str, Any]) -> str:
@@ -268,9 +250,9 @@ def cli(
         # --------------------------
         # 1) Assemble configuration
         # --------------------------
-        yaml_cfg = _load_yaml(args_yaml)
+        yaml_cfg = load_yaml_dict(args_yaml)
         dft_cfg = dict(DFT_KW)
-        _deep_update(dft_cfg, yaml_cfg.get("dft", {}))
+        deep_update(dft_cfg, yaml_cfg.get("dft", {}))
 
         # CLI overrides
         dft_cfg["conv_tol"] = float(conv_tol)

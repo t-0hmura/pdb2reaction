@@ -86,7 +86,7 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis
-from pdb2reaction.utils import convert_xyz_to_pdb
+from pdb2reaction.utils import convert_xyz_to_pdb, deep_update, load_yaml_dict
 
 
 # --------------------------
@@ -140,32 +140,6 @@ IRC_KW_DEFAULT: Dict[str, Any] = {
     "loose_cycles": 3,
     "corr_func": "mbs",
 }
-
-
-# --------------------------
-# ヘルパ
-# --------------------------
-
-def _deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """辞書を再帰的にマージ（src が優先）。"""
-    if not src:
-        return dst
-    for k, v in src.items():
-        if isinstance(v, dict) and isinstance(dst.get(k), dict):
-            _deep_update(dst[k], v)
-        else:
-            dst[k] = v
-    return dst
-
-
-def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
-    if not path:
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML のトップレベルは mapping である必要があります (got: {type(data)})")
-    return data
 
 
 def _pretty_block(title: str, content: Dict[str, Any]) -> str:
@@ -237,15 +211,15 @@ def cli(
         # --------------------------
         # 1) 設定の構築（YAML → デフォルト, その後 CLI で上書き）
         # --------------------------
-        yaml_cfg = _load_yaml(args_yaml)
+        yaml_cfg = load_yaml_dict(args_yaml)
 
         geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
         calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
         irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
 
-        _deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        _deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        _deep_update(irc_cfg,  yaml_cfg.get("irc",  {}))
+        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
+        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
+        deep_update(irc_cfg,  yaml_cfg.get("irc",  {}))
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)
