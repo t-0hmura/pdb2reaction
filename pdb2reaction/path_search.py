@@ -1515,7 +1515,7 @@ def _merge_final_and_write(final_images: List[Any],
     help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search)."
 )
 @click.option(
-    "--pre-opt", "pre_opt",
+    "--pre-opt",
     "pre_opt",
     type=click.BOOL,
     default=True,

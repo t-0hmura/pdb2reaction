@@ -66,14 +66,14 @@ def extract_cmd(ctx: click.Context) -> None:
 cli.add_command(all_cmd, name="all")
 cli.add_command(scan_cmd, name="scan")
 cli.add_command(opt_cmd, name="opt")
-cli.add_command(path_opt_cmd, name="path_opt")
-cli.add_command(path_search_cmd, name="path_search")
-cli.add_command(ts_opt_cmd, name="ts_opt")
+cli.add_command(path_opt_cmd, name="path-opt")
+cli.add_command(path_search_cmd, name="path-search")
+cli.add_command(ts_opt_cmd, name="ts-opt")
 cli.add_command(freq_cmd, name="freq")
 cli.add_command(irc_cmd, name="irc")
 cli.add_command(extract_cmd, name="extract")
 cli.add_command(trj2fig_cmd, name="trj2fig")
-cli.add_command(add_elem_info_cmd, name="add_elem_info")
+cli.add_command(add_elem_info_cmd, name="add-elem-info")
 cli.add_command(dft_cmd, name="dft")
 
 
