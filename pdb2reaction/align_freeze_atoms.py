@@ -337,89 +337,95 @@ def scan_freeze_atoms_toward_target_inplace(
     if P.shape != Q.shape:
         raise ValueError(f"Different atom counts: {P.shape[0]} vs {Q.shape[0]}")
     N = P.shape[0]
-    idx = _freeze_union(g_ref, g_mob, n_atoms=N)
 
-    if len(idx) == 0:
-        if verbose:
-            print("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
-        return {"max_remaining_A": 0.0, "n_steps": 0, "converged": True}
+    original_freeze = np.array(getattr(g_mob, "freeze_atoms", []), int)
+    try:
+        idx = _freeze_union(g_ref, g_mob, n_atoms=N)
 
-    # Attach a calculator if needed
-    _attach_calc_if_needed(g_mob, shared_calc, charge=charge, spin=spin, model=model, device=device)
+        if len(idx) == 0:
+            if verbose:
+                print("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
+            return {"max_remaining_A": 0.0, "n_steps": 0, "converged": True}
 
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+        # Attach a calculator if needed
+        _attach_calc_if_needed(g_mob, shared_calc, charge=charge, spin=spin, model=model, device=device)
 
-    step_bohr = float(step_A) / BOHR2ANG
-    eps = 1e-12
-    n_steps_done = 0
-    converged = False
-    max_remaining_A = None
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-    for istep in range(1, max_steps + 1):
-        Q = _coords3d(g_mob)
-        d = P[idx] - Q[idx]                    # bohr
-        rem_bohr = np.linalg.norm(d, axis=1)
-        max_rem_bohr = float(rem_bohr.max()) if len(rem_bohr) else 0.0
-        max_remaining_A = max_rem_bohr * BOHR2ANG
-        if verbose:
-            print(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å")
+        step_bohr = float(step_A) / BOHR2ANG
+        eps = 1e-12
+        n_steps_done = 0
+        converged = False
+        max_remaining_A = None
 
-        if max_rem_bohr <= step_bohr + 1e-12:
-            # Final step: enforce exact coincidence
-            Q_new = Q.copy()
-            Q_new[idx] = P[idx]
-            _set_all_coords_disabling_freeze(g_mob, Q_new)
+        for istep in range(1, max_steps + 1):
+            Q = _coords3d(g_mob)
+            d = P[idx] - Q[idx]                    # bohr
+            rem_bohr = np.linalg.norm(d, axis=1)
+            max_rem_bohr = float(rem_bohr.max()) if len(rem_bohr) else 0.0
+            max_remaining_A = max_rem_bohr * BOHR2ANG
+            if verbose:
+                print(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å")
+
+            if max_rem_bohr <= step_bohr + 1e-12:
+                # Final step: enforce exact coincidence
+                Q_new = Q.copy()
+                Q_new[idx] = P[idx]
+                _set_all_coords_disabling_freeze(g_mob, Q_new)
+                try:
+                    # Finishing relaxation
+                    g_mob.freeze_atoms = np.array(idx, int)
+                    LBFGS(
+                        g_mob,
+                        out_dir=str(out_dir),
+                        max_cycles=int(final_cycles),
+                        print_every=1,
+                        dump=False,
+                    ).run()
+                except (ZeroStepLength, OptimizationError) as e:
+                    if verbose:
+                        print(f"[scan] WARNING: Exceptional occured in final relaxation: {e} (continue...)")
+                g_mob.freeze_atoms = np.array([], int)
+                converged = True
+                n_steps_done = istep
+                break
+
+            # Take one step forward toward the target
+            move = np.zeros_like(d)
+            sel = rem_bohr > eps
+            move[sel] = (d[sel] / rem_bohr[sel, None]) * step_bohr
+            Q_next = Q.copy()
+            Q_next[idx] = Q[idx] + move
+
+            # Update coordinates → short relaxation with frozen atoms fixed
+            _set_all_coords_disabling_freeze(g_mob, Q_next)
             try:
-                # Finishing relaxation
                 g_mob.freeze_atoms = np.array(idx, int)
                 LBFGS(
                     g_mob,
                     out_dir=str(out_dir),
-                    max_cycles=int(final_cycles),
+                    max_cycles=int(per_step_cycles),
                     print_every=1,
                     dump=False,
                 ).run()
             except (ZeroStepLength, OptimizationError) as e:
                 if verbose:
-                    print(f"[scan] WARNING: Exceptional occured in final relaxation: {e} (continue...)")
-            g_mob.freeze_atoms = np.array([], int)
-            converged = True
+                    print(f"[scan] WARNING: Exceptional occured in relaxation: {e} (continue...)")
+            finally:
+                g_mob.freeze_atoms = np.array([], int)
+
             n_steps_done = istep
-            break
-
-        # Take one step forward toward the target
-        move = np.zeros_like(d)
-        sel = rem_bohr > eps
-        move[sel] = (d[sel] / rem_bohr[sel, None]) * step_bohr
-        Q_next = Q.copy()
-        Q_next[idx] = Q[idx] + move
-
-        # Update coordinates → short relaxation with frozen atoms fixed
-        _set_all_coords_disabling_freeze(g_mob, Q_next)
-        try:
-            g_mob.freeze_atoms = np.array(idx, int)
-            LBFGS(
-                g_mob,
-                out_dir=str(out_dir),
-                max_cycles=int(per_step_cycles),
-                print_every=1,
-                dump=False,
-            ).run()
-        except (ZeroStepLength, OptimizationError) as e:
+        else:
             if verbose:
-                print(f"[scan] WARNING: Exceptional occured in relaxation: {e} (continue...)")
-        finally:
-            g_mob.freeze_atoms = np.array([], int)
+                print(f"[scan] WARNING: Reached max_steps={max_steps}.")
 
-        n_steps_done = istep
-    else:
-        if verbose:
-            print(f"[scan] WARNING: Reached max_steps={max_steps}.")
-
-    return {"max_remaining_A": float(max_remaining_A or 0.0),
-            "n_steps": int(n_steps_done),
-            "converged": bool(converged)}
+        return {"max_remaining_A": float(max_remaining_A or 0.0),
+                "n_steps": int(n_steps_done),
+                "converged": bool(converged)}
+    finally:
+        # Always restore the original freeze_atoms state
+        g_mob.freeze_atoms = original_freeze
 
 
 # =============================================================================
