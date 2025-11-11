@@ -38,7 +38,12 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 
 from .uma_pysis import uma_pysis
-from .utils import convert_xyz_to_pdb, freeze_links, deep_update, load_yaml_dict
+from .utils import (
+    convert_xyz_to_pdb,
+    freeze_links,
+    load_yaml_dict,
+    apply_yaml_overrides,
+)
 
 # -----------------------------------------------
 # Default settings (overridable via YAML/CLI)
@@ -292,11 +297,16 @@ def cli(
         rfo_cfg   = dict(RFO_KW)
 
         # Merge YAML → defaults
-        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-        deep_update(lbfgs_cfg, yaml_cfg.get("lbfgs", {}))
-        deep_update(rfo_cfg,   yaml_cfg.get("rfo",   {}))
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("lbfgs",),)),
+                (rfo_cfg, (("rfo",),)),
+            ],
+        )
 
         # CLI overrides (CLI > YAML)
         calc_cfg["charge"] = charge

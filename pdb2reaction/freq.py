@@ -54,8 +54,8 @@ from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AMU2AU, AU2EV
 # local helpers from pdb2reaction
 from .uma_pysis import uma_pysis
 from .utils import (
-    deep_update,
     load_yaml_dict,
+    apply_yaml_overrides,
     freeze_links as _freeze_links_from_utils,
     convert_xyz_to_pdb as _convert_xyz_to_pdb,
 )
@@ -489,9 +489,14 @@ def cli(
     freq_cfg = dict(FREQ_KW)
     thermo_cfg = dict(THERMO_KW)
 
-    deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-    deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-    deep_update(freq_cfg, yaml_cfg.get("freq", {}))
+    apply_yaml_overrides(
+        yaml_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (freq_cfg, (("freq",),)),
+        ],
+    )
 
     # CLI overrides
     calc_cfg["charge"] = int(charge)

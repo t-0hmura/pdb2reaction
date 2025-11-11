@@ -34,7 +34,7 @@ import numpy as np
 
 from pysisyphus.helpers import geom_loader
 
-from .utils import deep_update, load_yaml_dict
+from .utils import load_yaml_dict, apply_yaml_overrides
 
 
 # -----------------------------------------------
@@ -252,7 +252,7 @@ def cli(
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
         dft_cfg = dict(DFT_KW)
-        deep_update(dft_cfg, yaml_cfg.get("dft", {}))
+        apply_yaml_overrides(yaml_cfg, [(dft_cfg, (("dft",),))])
 
         # CLI overrides
         dft_cfg["conv_tol"] = float(conv_tol)
