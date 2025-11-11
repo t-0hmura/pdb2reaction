@@ -147,8 +147,7 @@ from .utils import (
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
 from .utils import build_energy_diagram  # Plotly energy diagram
-# NEW: input alignment (freeze-guided) after pre-opt
-from .align_freeze_atoms import align_and_refine_sequence_inplace  # <-- added import
+from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 
 # -----------------------------------------------
 # Configuration defaults
@@ -415,39 +414,6 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     broken = len(res.broken_covalent) > 0
     summary = summarize_changes(x, res, one_based=True)
     return (formed or broken), summary
-
-
-# ---- Kabsch rigid transform (for full‑system merge) ----
-
-def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Optimal rotation R and translation t (Kabsch) to align Q to P.
-
-    Parameters
-    ----------
-    P, Q : (N, 3) float arrays
-
-    Returns
-    -------
-    R : (3, 3) rotation matrix
-    t : (3,) translation vector
-    """
-    P = np.asarray(P, dtype=float)
-    Q = np.asarray(Q, dtype=float)
-    if P.shape != Q.shape or P.ndim != 2 or P.shape[1] != 3:
-        raise ValueError("Kabsch expects P, Q with shape (N, 3).")
-    mu_P = P.mean(axis=0)
-    mu_Q = Q.mean(axis=0)
-    Pc = P - mu_P
-    Qc = Q - mu_Q
-    H = Pc.T @ Qc  # covariance (maps Q -> P)
-    U, S, Vt = np.linalg.svd(H)
-    R = Vt.T @ U.T
-    if np.linalg.det(R) < 0.0:  # ensure right‑handed
-        Vt[-1, :] *= -1.0
-        R = Vt.T @ U.T
-    t = mu_P - mu_Q @ R
-    return R, t
 
 
 # ---------- Minimal GS configuration helper ----------

@@ -64,7 +64,7 @@ except Exception:
 # Math utilities (row-vector convention: Q @ R + t)
 # =============================================================================
 
-def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Row-vector Kabsch: find R, t minimizing ||(Q @ R + t) - P|| for (N, 3)."""
     P = np.asarray(P, float)
     Q = np.asarray(Q, float)
@@ -291,7 +291,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     # *** CHANGED: evaluate RMSD on the same selection used for Kabsch ***
     before_sel = _rmsd(P_sel, Q_sel)
 
-    R, t = _kabsch_R_t(P_sel, Q_sel)
+    R, t = kabsch_R_t(P_sel, Q_sel)
     Q_aln = (Q @ R) + t
     _set_all(Q_aln)
 
@@ -537,4 +537,5 @@ __all__ = [
     "scan_freeze_atoms_toward_target_inplace",
     "align_and_refine_pair_inplace",
     "align_and_refine_sequence_inplace",
+    "kabsch_R_t",
 ]
