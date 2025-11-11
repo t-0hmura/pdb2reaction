@@ -381,6 +381,7 @@ def scan_freeze_atoms_toward_target_inplace(
                         out_dir=str(out_dir),
                         max_cycles=int(final_cycles),
                         print_every=1,
+                        thresh="gau",
                         dump=False,
                     ).run()
                 except (ZeroStepLength, OptimizationError) as e:
@@ -407,6 +408,7 @@ def scan_freeze_atoms_toward_target_inplace(
                     out_dir=str(out_dir),
                     max_cycles=int(per_step_cycles),
                     print_every=1,
+                    thresh="gau",
                     dump=False,
                 ).run()
             except (ZeroStepLength, OptimizationError) as e:

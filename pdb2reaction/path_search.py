@@ -2065,7 +2065,7 @@ def cli(
         hh = int(elapsed // 3600)
         mm = int((elapsed % 3600) // 60)
         ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(f"[time] Elapsed for Path Search: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
