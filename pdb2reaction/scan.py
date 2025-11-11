@@ -3,34 +3,34 @@
 """
 Bond-length driven staged scan with harmonic distance restraints and full relaxation.
 
+**This version is simplified to support only `uma_pysis`** and removes extra
+general-purpose handling to reduce overhead and speed up scans.
+
 Overview
 --------
 - Input geometry: .pdb / .xyz / ... via pysisyphus.geom_loader (Cartesian recommended).
-- Calculator: UMA (via uma_pysis) wrapped by HarmonicBiasCalculator to add per-step
-  harmonic distance wells toward evolving targets for specified atom pairs.
+- Calculator: UMA (via uma_pysis) wrapped by a *lean* HarmonicBiasCalculator that
+  adds per-step harmonic distance wells toward evolving targets for specified atom pairs.
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
 
-IMPORTANT COMPATIBILITY NOTE
-----------------------------
-pysisyphus.Geometry expects calculator methods like `get_energy(atoms, coords)` and
-`get_forces(atoms, coords)` to return **dicts** (e.g., {"energy": E, "forces": F}).
-This file's HarmonicBiasCalculator now adapts its return type based on call style:
-
-- Geometry-style call (single Geometry object): returns **float** for `get_energy(...)`
-  and **np.ndarray** for `get_forces(...)` (kept for backward compatibility with this
-  script's internal probes like `float(biased.get_energy(geom))`).
-
-- Atoms/coords-style call `(atoms, coords)` used by pysisyphus.Geometry: returns **dict**
-  with keys "energy" and/or "forces" as appropriate so that Geometry.set_results works.
+Key simplifications for speed
+-----------------------------
+- HarmonicBiasCalculator now implements only the (elem, coords) 2-argument API that
+  pysisyphus.Geometry uses with `uma_pysis`. Geometry-style 1-arg fallbacks and broad
+  dict/array shape inference were removed.
+- Bias is computed in a.u. directly (Hartree, Bohr) using a pre‑converted k to
+  avoid repeated unit conversions.
+- Trajectory blocks are only accumulated when --dump is True.
+- No attempt to re-query energy for per-frame annotation during scan (saves an extra call).
 
 Per‑stage scheduling
 --------------------
-For a given list of scan tuples [(i, j, target), ...]:
+For a given list of scan tuples [(i, j, target), ...] (targets in Å):
 
-1) Compute each pair's displacement Δ = (target − current_distance).
-2) Let d_max = max(|Δ|). With --max-step-size = h, set N = ceil(d_max / h).
-3) Per-pair step width is δ_k = Δ / N.
-4) At step s (1..N), the temporary target becomes r_k(s) = r_k(0) + s * δ_k.
+1) Compute each pair's *Å-space* displacement Δ = (target − current_distance_Å).
+2) Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
+3) Per-pair step width is δ_k = Δ / N (Å).
+4) At step s (1..N), the temporary target becomes r_k(s) = r_k(0) + s * δ_k (Å).
 5) Relax the full structure under the harmonic wells.
 
 Outputs per stage (k = 1..K)
@@ -41,17 +41,25 @@ Outputs per stage (k = 1..K)
     stage_{k:02d}/scan.trj
     (if the input was PDB) stage_{k:02d}/scan.pdb
 
+Additional optional optimizations
+---------------------------------
+- With --preopt True: pre-optimize the initial structure **without bias** and continue the scan
+  from that geometry. Results written to `preopt/result.xyz` (and `.pdb` if input was PDB).
+- With --endopt True: after **each stage** completes its biased stepping, perform an **additional
+  unbiased** geometry optimization of that stage's final structure before writing outputs.
+
 Example
 -------
 pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]" \
   --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-  --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs
+  --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
+  --preopt True --endopt True
 
 Notes
 -----
 - Indices are 1-based by default. Use --zero-based if your tuples are 0-based.
-- Units: distances in Å. The bias strength 'k' is in the calculator's
-  native eV/Å^2. Start with k=100 and adjust as needed.
+- Units: distances in Å in the CLI/YAML. Internally, the bias is applied in a.u.
+  (Hartree/Bohr) using a pre-converted k.
 """
 
 from __future__ import annotations
@@ -73,6 +81,10 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
+
+EV2AU = 1.0 / AU2EV  # eV → Hartree
+H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 
 from .uma_pysis import uma_pysis
 from .utils import convert_xyz_to_pdb, freeze_links as _freeze_links_util
@@ -88,7 +100,7 @@ GEOM_KW: Dict[str, Any] = {
     "freeze_atoms": [],    # 0-based indices to freeze (optional)
 }
 
-# UMA calculator defaults (aligned with opt.py)
+# UMA calculator defaults
 CALC_KW: Dict[str, Any] = {
     "charge": 0,
     "spin": 1,                # multiplicity (= 2S+1)
@@ -127,7 +139,7 @@ LBFGS_KW: Dict[str, Any] = {
     "keep_last": 7,
     "beta": 1.0,
     "gamma_mult": False,
-    "max_step": 0.30,      # Cartesian step cap
+    "max_step": 0.30,      # Cartesian step cap (Bohr, for cart coords)
     "control_step": True,
     "double_damp": True,
     "line_search": True,
@@ -138,10 +150,10 @@ LBFGS_KW: Dict[str, Any] = {
 # RFO specifics
 RFO_KW: Dict[str, Any] = {
     **OPT_BASE_KW,
-    "trust_radius": 0.30,
+    "trust_radius": 0.30,  # Bohr
     "trust_update": True,
     "trust_min": 0.01,
-    "trust_max": 0.30,
+    "trust_max": 0.30,     # Bohr
     "max_energy_incr": None,
     "hessian_update": "bfgs",
     "hessian_init": "calc",
@@ -268,428 +280,122 @@ def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[i
     return stages
 
 
-def _pair_distances(coords: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
-    """coords: (N,3) in Å; returns a list of distances for the given pairs."""
+def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
+    """coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs."""
     dists: List[float] = []
     for i, j in pairs:
-        v = coords[i] - coords[j]
+        v = coords_ang[i] - coords_ang[j]
         d = float(np.linalg.norm(v))
         dists.append(d)
     return dists
 
 
 def _schedule_for_stage(
-    coords: np.ndarray,
+    coords_ang: np.ndarray,
     tuples: List[Tuple[int, int, float]],
-    max_step_size: float,
+    max_step_size_ang: float,
 ) -> Tuple[int, List[float], List[float], List[float]]:
     """
-    Given current coords and stage tuples, compute:
+    Given current *Å* coords and stage tuples, compute:
       N: number of steps
-      r0: initial distances per tuple
-      rT: target distances per tuple
-      step_widths: δ_k per tuple (signed)
+      r0: initial distances per tuple (Å)
+      rT: target distances per tuple (Å)
+      step_widths: δ_k per tuple (Å, signed)
     """
     pairs = [(i, j) for (i, j, _) in tuples]
-    r0 = _pair_distances(coords, pairs)
+    r0 = _pair_distances(coords_ang, pairs)
     rT = [t for (_, _, t) in tuples]
     deltas = [RT - R0 for (R0, RT) in zip(r0, rT)]
     d_max = max((abs(d) for d in deltas), default=0.0)
     if d_max <= 0.0:
         return 0, r0, rT, [0.0] * len(tuples)
-    if max_step_size <= 0.0:
+    if max_step_size_ang <= 0.0:
         raise click.BadParameter("--max-step-size must be > 0.")
-    N = int(math.ceil(d_max / max_step_size))
+    N = int(math.ceil(d_max / max_step_size_ang))
     step_widths = [d / N for d in deltas]
     return N, r0, rT, step_widths
 
 
 # --------------------------------------------------------------------------------------
-# Harmonic bias (well) calculator wrapper
+# Harmonic bias (well) calculator wrapper — optimized for uma_pysis
 # --------------------------------------------------------------------------------------
 
 class HarmonicBiasCalculator:
     """
-    Wrap a base calculator and add harmonic distance wells:
+    Wrap a base *uma_pysis* calculator and add harmonic distance wells:
         E_bias = sum_k 0.5 * k * (|r_i − r_j| − target_k)^2
 
-    Compatibility across APIs:
-    --------------------------
-    - Geometry-style (1-arg):
-        get_energy(geometry) -> float
-        get_forces(geometry) -> np.ndarray (flattened)
-        get_energy_and_forces(geometry) -> (E, forces_flat)
-        get_energy_and_gradient(geometry) -> (E, grad_flat)
+    API (only the (elem, coords) call pattern used by pysisyphus.Geometry):
+        get_energy(elem, coords) -> {"energy": E_total}
+        get_forces(elem, coords) -> {"energy": E_total, "forces": F_total_flat}
 
-    - Atoms/coords-style (2-args; used by pysisyphus.Geometry):
-        get_energy(atoms, coords) -> {"energy": E}
-        get_forces(atoms, coords) -> {"energy": E, "forces": forces_flat}
-        get_energy_and_forces(atoms, coords) -> (E, forces_flat)
-        get_energy_and_gradient(atoms, coords) -> (E, grad_flat)
-
-    Unknown attributes are forwarded to the base calculator.
+    Units
+    -----
+    - Incoming coords are Bohr; base `uma_pysis` returns energy [Hartree] and forces [Hartree/Bohr].
+    - `k` is provided in eV/Å^2 (CLI). Internally we convert once to Hartree/Bohr^2.
+    - Targets are specified in Å and converted on the fly to Bohr.
     """
 
     def __init__(self, base_calc, k: float = 10.0, pairs: Optional[List[Tuple[int, int, float]]] = None):
         self.base = base_calc
-        self.k = float(k)
-        self._pairs: List[Tuple[int, int, float]] = list(pairs or [])
+        self.k_evAA = float(k)  # eV / Å^2
+        self.k_au_bohr2 = self.k_evAA * H_EVAA_2_AU  # Hartree / Bohr^2
+        self._pairs: List[Tuple[int, int, float]] = list(pairs or [])  # targets in Å
 
     # ---- control API ----
     def set_pairs(self, pairs: List[Tuple[int, int, float]]) -> None:
-        # pairs: list of (i, j, target_length) with 0-based indices
+        # pairs: list of (i, j, target_length_in_Å) with 0-based indices
         self._pairs = [(int(i), int(j), float(t)) for (i, j, t) in pairs]
 
-    # ---- utilities ----
-    @staticmethod
-    def _extract_array_from_dict(d: Dict[str, Any]) -> Tuple[Optional[np.ndarray], Optional[str]]:
-        """
-        Try to pull an ndarray-like from a dict returned by some calculators.
-        Returns (array, kind) where kind is 'forces' or 'gradient' if identifiable.
-        """
-        if not isinstance(d, dict):
-            return None, None
-
-        # Map lowercase keys to original keys
-        l2o = {str(k).lower(): k for k in d.keys()}
-
-        # Prefer explicit forces keys
-        for k in ("forces", "force", "cart_forces", "f"):
-            if k in l2o:
-                arr = d[l2o[k]]
-                try:
-                    return np.array(arr, dtype=float), "forces"
-                except Exception:
-                    pass
-
-        # Then try gradient keys (convert later)
-        for k in ("gradient", "grad", "cart_gradient", "g", "dEdx", "dedx"):
-            if str(k).lower() in l2o:
-                arr = d[l2o[str(k).lower()]]
-                try:
-                    return np.array(arr, dtype=float), "gradient"
-                except Exception:
-                    pass
-
-        # Fallback: if dict has exactly one ndarray-like value, use it
-        ndarray_like = []
-        for v in d.values():
-            if isinstance(v, (list, tuple, np.ndarray)):
-                ndarray_like.append(np.array(v))
-        if len(ndarray_like) == 1:
-            try:
-                return np.array(ndarray_like[0], dtype=float), None
-            except Exception:
-                pass
-
-        return None, None
-
-    @staticmethod
-    def _flatten_any(arr: np.ndarray, n_atoms: Optional[int] = None) -> np.ndarray:
-        """Flatten array to (3N,) with best effort."""
-        a = np.array(arr, dtype=float)
-        if a.ndim == 2 and a.shape[1] == 3:
-            return a.reshape(-1)
-        if a.ndim == 1:
-            return a
-        if n_atoms is not None:
-            return a.reshape(n_atoms * 3)
-        return a.reshape(-1)
-
-    @staticmethod
-    def _flatten_forces(F: Any, n_atoms: Optional[int] = None) -> np.ndarray:
-        """
-        Accept forces in various shapes or a dict; if a gradient dict/array is given,
-        convert to forces by applying a minus sign.
-        """
-        if isinstance(F, dict):
-            arr, kind = HarmonicBiasCalculator._extract_array_from_dict(F)
-            if arr is None:
-                raise TypeError("Could not extract forces/gradient array from dict returned by calculator.")
-            if kind == "gradient":
-                arr = -arr
-            return HarmonicBiasCalculator._flatten_any(arr, n_atoms)
-        else:
-            # Assume already forces-like numeric array
-            return HarmonicBiasCalculator._flatten_any(F, n_atoms)
-
-    @staticmethod
-    def _flatten_gradient(G: Any, n_atoms: Optional[int] = None) -> np.ndarray:
-        """
-        Accept gradient in various shapes or a dict; if forces dict/array is given,
-        convert to gradient by applying a minus sign.
-        """
-        if isinstance(G, dict):
-            arr, kind = HarmonicBiasCalculator._extract_array_from_dict(G)
-            if arr is None:
-                raise TypeError("Could not extract forces/gradient array from dict returned by calculator.")
-            if kind == "forces":
-                arr = -arr
-            return HarmonicBiasCalculator._flatten_any(arr, n_atoms)
-        else:
-            # Assume already gradient-like numeric array
-            return HarmonicBiasCalculator._flatten_any(G, n_atoms)
-
-    def _bias_energy_forces_from_coords(self, coords_in: np.ndarray) -> Tuple[float, np.ndarray]:
-        """coords_in: (N,3) ndarray in Å; returns (E_bias, F_bias_flat)."""
-        coords = np.array(coords_in, dtype=float).reshape(-1, 3)  # (N,3)
+    # ---- bias core (coords in Bohr) ----
+    def _bias_energy_forces_bohr(self, coords_bohr: np.ndarray) -> Tuple[float, np.ndarray]:
+        """coords_bohr: (N,3) in Bohr; returns (E_bias [Hartree], F_bias_flat [Hartree/Bohr])."""
+        coords = np.array(coords_bohr, dtype=float).reshape(-1, 3)  # (N,3)
         n = coords.shape[0]
         E_bias = 0.0
         F_bias = np.zeros((n, 3), dtype=float)
-        for (i, j, target) in self._pairs:
-            # defensive index check
+        k = self.k_au_bohr2
+        for (i, j, target_ang) in self._pairs:
             if not (0 <= i < n and 0 <= j < n):
                 continue
-            rij_vec = coords[i] - coords[j]
-            rij = float(np.linalg.norm(rij_vec))
+            rij_vec = coords[i] - coords[j]               # Bohr
+            rij = float(np.linalg.norm(rij_vec))          # Bohr
             if rij < 1e-14:
                 continue
-            diff = rij - float(target)
-            E_bias += 0.5 * self.k * diff * diff
-            u = rij_vec / max(rij, 1e-14)
-            Fi = -self.k * diff * u     # -dE/dr_i
+            target_bohr = float(target_ang) * ANG2BOHR    # Bohr
+            diff_bohr = rij - target_bohr                 # Bohr
+            E_bias += 0.5 * k * diff_bohr * diff_bohr     # Hartree
+            u = rij_vec / max(rij, 1e-14)                 # unit vector (Bohr cancels)
+            Fi = -k * diff_bohr * u                       # Hartree/Bohr
             F_bias[i] += Fi
             F_bias[j] -= Fi
         return E_bias, F_bias.reshape(-1)
 
-    # ---- helpers to normalize call signature ----
-    def _extract_call(self, *args, **kwargs):
-        """
-        Normalize incoming call to either:
-          kind='geom', geometry=<Geometry>, coords=<Nx3 ndarray>
-          kind='ac',  atoms=<list/array>, coords=<Nx3 ndarray>
-        """
-        if len(args) == 1 and hasattr(args[0], "coords3d"):
-            geometry = args[0]
-            coords = np.array(geometry.coords3d, dtype=float)
-            return {"kind": "geom", "geometry": geometry, "atoms": None, "coords": coords}
-        elif len(args) >= 2:
-            atoms, coords = args[0], args[1]
-            coords = np.array(coords, dtype=float).reshape(-1, 3)
-            return {"kind": "ac", "geometry": None, "atoms": atoms, "coords": coords}
-        else:
-            raise TypeError("Expected a Geometry object or (atoms, coords).")
-
-    # ---- base calls (geometry-style) ----
-    def _base_energy_and_forces_geom(self, geometry) -> Tuple[float, np.ndarray]:
-        # Try combined methods first
-        if hasattr(self.base, "get_energy_and_forces"):
-            try:
-                e, F = self.base.get_energy_and_forces(geometry)
-                Ff = self._flatten_forces(F, getattr(geometry, "natoms", None))
-                return float(e), Ff
-            except (TypeError, ValueError):
-                pass
-        if hasattr(self.base, "get_energy_and_gradient"):
-            try:
-                e, g = self.base.get_energy_and_gradient(geometry)
-                n = getattr(geometry, "natoms", None)
-                Ff = -self._flatten_gradient(g, n)
-                return float(e), Ff
-            except (TypeError, ValueError):
-                pass
-        # Fall back to separate
-        e = None
-        if hasattr(self.base, "get_energy"):
-            try:
-                res = self.base.get_energy(geometry)
-                e = float(res["energy"]) if isinstance(res, dict) else float(res)
-            except (TypeError, ValueError, KeyError):
-                e = None
-        Ff = None
-        if hasattr(self.base, "get_forces"):
-            try:
-                resF = self.base.get_forces(geometry)
-                src = resF.get("forces") if isinstance(resF, dict) else resF
-                Ff = self._flatten_forces(src, getattr(geometry, "natoms", None))
-            except (TypeError, ValueError, AttributeError):
-                Ff = None
-        if Ff is None and hasattr(self.base, "get_gradient"):
-            try:
-                n = getattr(geometry, "natoms", None)
-                resG = self.base.get_gradient(geometry)
-                srcG = resG.get("gradient") if isinstance(resG, dict) else resG
-                Ff = -self._flatten_gradient(srcG, n)
-            except (TypeError, ValueError, AttributeError):
-                Ff = None
-        if e is None or Ff is None:
-            raise RuntimeError("Base calculator lacks required energy/forces API (geometry-style).")
-        return e, Ff
-
-    # ---- base calls (atoms/coords-style) ----
-    def _base_energy_and_forces_ac(self, atoms, coords) -> Tuple[float, np.ndarray]:
-        n_atoms = int(np.array(coords).reshape(-1, 3).shape[0])
-        # Try combined methods first
-        if hasattr(self.base, "get_energy_and_forces"):
-            try:
-                e, F = self.base.get_energy_and_forces(atoms, coords)
-                Ff = self._flatten_forces(F, n_atoms)
-                return float(e), Ff
-            except (TypeError, ValueError):
-                pass
-        if hasattr(self.base, "get_energy_and_gradient"):
-            try:
-                e, g = self.base.get_energy_and_gradient(atoms, coords)
-                Ff = -self._flatten_gradient(g, n_atoms)
-                return float(e), Ff
-            except (TypeError, ValueError):
-                pass
-        # Fall back to separate
-        e = None
-        if hasattr(self.base, "get_energy"):
-            try:
-                res = self.base.get_energy(atoms, coords)
-                e = float(res["energy"]) if isinstance(res, dict) else float(res)
-            except (TypeError, ValueError, KeyError):
-                e = None
-        Ff = None
-        if hasattr(self.base, "get_forces"):
-            try:
-                resF = self.base.get_forces(atoms, coords)
-                src = resF.get("forces") if isinstance(resF, dict) else resF
-                Ff = self._flatten_forces(src, n_atoms)
-            except (TypeError, ValueError, AttributeError):
-                Ff = None
-        if Ff is None and hasattr(self.base, "get_gradient"):
-            try:
-                resG = self.base.get_gradient(atoms, coords)
-                srcG = resG.get("gradient") if isinstance(resG, dict) else resG
-                Ff = -self._flatten_gradient(srcG, n_atoms)
-            except (TypeError, ValueError, AttributeError):
-                Ff = None
-        if e is None or Ff is None:
-            raise RuntimeError("Base calculator lacks required energy/forces API (atoms/coords-style).")
-        return e, Ff
-
-    def _base_forces_geom(self, geometry) -> np.ndarray:
-        try:
-            # Prefer direct forces
-            if hasattr(self.base, "get_forces"):
-                try:
-                    resF = self.base.get_forces(geometry)
-                    src = resF.get("forces") if isinstance(resF, dict) else resF
-                    return self._flatten_forces(src, getattr(geometry, "natoms", None))
-                except (TypeError, ValueError):
-                    pass
-            if hasattr(self.base, "get_gradient"):
-                try:
-                    resG = self.base.get_gradient(geometry)
-                    srcG = resG.get("gradient") if isinstance(resG, dict) else resG
-                    n = getattr(geometry, "natoms", None)
-                    return -self._flatten_gradient(srcG, n)
-                except (TypeError, ValueError):
-                    pass
-            # Fallback via combined calls
-            _, F = self._base_energy_and_forces_geom(geometry)
-            return np.array(F, dtype=float).reshape(-1)
-        except Exception as exc:
-            raise RuntimeError(f"Base calculator failed to provide forces (geometry-style): {exc}")
-
-    def _base_forces_ac(self, atoms, coords) -> np.ndarray:
-        n_atoms = int(np.array(coords).reshape(-1, 3).shape[0])
-        try:
-            # Prefer direct forces
-            if hasattr(self.base, "get_forces"):
-                try:
-                    resF = self.base.get_forces(atoms, coords)
-                    src = resF.get("forces") if isinstance(resF, dict) else resF
-                    return self._flatten_forces(src, n_atoms)
-                except (TypeError, ValueError):
-                    pass
-            if hasattr(self.base, "get_gradient"):
-                try:
-                    resG = self.base.get_gradient(atoms, coords)
-                    srcG = resG.get("gradient") if isinstance(resG, dict) else resG
-                    return -self._flatten_gradient(srcG, n_atoms)
-                except (TypeError, ValueError):
-                    pass
-            # Fallback via combined calls
-            _, F = self._base_energy_and_forces_ac(atoms, coords)
-            return np.array(F, dtype=float).reshape(-1)
-        except Exception as exc:
-            raise RuntimeError(f"Base calculator failed to provide forces (atoms/coords-style): {exc}")
-
-    def _base_energy_geom(self, geometry) -> float:
-        if hasattr(self.base, "get_energy"):
-            try:
-                res = self.base.get_energy(geometry)
-                return float(res["energy"]) if isinstance(res, dict) else float(res)
-            except (TypeError, ValueError, KeyError):
-                pass
-        # Fallback via combined calls
-        e, _ = self._base_energy_and_forces_geom(geometry)
-        return float(e)
-
-    def _base_energy_ac(self, atoms, coords) -> float:
-        if hasattr(self.base, "get_energy"):
-            try:
-                res = self.base.get_energy(atoms, coords)
-                return float(res["energy"]) if isinstance(res, dict) else float(res)
-            except (TypeError, ValueError, KeyError):
-                pass
-        # Fallback via combined calls
-        e, _ = self._base_energy_and_forces_ac(atoms, coords)
-        return float(e)
-
     # ---- public API expected by Geometry/Optimizers ----
-    def get_energy_and_forces(self, *args, **kwargs):
-        """
-        Always returns (E, F) tuple irrespective of call style.
-        """
-        call = self._extract_call(*args, **kwargs)
-        coords = call["coords"]
-        if call["kind"] == "geom":
-            e_base, F_base = self._base_energy_and_forces_geom(call["geometry"])
-        else:
-            e_base, F_base = self._base_energy_and_forces_ac(call["atoms"], coords)
-        e_bias, F_bias = self._bias_energy_forces_from_coords(coords)
-        return e_base + e_bias, np.array(F_base, dtype=float).reshape(-1) + F_bias
+    def get_forces(self, elem, coords):
+        coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
+        # One base call provides both energy and forces in a.u.
+        base = self.base.get_forces(elem, coords_bohr)
+        E0 = float(base["energy"])
+        F0 = np.asarray(base["forces"], dtype=float).reshape(-1)
+        Ebias, Fbias = self._bias_energy_forces_bohr(coords_bohr)
+        return {"energy": E0 + Ebias, "forces": F0 + Fbias}
 
-    def get_energy_and_gradient(self, *args, **kwargs):
-        e, F = self.get_energy_and_forces(*args, **kwargs)
-        grad = -np.array(F, dtype=float).reshape(-1)
-        return e, grad
+    def get_energy(self, elem, coords):
+        coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
+        # Use base energy + bias energy (no extra base call for forces)
+        E0 = float(self.base.get_energy(elem, coords_bohr)["energy"])
+        Ebias, _ = self._bias_energy_forces_bohr(coords_bohr)
+        return {"energy": E0 + Ebias}
 
-    def get_energy(self, *args, **kwargs):
-        """
-        Geometry-style (1 arg): return float energy
-        Atoms/coords-style (2 args): return {'energy': float}
-        """
-        call = self._extract_call(*args, **kwargs)
-        coords = call["coords"]
-        if call["kind"] == "geom":
-            e_base = self._base_energy_geom(call["geometry"])
-            e_bias, _ = self._bias_energy_forces_from_coords(coords)
-            return e_base + e_bias
-        else:
-            e_base = self._base_energy_ac(call["atoms"], coords)
-            e_bias, _ = self._bias_energy_forces_from_coords(coords)
-            return {"energy": e_base + e_bias}
+    # Optional convenience for components that might use combined calls
+    def get_energy_and_forces(self, elem, coords):
+        res = self.get_forces(elem, coords)
+        return res["energy"], res["forces"]
 
-    def get_forces(self, *args, **kwargs):
-        """
-        Geometry-style (1 arg): return flat np.ndarray of forces
-        Atoms/coords-style (2 args): return {'energy': E, 'forces': F}
-        """
-        call = self._extract_call(*args, **kwargs)
-        coords = call["coords"]
-        if call["kind"] == "geom":
-            F_base = self._base_forces_geom(call["geometry"])
-            _, F_bias = self._bias_energy_forces_from_coords(coords)
-            return np.array(F_base, dtype=float).reshape(-1) + F_bias
-        else:
-            e_base, F_base = self._base_energy_and_forces_ac(call["atoms"], coords)
-            e_bias, F_bias = self._bias_energy_forces_from_coords(coords)
-            E = e_base + e_bias
-            F = np.array(F_base, dtype=float).reshape(-1) + F_bias
-            return {"energy": E, "forces": F}
-
-    def get_gradient(self, *args, **kwargs):
-        F = self.get_forces(*args, **kwargs)
-        # If dict was returned (atoms/coords-style), extract forces first
-        if isinstance(F, dict):
-            F = F.get("forces", F)
-        return -np.array(F, dtype=float).reshape(-1)
+    def get_energy_and_gradient(self, elem, coords):
+        res = self.get_forces(elem, coords)
+        return res["energy"], -np.asarray(res["forces"], dtype=float).reshape(-1)
 
     # Delegate unknown attributes to base calculator
     def __getattr__(self, name: str):
@@ -710,7 +416,7 @@ def _norm_opt_mode(mode: str) -> str:
 
 
 @click.command(
-    help="Bond-length driven scan with staged harmonic restraints and relaxation.",
+    help="Bond-length driven scan with staged harmonic restraints and relaxation (UMA only).",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -734,7 +440,7 @@ def _norm_opt_mode(mode: str) -> str:
               help="Maximum change in any scanned bond length per step [Å].")
 @click.option("--bias-k", type=float, default=100, show_default=True,
               help="Harmonic well strength k [eV/Å^2].")
-@click.option("--relax-max-cycles", type=int, default=100, show_default=True,
+@click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
               help="Maximum optimizer cycles per step.")
 @click.option("--opt-mode", type=str, default="light", show_default=True,
               help="Per-step relaxation mode: light (=LBFGS) or heavy (=RFO).")
@@ -750,6 +456,10 @@ def _norm_opt_mode(mode: str) -> str:
     default=None,
     help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
 )
+@click.option("--preopt", type=click.BOOL, default=True, show_default=True,
+              help="Pre-optimize initial structure without bias before the scan.")
+@click.option("--endopt", type=click.BOOL, default=True, show_default=True,
+              help="After each stage, run an additional unbiased optimization of the stage result.")
 def cli(
     input_path: Path,
     charge: int,
@@ -764,6 +474,8 @@ def cli(
     dump: bool,
     out_dir: str,
     args_yaml: Optional[Path],
+    preopt: bool,
+    endopt: bool,
 ) -> None:
     try:
         # ------------------------------------------------------------------
@@ -823,7 +535,6 @@ def cli(
 
         # Load
         coord_type = geom_cfg.get("coord_type", "cart")
-        # Pass only kwargs geom_loader understands; set freezes later.
         geom = geom_loader(input_path, coord_type=coord_type)
 
         # Merge freeze_atoms with link parents (PDB)
@@ -840,43 +551,85 @@ def cli(
                 import numpy as _np
                 geom.freeze_atoms = _np.array(freeze, dtype=int)
             except Exception:
-                # Not all Geometry types expose freeze_atoms; ignore if absent
                 pass
 
-        # Build UMA calculator
-        calc_builder_or_instance = uma_pysis(**calc_cfg)
-        try:
-            base_calc = calc_builder_or_instance()
-        except TypeError:
-            base_calc = calc_builder_or_instance
+        # Build UMA calculator (only uma_pysis is supported)
+        base_calc = uma_pysis(**calc_cfg)
 
-        # Wrap with bias calculator
-        biased = HarmonicBiasCalculator(base_calc=base_calc, k=float(bias_cfg["k"]))
+        # Input type flag (used for optional PDB conversion)
+        is_pdb_input = (input_path.suffix.lower() == ".pdb")
+
+        # ------------------------------------------------------------------
+        # Optional pre-optimization WITHOUT bias
+        # ------------------------------------------------------------------
+        if preopt:
+            pre_dir = out_dir_path / "preopt"
+            pre_dir.mkdir(parents=True, exist_ok=True)
+            geom.set_calculator(base_calc)
+            click.echo(f"[preopt] Unbiased relaxation ({kind}) ...")
+            # Local optimizer factory for preopt
+            max_step_bohr_local = float(max_step_size) * ANG2BOHR  # ensure step controls are in Bohr
+            def _make_optimizer_pre(kind_local: str, _out_dir: Path, _prefix: str):
+                common = dict(opt_cfg)
+                common["out_dir"] = str(_out_dir)
+                common["prefix"] = _prefix
+                if kind_local == "lbfgs":
+                    args = {**lbfgs_cfg, **common}
+                    args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr_local)
+                    args["max_cycles"] = int(relax_max_cycles)
+                    return LBFGS(geom, **args)
+                else:
+                    args = {**rfo_cfg, **common}
+                    tr = float(rfo_cfg.get("trust_radius", 0.30))
+                    args["trust_radius"] = min(tr, max_step_bohr_local)
+                    args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr_local)
+                    args["max_cycles"] = int(relax_max_cycles)
+                    return RFOptimizer(geom, **args)
+            optimizer0 = _make_optimizer_pre(kind, pre_dir, "preopt_")
+            try:
+                optimizer0.run()
+            except ZeroStepLength:
+                click.echo(f"[preopt] ZeroStepLength — continuing.", err=True)
+            except OptimizationError as e:
+                click.echo(f"[preopt] OptimizationError — {e}", err=True)
+
+            # Write preopt result
+            pre_xyz = pre_dir / "result.xyz"
+            with open(pre_xyz, "w") as f:
+                f.write(_coords3d_to_xyz_string(geom))
+            click.echo(f"[write] Wrote '{pre_xyz}'.")
+            if is_pdb_input:
+                try:
+                    convert_xyz_to_pdb(pre_xyz, input_path.resolve(), pre_dir / "result.pdb")
+                    click.echo(f"[convert] Wrote '{pre_dir / 'result.pdb'}'.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert preopt result to PDB: {e}", err=True)
+
+        # Wrap with bias calculator for the scan
+        biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
         geom.set_calculator(biased)
 
         # ------------------------------------------------------------------
         # 4) Stage-by-stage scan
         # ------------------------------------------------------------------
-        is_pdb_input = (input_path.suffix.lower() == ".pdb")
 
-        # Optimizer factory (per step, fresh instance)
+        # Optimizer factory (per step or end-of-stage, fresh instance)
+        max_step_bohr = float(max_step_size) * ANG2BOHR  # ensure step controls are in Bohr
         def _make_optimizer(kind: str, _out_dir: Path, _prefix: str):
             common = dict(opt_cfg)
             common["out_dir"] = str(_out_dir)
             common["prefix"] = _prefix
-            # Tighten step control to the global --max-step-size
             if kind == "lbfgs":
                 args = {**lbfgs_cfg, **common}
-                # Keep the LBFGS step size conservative.
-                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.20)), float(max_step_size))
+                # Cap LBFGS step size in Bohr by the global Å limit converted to Bohr.
+                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
                 args["max_cycles"] = int(relax_max_cycles)
                 return LBFGS(geom, **args)
             else:
                 args = {**rfo_cfg, **common}
-                # Trust radius no larger than --max-step-size
                 tr = float(rfo_cfg.get("trust_radius", 0.30))
-                args["trust_radius"] = min(tr, float(max_step_size))
-                args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), float(max_step_size))
+                args["trust_radius"] = min(tr, max_step_bohr)
+                args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
                 args["max_cycles"] = int(relax_max_cycles)
                 return RFOptimizer(geom, **args)
 
@@ -886,17 +639,32 @@ def cli(
             click.echo(f"\n--- Stage {k}/{K} ---")
             click.echo(f"Targets (i,j,target Å): {tuples}")
 
-            # Current coordinates and schedule
-            R = np.array(geom.coords3d, dtype=float)  # (N,3)
-            Nsteps, r0, rT, step_widths = _schedule_for_stage(R, tuples, float(max_step_size))
-            click.echo(f"[stage {k}] initial distances = {['{:.3f}'.format(x) for x in r0]}")
-            click.echo(f"[stage {k}] target distances  = {['{:.3f}'.format(x) for x in rT]}")
+            # Current coordinates (Bohr) and schedule computed in Å
+            R_bohr = np.array(geom.coords3d, dtype=float)      # (N,3) Bohr
+            R_ang  = R_bohr * BOHR2ANG                         # (N,3) Å
+            Nsteps, r0, rT, step_widths = _schedule_for_stage(R_ang, tuples, float(max_step_size))
+            click.echo(f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}")
+            click.echo(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}")
             click.echo(f"[stage {k}] steps N = {Nsteps}")
 
-            trj_blocks: List[str] = []
+            trj_blocks: List[str] = [] if dump else None
+
+            pairs = [(i, j) for (i, j, _) in tuples]
 
             if Nsteps == 0:
-                # Nothing to do: just write current geometry as the stage result
+                # No stepping; optionally perform end-of-stage unbiased optimization
+                if endopt:
+                    geom.set_calculator(base_calc)
+                    click.echo(f"[stage {k}] endopt (unbiased) ...")
+                    try:
+                        end_optimizer = _make_optimizer(kind, stage_dir, "endopt_")
+                        end_optimizer.run()
+                    except ZeroStepLength:
+                        click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
+                    except OptimizationError as e:
+                        click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
+
+                # Write current (possibly endopted) geometry as the stage result
                 final_xyz = stage_dir / "result.xyz"
                 with open(final_xyz, "w") as f:
                     f.write(_coords3d_to_xyz_string(geom))
@@ -909,16 +677,18 @@ def cli(
                         click.echo(f"[convert] WARNING: Failed to convert stage result to PDB: {e}", err=True)
                 continue
 
-            # Run N step(s)
-            # Precompute r0 per tuple for linear schedule
-            pairs = [(i, j) for (i, j, _) in tuples]
+            # Run N step(s) with bias
             for s in range(1, Nsteps + 1):
-                # Compute per-pair step target for this step
+                # Compute per-pair step target (Å) for this step
                 step_targets = [r0_i + s * dw for (r0_i, dw) in zip(r0, step_widths)]
-                # Update bias well targets
-                biased.set_pairs([(i, j, t) for ((i, j), t) in zip(pairs, step_targets)])
 
-                # Build optimizer and relax
+                # Update bias well targets (still in Å; wrapper converts internally)
+                biased.set_pairs([(i, j, t) for ((i, j), t) in zip(pairs, step_targets)])
+                # IMPORTANT: only the calculator's internal state changed -> flush Geometry caches
+                # Re-attaching the same calculator marks the geometry "dirty" so the next call recomputes E/F
+                geom.set_calculator(biased)
+
+                # Build optimizer and relax (with bias)
                 prefix = f"scan_s{s:04d}_"
                 optimizer = _make_optimizer(kind, stage_dir, prefix)
                 click.echo(f"[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
@@ -928,18 +698,25 @@ def cli(
                     click.echo(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.", err=True)
                 except OptimizationError as e:
                     click.echo(f"[stage {k}] step {s}: OptimizationError — {e}", err=True)
-                    # Keep proceeding; structure is still updated to latest coords
 
-                # Record trajectory block (optional energy annotation if available)
+                # Record trajectory block only when requested (biased result)
+                if dump and trj_blocks is not None:
+                    trj_blocks.append(_coords3d_to_xyz_string(geom))
+
+            # Optional end-of-stage UNBIASED optimization
+            if endopt:
+                geom.set_calculator(base_calc)
+                click.echo(f"[stage {k}] endopt (unbiased) ...")
                 try:
-                    # Geometry-style call → returns float
-                    e_now = float(biased.get_energy(geom))
-                except Exception:
-                    e_now = None
-                trj_blocks.append(_coords3d_to_xyz_string(geom, energy=e_now))
+                    end_optimizer = _make_optimizer(kind, stage_dir, "endopt_")
+                    end_optimizer.run()
+                except ZeroStepLength:
+                    click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
+                except OptimizationError as e:
+                    click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
 
             # Stage outputs
-            if dump and len(trj_blocks) > 0:
+            if dump and trj_blocks:
                 trj_path = stage_dir / "scan.trj"
                 with open(trj_path, "w") as f:
                     f.write("".join(trj_blocks))
