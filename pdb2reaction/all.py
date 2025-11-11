@@ -946,7 +946,7 @@ def cli(
     hh = int(elapsed // 3600)
     mm = int((elapsed % 3600) // 60)
     ss = elapsed - (hh * 3600 + mm * 60)
-    click.echo(f"[all] Total Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+    click.echo(f"[all] Elapsed for Whole Pipeline: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
 
 if __name__ == "__main__":

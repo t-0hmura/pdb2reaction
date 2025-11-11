@@ -47,6 +47,8 @@ Additional optional optimizations
   from that geometry. Results written to `preopt/result.xyz` (and `.pdb` if input was PDB).
 - With --endopt True: after **each stage** completes its biased stepping, perform an **additional
   unbiased** geometry optimization of that stage's final structure before writing outputs.
+- For each stage, echo covalent-bond **formation/breaking** between the stage's *first* structure
+  and its *final* structure (the latter is the end-of-stage optimized structure when `--endopt True`).
 
 Example
 -------
@@ -72,6 +74,8 @@ import math
 import sys
 import textwrap
 import traceback
+import tempfile
+import os
 
 import click
 import numpy as np
@@ -88,6 +92,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 
 from .uma_pysis import uma_pysis
 from .utils import convert_xyz_to_pdb, freeze_links as _freeze_links_util
+from .bond_changes import compare_structures, summarize_changes
 
 
 # --------------------------------------------------------------------------------------
@@ -175,6 +180,14 @@ RFO_KW: Dict[str, Any] = {
 # Bias (harmonic well) defaults; can be overridden via YAML: section "bias"
 BIAS_KW: Dict[str, Any] = {
     "k": 100,  # eV / Å^2
+}
+
+# Bond-change detection (as in path_search)
+BOND_KW: Dict[str, Any] = {
+    "device": "cuda",
+    "bond_factor": 1.20,
+    "margin_fraction": 0.05,
+    "delta_fraction": 0.05,
 }
 
 
@@ -317,6 +330,51 @@ def _schedule_for_stage(
 
 
 # --------------------------------------------------------------------------------------
+# Bond‑change helpers
+# --------------------------------------------------------------------------------------
+
+def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
+    """Return for covalent bonds forming/breaking between `x` and `y`."""
+    res = compare_structures(
+        x, y,
+        device=bond_cfg.get("device", "cuda"),
+        bond_factor=float(bond_cfg.get("bond_factor", 1.20)),
+        margin_fraction=float(bond_cfg.get("margin_fraction", 0.05)),
+        delta_fraction=float(bond_cfg.get("delta_fraction", 0.05)),
+    )
+    formed = len(getattr(res, "formed_covalent", [])) > 0
+    broken = len(getattr(res, "broken_covalent", [])) > 0
+    summary = summarize_changes(x, res, one_based=True)
+    return (formed or broken), summary
+
+
+def _snapshot_geometry(g) -> Any:
+    """
+    Create an independent pysisyphus Geometry snapshot from the given Geometry.
+    Implemented via temporary XYZ serialization to avoid mutating the original.
+    """
+    s = g.as_xyz()
+    if not s.endswith("\n"):
+        s += "\n"
+    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+    try:
+        tmp.write(s)
+        tmp.flush()
+        tmp.close()
+        snap = geom_loader(Path(tmp.name), coord_type=getattr(g, "coord_type", "cart"))
+        try:
+            snap.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
+        except Exception:
+            pass
+        return snap
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
+# --------------------------------------------------------------------------------------
 # Harmonic bias (well) calculator wrapper — optimized for uma_pysis
 # --------------------------------------------------------------------------------------
 
@@ -454,7 +512,7 @@ def _norm_opt_mode(mode: str) -> str:
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
+    help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias, bond).",
 )
 @click.option("--preopt", type=click.BOOL, default=True, show_default=True,
               help="Pre-optimize initial structure without bias before the scan.")
@@ -478,6 +536,8 @@ def cli(
     endopt: bool,
 ) -> None:
     try:
+        time_start = time.perf_counter()  # start timing
+        
         # ------------------------------------------------------------------
         # 1) Assemble configuration (defaults ← YAML ← CLI)
         # ------------------------------------------------------------------
@@ -489,6 +549,7 @@ def cli(
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg   = dict(RFO_KW)
         bias_cfg  = dict(BIAS_KW)
+        bond_cfg  = dict(BOND_KW)  # <-- added
 
         _deep_update(geom_cfg, yaml_cfg.get("geom", {}))
         _deep_update(calc_cfg, yaml_cfg.get("calc", {}))
@@ -496,6 +557,7 @@ def cli(
         _deep_update(lbfgs_cfg, yaml_cfg.get("lbfgs", {}))
         _deep_update(rfo_cfg,   yaml_cfg.get("rfo",   {}))
         _deep_update(bias_cfg,  yaml_cfg.get("bias",  {}))
+        _deep_update(bond_cfg,  yaml_cfg.get("bond",  {}))  # <-- added
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)
@@ -515,11 +577,13 @@ def cli(
         echo_calc = dict(calc_cfg)
         echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)
+        echo_bond = dict(bond_cfg)  # <-- added
         click.echo(_pretty_block("geom", echo_geom))
         click.echo(_pretty_block("calc", echo_calc))
         click.echo(_pretty_block("opt",  echo_opt))
         click.echo(_pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
         click.echo(_pretty_block("bias", echo_bias))
+        click.echo(_pretty_block("bond", echo_bond))  # <-- added
 
         # ------------------------------------------------------------------
         # 2) Parse scan lists
@@ -527,6 +591,9 @@ def cli(
         stages = _parse_scan_lists(scan_lists_raw, one_based=one_based)
         K = len(stages)
         click.echo(f"[scan] Received {K} stage(s).")
+
+        # Prepare end-of-run summary collector (minimal additions)
+        stages_summary: List[Dict[str, Any]] = []
 
         # ------------------------------------------------------------------
         # 3) Load geometry (Cartesian) and set calculator (UMA → harmonic-bias wrapper)
@@ -639,6 +706,9 @@ def cli(
             click.echo(f"\n--- Stage {k}/{K} ---")
             click.echo(f"Targets (i,j,target Å): {tuples}")
 
+            # Snapshot **beginning** geometry of this stage for bond-change comparison
+            start_geom_for_stage = _snapshot_geometry(geom)
+
             # Current coordinates (Bohr) and schedule computed in Å
             R_bohr = np.array(geom.coords3d, dtype=float)      # (N,3) Bohr
             R_ang  = R_bohr * BOHR2ANG                         # (N,3) Å
@@ -646,6 +716,19 @@ def cli(
             click.echo(f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}")
             click.echo(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}")
             click.echo(f"[stage {k}] steps N = {Nsteps}")
+
+            # ---- record per-stage summary (for final echo) ----
+            srec: Dict[str, Any] = {
+                "index": int(k),
+                "pairs_1based": [(int(i)+1, int(j)+1) for (i, j, _) in tuples],
+                "initial_distances_A": [float(f"{x:.3f}") for x in r0],
+                "target_distances_A": [float(f"{x:.3f}") for x in rT],
+                "per_pair_step_A": [float(f"{x:.3f}") for x in step_widths],
+                "num_steps": int(Nsteps),
+                "bond_change": {"changed": None, "summary": ""},
+            }
+            stages_summary.append(srec)
+            # ---------------------------------------------------
 
             trj_blocks: List[str] = [] if dump else None
 
@@ -663,6 +746,24 @@ def cli(
                         click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
                     except OptimizationError as e:
                         click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
+
+                # ---- Echo bond changes: start vs final (possibly endopt) ----
+                try:
+                    changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
+                    click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
+                    if changed and summary and summary.strip():
+                        click.echo(textwrap.indent(summary.strip(), prefix="  "))
+                    if not changed:
+                        click.echo("  (no covalent changes detected)")
+                    # record to summary
+                    try:
+                        srec["bond_change"]["changed"] = bool(changed)
+                        srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
+                    except Exception:
+                        pass
+                except Exception as e:
+                    click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
+                # -------------------------------------------------------------
 
                 # Write current (possibly endopted) geometry as the stage result
                 final_xyz = stage_dir / "result.xyz"
@@ -715,6 +816,24 @@ def cli(
                 except OptimizationError as e:
                     click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
 
+            # ---- Echo bond changes: start vs final (possibly endopt) ----
+            try:
+                changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
+                click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
+                if changed and summary and summary.strip():
+                    click.echo(textwrap.indent(summary.strip(), prefix="  "))
+                if not changed:
+                    click.echo("  (no covalent changes detected)")
+                # record to summary
+                try:
+                    srec["bond_change"]["changed"] = bool(changed)
+                    srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
+                except Exception:
+                    pass
+            except Exception as e:
+                click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
+            # -------------------------------------------------------------
+
             # Stage outputs
             if dump and trj_blocks:
                 trj_path = stage_dir / "scan.trj"
@@ -740,7 +859,58 @@ def cli(
                 except Exception as e:
                     click.echo(f"[convert] WARNING: Failed to convert stage result to PDB: {e}", err=True)
 
+        # ------------------------------------------------------------------
+        # 5) Final summary echo (human‑friendly)
+        # ------------------------------------------------------------------
+        def _echo_human_summary(_stages: List[Dict[str, Any]], _max_step_size: float) -> None:
+            """Print a readable end-of-run summary like the requested example."""
+            def _fmt_target_value(x: float) -> str:
+                # 2.600 -> "2.6", 1.500 -> "1.5"
+                s = f"{x:.3f}".rstrip("0").rstrip(".")
+                return s
+
+            def _targets_triplet_str(pairs_1based: List[Tuple[int, int]], targets: List[float]) -> str:
+                triples = [f"({i}, {j}, {_fmt_target_value(t)})" for (i, j), t in zip(pairs_1based, targets)]
+                return "[" + ", ".join(triples) + "]"
+
+            def _list_of_str_3f(values: List[float]) -> str:
+                return "[" + ", ".join(f"'{v:.3f}'" for v in values) + "]"
+
+            click.echo("\nSummary")
+            click.echo("------------------")
+            for s in _stages:
+                idx = int(s.get("index", 0))
+                pairs_1b = list(s.get("pairs_1based", []))
+                r0 = list(s.get("initial_distances_A", []))
+                rT = list(s.get("target_distances_A", []))
+                dA = list(s.get("per_pair_step_A", []))
+                N = int(s.get("num_steps", 0))
+                bchg = s.get("bond_change", {}) or {}
+                changed = bool(bchg.get("changed"))
+                summary_txt = (bchg.get("summary") or "").strip()
+
+                click.echo(f"[stage {idx}] Targets (i,j,target Å): { _targets_triplet_str(pairs_1b, rT) }")
+                click.echo(f"[stage {idx}] initial distances (Å) = { _list_of_str_3f(r0) }")
+                click.echo(f"[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }")
+                click.echo(f"[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }")
+                click.echo(f"[stage {idx}] steps N = {N}")
+                click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
+                if changed and summary_txt:
+                    click.echo(textwrap.indent(summary_txt, prefix="  "))
+                if not changed:
+                    click.echo("  (no covalent changes detected)")
+                click.echo("")  # blank line between stages
+
+        _echo_human_summary(stages_summary, float(max_step_size))
+        # ------------------------------------------------------------------
+
         click.echo("\n=== Scan finished ===\n")
+
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for Scan: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)

@@ -297,6 +297,8 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
 ) -> None:
+    time_start = time.perf_counter()
+
     # --------------------------
     # 1) Assemble configuration
     # --------------------------
@@ -405,6 +407,12 @@ def cli(
             get_trj_fn=optimizer.get_path_for_fn,
             final_xyz_path=final_xyz_path,
         )
+
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for Opt: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Step length fell below the minimum allowed (ZeroStepLength).", err=True)

@@ -492,7 +492,8 @@ def cli(
     pressure_atm: float,
     dump: bool,
 ) -> None:
-
+    time_start = time.perf_counter()
+    
     # --------------------------
     # 1) Assemble configuration
     # --------------------------
@@ -721,6 +722,12 @@ def cli(
             click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "), err=True)
 
         click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
+
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for Freq: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)

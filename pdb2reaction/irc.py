@@ -231,6 +231,8 @@ def cli(
     args_yaml: Optional[Path],
 ) -> None:
     try:
+        time_start = time.perf_counter()
+
         # --------------------------
         # 1) 設定の構築（YAML → デフォルト, その後 CLI で上書き）
         # --------------------------
@@ -319,6 +321,12 @@ def cli(
                 ref_pdb,
                 out_dir_path / f"{irc_cfg.get('prefix','')}{'backward_irc.pdb'}",
             )
+
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for IRC: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)

@@ -1,101 +1,103 @@
 # pdb2reaction/path_search.py
 
 """
-Recursive GSM segmentation for multistep MEP search
-===================================================
+Recursive GSM Segmentation for Multistep MEP Construction
+=========================================================
 
-Purpose
--------
-Given ≥2 structures in reaction order (reactant → product), optionally with user‑supplied
-intermediates, this tool constructs a *continuous* minimum‑energy path (MEP). It does so by
-running a GSM once, isolating the highest‑energy region, and then recursively refining only the
-parts that contain covalent changes.
+Overview
+--------
+Given two or more structures ordered along a reaction (reactant → product)—optionally with
+user‑supplied intermediates—this program constructs a *continuous* minimum‑energy path (MEP).
+It first runs a GSM to localize the high‑energy region, then **recursively** refines only
+those parts that exhibit covalent bond changes.
 
-Algorithm (applied per adjacent pair A → B)
--------------------------------------------
+Method (applied to each adjacent pair A → B)
+--------------------------------------------
 1) Initial path:
-   Run a Growing String Method (GSM) from A to B to obtain an initial MEP.
+   Run a Growing String Method (GSM) from A to B to obtain a preliminary MEP.
 
-2) Localize the high‑energy region:
-   Find the highest‑energy image (HEI) and optimize its immediate neighbors (HEI−1, HEI+1)
-   as single structures to obtain two nearby minima, End1 and End2 (LBFGS or RFO).
+2) Localize the barrier:
+   Identify the highest‑energy image (HEI). Optimize its immediate neighbors (HEI−1, HEI+1)
+   as single structures to yield two nearby minima, End1 and End2 (LBFGS or RFO).
 
 3) Refine the step:
-   - If *no* covalent bond formation/breaking is detected between End1 and End2 (a “kink”),
-     **skip GSM** and instead insert `search.kink_max_nodes` (default 3) linearly interpolated
-     nodes; optimize them individually and use them as images.
+   - If **no** covalent bond formation/breaking is detected between End1 and End2 (a “kink”),
+     skip GSM. Instead, insert `search.kink_max_nodes` (default 3) linearly interpolated
+     nodes, optimize each individually, and use them as images.
    - Otherwise, run a *refinement* GSM between End1 and End2.
 
 4) Decide where to recurse:
-   Detect covalent changes for (A → End1) and (End2 → B). Recursively apply the same
-   procedure on the sides that *do* show covalent changes.
+   Evaluate covalent changes for (A → End1) and (End2 → B). Recurse only on the side(s)
+   that show covalent changes.
 
-5) Concatenate sub‑paths:
-   Merge sub‑MEPs (duplicate removal by RMSD). If an endpoint mismatch remains beyond a
-   threshold, insert a short “bridge” GSM. If the interface itself shows covalent changes,
-   insert a *new* recursive segment instead of a bridge.
+5) Stitch the subpaths:
+   Concatenate sub‑MEPs with duplicate removal via RMSD. If an endpoint mismatch remains
+   beyond a threshold, insert a short *bridge* GSM. If the interface itself shows covalent
+   changes, insert a **new recursive segment** instead of a bridge.
 
-Multi‑structure input (A, I1, I2, …, B)
+Multi‑structure inputs (A, I1, I2, …, B)
 ----------------------------------------
-- Pass two or more structures to `-i/--input` in reaction order. Both forms are accepted:
+- Provide at least two structures to `-i/--input` in reaction order. Both forms are accepted:
   - Repeated `-i` flags:
       `-i reac.pdb -i im1.pdb -i im2.pdb -i prod.pdb`
-  - Single `-i` followed by multiple paths (space‑separated):
+  - A single `-i` followed by multiple paths (space‑separated):
       `-i reac.pdb im1.pdb im2.pdb prod.pdb`
-- The above algorithm is run for each adjacent pair (A→I1, I1→I2, …, I2→B). All per‑pair
-  paths are then concatenated with duplicate removal; bridges or new recursive segments are
-  inserted automatically when required.
-- Endpoint pre‑optimization is executed *per adjacent pair* sequentially.
+- The algorithm is run for each adjacent pair (A→I1, I1→I2, …, I2→B). Per‑pair paths are
+  concatenated with duplicate removal; bridges or new recursive segments are added
+  automatically when needed.
+- Endpoint pre‑optimization is performed **per adjacent pair** in sequence.
+- (Optional) If `--align True` (default), after pre‑optimization all inputs except the first
+  are rigidly aligned & freeze‑aware matched to the **first** optimized input using
+  `align_freeze_atoms.align_and_refine_pair_inplace`. This uses a shared UMA calculator.
 
-Key behavior & assumptions
---------------------------
-- A single UMA calculator (`uma_pysis`) is shared *serially* across all stages.
-- Path representation & optimizer:
+Behavior & assumptions
+----------------------
+- A single UMA calculator (`uma_pysis`) is shared **serially** across all stages.
+- Path representation & optimization:
   - GSM uses pysisyphus `GrowingString` + `StringOptimizer`.
   - HEI neighbors are optimized as *single* structures (LBFGS or RFO).
 - Covalent changes are detected via `bond_changes.compare_structures`.
 - Concatenation policy:
-  - If endpoint mismatch ≤ `search.stitch_rmsd_thresh`, treat as duplicate and drop one.
-  - If mismatch > `search.bridge_rmsd_thresh`, run a *bridge* GSM.
-  - If covalent changes exist across an interface, *insert a new recursive segment* instead.
+  - If the endpoint mismatch ≤ `search.stitch_rmsd_thresh`, treat as duplicate and drop one.
+  - If the mismatch > `search.bridge_rmsd_thresh`, run a *bridge* GSM.
+  - If covalent changes exist across an interface, insert a **new recursive segment** instead.
 - Input pre‑optimization (`sopt‑mode`) runs unless disabled by `--pre_opt False` / `--pre-opt False`.
-- Configuration precedence: **CLI** > **YAML** > **built‑in defaults** (sections: `geom`, `calc`,
+- Configuration precedence: **CLI** > **YAML** > **defaults** (sections: `geom`, `calc`,
   `gs`, `opt`, `sopt`, `bond`, `search`).
-- `max_nodes` can differ between step segments and bridges:
+- `max_nodes` may differ between step segments and bridges:
   `search.max_nodes_segment` and `search.max_nodes_bridge`.
-- Kink detection (no covalent changes for End1–End2):
-  Skip GSM and insert `search.kink_max_nodes` linearly interpolated structures, optimize them,
-  and use as images.
+- Kink handling (no covalent changes between End1–End2):
+  Skip GSM; insert `search.kink_max_nodes` linear interpolations, optimize them, and use as images.
 
 Outputs
 -------
 out_dir/
-  ├─ summary.yaml                 : run summary (MEP‑only info; no input/settings dump)
-  ├─ mep.trj **or** mep.pdb       : final MEP; if inputs are XYZ → write `mep.trj`; if inputs are PDB → write **only** `mep.pdb`
-  ├─ mep_w_ref.pdb                : full‑system MEP merged from pocket and templates (when --ref-pdb is used)
-  ├─ mep_w_ref_seg_XX.pdb         : per‑segment merged MEPs **only for segments with covalent changes** (when --ref-pdb)
-  ├─ mep_seg_XX.trj               : pocket‑only per‑segment trajectory **only for segments with covalent changes**
-  ├─ mep_seg_XX.pdb               : pocket‑only per‑segment PDB (from .trj; when pocket PDB is available)
-  ├─ hei_seg_XX.xyz               : **(Changed)** pocket HEI **only for segments with covalent changes**
-  ├─ hei_seg_XX.pdb               : **(Changed)** pocket PDB HEI **only for segments with covalent changes** (when pocket PDB is available)
-  ├─ hei_w_ref_seg_XX.pdb         : **(Changed)** merged PDB HEI **only for segments with covalent changes** (when --ref-pdb)
-  ├─ mep_plot.png                 : per‑image energy profile (from trj2fig; ΔE vs image index)
-  ├─ energy_diagram.html          : state‑level energy diagram (Plotly; ΔE relative to R in kcal/mol)
+  ├─ summary.yaml                 : Run summary (MEP‑only; no input/settings dump)
+  ├─ mep.trj **or** mep.pdb       : Final MEP; if inputs are XYZ → write `mep.trj`; if inputs are PDB → write **only** `mep.pdb`
+  ├─ mep_w_ref.pdb                : Full‑system MEP (pocket merged into templates; when --ref-pdb is used)
+  ├─ mep_w_ref_seg_XX.pdb         : Per‑segment merged MEPs **only for segments with covalent changes** (when --ref-pdb)
+  ├─ mep_seg_XX.trj               : Pocket‑only per‑segment trajectory **only for segments with covalent changes**
+  ├─ mep_seg_XX.pdb               : Pocket‑only per‑segment PDB (from .trj; when a pocket PDB is available)
+  ├─ hei_seg_XX.xyz               : Pocket HEI **only for segments with covalent changes**
+  ├─ hei_seg_XX.pdb               : Pocket HEI as PDB **only for segments with covalent changes** (when a pocket PDB is available)
+  ├─ hei_w_ref_seg_XX.pdb         : Merged HEI **only for segments with covalent changes** (when --ref-pdb)
+  ├─ mep_plot.png                 : Per‑image energy profile (from trj2fig; ΔE vs image index)
+  ├─ energy_diagram.html          : State‑level energy diagram (Plotly; ΔE relative to R in kcal/mol)
   ├─ energy_diagram.png           : PNG export of the energy diagram (if 'kaleido' is available)
   └─ segments/
-      ├─ seg_000_gsm/ ...         : initial GSM for the first segment
-      ├─ seg_000_left_opt/ ...    : single‑structure optimization of HEI−1
-      ├─ seg_000_right_opt/ ...   : single‑structure optimization of HEI+1
-      ├─ seg_000_refine_gsm/ ...  : refined GSM between End1–End2
-      ├─ seg_000_kink_...         : kink interpolation optimizations (when kink)
-      ├─ seg_000_seg_002_bridge_gsm/ ... : bridge GSM (names show which segments are bridged)
-      ├─ seg_001_...              : left‑side recursive substeps (if any)
-      └─ seg_002_...              : right‑side recursive substeps (if any)
+      ├─ seg_000_gsm/ ...         : Initial GSM for the first segment
+      ├─ seg_000_left_opt/ ...    : Single‑structure optimization of HEI−1
+      ├─ seg_000_right_opt/ ...   : Single‑structure optimization of HEI+1
+      ├─ seg_000_refine_gsm/ ...  : Refined GSM between End1–End2
+      ├─ seg_000_kink_...         : Kink interpolation optimizations (when kink)
+      ├─ seg_000_seg_002_bridge_gsm/ ... : Bridge GSM (names indicate which segments are bridged)
+      ├─ seg_001_...              : Left‑side recursive substeps (if any)
+      └─ seg_002_...              : Right‑side recursive substeps (if any)
 
 Notes
 -----
-- The linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) is **printed to the console log**.
-- The `labels` and `energies (kcal/mol)` actually passed to `build_energy_diagram` are also **printed to the log**.
+- The linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) is printed to the console.
+- The `labels` and `energies` (kcal/mol) passed to `build_energy_diagram` are also printed.
 """
 
 from __future__ import annotations
@@ -133,6 +135,9 @@ from .utils import convert_xyz_to_pdb, freeze_links
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
 from .utils import build_energy_diagram  # Plotly energy diagram
+
+# ★ NEW: alignment API（最初の入力へ他を整列）
+from .align_freeze_atoms import align_and_refine_pair_inplace
 
 # -----------------------------------------------
 # Configuration defaults
@@ -412,7 +417,7 @@ def _rmsd_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] =
 
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """Return (changed?, summary) for covalent bonds forming/breaking between `x` and `y`."""
+    """Return for covalent bonds forming/breaking between `x` and `y`."""
     res = compare_structures(
         x, y,
         device=bond_cfg.get("device", "cuda"),
@@ -1379,7 +1384,7 @@ def _merge_final_and_write(final_images: List[Any],
         f.write("END\n")
     click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
 
-    # Per‑segment merged MEPs (bond‑change segments only) + **HEI merged only for bond‑change segments**
+    # Per‑segment merged MEPs (bond‑change segments only) + HEI merged only for bond‑change segments
     for s in segments:
         seg_idx = int(s.seg_index)
         seg_frames: List[Any] = [im for im in final_images if int(getattr(im, "mep_seg_index", 0) or 0) == seg_idx]
@@ -1424,7 +1429,7 @@ def _merge_final_and_write(final_images: List[Any],
                 f.write("END\n")
             click.echo(f"[merge] Wrote per-segment merged trajectory → '{out_seg}'")
 
-        # **Changed**: per‑segment HEI merged to reference **only for bond‑change segments**
+        # Per‑segment HEI merged to reference (only for bond‑change segments)
         if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
             try:
                 energies_eh = [float(getattr(im, "energy")) for im in seg_frames]
@@ -1510,6 +1515,16 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="If False, skip initial single-structure optimizations of inputs."
 )
+# ★ NEW: 整列の有無（既定 True）
+@click.option(
+    "--align",
+    "do_align",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help=("After pre-optimization, rigidly align and freeze-aware match all inputs to the "
+          "first optimized input using align_freeze_atoms. Recommended for multi-structure inputs.")
+)
 # Full template PDBs for merge
 @click.option(
     "--ref-pdb",
@@ -1518,7 +1533,9 @@ def _merge_final_and_write(final_images: List[Any],
     multiple=True,
     default=None,
     help=("Full-size template PDBs in the same reaction order as --input. "
-          "When provided, generates a full-system trajectory by merging the pocket MEP into these templates.")
+          "When provided, generates a full-system trajectory by merging the pocket MEP into these templates. "
+          "NOTE: With --align True (default), you may pass **a single** reference PDB; "
+          "the first one will be reused for all inputs.")
 )
 @click.pass_context
 def cli(
@@ -1535,8 +1552,11 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
     pre_opt: bool,
+    do_align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
+    time_start = time.perf_counter()  # start timing
+    
     # --- Robustly accept both styles for -i/--input and --ref-pdb ---
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
@@ -1581,7 +1601,6 @@ def cli(
         ref_pdb_paths = tuple(ref_parsed)
     # --- end of robust parsing fix ---
 
-    time_start = time.perf_counter()  # start timing
     try:
         # --------------------------
         # 0) Input validation (multi‑structure)
@@ -1589,9 +1608,19 @@ def cli(
         if len(input_paths) < 2:
             raise click.BadParameter("Provide at least two structures for --input in reaction order (reactant [intermediates ...] product).")
 
+        # ref-pdb の繰り返し使用方針（--align True のとき先頭だけ使う）
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
-        if do_merge and (len(ref_pdb_paths) != len(input_paths)):
-            raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
+        ref_pdb_paths_effective: Optional[Sequence[Path]] = None
+        if do_merge:
+            if do_align:
+                # 最初の参照 PDB を全入力分に繰り返し割り当て
+                first_ref = ref_pdb_paths[0]
+                ref_pdb_paths_effective = tuple(first_ref for _ in input_paths)
+            else:
+                # 既存仕様：個数が一致している必要あり
+                if len(ref_pdb_paths) != len(input_paths):
+                    raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
+                ref_pdb_paths_effective = tuple(ref_pdb_paths)
 
         # --------------------------
         # 1) Resolve settings (defaults ← YAML ← CLI)
@@ -1660,7 +1689,8 @@ def cli(
         click.echo(_pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(_pretty_block("bond", bond_cfg))
         click.echo(_pretty_block("search", search_cfg))
-        click.echo(_pretty_block("run_flags", {"pre_opt": bool(pre_opt)}))
+        # ★ run_flags に align を追加
+        click.echo(_pretty_block("run_flags", {"pre_opt": bool(pre_opt), "align": bool(do_align)}))
 
         # --------------------------
         # 2) Prepare inputs
@@ -1680,12 +1710,15 @@ def cli(
         for g in geoms:
             _ensure_calc_on_geom(g, shared_calc)
 
-        # If any input is PDB, treat as "PDB input" for final output handling.
+        # PDB 変換・出力に使う参照 PDB（優先順位：--ref-pdb の先頭 → 入力の先頭 PDB）
         ref_pdb_for_segments: Optional[Path] = None
-        for p in p_list:
-            if p.suffix.lower() == ".pdb":
-                ref_pdb_for_segments = p.resolve()
-                break
+        if ref_pdb_paths_effective and len(ref_pdb_paths_effective) > 0:
+            ref_pdb_for_segments = Path(ref_pdb_paths_effective[0]).resolve()
+        else:
+            for p in p_list:
+                if p.suffix.lower() == ".pdb":
+                    ref_pdb_for_segments = p.resolve()
+                    break
 
         if pre_opt:
             new_geoms: List[Any] = []
@@ -1697,7 +1730,45 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre_opt/--pre-opt False.")
 
-        # (Alignment step intentionally omitted)
+        # ★ NEW: pre‑opt 後に最初の入力へ他を整列（freeze-aware）
+        if do_align and len(geoms) >= 2:
+            click.echo("\n=== Align all inputs to the first optimized structure (freeze-aware) ===\n")
+            ref_g = geoms[0]
+            for j in range(1, len(geoms)):
+                mob_g = geoms[j]
+                # align_freeze_atoms が最終段で freeze_atoms を空に戻すため、ここで復元する
+                fa_backup = np.array(getattr(mob_g, "freeze_atoms", []), dtype=int)
+                try:
+                    pair_out = out_dir_path / "align_refine"
+                    res = align_and_refine_pair_inplace(
+                        ref_g, mob_g,
+                        shared_calc=shared_calc,
+                        out_dir=pair_out,
+                        # サーチ全体の UMA 設定を引き継ぐ
+                        charge=calc_cfg["charge"],
+                        spin=calc_cfg["spin"],
+                        model=calc_cfg.get("model", "uma-s-1p1"),
+                        device=calc_cfg.get("device", "auto"),
+                        verbose=True,
+                    )
+                    # 人間可読ログ（簡潔）
+                    try:
+                        before = float(res["align"]["before_A"])
+                        after  = float(res["align"]["after_A"])
+                        remA   = float(res["scan"]["max_remaining_A"])
+                        steps  = int(res["scan"]["n_steps"])
+                        conv   = bool(res["scan"]["converged"])
+                        click.echo(f"[align] 0←{j}: RMSD {before:.3f}→{after:.3f} Å | scan rem {remA:.3f} Å, steps {steps}, converged {conv}")
+                    except Exception:
+                        pass
+                except Exception as e:
+                    click.echo(f"[align] WARNING: Failed to align image {j} to image 0: {e}", err=True)
+                # freeze_atoms を復元
+                try:
+                    mob_g.freeze_atoms = np.array(fa_backup, dtype=int)
+                except Exception:
+                    pass
+            click.echo("\n=== Alignment finished ===\n")
 
         # --------------------------
         # 3) Run recursive search for each adjacent pair and stitch
@@ -1825,7 +1896,7 @@ def cli(
                 except Exception:
                     pass
 
-        # ---- NEW: pocket‑only per‑segment trajectories & HEIs ----
+        # ---- Pocket‑only per‑segment trajectories & HEIs ----
         try:
             # Map frames → segment indices
             frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
@@ -1851,7 +1922,7 @@ def cli(
                     if ref_pdb_for_segments is not None:
                         _maybe_convert_to_pdb(seg_trj, ref_pdb_for_segments, out_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb")
 
-                # (B) **Changed**: HEI pocket files only for bond‑change segments
+                # (B) HEI pocket files only for bond‑change segments
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     energies_seg = [combined_all.energies[j] for j in idxs]
                     imax_rel = int(np.argmax(np.array(energies_seg, dtype=float)))
@@ -1865,14 +1936,15 @@ def cli(
                         _maybe_convert_to_pdb(hei_trj, ref_pdb_for_segments, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb")
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
-        # ---- END NEW ----
+        # ---- END ----
 
-        if do_merge:
+        # do_merge は --align True の場合は先頭参照 PDB を全ペアに繰り返し適用
+        if do_merge and ref_pdb_paths_effective:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
             _merge_final_and_write(
                 final_images=list(combined_all.images),
                 pocket_inputs=[Path(p) for p in input_paths],
-                ref_pdbs=[Path(p) for p in ref_pdb_paths],
+                ref_pdbs=[Path(p) for p in ref_pdb_paths_effective],
                 segments=combined_all.segments,
                 out_dir=out_dir_path
             )
@@ -2060,7 +2132,7 @@ def cli(
         hh = int(elapsed // 3600)
         mm = int((elapsed % 3600) // 60)
         ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(f"[time] Elapsed Time for Path Search: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)

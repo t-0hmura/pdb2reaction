@@ -1,10 +1,8 @@
 [Proceeding...]
-thermo
-
-[Proceeding... (Tier 2)]
 ts_opt: Use bolgfil update in Flatten loop
 
 [Debugging...]
+thermo
 trj2fig
 dft
 irc
@@ -22,6 +20,8 @@ path_search
 trj2fig
 uma_pysis
 utils
+
+[Organize CLI, docstring and output]
 
 [Complete]
 

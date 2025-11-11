@@ -2,11 +2,21 @@
 
 """
 UMA Calculator Wrapper for PySisyphus.
-Return Energy, Force, Analytic Hessian.
+
+This calculator provides:
+- Energy, forces, and Hessian.
+- Two Hessian modes: "Analytical" (autograd) or "FiniteDifference" (central differences).
+- In "FiniteDifference" mode:
+  * `freeze_atoms` lets you skip perturbations for selected atoms.
+  * `return_partial_hessian` returns the Hessian only over the active (non-frozen) DOF.
+  * The Hessian is assembled on the GPU.
+- In "Analytical" mode:
+  * Hessian is build by back‑propagating UMA model twice with autograd.
+  * This option requires more VRAM and time than "FiniteDifference" mode.
 """
 
 from __future__ import annotations
-from typing import List, Sequence, Optional, Dict, Any
+from typing import Sequence, Optional, Dict, Any, List
 
 import numpy as np
 import torch
@@ -59,11 +69,11 @@ class UMAcore:
         self._AtomicData = AtomicData
         self._collater   = data_list_collater
 
-        # Load predictor and place it on *target device & dtype* ------
+        # Load predictor and place it on target device & dtype --------
         self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
         self.predict.model.to(self.device, dtype=_tdtype)
         self.predict.model.eval()
-        # Disable dropout hard
+        # Hard-disable dropout
         for m in self.predict.model.modules():
             if isinstance(m, nn.Dropout):
                 m.p = 0.0
@@ -86,7 +96,7 @@ class UMAcore:
 
     # ----------------------------------------------------------------
     def _ase_to_batch(self, atoms: Atoms):
-        """Convert ASE Atoms → UMA AtomicData(Batch)."""
+        """Convert ASE Atoms → UMA AtomicData (batched)."""
         backbone = self._model_backbone()
         default_max_neigh = getattr(backbone, "max_neighbors", None)
         default_radius    = getattr(backbone, "cutoff", None)
@@ -115,12 +125,22 @@ class UMAcore:
         hessian: bool = False,
     ) -> Dict[str, Any]:
         """
-        coord_ang : (N,3) Å
-        forces / hessian : return toggles
-        Returns dict with keys:
-          - energy  (float, eV)
-          - forces  (np.ndarray, eV/Å) or None
-          - hessian (torch.Tensor, eV/Å^2) or None
+        Evaluate energy and (optionally) forces/Hessian at given coordinates.
+
+        Parameters
+        ----------
+        coord_ang : (N, 3) array-like in Å
+        forces : bool
+            If True, return forces (and enable grads).
+        hessian : bool
+            If True, keep autograd path so the analytical Hessian can be built.
+
+        Returns
+        -------
+        dict with keys:
+          - "energy"  : float, eV
+          - "forces"  : np.ndarray, shape (N, 3), eV/Å or None
+          - "hessian" : torch.Tensor, shape (N,3,N,3), eV/Å² or None
         """
         atoms = Atoms(self.elem, positions=coord_ang)
         batch = self._ase_to_batch(atoms)
@@ -144,6 +164,7 @@ class UMAcore:
         )
 
         if hessian:
+            # Disable parameter grads during Hessian evaluation
             p_flags = [p.requires_grad for p in self.predict.model.parameters()]
             for p in self.predict.model.parameters():
                 p.requires_grad_(False)
@@ -189,8 +210,28 @@ class uma_pysis(Calculator):
         max_neigh: Optional[int] = None,
         radius:    Optional[float] = None,
         r_edges:   bool = False,
+        hessian_calc_mode: str = "FiniteDifference",  # default: FD
+        freeze_atoms: Optional[Sequence[int]] = None, # atom indices (0-based)
+        return_partial_hessian: bool = False,         # return active-DOF Hessian only
+        # -------------------------------------------------------------------
         **kwargs,
     ):
+        """
+        Parameters
+        ----------
+        hessian_calc_mode : {"Analytical", "FiniteDifference"}, default "FiniteDifference"
+            Select how to compute the Hessian in `get_hessian()`.
+            - "Analytical": autograd-based analytical Hessian (GPU).
+            - "FiniteDifference": central-difference Hessian; the matrix is
+              assembled on the GPU.
+        freeze_atoms : list[int], optional
+            Atom indices (0-based). In "FiniteDifference" mode, DOFs of these
+            atoms are skipped when building Hessian columns.
+        return_partial_hessian : bool, default False
+            If True (with "FiniteDifference"), return only the Active-DOF Hessian
+            (submatrix for non-frozen atoms). If False, return a full (3N×3N)
+            matrix where frozen-DOF columns are not evaluated (remain zero).
+        """
         super().__init__(charge=charge, mult=spin, **kwargs)
         self._core: Optional[UMAcore] = None
         self._core_kw = dict(
@@ -204,6 +245,9 @@ class uma_pysis(Calculator):
             r_edges=r_edges,
         )
         self.out_hess_torch = out_hess_torch
+        self.hessian_calc_mode = hessian_calc_mode
+        self.freeze_atoms: List[int] = sorted(set(int(i) for i in (freeze_atoms or [])))
+        self.return_partial_hessian = bool(return_partial_hessian)
 
     # ---------- helpers ---------------------------------------------
     def _ensure_core(self, elem: Sequence[str]):
@@ -220,16 +264,111 @@ class uma_pysis(Calculator):
 
     def _au_hessian(self, H: torch.Tensor):
         """
-        H: (N,3,N,3) tensor on device.
-        - reshape to (3N,3N)
-        - symmetrize
-        - scale with same-device/dtype scalar to avoid FP64 promotion
-        - return numpy or torch depending on out_hess_torch
+        Convert Hessian from eV/Å² to Hartree/Bohr² and format the output.
+
+        Parameters
+        ----------
+        H : torch.Tensor
+            Shape (N,3,N,3), on device.
+
+        Returns
+        -------
+        numpy.ndarray or torch.Tensor
+            If `out_hess_torch` is False, returns a NumPy array on CPU.
+            Otherwise returns a torch.Tensor on the current device.
         """
         n = H.size(0)
         H = H.view(n * 3, n * 3)
-        H = H * H_EVAA_2_AU
+        # Use a same-device/dtype scalar to avoid unintended FP64 promotion.
+        scale = torch.tensor(H_EVAA_2_AU, device=H.device, dtype=H.dtype)
+        H = H * scale
         return H.detach().cpu().numpy() if not self.out_hess_torch else H.detach()
+
+    # ---------- Finite-Difference Hessian (GPU assembly) -------------
+    def _build_fd_hessian_gpu(
+        self,
+        elem: Sequence[str],
+        coord_ang: np.ndarray,
+        *,
+        eps_ang: float = 1.0e-3,  # central-difference step (Å)
+    ) -> Dict[str, Any]:
+        """
+        Assemble the Hessian by central differences of forces, with the matrix
+        stored and operated on the GPU:
+
+            H_[:, k] = -(F(x + h e_k) - F(x - h e_k)) / (2 h)
+
+        where F is the flattened force vector (eV/Å). Columns corresponding to
+        `freeze_atoms` DOF are skipped. If `return_partial_hessian` is True, the
+        returned matrix contains only the Active-DOF block (non-frozen atoms);
+        otherwise the full (3N×3N) matrix is returned.
+
+        Returns
+        -------
+        dict with keys:
+          - "energy"  : float, eV
+          - "forces"  : np.ndarray, shape (N, 3), eV/Å
+          - "hessian" : torch.Tensor, shape (N_out,3,N_out,3), eV/Å² on device
+        """
+        dev = self._core.device
+        dtype = _tdtype
+
+        n_atoms = len(elem)
+        dof = n_atoms * 3
+
+        # Active atoms / DOF
+        frozen_set = set(self.freeze_atoms)
+        active_atoms = [i for i in range(n_atoms) if i not in frozen_set]
+        active_dof_idx = [3 * i + j for i in active_atoms for j in range(3)]
+
+        # Base point evaluation
+        res0 = self._core.compute(coord_ang, forces=True, hessian=False)
+        energy0_eV = res0["energy"]
+        F0 = res0["forces"].astype(_ndtype, copy=False)  # (N,3) eV/Å
+
+        # GPU-side Hessian storage (2D for easy column insertion)
+        H = torch.zeros((dof, dof), device=dev, dtype=dtype)
+
+        # Host-side work arrays for coordinate perturbations
+        coord_plus = coord_ang.copy()
+        coord_minus = coord_ang.copy()
+
+        # Compute columns only for active DOF
+        for k in active_dof_idx:
+            a = k // 3
+            c = k % 3
+
+            # x + h
+            coord_plus[a, c] = coord_ang[a, c] + eps_ang
+            res_p = self._core.compute(coord_plus, forces=True, hessian=False)
+            Fp = res_p["forces"].reshape(-1).astype(_ndtype, copy=False)
+
+            # x - h
+            coord_minus[a, c] = coord_ang[a, c] - eps_ang
+            res_m = self._core.compute(coord_minus, forces=True, hessian=False)
+            Fm = res_m["forces"].reshape(-1).astype(_ndtype, copy=False)
+
+            # Column on GPU
+            Fp_t = torch.from_numpy(Fp).to(dev, dtype=dtype)
+            Fm_t = torch.from_numpy(Fm).to(dev, dtype=dtype)
+            col = -(Fp_t - Fm_t) / (2.0 * eps_ang)  # (3N,) eV/Å²
+
+            H[:, k] = col
+
+            # Restore
+            coord_plus[a, c]  = coord_ang[a, c]
+            coord_minus[a, c] = coord_ang[a, c]
+
+        # Reduce to Active-DOF block if requested
+        if self.return_partial_hessian:
+            idx = torch.tensor(active_dof_idx, device=dev, dtype=torch.long)
+            H = H.index_select(0, idx).index_select(1, idx)
+            n_active_atoms = len(active_atoms)
+            H = H.view(n_active_atoms, 3, n_active_atoms, 3)
+        else:
+            H = H.view(n_atoms, 3, n_atoms, 3)
+
+        return {"energy": energy0_eV, "forces": F0, "hessian": H}
 
     # ---------- PySisyphus API --------------------------------------
     def get_energy(self, elem, coords):
@@ -248,9 +387,43 @@ class uma_pysis(Calculator):
         }
 
     def get_hessian(self, elem, coords):
+        """
+        Compute the Hessian according to `hessian_calc_mode`.
+
+        Modes
+        -----
+        - "Analytical": autograd-based analytical Hessian (GPU).
+          If a CUDA out-of-memory error occurs, a clear message is raised
+          instructing you to switch to finite differences.
+        - "FiniteDifference": central-difference Hessian assembled on the GPU.
+          * Columns for `freeze_atoms` DOF are skipped.
+          * If `return_partial_hessian` is True, return the Active-DOF submatrix;
+            otherwise return a full-size matrix (frozen columns remain zero).
+        """
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
-        res = self._core.compute(coord_ang, forces=True, hessian=True)
+
+        mode = (self.hessian_calc_mode or "FiniteDifference").strip().lower()
+        if mode in ("analytical", "analytic"):
+            try:
+                res = self._core.compute(coord_ang, forces=True, hessian=True)
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+                # Detect CUDA OOM patterns
+                msg = str(e).lower()
+                if "out of memory" in msg and "cuda" in msg:
+                    raise RuntimeError(
+                        "Analytical Hessian computation failed due to CUDA out-of-memory. "
+                        "Your GPU memory appears to be limited. Please switch to the finite-"
+                        "difference Hessian by specifying `--hessian-calc-mode FiniteDifference` "
+                        "in the external CLI, or `hessian_calc_mode=\"FiniteDifference\"` in this calculator."
+                    ) from e
+                raise
+        elif mode in ("finitedifference", "finite-difference", "fd"):
+            res = self._build_fd_hessian_gpu(elem, coord_ang)
+        else:
+            # Fallback: treat unknown mode as FiniteDifference
+            res = self._build_fd_hessian_gpu(elem, coord_ang)
+
         return {
             "energy": self._au_energy(res["energy"]),
             "forces": self._au_forces(res["forces"]),
@@ -260,7 +433,7 @@ class uma_pysis(Calculator):
 
 # ---------- CLI ----------------------------------------
 def run_pysis():
-    """Enable `uma_pysis input.yaml`"""
+    """Enable `uma_pysis input.yaml`."""
     run.CALC_DICT["uma_pysis"] = uma_pysis
     run.run()
 

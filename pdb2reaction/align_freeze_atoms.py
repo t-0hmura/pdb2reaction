@@ -242,7 +242,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
         return {"before_A": before, "after_A": after, "n_used": 1, "mode": mode}
 
     # ---- 2 anchors ----
-    if len(idx) >= 2:
+    elif len(idx) == 2:
         i0, i1 = idx[0], idx[1]
         p0, p1, q0, q1 = P[i0].copy(), P[i1].copy(), Q[i0].copy(), Q[i1].copy()
         pm, qm = 0.5 * (p0 + p1), 0.5 * (q0 + q1)
@@ -276,7 +276,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
 
     # ---- Default: Kabsch (selected freeze atoms or all atoms) ----
-    if len(idx) > 0:
+    elif len(idx) > 0:
         use = np.zeros(N, bool)
         for k in idx:
             if 0 <= k < N:

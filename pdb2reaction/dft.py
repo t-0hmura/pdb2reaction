@@ -8,16 +8,14 @@ Features
 - Input formats: any format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
 - Engine: GPU4PySCF + PySCF; RKS/UKS is chosen automatically from the spin multiplicity.
 - Functional / basis: pass as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").
-- Checkpoints / MOs: no checkpoint or MO dump unless --dump is True (writes a Molden file).
 - Outputs (in out_dir):
     - result.yaml        : total energy (Hartree & kcal/mol), SCF metadata, and atomic charges (Mulliken / Löwdin / IAO)
     - input_geometry.xyz : the geometry snapshot used for SCF (as read; unchanged)
-    - mo.molden          : (only if --dump True) molecular orbital data in Molden format
 
 Examples
 --------
 pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
-pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --dump True
+pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
 """
 
 from __future__ import annotations
@@ -253,13 +251,7 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     default=None,
     help='Optional YAML overrides under key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).',
 )
-@click.option(
-    "--dump",
-    type=click.BOOL,
-    default=False,
-    show_default=True,
-    help="If True, write molecular orbital data to mo.molden (Molden format).",
-)
+
 def cli(
     input_path: Path,
     charge: int,
@@ -270,10 +262,9 @@ def cli(
     grid_level: int,
     out_dir: str,
     args_yaml: Optional[Path],
-    dump: bool,
 ) -> None:
     try:
-        tic_all = time.time()
+        time_start = time.perf_counter()
         # --------------------------
         # 1) Assemble configuration
         # --------------------------
@@ -305,7 +296,6 @@ def cli(
             "max_cycle": dft_cfg["max_cycle"],
             "grid_level": dft_cfg["grid_level"],
             "out_dir": str(out_dir_path),
-            "dump": bool(dump),
         }
         click.echo(_pretty_block("dft", echo_cfg))
 
@@ -399,17 +389,6 @@ def cli(
         e_h = float(e_tot)
         e_kcal = _hartree_to_kcalmol(e_h)
 
-        # (Optional) dump MO data in Molden format
-        if dump:
-            try:
-                from pyscf.tools import molden
-                mold_path = out_dir_path / "mo.molden"
-                with open(mold_path, "w") as f:
-                    molden.from_scf(mf, f)
-                click.echo(f"[dump] Wrote MO data (Molden): '{mold_path}'.")
-            except Exception as e:
-                click.echo(f"[dump] WARNING: Failed to write MO Molden file: {e}", err=True)
-
         # --------------------------
         # 6) Charges (Mulliken / Löwdin / IAO)
         # --------------------------
@@ -450,6 +429,12 @@ def cli(
         if not converged:
             click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
             sys.exit(3)
+        
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for DFT: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)

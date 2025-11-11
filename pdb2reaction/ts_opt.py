@@ -1366,6 +1366,7 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
 ) -> None:
+    time_start = time.perf_counter()
 
     # --------------------------
     # 1) Assemble configuration
@@ -1580,6 +1581,12 @@ def cli(
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for TS Opt: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)

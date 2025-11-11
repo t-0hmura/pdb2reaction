@@ -309,6 +309,8 @@ def cli(
     args_yaml: Optional[Path],
 ) -> None:
     try:
+        time_start = time.perf_counter()
+
         # --------------------------
         # 1) Assemble final config (defaults ← YAML ← CLI)
         # --------------------------
@@ -503,6 +505,12 @@ def cli(
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
             sys.exit(5)
+
+        elapsed = time.perf_counter() - time_start
+        hh = int(elapsed // 3600)
+        mm = int((elapsed % 3600) // 60)
+        ss = elapsed - (hh * 3600 + mm * 60)
+        click.echo(f"[time] Elapsed Time for Path Opt: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except OptimizationError as e:
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)
