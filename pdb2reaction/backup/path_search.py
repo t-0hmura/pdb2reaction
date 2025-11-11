@@ -32,7 +32,7 @@ Multi-structure input (A, I1, I2, ..., B)
 - The above procedure is applied to each adjacent pair (A→I1, I1→I2, I2→B, ...). All per‑pair
   paths are concatenated with duplicate removal, and bridge/recursive segments are inserted
   automatically as needed.
-- Pre‑optimization is executed *per adjacent pair* sequentially.
+- Pre‑optimization and Kabsch pre‑alignment are executed *per adjacent pair* sequentially.
 
 Key behavior and assumptions
 ----------------------------
@@ -44,7 +44,10 @@ Key behavior and assumptions
   - If an endpoint mismatch exceeds a threshold, a bridge GSM is run.
   - If covalent changes are present between the previous step’s tail and the next step’s head,
     a *new* recursive segment is inserted instead of a bridge.
-- Each input structure is single‑point optimized before path search (sopt‑mode), unless disabled by
+- Two input endpoints are pre‑aligned via Kabsch (do not use StringOptimizer’s internal align).
+- With `freeze_atoms`, the Kabsch alignment is solved on only the freeze atoms; the resulting
+  rigid transform is applied to all atoms.
+- Each input structure is single‑point optimized before alignment (sopt‑mode), unless disabled by
   `--pre_opt False` / `--pre-opt False`.
 - Priority of configuration is CLI > YAML > built‑in defaults (sections: geom, calc, gs, opt,
   sopt, bond, search).
@@ -64,7 +67,7 @@ out_dir/
   ├─ mep_w_ref_seg_XX.pdb         : per-segment merged MEPs **only for segments with covalent changes** (when --ref-pdb)
   ├─ mep_seg_XX.trj               : pocket-only per-segment trajectory **only for segments with covalent changes**
   ├─ mep_seg_XX.pdb               : pocket-only per-segment PDB (from .trj; when pocket PDB is available)
-  ├─ hei_seg_XX.xyz               : **(Changed)** pocket HEI **only for segments with covalent changes**
+  ├─ hei_seg_XX.trj               : **(Changed)** pocket HEI **only for segments with covalent changes**
   ├─ hei_seg_XX.pdb               : **(Changed)** pocket PDB HEI **only for segments with covalent changes** (when pocket PDB is available)
   ├─ hei_w_ref_seg_XX.pdb         : **(Changed)** merged PDB HEI **only for segments with covalent changes** (when --ref-pdb)
   ├─ mep_plot.png                 : per-image energy profile (from trj2fig; ΔE vs image index)
@@ -169,10 +172,10 @@ GS_KW: Dict[str, Any] = {
 # StringOptimizer (GSM optimization control)
 OPT_KW: Dict[str, Any] = {
     "type": "string",
-    "stop_in_when_full": 1000,  # tolerance after fully grown
+    "stop_in_when_full": 100,   # tolerance after fully grown
     "align": False,             # do not use StringOptimizer’s align
     "scale_step": "global",     # "global" | "per_image"
-    "max_cycles": 1000,
+    "max_cycles": 100,
     "dump": False,
     "dump_restart": False,
     "reparam_thresh": 1e-3,
@@ -244,9 +247,9 @@ BOND_KW: Dict[str, Any] = {
 # Global search control
 SEARCH_KW: Dict[str, Any] = {
     "max_depth": 10,               # maximum recursive depth
-    "stitch_rmsd_thresh": 1.0e-4,  # RMSD (Å) threshold to treat endpoints as duplicates during stitching
-    "bridge_rmsd_thresh": 1.0e-4,  # if endpoint mismatch exceeds this, run a bridge GSM
-    "rmsd_align": True,            # (kept for compatibility; ignored internally)
+    "stitch_rmsd_thresh": 0.001,   # RMSD (Å) threshold to treat endpoints as duplicates during stitching
+    "bridge_rmsd_thresh": 0.010,   # if endpoint mismatch exceeds this, run a bridge GSM
+    "rmsd_align": True,            # use Kabsch alignment for RMSD
     "max_nodes_segment": 10,
     "max_nodes_bridge": 5,
     "kink_max_nodes": 3,           # number of linear interpolation nodes when skipping GSM at a kink
@@ -392,10 +395,7 @@ def _maybe_convert_to_pdb(in_path: Path, ref_pdb_path: Optional[Path], out_path:
 
 
 def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """
-    RMSD between A and B (no alignment; align flag is ignored for simplicity).
-    Supports subset selection via indices.
-    """
+    """RMSD after Kabsch alignment (or direct RMSD if align=False). Supports subset selection via indices."""
     assert A.shape == B.shape and A.shape[1] == 3
     if indices is not None and len(indices) > 0:
         idx = np.array(sorted({int(i) for i in indices if 0 <= int(i) < A.shape[0]}), dtype=int)
@@ -403,13 +403,27 @@ def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, align: bool = True, indices: Opti
             idx = np.arange(A.shape[0], dtype=int)
         A = A[idx]
         B = B[idx]
-    diff = A - B
+    if not align:
+        diff = A - B
+        return float(np.sqrt((diff * diff).sum() / A.shape[0]))
+
+    Ac = A - A.mean(axis=0, keepdims=True)
+    Bc = B - B.mean(axis=0, keepdims=True)
+    H = Ac.T @ Bc
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+    # Handle improper rotation
+    if np.linalg.det(R) < 0:
+        Vt[-1, :] *= -1
+        R = Vt.T @ U.T
+    Arot = Ac @ R
+    diff = Arot - Bc
     return float(np.sqrt((diff * diff).sum() / A.shape[0]))
 
 
 def _rmsd_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """RMSD between two Geometries (alignment disabled; optional subset selection only)."""
-    return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), align=False, indices=indices)
+    """RMSD between two Geometries (optional Kabsch alignment and subset)."""
+    return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), align=align, indices=indices)
 
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
@@ -427,7 +441,7 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     return (formed or broken), summary
 
 
-# ---- Kabsch rigid transform (kept for merge step) ----
+# ---- Kabsch alignment producing a new cloned geometry (subset-capable) ----
 
 def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -462,6 +476,224 @@ def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return R, t
 
 
+# === Helpers for axis/anchor-constrained alignment (minimal additions) ===
+
+def _rodrigues(axis_unit: np.ndarray, theta: float) -> np.ndarray:
+    """Rotation matrix (3x3) for rotation of angle *theta* around unit axis."""
+    u = np.asarray(axis_unit, dtype=float)
+    u = u / (np.linalg.norm(u) + 1e-16)
+    ux, uy, uz = u
+    K = np.array([[0, -uz, uy],
+                  [uz, 0, -ux],
+                  [-uy, ux, 0]], dtype=float)
+    I = np.eye(3)
+    return I + np.sin(theta) * K + (1.0 - np.cos(theta)) * (K @ K)
+
+
+def _rotation_align_vectors(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Return rotation matrix that maps unit vector a -> unit vector b."""
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    a = a / (np.linalg.norm(a) + 1e-16)
+    b = b / (np.linalg.norm(b) + 1e-16)
+    v = np.cross(a, b)
+    c = float(np.clip(np.dot(a, b), -1.0, 1.0))
+    s = np.linalg.norm(v)
+    if s < 1e-12:
+        # parallel or anti-parallel
+        if c > 0.0:
+            return np.eye(3)
+        # 180°: rotate around any axis ⟂ a
+        # choose an orthonormal vector
+        tmp = np.array([1.0, 0.0, 0.0])
+        if np.abs(a[0]) > 0.9:
+            tmp = np.array([0.0, 1.0, 0.0])
+        axis = np.cross(a, tmp)
+        axis = axis / (np.linalg.norm(axis) + 1e-16)
+        return _rodrigues(axis, np.pi)
+    axis = v / s
+    theta = np.arctan2(s, c)
+    return _rodrigues(axis, theta)
+
+
+def _orth_proj_perp(u: np.ndarray) -> np.ndarray:
+    """Projection matrix onto plane perpendicular to unit vector u."""
+    u = u / (np.linalg.norm(u) + 1e-16)
+    return np.eye(3) - np.outer(u, u)
+
+
+def _align_second_to_first_kabsch(geom_ref, geom_to_align) -> Tuple[float, float, int]:
+    """
+    Rigidly align *geom_to_align* to *geom_ref*.
+
+    標準: Kabsch（選択された原子で最小二乗）
+    特別扱い:
+      - freeze_atoms が **1 個**のとき: その原子座標を一致させ、（その点を通る）回転のみで
+        **全原子 RMSD** を最小化するように回転を求める。
+      - freeze_atoms が **2 個**のとき: 2 原子が張る軸（2 点を結ぶ直線）を一致させた後、
+        その軸 **周り**の回転角を最適化し、**全原子 RMSD** を最小化する。
+
+    Returns
+    -------
+    rmsd_before, rmsd_after, n_used
+      （rmsd は上記特殊ケースでは全原子、通常ケースでは選択原子で評価）
+    """
+    P = np.array(geom_ref.coords3d, dtype=float)    # (N, 3)
+    Q = np.array(geom_to_align.coords3d, dtype=float)
+    if P.shape != Q.shape:
+        raise ValueError(f"Different atom counts for endpoints: {P.shape[0]} vs {Q.shape[0]}")
+
+    N = P.shape[0]
+    # indices used to determine the transform
+    fa0 = getattr(geom_ref, "freeze_atoms", np.array([], dtype=int))
+    fa1 = getattr(geom_to_align, "freeze_atoms", np.array([], dtype=int))
+    freeze_union = sorted(set(map(int, fa0)) | set(map(int, fa1)))
+
+    # Helper: RMSD over all atoms
+    def _rmsd_all(X: np.ndarray, Y: np.ndarray) -> float:
+        diff = X - Y
+        return float(np.sqrt(np.mean(np.sum(diff * diff, axis=1))))
+
+    # --- Special case: 1 anchor (rotate about that point, minimize ALL-atom RMSD) ---
+    if len(freeze_union) == 1 and 0 <= freeze_union[0] < N:
+        idx = int(freeze_union[0])
+        p0 = P[idx].copy()
+        q0 = Q[idx].copy()
+
+        # Before RMSD (all atoms; no alignment)
+        rmsd_before = _rmsd_all(P, Q)
+
+        # Translate Q so that the anchor coincides: q0 -> p0
+        Q_shift = Q + (p0 - q0)
+
+        # Find rotation R (no re-centering to centroid): solve min || (Q - q0) R - (P - p0) ||_F
+        P_rel = P - p0
+        Q_rel = Q_shift - p0  # equals (Q - q0)
+        H = P_rel.T @ Q_rel
+        U, S, Vt = np.linalg.svd(H)
+        R = Vt.T @ U.T
+        if np.linalg.det(R) < 0.0:
+            Vt[-1, :] *= -1.0
+            R = Vt.T @ U.T
+
+        # Apply rotation around p0
+        Q_aligned = (Q_rel @ R) + p0
+
+        # Commit coordinates (apply to all atoms; temporarily disable freeze)
+        old_freeze = np.array(getattr(geom_to_align, "freeze_atoms", []), dtype=int)
+        try:
+            geom_to_align.freeze_atoms = np.array([], dtype=int)
+            geom_to_align.set_coords(Q_aligned.reshape(-1), cartesian=True)
+        finally:
+            geom_to_align.freeze_atoms = old_freeze
+
+        rmsd_after = _rmsd_all(P, Q_aligned)
+        return rmsd_before, rmsd_after, 1
+
+    # --- Special case: 2 anchors (align axis, then optimize rotation about that axis for ALL-atom RMSD) ---
+    if len(freeze_union) >= 2:
+        # take first two valid indices
+        valid = [i for i in freeze_union if 0 <= int(i) < N]
+        if len(valid) >= 2:
+            i0, i1 = int(valid[0]), int(valid[1])
+
+            p0 = P[i0].copy()
+            p1 = P[i1].copy()
+            q0 = Q[i0].copy()
+            q1 = Q[i1].copy()
+
+            rmsd_before = _rmsd_all(P, Q)
+
+            # Step 1: bring midpoints together and align axis direction (q1-q0 -> p1-p0)
+            pm = 0.5 * (p0 + p1)
+            qm = 0.5 * (q0 + q1)
+
+            vP = p1 - p0
+            vQ = q1 - q0
+            if np.linalg.norm(vP) < 1e-16 or np.linalg.norm(vQ) < 1e-16:
+                # Degenerate axis; fall back to standard Kabsch on the 2 anchors
+                P_sel = np.stack([p0, p1], axis=0)
+                Q_sel = np.stack([q0, q1], axis=0)
+                R0, t0 = _kabsch_R_t(P_sel, Q_sel)
+                Q0 = (Q @ R0) + t0
+            else:
+                # translate to P midpoint
+                Q0 = Q + (pm - qm)
+                # rotate around midpoint so that axis directions coincide
+                R_align = _rotation_align_vectors(vQ, vP)
+                Q0 = ((Q0 - pm) @ R_align) + pm
+
+            # Step 2: optimize rotation angle around the (now aligned) axis (through p0->p1)
+            u = vP / (np.linalg.norm(vP) + 1e-16)  # unit axis
+            c = p0  # any point on axis works; use p0
+
+            # Projections onto plane perpendicular to u
+            P_perp = _orth_proj_perp(u)
+            A = (P - c) @ P_perp.T        # target projections
+            B = (Q0 - c) @ P_perp.T       # current projections
+
+            # Compute optimal theta maximizing Σ a_i⋅R_u(θ)b_i
+            # a⋅R_u(θ)b = (a⋅b)cosθ + (a⋅(u×b))sinθ (since a,b ⟂ u)
+            cross_u_B = np.cross(u, B)
+            sum_ab = float(np.sum(A * B))
+            sum_a_uxb = float(np.sum(A * cross_u_B))
+            theta = np.arctan2(sum_a_uxb, sum_ab) if (np.abs(sum_ab) + np.abs(sum_a_uxb)) > 1e-16 else 0.0
+
+            R_axis = _rodrigues(u, theta)
+            Q1 = ((Q0 - c) @ R_axis) + c
+
+            # Apply
+            old_freeze = np.array(getattr(geom_to_align, "freeze_atoms", []), dtype=int)
+            try:
+                geom_to_align.freeze_atoms = np.array([], dtype=int)
+                geom_to_align.set_coords(Q1.reshape(-1), cartesian=True)
+            finally:
+                geom_to_align.freeze_atoms = old_freeze
+
+            rmsd_after = _rmsd_all(P, Q1)
+            return rmsd_before, rmsd_after, 2
+
+    # --- Default behavior (unchanged): Kabsch on selection (union of freeze or all atoms) ---
+    if len(freeze_union) > 0:
+        use_mask = np.zeros(N, dtype=bool)
+        # defensively ignore out-of-range indices
+        valid_idx = [i for i in freeze_union if 0 <= i < N]
+        use_mask[valid_idx] = True
+    else:
+        use_mask = np.ones(N, dtype=bool)
+
+    P_sel = P[use_mask]
+    Q_sel = Q[use_mask]
+    n_used = int(P_sel.shape[0])
+
+    # RMSD before alignment (on the selection)
+    def _rmsd(A: np.ndarray, B: np.ndarray) -> float:
+        return float(np.sqrt(np.mean(np.sum((A - B) ** 2, axis=1)))) if len(A) else float("nan")
+
+    rmsd_before = _rmsd(P_sel, Q_sel)
+
+    # Solve Kabsch on the selection only
+    R, t = _kabsch_R_t(P_sel, Q_sel)
+
+    # Apply the rigid-body transform to ALL atoms
+    Q_aligned = (Q @ R) + t
+
+    # set_coords() は凍結原子を元位置へ戻すため、この一回に限って freeze を無効化し、
+    # 変換を全原子へ適用する。その後ただちに凍結設定を復元する。
+    old_freeze = np.array(getattr(geom_to_align, "freeze_atoms", []), dtype=int)
+    try:
+        geom_to_align.freeze_atoms = np.array([], dtype=int)
+        geom_to_align.set_coords(Q_aligned.reshape(-1), cartesian=True)
+    finally:
+        geom_to_align.freeze_atoms = old_freeze
+    # --- /FIX ---
+
+    rmsd_after = _rmsd(P[use_mask], Q_aligned[use_mask])
+
+    return rmsd_before, rmsd_after, n_used
+
+
+
 # ---------- GS configuration utility (minimal) ----------
 def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, Any]:
     """Return a shallow copy of a GrowingString config with specified overrides."""
@@ -476,12 +708,22 @@ def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, 
 def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
     """
     Return the maximum per-atom displacement (Å) between two structures.
-    Alignment is disabled; displacement is computed directly (optional subset selection unsupported here).
+    If *align* is True, Kabsch-align gb to ga first (transform determined on *indices* subset if provided;
+    transform is then applied to all atoms).
     """
     A = np.asarray(ga.coords3d, dtype=float)  # (N, 3)
     B = np.asarray(gb.coords3d, dtype=float)
     if A.shape != B.shape or A.shape[1] != 3:
         raise ValueError("Geometries must have the same number of atoms for displacement.")
+    if align:
+        if indices is None or len(indices) == 0:
+            idx = np.arange(A.shape[0], dtype=int)
+        else:
+            idx = np.array(sorted({int(i) for i in indices if 0 <= int(i) < A.shape[0]}), dtype=int)
+            if idx.size == 0:
+                idx = np.arange(A.shape[0], dtype=int)
+        R, t = _kabsch_R_t(A[idx], B[idx])
+        B = (B @ R) + t
     disp = np.linalg.norm(A - B, axis=1)  # per-atom distances
     return float(np.max(disp))
 
@@ -654,7 +896,7 @@ def _run_gsm_between(
         if len(lines) >= 2 and lines[0].strip().isdigit():
             lines[1] = f"{hei_E:.12f}"
             s = "\n" if s.endswith("\n") else ""
-            s = "\n".join([lines[0], f"{hei_E:.12f}"] + lines[2:]) + "\n"
+            s = "\n".join([lines[0], f"{hei_E:.12f}"] + lines[2:] + [""])
         with open(hei_xyz, "w") as f:
             f.write(s)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
@@ -732,7 +974,7 @@ def _maybe_bridge_segments(
     ref_pdb_path: Optional[Path],  # for PDB conversion
 ) -> Optional[GSMResult]:
     """Run a bridge GSM if two segment endpoints are farther than the threshold."""
-    rmsd = _rmsd_between(tail_g, head_g, align=False)
+    rmsd = _rmsd_between(tail_g, head_g, align=True)
     if rmsd <= rmsd_thresh:
         return None
     click.echo(f"[{tag}] Gap detected between segments (RMSD={rmsd:.4e} Å) — bridging via GSM.")
@@ -808,19 +1050,19 @@ def _stitch_paths(
             if segments_out is not None and getattr(sub, "segments", None):
                 segments_out.extend(sub.segments)
             if seg_imgs:
-                if _rmsd_between(all_imgs[-1], seg_imgs[0], align=False) <= stitch_rmsd_thresh:
+                if _rmsd_between(all_imgs[-1], seg_imgs[0], align=True) <= stitch_rmsd_thresh:
                     seg_imgs = seg_imgs[1:]
                     seg_E = seg_E[1:]
                 all_imgs.extend(seg_imgs)
                 all_E.extend(seg_E)
-            if _rmsd_between(all_imgs[-1], imgs[0], align=False) <= stitch_rmsd_thresh:
+            if _rmsd_between(all_imgs[-1], imgs[0], align=True) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
                 Es = Es[1:]
             all_imgs.extend(imgs)
             all_E.extend(Es)
             return
 
-        rmsd = _rmsd_between(tail, head, align=False)
+        rmsd = _rmsd_between(tail, head, align=True)
         if rmsd <= stitch_rmsd_thresh:
             all_imgs.extend(imgs[1:])
             all_E.extend(Es[1:])
@@ -839,7 +1081,7 @@ def _stitch_paths(
                 _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
                             mep_has_bond_changes=False, pair_index=bridge_pair_index)
                 b_imgs, b_E = br.images, br.energies
-                if _rmsd_between(all_imgs[-1], b_imgs[0], align=False) <= stitch_rmsd_thresh:
+                if _rmsd_between(all_imgs[-1], b_imgs[0], align=True) <= stitch_rmsd_thresh:
                     b_imgs = b_imgs[1:]
                     b_E = b_E[1:]
                 if b_imgs:
@@ -873,7 +1115,7 @@ def _stitch_paths(
                     else:
                         segments_out.insert(insert_pos, bridge_report)
 
-            if _rmsd_between(all_imgs[-1], imgs[0], align=False) <= stitch_rmsd_thresh:
+            if _rmsd_between(all_imgs[-1], imgs[0], align=True) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
                 Es = Es[1:]
             all_imgs.extend(imgs)
@@ -953,7 +1195,7 @@ def _build_multistep_path(
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
         click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
-        lr_changed, lr_summary = True, ""
+    lr_changed, lr_summary = lr_changed, lr_summary
     use_kink = (not lr_changed)
 
     if use_kink:
@@ -1487,7 +1729,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("--max-nodes", type=int, default=10, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
-@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum GSM optimization cycles.")
+@click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Enable transition-state search after path growth.")
 @click.option("--sopt-mode", type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),
@@ -1697,7 +1939,19 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre_opt/--pre-opt False.")
 
-        # (Alignment step removed to simplify the script)
+        for i in range(len(geoms) - 1):
+            gi, gj = geoms[i], geoms[i + 1]
+            N = int(np.asarray(gi.coords3d).shape[0])
+            fa_i = getattr(gi, "freeze_atoms", np.array([], dtype=int))
+            fa_j = getattr(gj, "freeze_atoms", np.array([], dtype=int))
+            use_idx = sorted({int(x) for x in list(fa_i) + list(fa_j) if 0 <= int(x) < N})
+            idx_for_msg = f"{len(use_idx)} (freeze_atoms)" if len(use_idx) > 0 else f"{N} (all atoms)"
+            try:               
+                rmsd_before, rmsd_after, n_used = _align_second_to_first_kabsch(gi, gj)
+                click.echo(f"[align {i:02d}->{i+1:02d}] Kabsch pre-alignment (used {idx_for_msg}): "
+                           f"RMSD_before={rmsd_before:.6f} Å → RMSD_after={rmsd_after:.6f} Å")
+            except Exception as e:
+                click.echo(f"[align {i:02d}->{i+1:02d}] WARNING: Kabsch pre-alignment skipped: {e}", err=True)
 
         # --------------------------
         # 3) Run recursive search for each adjacent pair and incrementally stitch
@@ -1969,9 +2223,31 @@ def cli(
                         # pre-TS region without bond change → ignore
                         pass
 
+            # --- CHANGE: Clamp energy-diagram endpoints to the first/last bond-change segment edges ---
+            # If any bond-change segments exist, set the diagram's left endpoint to the first frame of the
+            # first bond-change segment and the right endpoint to the last frame of the last bond-change segment.
+            start_idx_for_diag = 0
+            end_idx_for_diag = len(combined_all.energies) - 1
+            bc_segments_in_order = [
+                s for s in combined_all.segments
+                if (s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)")
+            ]
+            if bc_segments_in_order:
+                first_bc = bc_segments_in_order[0]
+                last_bc = bc_segments_in_order[-1]
+                idxs_first_bc = seg_to_frames.get(int(first_bc.seg_index), [])
+                idxs_last_bc = seg_to_frames.get(int(last_bc.seg_index), [])
+                if idxs_first_bc:
+                    start_idx_for_diag = int(idxs_first_bc[0])   # left edge of the first bond-change segment
+                if idxs_last_bc:
+                    end_idx_for_diag = int(idxs_last_bc[-1])     # right edge of the last bond-change segment
+            # --- /CHANGE ---
+
             # Compose compressed labels/energies & human-readable chain
             labels: List[str] = ["R"]
-            energies_eh: List[float] = [float(combined_all.energies[0])]
+            # --- CHANGE: start energy from clamped left endpoint ---
+            energies_eh: List[float] = [float(combined_all.energies[start_idx_for_diag])]
+            # --- /CHANGE ---
             chain_tokens: List[str] = ["R"]
 
             for i, g in enumerate(ts_groups, start=1):
@@ -1999,7 +2275,9 @@ def cli(
 
             # Product
             labels.append("P")
-            energies_eh.append(float(combined_all.energies[-1]))
+            # --- CHANGE: end energy from clamped right endpoint ---
+            energies_eh.append(float(combined_all.energies[end_idx_for_diag]))
+            # --- /CHANGE ---
             chain_tokens.extend(["-->", "P"])
 
             # Convert to kcal/mol relative to R

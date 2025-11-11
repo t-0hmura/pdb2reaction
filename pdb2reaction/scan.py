@@ -10,6 +10,19 @@ Overview
   harmonic distance wells toward evolving targets for specified atom pairs.
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
 
+IMPORTANT COMPATIBILITY NOTE
+----------------------------
+pysisyphus.Geometry expects calculator methods like `get_energy(atoms, coords)` and
+`get_forces(atoms, coords)` to return **dicts** (e.g., {"energy": E, "forces": F}).
+This file's HarmonicBiasCalculator now adapts its return type based on call style:
+
+- Geometry-style call (single Geometry object): returns **float** for `get_energy(...)`
+  and **np.ndarray** for `get_forces(...)` (kept for backward compatibility with this
+  script's internal probes like `float(biased.get_energy(geom))`).
+
+- Atoms/coords-style call `(atoms, coords)` used by pysisyphus.Geometry: returns **dict**
+  with keys "energy" and/or "forces" as appropriate so that Geometry.set_results works.
+
 Per‑stage scheduling
 --------------------
 For a given list of scan tuples [(i, j, target), ...]:
@@ -32,13 +45,13 @@ Example
 -------
 pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]" \
   --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-  --max-step-size 0.3 --dump True --out-dir ./result_scan/ --opt-mode rfo
+  --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs
 
 Notes
 -----
 - Indices are 1-based by default. Use --zero-based if your tuples are 0-based.
 - Units: distances in Å. The bias strength 'k' is in the calculator's
-  native energy units per Å^2. Start with k=10.0 and adjust as needed.
+  native eV/Å^2. Start with k=100 and adjust as needed.
 """
 
 from __future__ import annotations
@@ -91,7 +104,7 @@ CALC_KW: Dict[str, Any] = {
 # Optimizer base (convergence, dumping, etc.)
 OPT_BASE_KW: Dict[str, Any] = {
     "thresh": "gau",          # "gau_loose"|"gau"|"gau_tight"|"gau_vtight"|"baker"|"never"
-    "max_cycles": 10000,
+    "max_cycles": 100,
     "print_every": 1,
     "min_step_norm": 1e-8,
     "assert_min_step": True,
@@ -149,7 +162,7 @@ RFO_KW: Dict[str, Any] = {
 
 # Bias (harmonic well) defaults; can be overridden via YAML: section "bias"
 BIAS_KW: Dict[str, Any] = {
-    "k": 10.0,  # energy units per Å^2
+    "k": 100,  # eV / Å^2
 }
 
 
@@ -300,12 +313,20 @@ class HarmonicBiasCalculator:
     Wrap a base calculator and add harmonic distance wells:
         E_bias = sum_k 0.5 * k * (|r_i − r_j| − target_k)^2
 
-    Supports several method names to be compatible with different calculator APIs:
-      - get_energy_and_forces(geometry) -> (E, forces_flat or (N,3))
-      - get_energy_and_gradient(geometry) -> (E, grad_flat)
-      - get_energy(geometry) -> E
-      - get_forces(geometry) -> forces_flat
-      - get_gradient(geometry) -> grad_flat
+    Compatibility across APIs:
+    --------------------------
+    - Geometry-style (1-arg):
+        get_energy(geometry) -> float
+        get_forces(geometry) -> np.ndarray (flattened)
+        get_energy_and_forces(geometry) -> (E, forces_flat)
+        get_energy_and_gradient(geometry) -> (E, grad_flat)
+
+    - Atoms/coords-style (2-args; used by pysisyphus.Geometry):
+        get_energy(atoms, coords) -> {"energy": E}
+        get_forces(atoms, coords) -> {"energy": E, "forces": forces_flat}
+        get_energy_and_forces(atoms, coords) -> (E, forces_flat)
+        get_energy_and_gradient(atoms, coords) -> (E, grad_flat)
+
     Unknown attributes are forwarded to the base calculator.
     """
 
@@ -321,18 +342,97 @@ class HarmonicBiasCalculator:
 
     # ---- utilities ----
     @staticmethod
-    def _flatten_forces(F: np.ndarray, n_atoms: Optional[int] = None) -> np.ndarray:
-        arr = np.array(F, dtype=float)
-        if arr.ndim == 2 and arr.shape[1] == 3:
-            return arr.reshape(-1)
-        if arr.ndim == 1:
-            return arr
-        if n_atoms is not None:
-            return arr.reshape(n_atoms * 3)
-        return arr.reshape(-1)
+    def _extract_array_from_dict(d: Dict[str, Any]) -> Tuple[Optional[np.ndarray], Optional[str]]:
+        """
+        Try to pull an ndarray-like from a dict returned by some calculators.
+        Returns (array, kind) where kind is 'forces' or 'gradient' if identifiable.
+        """
+        if not isinstance(d, dict):
+            return None, None
 
-    def _bias_energy_forces(self, geometry) -> Tuple[float, np.ndarray]:
-        coords = np.array(geometry.coords3d, dtype=float)  # (N,3)
+        # Map lowercase keys to original keys
+        l2o = {str(k).lower(): k for k in d.keys()}
+
+        # Prefer explicit forces keys
+        for k in ("forces", "force", "cart_forces", "f"):
+            if k in l2o:
+                arr = d[l2o[k]]
+                try:
+                    return np.array(arr, dtype=float), "forces"
+                except Exception:
+                    pass
+
+        # Then try gradient keys (convert later)
+        for k in ("gradient", "grad", "cart_gradient", "g", "dEdx", "dedx"):
+            if str(k).lower() in l2o:
+                arr = d[l2o[str(k).lower()]]
+                try:
+                    return np.array(arr, dtype=float), "gradient"
+                except Exception:
+                    pass
+
+        # Fallback: if dict has exactly one ndarray-like value, use it
+        ndarray_like = []
+        for v in d.values():
+            if isinstance(v, (list, tuple, np.ndarray)):
+                ndarray_like.append(np.array(v))
+        if len(ndarray_like) == 1:
+            try:
+                return np.array(ndarray_like[0], dtype=float), None
+            except Exception:
+                pass
+
+        return None, None
+
+    @staticmethod
+    def _flatten_any(arr: np.ndarray, n_atoms: Optional[int] = None) -> np.ndarray:
+        """Flatten array to (3N,) with best effort."""
+        a = np.array(arr, dtype=float)
+        if a.ndim == 2 and a.shape[1] == 3:
+            return a.reshape(-1)
+        if a.ndim == 1:
+            return a
+        if n_atoms is not None:
+            return a.reshape(n_atoms * 3)
+        return a.reshape(-1)
+
+    @staticmethod
+    def _flatten_forces(F: Any, n_atoms: Optional[int] = None) -> np.ndarray:
+        """
+        Accept forces in various shapes or a dict; if a gradient dict/array is given,
+        convert to forces by applying a minus sign.
+        """
+        if isinstance(F, dict):
+            arr, kind = HarmonicBiasCalculator._extract_array_from_dict(F)
+            if arr is None:
+                raise TypeError("Could not extract forces/gradient array from dict returned by calculator.")
+            if kind == "gradient":
+                arr = -arr
+            return HarmonicBiasCalculator._flatten_any(arr, n_atoms)
+        else:
+            # Assume already forces-like numeric array
+            return HarmonicBiasCalculator._flatten_any(F, n_atoms)
+
+    @staticmethod
+    def _flatten_gradient(G: Any, n_atoms: Optional[int] = None) -> np.ndarray:
+        """
+        Accept gradient in various shapes or a dict; if forces dict/array is given,
+        convert to gradient by applying a minus sign.
+        """
+        if isinstance(G, dict):
+            arr, kind = HarmonicBiasCalculator._extract_array_from_dict(G)
+            if arr is None:
+                raise TypeError("Could not extract forces/gradient array from dict returned by calculator.")
+            if kind == "forces":
+                arr = -arr
+            return HarmonicBiasCalculator._flatten_any(arr, n_atoms)
+        else:
+            # Assume already gradient-like numeric array
+            return HarmonicBiasCalculator._flatten_any(G, n_atoms)
+
+    def _bias_energy_forces_from_coords(self, coords_in: np.ndarray) -> Tuple[float, np.ndarray]:
+        """coords_in: (N,3) ndarray in Å; returns (E_bias, F_bias_flat)."""
+        coords = np.array(coords_in, dtype=float).reshape(-1, 3)  # (N,3)
         n = coords.shape[0]
         E_bias = 0.0
         F_bias = np.zeros((n, 3), dtype=float)
@@ -346,61 +446,250 @@ class HarmonicBiasCalculator:
                 continue
             diff = rij - float(target)
             E_bias += 0.5 * self.k * diff * diff
-            u = rij_vec / rij
+            u = rij_vec / max(rij, 1e-14)
             Fi = -self.k * diff * u     # -dE/dr_i
             F_bias[i] += Fi
             F_bias[j] -= Fi
         return E_bias, F_bias.reshape(-1)
 
-    # ---- base calls ----
-    def _base_energy_and_forces(self, geometry) -> Tuple[float, np.ndarray]:
+    # ---- helpers to normalize call signature ----
+    def _extract_call(self, *args, **kwargs):
+        """
+        Normalize incoming call to either:
+          kind='geom', geometry=<Geometry>, coords=<Nx3 ndarray>
+          kind='ac',  atoms=<list/array>, coords=<Nx3 ndarray>
+        """
+        if len(args) == 1 and hasattr(args[0], "coords3d"):
+            geometry = args[0]
+            coords = np.array(geometry.coords3d, dtype=float)
+            return {"kind": "geom", "geometry": geometry, "atoms": None, "coords": coords}
+        elif len(args) >= 2:
+            atoms, coords = args[0], args[1]
+            coords = np.array(coords, dtype=float).reshape(-1, 3)
+            return {"kind": "ac", "geometry": None, "atoms": atoms, "coords": coords}
+        else:
+            raise TypeError("Expected a Geometry object or (atoms, coords).")
+
+    # ---- base calls (geometry-style) ----
+    def _base_energy_and_forces_geom(self, geometry) -> Tuple[float, np.ndarray]:
         # Try combined methods first
         if hasattr(self.base, "get_energy_and_forces"):
-            e, F = self.base.get_energy_and_forces(geometry)
-            Ff = self._flatten_forces(F, getattr(geometry, "natoms", None))
-            return float(e), Ff
+            try:
+                e, F = self.base.get_energy_and_forces(geometry)
+                Ff = self._flatten_forces(F, getattr(geometry, "natoms", None))
+                return float(e), Ff
+            except (TypeError, ValueError):
+                pass
         if hasattr(self.base, "get_energy_and_gradient"):
-            e, g = self.base.get_energy_and_gradient(geometry)
-            gf = np.array(g, dtype=float).reshape(-1)
-            Ff = -gf
-            return float(e), Ff
+            try:
+                e, g = self.base.get_energy_and_gradient(geometry)
+                n = getattr(geometry, "natoms", None)
+                Ff = -self._flatten_gradient(g, n)
+                return float(e), Ff
+            except (TypeError, ValueError):
+                pass
         # Fall back to separate
         e = None
         if hasattr(self.base, "get_energy"):
-            e = float(self.base.get_energy(geometry))
+            try:
+                res = self.base.get_energy(geometry)
+                e = float(res["energy"]) if isinstance(res, dict) else float(res)
+            except (TypeError, ValueError, KeyError):
+                e = None
         Ff = None
         if hasattr(self.base, "get_forces"):
-            Ff = self._flatten_forces(self.base.get_forces(geometry), getattr(geometry, "natoms", None))
-        elif hasattr(self.base, "get_gradient"):
-            g = np.array(self.base.get_gradient(geometry), dtype=float).reshape(-1)
-            Ff = -g
+            try:
+                resF = self.base.get_forces(geometry)
+                src = resF.get("forces") if isinstance(resF, dict) else resF
+                Ff = self._flatten_forces(src, getattr(geometry, "natoms", None))
+            except (TypeError, ValueError, AttributeError):
+                Ff = None
+        if Ff is None and hasattr(self.base, "get_gradient"):
+            try:
+                n = getattr(geometry, "natoms", None)
+                resG = self.base.get_gradient(geometry)
+                srcG = resG.get("gradient") if isinstance(resG, dict) else resG
+                Ff = -self._flatten_gradient(srcG, n)
+            except (TypeError, ValueError, AttributeError):
+                Ff = None
         if e is None or Ff is None:
-            raise RuntimeError("Base calculator lacks required energy/forces API.")
+            raise RuntimeError("Base calculator lacks required energy/forces API (geometry-style).")
         return e, Ff
 
-    # ---- public API expected by Geometry/Optimizers ----
-    def get_energy_and_forces(self, geometry):
-        e_base, F_base = self._base_energy_and_forces(geometry)
-        e_bias, F_bias = self._bias_energy_forces(geometry)
-        return e_base + e_bias, F_base + F_bias
+    # ---- base calls (atoms/coords-style) ----
+    def _base_energy_and_forces_ac(self, atoms, coords) -> Tuple[float, np.ndarray]:
+        n_atoms = int(np.array(coords).reshape(-1, 3).shape[0])
+        # Try combined methods first
+        if hasattr(self.base, "get_energy_and_forces"):
+            try:
+                e, F = self.base.get_energy_and_forces(atoms, coords)
+                Ff = self._flatten_forces(F, n_atoms)
+                return float(e), Ff
+            except (TypeError, ValueError):
+                pass
+        if hasattr(self.base, "get_energy_and_gradient"):
+            try:
+                e, g = self.base.get_energy_and_gradient(atoms, coords)
+                Ff = -self._flatten_gradient(g, n_atoms)
+                return float(e), Ff
+            except (TypeError, ValueError):
+                pass
+        # Fall back to separate
+        e = None
+        if hasattr(self.base, "get_energy"):
+            try:
+                res = self.base.get_energy(atoms, coords)
+                e = float(res["energy"]) if isinstance(res, dict) else float(res)
+            except (TypeError, ValueError, KeyError):
+                e = None
+        Ff = None
+        if hasattr(self.base, "get_forces"):
+            try:
+                resF = self.base.get_forces(atoms, coords)
+                src = resF.get("forces") if isinstance(resF, dict) else resF
+                Ff = self._flatten_forces(src, n_atoms)
+            except (TypeError, ValueError, AttributeError):
+                Ff = None
+        if Ff is None and hasattr(self.base, "get_gradient"):
+            try:
+                resG = self.base.get_gradient(atoms, coords)
+                srcG = resG.get("gradient") if isinstance(resG, dict) else resG
+                Ff = -self._flatten_gradient(srcG, n_atoms)
+            except (TypeError, ValueError, AttributeError):
+                Ff = None
+        if e is None or Ff is None:
+            raise RuntimeError("Base calculator lacks required energy/forces API (atoms/coords-style).")
+        return e, Ff
 
-    def get_energy_and_gradient(self, geometry):
-        e, F = self.get_energy_and_forces(geometry)
+    def _base_forces_geom(self, geometry) -> np.ndarray:
+        try:
+            # Prefer direct forces
+            if hasattr(self.base, "get_forces"):
+                try:
+                    resF = self.base.get_forces(geometry)
+                    src = resF.get("forces") if isinstance(resF, dict) else resF
+                    return self._flatten_forces(src, getattr(geometry, "natoms", None))
+                except (TypeError, ValueError):
+                    pass
+            if hasattr(self.base, "get_gradient"):
+                try:
+                    resG = self.base.get_gradient(geometry)
+                    srcG = resG.get("gradient") if isinstance(resG, dict) else resG
+                    n = getattr(geometry, "natoms", None)
+                    return -self._flatten_gradient(srcG, n)
+                except (TypeError, ValueError):
+                    pass
+            # Fallback via combined calls
+            _, F = self._base_energy_and_forces_geom(geometry)
+            return np.array(F, dtype=float).reshape(-1)
+        except Exception as exc:
+            raise RuntimeError(f"Base calculator failed to provide forces (geometry-style): {exc}")
+
+    def _base_forces_ac(self, atoms, coords) -> np.ndarray:
+        n_atoms = int(np.array(coords).reshape(-1, 3).shape[0])
+        try:
+            # Prefer direct forces
+            if hasattr(self.base, "get_forces"):
+                try:
+                    resF = self.base.get_forces(atoms, coords)
+                    src = resF.get("forces") if isinstance(resF, dict) else resF
+                    return self._flatten_forces(src, n_atoms)
+                except (TypeError, ValueError):
+                    pass
+            if hasattr(self.base, "get_gradient"):
+                try:
+                    resG = self.base.get_gradient(atoms, coords)
+                    srcG = resG.get("gradient") if isinstance(resG, dict) else resG
+                    return -self._flatten_gradient(srcG, n_atoms)
+                except (TypeError, ValueError):
+                    pass
+            # Fallback via combined calls
+            _, F = self._base_energy_and_forces_ac(atoms, coords)
+            return np.array(F, dtype=float).reshape(-1)
+        except Exception as exc:
+            raise RuntimeError(f"Base calculator failed to provide forces (atoms/coords-style): {exc}")
+
+    def _base_energy_geom(self, geometry) -> float:
+        if hasattr(self.base, "get_energy"):
+            try:
+                res = self.base.get_energy(geometry)
+                return float(res["energy"]) if isinstance(res, dict) else float(res)
+            except (TypeError, ValueError, KeyError):
+                pass
+        # Fallback via combined calls
+        e, _ = self._base_energy_and_forces_geom(geometry)
+        return float(e)
+
+    def _base_energy_ac(self, atoms, coords) -> float:
+        if hasattr(self.base, "get_energy"):
+            try:
+                res = self.base.get_energy(atoms, coords)
+                return float(res["energy"]) if isinstance(res, dict) else float(res)
+            except (TypeError, ValueError, KeyError):
+                pass
+        # Fallback via combined calls
+        e, _ = self._base_energy_and_forces_ac(atoms, coords)
+        return float(e)
+
+    # ---- public API expected by Geometry/Optimizers ----
+    def get_energy_and_forces(self, *args, **kwargs):
+        """
+        Always returns (E, F) tuple irrespective of call style.
+        """
+        call = self._extract_call(*args, **kwargs)
+        coords = call["coords"]
+        if call["kind"] == "geom":
+            e_base, F_base = self._base_energy_and_forces_geom(call["geometry"])
+        else:
+            e_base, F_base = self._base_energy_and_forces_ac(call["atoms"], coords)
+        e_bias, F_bias = self._bias_energy_forces_from_coords(coords)
+        return e_base + e_bias, np.array(F_base, dtype=float).reshape(-1) + F_bias
+
+    def get_energy_and_gradient(self, *args, **kwargs):
+        e, F = self.get_energy_and_forces(*args, **kwargs)
         grad = -np.array(F, dtype=float).reshape(-1)
         return e, grad
 
-    def get_energy(self, geometry):
-        e_base, _ = self._base_energy_and_forces(geometry)
-        e_bias, _ = self._bias_energy_forces(geometry)
-        return e_base + e_bias
+    def get_energy(self, *args, **kwargs):
+        """
+        Geometry-style (1 arg): return float energy
+        Atoms/coords-style (2 args): return {'energy': float}
+        """
+        call = self._extract_call(*args, **kwargs)
+        coords = call["coords"]
+        if call["kind"] == "geom":
+            e_base = self._base_energy_geom(call["geometry"])
+            e_bias, _ = self._bias_energy_forces_from_coords(coords)
+            return e_base + e_bias
+        else:
+            e_base = self._base_energy_ac(call["atoms"], coords)
+            e_bias, _ = self._bias_energy_forces_from_coords(coords)
+            return {"energy": e_base + e_bias}
 
-    def get_forces(self, geometry):
-        _, F = self.get_energy_and_forces(geometry)
-        return np.array(F, dtype=float).reshape(-1)
+    def get_forces(self, *args, **kwargs):
+        """
+        Geometry-style (1 arg): return flat np.ndarray of forces
+        Atoms/coords-style (2 args): return {'energy': E, 'forces': F}
+        """
+        call = self._extract_call(*args, **kwargs)
+        coords = call["coords"]
+        if call["kind"] == "geom":
+            F_base = self._base_forces_geom(call["geometry"])
+            _, F_bias = self._bias_energy_forces_from_coords(coords)
+            return np.array(F_base, dtype=float).reshape(-1) + F_bias
+        else:
+            e_base, F_base = self._base_energy_and_forces_ac(call["atoms"], coords)
+            e_bias, F_bias = self._bias_energy_forces_from_coords(coords)
+            E = e_base + e_bias
+            F = np.array(F_base, dtype=float).reshape(-1) + F_bias
+            return {"energy": E, "forces": F}
 
-    def get_gradient(self, geometry):
-        _, g = self.get_energy_and_gradient(geometry)
-        return np.array(g, dtype=float).reshape(-1)
+    def get_gradient(self, *args, **kwargs):
+        F = self.get_forces(*args, **kwargs)
+        # If dict was returned (atoms/coords-style), extract forces first
+        if isinstance(F, dict):
+            F = F.get("forces", F)
+        return -np.array(F, dtype=float).reshape(-1)
 
     # Delegate unknown attributes to base calculator
     def __getattr__(self, name: str):
@@ -441,11 +730,11 @@ def _norm_opt_mode(mode: str) -> str:
 )
 @click.option("--one-based/--zero-based", "one_based", default=True, show_default=True,
               help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
-@click.option("--max-step-size", type=float, default=0.30, show_default=True,
+@click.option("--max-step-size", type=float, default=0.20, show_default=True,
               help="Maximum change in any scanned bond length per step [Å].")
-@click.option("--bias-k", type=float, default=10.0, show_default=True,
-              help="Harmonic well strength k [energy/Å^2].")
-@click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
+@click.option("--bias-k", type=float, default=100, show_default=True,
+              help="Harmonic well strength k [eV/Å^2].")
+@click.option("--relax-max-cycles", type=int, default=100, show_default=True,
               help="Maximum optimizer cycles per step.")
 @click.option("--opt-mode", type=str, default="light", show_default=True,
               help="Per-step relaxation mode: light (=LBFGS) or heavy (=RFO).")
@@ -579,7 +868,7 @@ def cli(
             if kind == "lbfgs":
                 args = {**lbfgs_cfg, **common}
                 # Keep the LBFGS step size conservative.
-                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), float(max_step_size))
+                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.20)), float(max_step_size))
                 args["max_cycles"] = int(relax_max_cycles)
                 return LBFGS(geom, **args)
             else:
@@ -643,6 +932,7 @@ def cli(
 
                 # Record trajectory block (optional energy annotation if available)
                 try:
+                    # Geometry-style call → returns float
                     e_now = float(biased.get_energy(geom))
                 except Exception:
                     e_now = None
