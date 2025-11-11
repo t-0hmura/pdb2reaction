@@ -2063,7 +2063,7 @@ def cli(
                 chain_tokens.extend(["-->", f"IM{i}_1"])
 
                 # IM2 (represent all extra kink/bridge before next TS)
-                if g["has_extra"]]:
+                if g["has_extra"]:
                     labels.append(f"IM{i}_2")
                     energies_eh.append(g["tail_im_energy"])
                     chain_tokens.extend(["-|-->", f"IM{i}_2"])
