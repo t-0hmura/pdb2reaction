@@ -1,9 +1,9 @@
 # pdb2reaction/utils.py
 
-import sys
 import math
+from collections.abc import Mapping, Sequence as _Sequence
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List
+from typing import Any, Dict, Optional, Sequence, List, Tuple
 
 import yaml
 from ase.io import read, write
@@ -24,6 +24,52 @@ def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str,
         else:
             dst[k] = v
     return dst
+
+
+def _get_mapping_section(cfg: Mapping[str, Any], path: _Sequence[str]) -> Optional[Dict[str, Any]]:
+    cur: Any = cfg
+    for key in path:
+        if not isinstance(cur, Mapping):
+            return None
+        cur = cur.get(key)
+        if cur is None:
+            return None
+    return cur if isinstance(cur, dict) else None
+
+
+def apply_yaml_overrides(
+    yaml_cfg: Mapping[str, Any],
+    overrides: _Sequence[Tuple[Dict[str, Any], _Sequence[_Sequence[str]]]],
+) -> None:
+    """Apply YAML overrides to multiple target dictionaries.
+
+    Parameters
+    ----------
+    yaml_cfg : Mapping[str, Any]
+        Parsed YAML configuration (root-level mapping).
+    overrides : Sequence[Tuple[Dict[str, Any], Sequence[Sequence[str]]]]
+        Each entry consists of the target dictionary to update followed by one or
+        more candidate key paths. The first existing path is used. For example::
+
+            apply_yaml_overrides(
+                yaml_cfg,
+                [
+                    (geom_cfg, (("geom",),)),
+                    (lbfgs_cfg, (("sopt", "lbfgs"), ("lbfgs",))),
+                ],
+            )
+
+        This mirrors the previous ``deep_update(..., yaml_cfg.get(...))`` pattern
+        while centralising the shared logic.
+    """
+
+    for target, paths in overrides:
+        for path in paths:
+            norm_path = tuple(path)
+            section = _get_mapping_section(yaml_cfg, norm_path)
+            if section is not None:
+                deep_update(target, section)
+                break
 
 
 def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:

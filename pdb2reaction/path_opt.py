@@ -128,7 +128,12 @@ from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis
-from .utils import convert_xyz_to_pdb, freeze_links, deep_update, load_yaml_dict
+from .utils import (
+    convert_xyz_to_pdb,
+    freeze_links,
+    load_yaml_dict,
+    apply_yaml_overrides,
+)
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
 from .utils import build_energy_diagram  # Plotly energy diagram
@@ -1581,14 +1586,19 @@ def cli(
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
 
-        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        deep_update(gs_cfg,   yaml_cfg.get("gs",   {}))
-        deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-        deep_update(lbfgs_cfg, yaml_cfg.get("sopt", {}).get("lbfgs", yaml_cfg.get("lbfgs", {})))
-        deep_update(rfo_cfg,   yaml_cfg.get("sopt", {}).get("rfo",   yaml_cfg.get("rfo",   {})))
-        deep_update(bond_cfg,  yaml_cfg.get("bond", {}))
-        deep_update(search_cfg,yaml_cfg.get("search", {}))
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (gs_cfg, (("gs",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("sopt", "lbfgs"), ("lbfgs",))),
+                (rfo_cfg, (("sopt", "rfo"), ("rfo",))),
+                (bond_cfg, (("bond",),)),
+                (search_cfg, (("search",),)),
+            ],
+        )
 
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)

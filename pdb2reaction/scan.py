@@ -95,8 +95,8 @@ from .uma_pysis import uma_pysis
 from .utils import (
     convert_xyz_to_pdb,
     freeze_links as _freeze_links_util,
-    deep_update,
     load_yaml_dict,
+    apply_yaml_overrides,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -532,13 +532,18 @@ def cli(
         bias_cfg  = dict(BIAS_KW)
         bond_cfg  = dict(BOND_KW)  # <-- added
 
-        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-        deep_update(lbfgs_cfg, yaml_cfg.get("lbfgs", {}))
-        deep_update(rfo_cfg,   yaml_cfg.get("rfo",   {}))
-        deep_update(bias_cfg,  yaml_cfg.get("bias",  {}))
-        deep_update(bond_cfg,  yaml_cfg.get("bond",  {}))  # <-- added
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("lbfgs",),)),
+                (rfo_cfg, (("rfo",),)),
+                (bias_cfg, (("bias",),)),
+                (bond_cfg, (("bond",),)),
+            ],
+        )
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)

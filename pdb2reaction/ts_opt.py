@@ -97,8 +97,8 @@ from .uma_pysis import uma_pysis
 from .utils import (
     convert_xyz_to_pdb,
     freeze_links as _freeze_links_from_utils,
-    deep_update,
     load_yaml_dict,
+    apply_yaml_overrides,
 )
 
 
@@ -1361,11 +1361,16 @@ def cli(
     rsirfo_cfg = dict(RSIRFO_KW)
 
     # YAML → defaults
-    deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-    deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-    deep_update(opt_cfg,  yaml_cfg.get("opt",  {}))
-    deep_update(simple_cfg, yaml_cfg.get("hessian_dimer", {}))
-    deep_update(rsirfo_cfg, yaml_cfg.get("rsirfo", {}))
+    apply_yaml_overrides(
+        yaml_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (opt_cfg, (("opt",),)),
+            (simple_cfg, (("hessian_dimer",),)),
+            (rsirfo_cfg, (("rsirfo",),)),
+        ],
+    )
 
     # CLI overrides
     calc_cfg["charge"] = int(charge)

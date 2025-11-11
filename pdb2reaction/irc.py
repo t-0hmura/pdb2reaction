@@ -86,7 +86,11 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis
-from pdb2reaction.utils import convert_xyz_to_pdb, deep_update, load_yaml_dict
+from pdb2reaction.utils import (
+    convert_xyz_to_pdb,
+    load_yaml_dict,
+    apply_yaml_overrides,
+)
 
 
 # --------------------------
@@ -217,9 +221,14 @@ def cli(
         calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
         irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
 
-        deep_update(geom_cfg, yaml_cfg.get("geom", {}))
-        deep_update(calc_cfg, yaml_cfg.get("calc", {}))
-        deep_update(irc_cfg,  yaml_cfg.get("irc",  {}))
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (irc_cfg, (("irc",),)),
+            ],
+        )
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)
