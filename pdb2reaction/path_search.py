@@ -63,7 +63,7 @@ Behavior & assumptions
   - If the endpoint mismatch ≤ `search.stitch_rmsd_thresh`, treat as duplicate and drop one.
   - If the mismatch > `search.bridge_rmsd_thresh`, run a *bridge* GSM.
   - If covalent changes exist across an interface, insert a **new recursive segment** instead.
-- Input pre‑optimization (`sopt‑mode`) runs unless disabled by `--pre_opt False` / `--pre-opt False`.
+- Input pre‑optimization (`sopt‑mode`) runs unless disabled by `--pre-opt False`.
 - Configuration precedence: **CLI** > **YAML** > **defaults** (sections: `geom`, `calc`,
   `gs`, `opt`, `sopt`, `bond`, `search`).
 - `max_nodes` may differ between step segments and bridges:
@@ -1515,7 +1515,7 @@ def _merge_final_and_write(final_images: List[Any],
     help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search)."
 )
 @click.option(
-    "--pre-opt", "--pre_opt",
+    "--pre-opt", "pre_opt",
     "pre_opt",
     type=click.BOOL,
     default=True,
@@ -1726,7 +1726,7 @@ def cli(
                 new_geoms.append(g_opt)
             geoms = new_geoms
         else:
-            click.echo("[init] Skipping endpoint pre-optimization as requested by --pre_opt/--pre-opt False.")
+            click.echo("[init] Skipping endpoint pre-optimization as requested by --pre-opt False.")
 
         # NEW: Align all inputs to the first, freeze-guided, if requested
         if align:

@@ -582,17 +582,17 @@ def _run_dft_for_state(pdb_path: Path,
 # ===== Extractor knobs (subset of extract.parse_args) =====
 @click.option("-r", "--radius", type=float, default=2.6, show_default=True,
               help="Inclusion cutoff (Å) around substrate atoms.")
-@click.option("--radius_het2het", type=float, default=0.0, show_default=True,
+@click.option("--radius-het2het", type=float, default=0.0, show_default=True,
               help="Independent hetero–hetero cutoff (Å) for non‑C/H pairs.")
-@click.option("--include_H2O", "--include-h2o", "include_h2o", type=click.BOOL, default=True, show_default=True,
+@click.option("--include-H2O", "--include-h2o", "include_h2o", type=click.BOOL, default=True, show_default=True,
               help="Include waters (HOH/WAT/TIP3/SOL) in the pocket.")
-@click.option("--exclude_backbone", "--exclude-backbone", "exclude_backbone", type=click.BOOL, default=True, show_default=True,
+@click.option("--exclude-backbone", "exclude_backbone", type=click.BOOL, default=True, show_default=True,
               help="Remove backbone atoms on non‑substrate amino acids (with PRO/HYP safeguards).")
-@click.option("--add_linkH", "--add-linkH", "add_linkh", type=click.BOOL, default=True, show_default=True,
+@click.option("--add-linkH", "add_linkh", type=click.BOOL, default=True, show_default=True,
               help="Add link hydrogens for severed bonds (carbon-only) in pockets.")
-@click.option("--selected_resn", "--selected-resn", type=str, default="", show_default=True,
+@click.option("--selected-resn", type=str, default="", show_default=True,
               help="Force-include residues (comma/space separated; chain/insertion codes allowed).")
-@click.option("--ligand_charge", "--ligand-charge", type=str, default=None,
+@click.option("--ligand-charge", type=str, default=None,
               help=("Either a total charge (number) to distribute across unknown residues "
                     "or a mapping like 'GPP:-3,MMT:-1'."))
 @click.option("--verbose", type=click.BOOL, default=True, show_default=True, help="Enable INFO-level logging inside extractor.")
@@ -612,7 +612,7 @@ def _run_dft_for_state(pdb_path: Path,
               help="Dump GSM / single-structure trajectories during the run.")
 @click.option("--args-yaml", type=click.Path(path_type=Path, exists=True, dir_okay=False),
               default=None, help="YAML with extra args for path_search (sections: geom, calc, gs, opt, sopt, bond, search).")
-@click.option("--pre-opt", "--pre_opt", "pre_opt", type=click.BOOL, default=True, show_default=True,
+@click.option("--pre-opt", "pre_opt", type=click.BOOL, default=True, show_default=True,
               help="If False, skip initial single-structure optimizations of the pocket inputs.")
 # ===== NEW: Post-processing toggles =====
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
