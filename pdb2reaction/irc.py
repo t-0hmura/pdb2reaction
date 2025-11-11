@@ -90,6 +90,8 @@ from pdb2reaction.utils import (
     convert_xyz_to_pdb,
     load_yaml_dict,
     apply_yaml_overrides,
+    pretty_block,
+    format_geom_for_echo,
 )
 
 
@@ -144,21 +146,6 @@ IRC_KW_DEFAULT: Dict[str, Any] = {
     "loose_cycles": 3,
     "corr_func": "mbs",
 }
-
-
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
-def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    g = dict(geom_cfg)
-    fa = g.get("freeze_atoms")
-    if isinstance(fa, (list, tuple)):
-        g["freeze_atoms"] = ",".join(map(str, fa)) if fa else ""
-    return g
-
-
 def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: Path) -> None:
     if trj_path.exists():
         try:
@@ -251,9 +238,9 @@ def cli(
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
         # 画面表示用（freeze_atoms を見やすく）
-        click.echo(_pretty_block("geom", _format_geom_for_echo(geom_cfg)))
-        click.echo(_pretty_block("calc", calc_cfg))
-        click.echo(_pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
+        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+        click.echo(pretty_block("calc", calc_cfg))
+        click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
         # --------------------------
         # 2) 幾何のロード & UMA 設定

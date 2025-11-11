@@ -34,7 +34,7 @@ import numpy as np
 
 from pysisyphus.helpers import geom_loader
 
-from .utils import load_yaml_dict, apply_yaml_overrides
+from .utils import load_yaml_dict, apply_yaml_overrides, pretty_block
 
 
 # -----------------------------------------------
@@ -55,13 +55,6 @@ DFT_KW: Dict[str, Any] = {
 # -----------------------------------------------
 
 HARTREE_TO_KCALMOL = 627.5094740631  # Commonly used Hartree → kcal/mol conversion factor
-
-
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
     Parse "FUNC/BASIS" into (xc, basis).
@@ -279,7 +272,7 @@ def cli(
             "grid_level": dft_cfg["grid_level"],
             "out_dir": str(out_dir_path),
         }
-        click.echo(_pretty_block("dft", echo_cfg))
+        click.echo(pretty_block("dft", echo_cfg))
 
         # --------------------------
         # 2) Load geometry

@@ -130,13 +130,16 @@ from Bio.PDB import PDBParser, PDBIO
 from .uma_pysis import uma_pysis
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links,
+    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
+    pretty_block,
+    format_geom_for_echo,
+    merge_freeze_atom_indices,
+    build_energy_diagram,
 )
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
-from .utils import build_energy_diagram  # Plotly energy diagram
 
 # -----------------------------------------------
 # Configuration defaults
@@ -261,25 +264,10 @@ SEARCH_KW: Dict[str, Any] = {
     "kink_max_nodes": 3,           # nodes for linear interpolation when skipping GSM at a kink
 }
 
-def _pretty_block(title: str, content: Dict[str, Any]) -> str:
-    """Render a titled YAML block for console echo."""
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
-
-
-def _format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Pretty‑format `freeze_atoms` (CSV) for display."""
-    g = dict(geom_cfg)
-    fa = g.get("freeze_atoms")
-    if isinstance(fa, (list, tuple, np.ndarray)):
-        g["freeze_atoms"] = ",".join(map(str, fa)) if len(fa) else ""
-    return g
-
-
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
     """Detect parent atoms of link hydrogens in a PDB; return 0‑based indices. Silent on failure."""
     try:
-        return freeze_links(pdb_path)
+        return detect_freeze_links(pdb_path)
     except Exception as e:
         click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
         return []
@@ -295,12 +283,14 @@ def _load_two_endpoints(
     geoms = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
-        freeze = list(base_freeze)
+        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and p.suffix.lower() == ".pdb":
             detected = _freeze_links_for_pdb(p)
-            if detected:
-                freeze = sorted(set(freeze).union(detected))
+            freeze = merge_freeze_atom_indices(cfg, detected)
+            if detected and freeze:
                 click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+        else:
+            freeze = merge_freeze_atom_indices(cfg)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
     return geoms
@@ -317,12 +307,14 @@ def _load_structures(
     geoms: List[Any] = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
-        freeze = list(base_freeze)
+        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and p.suffix.lower() == ".pdb":
             detected = _freeze_links_for_pdb(p)
-            if detected:
-                freeze = sorted(set(freeze).union(detected))
+            freeze = merge_freeze_atom_indices(cfg, detected)
+            if detected and freeze:
                 click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+        else:
+            freeze = merge_freeze_atom_indices(cfg)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
     return geoms
@@ -1631,20 +1623,20 @@ def cli(
             search_cfg["max_nodes_segment"] = int(max_nodes)
 
         out_dir_path = Path(out_dir).resolve()
-        echo_geom = _format_geom_for_echo(geom_cfg)
+        echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
         echo_gs   = dict(gs_cfg)
         echo_opt  = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
 
-        click.echo(_pretty_block("geom", echo_geom))
-        click.echo(_pretty_block("calc", echo_calc))
-        click.echo(_pretty_block("gs",   echo_gs))
-        click.echo(_pretty_block("opt",  echo_opt))
-        click.echo(_pretty_block("sopt."+sopt_kind, sopt_cfg))
-        click.echo(_pretty_block("bond", bond_cfg))
-        click.echo(_pretty_block("search", search_cfg))
-        click.echo(_pretty_block("run_flags", {"pre_opt": bool(pre_opt)}))
+        click.echo(pretty_block("geom", echo_geom))
+        click.echo(pretty_block("calc", echo_calc))
+        click.echo(pretty_block("gs",   echo_gs))
+        click.echo(pretty_block("opt",  echo_opt))
+        click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
+        click.echo(pretty_block("bond", bond_cfg))
+        click.echo(pretty_block("search", search_cfg))
+        click.echo(pretty_block("run_flags", {"pre_opt": bool(pre_opt)}))
 
         # --------------------------
         # 2) Prepare inputs

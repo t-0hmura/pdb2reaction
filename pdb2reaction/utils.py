@@ -1,7 +1,7 @@
 # pdb2reaction/utils.py
 
 import math
-from collections.abc import Mapping, Sequence as _Sequence
+from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple
 
@@ -13,6 +13,56 @@ import plotly.graph_objs as go
 # =============================================================================
 # Generic helpers
 # =============================================================================
+
+
+def pretty_block(title: str, content: Dict[str, Any]) -> str:
+    """Return a YAML-formatted block with an underlined title."""
+
+    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
+    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
+
+
+def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalise geometry configuration for CLI echo output."""
+
+    g = dict(geom_cfg)
+    freeze_atoms = g.get("freeze_atoms")
+    if freeze_atoms is None:
+        return g
+
+    if isinstance(freeze_atoms, str):
+        return g
+
+    try:
+        items = list(freeze_atoms)
+    except TypeError:
+        return g
+
+    g["freeze_atoms"] = ",".join(map(str, items)) if items else ""
+    return g
+
+
+def merge_freeze_atom_indices(
+    geom_cfg: Dict[str, Any],
+    *indices: _Iterable[int],
+) -> List[int]:
+    """Merge one or more iterables of indices into ``geom_cfg['freeze_atoms']``.
+
+    Existing entries are preserved, duplicates removed, and the result sorted.
+    The updated list is returned.
+    """
+
+    merged: set[int] = set()
+    base = geom_cfg.get("freeze_atoms", [])
+    if isinstance(base, _Iterable):
+        merged.update(int(i) for i in base)
+    for seq in indices:
+        if seq is None:
+            continue
+        merged.update(int(i) for i in seq)
+    result = sorted(merged)
+    geom_cfg["freeze_atoms"] = result
+    return result
 
 
 def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
