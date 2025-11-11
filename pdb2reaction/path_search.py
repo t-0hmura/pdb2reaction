@@ -46,13 +46,15 @@ Multi‑structure inputs (A, I1, I2, …, B)
   concatenated with duplicate removal; bridges or new recursive segments are added
   automatically when needed.
 - Endpoint pre‑optimization is performed **per adjacent pair** in sequence.
-- (Optional) If `--align True` (default), after pre‑optimization all inputs except the first
-  are rigidly aligned & freeze‑aware matched to the **first** optimized input using
-  `align_freeze_atoms.align_and_refine_pair_inplace`. This uses a shared UMA calculator.
 
 Behavior & assumptions
 ----------------------
 - A single UMA calculator (`uma_pysis`) is shared **serially** across all stages.
+- Input alignment (when `--align True`, default):
+  After pre‑optimization of all inputs, *all* inputs are rigidly aligned and “freeze_atoms”
+  are scan+relaxed to match the **first** input using
+  `pdb2reaction.align_freeze_atoms.align_and_refine_sequence_inplace`.
+  This produces a co‑aligned set used for all subsequent steps.
 - Path representation & optimization:
   - GSM uses pysisyphus `GrowingString` + `StringOptimizer`.
   - HEI neighbors are optimized as *single* structures (LBFGS or RFO).
@@ -98,6 +100,11 @@ Notes
 -----
 - The linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) is printed to the console.
 - The `labels` and `energies` (kcal/mol) passed to `build_energy_diagram` are also printed.
+
+- Final merge rule with --align True:
+  If `--ref-pdb` is provided and `--align True` (default), the **first** reference PDB is used
+  for *all* pairs (i.e., you may pass only one reference PDB even for multi‑structure inputs).
+  Intermediate pocket→PDB conversions keep the original behavior (use the extracted pocket PDB).
 """
 
 from __future__ import annotations
@@ -135,9 +142,8 @@ from .utils import convert_xyz_to_pdb, freeze_links
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
 from .utils import build_energy_diagram  # Plotly energy diagram
-
-# ★ NEW: alignment API（最初の入力へ他を整列）
-from .align_freeze_atoms import align_and_refine_pair_inplace
+# NEW: input alignment (freeze-guided) after pre-opt
+from .align_freeze_atoms import align_and_refine_sequence_inplace  # <-- added import
 
 # -----------------------------------------------
 # Configuration defaults
@@ -1186,7 +1192,7 @@ def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
             out.append(f"POCKET_ATOM_INDICES {cur}")
             cur = tok
         else:
-            cur += add
+            cur += tok if not cur else "," + tok
     if cur:
         out.append(f"POCKET_ATOM_INDICES {cur}")
     return out
@@ -1312,8 +1318,9 @@ def _merge_final_and_write(final_images: List[Any],
                            segments: List[SegmentReport],
                            out_dir: Path) -> None:
     """Merge the entire pocket MEP into full templates (for all pairs) and write outputs."""
+    # NOTE: In --align True mode, caller may pass a single ref PDB replicated per pair.
     if len(ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--ref-pdb must be given for each --input.")
+        raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
 
     structs, aligned_coords, atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
@@ -1515,15 +1522,15 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="If False, skip initial single-structure optimizations of inputs."
 )
-# ★ NEW: 整列の有無（既定 True）
+# NEW: input alignment switch (default True)
 @click.option(
-    "--align",
-    "do_align",
-    type=click.BOOL,
+    "--align/--no-align",
+    "align",
     default=True,
     show_default=True,
-    help=("After pre-optimization, rigidly align and freeze-aware match all inputs to the "
-          "first optimized input using align_freeze_atoms. Recommended for multi-structure inputs.")
+    help=("After pre-optimization, align all inputs to the *first* input and match freeze_atoms "
+          "using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, "
+          "the first reference PDB will be used for all pairs in the final merge.")
 )
 # Full template PDBs for merge
 @click.option(
@@ -1533,9 +1540,8 @@ def _merge_final_and_write(final_images: List[Any],
     multiple=True,
     default=None,
     help=("Full-size template PDBs in the same reaction order as --input. "
-          "When provided, generates a full-system trajectory by merging the pocket MEP into these templates. "
-          "NOTE: With --align True (default), you may pass **a single** reference PDB; "
-          "the first one will be reused for all inputs.")
+          "With --align True, only the *first* provided reference PDB is used for all pairs "
+          "in the final merge (you may pass just one).")
 )
 @click.pass_context
 def cli(
@@ -1552,11 +1558,9 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
     pre_opt: bool,
-    do_align: bool,
+    align: bool,                # <-- added
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
-    time_start = time.perf_counter()  # start timing
-    
     # --- Robustly accept both styles for -i/--input and --ref-pdb ---
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
@@ -1601,6 +1605,7 @@ def cli(
         ref_pdb_paths = tuple(ref_parsed)
     # --- end of robust parsing fix ---
 
+    time_start = time.perf_counter()  # start timing
     try:
         # --------------------------
         # 0) Input validation (multi‑structure)
@@ -1608,19 +1613,15 @@ def cli(
         if len(input_paths) < 2:
             raise click.BadParameter("Provide at least two structures for --input in reaction order (reactant [intermediates ...] product).")
 
-        # ref-pdb の繰り返し使用方針（--align True のとき先頭だけ使う）
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
-        ref_pdb_paths_effective: Optional[Sequence[Path]] = None
         if do_merge:
-            if do_align:
-                # 最初の参照 PDB を全入力分に繰り返し割り当て
-                first_ref = ref_pdb_paths[0]
-                ref_pdb_paths_effective = tuple(first_ref for _ in input_paths)
+            if align:
+                # With --align True we will use only the *first* ref PDB for all pairs (replicated later).
+                pass
             else:
-                # 既存仕様：個数が一致している必要あり
                 if len(ref_pdb_paths) != len(input_paths):
-                    raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
-                ref_pdb_paths_effective = tuple(ref_pdb_paths)
+                    raise click.BadParameter("--ref-pdb must be given for each --input (same count and order). "
+                                             "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
 
         # --------------------------
         # 1) Resolve settings (defaults ← YAML ← CLI)
@@ -1689,8 +1690,8 @@ def cli(
         click.echo(_pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(_pretty_block("bond", bond_cfg))
         click.echo(_pretty_block("search", search_cfg))
-        # ★ run_flags に align を追加
-        click.echo(_pretty_block("run_flags", {"pre_opt": bool(pre_opt), "align": bool(do_align)}))
+        # NEW: show align flag
+        click.echo(_pretty_block("run_flags", {"pre_opt": bool(pre_opt), "align": bool(align)}))
 
         # --------------------------
         # 2) Prepare inputs
@@ -1710,15 +1711,12 @@ def cli(
         for g in geoms:
             _ensure_calc_on_geom(g, shared_calc)
 
-        # PDB 変換・出力に使う参照 PDB（優先順位：--ref-pdb の先頭 → 入力の先頭 PDB）
+        # If any input is PDB, treat as "PDB input" for final output handling.
         ref_pdb_for_segments: Optional[Path] = None
-        if ref_pdb_paths_effective and len(ref_pdb_paths_effective) > 0:
-            ref_pdb_for_segments = Path(ref_pdb_paths_effective[0]).resolve()
-        else:
-            for p in p_list:
-                if p.suffix.lower() == ".pdb":
-                    ref_pdb_for_segments = p.resolve()
-                    break
+        for p in p_list:
+            if p.suffix.lower() == ".pdb":
+                ref_pdb_for_segments = p.resolve()
+                break
 
         if pre_opt:
             new_geoms: List[Any] = []
@@ -1730,45 +1728,21 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre_opt/--pre-opt False.")
 
-        # ★ NEW: pre‑opt 後に最初の入力へ他を整列（freeze-aware）
-        if do_align and len(geoms) >= 2:
-            click.echo("\n=== Align all inputs to the first optimized structure (freeze-aware) ===\n")
-            ref_g = geoms[0]
-            for j in range(1, len(geoms)):
-                mob_g = geoms[j]
-                # align_freeze_atoms が最終段で freeze_atoms を空に戻すため、ここで復元する
-                fa_backup = np.array(getattr(mob_g, "freeze_atoms", []), dtype=int)
-                try:
-                    pair_out = out_dir_path / "align_refine"
-                    res = align_and_refine_pair_inplace(
-                        ref_g, mob_g,
-                        shared_calc=shared_calc,
-                        out_dir=pair_out,
-                        # サーチ全体の UMA 設定を引き継ぐ
-                        charge=calc_cfg["charge"],
-                        spin=calc_cfg["spin"],
-                        model=calc_cfg.get("model", "uma-s-1p1"),
-                        device=calc_cfg.get("device", "auto"),
-                        verbose=True,
-                    )
-                    # 人間可読ログ（簡潔）
-                    try:
-                        before = float(res["align"]["before_A"])
-                        after  = float(res["align"]["after_A"])
-                        remA   = float(res["scan"]["max_remaining_A"])
-                        steps  = int(res["scan"]["n_steps"])
-                        conv   = bool(res["scan"]["converged"])
-                        click.echo(f"[align] 0←{j}: RMSD {before:.3f}→{after:.3f} Å | scan rem {remA:.3f} Å, steps {steps}, converged {conv}")
-                    except Exception:
-                        pass
-                except Exception as e:
-                    click.echo(f"[align] WARNING: Failed to align image {j} to image 0: {e}", err=True)
-                # freeze_atoms を復元
-                try:
-                    mob_g.freeze_atoms = np.array(fa_backup, dtype=int)
-                except Exception:
-                    pass
-            click.echo("\n=== Alignment finished ===\n")
+        # NEW: Align all inputs to the first, freeze-guided, if requested
+        if align:
+            try:
+                click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
+                _ = align_and_refine_sequence_inplace(
+                    geoms,
+                    shared_calc=shared_calc,
+                    out_dir=out_dir_path / "align_refine",
+                    verbose=True,
+                )
+                click.echo("[align] Completed input alignment.")
+            except Exception as e:
+                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
+        else:
+            click.echo("[align] Skipping input alignment as requested by --no-align.")
 
         # --------------------------
         # 3) Run recursive search for each adjacent pair and stitch
@@ -1938,13 +1912,21 @@ def cli(
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
         # ---- END ----
 
-        # do_merge は --align True の場合は先頭参照 PDB を全ペアに繰り返し適用
-        if do_merge and ref_pdb_paths_effective:
+        if do_merge:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
+            # With --align True, use only the first reference PDB for all pairs (replicate it).
+            if align:
+                if not ref_pdb_paths or len(ref_pdb_paths) < 1:
+                    raise click.BadParameter("--ref-pdb must provide at least one file when performing final merge with --align True.")
+                first_ref = Path(ref_pdb_paths[0])
+                ref_list_for_merge = [first_ref for _ in input_paths]  # replicate for all (length == n_inputs)
+            else:
+                ref_list_for_merge = [Path(p) for p in ref_pdb_paths]
+
             _merge_final_and_write(
                 final_images=list(combined_all.images),
                 pocket_inputs=[Path(p) for p in input_paths],
-                ref_pdbs=[Path(p) for p in ref_pdb_paths_effective],
+                ref_pdbs=ref_list_for_merge,
                 segments=combined_all.segments,
                 out_dir=out_dir_path
             )
@@ -2081,7 +2063,7 @@ def cli(
                 chain_tokens.extend(["-->", f"IM{i}_1"])
 
                 # IM2 (represent all extra kink/bridge before next TS)
-                if g["has_extra"]:
+                if g["has_extra"]]:
                     labels.append(f"IM{i}_2")
                     energies_eh.append(g["tail_im_energy"])
                     chain_tokens.extend(["-|-->", f"IM{i}_2"])
@@ -2132,7 +2114,7 @@ def cli(
         hh = int(elapsed // 3600)
         mm = int((elapsed % 3600) // 60)
         ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed Time for Path Search: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(f"[time] Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)

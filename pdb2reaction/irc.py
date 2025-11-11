@@ -81,9 +81,10 @@ import textwrap
 
 import click
 import yaml
+import time
 
 from pysisyphus.helpers import geom_loader
-from pysisyphus.irc.EulerPC import EulerPC  # EulerPC(IRC) 実装
+from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis
 from pdb2reaction.utils import convert_xyz_to_pdb
 
@@ -106,7 +107,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "max_neigh": None,
     "radius": None,           # Å
     "r_edges": False,
-    "out_hess_torch": False,  # EulerPCでは numpy 側で良い
+    "out_hess_torch": True,   # IRCはGPU上のHessian入力に対応済み
 }
 
 IRC_KW_DEFAULT: Dict[str, Any] = {

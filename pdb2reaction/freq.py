@@ -45,6 +45,7 @@ from ase.io import write
 from ase.data import atomic_masses
 import ase.units as units
 import yaml
+import time
 
 # ---------------- pysisyphus / pdb2reaction imports ----------------
 from pysisyphus.helpers import geom_loader

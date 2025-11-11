@@ -80,6 +80,7 @@ from ase.io import write
 from ase.data import atomic_masses
 import ase.units as units
 import yaml
+import time
 
 # ---------------- pysisyphus / pdb2reaction imports ----------------
 from pysisyphus.helpers import geom_loader
@@ -1198,7 +1199,7 @@ CALC_KW = {
     "max_neigh": None,        # Optional[int], override model's neighbor cap
     "radius": None,           # Optional[float], cutoff radius (Å)
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
-    "out_hess_torch": False,  # bool, RSIRFO sets this to True for torch Hessian; HessianDimer sets per-call
+    "out_hess_torch": True,   # bool, RSIRFO sets this to True for torch Hessian; HessianDimer sets per-call
 }
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer

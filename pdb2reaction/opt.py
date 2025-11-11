@@ -30,6 +30,7 @@ import traceback
 import click
 import numpy as np
 import yaml
+import time
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS

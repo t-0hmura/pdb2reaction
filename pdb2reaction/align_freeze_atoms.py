@@ -207,7 +207,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
       * freeze=2 atoms: align the axis defined by the two anchors and optimize
         the rotation around that axis.
       * otherwise: solve Kabsch with the union of `freeze_atoms` (or all atoms
-        if empty) and apply the transform to all atoms.
+        if empty) and apply the resulting transform to all atoms.
     """
     P = _coords3d(g_ref)  # bohr
     Q = _coords3d(g_mob)  # bohr
@@ -220,11 +220,11 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
         _set_all_coords_disabling_freeze(g_mob, Q_new)
 
     mode = "kabsch"
-    before = _rmsd(P, Q)
 
     # ---- 1 anchor ----
     if len(idx) == 1:
         i = idx[0]
+        before = _rmsd(P, Q)  # all-atom RMSD (design: constrained rotation minimizes all-atom)
         p0, q0 = P[i].copy(), Q[i].copy()
         Q_shift = Q + (p0 - q0)                # match the anchor point
         P_rel, Q_rel = P - p0, Q_shift - p0
@@ -242,7 +242,8 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
         return {"before_A": before, "after_A": after, "n_used": 1, "mode": mode}
 
     # ---- 2 anchors ----
-    elif len(idx) == 2:
+    if len(idx) == 2:
+        before = _rmsd(P, Q)  # all-atom RMSD (design: constrained rotation minimizes all-atom)
         i0, i1 = idx[0], idx[1]
         p0, p1, q0, q1 = P[i0].copy(), P[i1].copy(), Q[i0].copy(), Q[i1].copy()
         pm, qm = 0.5 * (p0 + p1), 0.5 * (q0 + q1)
@@ -276,7 +277,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
 
     # ---- Default: Kabsch (selected freeze atoms or all atoms) ----
-    elif len(idx) > 0:
+    if len(idx) > 0:
         use = np.zeros(N, bool)
         for k in idx:
             if 0 <= k < N:
@@ -286,13 +287,20 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
     P_sel, Q_sel = P[use], Q[use]
     n_used = int(P_sel.shape[0])
+
+    # *** CHANGED: evaluate RMSD on the same selection used for Kabsch ***
+    before_sel = _rmsd(P_sel, Q_sel)
+
     R, t = _kabsch_R_t(P_sel, Q_sel)
     Q_aln = (Q @ R) + t
     _set_all(Q_aln)
-    after = _rmsd(P, Q_aln)
+
+    after_sel = _rmsd(P_sel, Q_aln[use])
+
     if verbose:
-        print(f"[align] kabsch:     RMSD {before:.6f} Å → {after:.6f} Å (used {n_used})")
-    return {"before_A": before, "after_A": after, "n_used": n_used, "mode": mode}
+        print(f"[align] kabsch:     RMSD {before_sel:.6f} Å → {after_sel:.6f} Å (used {n_used})")
+
+    return {"before_A": before_sel, "after_A": after_sel, "n_used": n_used, "mode": mode}
 
 
 # =============================================================================
