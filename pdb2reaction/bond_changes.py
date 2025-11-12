@@ -11,7 +11,7 @@ import numpy as np
 from pysisyphus.elem_data import (
     COVALENT_RADII as CR,
 )
-from pysisyphus.constants import BOHR2ANG  # ← 追加：長さをÅ表示するため
+from pysisyphus.constants import BOHR2ANG  # Convert Bohr distances to Ångström for reporting
 
 Pair = Tuple[int, int]
 
@@ -120,14 +120,11 @@ def _bond_str(i: int, j: int, elems: List[str], one_based: bool = True) -> str:
 
 
 def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) -> str:
-    """
-    結合の形成/解離を列挙。さらに、対応する結合長の変化を
-    'x.xxx Å --> y.yyy Å' 形式で出力する（Å表示）。
-    """
+    """List bond formations and dissociations and report bond-length changes in Å."""
     elems = [a.capitalize() for a in geom.atoms]
     lines: List[str] = []
 
-    # 距離行列（Bohr）→ Å に変換して使う（利用可能な場合のみ）
+    # Use distance matrices (Bohr) converted to Å when available
     D1 = result.distances_1
     D2 = result.distances_2
     have_lengths = (
@@ -139,7 +136,7 @@ def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) ->
     def _len_str(i: int, j: int) -> str:
         if not have_lengths:
             return ""
-        # coords3d は Bohr 前提。Å に変換。
+        # ``coords3d`` is given in Bohr; convert to Å
         d1 = float(D1[i, j]) * BOHR2ANG
         d2 = float(D2[i, j]) * BOHR2ANG
         return f" : {d1:.3f} Å --> {d2:.3f} Å"

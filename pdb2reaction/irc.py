@@ -1,9 +1,11 @@
 # pdb2reaction/irc.py
 # -*- coding: utf-8 -*-
-"""
-EulerPC による IRC 計算用 CLI
+"""Command-line interface for IRC calculations using the EulerPC integrator.
 
-例:
+Example
+-------
+::
+
   pdb2reaction irc \
     -i a.pdb -q 0 -s 1 \
     --max-cycles 20 \
@@ -14,61 +16,65 @@ EulerPC による IRC 計算用 CLI
     --out-dir "./result_irc/" \
     --args-yaml args.yaml
 
-方針
+Overview
+--------
+* The CLI accepts only the options shown above. All other parameters (geometry,
+  UMA configuration, and detailed EulerPC/IRC settings) must be provided via
+  the YAML file.
+* When the input is a ``.pdb`` file, the generated trajectories (``finished_irc.trj``),
+  ``forward_irc.trj``, and ``backward_irc.trj`` are converted to PDB format.
+
+Optional YAML layout
+--------------------
+::
+
+  geom:
+    coord_type: cart
+    freeze_atoms: []
+
+  calc:
+    charge: 0
+    spin: 1
+    model: "uma-s-1p1"
+    task_name: "omol"
+    device: "auto"
+    max_neigh: null
+    radius: null
+    r_edges: false
+    out_hess_torch: false
+
+  irc:
+    # Base IRC settings
+    downhill: false
+    forward: true
+    backward: true
+    hessian_init: "calc"
+    displ: "energy"
+    displ_energy: 1.0e-3
+    displ_length: 0.1
+    rms_grad_thresh: 1.0e-3
+    hard_rms_grad_thresh: null
+    energy_thresh: 1.0e-6
+    imag_below: 0.0
+    force_inflection: true
+    check_bonds: false
+    prefix: ""
+    dump_fn: "irc_data.h5"
+    dump_every: 5
+
+    # EulerPC-specific settings
+    hessian_update: "bofill"
+    hessian_recalc: null
+    max_pred_steps: 500
+    loose_cycles: 3
+    corr_func: "mbs"
+
+Notes
 -----
-- CLI で受け付けるのは上記例にある引数のみ。
-- それ以外のパラメータ（幾何, UMA 設定, IRC/EulerPC の詳細設定など）は YAML から読み込む。
-- 入力が .pdb の場合は、生成された IRC 全体のトラジェクトリ (finished_irc.trj)、
-  forward/backward の各トラジェクトリ (forward_irc.trj, backward_irc.trj) を PDB へ変換する。
-
-YAML セクション例（任意）
-------------------------
-geom:
-  coord_type: cart
-  freeze_atoms: []
-
-calc:
-  charge: 0
-  spin: 1
-  model: "uma-s-1p1"
-  task_name: "omol"
-  device: "auto"
-  max_neigh: null
-  radius: null
-  r_edges: false
-  out_hess_torch: false
-
-irc:
-  # IRC(基底)の設定
-  downhill: false
-  forward: true
-  backward: true
-  hessian_init: "calc"
-  displ: "energy"
-  displ_energy: 1.0e-3
-  displ_length: 0.1
-  rms_grad_thresh: 1.0e-3
-  hard_rms_grad_thresh: null
-  energy_thresh: 1.0e-6
-  imag_below: 0.0
-  force_inflection: true
-  check_bonds: false
-  prefix: ""
-  dump_fn: "irc_data.h5"
-  dump_every: 5
-
-  # EulerPC 固有の設定
-  hessian_update: "bofill"
-  hessian_recalc: null
-  max_pred_steps: 500
-  loose_cycles: 3
-  corr_func: "mbs"
-
-備考
-----
-- CLI で与えられた値は YAML より優先します（charge/spin, step-size→step_length,
-  max-cycles→max_cycles, root, forward/backward, out-dir）。
-- UMA 設定は `pdb2reaction.uma_pysis.uma_pysis` にそのまま渡します。
+* CLI arguments override values loaded from YAML (``charge``/``spin``,
+  ``step_length`` via ``--step-size``, ``max_cycles`` via ``--max-cycles``,
+  ``root``, ``forward``/``backward``, and ``out_dir``).
+* UMA options are passed directly to :func:`pdb2reaction.uma_pysis.uma_pysis`.
 """
 
 from __future__ import annotations
@@ -96,7 +102,7 @@ from pdb2reaction.utils import (
 
 
 # --------------------------
-# デフォルト設定
+# Default configuration
 # --------------------------
 
 GEOM_KW_DEFAULT: Dict[str, Any] = {
@@ -113,18 +119,18 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "max_neigh": None,
     "radius": None,           # Å
     "r_edges": False,
-    "out_hess_torch": True,   # IRCはGPU上のHessian入力に対応済み
+    "out_hess_torch": True,   # IRC supports Hessian input on the GPU
 }
 
 IRC_KW_DEFAULT: Dict[str, Any] = {
-    # IRC.__init__ の引数（EulerPC に **kwargs で渡る）
-    "step_length": 0.10,         # CLI --step-size で上書き
-    "max_cycles": 125,           # CLI --max-cycles で上書き
+    # Arguments for IRC.__init__ (forwarded to EulerPC via **kwargs)
+    "step_length": 0.10,         # Overridden by CLI --step-size
+    "max_cycles": 125,           # Overridden by CLI --max-cycles
     "downhill": False,
-    "forward": True,             # CLI --forward で上書き
-    "backward": True,            # CLI --backward で上書き
-    "root": 0,                   # CLI --root で上書き
-    "hessian_init": "calc",      # TS からの通常 IRC 想定
+    "forward": True,             # Overridden by CLI --forward
+    "backward": True,            # Overridden by CLI --backward
+    "root": 0,                   # Overridden by CLI --root
+    "hessian_init": "calc",      # Default assumption: start from TS Hessian
     "displ": "energy",
     "displ_energy": 1.0e-3,
     "displ_length": 0.10,
@@ -139,13 +145,15 @@ IRC_KW_DEFAULT: Dict[str, Any] = {
     "dump_fn": "irc_data.h5",
     "dump_every": 5,
 
-    # EulerPC 固有
+    # EulerPC-specific options
     "hessian_update": "bofill",
     "hessian_recalc": None,
     "max_pred_steps": 500,
     "loose_cycles": 3,
     "corr_func": "mbs",
 }
+
+
 def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: Path) -> None:
     if trj_path.exists():
         try:
@@ -160,7 +168,7 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
 # --------------------------
 
 @click.command(
-    help="EulerPC による IRC 計算。CLI では例にある引数のみ受け付け、それ以外は YAML から読み込みます。",
+    help="Run an IRC calculation with EulerPC. Only the documented CLI options are accepted; all other settings come from YAML.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -168,21 +176,21 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="入力構造ファイル (.pdb, .xyz, .trj, など)。",
+    help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="全電荷。calc セクションをこの値で上書き。")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="多重度 (2S+1)。calc セクションをこの値で上書き。")
-@click.option("--max-cycles", type=int, default=None, help="IRC の最大ステップ数（YAML の irc.max_cycles を上書き）。")
-@click.option("--step-size", type=float, default=None, help="IRC の非質量重み付け座標でのステップ長（YAML の irc.step_length を上書き）。")
-@click.option("--root", type=int, default=None, help="初期変位に用いる虚振動のモード番号（YAML の irc.root を上書き）。")
-@click.option("--forward", type=bool, default=None, help="正方向 IRC を実行（YAML の irc.forward を上書き）。True/False を明示。")
-@click.option("--backward", type=bool, default=None, help="逆方向 IRC を実行（YAML の irc.backward を上書き）。True/False を明示。")
-@click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="出力ディレクトリ。YAML の irc.out_dir を上書き。")
+@click.option("-q", "--charge", type=int, required=True, help="Total charge; overrides calc.charge from YAML.")
+@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1); overrides calc.spin from YAML.")
+@click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
+@click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
+@click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")
+@click.option("--forward", type=bool, default=None, help="Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly.")
+@click.option("--backward", type=bool, default=None, help="Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly.")
+@click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="追加パラメータを含む YAML（セクション: geom, calc, irc）。",
+    help="YAML file providing extra parameters (sections: geom, calc, irc).",
 )
 def cli(
     input_path: Path,
@@ -200,7 +208,7 @@ def cli(
         time_start = time.perf_counter()
 
         # --------------------------
-        # 1) 設定の構築（YAML → デフォルト, その後 CLI で上書き）
+        # 1) Assemble configuration: defaults -> YAML overrides -> CLI overrides
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
@@ -237,13 +245,13 @@ def cli(
         out_dir_path = Path(irc_cfg["out_dir"]).resolve()
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        # 画面表示用（freeze_atoms を見やすく）
+        # Pretty-print configuration (expand freeze_atoms for readability)
         click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
         click.echo(pretty_block("calc", calc_cfg))
         click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
         # --------------------------
-        # 2) 幾何のロード & UMA 設定
+        # 2) Load geometry and configure UMA calculator
         # --------------------------
         coord_type = geom_cfg.get("coord_type", "cart")
         coord_kwargs = dict(geom_cfg)
@@ -253,16 +261,16 @@ def cli(
 
         calc_builder_or_instance = uma_pysis(**calc_cfg)
         try:
-            # 工場関数が返る場合
+            # Case 1: builder function returned
             geometry.set_calculator(calc_builder_or_instance())
         except TypeError:
-            # すでにインスタンスが返ってきた場合
+            # Case 2: calculator instance returned directly
             geometry.set_calculator(calc_builder_or_instance)
 
         # --------------------------
-        # 3) EulerPC を構築して実行
+        # 3) Construct and run EulerPC
         # --------------------------
-        # EulerPC.__init__ は IRC.__init__ に **kwargs をそのまま渡せる
+        # EulerPC.__init__ forwards **kwargs directly to IRC.__init__
         eulerpc = EulerPC(geometry, **irc_cfg)
 
         click.echo("\n=== IRC (EulerPC) started ===\n")
@@ -270,18 +278,18 @@ def cli(
         click.echo("\n=== IRC (EulerPC) finished ===\n")
 
         # --------------------------
-        # 4) PDB 変換（入力が PDB の場合）
+        # 4) Convert trajectories to PDB when the input was PDB
         # --------------------------
         if input_path.suffix.lower() == ".pdb":
             ref_pdb = input_path.resolve()
 
-            # IRC 全体
+            # Whole IRC trajectory
             _echo_convert_trj_to_pdb_if_exists(
                 out_dir_path / f"{irc_cfg.get('prefix','')}{'finished_irc.trj'}",
                 ref_pdb,
                 out_dir_path / f"{irc_cfg.get('prefix','')}{'finished_irc.pdb'}",
             )
-            # forward / backward
+            # Forward/backward trajectories
             _echo_convert_trj_to_pdb_if_exists(
                 out_dir_path / f"{irc_cfg.get('prefix','')}{'forward_irc.trj'}",
                 ref_pdb,
@@ -308,6 +316,6 @@ def cli(
         sys.exit(1)
 
 
-# 直接実行
+# Script entry point
 if __name__ == "__main__":
     cli()
