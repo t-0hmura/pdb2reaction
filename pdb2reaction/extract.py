@@ -482,7 +482,7 @@ def find_substrate_by_idspec(complex_struct, spec: str) -> List[PDB.Residue.Resi
 
     return found
 
-# ---------- NEW: Residue‑name–based substrate selection ----------
+# ---------- Residue-name-based substrate selection ----------
 
 def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Residue]:
     """

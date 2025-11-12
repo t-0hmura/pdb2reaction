@@ -1,42 +1,44 @@
 # pdb2reaction/all.py
 
 """
-Pipeline driver:  **extract active‑site pockets → run MEP search → merge back to full systems**
-+ (optional) TS optimization / pseudo-IRC / thermo / DFT post-processing per reactive segment
+Pipeline driver for **extracting active-site pockets, running a minimum-energy
+path search, merging paths back into full systems**, and optionally performing
+TS optimisation, pseudo-IRC, thermochemistry, and DFT post-processing per
+reactive segment.
 
 Usage (example)
 ---------------
 pdb2reaction all -i a.pdb b.pdb c.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
   --tsopt True --thermo True --dft True
 
-# Also works with residue-id lists as the substrate specification:
-#   -c "308,309"
+The substrate specification also accepts residue ID lists (for example,
+``-c "308,309"``).
 
-What this does
---------------
-1) Runs the binding‑pocket extractor (`extract.extract_api`) on all input PDBs *together*,
-   producing per‑structure pocket PDBs under `<out-dir>/pockets/`.
-   - All key extractor behaviors can be configured via this CLI (radius, backbone handling, etc.).
-2) Reads the **total pocket charge** computed by `extract` and uses it as `-q/--charge`
-   for the subsequent MEP search (rounded to nearest integer, with a console note if rounding).
-3) Runs the recursive GSM minimum-energy path search (`path_search.cli`) **on the pocket PDBs**.
-   - All major path‑search behaviors can be configured via this CLI (spin, max_nodes, optimizer, etc.).
-4) **Automatically merges** the pocket MEP back into the **original full PDBs** as reference templates
-   (no `--ref-pdb` from the user required), producing full‑system trajectories in the path_search output dir.
-
-5) (Optional; new)
-   Per **bond-change** segment:
-     - (--tsopt True) Run `ts_opt` on the segment HEI (pocket), then perform a **pseudo-IRC**:
-         * compute the imaginary mode at the TS,
-         * displace along ±mode (small amplitude) and optimize both to minima (LBFGS),
-         * decide forward/backward by **bond-state match** to the segment endpoints from the MEP,
-         * rebuild an energy diagram using these (R, TS, P) per reactive segment.
-       A small "IRC plot" (TS↔min) is also emitted for each direction.
-     - (--thermo True) Run `freq` on (R, TS, P) to get vibrational analysis & **thermochemistry**,
-       and build a **Gibbs free-energy diagram** (UMA).
-     - (--dft True) Run `dft` single-point on (R, TS, P) and build a **DFT energy diagram**.
-       If **both** (--dft True and --thermo True), also build a **DFT//UMA thermal** Gibbs diagram
-       (DFT electronic energy + UMA thermal correction to free energy).
+Workflow
+--------
+1. Run the binding-pocket extractor (``extract.extract_api``) on all input PDBs
+   together, producing per-structure pocket PDBs under ``<out-dir>/pockets``. All
+   extractor settings (radius, backbone handling, etc.) are exposed via this CLI.
+2. Read the total pocket charge computed by ``extract`` and use it as ``-q/--charge``
+   for the subsequent MEP search (rounded to the nearest integer with a console
+   note when rounding occurs).
+3. Execute the recursive GSM path search (``path_search.cli``) on the pocket
+   structures. Path-search parameters such as spin, ``max-nodes``, optimizer, and
+   solver mode are forwarded from this CLI.
+4. Merge the resulting pocket MEP into the original full-system templates (no
+   ``--ref-pdb`` required) and write trajectories within the ``path_search``
+   output directory.
+5. Optionally, for each segment that changes covalent connectivity:
+   - ``--tsopt True``: run ``ts_opt`` on the segment HEI (pocket), perform a
+     pseudo-IRC by displacing along the imaginary mode, optimise both directions to
+     minima, determine forward/backward correspondence via bond-state matching, and
+     generate a segment energy diagram.
+   - ``--thermo True``: run ``freq`` on (R, TS, P) to obtain vibrational analysis
+     and thermochemistry, producing a Gibbs free-energy diagram (UMA).
+   - ``--dft True``: run ``dft`` single-point evaluations on (R, TS, P) and build a
+     DFT electronic energy diagram. When both ``--thermo`` and ``--dft`` are
+     enabled, also produce a DFT//UMA Gibbs diagram (DFT energy + UMA thermal
+     correction).
 
 Outputs (directory layout)
 --------------------------
@@ -53,34 +55,36 @@ Outputs (directory layout)
     mep_w_ref_seg_XX.pdb        (per-segment merged trajectories with covalent changes)
     summary.yaml                (segment barriers, ΔE, etc.)
     ... (segment subfolders)
-    tsopt_seg_XX/               (NEW when --tsopt True; per-segment TS/IRC results)
+    tsopt_seg_XX/               (present when ``--tsopt`` is enabled)
       ts/ ...
       irc/ ...
-      freq/ ...                 (when --thermo True)
-      dft/  ...                 (when --dft True)
+      freq/ ...                 (when ``--thermo`` is enabled)
+      dft/  ...                 (when ``--dft`` is enabled)
       energy_diagram_tsopt.(html|png)
-      energy_diagram_G_UMA.(html|png)                  (when --thermo True)
-      energy_diagram_DFT.(html|png)                    (when --dft True)
-      energy_diagram_G_DFT_plus_UMA.(html|png)         (when --dft True and --thermo True)
+      energy_diagram_G_UMA.(html|png)                  (when ``--thermo`` is enabled)
+      energy_diagram_DFT.(html|png)                    (when ``--dft`` is enabled)
+      energy_diagram_G_DFT_plus_UMA.(html|png)         (when ``--thermo`` and ``--dft`` are enabled)
 
 Notes
 -----
 - Requires Python ≥ 3.10.
-- This subcommand intentionally **does not expose** `--ref-pdb`; the original input PDBs are used automatically.
-- The extractor runs in multi‑structure union mode to ensure a consistent pocket topology across the ensemble.
-- The total charge passed to the path search is taken from the extractor’s **first model** charge summary,
-  which matches the extractor’s documented behavior.
+- ``--ref-pdb`` is intentionally hidden; the original inputs serve as templates
+  for the merge step.
+- The extractor runs in multi-structure union mode to ensure a consistent pocket
+  topology across the ensemble.
+- The charge passed to the path search is taken from the extractor’s first-model
+  charge summary, matching the extractor documentation.
 
 CLI parity with underlying tools
 --------------------------------
-- Extractor options exposed:
-  center (PDB path / residue-ID list / residue-name list), radius, radius_het2het, include_H2O, exclude_backbone, add_linkH,
-  selected_resn, ligand_charge, verbose.
-- Path search options exposed:
-  spin, freeze-links, max-nodes, max-cycles, climb, sopt-mode, dump,
-  args-yaml, pre-opt, out-dir (the path_search subdir is created inside this).
-- (NEW) Post options exposed:
-  tsopt (True/False), thermo (True/False), dft (True/False).
+- Extractor options: ``center`` (PDB path / residue ID list / residue name list),
+  ``radius``, ``radius_het2het``, ``include_H2O``, ``exclude_backbone``, ``add_linkH``,
+  ``selected_resn``, ``ligand_charge``, ``verbose``.
+- Path-search options: ``spin``, ``freeze-links``, ``max-nodes``, ``max-cycles``,
+  ``climb``, ``sopt-mode``, ``dump``, ``args-yaml``, ``pre-opt``, ``out-dir`` (the
+  ``path_search`` subdirectory is created inside this location).
+- Post-processing toggles: ``tsopt`` (True/False), ``thermo`` (True/False),
+  ``dft`` (True/False).
 """
 
 from __future__ import annotations
@@ -614,7 +618,7 @@ def _run_dft_for_state(pdb_path: Path,
               default=None, help="YAML with extra args for path_search (sections: geom, calc, gs, opt, sopt, bond, search).")
 @click.option("--pre-opt", "pre_opt", type=click.BOOL, default=True, show_default=True,
               help="If False, skip initial single-structure optimizations of the pocket inputs.")
-# ===== NEW: Post-processing toggles =====
+# ===== Post-processing toggles =====
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
               help="TS optimization + pseudo-IRC per reactive segment, and rebuild segment-level energy diagram.")
 @click.option("--thermo", "do_thermo", type=click.BOOL, default=False, show_default=True,

@@ -1,7 +1,7 @@
 # pdb2reaction/ts_opt.py
 
 """
-Transition-State optimization CLI for pdb2reaction.
+Transition-state optimisation CLI for pdb2reaction.
 
 Usage
 -----
@@ -12,59 +12,53 @@ pdb2reaction ts_opt \
   --opt-mode light \
   --dump False \
   --out-dir ./result_ts_opt/ \
-  --args-yaml ./args.yaml
+  --args-yaml ./args.yaml \
   [--hessian-calc-mode FiniteDifference|Analytical]
 
-Where:
-- --opt-mode light  -> HessianDimer (dimer-based TS search with periodic Hessian updates)
-- --opt-mode heavy  -> RSIRFO (RS-I-RFO Hessian-based TS optimizer)
+Key options
+-----------
+- ``--opt-mode light`` runs the HessianDimer transition-state search with periodic
+  Hessian updates.
+- ``--opt-mode heavy`` runs the RS-I-RFO Hessian-based transition-state optimiser.
 
-Both modes accept YAML overrides. The YAML may contain sections:
-  geom, calc, opt, hessian_dimer, rsirfo
+Configuration
+-------------
+YAML overrides may define the ``geom``, ``calc``, ``opt``, ``hessian_dimer``, and
+``rsirfo`` sections. HessianDimer accepts nested ``dimer`` and ``lbfgs`` dictionaries
+that are forwarded to the respective pysisyphus components.
 
-This script:
-- Reads structures via pysisyphus.helpers.geom_loader (PDB/XYZ/etc.)
-- Uses the UMA calculator (pdb2reaction.uma_pysis) to provide energy/forces/Hessian
-- For PDB inputs, converts final_geometry.xyz and optimization trajectory to PDB
-  (HessianDimer: optimization_all.trj → .pdb; RSIRFO: optimization.trj → .pdb)
-- Writes the final imaginary mode as .trj and .pdb (for RSIRFO as well),
-  and converts those to PDB when input is PDB (here we always write PDB too)
+Workflow
+--------
+- Structures are loaded via ``pysisyphus.helpers.geom_loader`` (PDB/XYZ/etc.).
+- The UMA calculator (``pdb2reaction.uma_pysis``) supplies energies, forces, and Hessians.
+- For PDB inputs, optimisation trajectories and ``final_geometry.xyz`` are converted to
+  PDB format.
+- Final imaginary modes are written as ``.trj`` and ``.pdb`` files (always including PDB).
 
-Additionally:
-- HessianDimer supports selection of the search direction by `root` (0: most negative,
-  1: second-most, ...), analogous to RSIRFO.
-- HessianDimer allows passing options to its internal Dimer and LBFGS via YAML:
-    hessian_dimer:
-      dimer: {...}   # kwargs to pysisyphus.calculators.Dimer.Dimer
-      lbfgs: {...}   # kwargs to pysisyphus.optimizers.LBFGS.LBFGS
-
-- PHVA (active DOF subspace) + TR projection with in-place operations for VRAM saving,
-  following freq.py: freeze_atoms are respected in HessianDimer (light) mode.
-- For root==0, prefer torch.lobpcg for the smallest eigenpair (fallback to eigh).
-
-- Flatten loop reworked to avoid repeated *exact* Hessian evaluations.
-  Strategy:
-    1) After the normal Dimer loop, compute one *exact* Hessian and extract the
-       active-DOF block (PHVA mask).
-    2) Use a *Bofill* update (linear combination of SR1/MS and PSB) on the **active-DOF
-       Cartesian Hessian block** between geometry changes, driven by δ = Δx and
-       y = Δg from UMA (true gradients; not dimer-projected).
-    3) In each flatten iteration:
-         - Estimate imaginary modes from the *updated* active Hessian (mass-weighted +
-           TR-projected in the active subspace only).
-         - Perform flattening (energy checks only).
-         - Update the active Hessian by Bofill (flatten δ,y).
-         - Refresh the Dimer direction from the updated active Hessian.
-         - Run a Dimer LBFGS segment.
-         - Update the active Hessian by Bofill again (post-optimization δ,y).
-       Repeat until only one imaginary remains (within threshold), then do a single
-       final *exact* Hessian for the frequency analysis.
-  The reference Hessian stored in memory is **only the active-DOF block** as requested.
-
-- The UMA calculator now receives `freeze_atoms` explicitly from ts_opt.
-- You can choose the Hessian evaluation mode with `--hessian-calc-mode` (Analytical or FiniteDifference).
-- In ts_opt, UMA is called with `return_partial_hessian=True` by default, so the calculator
-  returns an active-DOF (PHVA) Hessian block when `freeze_atoms` are present.
+Implementation notes
+--------------------
+- HessianDimer supports selecting the search direction through ``root`` (0 = most
+  negative, 1 = second-most, ...), analogous to RS-I-RFO.
+- PHVA (active-degree-of-freedom subspace) with translation/rotation projection is
+  used to save GPU memory, mirroring ``freq.py`` and respecting ``freeze_atoms`` in
+  light mode.
+- When ``root == 0`` the implementation prefers ``torch.lobpcg`` for the lowest
+  eigenpair, falling back to ``torch.linalg.eigh`` when needed.
+- The flattening loop keeps a single exact active-subspace Hessian in memory:
+    1. After the standard Dimer loop, compute one exact Hessian and extract the
+       PHVA block.
+    2. Between geometry updates, apply a Bofill update (SR1/MS and PSB blend) to the
+       active-space Cartesian Hessian using UMA displacements ``δ = Δx`` and
+       gradient differences ``y = Δg``.
+    3. For each flatten iteration: estimate imaginary modes from the updated active
+       Hessian (mass-weighted, TR-projected), perform the flatten step, update the
+       Hessian via Bofill, refresh the Dimer direction, run a Dimer LBFGS segment, and
+       apply a final Bofill update. Continue until only one imaginary mode remains,
+       then evaluate one last exact Hessian for frequency analysis.
+- The UMA calculator receives ``freeze_atoms`` explicitly and defaults to
+  ``return_partial_hessian=True`` so PHVA returns an active-subspace block when
+  applicable.
+- ``--hessian-calc-mode`` selects between analytical and finite-difference Hessians.
 """
 
 from __future__ import annotations
@@ -471,7 +465,7 @@ def _write_mode_trj_and_pdb(geom,
 
 
 # ===================================================================
-#            Active-subspace helpers & Bofill update (NEW)
+#            Active-subspace helpers & Bofill update
 # ===================================================================
 
 def _active_indices(N: int, freeze_idx: Optional[List[int]]) -> List[int]:
@@ -737,13 +731,14 @@ class HessianDimer:
       - `root` parameter: choose which imaginary mode to follow (0 = most negative).
       - Pass-through kwargs: `dimer_kwargs` and `lbfgs_kwargs` to tune internals.
       - Hard cap on total LBFGS steps across segments: `max_total_cycles`.
-      - [NEW] PHVA (active DOF subspace) + TR projection for mode picking,
-        respecting freeze_atoms, with in-place ops. root==0 prefers LOBPCG.
-      - [PERF] Flatten loop now uses a *Bofill*-updated active Hessian block, so the
-        expensive *exact* Hessian is computed only once before the flatten loop and
-        once at the very end for the final frequency analysis.
-      - [UPDATE] UMA calculator kwargs now accept `freeze_atoms`, `hessian_calc_mode`,
-        and default to `return_partial_hessian=True` (active-block Hessian when frozen).
+      - PHVA (active DOF subspace) + TR projection for mode picking,
+        respecting ``freeze_atoms``, with in-place operations. When ``root == 0`` the
+        implementation prefers LOBPCG.
+      - The flatten loop uses a *Bofill*-updated active Hessian block, so the
+        expensive exact Hessian is evaluated only once before the flatten loop and
+        once at the end for the final frequency analysis.
+      - UMA calculator kwargs accept ``freeze_atoms`` and ``hessian_calc_mode`` and
+        default to ``return_partial_hessian=True`` (active-block Hessian when frozen).
     """
 
     def __init__(self,
@@ -767,7 +762,7 @@ class HessianDimer:
                  lbfgs_kwargs: Optional[Dict[str, Any]] = None,
                  max_total_cycles: int = 10000,
                  #
-                 # NEW (fix #1): pass geom kwargs so freeze-links & YAML geom apply on light path
+                # Pass geom kwargs so freeze-links and YAML geometry overrides apply on the light path (fix #1)
                  geom_kwargs: Optional[Dict[str, Any]] = None,
                  ) -> None:
 
@@ -802,7 +797,7 @@ class HessianDimer:
         self.masses_amu = np.array([atomic_masses[z] for z in self.geom.atomic_numbers])
         self.masses_au_t = torch.as_tensor(self.masses_amu * AMU2AU, dtype=torch.float32)
 
-        # --- NEW: keep freeze list (for PHVA) ---
+        # --- Preserve freeze list (for PHVA) ---
         self.freeze_atoms: List[int] = list(gkw.get("freeze_atoms", [])) if "freeze_atoms" in gkw else []
 
         # Device
@@ -962,7 +957,7 @@ class HessianDimer:
 
     def _flatten_once_with_modes(self, freqs_cm: np.ndarray, modes: torch.Tensor) -> bool:
         """
-        NEW: flatten using *precomputed* (approximate) modes (mass-weighted, embedded).
+        Flatten using precomputed (approximate) modes (mass-weighted, embedded).
         """
         neg_idx_all = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
         if len(neg_idx_all) <= 1:
@@ -1072,7 +1067,7 @@ class HessianDimer:
         # (4) Flatten Loop — *reduced* exact Hessian calls via Bofill updates (active DOF only)
         print("Flatten Loop with Bofill-updated active Hessian...")
 
-        # (4.1) One exact Hessian at loop start → active block準備
+        # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
         H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
         if H_any.size(0) == 3 * N:
             # full → extract active
@@ -1211,10 +1206,10 @@ CALC_KW = {
     "radius": None,           # Optional[float], cutoff radius (Å)
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
     "out_hess_torch": True,   # bool, RSIRFO sets this to True for torch Hessian; HessianDimer sets per-call
-    # --- NEW: Hessian interfaces to UMA ---
+    # --- Hessian interfaces to UMA ---
     "hessian_calc_mode": "FiniteDifference",  # "Analytical" | "FiniteDifference"
-    "return_partial_hessian": True,           # tsopt はデフォルトで Active-DOF の部分 Hessian を受け取る
-    # freeze_atoms は geom から CLI/YAML を通じて下で注入
+    "return_partial_hessian": True,           # Default: receive the active-DOF Hessian block from UMA
+    # freeze_atoms is injected below from the geometry CLI/YAML configuration
 }
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
@@ -1486,7 +1481,7 @@ def cli(
                 dimer_kwargs=dict(simple_cfg.get("dimer", {})),
                 lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
                 max_total_cycles=int(opt_cfg["max_cycles"]),
-                # NEW (fix #1): propagate geom settings (freeze_atoms, coord_type, ...)
+                # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner (fix #1)
                 geom_kwargs=dict(geom_cfg),
             )
 
