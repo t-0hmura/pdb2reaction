@@ -35,6 +35,12 @@ Notes:
 - `hessian_calc_mode` can be specified via CLI/YAML (default "FiniteDifference").
 - Default `return_partial_hessian=True` so a reduced (active DOF) Hessian is used by default.
 - Frequency analysis now supports both full and already-reduced (active-block) Hessians.
+
+[VRAM-SAVING ADJUSTMENTS (minimal)]
+- Keep only a single Hessian resident at any time; delete ASAP after eigensolve and call torch.cuda.empty_cache().
+- Avoid explicit symmetrization; use the upper triangle in eigen-decomposition (UPLO="U").
+- Maintain in-place updates wherever possible; avoid creating duplicate large tensors.
+- Do not move the Hessian to CPU (eigenvectors/frequencies may be converted as before).
 """
 
 from __future__ import annotations
@@ -120,15 +126,16 @@ def _mw_projected_hessian(H_t: torch.Tensor,
     Hmw = M^{-1/2} H M^{-1/2};  P = I - QQ^T;  Hmw_proj = P Hmw P
 
     To save memory, update **H_t in-place** (no clone) and return it.
-    No explicit symmetrization (0.5*(H+H^T)). The eigen-decomposition uses
-    only the lower triangle (UPLO="L").
+    No explicit symmetrization. The eigen-decomposition uses only the upper triangle (UPLO="U").
     """
     dtype, device = H_t.dtype, H_t.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
         m3 = torch.repeat_interleave(masses_amu_t, 3)
-        inv_sqrt_m_col = torch.sqrt(1.0 / m3).view(1, -1)
-        inv_sqrt_m_row = inv_sqrt_m_col.view(-1, 1)
+        # Use a single base vector for inverse sqrt mass and create views (no extra large allocations)
+        inv_sqrt_m = torch.sqrt(1.0 / m3)
+        inv_sqrt_m_col = inv_sqrt_m.view(1, -1)
+        inv_sqrt_m_row = inv_sqrt_m.view(-1, 1)
 
         # In-place mass-weighting on input Hessian
         H_t.mul_(inv_sqrt_m_row)
@@ -137,17 +144,17 @@ def _mw_projected_hessian(H_t: torch.Tensor,
         Q, _ = _tr_orthonormal_basis(coords_bohr_t, masses_au_t)  # (3N, r)
         Qt = Q.T
 
-        QtH = Qt @ H_t
+        QtH = Qt @ H_t                   # (r,3N)
         H_t.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
 
-        HQ = QtH.T
+        HQ = QtH.T                       # (3N,r)
         H_t.addmm_(HQ, Qt, beta=1.0, alpha=-1.0)
 
-        QtHQ = QtH @ Q
-        tmp = Q @ QtHQ
+        QtHQ = QtH @ Q                   # (r,r)
+        tmp = Q @ QtHQ                   # (3N,r)
         H_t.addmm_(tmp, Qt, beta=1.0, alpha=1.0)
 
-        del masses_amu_t, m3, inv_sqrt_m_col, inv_sqrt_m_row
+        del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
         del Q, Qt, QtH, HQ, QtHQ, tmp
 
         if torch.cuda.is_available() and device.type == "cuda":
@@ -164,12 +171,13 @@ def _mass_weighted_hessian(H_t: torch.Tensor,
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
         m3 = torch.repeat_interleave(masses_amu_t, 3)
-        inv_sqrt_m_col = torch.sqrt(1.0 / m3).view(1, -1)
-        inv_sqrt_m_row = inv_sqrt_m_col.view(-1, 1)
+        inv_sqrt_m = torch.sqrt(1.0 / m3)
+        inv_sqrt_m_col = inv_sqrt_m.view(1, -1)
+        inv_sqrt_m_row = inv_sqrt_m.view(-1, 1)
         # In-place mass-weighting on input Hessian
         H_t.mul_(inv_sqrt_m_row)
         H_t.mul_(inv_sqrt_m_col)
-        del masses_amu_t, m3, inv_sqrt_m_col, inv_sqrt_m_row
+        del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
         return H_t
 
 
@@ -245,15 +253,22 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 QtHQ = QtH @ Q
                 Hmw_act.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
 
-                # Diagonalize (lower triangle)
-                omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="L")
+                # Diagonalize (upper triangle only; no symmetrization)
+                omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="U")
+
+                # Free the (only) Hessian ASAP
+                del Hmw_act
+                del H_t
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
                 sel = torch.abs(omega2) > tol
                 omega2 = omega2[sel]
                 Vsub = Vsub[:, sel]  # (3N_act, nsel)
 
                 # Embed to full 3N (mass-weighted eigenvectors)
-                modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=H_t.dtype, device=H_t.device)
-                mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
+                modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=Vsub.dtype, device=Vsub.device)
+                mask_dof = torch.ones(3 * N, dtype=torch.bool, device=Vsub.device)
                 for i in frozen_set:
                     mask_dof[3 * i:3 * i + 3] = False
                 modes[:, mask_dof] = Vsub.T
@@ -263,12 +278,19 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 # --- Case A: フル Hessian（3N×3N）が渡されている従来経路 ---
                 # Mass-weighted (full) → active ブロック抽出 → active 空間で TR 投影
                 H_t = _mass_weighted_hessian(H_t, masses_au_t)
+
+                # Build active mask (boolean) and immediately carve out the active block
                 mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
                 for i in frozen_set:
                     mask_dof[3 * i:3 * i + 3] = False
-                H_t = H_t[mask_dof][:, mask_dof]
+
+                # Create the reduced Hessian; free the full one immediately to keep only one in VRAM
+                H_act = H_t[mask_dof][:, mask_dof]
+                del H_t
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
+                H_t = H_act
+                del H_act
 
                 coords_act = coords_bohr_t[active_idx, :]
                 masses_act = masses_au_t[active_idx]
@@ -283,21 +305,31 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 QtH = QtH @ Q
                 H_t.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
 
-                # No symmetrization; diagonalize using lower triangle only
-                omega2, Vsub = torch.linalg.eigh(H_t, UPLO="L")
+                # No symmetrization; diagonalize using upper triangle only
+                omega2, Vsub = torch.linalg.eigh(H_t, UPLO="U")
+
+                # Free the (only) Hessian ASAP
+                del H_t
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
                 sel = torch.abs(omega2) > tol
                 omega2 = omega2[sel]
                 Vsub = Vsub[:, sel]  # (3N_act, nsel)
 
-                modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=H_t.dtype, device=H_t.device)
+                modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=Vsub.dtype, device=Vsub.device)
                 modes[:, mask_dof] = Vsub.T  # (nsel, 3N_act) → place into active DOF
                 del Vsub, mask_dof, Q, Qt, QtH
 
         else:
             # Legacy behavior: TR-projection in full DOF → diagonalization (both in-place; no symmetrization)
             H_t = _mw_projected_hessian(H_t, coords_bohr_t, masses_au_t)
-            omega2, V = torch.linalg.eigh(H_t, UPLO="L")
+            omega2, V = torch.linalg.eigh(H_t, UPLO="U")
+
+            # Free the (only) Hessian ASAP
+            del H_t
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             sel = torch.abs(omega2) > tol
             omega2 = omega2[sel]
@@ -311,7 +343,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
         freqs_cm = (hnu / units.invcm).detach().cpu().numpy()
 
         del omega2, hnu, sel
-        if torch.cuda.is_available() and H_t.is_cuda:
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
         return freqs_cm, modes
 
@@ -619,6 +651,11 @@ def cli(
             freeze_idx=freeze_list if len(freeze_list) > 0 else None
         )
 
+        # Immediately drop the Hessian reference at the caller level as well
+        del H_t
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         # sort order
         if freq_cfg["sort"] == "abs":
             order = np.argsort(np.abs(freqs_cm))
@@ -653,7 +690,9 @@ def cli(
             encoding="utf-8"
         )
 
-        if torch.cuda.is_available() and H_t.is_cuda:
+        # Drop modes after use if large
+        del modes_mw
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         # --------------------------

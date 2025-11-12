@@ -1,5 +1,6 @@
 [Proceeding...]
-ts_opt: Use bolgfil update in Flatten loop
+irc: Enable Active DOF input
+all: Reuse TS Eigen Value for Freq from TS opt
 
 [Debugging...]
 thermo
