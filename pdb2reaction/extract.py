@@ -167,7 +167,7 @@ AMINO_ACIDS: Dict[str, int] = {
     "SER":  0, "THR":  0, "TRP":  0, "TYR":  0, "VAL":  0,
 
     # --- Canonical extras ---
-    "SEC": -1,   # selenocysteine
+    "SEC":  0,   # selenocysteine
     "PYL": +1,   # pyrrolysine
 
     # --- Protonation / tautomers (Amber/CHARMM style) ---
@@ -177,6 +177,8 @@ AMINO_ACIDS: Dict[str, int] = {
     "ASH":  0,   # neutral Asp
     "GLH":  0,   # neutral Glu
     "LYN":  0,   # neutral Lys
+    "ARN":  0,   # neutral Arg
+    "TYM": -1,   # deprotonated Tyr (phenolate)
 
     # --- Phosphorylated residues ---
     "SEP": -2, "TPO": -2, "PTR": -2,
@@ -187,6 +189,7 @@ AMINO_ACIDS: Dict[str, int] = {
     "CSD": -1,   # Cys sulfinic acid
     "CSX":  0,   # generic Cys derivative
     "OCS": -1,   # cysteic acid
+    "CYM": -1,   # deprotonated Cys
 
     # --- Lys variants / carboxylation ---
     "MLY": +1, "LLP": +1, "DLY": +1,
@@ -219,13 +222,15 @@ AMINO_ACIDS: Dict[str, int] = {
     "CLYS":  0, "CMET": -1, "CPHE": -1, "CPRO": -1, "CSER": -1,
     "CTHR": -1, "CTRP": -1, "CTYR": -1, "CVAL": -1, "NHE": 0,
     "NME": 0,
-
+    "CTER": -1,  # generic C-terminus
+    
     # --- All N-terminus ---
     "NALA": +1, "NARG": +2, "NASN": +1, "NASP":  0, "NCYS": +1,
     "NCYX": +1, "NGLN": +1, "NGLU":  0, "NGLY": +1, "NHID": +1,
     "NHIE": +1, "NHIP": +2, "NILE": +1, "NLEU": +1, "NLYS": +2,
     "NMET": +1, "NPHE": +1, "NPRO": +1, "NSER": +1, "NTHR": +1,
     "NTRP": +1, "NTYR": +1, "NVAL": +1, "ACE": 0,
+    "NTER": +1,  # generic N-terminus
 }
 
 # Common ions (by residue name) and their formal charges
