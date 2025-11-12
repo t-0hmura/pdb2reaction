@@ -1234,7 +1234,7 @@ DIMER_KW = {
     "forward_hessian": True,          # bool, allow forwarding get_hessian to wrapped calculator
 }
 
-# ---------- 併記: 内部 LBFGS の既定値（TS用）。OPT_BASE_KW を土台に差分を明示 ----------
+# ---------- Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW ----------
 LBFGS_TS_KW = {
     **OPT_BASE_KW,
 

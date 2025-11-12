@@ -153,54 +153,58 @@ def build_energy_diagram(
     Parameters
     ----------
     energies : Sequence[float]
-        各状態のエネルギー（同一単位）。ここでは値をそのまま描画し、変換は行いません。
+        Energies for each state (same unit). Values are plotted without conversion.
     labels : Sequence[str]
-        各状態に対応するラベル（例: ["R", "TS1", "IM1", "TS2", "P"]）。
-        `energies` と同じ長さである必要があります。
+        Labels corresponding to each state (for example, ["R", "TS1", "IM1", "TS2", "P"]).
+        Must be the same length as ``energies``.
     ylabel : str, optional
-        縦軸ラベル（例: "ΔE", "ΔG" など）。既定は "ΔE"。
+        Y-axis label (for example, "ΔE" or "ΔG"). Defaults to ``"ΔE"``.
     baseline : bool, optional
-        True の場合、最初のエネルギー高さに横点線のベースラインを図全体に描画します。
+        If ``True``, draw a dotted baseline at the energy of the first state across the plot.
+    showgrid : bool, optional
+        If ``True``, show grid lines on both axes. Defaults to ``False``.
 
     Returns
     -------
     plotly.graph_objs.Figure
-        エネルギーダイアグラムの Figure。
+        Figure containing the energy diagram.
 
-    描画仕様
-    --------
-    - 各状態は「太い横線」で描画します（線幅は HLINE_WIDTH）。
-    - 隣接する状態は、左側の「右端」から右側の「左端」へ「斜めの点線」で接続します。
-    - 横線の長さは状態数 n に応じて自動調整し、必ず隣接線との間に x 方向の隙間が生じます。
-    - x 軸の目盛は各状態の中心に設定し、表示文字列は `labels` を使用します。
+    Notes
+    -----
+    - Each state is rendered as a thick horizontal segment (width ``HLINE_WIDTH``).
+    - Adjacent states are connected by dotted diagonal segments from the right end of
+      the left state to the left end of the right state.
+    - Segment length automatically shrinks with additional states so that gaps remain
+      between neighbors.
+    - X-axis ticks are centered on each state and labeled using ``labels``.
     """
     if len(energies) == 0:
-        raise ValueError("`energies` は 1 つ以上の値を含む必要があります。")
+        raise ValueError("`energies` must contain at least one value.")
     if len(energies) != len(labels):
-        raise ValueError("`energies` と `labels` は同じ長さである必要があります。")
+        raise ValueError("`energies` and `labels` must have the same length.")
 
     n = len(energies)
     energies = [float(e) for e in energies]
 
     # -----------------------------
-    # レイアウト/スタイル定数
+    # Layout/style constants
     # -----------------------------
     AXIS_WIDTH = 3
     FONT_SIZE = 18
     AXIS_TITLE_SIZE = 20
-    HLINE_WIDTH = 6           # 状態レベル（横線）の太さ
-    CONNECTOR_WIDTH = 2       # 斜め点線の太さ
+    HLINE_WIDTH = 6           # Width of the horizontal state segments
+    CONNECTOR_WIDTH = 2       # Width of the dotted connectors
     LINE_COLOR = "#1C1C1C"
     GRID_COLOR = "lightgrey"
 
     # -----------------------------
-    # X 方向の幾何（中心位置と横線長）
+    # Geometry along the X axis (centers and segment lengths)
     # -----------------------------
-    # 状態中心を 0.5, 1.5, 2.5, ... に配置（等間隔）
+    # Place segment centers at 0.5, 1.5, 2.5, ... (equally spaced)
     centers = [i + 0.5 for i in range(n)]
 
-    # 横線の長さは n が増えると短くする（最小 0.35, 最大 0.85）
-    # 例: n=5 -> 0.7, n=10 -> 0.5, n>=20 -> 0.35
+    # Shorten the segment as n grows (min 0.35, max 0.85)
+    # Examples: n=5 -> 0.7, n=10 -> 0.5, n>=20 -> 0.35
     seg_width = min(0.85, max(0.35, 0.90 - 0.04 * n))
     half = seg_width / 2.0
 
@@ -208,11 +212,11 @@ def build_energy_diagram(
     rights = [c + half for c in centers]
 
     # -----------------------------
-    # Figure 組み立て
+    # Assemble the figure
     # -----------------------------
     fig = go.Figure()
 
-    # baseline（最初のエネルギー高さに横点線）
+    # Baseline (dotted line at the first energy level)
     if baseline:
         fig.add_trace(
             go.Scatter(
@@ -225,7 +229,7 @@ def build_energy_diagram(
             )
         )
 
-    # 各状態の太い横線
+    # Horizontal segments for each state
     for i, (e, lab) in enumerate(zip(energies, labels)):
         fig.add_trace(
             go.Scatter(
@@ -238,7 +242,7 @@ def build_energy_diagram(
             )
         )
 
-    # 隣接状態間の斜めの点線（右端 -> 左端）
+    # Dotted diagonals between adjacent states (right end -> left end)
     for i in range(n - 1):
         fig.add_trace(
             go.Scatter(
@@ -252,17 +256,17 @@ def build_energy_diagram(
         )
 
     # -----------------------------
-    # 軸レンジ・体裁
+    # Axis ranges and styling
     # -----------------------------
-    # X は最初と最後の横線から少しだけ余白をとる
+    # Add a small margin beyond the first/last segments on X
     xpad = max(0.08, 0.15 * (1.0 - seg_width))
     x_min = lefts[0] - xpad
     x_max = rights[-1] + xpad
 
-    # Y は上下に余白をとる
+    # Add vertical padding above and below
     y_min = min(energies)
     y_max = max(energies)
-    span = max(1e-6, y_max - y_min)  # 全て同じ高さでもゼロ高にならないよう回避
+    span = max(1e-6, y_max - y_min)  # Avoid zero span even if all values match
     ypad_low = 0.10 * span
     ypad_high = 0.20 * span
     y_range = [y_min - ypad_low, y_max + ypad_high]
@@ -316,7 +320,7 @@ def build_energy_diagram(
 
 
 # =============================================================================
-# Coordinate conversion utilities (既存：変更なし)
+# Coordinate conversion utilities
 # =============================================================================
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
@@ -346,7 +350,7 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
 
 
 # =============================================================================
-# Link-freezing helpers (既存：変更なし)
+# Link-freezing helpers
 # =============================================================================
 def parse_pdb_coords(pdb_path):
     """Parse ATOM/HETATM records from *pdb_path* and separate link hydrogen (HL) atoms.
