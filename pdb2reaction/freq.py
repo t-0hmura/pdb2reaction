@@ -15,32 +15,35 @@ pdb2reaction freq \
   --dump False \
   --hessian-calc-mode FiniteDifference
 
-Sections that can be overridden via YAML:
-  geom, calc, freq
+Configuration
+-------------
+YAML overrides may define the ``geom``, ``calc``, and ``freq`` sections.
 
-Output:
-- In out_dir, write up to max-write modes in ascending order of frequency
-  as 'mode_XXXX_{±freq}cm-1.trj' and '.pdb'.
+Outputs
+-------
+- Up to ``max-write`` vibrational modes are written in ascending order of
+  frequency to ``mode_XXXX_{±freq}cm-1.trj`` and ``.pdb`` under ``out-dir``.
+- When ``--dump`` is ``True``, the thermochemistry summary is also stored as
+  ``thermoanalysis.yaml`` in ``out-dir``.
 
-Thermochemistry (default on):
-- Prints a Gaussian-style summary at the end.
-- When --dump True, writes 'thermoanalysis.yaml' under out_dir.
+Thermochemistry
+---------------
+- Thermochemistry uses the PHVA frequencies computed by this command while
+  respecting ``freeze_atoms``.
+- A Gaussian-style thermochemistry summary is printed by default.
+- Pressures supplied via CLI (atm) are converted internally to Pa.
 
-Notes:
-- Thermochemistry uses frequencies computed here (PHVA respecting freeze_atoms).
-- Pressure is specified in atm at CLI and converted to Pa internally.
-
-[CHANGES]
-- The UMA calculator now receives `freeze_atoms` when a Hessian is computed.
-- `hessian_calc_mode` can be specified via CLI/YAML (default "FiniteDifference").
-- Default `return_partial_hessian=True` so a reduced (active DOF) Hessian is used by default.
-- Frequency analysis now supports both full and already-reduced (active-block) Hessians.
-
-[VRAM-SAVING ADJUSTMENTS (minimal)]
-- Keep only a single Hessian resident at any time; delete ASAP after eigensolve and call torch.cuda.empty_cache().
-- Avoid explicit symmetrization; use the upper triangle in eigen-decomposition (UPLO="U").
-- Maintain in-place updates wherever possible; avoid creating duplicate large tensors.
-- Do not move the Hessian to CPU (eigenvectors/frequencies may be converted as before).
+Implementation notes
+--------------------
+- The UMA calculator receives ``freeze_atoms`` whenever a Hessian is evaluated.
+- ``--hessian-calc-mode`` selects between ``FiniteDifference`` (default) and
+  ``Analytical`` modes via CLI or YAML.
+- ``return_partial_hessian`` defaults to ``True`` so PHVA produces a reduced
+  active-degree-of-freedom Hessian when possible.
+- Both full Hessians and pre-reduced active blocks are accepted as inputs.
+- GPU memory usage is minimised by keeping only one Hessian in memory, relying
+  on upper-triangular eigenvalue decompositions, and avoiding redundant
+  allocations.
 """
 
 from __future__ import annotations
@@ -231,13 +234,14 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 modes = torch.zeros((0, 3 * N), dtype=H_t.dtype, device=H_t.device)
                 return freqs_cm, modes
 
-            # 判定: 受け取った Hessian が既に active-block（3N_act×3N_act）かどうか
+            # Determine whether the provided Hessian is already the active block (3N_act×3N_act).
             expected_act_dim = 3 * n_active
             is_partial = (H_t.shape[0] == expected_act_dim and H_t.shape[1] == expected_act_dim)
 
             if is_partial:
-                # --- Case B: 既にアクティブ部分空間の Hessian が渡されている ---
-                # active の質量だけで質量重み → active 空間で TR 投影 → 固有分解 → full へ埋め戻し
+                # --- Case B: Active-subspace Hessian supplied ---
+                # Mass-weight using only active atoms → project TR modes in the active space
+                # → diagonalise → embed back into the full space.
                 masses_act = masses_au_t[active_idx]
                 coords_act = coords_bohr_t[active_idx, :]
 
@@ -275,8 +279,8 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 del Q, Qt, QtH, QtHQ, mask_dof
 
             else:
-                # --- Case A: フル Hessian（3N×3N）が渡されている従来経路 ---
-                # Mass-weighted (full) → active ブロック抽出 → active 空間で TR 投影
+                # --- Case A: Full Hessian (3N×3N) supplied ---
+                # Apply full mass-weighting → extract the active block → project TR modes in the active space.
                 H_t = _mass_weighted_hessian(H_t, masses_au_t)
 
                 # Build active mask (boolean) and immediately carve out the active block
@@ -532,7 +536,7 @@ THERMO_KW = {
               help="Pressure (atm) for thermochemistry summary.")
 @click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
               help="When True, write 'thermoanalysis.yaml' under out-dir.")
-# ---- NEW: Hessian calc mode on CLI ----
+# ---- Hessian calculation mode exposed via CLI ----
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"]),
               default=None,

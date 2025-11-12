@@ -1460,7 +1460,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="If False, skip initial single-structure optimizations of inputs."
 )
-# NEW: input alignment switch (default True)
+# Input alignment switch (default True)
 @click.option(
     "--align/--no-align",
     "align",
@@ -1633,7 +1633,7 @@ def cli(
         click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
-        # NEW: show align flag
+        # Echo pre-optimization and alignment flags
         click.echo(pretty_block("run_flags", {"pre_opt": bool(pre_opt), "align": bool(align)}))
 
         # --------------------------
@@ -1671,7 +1671,7 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre-opt False.")
 
-        # NEW: Align all inputs to the first, freeze-guided, if requested
+        # Align all inputs to the first structure, guided by freeze constraints, when requested
         if align:
             try:
                 click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")

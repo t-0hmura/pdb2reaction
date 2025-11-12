@@ -1,21 +1,24 @@
 # pdb2reaction/add_elem_info.py
 
 """
-Add or repair PDB element symbols (columns 77–78) in files that lack or have incomplete
-element fields.
+Add or repair PDB element symbols (columns 77–78) in files that lack or have
+incomplete element fields.
 
-- Reads a PDB with Biopython, sets `atom.element`, then writes with `PDBIO`.
-- Infers elements using both atom names and residue names (protein / nucleic acid / water / ions).
-- If no output path is given, the input file is overwritten in place.
-- NEW: Atoms that already have an element field in the input are left unchanged unless
-  `--overwrite` is specified.
+- Parse the input PDB with Biopython, assign ``atom.element``, and write via ``PDBIO``.
+- Infer elements using atom names and residue context (protein, nucleic acid, water,
+  ions).
+- Overwrite the input file when no output path is provided.
+- Preserve existing element annotations unless ``--overwrite`` is specified.
 
-Usage:
-  # As a standalone script
-  python add_elem_info.py input.pdb [-o fixed.pdb] [--overwrite]
+Usage
+-----
+Standalone script::
 
-  # As a pdb2reaction subcommand
-  pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
+    python add_elem_info.py input.pdb [-o fixed.pdb] [--overwrite]
+
+As a pdb2reaction subcommand::
+
+    pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
 """
 from __future__ import annotations
 
