@@ -12,7 +12,8 @@ pdb2reaction freq \
   --args-yaml ./args.yaml \
   --temperature 298.15 \
   --pressure 1.0 \
-  --dump False
+  --dump False \
+  --hessian-calc-mode FiniteDifference
 
 Sections that can be overridden via YAML:
   geom, calc, freq
@@ -28,6 +29,12 @@ Thermochemistry (default on):
 Notes:
 - Thermochemistry uses frequencies computed here (PHVA respecting freeze_atoms).
 - Pressure is specified in atm at CLI and converted to Pa internally.
+
+[CHANGES]
+- The UMA calculator now receives `freeze_atoms` when a Hessian is computed.
+- `hessian_calc_mode` can be specified via CLI/YAML (default "FiniteDifference").
+- Default `return_partial_hessian=True` so a reduced (active DOF) Hessian is used by default.
+- Frequency analysis now supports both full and already-reduced (active-block) Hessians.
 """
 
 from __future__ import annotations
@@ -177,11 +184,19 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
     to obtain frequencies (cm^-1) and mass-weighted eigenvectors (modes).
 
     If `freeze_idx` is provided (list of 0-based atom indices), perform
-    Partial Hessian Vibrational Analysis (PHVA):
-      1) build Hmw = M^{-1/2} H M^{-1/2}
-      2) take the active subspace by removing DOF of frozen atoms
-      3) perform TR projection **only in the active subspace** (always applied; works for 0/1/2 frozen atoms)
-      4) diagonalize and embed eigenvectors back to 3N by zero-filling frozen DOF
+    Partial Hessian Vibrational Analysis (PHVA). Supports two cases:
+
+      A) Full Hessian given (3N×3N):
+         1) build Hmw = M^{-1/2} H M^{-1/2}
+         2) take the active subspace by removing DOF of frozen atoms
+         3) perform TR projection **only in the active subspace** (always applied)
+         4) diagonalize and embed eigenvectors back to 3N by zero-filling frozen DOF
+
+      B) Already-reduced (active-block) Hessian given (3N_act×3N_act), e.g.
+         when UMA is called with return_partial_hessian=True:
+         1) mass-weight with **active** masses only
+         2) TR projection in the active space
+         3) diagonalize and embed back to 3N by zero-filling frozen DOF
 
     Returns:
       freqs_cm : (nmode,) numpy, negatives are imaginary
@@ -201,7 +216,6 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
             # Active atom indices
             frozen_set = set(int(i) for i in freeze_idx if 0 <= int(i) < N)
             active_idx = [i for i in range(N) if i not in frozen_set]
-
             n_active = len(active_idx)
             if n_active == 0:
                 # All atoms are frozen → no modes
@@ -209,41 +223,76 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 modes = torch.zeros((0, 3 * N), dtype=H_t.dtype, device=H_t.device)
                 return freqs_cm, modes
 
-            # Mass-weighted Hessian (full, in-place) → active-DOF submatrix
-            H_t = _mass_weighted_hessian(H_t, masses_au_t)
-            mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
-            for i in frozen_set:
-                mask_dof[3 * i:3 * i + 3] = False
-            H_t = H_t[mask_dof][:, mask_dof]
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            # 判定: 受け取った Hessian が既に active-block（3N_act×3N_act）かどうか
+            expected_act_dim = 3 * n_active
+            is_partial = (H_t.shape[0] == expected_act_dim and H_t.shape[1] == expected_act_dim)
 
-            # Active-only TR basis and projection in mass-weighted space (always applied; in-place)
-            coords_act = coords_bohr_t[active_idx, :]
-            masses_act = masses_au_t[active_idx]
-            Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
-            Qt = Q.T
+            if is_partial:
+                # --- Case B: 既にアクティブ部分空間の Hessian が渡されている ---
+                # active の質量だけで質量重み → active 空間で TR 投影 → 固有分解 → full へ埋め戻し
+                masses_act = masses_au_t[active_idx]
+                coords_act = coords_bohr_t[active_idx, :]
 
-            QtH = Qt @ H_t
-            H_t.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
+                # in-place mass-weight (active masses)
+                Hmw_act = _mass_weighted_hessian(H_t, masses_act)
 
-            H_t.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
+                # TR basis and projection in the active space
+                Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
+                Qt = Q.T
+                QtH = Qt @ Hmw_act
+                Hmw_act.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
+                Hmw_act.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
+                QtHQ = QtH @ Q
+                Hmw_act.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
 
-            QtH = QtH @ Q
-            H_t.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
+                # Diagonalize (lower triangle)
+                omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="L")
+                sel = torch.abs(omega2) > tol
+                omega2 = omega2[sel]
+                Vsub = Vsub[:, sel]  # (3N_act, nsel)
 
-            del Q, Qt, QtH
+                # Embed to full 3N (mass-weighted eigenvectors)
+                modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=H_t.dtype, device=H_t.device)
+                mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
+                for i in frozen_set:
+                    mask_dof[3 * i:3 * i + 3] = False
+                modes[:, mask_dof] = Vsub.T
+                del Q, Qt, QtH, QtHQ, mask_dof
 
-            # No symmetrization; diagonalize using lower triangle only
-            omega2, Vsub = torch.linalg.eigh(H_t, UPLO="L")
+            else:
+                # --- Case A: フル Hessian（3N×3N）が渡されている従来経路 ---
+                # Mass-weighted (full) → active ブロック抽出 → active 空間で TR 投影
+                H_t = _mass_weighted_hessian(H_t, masses_au_t)
+                mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
+                for i in frozen_set:
+                    mask_dof[3 * i:3 * i + 3] = False
+                H_t = H_t[mask_dof][:, mask_dof]
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
-            sel = torch.abs(omega2) > tol
-            omega2 = omega2[sel]
-            Vsub = Vsub[:, sel]  # (3N_act, nsel)
+                coords_act = coords_bohr_t[active_idx, :]
+                masses_act = masses_au_t[active_idx]
+                Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
+                Qt = Q.T
 
-            modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=H_t.dtype, device=H_t.device)
-            modes[:, mask_dof] = Vsub.T  # (nsel, 3N_act) → place into active DOF
-            del Vsub, mask_dof
+                QtH = Qt @ H_t
+                H_t.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
+
+                H_t.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
+
+                QtH = QtH @ Q
+                H_t.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
+
+                # No symmetrization; diagonalize using lower triangle only
+                omega2, Vsub = torch.linalg.eigh(H_t, UPLO="L")
+
+                sel = torch.abs(omega2) > tol
+                omega2 = omega2[sel]
+                Vsub = Vsub[:, sel]  # (3N_act, nsel)
+
+                modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=H_t.dtype, device=H_t.device)
+                modes[:, mask_dof] = Vsub.T  # (nsel, 3N_act) → place into active DOF
+                del Vsub, mask_dof, Q, Qt, QtH
 
         else:
             # Legacy behavior: TR-projection in full DOF → diagonalization (both in-place; no symmetrization)
@@ -281,8 +330,9 @@ def _mw_mode_to_cart(mode_mw_3N_t: torch.Tensor,
 
 
 def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> torch.Tensor:
-    """UMA calculator producing analytic Hessian as torch.Tensor in Hartree/Bohr^2 (3N,3N)."""
+    """UMA calculator producing Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square)."""
     kw = dict(uma_kwargs or {})
+    # Ensure torch tensor output & honor hessian mode / freeze / partial-return flags from cfg
     kw["out_hess_torch"] = True
     calc = uma_pysis(**kw)
     H_t = calc.get_hessian(geom.atoms, geom.coords)["hessian"].to(device=device)
@@ -387,6 +437,10 @@ CALC_KW = {
     "radius": None,           # Optional[float] (Å)
     "r_edges": False,         # bool
     "out_hess_torch": True,   # Required: return Hessian as a torch tensor
+
+    "hessian_calc_mode": "FiniteDifference",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
+    "return_partial_hessian": True,           # default on for freq: active-block Hessian
+    # "freeze_atoms" is not fixed here; it will be injected from GEOM_KW at runtime
 }
 
 # Freq writer defaults
@@ -446,6 +500,11 @@ THERMO_KW = {
               help="Pressure (atm) for thermochemistry summary.")
 @click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
               help="When True, write 'thermoanalysis.yaml' under out-dir.")
+# ---- NEW: Hessian calc mode on CLI ----
+@click.option("--hessian-calc-mode",
+              type=click.Choice(["FiniteDifference", "Analytical"]),
+              default=None,
+              help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 def cli(
     input_path: Path,
     charge: int,
@@ -461,6 +520,8 @@ def cli(
     temperature: float,
     pressure_atm: float,
     dump: bool,
+    # hessian
+    hessian_calc_mode: Optional[str],
 ) -> None:
     time_start = time.perf_counter()
     
@@ -485,6 +546,9 @@ def cli(
     # CLI overrides
     calc_cfg["charge"] = int(charge)
     calc_cfg["spin"]   = int(spin)
+    if hessian_calc_mode is not None:
+        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+
     freq_cfg["max_write"]     = int(max_write)
     freq_cfg["amplitude_ang"] = float(amplitude_ang)
     freq_cfg["n_frames"]      = int(n_frames)
@@ -536,11 +600,17 @@ def cli(
     # 3) Compute Hessian & modes
     # --------------------------
     try:
+        # Inject freeze list into UMA calc config for Hessian construction,
+        # and ensure partial Hessian return is default True (can be overridden by YAML).
+        freeze_list = list(geom_cfg.get("freeze_atoms", []))
+        calc_cfg = dict(calc_cfg)  # copy before mutation
+        calc_cfg["freeze_atoms"] = freeze_list
+        calc_cfg.setdefault("return_partial_hessian", True)
+
         H_t = _calc_full_hessian_torch(geometry, calc_cfg, device)
         coords_bohr = geometry.coords.reshape(-1, 3)
 
-        # PHVA: use the freeze list to carve out the active subspace and apply TR projection there
-        freeze_list = list(geom_cfg.get("freeze_atoms", []))
+        # PHVA: use the freeze list to carve out the active subspace and apply TR projection there.
         freqs_cm, modes_mw = _frequencies_cm_and_modes(
             H_t,
             geometry.atomic_numbers,

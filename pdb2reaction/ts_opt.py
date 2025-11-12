@@ -13,6 +13,7 @@ pdb2reaction ts_opt \
   --dump False \
   --out-dir ./result_ts_opt/ \
   --args-yaml ./args.yaml
+  [--hessian-calc-mode FiniteDifference|Analytical]
 
 Where:
 - --opt-mode light  -> HessianDimer (dimer-based TS search with periodic Hessian updates)
@@ -37,12 +38,10 @@ Additionally:
       dimer: {...}   # kwargs to pysisyphus.calculators.Dimer.Dimer
       lbfgs: {...}   # kwargs to pysisyphus.optimizers.LBFGS.LBFGS
 
-[NEW in this version]
 - PHVA (active DOF subspace) + TR projection with in-place operations for VRAM saving,
   following freq.py: freeze_atoms are respected in HessianDimer (light) mode.
 - For root==0, prefer torch.lobpcg for the smallest eigenpair (fallback to eigh).
 
-[PERF UPDATE]
 - Flatten loop reworked to avoid repeated *exact* Hessian evaluations.
   Strategy:
     1) After the normal Dimer loop, compute one *exact* Hessian and extract the
@@ -61,6 +60,11 @@ Additionally:
        Repeat until only one imaginary remains (within threshold), then do a single
        final *exact* Hessian for the frequency analysis.
   The reference Hessian stored in memory is **only the active-DOF block** as requested.
+
+- The UMA calculator now receives `freeze_atoms` explicitly from ts_opt.
+- You can choose the Hessian evaluation mode with `--hessian-calc-mode` (Analytical or FiniteDifference).
+- In ts_opt, UMA is called with `return_partial_hessian=True` by default, so the calculator
+  returns an active-DOF (PHVA) Hessian block when `freeze_atoms` are present.
 """
 
 from __future__ import annotations
@@ -327,8 +331,11 @@ def _mode_direction_by_root(H_t: torch.Tensor,
 
 
 def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> torch.Tensor:
-    """UMA calculator producing analytic Hessian as torch.Tensor in Hartree/Bohr^2 (3N,3N)."""
-    calc = uma_pysis(out_hess_torch=True, **uma_kwargs)
+    """UMA calculator producing (possibly partial) Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act)."""
+    # respect caller's out_hess_torch preference (force True here)
+    kw = dict(uma_kwargs or {})
+    kw["out_hess_torch"] = True
+    calc = uma_pysis(**kw)
     H_t = calc.get_hessian(geom.atoms, geom.coords)["hessian"].to(device=device)
     return H_t
 
@@ -589,7 +596,8 @@ def _modes_from_Hact_embedded(H_act: torch.Tensor,
 
         # Embed to full 3N (mass-weighted eigenvectors)
         modes_full = torch.zeros((Vsub.shape[1], 3 * N), dtype=Hmw.dtype, device=device)
-        mask_dof = _active_mask_dof(N, list(set(range(N)) - set(active_idx)))  # False on frozen, True on active
+        # mask: True for active DOF
+        mask_dof = _active_mask_dof(N, list(set(range(N)) - set(active_idx)))  # give frozen list
         mask_t = torch.as_tensor(mask_dof, dtype=torch.bool, device=device)
         modes_full[:, mask_t] = Vsub.T
         # frequencies
@@ -730,6 +738,8 @@ class HessianDimer:
       - [PERF] Flatten loop now uses a *Bofill*-updated active Hessian block, so the
         expensive *exact* Hessian is computed only once before the flatten loop and
         once at the very end for the final frequency analysis.
+      - [UPDATE] UMA calculator kwargs now accept `freeze_atoms`, `hessian_calc_mode`,
+        and default to `return_partial_hessian=True` (active-block Hessian when frozen).
     """
 
     def __init__(self,
@@ -864,12 +874,22 @@ class HessianDimer:
                 break
             # Update mode from Hessian (respect freeze atoms via PHVA)
             H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+            N = len(self.geom.atomic_numbers)
             coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
                                             dtype=H_t.dtype, device=H_t.device)
-            mode_xyz = _mode_direction_by_root(
-                H_t, coords_bohr_t, self.masses_au_t,
-                root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-            )
+            # full vs active-block Hessian
+            if H_t.size(0) == 3 * N:
+                mode_xyz = _mode_direction_by_root(
+                    H_t, coords_bohr_t, self.masses_au_t,
+                    root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
+                )
+            else:
+                # partial (active) Hessian returned by UMA
+                active_idx = _active_indices(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
+                mode_xyz = _mode_direction_by_root_from_Hact(
+                    H_t, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                    self.masses_au_t, active_idx, self.device, root=self.root
+                )
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
             del H_t, coords_bohr_t, mode_xyz
             if torch.cuda.is_available():
@@ -983,20 +1003,31 @@ class HessianDimer:
         if self.dump and self.optim_all_path.exists():
             self.optim_all_path.unlink()
 
-        # (1) Initial Hessian → pick direction by `root` (PHVA + in-place)
+        N = len(self.geom.atomic_numbers)
+        active_idx = _active_indices(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
+        mask_dof = _active_mask_dof(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
+
+        # (1) Initial Hessian → pick direction by `root`
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
         coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
-        errL, errR, r = _self_check_tr_projection(
-            H_t, coords_bohr_t, self.masses_au_t,
-            freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-        )
-        print(f"[CHECK] ||Q^T Hmw_proj||/||Hmw_proj|| = {errL:.3e}, ||Hmw_proj Q||/||Hmw_proj|| = {errR:.3e}, rank={r}")
 
-        mode_xyz = _mode_direction_by_root(
-            H_t, coords_bohr_t, self.masses_au_t,
-            root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-        )
+        if H_t.size(0) == 3 * N:
+            errL, errR, r = _self_check_tr_projection(
+                H_t, coords_bohr_t, self.masses_au_t,
+                freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
+            )
+            print(f"[CHECK] ||Q^T Hmw_proj||/||Hmw_proj|| = {errL:.3e}, ||Hmw_proj Q||/||Hmw_proj|| = {errR:.3e}, rank={r}")
+            mode_xyz = _mode_direction_by_root(
+                H_t, coords_bohr_t, self.masses_au_t,
+                root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
+            )
+        else:
+            print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+            mode_xyz = _mode_direction_by_root_from_Hact(
+                H_t, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                self.masses_au_t, active_idx, self.device, root=self.root
+            )
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
         del mode_xyz, coords_bohr_t, H_t
         if torch.cuda.is_available():
@@ -1017,15 +1048,22 @@ class HessianDimer:
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
         coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
-        errL, errR, r = _self_check_tr_projection(
-            H_t, coords_bohr_t, self.masses_au_t,
-            freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-        )
-        print(f"[CHECK] ||Q^T Hmw_proj||/||Hmw_proj|| = {errL:.3e}, ||Hmw_proj Q||/||Hmw_proj|| = {errR:.3e}, rank={r}")
-        mode_xyz = _mode_direction_by_root(
-            H_t, coords_bohr_t, self.masses_au_t,
-            root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-        )
+        if H_t.size(0) == 3 * N:
+            errL, errR, r = _self_check_tr_projection(
+                H_t, coords_bohr_t, self.masses_au_t,
+                freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
+            )
+            print(f"[CHECK] ||Q^T Hmw_proj||/||Hmw_proj|| = {errL:.3e}, ||Hmw_proj Q||/||Hmw_proj|| = {errR:.3e}, rank={r}")
+            mode_xyz = _mode_direction_by_root(
+                H_t, coords_bohr_t, self.masses_au_t,
+                root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
+            )
+        else:
+            print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+            mode_xyz = _mode_direction_by_root_from_Hact(
+                H_t, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                self.masses_au_t, active_idx, self.device, root=self.root
+            )
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
         del mode_xyz, coords_bohr_t, H_t
         if torch.cuda.is_available():
@@ -1034,17 +1072,18 @@ class HessianDimer:
         print("Normal Dimer Loop...")
         self._dimer_loop(self.thresh)
 
-        # (4) Flatten loop — *reduced* exact Hessian calls via Bofill updates (active DOF only)
+        # (4) Flatten Loop — *reduced* exact Hessian calls via Bofill updates (active DOF only)
         print("Flatten Loop with Bofill-updated active Hessian...")
-        N = len(self.geom.atomic_numbers)
-        active_idx = _active_indices(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
-        mask_dof = _active_mask_dof(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
-        total_3N = 3 * N
 
-        # (4.1) One exact Hessian at loop start → take active block
-        H_full_exact = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
-        H_act = _extract_active_block(H_full_exact, mask_dof)  # torch (3N_act,3N_act)
-        del H_full_exact
+        # (4.1) One exact Hessian at loop start → active block準備
+        H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+        if H_any.size(0) == 3 * N:
+            # full → extract active
+            H_act = _extract_active_block(H_any, mask_dof)  # torch (3N_act,3N_act)
+        else:
+            # UMA already returned active-block Hessian
+            H_act = H_any
+        del H_any
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -1113,16 +1152,20 @@ class HessianDimer:
         atoms_final = Atoms(self.geom.atoms, positions=(self.geom.coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
         write(final_xyz, atoms_final)
 
-        # Final Hessian → imaginary mode animation (PHVA/in-place)
+        # Final Hessian → imaginary mode animation
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
-        coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
-                                        dtype=H_t.dtype, device=H_t.device)
+        if H_t.size(0) == 3 * N:
+            freqs_cm, modes = _frequencies_cm_and_modes(
+                H_t, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3), self.device,
+                freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
+            )
+        else:
+            freqs_cm, modes = _modes_from_Hact_embedded(
+                H_t, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3),
+                active_idx, self.device
+            )
 
-        freqs_cm, modes = _frequencies_cm_and_modes(
-            H_t, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3), self.device,
-            freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-        )
-        del H_t, coords_bohr_t
+        del H_t
         neg_idx = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
         if len(neg_idx) == 0:
             print("[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1)." % (freqs_cm.min(),))
@@ -1171,6 +1214,10 @@ CALC_KW = {
     "radius": None,           # Optional[float], cutoff radius (Å)
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
     "out_hess_torch": True,   # bool, RSIRFO sets this to True for torch Hessian; HessianDimer sets per-call
+    # --- NEW: Hessian interfaces to UMA ---
+    "hessian_calc_mode": "FiniteDifference",  # "Analytical" | "FiniteDifference"
+    "return_partial_hessian": True,           # tsopt はデフォルトで Active-DOF の部分 Hessian を受け取る
+    # freeze_atoms は geom から CLI/YAML を通じて下で注入
 }
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
@@ -1327,6 +1374,12 @@ RSIRFO_KW = {
     default=None,
     help="YAML with extra args (sections: geom, calc, opt, dimer, rsirfo).",
 )
+@click.option(
+    "--hessian-calc-mode",
+    type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
+    default=None,
+    help="Choose UMA Hessian evaluation mode (overrides YAML/calc.hessian_calc_mode).",
+)
 def cli(
     input_path: Path,
     charge: int,
@@ -1337,6 +1390,7 @@ def cli(
     dump: bool,
     out_dir: str,
     args_yaml: Optional[Path],
+    hessian_calc_mode: Optional[str],
 ) -> None:
     time_start = time.perf_counter()
 
@@ -1369,6 +1423,10 @@ def cli(
     opt_cfg["dump"]       = bool(dump)
     opt_cfg["out_dir"]    = out_dir
 
+    # Hessian mode override from CLI
+    if hessian_calc_mode is not None:
+        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
         try:
@@ -1379,6 +1437,10 @@ def cli(
         merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
             click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+
+    # ---- Paess freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian) ----
+    if "freeze_atoms" in geom_cfg:
+        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
     kind = _norm_opt_mode(opt_mode)
     out_dir_path = Path(opt_cfg["out_dir"]).resolve()
@@ -1408,7 +1470,7 @@ def cli(
         if kind == "light":
             # HessianDimer runner construction
             uma_kwargs_for_sd = dict(calc_cfg)
-            # device comes from calc_cfg; out_hess_torch is set per-call
+            # device comes from calc_cfg; out_hess_torch/return_partial_hessian handled in wrapper
             runner = HessianDimer(
                 fn=str(input_path),
                 out_dir=str(out_dir_path),
@@ -1464,14 +1526,13 @@ def cli(
             coord_kwargs.pop("coord_type", None)
             geometry = geom_loader(input_path, coord_type=coord_type, **coord_kwargs)
 
-            calc_builder_or_instance = uma_pysis(**calc_cfg)
+            calc_builder_or_instance = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / return_partial_hessian
             try:
                 geometry.set_calculator(calc_builder_or_instance())
             except TypeError:
                 geometry.set_calculator(calc_builder_or_instance)
 
             # Construct RSIRFO optimizer
-            # Pull Optimizer base (opt_cfg) plus RSIRFO-specific
             rs_args = dict(rsirfo_cfg)
             opt_base = dict(opt_cfg)
             opt_base["out_dir"] = str(out_dir_path)
@@ -1514,17 +1575,25 @@ def cli(
                     except Exception as e:
                         click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
 
-            # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place) ---
+            # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
             geometry.set_calculator(None)
             uma_kwargs_for_heavy = dict(calc_cfg)
             uma_kwargs_for_heavy["out_hess_torch"] = True
             device = _torch_device(calc_cfg.get("device", "auto"))
 
             H_t = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
-            freqs_cm, modes = _frequencies_cm_and_modes(
-                H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), device,
-                freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
-            )
+            N = len(geometry.atomic_numbers)
+            if H_t.size(0) == 3 * N:
+                freqs_cm, modes = _frequencies_cm_and_modes(
+                    H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), device,
+                    freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
+                )
+            else:
+                act_idx = _active_indices(N, list(geom_cfg.get("freeze_atoms", [])))
+                freqs_cm, modes = _modes_from_Hact_embedded(
+                    H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), act_idx, device
+                )
+
             neg_idx = np.where(freqs_cm < -5.0)[0]  # use same threshold default as HessianDimer
             if len(neg_idx) == 0:
                 click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)

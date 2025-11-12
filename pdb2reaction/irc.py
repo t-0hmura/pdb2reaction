@@ -14,6 +14,7 @@ Example
     --forward True \
     --backward False \
     --out-dir "./result_irc/" \
+    --hessian-calc-mode FiniteDifference \
     --args-yaml args.yaml
 
 Overview
@@ -41,7 +42,8 @@ Optional YAML layout
     max_neigh: null
     radius: null
     r_edges: false
-    out_hess_torch: false
+    out_hess_torch: true
+    hessian_calc_mode: "FiniteDifference"  # or "Analytical"
 
   irc:
     # Base IRC settings
@@ -73,7 +75,7 @@ Notes
 -----
 * CLI arguments override values loaded from YAML (``charge``/``spin``,
   ``step_length`` via ``--step-size``, ``max_cycles`` via ``--max-cycles``,
-  ``root``, ``forward``/``backward``, and ``out_dir``).
+  ``root``, ``forward``/``backward``, ``out_dir`` and ``hessian_calc_mode``).
 * UMA options are passed directly to :func:`pdb2reaction.uma_pysis.uma_pysis`.
 """
 
@@ -120,6 +122,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "radius": None,           # Å
     "r_edges": False,
     "out_hess_torch": True,   # IRC supports Hessian input on the GPU
+    "hessian_calc_mode": "FiniteDifference",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
 }
 
 IRC_KW_DEFAULT: Dict[str, Any] = {
@@ -187,6 +190,12 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
 @click.option("--backward", type=bool, default=None, help="Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly.")
 @click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
+    "--hessian-calc-mode",
+    type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
+    default=None,
+    help="How UMA builds the Hessian (Analytical or FiniteDifference); overrides calc.hessian_calc_mode from YAML.",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -202,6 +211,7 @@ def cli(
     forward: Optional[bool],
     backward: Optional[bool],
     out_dir: str,
+    hessian_calc_mode: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
     try:
@@ -229,6 +239,10 @@ def cli(
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
 
+        if hessian_calc_mode is not None:
+            # pass through exactly as chosen; uma_pysis normalizes internally
+            calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+
         if max_cycles is not None:
             irc_cfg["max_cycles"] = int(max_cycles)
         if step_size is not None:
@@ -241,6 +255,10 @@ def cli(
             irc_cfg["backward"] = bool(backward)
         if out_dir:
             irc_cfg["out_dir"] = str(out_dir)
+
+        # Ensure the calculator receives the freeze list used by geometry
+        #      (so FD Hessian can skip frozen DOF, etc.)
+        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
         out_dir_path = Path(irc_cfg["out_dir"]).resolve()
         out_dir_path.mkdir(parents=True, exist_ok=True)
