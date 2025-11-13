@@ -128,7 +128,12 @@ from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignore
 
 # local helpers from pdb2reaction
-from .uma_pysis import uma_pysis
+from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .opt import (
+    OPT_BASE_KW as _OPT_BASE_KW,
+    LBFGS_KW as _LBFGS_KW,
+    RFO_KW as _RFO_KW,
+)
 from .utils import (
     convert_xyz_to_pdb,
     freeze_links as detect_freeze_links,
@@ -1173,59 +1178,16 @@ class HessianDimer:
 # ===================================================================
 
 # Geometry defaults
-GEOM_KW = {
-    "coord_type": "cart",     # str, coordinate representation for geom_loader ("cart" recommended here)
-    "freeze_atoms": [],       # list[int], 0-based indices to freeze
-}
+GEOM_KW = dict(GEOM_KW_DEFAULT)
 
 # UMA calculator defaults
-CALC_KW = {
-    # Charge and multiplicity
-    "charge": 0,              # int, total charge
-    "spin": 1,                # int, multiplicity (2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",     # str, UMA pretrained model ID
-    "task_name": "omol",      # str, dataset/task tag carried into UMA's AtomicData
-
-    # Device & graph construction
-    "device": "auto",         # str, "cuda" | "cpu" | "auto"
-    "max_neigh": None,        # Optional[int], override model's neighbor cap
-    "radius": None,           # Optional[float], cutoff radius (Å)
-    "r_edges": False,         # bool, store edge vectors in graph (UMA option)
-    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (RSIRFO expects GPU Hessian when available)
-
-    # Hessian interfaces to UMA
-    "hessian_calc_mode": "Analytical",        # str, "Analytical" | "FiniteDifference"
-    "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block from UMA
-    # freeze_atoms is injected below from the geometry CLI/YAML configuration
-}
+CALC_KW = dict(_UMA_CALC_KW)
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
-OPT_BASE_KW = {
-    "thresh": "gau",          # str, convergence preset: "gau_loose"|"gau"|"gau_tight"|"gau_vtight"|"baker"|"never"
-    "max_cycles": 10000,      # int, hard cap
-    "print_every": 1,         # int, logging cadence
-    "min_step_norm": 1e-8,    # float, if ||step|| < this and assert_min_step, raise
-    "assert_min_step": True,  # bool, enforce min_step_norm check
-
-    # Convergence criteria toggles
-    "rms_force": None,        # Optional[float], override RMS(F) threshold (None → preset)
-    "rms_force_only": False,  # bool
-    "max_force_only": False,  # bool
-    "force_only": False,      # bool
-
-    # Extra mechanisms (not used by inner LBFGS unless supported)
-    "converge_to_geom_rms_thresh": 0.05,  # float, RMSD-to-reference threshold (Å)
-    "overachieve_factor": 0.0,           # float, treat thresholds/this factor as convergence target
-    "check_eigval_structure": False,     # bool, ensure expected Hessian signature (TS search)
-
-    # Dumping / restart
-    "dump": False,            # bool, write trajectory dumps
-    "dump_restart": False,    # bool | int, write restart YAML every N cycles (False disables)
-    "prefix": "",            # str, file name prefix
-    "out_dir": "./result_ts_opt/",  # str, output directory for TS optimization artifacts
-}
+OPT_BASE_KW = dict(_OPT_BASE_KW)
+OPT_BASE_KW.update({
+    "out_dir": "./result_ts_opt/",
+})
 
 DIMER_KW = {
     # --- Geometry / length ---
@@ -1263,28 +1225,11 @@ DIMER_KW = {
 }
 
 # ---------- Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW ----------
-LBFGS_TS_KW = {
-    **OPT_BASE_KW,
-
-    # History / memory
-    "keep_last": 7,                   # int, number of (s, y) pairs
-
-    # Preconditioner / initial scaling
-    "beta": 1.0,                      # float, β in -(H + βI)^{-1} g
-    "gamma_mult": False,              # bool, estimate β from previous cycle (Nocedal 7.20)
-
-    # Step-size control
-    "max_step": 0.30,                 # float, max component magnitude of step (Bohr, working coords)
-    "control_step": True,             # bool, scale step to satisfy max_component ≤ max_step
-
-    # Safeguards & line search
-    "double_damp": True,              # bool, ensure s·y > 0
-    "line_search": False,             # bool, polynomial line search on last step (off by default)
-
-    # Regularized L-BFGS (μ_reg)
-    "mu_reg": None,                   # Optional[float], initial regularization; if set, disables double_damp etc.
-    "max_mu_reg_adaptions": 10,       # int, max trial steps for μ adaptation
-}
+LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
+LBFGS_TS_KW.update({
+    # TS optimization disables the polynomial line search by default
+    "line_search": False,
+})
 
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
@@ -1303,25 +1248,21 @@ hessian_dimer_KW = {
 }
 
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
-RSIRFO_KW = {
+RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
+RSIRFO_KW.update({
     "roots": [0],                # list[int], mode indices to follow uphill
     "hessian_ref": None,        # Optional[Path], reference Hessian file (HDF5)
     "rx_modes": None,           # Optional[Sequence], reaction-mode definitions for projection
     "prim_coord": None,         # Optional[Sequence[int]], primary coordinates for monitoring
     "rx_coords": None,          # Optional[Sequence[int]], reaction coordinates for monitoring
-    "hessian_init": "calc",    # str, initial Hessian source ("calc" = calculator)
-    "hessian_update": "bofill", # str, Hessian update strategy
-    "hessian_recalc": 100,      # int, recalc exact Hessian every N cycles (None disables)
-    "hessian_recalc_adapt": 2.0,# float, adapt recalc interval by this factor on failure
+    "hessian_update": "bofill", # str, Hessian update strategy (override base "bfgs")
     "hessian_recalc_reset": True,# bool, reset recalc counter after exact Hessian
-    "max_micro_cycles": 50,     # int, micro-iterations per macro cycle
-    "trust_radius": 0.30,       # float, trust radius (Bohr)
-    "trust_max": 0.30,          # float, maximum trust radius (Bohr)
+    "max_micro_cycles": 50,     # int, micro-iterations per macro cycle (heavier than base)
     "augment_bonds": False,     # bool, augment reaction path based on bond analysis
     "min_line_search": False,   # bool, enforce minimum line-search step
     "max_line_search": False,   # bool, enforce maximum line-search step
     "assert_neg_eigval": False, # bool, ensure a negative eigenvalue at convergence
-}
+})
 
 
 # ===================================================================

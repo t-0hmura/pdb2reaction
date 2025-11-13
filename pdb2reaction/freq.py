@@ -91,7 +91,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
-from .uma_pysis import uma_pysis
+from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -492,35 +492,10 @@ def _write_mode_trj_and_pdb(geom,
 # ===================================================================
 
 # Geometry defaults
-GEOM_KW = {
-    "coord_type": "cart",     # str, coordinate representation for geom_loader (Cartesian recommended)
-    "freeze_atoms": [],       # list[int], 0-based atom indices to freeze during UMA/Freq runs
-}
+GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator defaults
-CALC_KW = {
-    # Charge and multiplicity
-    "charge": 0,              # int, total charge of the structure
-    "spin": 1,                # int, multiplicity (= 2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",     # str, UMA pretrained model identifier
-    "task_name": "omol",      # str, UMA dataset/task tag stored in AtomicData
-
-    # Device & graph construction
-    "device": "auto",         # str, "cuda" | "cpu" | "auto"
-    "max_neigh": None,        # Optional[int], override model neighbor cap
-    "radius": None,           # Optional[float], cutoff radius (Å) for neighbor graph
-    "r_edges": False,         # bool, include edge vectors in the UMA graph
-
-    # Hessian output form
-    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (Freq needs torch space)
-
-    # Hessian computation controls
-    "hessian_calc_mode": "Analytical",    # str, "FiniteDifference" | "Analytical"
-    "return_partial_hessian": True,        # bool, return active-block Hessian (set freeze later)
-    # "freeze_atoms" is injected from GEOM_KW at runtime
-}
+# UMA calculator defaults (freeze_atoms merged later from geom config)
+CALC_KW = dict(_UMA_CALC_KW)
 
 # Freq writer defaults
 FREQ_KW = {

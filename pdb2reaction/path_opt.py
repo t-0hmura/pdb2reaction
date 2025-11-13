@@ -68,7 +68,7 @@ from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError
 
-from .uma_pysis import uma_pysis
+from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     convert_xyz_to_pdb,
     freeze_links as detect_freeze_links,
@@ -86,30 +86,14 @@ from .align_freeze_atoms import align_and_refine_sequence_inplace
 # -----------------------------------------------
 
 # Geometry (input handling)
-GEOM_KW: Dict[str, Any] = {
-    "coord_type": "cart",   # str, coordinate representation for geom_loader (GrowingString prefers Cartesian)
-    "freeze_atoms": [],     # list[int], 0-based atom indices to freeze
-}
+GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
 # UMA calculator settings
-CALC_KW: Dict[str, Any] = {
-    # Charge and multiplicity
-    "charge": 0,                 # int, total charge of the system
-    "spin": 1,                   # int, multiplicity (= 2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",        # str, UMA pretrained model identifier
-    "task_name": "omol",         # str, UMA dataset/task tag stored in AtomicData
-
-    # Device & graph construction
-    "device": "auto",            # str, "cuda" | "cpu" | "auto"
-    "max_neigh": None,           # Optional[int], override model's neighbor cap
-    "radius": None,              # Optional[float], cutoff radius (Å) for neighbor graph
-    "r_edges": False,            # bool, store edge vectors in the graph (UMA option)
-
-    # Hessian output form
-    "out_hess_torch": False,     # bool, True: return torch.Tensor Hessian on CUDA; False: numpy on CPU
-}
+CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
+CALC_KW.update({
+    # Growing string consumes numpy Hessians by default
+    "out_hess_torch": False,
+})
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {

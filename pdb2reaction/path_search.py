@@ -138,7 +138,13 @@ from pysisyphus.constants import AU2KCALPERMOL, BOHR2ANG
 from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
-from .uma_pysis import uma_pysis
+from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .path_opt import GS_KW as _PATH_GS_KW, STOPT_KW as _PATH_STOPT_KW
+from .opt import (
+    OPT_BASE_KW as _OPT_BASE_KW,
+    LBFGS_KW as _LBFGS_KW,
+    RFO_KW as _RFO_KW,
+)
 from .utils import (
     convert_xyz_to_pdb,
     freeze_links as detect_freeze_links,
@@ -158,109 +164,45 @@ from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 # -----------------------------------------------
 
 # Geometry (input handling)
-GEOM_KW: Dict[str, Any] = {
-    "coord_type": "cart",   # str, coordinate representation for geom_loader (GSM prefers Cartesian)
-    "freeze_atoms": [],     # list[int], 0-based atom indices to freeze
-}
+GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
 # UMA calculator settings
-CALC_KW: Dict[str, Any] = {
-    # Charge and multiplicity
-    "charge": 0,                 # int, total charge of the path search system
-    "spin": 1,                   # int, multiplicity (= 2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",        # str, UMA pretrained model identifier
-    "task_name": "omol",         # str, UMA dataset/task tag stored in AtomicData
-
-    # Device & graph construction
-    "device": "auto",            # str, "cuda" | "cpu" | "auto"
-    "max_neigh": None,           # Optional[int], override model neighbor cap
-    "radius": None,              # Optional[float], cutoff radius (Å) for neighbor graph
-    "r_edges": False,            # bool, include edge vectors in the UMA graph
-}
+CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
-GS_KW: Dict[str, Any] = {
-    "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
-    "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
-    "reparam_check": "rms",     # str, "rms" | "norm"; convergence metric after reparam
-    "reparam_every": 1,         # int, reparametrize every N steps while growing
-    "reparam_every_full": 1,    # int, reparametrize every N steps once fully grown
-    "param": "equi",            # str, "equi" (even spacing) | "energy" (energy-weighted spacing)
-    "max_micro_cycles": 10,     # int, micro-optimization cycles per macro iteration
-    "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
-    "climb": True,              # bool, enable climbing image on the first segment
-    "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": True,      # bool, estimate HEI tangent via Lanczos
-    "climb_fixed": False,       # bool, fix the HEI index instead of allowing movement
-    "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
-}
+GS_KW: Dict[str, Any] = dict(_PATH_GS_KW)
+GS_KW.update({
+    "max_nodes": 10,
+    "reparam_every_full": 1,
+    "climb_rms": 5e-4,
+    "climb_fixed": False,
+})
 
 # StringOptimizer (GSM optimization control)
-STOPT_KW: Dict[str, Any] = {
-    "type": "string",           # str, tag for bookkeeping / output labelling
-    "stop_in_when_full": 1000,  # int, allow N extra cycles after the string is fully grown
-    "align": False,             # bool, keep StringOptimizer alignment disabled (use external alignment)
-    "scale_step": "global",     # str, "global" | "per_image" scaling policy
-    "max_cycles": 1000,         # int, maximum macro cycles
-    "dump": False,              # bool, write optimizer trajectory
-    "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
-    "reparam_thresh": 1e-3,     # float, convergence threshold for reparametrization
-    "coord_diff_thresh": 0.0,   # float, tolerance for pruning near-duplicate images (0 disables)
-    "out_dir": "./result_path_search/",  # str, output directory for optimizer artifacts
-    "print_every": 1,           # int, status print frequency (cycles)
-}
+STOPT_KW: Dict[str, Any] = dict(_PATH_STOPT_KW)
+STOPT_KW.update({
+    "stop_in_when_full": 1000,
+    "max_cycles": 1000,
+    "out_dir": "./result_path_search/",
+})
 
 # Single‑structure optimization (common settings for LBFGS/RFO)
-SOPT_BASE_KW: Dict[str, Any] = {
-    "thresh": "gau",             # str, convergence preset (gau_loose|gau|...) for single-structure runs
-    "max_cycles": 10000,         # int, hard cap on optimization cycles
-    "print_every": 1,            # int, progress print frequency in cycles
-    "min_step_norm": 1e-8,       # float, minimum ||step|| before raising ZeroStepLength
-    "assert_min_step": True,     # bool, enforce the min_step_norm check
-    "dump": False,               # bool, write trajectory dumps
-    "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
-    "prefix": "",                # str, file name prefix for outputs
-    "out_dir": "./result_path_search/",  # str, output directory for single-structure runs
-}
+SOPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
+SOPT_BASE_KW.update({
+    "out_dir": "./result_path_search/",
+})
 
 # LBFGS settings
-LBFGS_KW: Dict[str, Any] = {
-    **SOPT_BASE_KW,
-    "keep_last": 7,              # int, number of (s, y) history pairs to retain
-    "beta": 1.0,                 # float, β shift in -(H + βI)^{-1} g
-    "gamma_mult": False,         # bool, estimate β from previous cycle (Nocedal Eq. 7.20)
-    "max_step": 0.30,            # float, max allowed component-wise step (Å/bohr depending on coords)
-    "control_step": True,        # bool, rescale step to satisfy |max component| <= max_step
-    "double_damp": True,         # bool, apply double damping safeguard for LBFGS updates
-    "line_search": True,         # bool, perform line search to refine step length
-    "mu_reg": None,              # Optional[float], diagonal regularization parameter
-    "max_mu_reg_adaptions": 10,  # int, limit on adaptive μ updates
-}
+LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
+LBFGS_KW.update({
+    "out_dir": "./result_path_search/",
+})
 
 # RFO settings
-RFO_KW: Dict[str, Any] = {
-    **SOPT_BASE_KW,
-    "trust_radius": 0.30,        # float, trust radius for the RSIRFO step
-    "trust_update": True,         # bool, adaptively update trust radius
-    "trust_min": 0.01,           # float, minimum trust radius
-    "trust_max": 0.30,           # float, maximum trust radius
-    "max_energy_incr": None,     # Optional[float], cap on acceptable energy increase
-    "hessian_update": "bfgs",    # str, Hessian update strategy
-    "hessian_init": "calc",      # str, initial Hessian source ("calc" = calculator)
-    "hessian_recalc": 100,       # int, recalc Hessian every N cycles
-    "hessian_recalc_adapt": 2.0, # float, adapt recalc interval by this factor on failure
-    "small_eigval_thresh": 1e-8, # float, eigenvalue magnitude treated as zero
-    "line_search": True,         # bool, perform line search for RSIRFO
-    "alpha0": 1.0,               # float, initial step length guess
-    "max_micro_cycles": 25,      # int, micro-iterations per macro cycle
-    "rfo_overlaps": False,       # bool, allow eigenvector overlaps (debug)
-    "gediis": False,             # bool, enable GEDIIS acceleration
-    "gdiis": True,               # bool, enable GDIIS acceleration
-    "gdiis_thresh": 2.5e-3,      # float, force threshold to activate GDIIS
-    "gediis_thresh": 1.0e-2,     # float, force threshold to activate GEDIIS
-}
+RFO_KW: Dict[str, Any] = dict(_RFO_KW)
+RFO_KW.update({
+    "out_dir": "./result_path_search/",
+})
 
 # Covalent‑bond change detection
 BOND_KW: Dict[str, Any] = {
