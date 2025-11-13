@@ -210,7 +210,7 @@ class uma_pysis(Calculator):
         max_neigh: Optional[int] = None,
         radius:    Optional[float] = None,
         r_edges:   bool = False,
-        hessian_calc_mode: str = "FiniteDifference",  # default: FD
+        hessian_calc_mode: str = "Analytical",  # default: Analytical
         freeze_atoms: Optional[Sequence[int]] = None, # atom indices (0-based)
         return_partial_hessian: bool = False,         # return active-DOF Hessian only
         # -------------------------------------------------------------------

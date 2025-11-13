@@ -14,7 +14,7 @@ Example
     --forward True \
     --backward False \
     --out-dir "./result_irc/" \
-    --hessian-calc-mode FiniteDifference \
+    --hessian-calc-mode Analytical \
     --args-yaml args.yaml
 
 Overview
@@ -43,7 +43,7 @@ Optional YAML layout
     radius: null
     r_edges: false
     out_hess_torch: true
-    hessian_calc_mode: "FiniteDifference"  # or "Analytical"
+    hessian_calc_mode: "Analytical" # or "FiniteDifference"
 
   irc:
     # Base IRC settings
@@ -122,7 +122,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "radius": None,           # Å
     "r_edges": False,
     "out_hess_torch": True,   # IRC supports Hessian input on the GPU
-    "hessian_calc_mode": "FiniteDifference",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
+    "hessian_calc_mode": "Analytical",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
 }
 
 IRC_KW_DEFAULT: Dict[str, Any] = {

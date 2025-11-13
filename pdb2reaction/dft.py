@@ -91,21 +91,6 @@ def _hartree_to_kcalmol(Eh: float) -> float:
     return float(Eh * HARTREE_TO_KCALMOL)
 
 
-def _maybe_enable_vv10(mf, xc: str) -> None:
-    """
-    Attempt to enable VV10 for "-v" functionals (e.g., wb97m-v).
-    If the GPU backend does not support nlc, print a warning and continue.
-    """
-    xcl = xc.lower()
-    if xcl.endswith("-v") or "vv10" in xcl:
-        try:
-            # PySCF style for VV10 nonlocal correlation
-            mf.nlc = "vv10"
-            # Use library defaults for parameters; users can override via args-yaml if needed
-        except Exception as e:
-            click.echo(f"[vv10] WARNING: Could not enable VV10 nonlocal correlation on the GPU backend: {e}", err=True)
-
-
 def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
     Compute atomic charges:
@@ -344,8 +329,11 @@ def cli(
         except Exception:
             pass
 
-        # Attempt to enable VV10 for "-v" functionals; ignore if unsupported on GPU
-        _maybe_enable_vv10(mf, xc)
+        # Enable VV10 for "-v" functionals
+        xcl = xc.lower()
+        if xcl.endswith("-v") or "vv10" in xcl:
+            # PySCF style for VV10 nonlocal correlation
+            mf.nlc = "vv10"
 
         # --------------------------
         # 5) Run SCF
@@ -388,7 +376,7 @@ def cli(
                 "atoms": atoms_meta,
                 "mulliken": charges["mulliken"],
                 "lowdin": charges["lowdin"],
-                "iao": charges["iao"],  # may be None
+                "iao": charges["iao"],
             },
         }
         (out_dir_path / "result.yaml").write_text(yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True))

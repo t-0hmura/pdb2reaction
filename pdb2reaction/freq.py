@@ -13,7 +13,7 @@ pdb2reaction freq \
   --temperature 298.15 \
   --pressure 1.0 \
   --dump False \
-  --hessian-calc-mode FiniteDifference
+  --hessian-calc-mode Analytical
 
 Configuration
 -------------
@@ -36,8 +36,8 @@ Thermochemistry
 Implementation notes
 --------------------
 - The UMA calculator receives ``freeze_atoms`` whenever a Hessian is evaluated.
-- ``--hessian-calc-mode`` selects between ``FiniteDifference`` (default) and
-  ``Analytical`` modes via CLI or YAML.
+- ``--hessian-calc-mode`` selects between ``FiniteDifference`` and
+  ``Analytical`` (default) modes via CLI or YAML.
 - ``return_partial_hessian`` defaults to ``True`` so PHVA produces a reduced
   active-degree-of-freedom Hessian when possible.
 - Both full Hessians and pre-reduced active blocks are accepted as inputs.
@@ -474,7 +474,7 @@ CALC_KW = {
     "r_edges": False,         # bool
     "out_hess_torch": True,   # Required: return Hessian as a torch tensor
 
-    "hessian_calc_mode": "FiniteDifference",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
+    "hessian_calc_mode": "Analytical",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
     "return_partial_hessian": True,           # default on for freq: active-block Hessian
     # "freeze_atoms" is not fixed here; it will be injected from GEOM_KW at runtime
 }
@@ -540,7 +540,7 @@ THERMO_KW = {
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"]),
               default=None,
-              help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
+              help="How UMA computes Hessian. Defaults to 'Analytical' (can also be set via YAML).")
 def cli(
     input_path: Path,
     charge: int,

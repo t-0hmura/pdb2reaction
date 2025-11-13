@@ -1207,7 +1207,7 @@ CALC_KW = {
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
     "out_hess_torch": True,   # bool, RSIRFO sets this to True for torch Hessian; HessianDimer sets per-call
     # --- Hessian interfaces to UMA ---
-    "hessian_calc_mode": "FiniteDifference",  # "Analytical" | "FiniteDifference"
+    "hessian_calc_mode": "Analytical",        # "Analytical" | "FiniteDifference"
     "return_partial_hessian": True,           # Default: receive the active-DOF Hessian block from UMA
     # freeze_atoms is injected below from the geometry CLI/YAML configuration
 }
