@@ -142,6 +142,7 @@ from .utils import (
     pretty_block,
     format_geom_for_echo,
     merge_freeze_atom_indices,
+    normalize_choice,
 )
 from .freq import (
     _torch_device,
@@ -153,13 +154,11 @@ from .freq import (
 )
 
 
-def _norm_opt_mode(mode: str) -> str:
-    m = (mode or "").strip().lower()
-    if m in ("light", "lbfgs", "dimer", "simple", "simpledimer", "hessian_dimer"):
-        return "light"
-    if m in ("heavy", "rfo", "rsirfo", "rs-i-rfo"):
-        return "heavy"
-    raise click.BadParameter(f"Unknown --opt-mode '{mode}'. Use: light|heavy")
+# Normalization helper
+_OPT_MODE_ALIASES = (
+    (("light", "lbfgs", "dimer", "simple", "simpledimer", "hessian_dimer"), "light"),
+    (("heavy", "rfo", "rsirfo", "rs-i-rfo"), "heavy"),
+)
 
 
 # ===================================================================
@@ -1360,7 +1359,12 @@ def cli(
     if "freeze_atoms" in geom_cfg:
         calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
-    kind = _norm_opt_mode(opt_mode)
+    kind = normalize_choice(
+        opt_mode,
+        param="--opt-mode",
+        alias_groups=_OPT_MODE_ALIASES,
+        allowed_hint="light|heavy",
+    )
     out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
     # Pretty-print config summary

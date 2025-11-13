@@ -11,6 +11,7 @@ Usage (API)
         convert_xyz_to_pdb,
         freeze_links,
         merge_freeze_atom_indices,
+        normalize_choice,
         pretty_block,
     )
 
@@ -26,6 +27,7 @@ Description
   - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Renders `(empty)` when `content` is empty.
   - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"` is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are left unchanged. Empty iterables become `""`.
   - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the updated list (in place).
+  - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalise CLI-style string options using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when no alias matches.
   - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged, non-dicts overwrite; returns `dst`.
   - `_get_mapping_section(cfg, path)`: Internal helper to resolve a nested mapping section. Returns a `dict` or `None`.
   - `apply_yaml_overrides(yaml_cfg, overrides)`: For each target dictionary and its candidate key paths, find the first existing path in `yaml_cfg` and apply it via `deep_update`. Centralizes repeated `yaml_cfg.get(...)`-style merging.
@@ -59,7 +61,7 @@ Notes:
 - `load_yaml_dict` uses `yaml.safe_load` and enforces a mapping at the YAML root; empty files yield `{}`.
 - `apply_yaml_overrides` tries candidate key paths in order and applies only the first existing mapping section per target.
 - `parse_pdb_coords` skips unparseable coordinate fields and considers only `ATOM`/`HETATM` lines.
-- Dependencies: PyYAML, ASE (`ase.io.read`/`write`), Plotly (graph objects). Ensure these are installed.
+- Dependencies: PyYAML, ASE (`ase.io.read`/`write`), Plotly (graph objects), Click (for CLI error reporting). Ensure these are installed.
 """
 
 import math
@@ -67,6 +69,7 @@ from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequenc
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple
 
+import click
 import yaml
 from ase.io import read, write
 import plotly.graph_objs as go
@@ -129,6 +132,25 @@ def merge_freeze_atom_indices(
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
+
+
+def normalize_choice(
+    value: str,
+    *,
+    param: str,
+    alias_groups: _Sequence[tuple[_Sequence[str], str]],
+    allowed_hint: str,
+) -> str:
+    """Normalise *value* using alias groups and raise ``click.BadParameter`` on failure."""
+
+    key = (value or "").strip().lower()
+    for aliases, canonical in alias_groups:
+        if any(key == alias.lower() for alias in aliases):
+            return canonical
+
+    hint = allowed_hint.strip()
+    detail = f" Allowed: {hint}." if hint else ""
+    raise click.BadParameter(f"Unknown value for {param} '{value}'.{detail}")
 
 
 def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:

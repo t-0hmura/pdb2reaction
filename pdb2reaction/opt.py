@@ -6,11 +6,11 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 
 Usage (CLI)
 -----
-    pdb2reaction opt -i INPUT -q CHARGE [-s SPIN] [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links/--no-freeze-links] [--dump] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
+    pdb2reaction opt -i INPUT -q CHARGE [-s SPIN] [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
 
 Examples::
     pdb2reaction opt -i input.pdb -q 0
-    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump --out-dir ./result_opt/ --args-yaml ./args.yaml
+    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump True --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----
@@ -18,8 +18,8 @@ Description
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy"); aliases: light|lbfgs|heavy|rfo.
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. Precedence: CLI > YAML > built-in defaults.
-- PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when `--dump` is set, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
-- Optional link-atom handling for PDBs: `--freeze-links` (default: enabled) detects link hydrogen parents and freezes those (0-based indices), merged with any `geom.freeze_atoms`.
+- PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
+- Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those (0-based indices), merged with any `geom.freeze_atoms`.
 
 Key options (YAML keys → meaning; defaults)
 - Geometry (`geom`):
@@ -42,7 +42,7 @@ Key options (YAML keys → meaning; defaults)
   - `max_cycles` 10000; `print_every` 1; `min_step_norm` 1e-8 with `assert_min_step` True.
   - Convergence toggles: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
   - Extras: `converge_to_geom_rms_thresh` (RMSD target), `overachieve_factor`, `check_eigval_structure` (TS mode checks).
-  - Bookkeeping: `dump` (write `optimization.trj`), `dump_restart` (YAML every N cycles), `prefix`, `out_dir` (default `./result_opt/`).
+  - Bookkeeping: `dump` (`--dump True` writes `optimization.trj`), `dump_restart` (YAML every N cycles), `prefix`, `out_dir` (default `./result_opt/`).
 
 - LBFGS-specific (`lbfgs`, used when `--opt-mode light|lbfgs`):
   - Memory: `keep_last` 7.
@@ -107,6 +107,7 @@ from .utils import (
     pretty_block,
     format_geom_for_echo,
     merge_freeze_atom_indices,
+    normalize_choice,
 )
 
 # -----------------------------------------------
@@ -227,18 +228,11 @@ RFO_KW = {
     "adapt_step_func": False,    # bool, switch to shifted-Newton on trust when PD & gradient is small
 }
 
-
-# -----------------------------------------------
-# Utilities
-# -----------------------------------------------
-
-def _norm_opt_mode(mode: str) -> str:
-    m = (mode or "").strip().lower()
-    if m in ("light", "lbfgs"):
-        return "lbfgs"
-    if m in ("heavy", "rfo"):
-        return "rfo"
-    raise click.BadParameter(f"Unknown value for --opt-mode '{mode}'. Allowed: light|lbfgs|heavy|rfo")
+# Normalization helpers
+_OPT_MODE_ALIASES = (
+    (("light", "lbfgs"), "lbfgs"),
+    (("heavy", "rfo"), "rfo"),
+)
 
 
 def _maybe_convert_outputs_to_pdb(
@@ -361,7 +355,12 @@ def cli(
                 click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
         # Normalize and select optimizer kind
-        kind = _norm_opt_mode(opt_mode)
+        kind = normalize_choice(
+            opt_mode,
+            param="--opt-mode",
+            alias_groups=_OPT_MODE_ALIASES,
+            allowed_hint="light|lbfgs|heavy|rfo",
+        )
 
         # Pretty-print the resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
