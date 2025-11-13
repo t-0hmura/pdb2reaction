@@ -134,7 +134,7 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as detect_freeze_links,
+    freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -197,7 +197,7 @@ _OPT_MODE_ALIASES = (
 
 def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
     try:
-        return list(detect_freeze_links(pdb_path))
+        return list(freeze_links(pdb_path))
     except Exception as e:
         click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
         return []

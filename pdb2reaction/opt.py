@@ -101,7 +101,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as detect_freeze_links,
+    freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -347,7 +347,7 @@ def cli(
         # Optionally infer "freeze_atoms" from link hydrogens in PDB
         if freeze_links and input_path.suffix.lower() == ".pdb":
             try:
-                detected = detect_freeze_links(input_path)
+                detected = freeze_links(input_path)
             except Exception as e:
                 click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
                 detected = []

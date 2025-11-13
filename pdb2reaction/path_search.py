@@ -147,7 +147,7 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as detect_freeze_links,
+    freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -229,7 +229,7 @@ def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
     Detect parent atoms of link hydrogens in a PDB; return 0‑based indices. Silent on failure.
     """
     try:
-        return detect_freeze_links(pdb_path)
+        return freeze_links(pdb_path)
     except Exception as e:
         click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
         return []
