@@ -45,23 +45,23 @@ specified atom pairs and the full structure is relaxed. This lean implementation
 the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead and speed.
 
 Scheduling
-  • For scan tuples [(i, j, target_Å)], compute the Å-space displacement Δ = target − current_distance_Å.
-  • Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
-  • Per-pair step width δ_k = Δ / N (Å).
-  • At step s (1..N), the temporary target is r_k(s) = r_k(0) + s · δ_k (Å).
-  • Relax the full structure under the harmonic wells for that step.
+  - For scan tuples [(i, j, target_Å)], compute the Å-space displacement Δ = target − current_distance_Å.
+  - Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
+  - Per-pair step width δ_k = Δ / N (Å).
+  - At step s (1..N), the temporary target is r_k(s) = r_k(0) + s · δ_k (Å).
+  - Relax the full structure under the harmonic wells for that step.
 
 Harmonic bias model
-  • E_bias = Σ ½ · k · (|r_i − r_j| − target_k)².
-  • k is provided in eV/Å² (CLI/YAML) and converted once to Hartree/Bohr² internally.
-  • Coordinates are in Bohr; the UMA base returns energies in Hartree and forces in Hartree/Bohr.
+  - E_bias = Σ ½ · k · (|r_i − r_j| − target_k)².
+  - k is provided in eV/Å² (CLI/YAML) and converted once to Hartree/Bohr² internally.
+  - Coordinates are in Bohr; the UMA base returns energies in Hartree and forces in Hartree/Bohr.
 
 Optional optimizations
-  • --preopt: Pre-optimize the initial structure **without bias** before the scan; writes
+  - --preopt: Pre-optimize the initial structure **without bias** before the scan; writes
     `preopt/result.xyz` (and `.pdb` if the input was PDB), then continues from that geometry.
-  • --endopt: After **each stage** completes its biased stepping, perform an additional **unbiased**
+  - --endopt: After **each stage** completes its biased stepping, perform an additional **unbiased**
     optimization of that stage’s final structure before writing outputs.
-  • For each stage, covalent-bond **formation/breaking** is reported between the stage’s first
+  - For each stage, covalent-bond **formation/breaking** is reported between the stage’s first
     structure and its final structure (the latter is the end-of-stage optimized result when
     `--endopt True`).
 
@@ -81,21 +81,21 @@ Base output directory (default `./result_scan/`):
 
 Notes:
 -----
-• UMA only: `uma_pysis` is the sole supported calculator.
-• Optimizers: `--opt-mode light|lbfgs` selects LBFGS; `--opt-mode heavy|rfo` selects RFOptimizer.
+- UMA only: `uma_pysis` is the sole supported calculator.
+- Optimizers: `--opt-mode light|lbfgs` selects LBFGS; `--opt-mode heavy|rfo` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
-• Indexing: (i, j) are 1-based by default; use `--zero-based` if your tuples are 0-based.
-• Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
+- Indexing: (i, j) are 1-based by default; use `--zero-based` if your tuples are 0-based.
+- Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
   k converted from eV/Å² to Hartree/Bohr².
-• Performance simplifications:
-  – Bias wrapper implements only the (elem, coords) two-argument API used by `pysisyphus.Geometry`
+- Performance simplifications:
+  - Bias wrapper implements only the (elem, coords) two-argument API used by `pysisyphus.Geometry`
     with `uma_pysis`; Geometry-style 1-arg fallbacks and broad shape inference are removed.
-  – Bias is computed directly in a.u. using a pre-converted k to avoid repeated unit conversions.
-  – Trajectories are accumulated only when `--dump` is True.
-  – Energy is not re-queried for per-frame annotation during the scan to avoid extra calls.
-• PDB convenience: With `--freeze-links` (default True for PDB), parent atoms of link hydrogens
+  - Bias is computed directly in a.u. using a pre-converted k to avoid repeated unit conversions.
+  - Trajectories are accumulated only when `--dump` is True.
+  - Energy is not re-queried for per-frame annotation during the scan to avoid extra calls.
+- PDB convenience: With `--freeze-links` (default True for PDB), parent atoms of link hydrogens
   are detected and frozen, and merged with any user-specified frozen atoms.
-• YAML: Additional arguments can be supplied via `--args-yaml` under sections:
+- YAML: Additional arguments can be supplied via `--args-yaml` under sections:
   `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, and `bond`.
 """
 
