@@ -5,9 +5,9 @@ Runs single-point DFT calculations using GPU4PySCF when available (falling back 
 
 ## Usage
 ```bash
-pdb2reaction dft -i INPUT -q CHARGE -s SPIN
-                 [--func-basis FUNC/BASIS]
-                 [--max-cycle N] [--conv-tol Eh] [--grid-level L]
+pdb2reaction dft -i INPUT -q CHARGE -s SPIN \
+                 [--func-basis "FUNC/BASIS"] \
+                 [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
                  [--out-dir DIR] [--args-yaml FILE]
 ```
 
@@ -17,7 +17,7 @@ pdb2reaction dft -i INPUT -q CHARGE -s SPIN
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge supplied to PySCF. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | Required |
-| `--func-basis TEXT` | Functional and basis in `FUNC/BASIS` form. | `wb97m-v/6-31g**` |
+| `--func-basis TEXT` | Functional and basis in `FUNC/BASIS` form (quotes recommended when using `*`). | `wb97m-v/6-31g**` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
 | `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
@@ -34,14 +34,19 @@ pdb2reaction dft -i INPUT -q CHARGE -s SPIN
 _Functional/basis selection and molecular charge/spin must be supplied on the CLI._
 
 ## Outputs
-- `<out-dir>/input_geometry.xyz`: Geometry snapshot passed to PySCF.
-- `<out-dir>/result.yaml`: Total energy (Hartree and kcal·mol⁻¹), convergence status, engine metadata, SCF wall time, and Mulliken/Löwdin/IAO charges.
-- Console pretty block summarising charge, multiplicity, functional, basis, convergence settings, and output directory.
+- `<out-dir>/input_geometry.xyz`: Geometry snapshot passed to PySCF (identical coordinates to the input file).
+- `<out-dir>/result.yaml`:
+  - `energy` block with Hartree/kcal·mol⁻¹ values, convergence flag, wall time, and engine metadata (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
+  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (IAO may be `null` if unavailable).
+  - `spin_densities`: Mulliken, meta-Löwdin, and IAO atomic spin densities (restricted cases report zero/`null` as appropriate).
+- Console pretty block summarising charge, multiplicity, spin (2S), functional, basis, convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used when available; otherwise a CPU SCF object is built. Nonlocal VV10 is enabled automatically for `-v` functionals.
-- The YAML file must contain a mapping root; non-mapping roots raise an error via `load_yaml_dict`.
+- GPU4PySCF is used when available; otherwise a CPU SCF object is built. Nonlocal VV10 is enabled automatically for functionals ending with `-v` or containing `vv10`.
+- The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
+- Both `-q/--charge` and `-s/--spin` **must** be provided explicitly; incorrect multiplicities lead to the wrong (RKS vs UKS) solver.
 - Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
+- IAO spin/charge analysis may fail for challenging systems; in that case the IAO column values in `result.yaml` are `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
 Accepts a mapping with top-level key `dft`. CLI overrides YAML values.
