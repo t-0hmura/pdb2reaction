@@ -23,48 +23,48 @@ Description
 
 Key options (YAML keys → meaning; defaults)
 - Geometry (`geom`):
-  * `coord_type`: "cart" (default) | "dlc" (often better for small molecules).
-  * `freeze_atoms`: list[int], 0-based indices to freeze (default: []).
+  - `coord_type`: "cart" (default) | "dlc" (often better for small molecules).
+  - `freeze_atoms`: list[int], 0-based indices to freeze (default: []).
 - Calculator (`calc`, UMA via `uma_pysis`):
-  * `charge` (required via `-q`), `spin` (multiplicity; default 1—set explicitly for the correct state).
-  * `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
-  * `device`: "auto" (GPU if available) | "cuda" | "cpu".
-  * `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
-  * `out_hess_torch`: bool; when True, provide a torch.Tensor Hessian (CUDA); else numpy on CPU.
+  - `charge` (required via `-q`), `spin` (multiplicity; default 1—set explicitly for the correct state).
+  - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
+  - `device`: "auto" (GPU if available) | "cuda" | "cpu".
+  - `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
+  - `out_hess_torch`: bool; when True, provide a torch.Tensor Hessian (CUDA); else numpy on CPU.
 - Optimizer base (`opt`):
-  * `thresh` presets (forces in Hartree/bohr, steps in bohr):
+  - `thresh` presets (forces in Hartree/bohr, steps in bohr):
     - `gau_loose`: max|F| 2.5e-3, RMS(F) 1.7e-3, max|step| 1.0e-2, RMS(step) 6.7e-3.
     - `gau` (default): max|F| 4.5e-4, RMS(F) 3.0e-4, max|step| 1.8e-3, RMS(step) 1.2e-3.
     - `gau_tight`: max|F| 1.5e-5, RMS(F) 1.0e-5, max|step| 6.0e-5, RMS(step) 4.0e-5.
     - `gau_vtight`: max|F| 2.0e-6, RMS(F) 1.0e-6, max|step| 6.0e-6, RMS(step) 4.0e-6.
     - `baker`: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
     - `never`: disable built-in convergence (for external stopping).
-  * `max_cycles` 10000; `print_every` 1; `min_step_norm` 1e-8 with `assert_min_step` True.
-  * Convergence toggles: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
-  * Extras: `converge_to_geom_rms_thresh` (RMSD target), `overachieve_factor`, `check_eigval_structure` (TS mode checks).
-  * Bookkeeping: `dump` (write `optimization.trj`), `dump_restart` (YAML every N cycles), `prefix`, `out_dir` (default `./result_opt/`).
+  - `max_cycles` 10000; `print_every` 1; `min_step_norm` 1e-8 with `assert_min_step` True.
+  - Convergence toggles: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
+  - Extras: `converge_to_geom_rms_thresh` (RMSD target), `overachieve_factor`, `check_eigval_structure` (TS mode checks).
+  - Bookkeeping: `dump` (write `optimization.trj`), `dump_restart` (YAML every N cycles), `prefix`, `out_dir` (default `./result_opt/`).
 
 - LBFGS-specific (`lbfgs`, used when `--opt-mode light|lbfgs`):
-  * Memory: `keep_last` 7.
-  * Scaling: `beta` 1.0; `gamma_mult` False.
-  * Step control: `max_step` 0.30; `control_step` True; `double_damp` True; `line_search` True.
-  * Regularized L‑BFGS: `mu_reg` (disables double_damp/control_step/line_search); `max_mu_reg_adaptions` 10.
+  - Memory: `keep_last` 7.
+  - Scaling: `beta` 1.0; `gamma_mult` False.
+  - Step control: `max_step` 0.30; `control_step` True; `double_damp` True; `line_search` True.
+  - Regularized L‑BFGS: `mu_reg` (disables double_damp/control_step/line_search); `max_mu_reg_adaptions` 10.
 
 - RFO-specific (`rfo`, used when `--opt-mode heavy|rfo`):
-  * Trust region: `trust_radius` 0.30; `trust_update` True; bounds: `trust_min` 0.01, `trust_max` 0.30; `max_energy_incr` Optional[float].
-  * Hessian: `hessian_update` "bfgs" | "bofill"; `hessian_init` "calc"; `hessian_recalc` Optional[int] (e.g., 100); `hessian_recalc_adapt` 2.0.
-  * Numerics: `small_eigval_thresh` 1e-8; `line_search` True; `alpha0` 1.0; `max_micro_cycles` 25; `rfo_overlaps` False.
-  * DIIS helpers: `gdiis` True; `gediis` False; `gdiis_thresh` 2.5e-3 (vs RMS(step)); `gediis_thresh` 1.0e-2 (vs RMS(force)); `gdiis_test_direction` True.
-  * Step model: `adapt_step_func` False.
+  - Trust region: `trust_radius` 0.30; `trust_update` True; bounds: `trust_min` 0.01, `trust_max` 0.30; `max_energy_incr` Optional[float].
+  - Hessian: `hessian_update` "bfgs" | "bofill"; `hessian_init` "calc"; `hessian_recalc` Optional[int] (e.g., 100); `hessian_recalc_adapt` 2.0.
+  - Numerics: `small_eigval_thresh` 1e-8; `line_search` True; `alpha0` 1.0; `max_micro_cycles` 25; `rfo_overlaps` False.
+  - DIIS helpers: `gdiis` True; `gediis` False; `gdiis_thresh` 2.5e-3 (vs RMS(step)); `gediis_thresh` 1.0e-2 (vs RMS(force)); `gdiis_test_direction` True.
+  - Step model: `adapt_step_func` False.
 
 Outputs (& Directory Layout)
 -----
 - `out_dir/` (default: `./result_opt/`)
-  * `final_geometry.xyz` — final optimized geometry (always).
-  * `final_geometry.pdb` — converted from XYZ when the input was a PDB.
-  * `optimization.trj` — trajectory (written when `--dump` or `opt.dump: true`).
-  * `optimization.pdb` — converted from TRJ when input was a PDB and dumping is enabled.
-  * `restart*.yml` — optional restart files every N cycles when `opt.dump_restart` is set (file names depend on optimizer).
+  - `final_geometry.xyz` — final optimized geometry (always).
+  - `final_geometry.pdb` — converted from XYZ when the input was a PDB.
+  - `optimization.trj` — trajectory (written when `--dump` or `opt.dump: true`).
+  - `optimization.pdb` — converted from TRJ when input was a PDB and dumping is enabled.
+  - `restart*.yml` — optional restart files every N cycles when `opt.dump_restart` is set (file names depend on optimizer).
 - The tool prints resolved configuration blocks (`geom`, `calc`, `opt`, and `lbfgs` or `rfo`), progress every `print_every` cycles, and a final wall-clock time summary.
 
 Notes:

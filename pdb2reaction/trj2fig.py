@@ -32,9 +32,9 @@ Description
       (uses the first floating-point number on that line).
     - Computes either ΔE (relative to a chosen reference) or absolute E; units: kcal/mol (default) or hartree.
       Reference specification:
-        * -r init  : use the initial frame (or the last frame if --reverse-x is set).
-        * -r None  : use absolute energies (no reference). Also accepts "none"/"null" (case-insensitive).
-        * -r <int> : use the given 0-based frame index as the reference.
+        - -r init  : use the initial frame (or the last frame if --reverse-x is set).
+        - -r None  : use absolute energies (no reference). Also accepts "none"/"null" (case-insensitive).
+        - -r <int> : use the given 0-based frame index as the reference.
     - Generates a polished Plotly figure (no title) with bold ticks, consistent fonts, markers,
       and a smoothed spline curve. Supported figure outputs: PNG (default), HTML, SVG, PDF.
     - Optionally writes a CSV table of the data.
@@ -46,11 +46,11 @@ Outputs (& Directory Layout)
     - Default output when no -o is provided: ./energy.png (current working directory).
     - You can provide multiple filenames to -o and/or repeat -o to emit several outputs at once.
       Supported formats:
-        * .png  : High-resolution raster figure (scale=2).
-        * .html : Standalone interactive Plotly figure.
-        * .svg  : Vector figure.
-        * .pdf  : Vector figure.
-        * .csv  : Tabular data with columns:
+        - .png  : High-resolution raster figure (scale=2).
+        - .html : Standalone interactive Plotly figure.
+        - .svg  : Vector figure.
+        - .pdf  : Vector figure.
+        - .csv  : Tabular data with columns:
                   frame (0-based), energy_hartree,
                   <delta_kcal|energy_kcal|delta_hartree|energy_hartree> depending on --unit and reference.
 

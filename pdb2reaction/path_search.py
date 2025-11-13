@@ -48,13 +48,13 @@ Workflow:
 2) Localize barrier: find the highest‑energy image (HEI); optimize HEI±1 as single structures → two nearby minima,
    End1 and End2.
 3) Refine the step:
-   • If no covalent bond change between End1–End2 (a “kink”): insert `search.kink_max_nodes` linearly interpolated
+   - If no covalent bond change between End1–End2 (a “kink”): insert `search.kink_max_nodes` linearly interpolated
      nodes and optimize each; **skip** GSM.
-   • Otherwise: run a refinement GSM between End1 and End2.
+   - Otherwise: run a refinement GSM between End1 and End2.
 4) Recurse selectively: evaluate covalent changes for (A→End1) and (End2→B); recurse only on sides that change.
 5) Stitch subpaths: concatenate sub‑MEPs with duplicate removal via RMSD. If endpoints still mismatch beyond
-   `search.bridge_rmsd_thresh`, insert a *bridge* GSM. If the interface itself shows covalent changes, insert a
-   **new recursive segment** instead of a bridge.
+   `search.bridge_rmsd_thresh`, insert a *bridge* GSM.
+   - If the interface itself shows covalent changes, insert a **new recursive segment** instead of a bridge.
 6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
    refine `freeze_atoms` to match the first input. If `--ref-pdb` is supplied, merge pocket trajectories
    into full templates and annotate segments.
@@ -85,22 +85,22 @@ out_dir/
 Notes:
 -----
 - Inputs:
-  • Provide ≥2 structures to `-i/--input` in reaction order. Either repeat `-i` or pass multiple paths after a single `-i`.
-  • Endpoint pre‑optimization runs by default (`--pre-opt True`). With `--align True`, all inputs are co‑aligned and
+  - Provide ≥2 structures to `-i/--input` in reaction order. Either repeat `-i` or pass multiple paths after a single `-i`.
+  - Endpoint pre‑optimization runs by default (`--pre-opt True`). With `--align True`, all inputs are co‑aligned and
     `freeze_atoms` are refined to the first input.
 - Bond‑change detection: uses `bond_changes.compare_structures` with `bond_factor`, `margin_fraction`,
   and `delta_fraction` thresholds.
 - Concatenation policy:
-  • Endpoint duplicate removal when RMSD ≤ `search.stitch_rmsd_thresh` (default 1e‑4 Å).
-  • Bridge GSM when gap RMSD > `search.bridge_rmsd_thresh` (default 1e‑4 Å).
-  • If an interface shows covalent changes, insert a **new recursive segment** instead of a bridge.
+  - Endpoint duplicate removal when RMSD ≤ `search.stitch_rmsd_thresh` (default 1e‑4 Å).
+  - Bridge GSM when gap RMSD > `search.bridge_rmsd_thresh` (default 1e‑4 Å).
+  - If an interface shows covalent changes, insert a **new recursive segment** instead of a bridge.
 - Nodes and recursion:
-  • Segment vs bridge nodes can differ via `search.max_nodes_segment` and `search.max_nodes_bridge` (segment defaults to `--max-nodes`).
-  • Kinks use `search.kink_max_nodes` (default 3) linear nodes, each optimized individually.
-  • Recursion depth is capped by `search.max_depth` (default 10).
+  - Segment vs bridge nodes can differ via `search.max_nodes_segment` and `search.max_nodes_bridge` (segment defaults to `--max-nodes`).
+  - Kinks use `search.kink_max_nodes` (default 3) linear nodes, each optimized individually.
+  - Recursion depth is capped by `search.max_depth` (default 10).
 - Calculators & optimizers:
-  • A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
-  • GSM employs pysisyphus `GrowingString` + `StringOptimizer`; single‑structure uses LBFGS or RFO.
+  - A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
+  - GSM employs pysisyphus `GrowingString` + `StringOptimizer`; single‑structure uses LBFGS or RFO.
 - Configuration precedence: **CLI > YAML > defaults** (`geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`).
 - Final merge rule with `--align True`: when `--ref-pdb` is provided, the **first** reference PDB is used for *all* pairs
   in the final merge (passing one file is sufficient). Without `--align`, supply one reference PDB per input.

@@ -40,17 +40,17 @@ Description
   Final configuration precedence: built-in defaults → YAML → CLI.
 - Strong recommendation: Provide both `-q/--charge` and `-s/--spin` explicitly to avoid running under unintended conditions.
 - CLI options:
-  * `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
-  * `-q/--charge INT` (strongly recommended): Total charge; overrides `calc.charge` from YAML.
-  * `-s/--spin INT` (default 1; strongly recommended): Spin multiplicity (2S+1); overrides `calc.spin`.
-  * `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
-  * `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
-  * `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
-  * `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); overrides `irc.forward`.
-  * `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); overrides `irc.backward`.
-  * `--out-dir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
-  * `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
-  * `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
+  - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
+  - `-q/--charge INT` (strongly recommended): Total charge; overrides `calc.charge` from YAML.
+  - `-s/--spin INT` (default 1; strongly recommended): Spin multiplicity (2S+1); overrides `calc.spin`.
+  - `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
+  - `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
+  - `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
+  - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); overrides `irc.forward`.
+  - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); overrides `irc.backward`.
+  - `--out-dir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
+  - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
+  - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
 
 Outputs (& Directory Layout)
 -----

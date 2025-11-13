@@ -8,12 +8,12 @@ Description
 -----
 - Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA pretrained ML potentials via ASE/AtomicData.
 - Two Hessian modes:
-  * "Analytical": second‑order autograd of the UMA energy on the GPU.
+  - "Analytical": second‑order autograd of the UMA energy on the GPU.
     Requires more VRAM/time than finite differences. During evaluation,
     model parameter gradients are disabled; dropout layers are force‑disabled;
     the model is temporarily toggled to train mode only to build the autograd
     graph and then restored to eval.
-  * "FiniteDifference": central differences of forces assembled on the GPU.
+  - "FiniteDifference": central differences of forces assembled on the GPU.
     Columns for frozen DOF are skipped; optionally return only the active‑DOF block.
     Default step: ε = 1.0e‑3 Å.
 - Device handling: device="auto" selects CUDA if available, else CPU; tensors use torch.float32.
@@ -33,24 +33,24 @@ PySisyphus calculator interface (`implemented_properties = ["energy", "forces", 
 
 - get_energy(elem, coords)
   Returns: {"energy": E}
-  • E: float, Hartree.
-  • coords: Bohr in, internally converted to Å.
+  - E: float, Hartree.
+  - coords: Bohr in, internally converted to Å.
 
 - get_forces(elem, coords)
   Returns: {"energy": E, "forces": F}
-  • F: shape (3N,), Hartree/Bohr.
-  • E: float, Hartree.
-  • coords: Bohr in, internally converted to Å.
+  - F: shape (3N,), Hartree/Bohr.
+  - E: float, Hartree.
+  - coords: Bohr in, internally converted to Å.
 
 - get_hessian(elem, coords)
   Returns: {"energy": E, "forces": F, "hessian": H}
-  • F: shape (3N,), Hartree/Bohr.
-  • H: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
+  - F: shape (3N,), Hartree/Bohr.
+  - H: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
     active‑DOF submatrix in FiniteDifference mode).
-  • If FiniteDifference + return_partial_hessian=True: H contains only the
+  - If FiniteDifference + return_partial_hessian=True: H contains only the
     active‑DOF block (non‑frozen atoms). Otherwise H is full sized and columns
     corresponding to frozen DOF remain zero.
-  • Type of H: NumPy (CPU) unless out_hess_torch=True, in which case a torch.Tensor
+  - Type of H: NumPy (CPU) unless out_hess_torch=True, in which case a torch.Tensor
     on the current device is returned.
 
 Notes:

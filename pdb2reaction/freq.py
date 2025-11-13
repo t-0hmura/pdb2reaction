@@ -49,24 +49,24 @@ Notes:
 - Input geometry: .pdb, .xyz, .trj (via pysisyphus ``geom_loader``). For PDB, ``--freeze-links`` (default: True)
   detects parent atoms of link hydrogens and merges them with any ``geom.freeze_atoms``; the merged list is echoed.
 - UMA settings:
-  * ``--hessian-calc-mode``: ``Analytical`` (default) or ``FiniteDifference``; may also be set in YAML.
-  * ``return_partial_hessian`` defaults to True so PHVA can use a reduced active‑block Hessian when possible.
-  * Device: ``auto`` selects CUDA if available; otherwise CPU.
+  - ``--hessian-calc-mode``: ``Analytical`` (default) or ``FiniteDifference``; may also be set in YAML.
+  - ``return_partial_hessian`` defaults to True so PHVA can use a reduced active‑block Hessian when possible.
+  - Device: ``auto`` selects CUDA if available; otherwise CPU.
 - PHVA and projections:
-  * With frozen atoms, eigenanalysis is performed in the active DOF subspace and translation/rotation (TR) modes are projected in that subspace.
-  * Both full Hessians (3N×3N) and pre‑reduced active blocks (3N_act×3N_act) are accepted.
-  * Frequencies are reported in cm^-1 (negative values denote imaginary modes).
+  - With frozen atoms, eigenanalysis is performed in the active DOF subspace and translation/rotation (TR) modes are projected in that subspace.
+  - Both full Hessians (3N×3N) and pre‑reduced active blocks (3N_act×3N_act) are accepted.
+  - Frequencies are reported in cm^-1 (negative values denote imaginary modes).
 - Mode writing:
-  * ``--max-write`` limits how many modes are exported (ascending by value, or by absolute value with ``--sort abs``).
-  * ``--amplitude-ang`` (Å) and ``--n-frames`` control the sinusoidal animation.
-  * For PDB inputs, the .trj is converted to a .pdb animation using the input PDB as a template; if conversion fails, an ASE fallback is used.
+  - ``--max-write`` limits how many modes are exported (ascending by value, or by absolute value with ``--sort abs``).
+  - ``--amplitude-ang`` (Å) and ``--n-frames`` control the sinusoidal animation.
+  - For PDB inputs, the .trj is converted to a .pdb animation using the input PDB as a template; if conversion fails, an ASE fallback is used.
 - Thermochemistry:
-  * Requires the optional ``thermoanalysis`` package; if absent, the summary is skipped with a warning.
-  * Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
+  - Requires the optional ``thermoanalysis`` package; if absent, the summary is skipped with a warning.
+  - Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
 - Performance and numerical details:
-  * GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO="U"``), and avoiding redundant allocations.
+  - GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO="U"``), and avoiding redundant allocations.
 - Exit behavior:
-  * On keyboard interrupt, exits with code 130; on other errors, prints a traceback and exits with code 1.
+  - On keyboard interrupt, exits with code 130; on other errors, prints a traceback and exits with code 1.
 """
 
 from __future__ import annotations
