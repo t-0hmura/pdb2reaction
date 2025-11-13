@@ -105,7 +105,7 @@ from pdb2reaction.utils import (
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    freeze_links,
+    detect_freeze_links,
     merge_freeze_atom_indices,
 )
 
@@ -260,7 +260,7 @@ def cli(
         merged_freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links_flag and input_path.suffix.lower() == ".pdb":
             try:
-                detected = freeze_links(input_path)
+                detected = detect_freeze_links(input_path)
             except Exception as e:
                 click.echo(
                     f"[freeze-links] WARNING: Could not detect link parents: {e}",

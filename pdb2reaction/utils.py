@@ -9,7 +9,7 @@ Usage (API)
     from pdb2reaction.utils import (
         build_energy_diagram,
         convert_xyz_to_pdb,
-        freeze_links,
+        detect_freeze_links,
         merge_freeze_atom_indices,
         normalize_choice,
         pretty_block,
@@ -19,7 +19,7 @@ Examples::
     >>> from pathlib import Path
     >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
     >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
-    >>> indices = freeze_links(Path("pocket.pdb"))
+    >>> indices = detect_freeze_links(Path("pocket.pdb"))
 
 Description
 -----
@@ -45,7 +45,7 @@ Description
 - **Link-freezing helpers**
   - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
   - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`; returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf` in that case).
-  - `freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/`HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms (“others”). Returns an empty list if no link hydrogens are present.
+  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/`HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms (“others”). Returns an empty list if no link hydrogens are present.
 
 Outputs (& Directory Layout)
 -----
@@ -517,7 +517,7 @@ def nearest_index(point, pool):
     return best_i, math.sqrt(best_d2)
 
 
-def freeze_links(pdb_path):
+def detect_freeze_links(pdb_path):
     """Identify link-parent atom indices for 'LKH'/'HL' link hydrogens.
 
     For each 'HL' atom in residue 'LKH', find the nearest atom among all other

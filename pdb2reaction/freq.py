@@ -95,7 +95,7 @@ from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
-    freeze_links,
+    detect_freeze_links,
     convert_xyz_to_pdb as _convert_xyz_to_pdb,
     pretty_block,
     format_geom_for_echo,
@@ -616,7 +616,7 @@ def cli(
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
         try:
-            detected = freeze_links(input_path)
+            detected = detect_freeze_links(input_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
