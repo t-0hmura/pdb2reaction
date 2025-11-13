@@ -4,7 +4,7 @@
 pdb2reaction trj2fig — Energy-profile utility for XYZ trajectories
 ====================================================================
 
-Usage (CLI input; minimal and full command examples)
+Usage (CLI)
 -----
     Minimal:
         pdb2reaction trj2fig -i traj.xyz

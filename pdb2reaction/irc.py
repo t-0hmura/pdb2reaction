@@ -1,11 +1,12 @@
 # pdb2reaction/irc.py
 
 """
-irc — Concise CLI for IRC calculations with the EulerPC integrator
+pdb2reaction irc — Concise CLI for IRC calculations with the EulerPC integrator
 ====================================================================
 
-Usage (CLI; minimal and full examples)
+Usage (CLI)
 -----
+    # Minimal and full examples shown below.
     # Minimal (explicitly set charge/spin to avoid unintended conditions)
     pdb2reaction irc -i a.pdb -q 0 -s 1
 

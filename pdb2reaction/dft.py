@@ -1,12 +1,14 @@
 # pdb2reaction/dft.py
 
 """
-dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
+pdb2reaction dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 ====================================================================
 
-Usage (CLI; include -q/-s explicitly to avoid wrong electronic states)
+Usage (CLI)
 -----
     pdb2reaction dft -i INPUT -q CHARGE -s SPIN [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
+
+    # Always include -q/-s explicitly to avoid wrong electronic states.
 
 Examples::
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"

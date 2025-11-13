@@ -1,11 +1,13 @@
 # pdb2reaction/extract.py
 
 """
-extract — Automated binding‑pocket (active‑site) extractor
+pdb2reaction extract — Automated binding‑pocket (active‑site) extractor
 ====================================================================
 
-Usage (CLI input; include both minimal and full examples)
+Usage (CLI)
 -----
+    # Minimal and full examples shown below.
+
 Single structure:
     pdb2reaction extract -i complex.pdb -c <substrate_spec> [-o pocket.pdb]
                          [-r 2.6] [--radius-het2het 2.6]

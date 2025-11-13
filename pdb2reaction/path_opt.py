@@ -1,10 +1,10 @@
 # pdb2reaction/path_opt.py
 
 """
-path_opt — Minimum-energy path (MEP) optimization via the Growing String method (pysisyphus) with a UMA calculator
+pdb2reaction path_opt — Minimum-energy path (MEP) optimization via the Growing String method (pysisyphus) with a UMA calculator
 ====================================================================
 
-Usage
+Usage (CLI)
 -----
     pdb2reaction path_opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
         -q <charge> [-s <multiplicity>] [--freeze-links {True|False}] \
