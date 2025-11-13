@@ -151,11 +151,8 @@ from .bond_changes import compare_structures, summarize_changes
 # Geometry handling (Cartesian recommended for scans)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator defaults (scan prefers CPU numpy Hessians)
+# UMA calculator defaults
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
-CALC_KW.update({
-    "out_hess_torch": False,
-})
 
 # Optimizer base (convergence, dumping, etc.)
 OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)

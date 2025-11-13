@@ -90,10 +90,6 @@ GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
 # UMA calculator settings
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
-CALC_KW.update({
-    # Growing string consumes numpy Hessians by default
-    "out_hess_torch": False,
-})
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
@@ -288,6 +284,7 @@ def cli(
             click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
             _ = align_and_refine_sequence_inplace(
                 geoms,
+                thresh="gau",
                 shared_calc=shared_calc,
                 out_dir=out_dir_path / "align_refine",
                 verbose=True,

@@ -118,10 +118,6 @@ GEOM_KW = dict(GEOM_KW_DEFAULT)
 
 # Calculator: UMA / uma_pysis  (YAML key: calc)
 CALC_KW = dict(_UMA_CALC_KW)
-CALC_KW.update({
-    # Optimization expects numpy Hessians by default
-    "out_hess_torch": False,
-})
 
 # Optimizer base (common to LBFGS & RFO)  (YAML key: opt)
 OPT_BASE_KW = {

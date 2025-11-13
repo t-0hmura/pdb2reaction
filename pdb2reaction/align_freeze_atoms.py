@@ -382,6 +382,7 @@ def scan_freeze_atoms_toward_target_inplace(
     per_step_cycles: int = 50,
     final_cycles: int = 200,
     max_steps: int = 1000,
+    thresh: str = "gau",
     shared_calc=None,
     out_dir: Path = Path("./result_align_refine/"),
     charge: int = 0,
@@ -448,7 +449,7 @@ def scan_freeze_atoms_toward_target_inplace(
                         out_dir=str(out_dir),
                         max_cycles=int(final_cycles),
                         print_every=1,
-                        thresh="gau",
+                        thresh=thresh,
                         dump=False,
                     ).run()
                 except (ZeroStepLength, OptimizationError) as e:
@@ -475,7 +476,7 @@ def scan_freeze_atoms_toward_target_inplace(
                     out_dir=str(out_dir),
                     max_cycles=int(per_step_cycles),
                     print_every=1,
-                    thresh="gau",
+                    thresh=thresh,
                     dump=False,
                 ).run()
             except (ZeroStepLength, OptimizationError) as e:
@@ -511,6 +512,7 @@ def align_and_refine_pair_inplace(
     per_step_cycles: int = 50,
     final_cycles: int = 200,
     max_steps: int = 1000,
+    thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
     model: str = "uma-s-1p1",
@@ -538,6 +540,7 @@ def align_and_refine_pair_inplace(
         per_step_cycles=per_step_cycles,
         final_cycles=final_cycles,
         max_steps=max_steps,
+        thresh=thresh,
         shared_calc=shared_calc,
         out_dir=out_dir,
         charge=charge, spin=spin, model=model, device=device,
@@ -555,6 +558,7 @@ def align_and_refine_sequence_inplace(
     per_step_cycles: int = 1000,
     final_cycles: int = 1000,
     max_steps: int = 10000,
+    thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
     model: str = "uma-s-1p1",
@@ -593,6 +597,7 @@ def align_and_refine_sequence_inplace(
             per_step_cycles=per_step_cycles,
             final_cycles=final_cycles,
             max_steps=max_steps,
+            thresh=thresh,
             charge=charge, spin=spin, model=model, device=device,
             verbose=verbose,
         )

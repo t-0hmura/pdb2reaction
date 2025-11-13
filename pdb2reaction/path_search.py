@@ -1667,6 +1667,7 @@ def cli(
                 click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
                 _ = align_and_refine_sequence_inplace(
                     geoms,
+                    thresh="gau",
                     shared_calc=shared_calc,
                     out_dir=out_dir_path / "align_refine",
                     verbose=True,
