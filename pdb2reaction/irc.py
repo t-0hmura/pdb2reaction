@@ -18,6 +18,7 @@ Usage (CLI)
       --root 0 \
       --forward True \
       --backward False \
+      --freeze-links True \
       --out-dir "./result_irc/" \
       --hessian-calc-mode Analytical \
       --args-yaml args.yaml
@@ -48,6 +49,7 @@ Description
   - `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
   - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); overrides `irc.forward`.
   - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); overrides `irc.backward`.
+  - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
   - `--out-dir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
   - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
@@ -103,6 +105,8 @@ from pdb2reaction.utils import (
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
+    freeze_links,
+    merge_freeze_atom_indices,
 )
 
 
@@ -175,6 +179,14 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
 @click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")
 @click.option("--forward", type=bool, default=None, help="Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly.")
 @click.option("--backward", type=bool, default=None, help="Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly.")
+@click.option(
+    "--freeze-links",
+    "freeze_links_flag",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="Freeze parent atoms of link hydrogens when the input is PDB.",
+)
 @click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
     "--hessian-calc-mode",
@@ -197,6 +209,7 @@ def cli(
     root: Optional[int],
     forward: Optional[bool],
     backward: Optional[bool],
+    freeze_links_flag: bool,
     out_dir: str,
     hessian_calc_mode: Optional[str],
     args_yaml: Optional[Path],
@@ -242,6 +255,23 @@ def cli(
             irc_cfg["backward"] = bool(backward)
         if out_dir:
             irc_cfg["out_dir"] = str(out_dir)
+
+        # Normalize any existing freeze list and optionally augment with link parents
+        merged_freeze = merge_freeze_atom_indices(geom_cfg)
+        if freeze_links_flag and input_path.suffix.lower() == ".pdb":
+            try:
+                detected = freeze_links(input_path)
+            except Exception as e:
+                click.echo(
+                    f"[freeze-links] WARNING: Could not detect link parents: {e}",
+                    err=True,
+                )
+                detected = []
+            merged_freeze = merge_freeze_atom_indices(geom_cfg, detected)
+            if merged_freeze:
+                click.echo(
+                    f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}"
+                )
 
         # Ensure the calculator receives the freeze list used by geometry
         #      (so FD Hessian can skip frozen DOF, etc.)
