@@ -277,7 +277,9 @@ SEARCH_KW: Dict[str, Any] = {
 }
 
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
-    """Detect parent atoms of link hydrogens in a PDB; return 0‑based indices. Silent on failure."""
+    """
+    Detect parent atoms of link hydrogens in a PDB; return 0‑based indices. Silent on failure.
+    """
     try:
         return detect_freeze_links(pdb_path)
     except Exception as e:
@@ -291,7 +293,9 @@ def _load_two_endpoints(
     base_freeze: Sequence[int],
     auto_freeze_links: bool,
 ) -> Sequence:
-    """Load two or more geometries and assign `freeze_atoms`; return pysisyphus geometries."""
+    """
+    Load two or more geometries and assign `freeze_atoms`; return pysisyphus geometries.
+    """
     geoms = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
@@ -315,7 +319,9 @@ def _load_structures(
     base_freeze: Sequence[int],
     auto_freeze_links: bool,
 ) -> List[Any]:
-    """Load multiple geometries and assign `freeze_atoms`; return a list of geometries."""
+    """
+    Load multiple geometries and assign `freeze_atoms`; return a list of geometries.
+    """
     geoms: List[Any] = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
@@ -333,7 +339,9 @@ def _load_structures(
 
 
 def _ensure_calc_on_geom(g, calc) -> None:
-    """Attach a pysisyphus Calculator to a Geometry (overwrite if necessary)."""
+    """
+    Attach a pysisyphus Calculator to a Geometry (overwrite if necessary).
+    """
     try:
         g.set_calculator(calc)
     except Exception:
@@ -341,7 +349,9 @@ def _ensure_calc_on_geom(g, calc) -> None:
 
 
 def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path: Path) -> None:
-    """Write an XYZ `.trj` with the energy on line 2 of each block."""
+    """
+    Write an XYZ `.trj` with the energy on line 2 of each block.
+    """
     blocks: List[str] = []
     E = np.array(energies, dtype=float)
     for geom, e in zip(images, E):
@@ -390,12 +400,16 @@ def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, align: bool = True, indices: Opti
 
 
 def _rmsd_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """RMSD between two pysisyphus Geometries (no alignment; optional subset selection)."""
+    """
+    RMSD between two pysisyphus Geometries (no alignment; optional subset selection).
+    """
     return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), align=False, indices=indices)
 
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """Return for covalent bonds forming/breaking between `x` and `y`."""
+    """
+    Return for covalent bonds forming/breaking between `x` and `y`.
+    """
     res = compare_structures(
         x, y,
         device=bond_cfg.get("device", "cuda"),
@@ -412,7 +426,9 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
 # ---------- Minimal GS configuration helper ----------
 
 def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, Any]:
-    """Shallow copy of a GS config with specified overrides."""
+    """
+    Shallow copy of a GS config with specified overrides.
+    """
     cfg = dict(base)
     for k, v in overrides.items():
         cfg[k] = v
@@ -424,7 +440,9 @@ def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, 
 # -----------------------------------------------
 
 def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """Maximum per‑atom displacement (Å) between two structures (no alignment)."""
+    """
+    Maximum per‑atom displacement (Å) between two structures (no alignment).
+    """
     A = np.asarray(ga.coords3d, dtype=float)
     B = np.asarray(gb.coords3d, dtype=float)
     if A.shape != B.shape or A.shape[1] != 3:
@@ -434,7 +452,9 @@ def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequ
 
 
 def _new_geom_from_coords(atoms: Sequence[str], coords: np.ndarray, coord_type: str, freeze_atoms: Sequence[int]) -> Any:
-    """Create a pysisyphus Geometry from Bohr coords via temporary XYZ; attach `freeze_atoms`."""
+    """
+    Create a pysisyphus Geometry from Bohr coords via temporary XYZ; attach `freeze_atoms`.
+    """
     lines = [str(len(atoms)), ""]
     coords_ang = np.asarray(coords, dtype=float) * BOHR2ANG
     for sym, (x, y, z) in zip(atoms, coords_ang):
@@ -477,7 +497,9 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
 
 
 def _energy_of(g) -> float:
-    """Return the energy (Hartree) of a Geometry (ensures calculator is attached)."""
+    """
+    Return the energy (Hartree) of a Geometry (ensures calculator is attached).
+    """
     _ensure_calc_on_geom(g, getattr(g, "calculator", None))
     return float(g.energy)
 
@@ -485,7 +507,9 @@ def _energy_of(g) -> float:
 # ---- Segment/bridge tagging helpers ----
 
 def _tag_images(images: Sequence[Any], **attrs: Any) -> None:
-    """Attach arbitrary attributes to Geometry images."""
+    """
+    Attach arbitrary attributes to Geometry images.
+    """
     for im in images:
         for k, v in attrs.items():
             try:
@@ -495,7 +519,9 @@ def _tag_images(images: Sequence[Any], **attrs: Any) -> None:
 
 
 def _segment_base_id(tag: str) -> str:
-    """Extract base id 'seg_XXX' from a tag like 'seg_000_refine'; fallback to `tag` or 'seg'."""
+    """
+    Extract base id 'seg_XXX' from a tag like 'seg_000_refine'; fallback to `tag` or 'seg'.
+    """
     m = re.search(r"(seg_\d{3})", tag or "")
     return m.group(1) if m else (tag or "seg")
 
@@ -528,7 +554,9 @@ def _run_gsm_between(
     tag: str,
     ref_pdb_path: Optional[Path],  # reference PDB for conversion
 ) -> GSMResult:
-    """Run GSM between `gA`–`gB`, save segment outputs, and return images/energies/HEI index."""
+    """
+    Run GSM between `gA`–`gB`, save segment outputs, and return images/energies/HEI index.
+    """
     # Attach calculator to endpoints
     for g in (gA, gB):
         _ensure_calc_on_geom(g, shared_calc)
@@ -623,7 +651,9 @@ def _optimize_single(
     tag: str,
     ref_pdb_path: Optional[Path],  # for PDB conversion
 ):
-    """Run single‑structure optimization (LBFGS/RFO) and return the final Geometry."""
+    """
+    Run single‑structure optimization (LBFGS/RFO) and return the final Geometry.
+    """
     _ensure_calc_on_geom(g, shared_calc)
 
     seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
@@ -664,7 +694,9 @@ def _refine_between(
     tag: str,
     ref_pdb_path: Optional[Path],  # for PDB conversion
 ) -> GSMResult:
-    """Refine End1–End2 via GSM (force climb=True)."""
+    """
+    Refine End1–End2 via GSM (force climb=True).
+    """
     gs_refine_cfg = _gs_cfg_with_overrides(gs_cfg, climb=True, climb_lanczos=True)
     return _run_gsm_between(gL, gR, shared_calc, gs_refine_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
 
@@ -680,7 +712,9 @@ def _maybe_bridge_segments(
     rmsd_thresh: float,
     ref_pdb_path: Optional[Path],  # for PDB conversion
 ) -> Optional[GSMResult]:
-    """Run a bridge GSM if two segment endpoints are farther than the threshold."""
+    """
+    Run a bridge GSM if two segment endpoints are farther than the threshold.
+    """
     rmsd = _rmsd_between(tail_g, head_g, align=False)
     if rmsd <= rmsd_thresh:
         return None
@@ -1094,7 +1128,9 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
 
 
 def _pocket_keys_from_pdb(pocket_pdb: Path) -> List[Tuple[str, str, str, str, str]]:
-    """Return atom identity keys for a pocket PDB file."""
+    """
+    Return atom identity keys for a pocket PDB file.
+    """
     parser = PDBParser(QUIET=True)
     st = parser.get_structure("pocket", str(pocket_pdb))
     keys: List[Tuple[str, str, str, str, str]] = []
@@ -1107,7 +1143,9 @@ def _pocket_keys_from_pdb(pocket_pdb: Path) -> List[Tuple[str, str, str, str, st
 
 def _write_model_block(structure: PDB.Structure.Structure,
                        remark_lines: List[str]) -> str:
-    """Render a single MODEL block (without 'MODEL/ENDMDL') with provided REMARK lines."""
+    """
+    Render a single MODEL block (without 'MODEL/ENDMDL') with provided REMARK lines.
+    """
     io = PDBIO()
     io.set_structure(structure)
     from io import StringIO
@@ -1121,7 +1159,9 @@ def _write_model_block(structure: PDB.Structure.Structure,
 
 
 def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
-    """Wrap pocket atom indices into REMARK lines with limited width."""
+    """
+    Wrap pocket atom indices into REMARK lines with limited width.
+    """
     s = ",".join(map(str, indices))
     out: List[str] = []
     cur = ""
@@ -1256,7 +1296,9 @@ def _merge_final_and_write(final_images: List[Any],
                            ref_pdbs: Sequence[Path],
                            segments: List[SegmentReport],
                            out_dir: Path) -> None:
-    """Merge the entire pocket MEP into full templates (for all pairs) and write outputs."""
+    """
+    Merge the entire pocket MEP into full templates (for all pairs) and write outputs.
+    """
     # NOTE: In --align True mode, caller may pass a single ref PDB replicated per pair.
     if len(ref_pdbs) != len(pocket_inputs):
         raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")

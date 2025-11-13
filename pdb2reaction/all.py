@@ -170,7 +170,9 @@ def _round_charge_with_note(q: float) -> int:
 # ---------- Post-processing helpers (minimal, reuse internals) ----------
 
 def _read_summary(summary_yaml: Path) -> List[Dict[str, Any]]:
-    """Read path_search/summary.yaml and return segments list (empty if not found)."""
+    """
+    Read path_search/summary.yaml and return segments list (empty if not found).
+    """
     try:
         if not summary_yaml.exists():
             return []
@@ -215,13 +217,17 @@ def _pdb_models_to_coords_and_elems(pdb_path: Path) -> Tuple[List[np.ndarray], L
 def _geom_from_angstrom(elems: Sequence[str],
                         coords_ang: np.ndarray,
                         freeze_atoms: Sequence[int]) -> Any:
-    """Create a Geometry from Å coordinates using _path_search._new_geom_from_coords (expects Bohr)."""
+    """
+    Create a Geometry from Å coordinates using _path_search._new_geom_from_coords (expects Bohr).
+    """
     coords_bohr = np.asarray(coords_ang, dtype=float) / BOHR2ANG
     return _path_search._new_geom_from_coords(elems, coords_bohr, coord_type="cart", freeze_atoms=freeze_atoms)
 
 
 def _load_segment_end_geoms(seg_pdb: Path, freeze_atoms: Sequence[int]) -> Tuple[Any, Any]:
-    """Load first/last model as Geometries from a per-segment pocket PDB."""
+    """
+    Load first/last model as Geometries from a per-segment pocket PDB.
+    """
     coords_list, elems = _pdb_models_to_coords_and_elems(seg_pdb)
     gL = _geom_from_angstrom(elems, coords_list[0], freeze_atoms)
     gR = _geom_from_angstrom(elems, coords_list[-1], freeze_atoms)
@@ -456,7 +462,9 @@ def _write_segment_energy_diagram(prefix: Path,
                                   labels: List[str],
                                   energies_eh: List[float],
                                   title_note: str) -> None:
-    """Write energy diagram (HTML + PNG) using utils.build_energy_diagram."""
+    """
+    Write energy diagram (HTML + PNG) using utils.build_energy_diagram.
+    """
     if not energies_eh:
         return
     e0 = energies_eh[0]
@@ -485,7 +493,9 @@ def _run_freq_for_state(pdb_path: Path,
                         out_dir: Path,
                         args_yaml: Optional[Path],
                         freeze_links: bool) -> Dict[str, Any]:
-    """Run freq CLI; return parsed thermo dict (may be empty)."""
+    """
+    Run freq CLI; return parsed thermo dict (may be empty).
+    """
     fdir = out_dir
     _ensure_dir(fdir)
     args = [
@@ -525,7 +535,9 @@ def _run_dft_for_state(pdb_path: Path,
                        out_dir: Path,
                        args_yaml: Optional[Path],
                        func_basis: str = "wb97x-v/def2-tzvp") -> Dict[str, Any]:
-    """Run dft CLI; return parsed result.yaml dict (may be empty)."""
+    """
+    Run dft CLI; return parsed result.yaml dict (may be empty).
+    """
     ddir = out_dir
     _ensure_dir(ddir)
     args = [

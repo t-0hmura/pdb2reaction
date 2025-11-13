@@ -181,7 +181,9 @@ def _bond_str(i: int, j: int, elems: List[str], one_based: bool = True) -> str:
 
 
 def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) -> str:
-    """List bond formations and dissociations and report bond-length changes in Å."""
+    """
+    List bond formations and dissociations and report bond-length changes in Å.
+    """
     elems = [a.capitalize() for a in geom.atoms]
     lines: List[str] = []
 

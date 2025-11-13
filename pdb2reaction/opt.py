@@ -267,7 +267,9 @@ def _maybe_convert_outputs_to_pdb(
     get_trj_fn,
     final_xyz_path: Path,
 ) -> None:
-    """If the input is a PDB, convert outputs (final_geometry.xyz and, if dump, optimization.trj) to PDB."""
+    """
+    If the input is a PDB, convert outputs (final_geometry.xyz and, if dump, optimization.trj) to PDB.
+    """
     if input_path.suffix.lower() != ".pdb":
         return
 
@@ -468,7 +470,9 @@ def cli(
 
 # Avoid shadowing the click option name `freeze_links` above
 def freeze_links_helper(pdb_path: Path):
-    """Small shim to keep the intent readable."""
+    """
+    Small shim to keep the intent readable.
+    """
     return freeze_links(pdb_path)
 
 

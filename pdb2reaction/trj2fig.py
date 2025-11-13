@@ -84,7 +84,9 @@ MARKER_SIZE = 6        # marker size
 #  File helpers
 # ---------------------------------------------------------------------
 def read_energies_xyz(fname: Path | str) -> List[float]:
-    """Extract Hartree energies from the second-line comment of each XYZ frame."""
+    """
+    Extract Hartree energies from the second-line comment of each XYZ frame.
+    """
     energies: List[float] = []
     with open(fname, encoding="utf-8") as fh:
         while (hdr := fh.readline()):
@@ -196,7 +198,9 @@ def _axis_template() -> dict:
 
 
 def build_figure(delta_or_abs: Sequence[float], ylabel: str, reverse_x: bool) -> go.Figure:
-    """Build a Plotly figure without a title."""
+    """
+    Build a Plotly figure without a title.
+    """
     fig = go.Figure(
         go.Scatter(
             x=list(range(len(delta_or_abs)))),
@@ -234,7 +238,9 @@ def save_outputs(
     unit: str,
     is_delta: bool,
 ) -> None:
-    """Write all requested outputs."""
+    """
+    Write all requested outputs.
+    """
     for out in outs:
         ext = out.suffix.lower()
         if ext == ".csv":
@@ -261,7 +267,9 @@ def write_csv(
     unit: str,
     is_delta: bool,
 ) -> None:
-    """Save energies (hartree) and ΔE/E series to CSV."""
+    """
+    Save energies (hartree) and ΔE/E series to CSV.
+    """
     colname = (f"delta_{unit}" if is_delta else f"energy_{unit}")
     with out.open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)

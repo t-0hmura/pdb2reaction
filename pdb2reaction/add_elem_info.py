@@ -201,7 +201,9 @@ def _normalize_symbol(s: str) -> Optional[str]:
     return None
 
 def _symbol_from_resname(resname: str) -> Optional[str]:
-    """Extract an element symbol from an ion residue name (e.g., CA, FE2, Cl-, YB2, IOD)."""
+    """
+    Extract an element symbol from an ion residue name (e.g., CA, FE2, Cl-, YB2, IOD).
+    """
     res = resname.strip()
     sym = _normalize_symbol(res)
     if sym is None and res.upper().startswith("IOD"):
@@ -337,7 +339,9 @@ def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
     return serials_with_elem
 
 def _get_atom_serial(atom) -> Optional[int]:
-    """Safely obtain the serial number from a Biopython Atom, handling version differences."""
+    """
+    Safely obtain the serial number from a Biopython Atom, handling version differences.
+    """
     sn = getattr(atom, "serial_number", None)
     if sn is None and hasattr(atom, "get_serial_number"):
         try:
@@ -475,7 +479,9 @@ def main():
     help="Re-infer and overwrite element fields even if present (by default, existing values are preserved).",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
-    """Click wrapper to run via the `pdb2reaction add_elem_info` subcommand."""
+    """
+    Click wrapper to run via the `pdb2reaction add_elem_info` subcommand.
+    """
     try:
         assign_elements(str(in_pdb), (str(out_pdb) if out_pdb else None), overwrite=overwrite)
     except SystemExit as e:

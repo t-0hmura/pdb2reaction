@@ -102,7 +102,9 @@ except Exception:
 # =============================================================================
 
 def kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Row-vector Kabsch: find R, t minimizing ||(Q @ R + t) - P|| for (N, 3)."""
+    """
+    Row-vector Kabsch: find R, t minimizing ||(Q @ R + t) - P|| for (N, 3).
+    """
     P = np.asarray(P, float)
     Q = np.asarray(Q, float)
     if P.shape != Q.shape or P.ndim != 2 or P.shape[1] != 3:
@@ -120,7 +122,9 @@ def kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def _rodrigues(axis_unit: np.ndarray, theta: float) -> np.ndarray:
-    """3×3 rotation matrix for a rotation of angle `theta` about `axis_unit`."""
+    """
+    3×3 rotation matrix for a rotation of angle `theta` about `axis_unit`.
+    """
     u = np.asarray(axis_unit, float)
     n = np.linalg.norm(u)
     if n < 1e-16:
@@ -164,7 +168,9 @@ def _rotation_align_vectors(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def _orth_proj_perp(u: np.ndarray) -> np.ndarray:
-    """3×3 projector onto the plane perpendicular to vector `u`."""
+    """
+    3×3 projector onto the plane perpendicular to vector `u`.
+    """
     u = np.asarray(u, float)
     n = np.linalg.norm(u)
     if n < 1e-16:
@@ -178,19 +184,25 @@ def _orth_proj_perp(u: np.ndarray) -> np.ndarray:
 # =============================================================================
 
 def _coords3d(geom) -> np.ndarray:
-    """Return (N, 3) coordinates in bohr (float)."""
+    """
+    Return (N, 3) coordinates in bohr (float).
+    """
     return np.array(geom.coords3d, float)
 
 
 def _rmsd(A: np.ndarray, B: np.ndarray) -> float:
-    """Compute RMSD in Å (inputs are in bohr; conversion is applied internally)."""
+    """
+    Compute RMSD in Å (inputs are in bohr; conversion is applied internally).
+    """
     A = np.asarray(A, float) * BOHR2ANG
     B = np.asarray(B, float) * BOHR2ANG
     return float(np.sqrt(np.mean(np.sum((A - B) ** 2, axis=1)))) if len(A) else float("nan")
 
 
 def _set_all_coords_disabling_freeze(geom, coords3d_bohr: np.ndarray) -> None:
-    """Temporarily clear `freeze_atoms`, set all coordinates (bohr), then restore."""
+    """
+    Temporarily clear `freeze_atoms`, set all coordinates (bohr), then restore.
+    """
     old = np.array(getattr(geom, "freeze_atoms", []), int)
     try:
         geom.freeze_atoms = np.array([], int)
@@ -201,7 +213,9 @@ def _set_all_coords_disabling_freeze(geom, coords3d_bohr: np.ndarray) -> None:
 
 def _attach_calc_if_needed(geom, shared_calc=None, *, charge=0, spin=1,
                            model="uma-s-1p1", device="auto") -> None:
-    """Attach UMA if no calculator is present; prefer `shared_calc` when provided."""
+    """
+    Attach UMA if no calculator is present; prefer `shared_calc` when provided.
+    """
     try:
         has_calc = getattr(geom, "calculator", None) is not None
     except Exception:
