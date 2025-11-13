@@ -138,6 +138,14 @@ from .utils import (
     format_geom_for_echo,
     merge_freeze_atom_indices,
 )
+from .freq import (
+    _torch_device,
+    _build_tr_basis,
+    _tr_orthonormal_basis,
+    _mass_weighted_hessian,
+    _calc_full_hessian_torch,
+    _calc_energy,
+)
 
 
 def _norm_opt_mode(mode: str) -> str:
@@ -152,70 +160,6 @@ def _norm_opt_mode(mode: str) -> str:
 # ===================================================================
 #               Mass-weighted projection & vib analysis
 # ===================================================================
-
-def _torch_device(auto: str = "auto") -> torch.device:
-    if auto == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return torch.device(auto)
-
-
-def _build_tr_basis(coords_bohr_t: torch.Tensor,
-                    masses_au_t: torch.Tensor) -> torch.Tensor:
-    """
-    Mass‐weighted translation/rotation basis (Tx,Ty,Tz,Rx,Ry,Rz), shape (3N, r<=6).
-    """
-    device, dtype = coords_bohr_t.device, coords_bohr_t.dtype
-    N = coords_bohr_t.shape[0]
-    m_au = masses_au_t.to(dtype=dtype, device=device)
-    m_sqrt = torch.sqrt(m_au).reshape(-1, 1)
-
-    # COM
-    com = (m_au.reshape(-1, 1) * coords_bohr_t).sum(0) / m_au.sum()
-    x = coords_bohr_t - com
-
-    eye3 = torch.eye(3, dtype=dtype, device=device)
-    cols = []
-    # Translations
-    for i in range(3):
-        cols.append((eye3[i].repeat(N, 1) * m_sqrt).reshape(-1, 1))
-    # Rotations
-    for i in range(3):
-        rot = torch.cross(x, eye3[i].expand_as(x), dim=1) * m_sqrt
-        cols.append(rot.reshape(-1, 1))
-    return torch.cat(cols, dim=1)
-
-
-def _tr_orthonormal_basis(coords_bohr_t: torch.Tensor,
-                          masses_au_t: torch.Tensor,
-                          rtol: float = 1e-12) -> Tuple[torch.Tensor, int]:
-    """
-    Orthonormalize TR basis in mass-weighted space by SVD. Returns (Q, rank).
-    """
-    B = _build_tr_basis(coords_bohr_t, masses_au_t)
-    U, S, Vh = torch.linalg.svd(B, full_matrices=False)
-    r = int((S > rtol * S.max()).sum().item())
-    Q = U[:, :r]
-    del B, S, Vh, U
-    return Q, r
-
-
-# ---- in-place mass weighting ----
-def _mass_weighted_hessian(H_t: torch.Tensor,
-                           masses_au_t: torch.Tensor) -> torch.Tensor:
-    """
-    Return Hmw = M^{-1/2} H M^{-1/2} (in-place on H_t).
-    """
-    dtype, device = H_t.dtype, H_t.device
-    with torch.no_grad():
-        masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
-        m3 = torch.repeat_interleave(masses_amu_t, 3)
-        inv_sqrt_m_col = torch.sqrt(1.0 / m3).view(1, -1)
-        inv_sqrt_m_row = inv_sqrt_m_col.view(-1, 1)
-        H_t.mul_(inv_sqrt_m_row)
-        H_t.mul_(inv_sqrt_m_col)
-        del masses_amu_t, m3, inv_sqrt_m_col, inv_sqrt_m_row
-        return H_t
-
 
 def _mw_projected_hessian_inplace(H_t: torch.Tensor,
                                   coords_bohr_t: torch.Tensor,
@@ -355,26 +299,6 @@ def _mode_direction_by_root(H_t: torch.Tensor,
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         return mode
-
-
-def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> torch.Tensor:
-    """
-    UMA calculator producing (possibly partial) Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act).
-    """
-    # respect caller's out_hess_torch preference (force True here)
-    kw = dict(uma_kwargs or {})
-    kw["out_hess_torch"] = True
-    calc = uma_pysis(**kw)
-    H_t = calc.get_hessian(geom.atoms, geom.coords)["hessian"].to(device=device)
-    return H_t
-
-
-def _calc_energy(geom, uma_kwargs: dict) -> float:
-    calc = uma_pysis(out_hess_torch=False, **uma_kwargs)
-    geom.set_calculator(calc)
-    E = geom.energy
-    geom.set_calculator(None)
-    return E
 
 
 def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
