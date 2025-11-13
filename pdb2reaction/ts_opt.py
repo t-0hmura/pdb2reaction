@@ -136,7 +136,7 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links,
+    detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -1348,7 +1348,7 @@ def cli(
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
         try:
-            detected = freeze_links(input_path)
+            detected = detect_freeze_links(input_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
