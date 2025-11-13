@@ -1,7 +1,7 @@
 # pdb2reaction/bond_changes.py
 
 """
-pdb2reaction.bond_changes — Bond-change detection and reporting utilities
+pdb2reaction bond_changes — Bond-change detection and reporting utilities
 ====================================================================
 
 Description

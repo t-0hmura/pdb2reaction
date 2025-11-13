@@ -1,16 +1,16 @@
 # pdb2reaction/opt.py
 
 """
-opt — Single-structure geometry optimization (LBFGS or RFO)
+pdb2reaction opt — Single-structure geometry optimization (LBFGS or RFO)
 ====================================================================
 
 Usage (CLI)
 -----
-	pdb2reaction opt -i INPUT -q CHARGE [-s SPIN] [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links/--no-freeze-links] [--dump] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
+    pdb2reaction opt -i INPUT -q CHARGE [-s SPIN] [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links/--no-freeze-links] [--dump] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
 
 Examples::
-	pdb2reaction opt -i input.pdb -q 0
-	pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump --out-dir ./result_opt/ --args-yaml ./args.yaml
+    pdb2reaction opt -i input.pdb -q 0
+    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----

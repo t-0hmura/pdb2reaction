@@ -1,7 +1,7 @@
 # pdb2reaction/align_freeze_atoms.py
 
 """
-align_freeze_atoms — Rigid alignment and staged “scan + relaxation” utilities for pysisyphus Geometry objects
+pdb2reaction align_freeze_atoms — Rigid alignment and staged “scan + relaxation” utilities for pysisyphus Geometry objects
 ====================================================================
 
 Description

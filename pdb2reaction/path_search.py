@@ -1,38 +1,38 @@
 # pdb2reaction/path_search.py
 
 """
-path-search — Recursive GSM segmentation to build a continuous multistep MEP
+pdb2reaction path_search — Recursive GSM segmentation to build a continuous multistep MEP
 ====================================================================
 
 Usage (CLI)
 -----
-	pdb2reaction path-search -i A.pdb B.pdb -q <charge> [options]
+    pdb2reaction path-search -i A.pdb B.pdb -q <charge> [options]
 
 Required-like:
-	-i/--input           Two or more structures in reaction order (repeatable or space‑separated after a single -i).
-	-q/--charge          Total system charge (integer).
+    -i/--input           Two or more structures in reaction order (repeatable or space‑separated after a single -i).
+    -q/--charge          Total system charge (integer).
 
 Recommended/common:
-	-s/--spin            Spin multiplicity (2S+1); default 1.
-	--sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
-	--max-nodes          Internal nodes for segment GSM; default 10.
-	--max-cycles         Max optimization cycles; default 1000.
-	--climb/--no-climb   Enable TS search for the first segment; default on.
-	--pre-opt/--no-pre-opt  Pre-optimize endpoints; default on.
-	--align/--no-align   Rigidly co‑align all inputs after pre‑opt; default on.
-	--args-yaml PATH     YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
-	--ref-pdb PATH [...] Full template PDB(s) for final merge (see Notes).
-	--out-dir PATH       Output directory; default ./result_path_search/
-	--dump               Save optimizer dumps; default off.
-	--freeze-links/--no-freeze-links  Freeze parents of link hydrogens for PDB input; default on.
+    -s/--spin            Spin multiplicity (2S+1); default 1.
+    --sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
+    --max-nodes          Internal nodes for segment GSM; default 10.
+    --max-cycles         Max optimization cycles; default 1000.
+    --climb/--no-climb   Enable TS search for the first segment; default on.
+    --pre-opt/--no-pre-opt  Pre-optimize endpoints; default on.
+    --align/--no-align   Rigidly co‑align all inputs after pre‑opt; default on.
+    --args-yaml PATH     YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
+    --ref-pdb PATH [...] Full template PDB(s) for final merge (see Notes).
+    --out-dir PATH       Output directory; default ./result_path_search/
+    --dump               Save optimizer dumps; default off.
+    --freeze-links/--no-freeze-links  Freeze parents of link hydrogens for PDB input; default on.
 
 Examples::
-	# Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)
-	pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+    # Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)
+    pdb2reaction path-search -i reactant.pdb product.pdb -q 0
 
-	# Multistep with intermediates, YAML overrides, and PDB merge to a full system
-	pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-	    --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
+    # Multistep with intermediates, YAML overrides, and PDB merge to a full system
+    pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+        --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
 
 Description
 -----

@@ -1,16 +1,16 @@
 # pdb2reaction/add_elem_info.py
 
 """
-add_elem_info — Add/repair PDB element symbols (columns 77–78) using Biopython
+pdb2reaction add_elem_info — Add/repair PDB element symbols (columns 77–78) using Biopython
 ====================================================================
 
-Usage
+Usage (CLI)
 -----
-	pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
+    pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
 
 Examples::
-	pdb2reaction add_elem_info -i 1abc.pdb
-	pdb2reaction add_elem_info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
+    pdb2reaction add_elem_info -i 1abc.pdb
+    pdb2reaction add_elem_info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
 
 
 Description

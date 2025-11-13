@@ -1,7 +1,7 @@
 # pdb2reaction/utils.py
 
 """
-pdb2reaction.utils — concise utilities for configuration, plotting, coordinates, and link-freezing
+pdb2reaction utils — concise utilities for configuration, plotting, coordinates, and link-freezing
 ====================================================================
 
 Description

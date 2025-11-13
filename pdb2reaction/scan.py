@@ -1,41 +1,41 @@
 # pdb2reaction/scan.py
 
 """
-scan — Bond-length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
+pdb2reaction scan — Bond-length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
 ====================================================================
 
-Usage (CLI input; include practically necessary flags such as -q even if not strictly required)
+Usage (CLI)
 -----
-  # Minimal (define at least one stage)
-  pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
-    --scan-lists "[(I,J,TARGET_ANG)]"
+    # Minimal (define at least one stage)
+    pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+        --scan-lists "[(I,J,TARGET_ANG)]"
 
-  # Full (repeat --scan-lists for multiple stages)
-  pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
-    -s SPIN \
-    --scan-lists "[(I,J,TARGET_ANG), ...]" [--scan-lists "..."]... \
-    [--one-based|--zero-based] \
-    --max-step-size FLOAT \
-    --bias-k FLOAT \
-    --relax-max-cycles INT \
-    --opt-mode {light,lbfgs,heavy,rfo} \
-    [--freeze-links/--no-freeze-links] \
-    [--dump/--no-dump] \
-    --out-dir PATH \
-    [--args-yaml FILE] \
-    [--preopt/--no-preopt] \
-    [--endopt/--no-endopt]
+    # Full (repeat --scan-lists for multiple stages)
+    pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+        -s SPIN \
+        --scan-lists "[(I,J,TARGET_ANG), ...]" [--scan-lists "..."]... \
+        [--one-based|--zero-based] \
+        --max-step-size FLOAT \
+        --bias-k FLOAT \
+        --relax-max-cycles INT \
+        --opt-mode {light,lbfgs,heavy,rfo} \
+        [--freeze-links/--no-freeze-links] \
+        [--dump/--no-dump] \
+        --out-dir PATH \
+        [--args-yaml FILE] \
+        [--preopt/--no-preopt] \
+        [--endopt/--no-endopt]
 
 Examples::
-  # Single-stage, minimal inputs (PDB)
-  pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
+    # Single-stage, minimal inputs (PDB)
+    pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
 
-  # Two stages, LBFGS, dumping trajectories
-  pdb2reaction scan -i input.pdb -q 0 \
-    --scan-lists "[(12,45,1.35)]" \
-    --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-    --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
-    --preopt True --endopt True
+    # Two stages, LBFGS, dumping trajectories
+    pdb2reaction scan -i input.pdb -q 0 \
+        --scan-lists "[(12,45,1.35)]" \
+        --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+        --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
+        --preopt True --endopt True
 
 
 Description
