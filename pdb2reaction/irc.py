@@ -98,11 +98,13 @@ from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from pdb2reaction.utils import (
     convert_xyz_to_pdb,
+    freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
+    merge_freeze_atom_indices,
 )
 
 
@@ -170,6 +172,14 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
 )
 @click.option("-q", "--charge", type=int, required=True, help="Total charge; overrides calc.charge from YAML.")
 @click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1); overrides calc.spin from YAML.")
+@click.option(
+    "--freeze-links",
+    "freeze_links_flag",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="Freeze parent atoms of link hydrogens when the input is a PDB.",
+)
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
 @click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")
@@ -192,6 +202,7 @@ def cli(
     input_path: Path,
     charge: int,
     spin: int,
+    freeze_links_flag: bool,
     max_cycles: Optional[int],
     step_size: Optional[float],
     root: Optional[int],
@@ -242,6 +253,22 @@ def cli(
             irc_cfg["backward"] = bool(backward)
         if out_dir:
             irc_cfg["out_dir"] = str(out_dir)
+
+        # Automatically freeze link-parent atoms when requested for PDB inputs
+        if freeze_links_flag and input_path.suffix.lower() == ".pdb":
+            try:
+                detected = freeze_links(input_path)
+            except Exception as e:
+                click.echo(
+                    f"[freeze-links] WARNING: Could not detect link parents: {e}",
+                    err=True,
+                )
+                detected = []
+            merged = merge_freeze_atom_indices(geom_cfg, detected)
+            if merged:
+                click.echo(
+                    f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}"
+                )
 
         # Ensure the calculator receives the freeze list used by geometry
         #      (so FD Hessian can skip frozen DOF, etc.)
