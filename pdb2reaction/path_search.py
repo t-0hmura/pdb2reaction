@@ -152,6 +152,7 @@ from .utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    format_elapsed,
     merge_freeze_atom_indices,
     build_energy_diagram,
 )
@@ -2044,11 +2045,7 @@ def cli(
         # --------------------------
         # 7) Elapsed time
         # --------------------------
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed for Path Search: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[time] Elapsed for Path Search", time_start))
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)

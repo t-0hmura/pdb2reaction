@@ -69,7 +69,7 @@ import numpy as np
 
 from pysisyphus.helpers import geom_loader
 
-from .utils import load_yaml_dict, apply_yaml_overrides, pretty_block
+from .utils import load_yaml_dict, apply_yaml_overrides, pretty_block, format_elapsed
 
 
 # -----------------------------------------------
@@ -428,11 +428,7 @@ def cli(
             click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
             sys.exit(3)
         
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed Time for DFT: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)

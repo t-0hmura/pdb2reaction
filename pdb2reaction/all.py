@@ -123,7 +123,7 @@ from . import freq as _freq_cli
 from . import dft as _dft_cli
 from .uma_pysis import uma_pysis
 from .trj2fig import run_trj2fig
-from .utils import build_energy_diagram
+from .utils import build_energy_diagram, format_elapsed
 
 
 # -----------------------------
@@ -818,11 +818,7 @@ def cli(
     # --------------------------
     if not (do_tsopt or do_thermo or do_dft):
         # Elapsed time
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[all] Total Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[all] Total Elapsed", time_start))
         return
 
     click.echo("\n=== [all] Stage 4 — Post-processing per reactive segment ===\n")
@@ -832,22 +828,14 @@ def cli(
     segments = _read_summary(summary_yaml)
     if not segments:
         click.echo("[post] No segments found in summary; nothing to do.")
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[all] Total Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[all] Total Elapsed", time_start))
         return
 
     # Iterate only bond-change segments (kind='seg' and bond_changes not empty and not '(no covalent...)')
     reactive = [s for s in segments if (s.get("kind", "seg") == "seg" and str(s.get("bond_changes", "")).strip() and str(s.get("bond_changes", "")).strip() != "(no covalent changes detected)")]
     if not reactive:
         click.echo("[post] No bond-change segments. Skipping TS/thermo/DFT.")
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[all] Total Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[all] Total Elapsed", time_start))
         return
 
     # For each reactive segment

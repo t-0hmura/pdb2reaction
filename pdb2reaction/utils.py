@@ -26,6 +26,7 @@ Description
 - **Generic helpers**
   - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Renders `(empty)` when `content` is empty.
   - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"` is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are left unchanged. Empty iterables become `""`.
+  - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
   - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the updated list (in place).
   - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalise CLI-style string options using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when no alias matches.
   - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged, non-dicts overwrite; returns `dst`.
@@ -65,6 +66,7 @@ Notes:
 """
 
 import math
+import time
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple
@@ -109,6 +111,16 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     g["freeze_atoms"] = ",".join(map(str, items)) if items else ""
     return g
+
+
+def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
+    """Return a formatted elapsed-time string with the provided ``prefix`` label."""
+
+    finish = end_time if end_time is not None else time.perf_counter()
+    elapsed = max(0.0, finish - start_time)
+    hours, rem = divmod(elapsed, 3600)
+    minutes, seconds = divmod(rem, 60)
+    return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
 
 
 def merge_freeze_atom_indices(

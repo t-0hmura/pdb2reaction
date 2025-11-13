@@ -139,6 +139,7 @@ from .utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
 )
@@ -874,11 +875,7 @@ def cli(
 
         click.echo("\n=== Scan finished ===\n")
 
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed Time for Scan: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)
