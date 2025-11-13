@@ -19,8 +19,8 @@ Usage (CLI)
         --bias-k FLOAT \
         --relax-max-cycles INT \
         --opt-mode {light,lbfgs,heavy,rfo} \
-        [--freeze-links/--no-freeze-links] \
-        [--dump/--no-dump] \
+        --freeze-links {True|False} \
+        --dump {True|False} \
         --out-dir PATH \
         [--args-yaml FILE] \
         [--preopt/--no-preopt] \
@@ -140,6 +140,7 @@ from .utils import (
     pretty_block,
     format_geom_for_echo,
     merge_freeze_atom_indices,
+    normalize_choice,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -185,6 +186,14 @@ BOND_KW: Dict[str, Any] = {
     "margin_fraction": 0.05,     # float, fractional margin to tolerate small deviations
     "delta_fraction": 0.05,      # float, change threshold to flag bond formation/breaking
 }
+
+# Normalization helper
+_OPT_MODE_ALIASES = (
+    (("light", "lbfgs"), "lbfgs"),
+    (("heavy", "rfo"), "rfo"),
+)
+
+
 def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
     try:
         return list(detect_freeze_links(pdb_path))
@@ -420,21 +429,6 @@ class HarmonicBiasCalculator:
     # Delegate unknown attributes to base calculator
     def __getattr__(self, name: str):
         return getattr(self.base, name)
-
-
-# --------------------------------------------------------------------------------------
-# CLI
-# --------------------------------------------------------------------------------------
-
-def _norm_opt_mode(mode: str) -> str:
-    m = (mode or "").strip().lower()
-    if m in ("light", "lbfgs"):
-        return "lbfgs"
-    if m in ("heavy", "rfo"):
-        return "rfo"
-    raise click.BadParameter(f"Unknown --opt-mode '{mode}'. Use: light|lbfgs|heavy|rfo")
-
-
 @click.command(
     help="Bond-length driven scan with staged harmonic restraints and relaxation (UMA only).",
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -532,7 +526,12 @@ def cli(
         opt_cfg["out_dir"] = out_dir
         # Do not use the optimizer's own dump per step; stage dumping is controlled separately.
         opt_cfg["dump"]    = False
-        kind = _norm_opt_mode(opt_mode)
+        kind = normalize_choice(
+            opt_mode,
+            param="--opt-mode",
+            alias_groups=_OPT_MODE_ALIASES,
+            allowed_hint="light|lbfgs|heavy|rfo",
+        )
 
         # Bias strength override
         if bias_k is not None:

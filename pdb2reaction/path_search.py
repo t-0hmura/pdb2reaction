@@ -24,7 +24,7 @@ Recommended/common:
     --ref-pdb PATH [...] Full template PDB(s) for final merge (see Notes).
     --out-dir PATH       Output directory; default ./result_path_search/
     --dump               Save optimizer dumps; default off.
-    --freeze-links/--no-freeze-links  Freeze parents of link hydrogens for PDB input; default on.
+    --freeze-links {True|False}  Freeze parents of link hydrogens for PDB input; default on.
 
 Examples::
     # Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)
