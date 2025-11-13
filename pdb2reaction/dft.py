@@ -22,7 +22,10 @@ Description
 - Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd"). Names are case-insensitive in PySCF.
 - SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF `grids.level`), --out-dir. Verbosity can be overridden via YAML.
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
-- Atomic charges are computed from the final density: Mulliken, Löwdin, and IAO (IAO may be unavailable; see Notes).
+- **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
+    * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS)
+    * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; not available → Lowdin(S^{1/2}) fallback)
+    * IAO (charges: `lo.iao.fast_iao_mullikan_pop`; spins: `fast_iao_mullikan_spin_pop` implemented here)
 - Energies are reported in Hartree and kcal/mol; SCF convergence metadata and timing are recorded.
 
 Outputs (& Directory Layout)
@@ -36,11 +39,12 @@ Outputs (& Directory Layout)
     │       scf_time_sec: <float>
     │       engine: "gpu4pyscf" or "pyscf(cpu)"
     │       used_gpu: <bool>
-    │     charges:
-    │       atoms: [ {index: <int>, element: <str>}, ... ]
-    │       mulliken: [<float>, ...]
-    │       lowdin:   [<float>, ...]
-    │       iao:      [<float>, ...]  # can be null if IAO construction fails
+    │     charges [index, element, mulliken, lowdin, iao]:
+    │       - [0, H, <float>, <float>, <float or null>]
+    │       - ...
+    │     spin_densities [index, element, mulliken, lowdin, iao]:
+    │       - [0, H, <float>, <float>, <float or null>]
+    │       - ...
     └── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
 
 Notes:
@@ -50,18 +54,19 @@ Notes:
 - Grids and checkpointing: sets `grids.level` when supported; disables SCF checkpoint files when possible.
 - Units: input coordinates are in Å. Functional/basis names are PySCF-style and case-insensitive for common sets.
 - Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.
-- IAO charges: built from the (alpha) MO coefficients and may fail on some systems; in that case `charges.iao` is null.
+- IAO quantities may be unavailable if IAO construction fails; in that case the IAO column values are `null`.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple, List
+from typing import Any, Dict, Optional, Sequence, Tuple, List, Union
 
 import sys
 import traceback
 import textwrap
 import time
+from functools import reduce
 
 import click
 import yaml
@@ -126,80 +131,130 @@ def _hartree_to_kcalmol(Eh: float) -> float:
     return float(Eh * HARTREE_TO_KCALMOL)
 
 
+# ---------------- Flow-style YAML helper (only for inner row lists) -----------
+class FlowList(list):
+    """A list that will be dumped in YAML flow style: [a, b, c]."""
+    pass
+
+def _flow_seq_representer(dumper, data):
+    return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
+
+yaml.SafeDumper.add_representer(FlowList, _flow_seq_representer)
+
+
+def _format_row_for_echo(row: List[Union[int, str, float, None]]) -> str:
+    """Format a row like: [0, H, 0.0, 0.0, 0.0]"""
+    def _fmt(x):
+        if x is None:
+            return "null"
+        if isinstance(x, float):
+            # keep concise; similar to YAML default float rendering
+            return f"{x:.10g}"
+        return str(x)
+    return "[" + ", ".join(_fmt(v) for v in row) + "]"
+
+
+def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
+    """
+    IAO-basis Mulliken spin population analysis.
+
+    Args:
+        mol : Mole or Cell object
+        dm  : AO density matrix; for UKS/UHF, a (2, nao, nao) array
+        iaos: 2D array of IAO orbitals (orthogonal or non-orthogonal)
+        verbose: PySCF logger level (defaults to logger.DEBUG if None)
+
+    Returns:
+        (spin_pop_ao, Ms_by_atom)
+        spin_pop_ao : Mulliken spin population on each IAO
+        Ms_by_atom  : Mulliken spin density per atom (sum over IAOs on atom)
+    """
+    import numpy
+    from pyscf.lib import logger as pyscf_logger
+    from pyscf.lo.iao import reference_mol
+    from pyscf.scf import uhf as scf_uhf
+
+    if verbose is None:
+        verbose = pyscf_logger.DEBUG
+
+    pmol = reference_mol(mol)
+    # Overlap in the large basis
+    if getattr(mol, 'pbc_intor', None):  # cell?
+        ovlpS = mol.pbc_intor('int1e_ovlp')
+    else:
+        ovlpS = mol.intor_symmetric('int1e_ovlp')
+
+    # Transform DM in big basis to IAO basis
+    # |IAO> = |big> C
+    # DM_IAO = C^{-1} DM (C^{-1})^T = S_IAO^{-1} C^T S DM S C S_IAO^{-1}
+    cs = numpy.dot(iaos.T.conj(), ovlpS)
+    s_iao = numpy.dot(cs, iaos)
+    iao_inv = numpy.linalg.solve(s_iao, cs)
+
+    # Restricted case: spin density is identically zero
+    if isinstance(dm, numpy.ndarray) and dm.ndim == 2:
+        spin_pop_ao = numpy.zeros(s_iao.shape[0], dtype=float)
+        Ms = numpy.zeros(pmol.natm, dtype=float)
+        return spin_pop_ao, Ms
+
+    # Unrestricted: transform alpha/beta DM to IAO basis
+    dm_a = reduce(numpy.dot, (iao_inv, dm[0], iao_inv.conj().T))
+    dm_b = reduce(numpy.dot, (iao_inv, dm[1], iao_inv.conj().T))
+    return scf_uhf.mulliken_spin_pop(pmol, [dm_a, dm_b], s_iao, verbose)
+
+
 def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
-    Compute atomic charges:
-      - 'mulliken': Mulliken charges per atom
-      - 'lowdin'  : Löwdin charges per atom
-      - 'iao'     : IAO charges per atom (None if IAO construction fails)
+    Compute atomic charges by three schemes:
+      - 'mulliken' : scf.hf.mulliken_pop
+      - 'lowdin'   : scf.hf.mulliken_pop_meta_lowdin_ao (meta-Löwdin AO)
+      - 'iao'      : lo.iao.fast_iao_mullikan_pop (None if IAO fails)
     """
-    # Total density matrix in the AO basis
+    from pyscf.scf import hf as scf_hf
+    from pyscf.lo import iao as lo_iao
+
     dm = mf.make_rdm1()
-    if isinstance(dm, np.ndarray) and dm.ndim == 3:
-        # UKS: dm has shape (2, nao, nao); sum α and β
-        dm_tot = dm[0] + dm[1]
-    else:
-        dm_tot = dm
+    S = mf.get_ovlp()
+    # Total density (for charges)
+    dm_tot = dm[0] + dm[1] if (isinstance(dm, np.ndarray) and dm.ndim == 3) else dm
 
-    Z = mol.atom_charges()
-    aoslice = mol.aoslice_by_atom()  # (natm, 4): [ish0, ish1, iao0, iao1]
-    S = mol.intor_symmetric("int1e_ovlp")
+    # Mulliken charges
+    _, mull_chg = scf_hf.mulliken_pop(mol, dm_tot, s=S, verbose=0)
+    mull_q = np.asarray(mull_chg, dtype=float).tolist()
 
-    # ---------- Mulliken ----------
-    # AO populations = diag(D * S)
-    pop_ao_mull = np.einsum("ij,ji->i", dm_tot, S)
-    mull = []
-    for _, _, p0, p1 in aoslice:
-        pop_atom = float(np.sum(pop_ao_mull[p0:p1]))
-        mull.append(float(pop_atom))
-    mull_q = (Z - np.array(mull)).astype(float).tolist()
+    # meta-Löwdin charges
+    try:
+        _, low_chg = scf_hf.mulliken_pop_meta_lowdin_ao(mol, dm_tot, verbose=0, s=S)
+        low_q = np.asarray(low_chg, dtype=float).tolist()
+    except Exception as e:
+        click.echo(f"[Löwdin] WARNING: Failed to compute meta-Löwdin charges: {e}", err=True)
+        # フォールバック（通常の Lowdin）
+        w, U = np.linalg.eigh(S)
+        w = np.clip(w, 0.0, None)
+        S_half = (U * np.sqrt(w)) @ U.T
+        pop_ao_low = np.diag(S_half @ dm_tot @ S_half)
+        aoslice = mol.aoslice_by_atom()
+        pop_atom_low = np.zeros(mol.natm, dtype=float)
+        for a, (_, __, p0, p1) in enumerate(aoslice):
+            pop_atom_low[a] = float(np.sum(pop_ao_low[p0:p1]))
+        Z = mol.atom_charges()
+        low_q = (Z - pop_atom_low).astype(float).tolist()
 
-    # ---------- Löwdin ----------
-    # AO populations = diag(S^{1/2} * D * S^{1/2})
-    w, U = np.linalg.eigh(S)
-    w = np.clip(w, 0.0, None)
-    S_half = (U * np.sqrt(w)) @ U.T
-    pop_ao_low = np.diag(S_half @ dm_tot @ S_half)
-    low = []
-    for _, _, p0, p1 in aoslice:
-        pop_atom = float(np.sum(pop_ao_low[p0:p1]))
-        low.append(float(pop_atom))
-    low_q = (Z - np.array(low)).astype(float).tolist()
-
-    # ---------- IAO ----------
+    # IAO charges
     iao_q: Optional[List[float]] = None
     try:
-        from pyscf.lo import iao, orth
-        # For UKS, use the alpha coefficients as the reference to build IAOs
-        mo_coeff = mf.mo_coeff
-        if isinstance(mo_coeff, (list, tuple)) or (hasattr(mo_coeff, "ndim") and getattr(mo_coeff, "ndim", 0) == 3):
-            mo_for_iao = mo_coeff[0]
+        mo = mf.mo_coeff
+        mo_occ = mf.mo_occ
+        if isinstance(mo, np.ndarray) and mo.ndim == 2:
+            occ_idx = np.asarray(mo_occ) > 0
+            orbocc = mo[:, occ_idx]
         else:
-            mo_for_iao = mo_coeff
-        C_iao = iao.iao(mol, mo_for_iao, minao="minao")
-        C_iao = orth.vec_lowdin(C_iao, S)  # orthonormalize IAOs in the AO metric
-
-        # Population in the IAO basis: diag(C^T D C)
-        D_iao = C_iao.T @ dm_tot @ C_iao
-        pop_iao_orb = np.diag(D_iao)
-
-        # Assign each IAO to an atom by the largest AO-squared weight on that atom
-        nat = mol.natm
-        ao2atom = np.empty(S.shape[0], dtype=int)
-        for a, (_, __, p0, p1) in enumerate(aoslice):
-            ao2atom[p0:p1] = a
-
-        iao_atom = np.zeros(nat, dtype=float)
-        for j in range(C_iao.shape[1]):
-            col = C_iao[:, j]
-            w_per_atom = np.zeros(nat, dtype=float)
-            # AO-squared weights by atom
-            for mu, c in enumerate(col):
-                w_per_atom[ao2atom[mu]] += float(c * c)
-            amax = int(np.argmax(w_per_atom))
-            iao_atom[amax] += float(pop_iao_orb[j])
-
-        iao_q = (Z - iao_atom).astype(float).tolist()
+            occ_idx = np.asarray(mo_occ[0]) > 0
+            orbocc = mo[0][:, occ_idx]
+        iaos = lo_iao.iao(mol, orbocc, minao="minao")
+        # ※ PySCF 側は Mulliken 綴り
+        _, iao_chg = lo_iao.fast_iao_mullikan_pop(mol, dm, iaos, verbose=0)
+        iao_q = np.asarray(iao_chg, dtype=float).tolist()
     except Exception as e:
         click.echo(f"[IAO] WARNING: Failed to compute IAO charges: {e}", err=True)
         iao_q = None
@@ -209,6 +264,73 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
         "lowdin": low_q,
         "iao": iao_q,
     }
+
+
+def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
+    """
+    Compute atomic spin densities (Ms) by three schemes:
+      - 'mulliken' : scf.uhf.mulliken_spin_pop (RKS → zeros)
+      - 'lowdin'   : scf.uhf.mulliken_spin_pop_meta_lowdin_ao (RKS → zeros)
+      - 'iao'      : fast_iao_mullikan_spin_pop (RKS → zeros; None if IAO fails)
+    """
+    from pyscf.scf import uhf as scf_uhf
+    from pyscf.lo import iao as lo_iao
+
+    dm = mf.make_rdm1()
+    S = mf.get_ovlp()
+    nat = mol.natm
+
+    # RKS (restricted) → spin densities are zero
+    if not (isinstance(dm, np.ndarray) and dm.ndim == 3):
+        zeros = [0.0] * nat
+        return {"mulliken": zeros, "lowdin": zeros, "iao": zeros}
+
+    # UKS/UHF: true spin-resolved analysis
+    try:
+        _, Ms_mull = scf_uhf.mulliken_spin_pop(mol, dm, s=S, verbose=0)
+        mull = np.asarray(Ms_mull, dtype=float).tolist()
+    except Exception as e:
+        click.echo(f"[Spin Mulliken] WARNING: Failed to compute Mulliken spin densities: {e}", err=True)
+        # フォールバック計算
+        da, db = dm[0], dm[1]
+        diff_ao = np.einsum("ij,ji->i", (da - db), S)
+        aoslice = mol.aoslice_by_atom()
+        mull = [float(np.sum(diff_ao[p0:p1])) for _, (_, __, p0, p1) in enumerate(aoslice)]
+
+    try:
+        _, Ms_low = scf_uhf.mulliken_spin_pop_meta_lowdin_ao(mol, dm, verbose=0, s=S)
+        low = np.asarray(Ms_low, dtype=float).tolist()
+    except Exception as e:
+        click.echo(f"[Spin Löwdin] WARNING: Failed to compute meta-Löwdin spin densities: {e}", err=True)
+        # フォールバック: 普通の Lowdin(S^{1/2})
+        w, U = np.linalg.eigh(S)
+        w = np.clip(w, 0.0, None)
+        S_half = (U * np.sqrt(w)) @ U.T
+        da, db = dm[0], dm[1]
+        popA = np.diag(S_half @ da @ S_half)
+        popB = np.diag(S_half @ db @ S_half)
+        diff = popA - popB
+        aoslice = mol.aoslice_by_atom()
+        low = [float(np.sum(diff[p0:p1])) for _, (_, __, p0, p1) in enumerate(aoslice)]
+
+    iao_ms: Optional[List[float]] = None
+    try:
+        mo = mf.mo_coeff
+        mo_occ = mf.mo_occ
+        if isinstance(mo, np.ndarray) and mo.ndim == 2:
+            occ_idx = np.asarray(mo_occ) > 0
+            orbocc = mo[:, occ_idx]
+        else:
+            occ_idx = np.asarray(mo_occ[0]) > 0
+            orbocc = mo[0][:, occ_idx]
+        iaos = lo_iao.iao(mol, orbocc, minao="minao")
+        _, Ms_iao = fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=0)
+        iao_ms = np.asarray(Ms_iao, dtype=float).tolist()
+    except Exception as e:
+        click.echo(f"[Spin IAO] WARNING: Failed to compute IAO spin densities: {e}", err=True)
+        iao_ms = None
+
+    return {"mulliken": mull, "lowdin": low, "iao": iao_ms}
 
 
 # -----------------------------------------------
@@ -388,17 +510,64 @@ def cli(
         e_kcal = _hartree_to_kcalmol(e_h)
 
         # --------------------------
-        # 6) Charges (Mulliken / Löwdin / IAO)
+        # 6) Charges (Mulliken / meta-Löwdin-AO / IAO) & Spin densities
         # --------------------------
         charges = _compute_atomic_charges(mol, mf)
+        spins   = _compute_atomic_spin_densities(mol, mf)
+
+        def _round_list(xs, tol=1e-10):
+            return [0.0 if (x == x) and abs(x) < tol else float(x) for x in xs]  # keep NaN as-is
+
+        # Round tiny numbers
+        charges["mulliken"] = _round_list(charges["mulliken"])
+        charges["lowdin"]   = _round_list(charges["lowdin"])
+        charges["iao"]      = None if charges["iao"] is None else _round_list(charges["iao"])
+        spins["mulliken"]   = _round_list(spins["mulliken"])
+        spins["lowdin"]     = _round_list(spins["lowdin"])
+        spins["iao"]        = None if spins["iao"] is None else _round_list(spins["iao"])
+
+        # Build per-atom tables
+        charges_table: List[List[Any]] = []
+        spins_table:   List[List[Any]] = []
+        for i in range(mol.natm):
+            elem = mol.atom_symbol(i)
+            q_mull = charges["mulliken"][i]
+            q_low  = charges["lowdin"][i]
+            q_iao  = None if charges["iao"] is None else charges["iao"][i]
+            charges_table.append([i, elem, q_mull, q_low, q_iao])
+
+            s_mull = spins["mulliken"][i]
+            s_low  = spins["lowdin"][i]
+            s_iao  = None if spins["iao"] is None else spins["iao"][i]
+            spins_table.append([i, elem, s_mull, s_low, s_iao])
+
+        # ---- Echo charges/spins to stdout in flow style lines ----
+        click.echo("\ncharges [index, element, mulliken, lowdin, iao]:")
+        for row in charges_table:
+            click.echo(f"- {_format_row_for_echo(row)}")
+
+        click.echo("\nspin_densities [index, element, mulliken, lowdin, iao]:")
+        for row in spins_table:
+            click.echo(f"- {_format_row_for_echo(row)}")
 
         # --------------------------
-        # 7) Save result.yaml
+        # 7) Save result.yaml (flow style rows for readability)
         # --------------------------
-        # Per-atom metadata for mapping indices to elements
-        atoms_meta = [{"index": i, "element": mol.atom_symbol(i)} for i in range(mol.natm)]
+        charges_rows_flow = [FlowList(r) for r in charges_table]
+        spins_rows_flow   = [FlowList(r) for r in spins_table]
 
         result_yaml = {
+            "input": {
+                "charge": int(charge),
+                "multiplicity": multiplicity,
+                "spin (PySCF expects 2S)": spin2s,
+                "xc": xc,
+                "basis": basis,
+                "conv_tol": dft_cfg["conv_tol"],
+                "max_cycle": dft_cfg["max_cycle"],
+                "grid_level": dft_cfg["grid_level"],
+                "out_dir": str(out_dir_path),
+            },
             "energy": {
                 "hartree": e_h,
                 "kcal_per_mol": e_kcal,
@@ -407,27 +576,26 @@ def cli(
                 "engine": engine_label,
                 "used_gpu": bool(using_gpu),
             },
-            "charges": {
-                "atoms": atoms_meta,
-                "mulliken": charges["mulliken"],
-                "lowdin": charges["lowdin"],
-                "iao": charges["iao"],
-            },
+            # Requested table-style outputs (flow lists)
+            "charges [index, element, mulliken, lowdin, iao]": charges_rows_flow,
+            "spin_densities [index, element, mulliken, lowdin, iao]": spins_rows_flow,
         }
-        (out_dir_path / "result.yaml").write_text(yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True))
+        (out_dir_path / "result.yaml").write_text(
+            yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True)
+        )
         click.echo(f"[write] Wrote '{out_dir_path / 'result.yaml'}'.")
 
         # --------------------------
         # 8) Final print: energies
         # --------------------------
-        click.echo(f"E_total (Hartree): {e_h:.12f}")
+        click.echo(f"\nE_total (Hartree): {e_h:.12f}")
         click.echo(f"E_total (kcal/mol): {e_kcal:.6f}")
 
         # Exit codes: 0 if converged, 3 otherwise (for compatibility with prior behavior)
         if not converged:
             click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
             sys.exit(3)
-        
+
         click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))
 
     except KeyboardInterrupt:

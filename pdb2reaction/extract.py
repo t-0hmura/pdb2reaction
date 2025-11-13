@@ -161,8 +161,10 @@ import logging
 import io as _io
 import os
 import re
+import sys
 from typing import Dict, List, Set, Tuple, Iterable, Any, Optional
 
+import click
 import numpy as np
 from Bio import PDB
 from Bio.PDB import NeighborSearch
@@ -1777,6 +1779,14 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         level=logging.INFO if args.verbose else logging.WARNING,
         format="%(levelname)s: %(message)s"
     )
+
+    # Route INFO-level messages through click.echo when verbose is enabled
+    if args.verbose:
+        def _click_info(msg, *fmt_args, **kwargs):
+            if fmt_args:
+                msg = msg % fmt_args
+            click.echo(msg)
+        logging.info = _click_info  # type: ignore[assignment]
 
     if args.radius == 0.0:
         args.radius = 0.001

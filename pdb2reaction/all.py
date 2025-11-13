@@ -1,22 +1,35 @@
 # pdb2reaction/all.py
 
 """
-all — Executes the entire workflow with a SINGLE command: Extract pockets → run MEP (recursive GSM) → merge to full systems, with optional TS optimization, pseudo‑IRC, thermochemistry, and DFT per reactive segment
-====================================================================
+all — SINGLE command to execute an end-to-end enzymatic reaction workflow:
+Extract pockets → (optional) staged scan on a single structure → MEP (recursive GSM) → merge to full systems,
+with optional TS optimization, pseudo‑IRC, thermochemistry, DFT, and DFT//UMA diagrams
+================================================================================================================
 
 Usage (CLI)
 -----
+    # Standard (multi-structure ensemble in reaction order)
     pdb2reaction all -i R.pdb [I1.pdb ...] P.pdb -c <substrate-spec> [--ligand-charge <map-or-number>]
                       [--spin <2S+1>] [--freeze-links True|False] [--max-nodes N] [--max-cycles N]
                       [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] [--dump True|False]
                       [--args-yaml params.yaml] [--pre-opt True|False] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
 
-    # Practically required for chemically correct conditions:
-    #   -c/--center and (when needed) --ligand-charge
+    # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
+    pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
+                      --spin 1 --freeze-links True --sopt-mode lbfgs --pre-opt True \
+                      --out-dir result_all --tsopt True --thermo True --dft True
 
-Examples::
-    # Minimal end-to-end run with explicit substrate and ligand charges
+    # Single-structure TSOPT-only mode (no path search):
+    # if exactly one input is given, --scan-lists is NOT provided, and --tsopt True:
+    # run TS optimization on the extracted pocket, do pseudo‑IRC, minimize both ends, and make diagrams.
+    pdb2reaction all -i single.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
+                      --tsopt True --thermo True --dft True --out-dir result_tsopt_single
+
+
+Examples
+-----
+    # Minimal end-to-end run with explicit substrate and ligand charges (multi-structure)
     pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 
     # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
@@ -25,34 +38,73 @@ Examples::
       --sopt-mode lbfgs --dump False --args-yaml params.yaml --pre-opt True \
       --out-dir result_all --tsopt True --thermo True --dft True
 
+    # Single-structure + scan to build an ordered series (initial + stage results) → path_search + post
+    pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+      --spin 1 --out-dir result_scan_all --tsopt True --thermo True --dft True
+
+    # Single-structure TSOPT-only mode (no path_search)
+    pdb2reaction all -i A.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
+      --tsopt True --thermo True --dft True --out-dir result_tsopt_only
+
 
 Description
 -----
-Runs a single-shot pipeline that (1) extracts active-site pockets from multiple full PDBs in reaction order, (2) performs a minimum-energy path (MEP) search via recursive GSM on the pocket models, (3) merges the pocket MEP back into the original full-system templates, and (4) optionally executes, per reactive segment, TS optimization with pseudo‑IRC, thermochemistry (UMA), DFT single-point energies, and combined DFT//UMA Gibbs diagrams. The total system charge used for the path search is taken from the extractor’s first-model charge summary and rounded to the nearest integer (with a console note when rounding occurs). The extractor runs in multi‑structure union mode to enforce a consistent pocket topology across the ensemble.
+Runs a one-shot pipeline centered on pocket models:
 
+(1) **Active-site pocket extraction** (multi-structure union when multiple inputs)
+    - Define the substrate (`-c/--center`, by PDB, residue IDs, or residue names).
+    - Optionally provide `--ligand-charge` as a total number (distributed) or a mapping (e.g., `GPP:-3,MMT:-1`).
+    - The extractor writes per-input pocket PDBs under `<out-dir>/pockets/`.
+    - The extractor’s **first-model total pocket charge** is used as the total charge in later steps,
+      cast to the nearest integer with a console note if rounding occurs.
 
-Workflow:
------
-1. **Pocket extraction (multi-structure union)**  
-   `extract.extract_api` generates per-structure pocket PDBs under `<out-dir>/pockets`.  
-   Substrate can be specified as: PDB path, residue-ID list (e.g., `123,124`, `A:123,B:456`, insertion codes like `123A`/`A:123A`), or residue-name list (e.g., `GPP,MMT`).  
-   Optional `--ligand-charge` accepts a number (distributed across unknown residues) or a mapping (e.g., `GPP:-3,MMT:-1`).
+(1b) **Optional staged scan (single-structure only)** — *new*
+    - If **exactly one** full input PDB is provided and `--scan-lists` is given, the tool performs a
+      **staged, bond-length–driven scan** *on the extracted pocket PDB* using the UMA calculator.
+    - For each stage, the final relaxed structure (`stage_XX/result.pdb`) is collected as an
+      **intermediate/product candidate**.
+    - The ordered input series for the path search becomes:
+      `[initial pocket, stage_01/result.pdb, stage_02/result.pdb, ...]`.
 
-2. **Charge propagation**  
-   The extractor’s **total** pocket charge (model #1) is used as `--charge` for the path search (rounded to integer with a console note if needed).
+(2) **MEP search (recursive GSM) on pocket inputs**
+    - Runs `path_search` with options forwarded from this command.
+    - For multi-input runs, the original **full** PDBs are supplied as **merge references** automatically.
+      In the scan-derived series (single-structure case), the single original full PDB is reused (repeated)
+      as the reference template for all pocket inputs.
 
-3. **MEP search (recursive GSM)**  
-   Runs `path_search.cli` on the pocket inputs. Key knobs are forwarded: multiplicity `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb` (for the first segment in each pair), single-structure optimizer `--sopt-mode`, `--dump`, `--pre-opt`, and `--args-yaml`.  
-   Original full PDBs are auto-supplied as reference templates to enable full-system merging (no `--ref-pdb` needed from the user).
+(3) **Merge to full systems**
+    - The pocket MEP is merged back into the original full-system template(s) within `<out-dir>/path_search/`.
+    - Pocket-only and full-system trajectories, per-segment merged PDBs, and a summary are written.
 
-4. **Merge to full systems**  
-   The resulting pocket MEP is merged back into the original inputs inside the `path_search` output directory, writing both pocket-only and full-system trajectories.
+(4) **Optional per-segment post-processing** (for segments with covalent changes)
+    - `--tsopt True`: Optimize TS on the HEI pocket; perform a pseudo‑IRC by displacing along the
+      imaginary mode; assign forward/backward correspondence by bond-state matching; render a segment diagram.
+    - `--thermo True`: Compute UMA thermochemistry on (R, TS, P) and add a Gibbs diagram.
+    - `--dft True`: Do DFT single-point on (R, TS, P) and add a DFT diagram.
+      With `--thermo True`, also generate a **DFT//UMA** Gibbs diagram.
 
-5. **Optional per-segment post-processing (for segments with covalent changes)**  
-   - `--tsopt True`: Optimize the TS on the HEI pocket; perform a pseudo‑IRC by displacing along the imaginary mode, minimize in both directions, assign forward/backward correspondence by bond-state matching, and render a segment energy diagram.  
-   - `--thermo True`: Run vibrational analysis (`freq`) on (R, TS, P) to compute thermochemistry and produce a UMA Gibbs free-energy diagram.  
-   - `--dft True`: Run single-point DFT on (R, TS, P) and build a DFT electronic energy diagram. With `--thermo True`, also generate a DFT//UMA Gibbs diagram (DFT energy + UMA thermal correction).
+(Alt) **Single-structure TSOPT-only mode** — *new*
+    - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
+      the tool skips (2)-(3) and:
+        • Runs `ts_opt` on the **pocket** of that structure,  
+        • Does a pseudo‑IRC and minimizes both ends,  
+        • Builds UMA energy diagrams for **R–TS–P**,  
+        • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.  
+      ※ このモードに**限り**、IRCで得た両端のうち**エネルギーが高い方を反応物 (R)** として採用します。
 
+**Charge handling**
+  - The extractor’s **first-model total pocket charge** is used as the path/scan/TSOPT total charge (rounded to int).
+
+**Inputs**
+  - `-i/--input` accepts two or more **full** PDBs in reaction order (reactant [intermediates ...] product), or
+    **a single** full PDB (with `--scan-lists` *or* `--tsopt True`).
+
+**Forwarded / relevant options**
+  - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
+    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`.
+  - Scan (single-structure, pocket input): charge/spin from extractor; `--freeze-links`, `--args-yaml`,
+    `--pre-opt` is forwarded; stage results are auto-collected.
+  - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
 
 Outputs (& Directory Layout)
 -----
@@ -61,39 +113,48 @@ Outputs (& Directory Layout)
     pocket_<input1_basename>.pdb
     pocket_<input2_basename>.pdb
     ...
-  path_search/
+  scan/                                  # present only in single-structure+scan mode
+    stage_01/result.pdb
+    stage_02/result.pdb
+    ...
+  path_search/                           # present when path_search is executed
     mep.trj
     energy.png
-    mep.pdb                     (pocket-only trajectory if pocket inputs were PDB)
-    mep_w_ref.pdb               (full-system merged trajectory; references = original inputs)
-    mep_w_ref_seg_XX.pdb        (per-segment merged trajectories with covalent changes)
-    summary.yaml                (segment barriers, ΔE, labels, etc.)
-    ... (segment subfolders)
-    tsopt_seg_XX/               (present when post-processing is enabled)
+    mep.pdb
+    mep_w_ref.pdb
+    mep_w_ref_seg_XX.pdb
+    summary.yaml
+    tsopt_seg_XX/                        # when post-processing is enabled
       ts/ ...
       irc/ ...
-      freq/ ...                 (present when `--thermo True`)
-      dft/  ...                 (present when `--dft True`)
+      freq/ ...                          # with --thermo True
+      dft/  ...                          # with --dft True
       energy_diagram_tsopt.(html|png)
-      energy_diagram_G_UMA.(html|png)                  (with `--thermo True`)
-      energy_diagram_DFT.(html|png)                    (with `--dft True`)
-      energy_diagram_G_DFT_plus_UMA.(html|png)         (with both `--thermo` and `--dft`)
+      energy_diagram_G_UMA.(html|png)
+      energy_diagram_DFT.(html|png)
+      energy_diagram_G_DFT_plus_UMA.(html|png)
+  tsopt_single/                          # present only in single-structure TSOPT-only mode
+    ts/ ...
+    irc/ ...
+    structures/
+      reactant.pdb
+      ts.pdb
+      product.pdb
+    freq/ ...                            # with --thermo True
+    dft/  ...                            # with --dft True
+    energy_diagram_tsopt.(html|png)
+    energy_diagram_G_UMA.(html|png)
+    energy_diagram_DFT.(html|png)
+    energy_diagram_G_DFT_plus_UMA.(html|png)
 
-
-Notes:
+Notes
 -----
-- **Python ≥ 3.10** is required.  
-- `-i/--input` accepts two or more **full** PDBs in reaction order (reactant [intermediates ...] product). A single `-i` may be followed by multiple space-separated files (`-i A.pdb B.pdb C.pdb`).  
-- `-c/--center` is **practically required** to define the substrate for pocket extraction (PDB path / residue IDs / residue names; chain and insertion codes allowed).  
-- `--ligand-charge` is **strongly recommended** for correct total charge assignment when ligand formal charges are not inferred; you may pass a total number or a mapping like `GPP:-3,MMT:-1`.  
-- The charge passed to the MEP search equals the extractor’s **first-model** total pocket charge (rounded to an integer).  
-- `--ref-pdb` is intentionally **hidden**; the original full inputs are automatically used as merge templates.  
-- The extractor runs in **multi-structure union** mode to keep the pocket atom topology consistent across all inputs.  
-- **Forwarded path-search options**: `--spin`, `--freeze-links` (freeze parent atoms of link hydrogens for pocket PDBs), `--max-nodes` (segment GSM; String has max_nodes+2 images including endpoints), `--max-cycles`, `--climb` (applied to the first segment in each pair), `--sopt-mode` (affects HEI±1 and kink nodes), `--dump`, `--args-yaml` (sections: geom, calc, gs, opt, sopt, bond, search), `--pre-opt`, `--out-dir`.  
-- **Post-processing toggles**: `--tsopt`, `--thermo`, `--dft`. When both `--thermo` and `--dft` are True, a **DFT//UMA** Gibbs diagram is also produced.  
-- Energy diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).  
+- **Python ≥ 3.10** is required.
+- **Substrate (`-c/--center`) と（必要に応じて）`--ligand-charge` の指定が実用上ほぼ必須**です。
+- **Single-structure** で `--scan-lists` **または** `--tsopt True` のいずれかが与えられていれば実行可能。
+  それ以外は従来通り、**少なくとも2構造**の入力が必要です。
+- Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
 """
-
 
 from __future__ import annotations
 
@@ -124,7 +185,8 @@ from . import dft as _dft_cli
 from .uma_pysis import uma_pysis
 from .trj2fig import run_trj2fig
 from .utils import build_energy_diagram, format_elapsed
-
+from . import scan as _scan_cli  # <-- NEW: use scan CLI when --scan-lists is provided (single-structure)
+from .add_elem_info import assign_elements as _assign_elem_info  # <-- NEW: add_elem_info preflight
 
 # -----------------------------
 # Helpers
@@ -165,6 +227,26 @@ def _round_charge_with_note(q: float) -> int:
     if abs(float(q) - q_rounded) > 1e-6:
         click.echo(f"[all] NOTE: extractor total charge = {q:g} → rounded to integer {q_rounded} for the path search.")
     return q_rounded
+
+
+def _pdb_needs_elem_fix(p: Path) -> bool:
+    """
+    Return True if the PDB has at least one ATOM/HETATM record whose element field (cols 77–78) is empty.
+    This is a light-weight check to decide whether to run add_elem_info.
+    """
+    try:
+        with p.open("r", encoding="utf-8", errors="ignore") as fh:
+            saw_atom = False
+            for line in fh:
+                if line.startswith("ATOM") or line.startswith("HETATM"):
+                    saw_atom = True
+                    if len(line) < 78 or not line[76:78].strip():
+                        return True
+        # If no ATOM/HETATM was seen, fall back to "no fix"
+        return False
+    except Exception:
+        # On I/O errors, skip fixing (use original)
+        return False
 
 
 # ---------- Post-processing helpers (minimal, reuse internals) ----------
@@ -352,7 +434,8 @@ def _pseudo_irc_and_match(seg_idx: int,
     From a TS pocket geometry, perform pseudo-IRC:
       - compute imag. mode
       - displace ± (0.25 Å) and optimize both to minima (LBFGS)
-      - map each min to left/right segment endpoint by bond-change check
+      - map each min to left/right segment endpoint by bond-change check (if segment endpoints exist)
+        *If no segment endpoints are available (single-structure TSOPT-only mode), fall back to (plus, minus).*
     Returns dict with paths/energies/geoms for {left, ts, right}, and small IRC plots.
     """
     # Freeze parents of link-H if requested
@@ -396,15 +479,19 @@ def _pseudo_irc_and_match(seg_idx: int,
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to plot IRC mini plots: {e}", err=True)
 
-    # Load segment endpoints (pocket-only)
+    # Try to load segment endpoints (pocket-only) — available only after path_search
+    gL_end = None
+    gR_end = None
     seg_pocket_path = seg_dir.parent / f"mep_seg_{seg_idx:02d}.pdb"
-    if not seg_pocket_path.exists():
-        # fallback to TRJ if PDB missing
-        raise click.ClickException(f"[post] segment pocket PDB not found: {seg_pocket_path}")
-    gL_end, gR_end = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+    if seg_pocket_path.exists():
+        try:
+            gL_end, gR_end = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+        except Exception as e:
+            click.echo(f"[post] WARNING: failed to load segment endpoints: {e}", err=True)
 
-    # Decide mapping by bond-change
+    # Decide mapping
     bond_cfg = dict(_path_search.BOND_KW)
+
     def _matches(x, y) -> bool:
         try:
             chg, _ = _path_search._has_bond_change(x, y, bond_cfg)
@@ -413,24 +500,28 @@ def _pseudo_irc_and_match(seg_idx: int,
             # fallback: small RMSD threshold
             return (_path_search._rmsd_between(x, y, align=True) < 1e-3)
 
-    # Try to assign (g_plus, g_minus) to (left,right)
     candidates = [("plus", g_plus), ("minus", g_minus)]
     mapping: Dict[str, Any] = {"left": None, "right": None}
-    # First pass: exact match on bond changes
-    for tag, g in candidates:
-        if _matches(g, gL_end) and not _matches(g, gR_end):
-            mapping["left"] = (tag, g)
-        elif _matches(g, gR_end) and not _matches(g, gL_end):
-            mapping["right"] = (tag, g)
-    # Second pass: fill missing by RMSD
-    for side, g_end in (("left", gL_end), ("right", gR_end)):
-        if mapping[side] is None:
-            # pick closer one that's not already used
-            remain = [(t, gg) for (t, gg) in candidates if mapping.get("left", (None, None))[0] != t and mapping.get("right", (None, None))[0] != t]
-            if not remain:
-                remain = candidates
-            best = min(remain, key=lambda p: _path_search._rmsd_between(p[1], g_end, align=True))
-            mapping[side] = best
+
+    if (gL_end is not None) and (gR_end is not None):
+        # First pass: exact match on bond changes
+        for tag, g in candidates:
+            if _matches(g, gL_end) and not _matches(g, gR_end):
+                mapping["left"] = (tag, g)
+            elif _matches(g, gR_end) and not _matches(g, gL_end):
+                mapping["right"] = (tag, g)
+        # Second pass: fill missing by RMSD
+        for side, g_end in (("left", gL_end), ("right", gR_end)):
+            if mapping[side] is None:
+                remain = [(t, gg) for (t, gg) in candidates if mapping.get("left", (None, None))[0] != t and mapping.get("right", (None, None))[0] != t]
+                if not remain:
+                    remain = candidates
+                best = min(remain, key=lambda p: _path_search._rmsd_between(p[1], g_end, align=True))
+                mapping[side] = best
+    else:
+        # Fallback (single-structure TSOPT-only mode): keep a deterministic assignment
+        mapping["left"] = ("minus", g_minus)
+        mapping["right"] = ("plus", g_plus)
 
     # Energies (ensure calculator)
     for _, g in candidates:
@@ -574,7 +665,9 @@ def _run_dft_for_state(pdb_path: Path,
 # -----------------------------
 
 @click.command(
-    help="Run pocket extraction → MEP search → merge to full PDBs in one shot.",
+    help="Run pocket extraction → (optional single-structure staged scan) → MEP search → merge to full PDBs in one shot.\n"
+         "If exactly one input is provided: (a) with --scan-lists, stage results feed into path_search; "
+         "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode.",
     context_settings={
         "help_option_names": ["-h", "--help"],
         "ignore_unknown_options": True,
@@ -586,7 +679,8 @@ def _run_dft_for_state(pdb_path: Path,
     "-i", "--input", "input_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True, required=True,
-    help=("Two or more **full** PDBs in reaction order (reactant [intermediates ...] product). "
+    help=("Two or more **full** PDBs in reaction order (reactant [intermediates ...] product), "
+          "or a single **full** PDB (with --scan-lists or with --tsopt True). "
           "You may pass a single '-i' followed by multiple space-separated files (e.g., '-i A.pdb B.pdb C.pdb').")
 )
 @click.option(
@@ -614,7 +708,7 @@ def _run_dft_for_state(pdb_path: Path,
               help="Remove backbone atoms on non‑substrate amino acids (with PRO/HYP safeguards).")
 @click.option("--add-linkH", "add_linkh", type=click.BOOL, default=True, show_default=True,
               help="Add link hydrogens for severed bonds (carbon-only) in pockets.")
-@click.option("--selected-resn", type=str, default="", show_default=True,
+@click.option("--selected_resn", type=str, default="", show_default=True,
               help="Force-include residues (comma/space separated; chain/insertion codes allowed).")
 @click.option("--ligand-charge", type=str, default=None,
               help=("Either a total charge (number) to distribute across unknown residues "
@@ -640,12 +734,19 @@ def _run_dft_for_state(pdb_path: Path,
               help="If False, skip initial single-structure optimizations of the pocket inputs.")
 # ===== Post-processing toggles =====
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
-              help="TS optimization + pseudo-IRC per reactive segment, and rebuild segment-level energy diagram.")
+              help="TS optimization + pseudo-IRC per reactive segment (or TSOPT-only mode for single-structure), and build energy diagrams.")
 @click.option("--thermo", "do_thermo", type=click.BOOL, default=False, show_default=True,
-              help="Run freq on (R,TS,P) per reactive segment and build Gibbs free-energy diagram (UMA).")
+              help="Run freq on (R,TS,P) per reactive segment (or TSOPT-only mode) and build Gibbs free-energy diagram (UMA).")
 @click.option("--dft", "do_dft", type=click.BOOL, default=False, show_default=True,
-              help="Run DFT single-point on (R,TS,P) per reactive segment and build DFT energy diagram. "
-                   "If also --thermo True, build DFT//UMA thermal Gibbs diagram.")
+              help="Run DFT single-point on (R,TS,P) and build DFT energy diagram. With --thermo True, also generate a DFT//UMA Gibbs diagram.")
+# ===== NEW: staged scan specification for single-structure route =====
+@click.option(
+    "--scan-lists", "scan_lists_raw",
+    type=str, multiple=True, required=False,
+    help='Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable. '
+         'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
+         'Applied **after extraction** to the pocket PDB; stage results feed into path_search.',
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -672,10 +773,13 @@ def cli(
     do_tsopt: bool,
     do_thermo: bool,
     do_dft: bool,
+    scan_lists_raw: Sequence[str],
 ) -> None:
     """
-    The **all** command composes `extract` → `path_search` and hides ref-template bookkeeping.
-    It also accepts the sloppy `-i A B C` style like `path_search` does.
+    The **all** command composes `extract` → (optional `scan` on pocket) → `path_search` and hides ref-template bookkeeping.
+    It also accepts the sloppy `-i A B C` style like `path_search` does. With single input:
+      - with --scan-lists: run staged scan on the pocket and use stage results as inputs for path_search,
+      - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
     """
     time_start = time.perf_counter()
 
@@ -695,10 +799,17 @@ def cli(
         input_paths = tuple(i_parsed)
 
     # --------------------------
-    # Validate input count
+    # Validate input count / single-structure modes
     # --------------------------
-    if len(input_paths) < 2:
-        raise click.BadParameter("Provide at least two PDBs with -i/--input in reaction order.")
+    is_single = (len(input_paths) == 1)
+    has_scan = bool(scan_lists_raw)
+    single_tsopt_mode = (is_single and (not has_scan) and do_tsopt)
+
+    if (len(input_paths) < 2) and (not (is_single and (has_scan or do_tsopt))):
+        raise click.BadParameter(
+            "Provide at least two PDBs with -i/--input in reaction order, "
+            "or use a single PDB with --scan-lists, or a single PDB with --tsopt True."
+        )
 
     # --------------------------
     # Prepare directories
@@ -706,21 +817,53 @@ def cli(
     out_dir = out_dir.resolve()
     pockets_dir = out_dir / "pockets"
     path_dir = out_dir / "path_search"
+    scan_dir = out_dir / "scan"  # for single-structure scan mode
     _ensure_dir(out_dir)
     _ensure_dir(pockets_dir)
-    _ensure_dir(path_dir)
+    if not single_tsopt_mode:
+        _ensure_dir(path_dir)  # path_search might be skipped only in tsopt-only mode
 
-    click.echo("\n=== [all] Stage 1/3 — Active-site pocket extraction (multi-structure union) ===\n")
-
-    # Build per-structure pocket output file list
-    pocket_outputs: List[Path] = []
+    # --------------------------
+    # Preflight: add_elem_info only for inputs lacking element fields
+    # → Create fixed copies under a temporary folder inside out_dir (used ONLY for extraction)
+    # --------------------------
+    elem_tmp_dir = out_dir / "add_elem_info"
+    inputs_for_extract: List[Path] = []
+    elem_fix_echo=False
     for p in input_paths:
+        if _pdb_needs_elem_fix(p):
+            if elem_fix_echo==False:
+                click.echo("\n=== [all] Preflight — add_elem_info (only when element fields are missing) ===\n")
+                elem_fix_echo=True
+            _ensure_dir(elem_tmp_dir)
+            out_p = (elem_tmp_dir / p.name).resolve()
+            try:
+                _assign_elem_info(str(p), str(out_p), overwrite=False)
+                click.echo(f"[all] add_elem_info: fixed elements → {out_p}")
+                inputs_for_extract.append(out_p)
+            except SystemExit as e:
+                code = getattr(e, "code", 1)
+                click.echo(f"[all] WARNING: add_elem_info exited with code {code} for {p}; using original.", err=True)
+                inputs_for_extract.append(p.resolve())
+            except Exception as e:
+                click.echo(f"[all] WARNING: add_elem_info failed for {p}: {e} — using original file.", err=True)
+                inputs_for_extract.append(p.resolve())
+        else:
+            inputs_for_extract.append(p.resolve())
+
+    extract_inputs = tuple(inputs_for_extract)
+
+    click.echo("\n=== [all] Stage 1/3 — Active-site pocket extraction (multi-structure union when applicable) ===\n")
+
+    # Build per-structure pocket output file list (one per input full PDB for extraction)
+    pocket_outputs: List[Path] = []
+    for p in extract_inputs:
         pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
 
     # Run extractor via its public API (multi-structure union mode)
     try:
         ex_res = extract_api(
-            complex_pdb=[str(p) for p in input_paths],
+            complex_pdb=[str(p) for p in extract_inputs],
             center=center_spec,
             output=[str(p) for p in pocket_outputs],
             radius=float(radius),
@@ -753,6 +896,172 @@ def cli(
         raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
 
     # --------------------------
+    # Other path: single-structure + --tsopt True (and NO scan-lists) → TSOPT-only mode
+    # --------------------------
+    if single_tsopt_mode:
+        click.echo("\n=== [all] TSOPT-only single-structure mode ===\n")
+        tsroot = out_dir / "tsopt_single"
+        _ensure_dir(tsroot)
+
+        # Use the single pocket PDB as TS initial guess
+        pocket_pdb = pocket_outputs[0]
+        # TS optimization
+        ts_pdb, g_ts = _run_tsopt_on_hei(pocket_pdb, q_int, spin, args_yaml, tsroot, freeze_links_flag)
+
+        # Pseudo-IRC & minimize both ends (no segment endpoints exist → fallback mapping in helper)
+        irc_res = _pseudo_irc_and_match(seg_idx=1,
+                                        seg_dir=tsroot,
+                                        ref_pdb_for_seg=ts_pdb,
+                                        seg_pocket_pdb=pocket_pdb,
+                                        g_ts=g_ts,
+                                        q_int=q_int,
+                                        spin=spin,
+                                        freeze_links_flag=freeze_links_flag)
+        gL = irc_res["left_min_geom"]
+        gR = irc_res["right_min_geom"]
+        gT = irc_res["ts_geom"]
+
+        # Ensure UMA energies
+        eL = float(gL.energy)
+        eT = float(gT.energy)
+        eR = float(gR.energy)
+
+        # In this mode ONLY: assign Reactant/Product so that higher-energy end is the Reactant
+        if eL >= eR:
+            g_react, e_react = gL, eL
+            g_prod,  e_prod  = gR, eR
+        else:
+            g_react, e_react = gR, eR
+            g_prod,  e_prod  = gL, eL
+
+        # Save standardized PDBs
+        struct_dir = tsroot / "structures"
+        _ensure_dir(struct_dir)
+        pocket_ref = pocket_pdb
+        pR = _save_single_geom_as_pdb_for_tools(g_react, pocket_ref, struct_dir, "reactant")
+        pT = _save_single_geom_as_pdb_for_tools(gT,       pocket_ref, struct_dir, "ts")
+        pP = _save_single_geom_as_pdb_for_tools(g_prod,   pocket_ref, struct_dir, "product")
+
+        # UMA energy diagram (R, TS, P)
+        _write_segment_energy_diagram(tsroot / "energy_diagram_tsopt",
+                                      labels=["R", "TS", "P"],
+                                      energies_eh=[e_react, eT, e_prod],
+                                      title_note="(UMA, TSOPT/IRC)")
+
+        # Thermochemistry (UMA) Gibbs
+        thermo_payloads: Dict[str, Dict[str, Any]] = {}
+        if do_thermo:
+            click.echo(f"[thermo] Single TSOPT: freq on R/TS/P")
+            tR = _run_freq_for_state(pR, q_int, spin, tsroot / "freq" / "R",  args_yaml, freeze_links_flag)
+            tT = _run_freq_for_state(pT, q_int, spin, tsroot / "freq" / "TS", args_yaml, freeze_links_flag)
+            tP = _run_freq_for_state(pP, q_int, spin, tsroot / "freq" / "P",  args_yaml, freeze_links_flag)
+            thermo_payloads = {"R": tR, "TS": tT, "P": tP}
+            try:
+                GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", e_react))
+                GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", eT))
+                GP = float(tP.get("sum_EE_and_thermal_free_energy_ha", e_prod))
+                _write_segment_energy_diagram(tsroot / "energy_diagram_G_UMA",
+                                              labels=["R", "TS", "P"],
+                                              energies_eh=[GR, GT, GP],
+                                              title_note="(Gibbs, UMA)")
+            except Exception as e:
+                click.echo(f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True)
+
+        # DFT & DFT//UMA
+        if do_dft:
+            click.echo(f"[dft] Single TSOPT: DFT on R/TS/P")
+            dR = _run_dft_for_state(pR, q_int, spin, tsroot / "dft" / "R",  args_yaml, func_basis="wb97x-v/def2-tzvp")
+            dT = _run_dft_for_state(pT, q_int, spin, tsroot / "dft" / "TS", args_yaml, func_basis="wb97x-v/def2-tzvp")
+            dP = _run_dft_for_state(pP, q_int, spin, tsroot / "dft" / "P",  args_yaml, func_basis="wb97x-v/def2-tzvp")
+            try:
+                eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", e_react))
+                eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", eT))
+                eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", e_prod))
+                _write_segment_energy_diagram(tsroot / "energy_diagram_DFT",
+                                              labels=["R", "TS", "P"],
+                                              energies_eh=[eR_dft, eT_dft, eP_dft],
+                                              title_note="(DFT wb97x-v/def2-tzvp)")
+            except Exception as e:
+                click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
+
+            if do_thermo:
+                try:
+                    dG_R = float((thermo_payloads.get("R",  {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
+                    dG_T = float((thermo_payloads.get("TS", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
+                    dG_P = float((thermo_payloads.get("P",  {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
+                    GR_dftUMA = eR_dft + dG_R
+                    GT_dftUMA = eT_dft + dG_T
+                    GP_dftUMA = eP_dft + dG_P
+                    _write_segment_energy_diagram(tsroot / "energy_diagram_G_DFT_plus_UMA",
+                                                  labels=["R", "TS", "P"],
+                                                  energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                                  title_note="(Gibbs, DFT//UMA)")
+                except Exception as e:
+                    click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
+
+        click.echo("\n=== [all] TSOPT-only pipeline finished successfully ===\n")
+        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        return
+
+    # --------------------------
+    # Stage 1b: Optional scan (single-structure only) to build ordered pocket inputs
+    # --------------------------
+    pockets_for_path: List[Path]
+    if is_single and has_scan:
+        click.echo("\n=== [all] Stage 1b — Staged scan on pocket (single-structure mode) ===\n")
+        _ensure_dir(scan_dir)
+        pocket_pdb = pocket_outputs[0]
+        scan_args: List[str] = [
+            "-i", str(pocket_pdb),
+            "-q", str(int(q_int)),
+            "-s", str(int(spin)),
+            "--out-dir", str(scan_dir),
+            "--freeze-links", "True" if freeze_links_flag else "False",
+            "--preopt", "True" if pre_opt else "False",
+            "--endopt", "True",
+            "--opt-mode", str("lbfgs" if sopt_mode.lower() in ("lbfgs", "light") else "rfo"),
+        ]
+        if args_yaml is not None:
+            scan_args.extend(["--args-yaml", str(args_yaml)])
+        # Forward all --scan-lists
+        for s in scan_lists_raw:
+            scan_args.extend(["--scan-lists", str(s)])
+
+        click.echo("[all] Invoking scan with arguments:")
+        click.echo("  " + " ".join(scan_args))
+
+        _saved_argv = list(sys.argv)
+        try:
+            sys.argv = ["pdb2reaction", "scan"] + scan_args
+            _scan_cli.cli.main(args=scan_args, standalone_mode=False)
+        except SystemExit as e:
+            code = getattr(e, "code", 1)
+            if code not in (None, 0):
+                raise click.ClickException(f"[all] scan terminated with exit code {code}.")
+        except Exception as e:
+            raise click.ClickException(f"[all] scan failed: {e}")
+        finally:
+            sys.argv = _saved_argv
+
+        # Collect stage results as pocket inputs
+        stage_pdbs = sorted((scan_dir).glob("stage_*/*"))
+        stage_results: List[Path] = []
+        for p in stage_pdbs:
+            if p.name == "result.pdb":
+                stage_results.append(p.resolve())
+        if not stage_results:
+            raise click.ClickException("[all] No stage result PDBs found under scan/.")
+        click.echo("[all] Collected scan stage pocket files:")
+        for p in stage_results:
+            click.echo(f"  - {p}")
+
+        # Input series to path_search: [initial pocket, stage_01/result.pdb, stage_02/result.pdb, ...]
+        pockets_for_path = [pocket_pdb] + stage_results
+    else:
+        # Multi-structure standard route: use per-input pocket PDBs
+        pockets_for_path = list(pocket_outputs)
+
+    # --------------------------
     # Stage 2: Path search on pockets (auto-supplying ref templates = original full PDBs)
     # --------------------------
     click.echo("\n=== [all] Stage 2/3 — MEP search on pocket structures (recursive GSM) ===\n")
@@ -761,7 +1070,7 @@ def cli(
     ps_args: List[str] = []
 
     # Inputs: repeat "-i" per pocket to satisfy Click even without their argv aggregator
-    for p in pocket_outputs:
+    for p in pockets_for_path:
         ps_args.extend(["-i", str(p)])
 
     # Charge & spin
@@ -780,14 +1089,18 @@ def cli(
     if args_yaml is not None:
         ps_args.extend(["--args-yaml", str(args_yaml)])
 
-    # Auto-provide ref templates (original full PDBs) for full-system merge. Repeat "--ref-pdb" per file.
-    for p in input_paths:
-        ps_args.extend(["--ref-pdb", str(p)])
+    # Auto-provide ref templates (original full PDBs) for full-system merge.
+    # Multi-structure: one ref per original input; single+scan: reuse the single template for all pockets.
+    if is_single and has_scan:
+        for _ in pockets_for_path:
+            ps_args.extend(["--ref-pdb", str(input_paths[0])])
+    else:
+        for p in input_paths:
+            ps_args.extend(["--ref-pdb", str(p)])
 
     click.echo("[all] Invoking path_search with arguments:")
     click.echo("  " + " ".join(ps_args))
 
-    # CRITICAL FIX:
     _saved_argv = list(sys.argv)
     try:
         sys.argv = ["pdb2reaction", "path_search"] + ps_args
@@ -811,14 +1124,14 @@ def cli(
     click.echo("  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
     click.echo("  - energy.png / energy_diagram.*")
-    click.echo("\n=== [all] Pipeline finished successfully ===\n")
+    click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
 
     # --------------------------
     # Optional Stage 4: TSOPT / THERMO / DFT (per reactive segment)
     # --------------------------
     if not (do_tsopt or do_thermo or do_dft):
         # Elapsed time
-        click.echo(format_elapsed("[all] Total Elapsed", time_start))
+        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     click.echo("\n=== [all] Stage 4 — Post-processing per reactive segment ===\n")
@@ -828,14 +1141,14 @@ def cli(
     segments = _read_summary(summary_yaml)
     if not segments:
         click.echo("[post] No segments found in summary; nothing to do.")
-        click.echo(format_elapsed("[all] Total Elapsed", time_start))
+        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     # Iterate only bond-change segments (kind='seg' and bond_changes not empty and not '(no covalent...)')
     reactive = [s for s in segments if (s.get("kind", "seg") == "seg" and str(s.get("bond_changes", "")).strip() and str(s.get("bond_changes", "")).strip() != "(no covalent changes detected)")]
     if not reactive:
         click.echo("[post] No bond-change segments. Skipping TS/thermo/DFT.")
-        click.echo(format_elapsed("[all] Total Elapsed", time_start))
+        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     # For each reactive segment
@@ -951,14 +1264,7 @@ def cli(
                 except Exception as e:
                     click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
 
-    # --------------------------
-    # Elapsed time
-    # --------------------------
-    elapsed = time.perf_counter() - time_start
-    hh = int(elapsed // 3600)
-    mm = int((elapsed % 3600) // 60)
-    ss = elapsed - (hh * 3600 + mm * 60)
-    click.echo(f"[all] Elapsed for Whole Pipeline: {hh:02d}:{mm:02d}:{ss:06.3f}")
+    click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
 
 
 if __name__ == "__main__":
