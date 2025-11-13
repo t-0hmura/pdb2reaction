@@ -76,6 +76,7 @@ from .utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    format_elapsed,
     merge_freeze_atom_indices,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
@@ -418,11 +419,7 @@ def cli(
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
             sys.exit(5)
 
-        elapsed = time.perf_counter() - time_start
-        hh = int(elapsed // 3600)
-        mm = int((elapsed % 3600) // 60)
-        ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed Time for Path Opt: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
 
     except OptimizationError as e:
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)
