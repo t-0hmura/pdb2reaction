@@ -137,7 +137,9 @@ OPT_KW: Dict[str, Any] = {
 }
 
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
-    """Detect the parent atoms of link hydrogens in a PDB and return 0‑based indices."""
+    """
+    Detect the parent atoms of link hydrogens in a PDB and return 0‑based indices.
+    """
     try:
         return detect_freeze_links(pdb_path)
     except Exception as e:
@@ -151,7 +153,9 @@ def _load_two_endpoints(
     base_freeze: Sequence[int],
     auto_freeze_links: bool,
 ) -> Sequence:
-    """Load the two endpoint structures and set `freeze_atoms` as needed."""
+    """
+    Load the two endpoint structures and set `freeze_atoms` as needed.
+    """
     geoms = []
     for p in paths:
         g = geom_loader(p, coord_type=coord_type)
@@ -444,7 +448,9 @@ def cli(
 
 
 def freeze_links_helper(pdb_path: Path):
-    """Expose freeze_links for external callers/tests."""
+    """
+    Expose freeze_links for external callers/tests.
+    """
     return freeze_links(pdb_path)
 
 

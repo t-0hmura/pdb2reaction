@@ -285,7 +285,9 @@ ResidueKey = Tuple[str, str, int, str, str]
 # ---------------------------------------------------------------------
 
 def str2bool(v: str) -> bool:
-    """Return a boolean for common truthy strings."""
+    """
+    Return a boolean for common truthy strings.
+    """
     if isinstance(v, bool):
         return v
     return v.lower() in {"true", "1", "yes", "y"}
@@ -370,7 +372,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_structure(path: str, name: str) -> PDB.Structure.Structure:
-    """Load a PDB file into a Biopython Structure object."""
+    """
+    Load a PDB file into a Biopython Structure object.
+    """
     parser = PDB.PDBParser(QUIET=True)
     return parser.get_structure(name, path)
 
@@ -380,7 +384,9 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
 # ---------------------------------------------------------------------
 
 def _fmt_res_id(res: PDB.Residue.Residue) -> str:
-    """Return a compact residue tag like 'A:123A SER' or '123 SER'."""
+    """
+    Return a compact residue tag like 'A:123A SER' or '123 SER'.
+    """
     chain = res.get_parent().id or ""
     het, resseq, icode = res.id
     icode_txt = "" if icode == " " else icode
@@ -389,7 +395,9 @@ def _fmt_res_id(res: PDB.Residue.Residue) -> str:
 
 
 def _fmt_fid(structure, fid: Tuple) -> str:
-    """Format a full-id into a human-friendly residue tag."""
+    """
+    Format a full-id into a human-friendly residue tag.
+    """
     res: PDB.Residue.Residue = structure[fid[1]][fid[2]].child_dict[fid[3]]
     return _fmt_res_id(res)
 
@@ -400,7 +408,9 @@ def _fmt_fid(structure, fid: Tuple) -> str:
 
 def is_exact_match(lig_atoms: Dict[str, PDB.Vector.Vector],
                    cand: PDB.Residue.Residue) -> bool:
-    """Return True if candidate residue matches ligand atom names and positions within EXACT_EPS."""
+    """
+    Return True if candidate residue matches ligand atom names and positions within EXACT_EPS.
+    """
     for name, vec in lig_atoms.items():
         if name not in cand:
             return False
@@ -410,7 +420,9 @@ def is_exact_match(lig_atoms: Dict[str, PDB.Vector.Vector],
 
 
 def find_substrate_residues(complex_struct, substrate_struct) -> List[PDB.Residue.Residue]:
-    """Find substrate residues in the complex by **exact coordinate match** to a substrate PDB."""
+    """
+    Find substrate residues in the complex by **exact coordinate match** to a substrate PDB.
+    """
     substrate_res_list = list(substrate_struct.get_residues())
     matched: List[PDB.Residue.Residue] = []
     for lig in substrate_res_list:
@@ -444,7 +456,9 @@ _RES_TOKEN_RE = re.compile(r"""
 """, re.VERBOSE)
 
 def _parse_res_tokens(spec: str) -> List[Tuple[str | None, int, str | None]]:
-    """Parse a residue specification string into (chain, resseq, icode) tuples."""
+    """
+    Parse a residue specification string into (chain, resseq, icode) tuples.
+    """
     if not spec or not spec.strip():
         raise ValueError("Empty -c/--center specification.")
     tokens = [t.strip() for t in re.split(r"[,\s]+", spec) if t.strip()]
@@ -540,7 +554,9 @@ def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Res
 
 
 def resolve_substrate_residues(complex_struct, center_spec: str) -> List[PDB.Residue.Residue]:
-    """Determine substrate residues from a PDB path, residue-ID list, or residue-name list."""
+    """
+    Determine substrate residues from a PDB path, residue-ID list, or residue-name list.
+    """
     if os.path.exists(center_spec):
         substrate_struct = load_structure(center_spec, "substrate")
         return find_substrate_residues(complex_struct, substrate_struct)
@@ -657,7 +673,9 @@ def select_residues(complex_struct,
 
 def augment_disulfides(structure, selected_ids: Set[Tuple],
                        cutoff: float = DISULFIDE_CUTOFF):
-    """Include Cys–Cys disulfide partners if either residue is selected (SG–SG ≤ cutoff)."""
+    """
+    Include Cys–Cys disulfide partners if either residue is selected (SG–SG ≤ cutoff).
+    """
     sg_atoms = [r["SG"] for r in structure.get_residues()
                 if r.get_resname() in {"CYS", "CYX"} and "SG" in r]
 
@@ -799,7 +817,9 @@ def augment_backbone_contact_neighbors(structure,
 # ---------------------------------------------------------------------
 
 def continuous_segments(sorted_ids: List[Tuple]):
-    """(Kept for compatibility; unused in TER-aware segmentation below.)"""
+    """
+    (Kept for compatibility; unused in TER-aware segmentation below.)
+    """
     segs, cur, prev = [], [], None
     for fid in sorted_ids:
         idx = fid[3][1]
@@ -966,11 +986,15 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
 
 
 def _atom_present_in_output(res: PDB.Residue.Residue, name: str, skip_set: Set[str]) -> bool:
-    """True if the atom exists originally AND is not marked for deletion."""
+    """
+    True if the atom exists originally AND is not marked for deletion.
+    """
     return (name in res) and (name not in skip_set)
 
 def _atom_removed_by_truncation(res: PDB.Residue.Residue, name: str, skip_set: Set[str]) -> bool:
-    """True if the atom exists originally AND is marked for deletion."""
+    """
+    True if the atom exists originally AND is marked for deletion.
+    """
     return (name in res) and (name in skip_set)
 
 def compute_linkH_atoms(structure,
@@ -1029,7 +1053,9 @@ def compute_linkH_atoms(structure,
 
 
 def _max_serial_from_pdb_text(pdb_text: str) -> int:
-    """Find the maximum atom serial number in PDB text."""
+    """
+    Find the maximum atom serial number in PDB text.
+    """
     max_serial = 0
     for line in pdb_text.splitlines():
         if line.startswith("ATOM") or line.startswith("HETATM"):
@@ -1080,7 +1106,9 @@ def _format_linkH_block(link_coords: List[Tuple[float, float, float]],
 # ---------------------------------------------------------------------
 
 def _sorted_fids_by_file_order(structure, fids: Iterable[Tuple]) -> List[Tuple]:
-    """Sort full-ids by file order using a residue index map."""
+    """
+    Sort full-ids by file order using a residue index map.
+    """
     order: Dict[Tuple, int] = {}
     idx = 0
     for model in structure:
@@ -1091,14 +1119,18 @@ def _sorted_fids_by_file_order(structure, fids: Iterable[Tuple]) -> List[Tuple]:
     return sorted(set(fids), key=lambda fid: order.get(fid, 10**12))
 
 def _residue_key_from_res(res: PDB.Residue.Residue) -> ResidueKey:
-    """Build a cross-structure residue key from a residue."""
+    """
+    Build a cross-structure residue key from a residue.
+    """
     chain_id = res.get_parent().id
     hetflag, resseq, icode = res.id
     icode_str = icode if icode != " " else ""
     return (chain_id, hetflag, int(resseq), icode_str, res.get_resname())
 
 def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
-    """Build a cross-structure residue key from a full-id."""
+    """
+    Build a cross-structure residue key from a full-id.
+    """
     res = structure[fid[1]][fid[2]].child_dict[fid[3]]
     return _residue_key_from_res(res)
 
@@ -1259,7 +1291,9 @@ def compute_charge_summary(structure,
 
 def log_charge_summary(prefix: str,
                        summary: Dict[str, Any]):
-    """Emit concise charge summary logs."""
+    """
+    Emit concise charge summary logs.
+    """
     total = summary["total_charge"]
     protein = summary["protein_charge"]
     ligand = summary.get("ligand_total_charge", 0.0)
@@ -1292,7 +1326,9 @@ def log_charge_summary(prefix: str,
 # ==============================================================================
 
 def _build_key_maps(structure) -> Tuple[Dict[ResidueKey, Tuple], Dict[Tuple, ResidueKey]]:
-    """Create maps between ResidueKey and full-id for a structure."""
+    """
+    Create maps between ResidueKey and full-id for a structure.
+    """
     key2fid: Dict[ResidueKey, Tuple] = {}
     fid2key: Dict[Tuple, ResidueKey] = {}
     for model in structure:
@@ -1305,7 +1341,9 @@ def _build_key_maps(structure) -> Tuple[Dict[ResidueKey, Tuple], Dict[Tuple, Res
     return key2fid, fid2key
 
 def _keys_to_fids(structure, keys: Iterable[ResidueKey]) -> Set[Tuple]:
-    """Translate a set of ResidueKeys into full-ids for this structure."""
+    """
+    Translate a set of ResidueKeys into full-ids for this structure.
+    """
     key2fid, _ = _build_key_maps(structure)
     fids: Set[Tuple] = set()
     missing: List[ResidueKey] = []
@@ -1320,7 +1358,9 @@ def _keys_to_fids(structure, keys: Iterable[ResidueKey]) -> Set[Tuple]:
     return fids
 
 def _fids_to_keys(structure, fids: Iterable[Tuple]) -> Set[ResidueKey]:
-    """Translate a set of full-ids into ResidueKeys."""
+    """
+    Translate a set of full-ids into ResidueKeys.
+    """
     return {_residue_key_from_fid(structure, fid) for fid in fids}
 
 def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
@@ -1363,7 +1403,9 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
 
 def _disulfide_partner_keys(structure, candidate_keys: Set[ResidueKey],
                             cutoff: float = DISULFIDE_CUTOFF) -> Set[ResidueKey]:
-    """Return ResidueKeys of disulfide partners to include for any selected CYS/CYX."""
+    """
+    Return ResidueKeys of disulfide partners to include for any selected CYS/CYX.
+    """
     key2fid, _ = _build_key_maps(structure)
     sg_atoms: List[PDB.Atom.Atom] = []
     res_of_atom: Dict[PDB.Atom.Atom, ResidueKey] = {}
@@ -1387,7 +1429,9 @@ def _disulfide_partner_keys(structure, candidate_keys: Set[ResidueKey],
     return add
 
 def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
-    """Ensure the same atom count and ordering across all input structures."""
+    """
+    Ensure the same atom count and ordering across all input structures.
+    """
     def signature(st: PDB.Structure.Structure) -> List[str]:
         sig: List[str] = []
         for model in st:
@@ -1416,7 +1460,9 @@ def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
 
 
 def _strip_trailing_END(text: str) -> str:
-    """Remove trailing 'END' lines and ensure a final newline."""
+    """
+    Remove trailing 'END' lines and ensure a final newline.
+    """
     lines = [ln for ln in text.splitlines() if ln.strip() != "END"]
     out = "\n".join(lines)
     if not out.endswith("\n"):
@@ -1684,7 +1730,9 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
 #   PDB writer helper
 # ---------------------------------------------------------------------
 class AS_Select(PDB.Select):
-    """Biopython Select subclass that filters residues/atoms according to skip map."""
+    """
+    Biopython Select subclass that filters residues/atoms according to skip map.
+    """
     def __init__(self, selected_ids: Set[Tuple], skip_map: Dict[Tuple, Set[str]]):
         self.ids = selected_ids
         self.skip = skip_map

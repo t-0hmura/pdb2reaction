@@ -113,7 +113,9 @@ def _torch_device(auto: str = "auto") -> torch.device:
 
 def _build_tr_basis(coords_bohr_t: torch.Tensor,
                     masses_au_t: torch.Tensor) -> torch.Tensor:
-    """Mass-weighted translation/rotation basis (Tx, Ty, Tz, Rx, Ry, Rz), shape (3N, r<=6)."""
+    """
+    Mass-weighted translation/rotation basis (Tx, Ty, Tz, Rx, Ry, Rz), shape (3N, r<=6).
+    """
     device, dtype = coords_bohr_t.device, coords_bohr_t.dtype
     N = coords_bohr_t.shape[0]
     m_au = masses_au_t.to(dtype=dtype, device=device)
@@ -135,7 +137,9 @@ def _build_tr_basis(coords_bohr_t: torch.Tensor,
 def _tr_orthonormal_basis(coords_bohr_t: torch.Tensor,
                           masses_au_t: torch.Tensor,
                           rtol: float = 1e-12) -> Tuple[torch.Tensor, int]:
-    """Orthonormalize TR basis in mass-weighted space by SVD. Returns (Q, rank)."""
+    """
+    Orthonormalize TR basis in mass-weighted space by SVD. Returns (Q, rank).
+    """
     B = _build_tr_basis(coords_bohr_t, masses_au_t)
     U, S, Vh = torch.linalg.svd(B, full_matrices=False)
     r = int((S > rtol * S.max()).sum().item())
@@ -192,7 +196,9 @@ def _mw_projected_hessian(H_t: torch.Tensor,
 # ---- PHVA helper: mass-weighted Hessian without TR projection (for active subspace) ----
 def _mass_weighted_hessian(H_t: torch.Tensor,
                            masses_au_t: torch.Tensor) -> torch.Tensor:
-    """Return Hmw = M^{-1/2} H M^{-1/2} (no symmetrization/TR projection; in-place)."""
+    """
+    Return Hmw = M^{-1/2} H M^{-1/2} (no symmetrization/TR projection; in-place).
+    """
     dtype, device = H_t.dtype, H_t.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
@@ -377,7 +383,9 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
 
 def _mw_mode_to_cart(mode_mw_3N_t: torch.Tensor,
                      masses_au_t: torch.Tensor) -> np.ndarray:
-    """Convert one mass-weighted eigenvector (3N,) to Cartesian (3N,) and L2-normalize."""
+    """
+    Convert one mass-weighted eigenvector (3N,) to Cartesian (3N,) and L2-normalize.
+    """
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=mode_mw_3N_t.dtype, device=mode_mw_3N_t.device)
         m3 = torch.repeat_interleave(masses_amu_t, 3)
@@ -389,7 +397,9 @@ def _mw_mode_to_cart(mode_mw_3N_t: torch.Tensor,
 
 
 def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> torch.Tensor:
-    """UMA calculator producing Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square)."""
+    """
+    UMA calculator producing Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
+    """
     kw = dict(uma_kwargs or {})
     # Ensure torch tensor output & honor hessian mode / freeze / partial-return flags from cfg
     kw["out_hess_torch"] = True
@@ -399,7 +409,9 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
 
 
 def _calc_energy(geom, uma_kwargs: dict) -> float:
-    """Compute electronic energy (Hartree) from UMA calculator."""
+    """
+    Compute electronic energy (Hartree) from UMA calculator.
+    """
     calc = uma_pysis(out_hess_torch=False, **uma_kwargs)
     geom.set_calculator(calc)
     E = float(geom.energy)

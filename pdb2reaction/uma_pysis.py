@@ -98,7 +98,9 @@ _tdtype = torch.float32
 #                         UMA core wrapper
 # ===================================================================
 class UMAcore:
-    """Thin wrapper around fairchem-UMA predict_unit."""
+    """
+    Thin wrapper around fairchem-UMA predict_unit.
+    """
 
     def __init__(
         self,
@@ -142,14 +144,18 @@ class UMAcore:
 
     # ----------------------------------------------------------------
     def _model_backbone(self):
-        """Handle both plain and (D)DP-wrapped models."""
+        """
+        Handle both plain and (D)DP-wrapped models.
+        """
         mdl = self.predict.model
         mod = getattr(mdl, "module", mdl)
         return mod.backbone
 
     # ----------------------------------------------------------------
     def _ase_to_batch(self, atoms: Atoms):
-        """Convert ASE Atoms → UMA AtomicData (batched)."""
+        """
+        Convert ASE Atoms → UMA AtomicData (batched).
+        """
         backbone = self._model_backbone()
         default_max_neigh = getattr(backbone, "max_neighbors", None)
         default_radius    = getattr(backbone, "cutoff", None)
@@ -247,7 +253,9 @@ class UMAcore:
 #                    PySisyphus calculator class
 # ===================================================================
 class uma_pysis(Calculator):
-    """PySisyphus-compatible UMA calculator."""
+    """
+    PySisyphus-compatible UMA calculator.
+    """
 
     implemented_properties = ["energy", "forces", "hessian"]
 
@@ -486,7 +494,9 @@ class uma_pysis(Calculator):
 
 # ---------- CLI ----------------------------------------
 def run_pysis():
-    """Enable `uma_pysis input.yaml`."""
+    """
+    Enable `uma_pysis input.yaml`.
+    """
     run.CALC_DICT["uma_pysis"] = uma_pysis
     run.run()
 

@@ -62,14 +62,18 @@ import plotly.graph_objs as go
 
 
 def pretty_block(title: str, content: Dict[str, Any]) -> str:
-    """Return a YAML-formatted block with an underlined title."""
+    """
+    Return a YAML-formatted block with an underlined title.
+    """
 
     body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
     return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
 
 
 def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalise geometry configuration for CLI echo output."""
+    """
+    Normalise geometry configuration for CLI echo output.
+    """
 
     g = dict(geom_cfg)
     freeze_atoms = g.get("freeze_atoms")
@@ -112,7 +116,9 @@ def merge_freeze_atom_indices(
 
 
 def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Recursively update mapping *dst* with *src*, returning *dst*."""
+    """
+    Recursively update mapping *dst* with *src*, returning *dst*.
+    """
 
     for k, v in (src or {}).items():
         if isinstance(v, dict) and isinstance(dst.get(k), dict):
@@ -169,7 +175,9 @@ def apply_yaml_overrides(
 
 
 def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
-    """Load a YAML file whose root must be a mapping. Return an empty dict if *path* is None."""
+    """
+    Load a YAML file whose root must be a mapping. Return an empty dict if *path* is None.
+    """
 
     if not path:
         return {}

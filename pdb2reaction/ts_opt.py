@@ -161,7 +161,9 @@ def _torch_device(auto: str = "auto") -> torch.device:
 
 def _build_tr_basis(coords_bohr_t: torch.Tensor,
                     masses_au_t: torch.Tensor) -> torch.Tensor:
-    """Mass‐weighted translation/rotation basis (Tx,Ty,Tz,Rx,Ry,Rz), shape (3N, r<=6)."""
+    """
+    Mass‐weighted translation/rotation basis (Tx,Ty,Tz,Rx,Ry,Rz), shape (3N, r<=6).
+    """
     device, dtype = coords_bohr_t.device, coords_bohr_t.dtype
     N = coords_bohr_t.shape[0]
     m_au = masses_au_t.to(dtype=dtype, device=device)
@@ -186,7 +188,9 @@ def _build_tr_basis(coords_bohr_t: torch.Tensor,
 def _tr_orthonormal_basis(coords_bohr_t: torch.Tensor,
                           masses_au_t: torch.Tensor,
                           rtol: float = 1e-12) -> Tuple[torch.Tensor, int]:
-    """Orthonormalize TR basis in mass-weighted space by SVD. Returns (Q, rank)."""
+    """
+    Orthonormalize TR basis in mass-weighted space by SVD. Returns (Q, rank).
+    """
     B = _build_tr_basis(coords_bohr_t, masses_au_t)
     U, S, Vh = torch.linalg.svd(B, full_matrices=False)
     r = int((S > rtol * S.max()).sum().item())
@@ -198,7 +202,9 @@ def _tr_orthonormal_basis(coords_bohr_t: torch.Tensor,
 # ---- in-place mass weighting ----
 def _mass_weighted_hessian(H_t: torch.Tensor,
                            masses_au_t: torch.Tensor) -> torch.Tensor:
-    """Return Hmw = M^{-1/2} H M^{-1/2} (in-place on H_t)."""
+    """
+    Return Hmw = M^{-1/2} H M^{-1/2} (in-place on H_t).
+    """
     dtype, device = H_t.dtype, H_t.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
@@ -352,7 +358,9 @@ def _mode_direction_by_root(H_t: torch.Tensor,
 
 
 def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> torch.Tensor:
-    """UMA calculator producing (possibly partial) Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act)."""
+    """
+    UMA calculator producing (possibly partial) Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act).
+    """
     # respect caller's out_hess_torch preference (force True here)
     kw = dict(uma_kwargs or {})
     kw["out_hess_torch"] = True
@@ -370,7 +378,9 @@ def _calc_energy(geom, uma_kwargs: dict) -> float:
 
 
 def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
-    """Return true Cartesian gradient (shape 3N,) in Hartree/Bohr."""
+    """
+    Return true Cartesian gradient (shape 3N,) in Hartree/Bohr.
+    """
     calc = uma_pysis(out_hess_torch=False, **uma_kwargs)
     geom.set_calculator(calc)
     g = np.array(geom.gradient, dtype=float).reshape(-1)
@@ -437,7 +447,9 @@ def _frequencies_cm_only(H_t: torch.Tensor,
                          device: torch.device,
                          tol: float = 1e-6,
                          freeze_idx: Optional[List[int]] = None) -> np.ndarray:
-    """Frequencies only (PHVA/TR in-place; no eigenvectors) for quick checks."""
+    """
+    Frequencies only (PHVA/TR in-place; no eigenvectors) for quick checks.
+    """
     with torch.no_grad():
         Z = np.array(atomic_numbers, dtype=int)
         masses_amu = np.array([atomic_masses[z] for z in Z])  # amu
@@ -468,7 +480,9 @@ def _write_mode_trj_and_pdb(geom,
                             amplitude_ang: float = 0.25,
                             n_frames: int = 20,
                             comment: str = "imag mode") -> None:
-    """Write a single imaginary mode animation both as .trj (XYZ-like) and .pdb."""
+    """
+    Write a single imaginary mode animation both as .trj (XYZ-like) and .pdb.
+    """
     ref_ang = geom.coords.reshape(-1, 3) * BOHR2ANG
     mode = mode_vec_3N.reshape(-1, 3).copy()
     mode /= np.linalg.norm(mode)
@@ -522,7 +536,9 @@ def _active_mask_dof(N: int, freeze_idx: Optional[List[int]]) -> np.ndarray:
 
 
 def _extract_active_block(H_full: torch.Tensor, mask_dof: np.ndarray) -> torch.Tensor:
-    """Return the active-DOF block as a torch.Tensor sharing device/dtype."""
+    """
+    Return the active-DOF block as a torch.Tensor sharing device/dtype.
+    """
     device = H_full.device
     m = torch.as_tensor(mask_dof, device=device, dtype=torch.bool)
     return H_full[m][:, m].clone()
@@ -531,7 +547,9 @@ def _extract_active_block(H_full: torch.Tensor, mask_dof: np.ndarray) -> torch.T
 def _embed_active_vector(vec_act: torch.Tensor,
                          mask_dof: np.ndarray,
                          total_3N: int) -> torch.Tensor:
-    """Embed a (3N_act,) vector back to full (3N,) with zeros on frozen DOFs."""
+    """
+    Embed a (3N_act,) vector back to full (3N,) with zeros on frozen DOFs.
+    """
     device = vec_act.device
     dtype = vec_act.dtype
     full = torch.zeros(total_3N, device=device, dtype=dtype)
@@ -543,7 +561,9 @@ def _embed_active_vector(vec_act: torch.Tensor,
 def _mw_tr_project_active_inplace(H_act: torch.Tensor,
                                   coords_act_t: torch.Tensor,
                                   masses_act_au_t: torch.Tensor) -> torch.Tensor:
-    """Mass-weight & project TR in the *active* subspace (in-place; no explicit symmetrization)."""
+    """
+    Mass-weight & project TR in the *active* subspace (in-place; no explicit symmetrization).
+    """
     with torch.no_grad():
         # mass-weight
         masses_amu_t = (masses_act_au_t / AMU2AU).to(dtype=H_act.dtype, device=H_act.device)
@@ -570,7 +590,9 @@ def _frequencies_from_Hact(H_act: torch.Tensor,
                            active_idx: List[int],
                            device: torch.device,
                            tol: float = 1e-6) -> np.ndarray:
-    """Frequencies (cm^-1) computed from active-block Hessian with active-space TR projection."""
+    """
+    Frequencies (cm^-1) computed from active-block Hessian with active-space TR projection.
+    """
     with torch.no_grad():
         coords_act = torch.as_tensor(coords_bohr.reshape(-1, 3)[active_idx, :], dtype=H_act.dtype, device=device)
         masses_act_au = torch.as_tensor([atomic_masses[int(z)] * AMU2AU

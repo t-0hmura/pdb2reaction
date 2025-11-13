@@ -298,7 +298,9 @@ def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[i
 
 
 def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
-    """coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs."""
+    """
+    coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs.
+    """
     dists: List[float] = []
     for i, j in pairs:
         v = coords_ang[i] - coords_ang[j]
@@ -338,7 +340,9 @@ def _schedule_for_stage(
 # --------------------------------------------------------------------------------------
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """Return for covalent bonds forming/breaking between `x` and `y`."""
+    """
+    Return for covalent bonds forming/breaking between `x` and `y`.
+    """
     res = compare_structures(
         x, y,
         device=bond_cfg.get("device", "cuda"),
@@ -411,7 +415,9 @@ class HarmonicBiasCalculator:
 
     # ---- bias core (coords in Bohr) ----
     def _bias_energy_forces_bohr(self, coords_bohr: np.ndarray) -> Tuple[float, np.ndarray]:
-        """coords_bohr: (N,3) in Bohr; returns (E_bias [Hartree], F_bias_flat [Hartree/Bohr])."""
+        """
+        coords_bohr: (N,3) in Bohr; returns (E_bias [Hartree], F_bias_flat [Hartree/Bohr]).
+        """
         coords = np.array(coords_bohr, dtype=float).reshape(-1, 3)  # (N,3)
         n = coords.shape[0]
         E_bias = 0.0
@@ -872,7 +878,9 @@ def cli(
         # 5) Final summary echo (human‑friendly)
         # ------------------------------------------------------------------
         def _echo_human_summary(_stages: List[Dict[str, Any]], _max_step_size: float) -> None:
-            """Print a readable end-of-run summary like the requested example."""
+            """
+            Print a readable end-of-run summary like the requested example.
+            """
             def _fmt_target_value(x: float) -> str:
                 # 2.600 -> "2.6", 1.500 -> "1.5"
                 s = f"{x:.3f}".rstrip("0").rstrip(".")
