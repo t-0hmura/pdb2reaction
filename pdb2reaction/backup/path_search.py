@@ -50,6 +50,11 @@ Multi‑structure inputs (A, I1, I2, …, B)
 Behavior & assumptions
 ----------------------
 - A single UMA calculator (`uma_pysis`) is shared **serially** across all stages.
+- Input alignment (when `--align True`, default):
+  After pre‑optimization of all inputs, *all* inputs are rigidly aligned and “freeze_atoms”
+  are scan+relaxed to match the **first** input using
+  `pdb2reaction.align_freeze_atoms.align_and_refine_sequence_inplace`.
+  This produces a co‑aligned set used for all subsequent steps.
 - Path representation & optimization:
   - GSM uses pysisyphus `GrowingString` + `StringOptimizer`.
   - HEI neighbors are optimized as *single* structures (LBFGS or RFO).
@@ -95,6 +100,11 @@ Notes
 -----
 - The linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) is printed to the console.
 - The `labels` and `energies` (kcal/mol) passed to `build_energy_diagram` are also printed.
+
+- Final merge rule with --align True:
+  If `--ref-pdb` is provided and `--align True` (default), the **first** reference PDB is used
+  for *all* pairs (i.e., you may pass only one reference PDB even for multi‑structure inputs).
+  Intermediate pocket→PDB conversions keep the original behavior (use the extracted pocket PDB).
 """
 
 from __future__ import annotations
@@ -140,6 +150,7 @@ from .utils import (
 )
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
+from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 
 # -----------------------------------------------
 # Configuration defaults
@@ -395,39 +406,6 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     broken = len(res.broken_covalent) > 0
     summary = summarize_changes(x, res, one_based=True)
     return (formed or broken), summary
-
-
-# ---- Kabsch rigid transform (for full‑system merge) ----
-
-def _kabsch_R_t(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Optimal rotation R and translation t (Kabsch) to align Q to P.
-
-    Parameters
-    ----------
-    P, Q : (N, 3) float arrays
-
-    Returns
-    -------
-    R : (3, 3) rotation matrix
-    t : (3,) translation vector
-    """
-    P = np.asarray(P, dtype=float)
-    Q = np.asarray(Q, dtype=float)
-    if P.shape != Q.shape or P.ndim != 2 or P.shape[1] != 3:
-        raise ValueError("Kabsch expects P, Q with shape (N, 3).")
-    mu_P = P.mean(axis=0)
-    mu_Q = Q.mean(axis=0)
-    Pc = P - mu_P
-    Qc = Q - mu_Q
-    H = Pc.T @ Qc  # covariance (maps Q -> P)
-    U, S, Vt = np.linalg.svd(H)
-    R = Vt.T @ U.T
-    if np.linalg.det(R) < 0.0:  # ensure right‑handed
-        Vt[-1, :] *= -1.0
-        R = Vt.T @ U.T
-    t = mu_P - mu_Q @ R
-    return R, t
 
 
 # ---------- Minimal GS configuration helper ----------
@@ -1107,7 +1085,7 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
     for j in range(1, len(coords_list)):
         P = aligned_coords[j-1]
         Q = coords_list[j]
-        R, t = _kabsch_R_t(P, Q)
+        R, t = kabsch_R_t(P, Q)
         Qa = (Q @ R) + t
         aligned_coords.append(Qa)
 
@@ -1152,7 +1130,7 @@ def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
             out.append(f"POCKET_ATOM_INDICES {cur}")
             cur = tok
         else:
-            cur += add
+            cur += tok if not cur else "," + tok
     if cur:
         out.append(f"POCKET_ATOM_INDICES {cur}")
     return out
@@ -1222,7 +1200,7 @@ def _merge_pair_to_full(pair_images: List[Any],
             P_bohr = np.array(pair_images[k].coords3d, dtype=float)
             P = P_bohr * BOHR2ANG
             P_sel = np.array([P[j] for j in idx_sel], dtype=float)
-            R, t = _kabsch_R_t(Y, P_sel)
+            R, t = kabsch_R_t(Y, P_sel)
             Paligned = (P @ R) + t
             for jj, pidx in enumerate(idx_sel):
                 full_i = match_tpl_idx[pidx]
@@ -1278,8 +1256,9 @@ def _merge_final_and_write(final_images: List[Any],
                            segments: List[SegmentReport],
                            out_dir: Path) -> None:
     """Merge the entire pocket MEP into full templates (for all pairs) and write outputs."""
+    # NOTE: In --align True mode, caller may pass a single ref PDB replicated per pair.
     if len(ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--ref-pdb must be given for each --input.")
+        raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
 
     structs, aligned_coords, atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
@@ -1474,12 +1453,22 @@ def _merge_final_and_write(final_images: List[Any],
     help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search)."
 )
 @click.option(
-    "--pre-opt", "pre_opt",
+    "--pre-opt",
     "pre_opt",
     type=click.BOOL,
     default=True,
     show_default=True,
     help="If False, skip initial single-structure optimizations of inputs."
+)
+# Input alignment switch (default True)
+@click.option(
+    "--align/--no-align",
+    "align",
+    default=True,
+    show_default=True,
+    help=("After pre-optimization, align all inputs to the *first* input and match freeze_atoms "
+          "using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, "
+          "the first reference PDB will be used for all pairs in the final merge.")
 )
 # Full template PDBs for merge
 @click.option(
@@ -1489,7 +1478,8 @@ def _merge_final_and_write(final_images: List[Any],
     multiple=True,
     default=None,
     help=("Full-size template PDBs in the same reaction order as --input. "
-          "When provided, generates a full-system trajectory by merging the pocket MEP into these templates.")
+          "With --align True, only the *first* provided reference PDB is used for all pairs "
+          "in the final merge (you may pass just one).")
 )
 @click.pass_context
 def cli(
@@ -1506,6 +1496,7 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
     pre_opt: bool,
+    align: bool,                # <-- added
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
     # --- Robustly accept both styles for -i/--input and --ref-pdb ---
@@ -1561,8 +1552,14 @@ def cli(
             raise click.BadParameter("Provide at least two structures for --input in reaction order (reactant [intermediates ...] product).")
 
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
-        if do_merge and (len(ref_pdb_paths) != len(input_paths)):
-            raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
+        if do_merge:
+            if align:
+                # With --align True we will use only the *first* ref PDB for all pairs (replicated later).
+                pass
+            else:
+                if len(ref_pdb_paths) != len(input_paths):
+                    raise click.BadParameter("--ref-pdb must be given for each --input (same count and order). "
+                                             "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
 
         # --------------------------
         # 1) Resolve settings (defaults ← YAML ← CLI)
@@ -1636,7 +1633,8 @@ def cli(
         click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
-        click.echo(pretty_block("run_flags", {"pre_opt": bool(pre_opt)}))
+        # Echo pre-optimization and alignment flags
+        click.echo(pretty_block("run_flags", {"pre_opt": bool(pre_opt), "align": bool(align)}))
 
         # --------------------------
         # 2) Prepare inputs
@@ -1673,7 +1671,21 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre-opt False.")
 
-        # (Alignment step intentionally omitted)
+        # Align all inputs to the first structure, guided by freeze constraints, when requested
+        if align:
+            try:
+                click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
+                _ = align_and_refine_sequence_inplace(
+                    geoms,
+                    shared_calc=shared_calc,
+                    out_dir=out_dir_path / "align_refine",
+                    verbose=True,
+                )
+                click.echo("[align] Completed input alignment.")
+            except Exception as e:
+                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
+        else:
+            click.echo("[align] Skipping input alignment as requested by --no-align.")
 
         # --------------------------
         # 3) Run recursive search for each adjacent pair and stitch
@@ -1845,10 +1857,19 @@ def cli(
 
         if do_merge:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
+            # With --align True, use only the first reference PDB for all pairs (replicate it).
+            if align:
+                if not ref_pdb_paths or len(ref_pdb_paths) < 1:
+                    raise click.BadParameter("--ref-pdb must provide at least one file when performing final merge with --align True.")
+                first_ref = Path(ref_pdb_paths[0])
+                ref_list_for_merge = [first_ref for _ in input_paths]  # replicate for all (length == n_inputs)
+            else:
+                ref_list_for_merge = [Path(p) for p in ref_pdb_paths]
+
             _merge_final_and_write(
                 final_images=list(combined_all.images),
                 pocket_inputs=[Path(p) for p in input_paths],
-                ref_pdbs=[Path(p) for p in ref_pdb_paths],
+                ref_pdbs=ref_list_for_merge,
                 segments=combined_all.segments,
                 out_dir=out_dir_path
             )
@@ -2036,7 +2057,7 @@ def cli(
         hh = int(elapsed // 3600)
         mm = int((elapsed % 3600) // 60)
         ss = elapsed - (hh * 3600 + mm * 60)
-        click.echo(f"[time] Elapsed: {hh:02d}:{mm:02d}:{ss:06.3f}")
+        click.echo(f"[time] Elapsed for Path Search: {hh:02d}:{mm:02d}:{ss:06.3f}")
 
     except ZeroStepLength:
         click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
