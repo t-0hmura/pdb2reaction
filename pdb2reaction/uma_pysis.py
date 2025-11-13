@@ -320,7 +320,7 @@ class uma_pysis(Calculator):
         """
         Parameters
         ----------
-        hessian_calc_mode : {"Analytical", "FiniteDifference"}, default "FiniteDifference"
+        hessian_calc_mode : {"Analytical", "FiniteDifference"}, default "Analytical"
             Select how to compute the Hessian in `get_hessian()`.
             - "Analytical": autograd-based analytical Hessian (GPU).
             - "FiniteDifference": central-difference Hessian; the matrix is
