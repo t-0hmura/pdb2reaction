@@ -282,7 +282,7 @@ ION: Dict[str, int] = {
 
 DISULFIDE_CUTOFF = 2.5   # Å Sγ–Sγ (SG–SG)
 EXACT_EPS = 1e-3         # Å tolerance for exact match
-WATER_NAMES = {"HOH", "WAT", "TIP3", "SOL"}
+WATER_RES = {"HOH","WAT","H2O","DOD","TIP","TIP3","SOL"}
 
 # Type for cross-structure residue identity (chain, hetflag, resseq, icode, resname)
 ResidueKey = Tuple[str, str, int, str, str]
@@ -646,7 +646,7 @@ def select_residues(complex_struct,
 
     def maybe_add(atom, via_backbone: bool):
         res = atom.get_parent()
-        if not include_h2o and res.get_resname() in WATER_NAMES:
+        if not include_h2o and res.get_resname() in WATER_RES:
             return
         fid = res.get_full_id()
         selected_ids.add(fid)
@@ -861,7 +861,7 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
         if fid in substrate_ids:
             continue  # never delete atoms from substrate residues
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        if res.get_resname() in WATER_NAMES:
+        if res.get_resname() in WATER_RES:
             continue
         chain_map.setdefault((fid[1], fid[2]), []).append(fid)
 
@@ -925,7 +925,7 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
             if fid in substrate_ids:
                 continue
             res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-            if res.get_resname() in WATER_NAMES:
+            if res.get_resname() in WATER_RES:
                 continue
             if res.get_resname() in AMINO_ACIDS:
                 if res.get_resname() in {"PRO", "HYP"}:
@@ -1025,7 +1025,7 @@ def compute_linkH_atoms(structure,
     for fid in selected_ids:
         model_id, chain_id, res_id = fid[1], fid[2], fid[3]
         res: PDB.Residue.Residue = structure[model_id][chain_id].child_dict[res_id]
-        if res.get_resname() in WATER_NAMES:
+        if res.get_resname() in WATER_RES:
             continue
         skip_set = skip_map.get(fid, set())
         resname = res.get_resname()
@@ -1232,7 +1232,7 @@ def compute_charge_summary(structure,
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
         rn = res.get_resname().upper()
         key = _residue_key_from_res(res)
-        if rn in WATER_NAMES:
+        if rn in WATER_RES:
             q = 0.0
         elif rn in AMINO_ACIDS:
             q = float(AMINO_ACIDS[rn])
@@ -1491,7 +1491,7 @@ def _compute_linkH_defs(structure,
     out: List[Tuple[Tuple[ResidueKey, str], Tuple[float, float, float]]] = []
     for fid in _sorted_fids_by_file_order(structure, selected_ids):
         res: PDB.Residue.Residue = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        if res.get_resname() in WATER_NAMES:
+        if res.get_resname() in WATER_RES:
             continue
         skip_set = skip_map.get(fid, set())
         key = _residue_key_from_res(res)

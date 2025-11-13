@@ -56,7 +56,7 @@ import click
 from Bio.PDB import PDBParser, PDBIO
 
 # Reuse residue/ion dictionaries from extract.py to keep definitions in sync
-from .extract import AMINO_ACIDS, ION
+from .extract import AMINO_ACIDS, ION, WATER_RES
 
 # -----------------------------
 # Element symbols (IUPAC, 1–118)
@@ -78,7 +78,6 @@ NUCLEIC_RES = {
     "DA","DT","DG","DC","DI",
     "A","U","G","C","I",
 }
-WATER_RES = {"HOH","WAT","H2O","DOD","TIP","TIP3","SOL"}
 
 # -----------------------------
 # Helper: normalize strings to element symbols
