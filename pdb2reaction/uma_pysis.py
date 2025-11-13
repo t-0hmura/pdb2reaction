@@ -103,8 +103,14 @@ H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr�
 _ndtype = np.float32
 _tdtype = torch.float32
 
+# Default for geom_loader
+GEOM_KW_DEFAULT: Dict[str, Any] = {
+    "coord_type": "cart",       # str, coordinate representation for geom_loader (Cartesian recommended)
+    "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
+}
+
 # UMA calculator defaults
-CALC_KW = {
+CALC_KW: Dict[str, Any] = {
     # Charge and multiplicity
     "charge": 0,              # int, total charge
     "spin": 1,                # int, multiplicity (2S+1)
@@ -294,7 +300,22 @@ class uma_pysis(Calculator):
     implemented_properties = ["energy", "forces", "hessian"]
 
     def __init__(
-        self, *, **CALC_KW, **kwargs,
+        self,
+        *,
+        charge: int = CALC_KW["charge"],
+        spin: int = CALC_KW["spin"],
+        model: str = CALC_KW["model"],
+        task_name: str = CALC_KW["task_name"],
+        device: str = CALC_KW["device"],
+        out_hess_torch: bool = CALC_KW["out_hess_torch"],
+        max_neigh: Optional[int] = CALC_KW["max_neigh"],
+        radius:    Optional[float] = CALC_KW["radius"],
+        r_edges:   bool = CALC_KW["r_edges"],
+        freeze_atoms: Optional[Sequence[int]] = CALC_KW["freeze_atoms"],
+        hessian_calc_mode: str = CALC_KW["hessian_calc_mode"],
+        return_partial_hessian: bool = CALC_KW["return_partial_hessian"],
+        # -------------------------------------------------------------------
+        **kwargs,
     ):
         """
         Parameters
