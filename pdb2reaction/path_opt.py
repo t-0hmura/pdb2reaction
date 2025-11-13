@@ -130,7 +130,7 @@ GS_KW: Dict[str, Any] = {
 }
 
 # StringOptimizer (optimization control)
-OPT_KW: Dict[str, Any] = {
+STOPT_KW: Dict[str, Any] = {
     "type": "string",           # str, tag for bookkeeping / output labelling
     "stop_in_when_full": 100,   # int, allow N extra cycles after the string is fully grown
     "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
@@ -238,7 +238,7 @@ def cli(
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
         gs_cfg   = dict(GS_KW)
-        opt_cfg  = dict(OPT_KW)
+        opt_cfg  = dict(STOPT_KW)
 
         # Prefer centralized override helper (imports from utils)
         apply_yaml_overrides(

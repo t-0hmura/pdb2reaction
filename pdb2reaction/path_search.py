@@ -198,7 +198,7 @@ GS_KW: Dict[str, Any] = {
 }
 
 # StringOptimizer (GSM optimization control)
-OPT_KW: Dict[str, Any] = {
+STOPT_KW: Dict[str, Any] = {
     "type": "string",           # str, tag for bookkeeping / output labelling
     "stop_in_when_full": 1000,  # int, allow N extra cycles after the string is fully grown
     "align": False,             # bool, keep StringOptimizer alignment disabled (use external alignment)
@@ -1617,7 +1617,7 @@ def cli(
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
         gs_cfg   = dict(GS_KW)
-        opt_cfg  = dict(OPT_KW)
+        opt_cfg  = dict(STOPT_KW)
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg   = dict(RFO_KW)
         bond_cfg  = dict(BOND_KW)

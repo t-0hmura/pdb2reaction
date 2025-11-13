@@ -103,6 +103,30 @@ H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr�
 _ndtype = np.float32
 _tdtype = torch.float32
 
+# UMA calculator defaults
+CALC_KW = {
+    # Charge and multiplicity
+    "charge": 0,              # int, total charge
+    "spin": 1,                # int, multiplicity (2S+1)
+
+    # Model selection
+    "model": "uma-s-1p1",     # str, UMA pretrained model ID
+    "task_name": "omol",      # str, dataset/task tag carried into UMA's AtomicData
+
+    # Device & graph construction
+    "device": "auto",         # str, "cuda" | "cpu" | "auto"
+    "max_neigh": None,        # Optional[int], override model's neighbor cap
+    "radius": None,           # Optional[float], cutoff radius (Å)
+    "r_edges": False,         # bool, store edge vectors in graph (UMA option)
+    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (RSIRFO expects GPU Hessian when available)
+
+    # Freeze atoms
+    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms. Corresponding forces and Non-DOF Hessian turn to 0. 
+
+    # Hessian interfaces to UMA
+    "hessian_calc_mode": "Analytical",        # str, "Analytical" (default) | "FiniteDifference"
+    "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block from UMA
+}
 
 # ===================================================================
 #                         UMA core wrapper
@@ -270,22 +294,7 @@ class uma_pysis(Calculator):
     implemented_properties = ["energy", "forces", "hessian"]
 
     def __init__(
-        self,
-        *,
-        charge: int = 0,
-        spin: int = 1,
-        model: str = "uma-s-1p1",
-        task_name: str = "omol",
-        device: str = "auto",
-        out_hess_torch: bool = False,
-        max_neigh: Optional[int] = None,
-        radius:    Optional[float] = None,
-        r_edges:   bool = False,
-        hessian_calc_mode: str = "Analytical",  # default: Analytical
-        freeze_atoms: Optional[Sequence[int]] = None, # atom indices (0-based)
-        return_partial_hessian: bool = False,         # return active-DOF Hessian only
-        # -------------------------------------------------------------------
-        **kwargs,
+        self, *, **CALC_KW, **kwargs,
     ):
         """
         Parameters
