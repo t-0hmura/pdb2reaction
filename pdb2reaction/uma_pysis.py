@@ -4,6 +4,16 @@
 uma_pysis — UMA calculator wrapper for PySisyphus
 ====================================================================
 
+Usage (API)
+-----
+    from pdb2reaction.uma_pysis import uma_pysis
+
+Examples::
+    >>> from pdb2reaction.uma_pysis import uma_pysis
+    >>> calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1")
+    >>> calc.get_energy(["C", "O"], coords)
+    {'energy': -228.123456}
+
 Description
 -----
 - Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA pretrained ML potentials via ASE/AtomicData.

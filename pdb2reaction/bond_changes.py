@@ -4,9 +4,20 @@
 bond_changes — Bond-change detection and reporting utilities
 ====================================================================
 
+Usage (API)
+-----
+    from pdb2reaction.bond_changes import compare_structures, summarize_changes
+
+Examples::
+    >>> result = compare_structures(geom_reactant, geom_product, device="cpu")
+    >>> print(summarize_changes(geom_product, result))
+    Bond formed (1)
+      C1-O2 1.50 Å --> 1.36 Å
+
 Description
 -----
-This module compares two molecular geometries with identical atom types and ordering and reports covalent bonds that are formed or broken between the structures. Bond perception uses element-specific covalent radii and configurable tolerances; distances are computed with PyTorch on CPU or CUDA.
+This module compares two molecular geometries with identical atom types and ordering and reports covalent bonds that are formed
+or broken between the structures. Bond perception uses element-specific covalent radii and configurable tolerances; distances are computed with PyTorch on CPU or CUDA.
 
 Algorithm (core logic):
 - Inputs: `geom1`, `geom2` with attributes `atoms: Iterable[str]` and `coords3d: (N, 3) float` (in Bohr in pysisyphus). Atoms must match exactly (`assert geom1.atoms == geom2.atoms`).
@@ -20,12 +31,12 @@ Algorithm (core logic):
 - Distances: pairwise matrices `D1`, `D2` via `torch.cdist`.
 
 Public API:
-- `compare_structures(geom1, geom2, device='cuda', bond_factor=1.20, margin_fraction=0.05, delta_fraction=0.05) -> BondChangeResult`  
+- `compare_structures(geom1, geom2, device='cuda', bond_factor=1.20, margin_fraction=0.05, delta_fraction=0.05) -> BondChangeResult`
   Detects formed and broken covalent bonds. Returns sets of zero-based index pairs and (by default) the full distance matrices (`numpy.ndarray`) in the same units as the inputs (Bohr in pysisyphus).
-- `summarize_changes(geom, result, one_based: bool = True) -> str`  
+- `summarize_changes(geom, result, one_based: bool = True) -> str`
   Builds a human-readable report:
-  - Sections: “Bond formed” and “Bond broken” (with counts).  
-  - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).  
+  - Sections: “Bond formed” and “Bond broken” (with counts).
+  - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).
   - If `result.distances_1/2` are present, prints bond lengths as `D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.
 - Helper utilities (internal):
   - `_resolve_device(device: str) -> torch.device`: chooses the requested device; falls back to CPU with a warning if unavailable.
@@ -33,15 +44,15 @@ Public API:
   - `_upper_pairs_from_mask(mask) -> Set[Tuple[int, int]]`: returns index pairs where `mask` is True (assumes an upper-triangular mask).
   - `_bond_str(i, j, elems, one_based=True) -> str`: formats `ElemI-ElemJ` labels.
 - Data container:
-  - `BondChangeResult`:  
-    - `formed_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds formed.  
-    - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.  
+  - `BondChangeResult`:
+    - `formed_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds formed.
+    - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.
     - `distances_1: Optional[np.ndarray]`, `distances_2: Optional[np.ndarray]` — square distance matrices (shape N×N).
 
 Outputs (& Directory Layout)
 -----
-- No files or directories are created.  
-- `compare_structures` returns a `BondChangeResult` as described above.  
+- No files or directories are created.
+- `compare_structures` returns a `BondChangeResult` as described above.
 - `summarize_changes` returns a multi-line string; typical headings:
   - `Bond formed (k):` followed by `ElemI-ElemJ : D1 Å --> D2 Å` (if distances available).
   - `Bond broken (m):` followed by lines in the same format.
@@ -49,15 +60,15 @@ Outputs (& Directory Layout)
 
 Notes:
 -----
-- Units: In pysisyphus, `coords3d` are Bohr; the summary converts to Å with `BOHR2ANG`. If your inputs use different units, adjust accordingly.  
-- Atom identity & ordering must be identical between structures; otherwise the comparison is invalid.  
-- Only unique pairs with `i < j` are considered (upper triangle); indices in results are zero-based.  
+- Units: In pysisyphus, `coords3d` are Bohr; the summary converts to Å with `BOHR2ANG`. If your inputs use different units, adjust accordingly.
+- Atom identity & ordering must be identical between structures; otherwise the comparison is invalid.
+- Only unique pairs with `i < j` are considered (upper triangle); indices in results are zero-based.
 - The three tolerances control sensitivity:
   - `bond_factor` (default 1.20): global scaling of the covalent radii sum.
   - `margin_fraction` (default 0.05): conservative shrinkage of the bond cutoff to avoid borderline matches.
   - `delta_fraction` (default 0.05): minimum relative distance change required to count a bond event.
 - Device selection: pass `'cpu'`, `'cuda'`, or `'cuda:0'` etc. If the requested device is not available or invalid, the code falls back to CPU and issues a `RuntimeWarning`. Computations use `float64` for stability and run under `torch.no_grad()`.
-- The method detects binary bond formation/breakage; it does not estimate bond orders, angles, or multi-center bonding, and it ignores periodic boundary conditions.  
+- The method detects binary bond formation/breakage; it does not estimate bond orders, angles, or multi-center bonding, and it ignores periodic boundary conditions.
 - Numerical caveats: near-threshold pairs may toggle with small geometry noise; tune tolerances to your system size and sampling noise.
 """
 

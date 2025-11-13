@@ -4,6 +4,22 @@
 align_freeze_atoms — Rigid alignment and staged “scan + relaxation” utilities for pysisyphus Geometry objects
 ====================================================================
 
+Usage (API)
+-----
+    from pdb2reaction.align_freeze_atoms import (
+        align_and_refine_pair_inplace,
+        align_and_refine_sequence_inplace,
+        align_second_to_first_kabsch_inplace,
+        kabsch_R_t,
+        scan_freeze_atoms_toward_target_inplace,
+    )
+
+Examples::
+    >>> from pdb2reaction.align_freeze_atoms import align_and_refine_pair_inplace
+    >>> result = align_and_refine_pair_inplace(g_ref, g_mob, verbose=False)
+    >>> result["align"]["mode"]
+    'kabsch'
+
 Description
 -----
 API-only utilities to co-align and refine pre-optimized `pysisyphus.Geometry` objects—typically adjacent
