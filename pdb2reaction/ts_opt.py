@@ -1226,10 +1226,6 @@ DIMER_KW = {
 
 # ---------- Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW ----------
 LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_TS_KW.update({
-    # TS optimization disables the polynomial line search by default
-    "line_search": False,
-})
 
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
@@ -1250,7 +1246,7 @@ hessian_dimer_KW = {
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
 RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RSIRFO_KW.update({
-    "roots": [0],                # list[int], mode indices to follow uphill
+    "roots": [0],               # list[int], mode indices to follow uphill
     "hessian_ref": None,        # Optional[Path], reference Hessian file (HDF5)
     "rx_modes": None,           # Optional[Sequence], reaction-mode definitions for projection
     "prim_coord": None,         # Optional[Sequence[int]], primary coordinates for monitoring
@@ -1259,8 +1255,8 @@ RSIRFO_KW.update({
     "hessian_recalc_reset": True,# bool, reset recalc counter after exact Hessian
     "max_micro_cycles": 50,     # int, micro-iterations per macro cycle (heavier than base)
     "augment_bonds": False,     # bool, augment reaction path based on bond analysis
-    "min_line_search": False,   # bool, enforce minimum line-search step
-    "max_line_search": False,   # bool, enforce maximum line-search step
+    "min_line_search": True,    # bool, enforce minimum line-search step
+    "max_line_search": True,    # bool, enforce maximum line-search step
     "assert_neg_eigval": False, # bool, ensure a negative eigenvalue at convergence
 })
 

@@ -159,6 +159,9 @@ OPT_BASE_KW = {
     "overachieve_factor": 0.0,            # float, consider converged if forces < thresh/this_factor
     "check_eigval_structure": False,      # bool, TS search: require expected negative modes
 
+    # Line Search
+    "line_search": True,         # bool, enable polynomial line search
+
     # Dumping / restart / bookkeeping
     "dump": False,               # bool, write optimization trajectory
     "dump_restart": False,       # False | int, write restart YAML every N cycles (False disables)
@@ -183,7 +186,6 @@ LBFGS_KW = {
 
     # Safeguards & line search
     "double_damp": True,         # bool, double-damping to enforce s·y > 0
-    "line_search": True,         # bool, polynomial line search on the last step
 
     # Regularized L-BFGS (μ_reg)
     "mu_reg": None,              # Optional[float], initial regularization; if set: disables double_damp, control_step, line_search
@@ -211,7 +213,6 @@ RFO_KW = {
     "small_eigval_thresh": 1e-8, # float, treat |λ| < threshold as zero / remove corresponding modes
 
     # RFO/RS micro-iterations
-    "line_search": True,         # bool, enable polynomial line search fallback (RFOptimizer)
     "alpha0": 1.0,               # float, initial α for restricted-step RFO
     "max_micro_cycles": 25,      # int, max inner iterations to hit the trust radius
     "rfo_overlaps": False,       # bool, mode following via eigenvector overlap across cycles
