@@ -26,6 +26,106 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 ## YAML configuration (`--args-yaml`)
 Pass a YAML mapping; CLI values override YAML, which override the defaults below.
 
+```yaml
+geom:
+  coord_type: cart
+  freeze_atoms: []
+calc:
+  charge: 0
+  spin: 1
+  model: uma-s-1p1
+  task_name: omol
+  device: auto
+  max_neigh: null
+  radius: null
+  r_edges: false
+  out_hess_torch: true
+  freeze_atoms: null
+  hessian_calc_mode: Analytical
+  return_partial_hessian: true
+opt:
+  thresh: gau
+  max_cycles: 10000
+  print_every: 1
+  min_step_norm: 1.0e-08
+  assert_min_step: true
+  rms_force: null
+  rms_force_only: false
+  max_force_only: false
+  force_only: false
+  converge_to_geom_rms_thresh: 0.05
+  overachieve_factor: 0.0
+  check_eigval_structure: false
+  line_search: true
+  dump: false
+  dump_restart: false
+  prefix: ""
+  out_dir: ./result_opt/
+lbfgs:
+  thresh: gau
+  max_cycles: 10000
+  print_every: 1
+  min_step_norm: 1.0e-08
+  assert_min_step: true
+  rms_force: null
+  rms_force_only: false
+  max_force_only: false
+  force_only: false
+  converge_to_geom_rms_thresh: 0.05
+  overachieve_factor: 0.0
+  check_eigval_structure: false
+  line_search: true
+  dump: false
+  dump_restart: false
+  prefix: ""
+  out_dir: ./result_opt/
+  keep_last: 7
+  beta: 1.0
+  gamma_mult: false
+  max_step: 0.3
+  control_step: true
+  double_damp: true
+  mu_reg: null
+  max_mu_reg_adaptions: 10
+rfo:
+  thresh: gau
+  max_cycles: 10000
+  print_every: 1
+  min_step_norm: 1.0e-08
+  assert_min_step: true
+  rms_force: null
+  rms_force_only: false
+  max_force_only: false
+  force_only: false
+  converge_to_geom_rms_thresh: 0.05
+  overachieve_factor: 0.0
+  check_eigval_structure: false
+  line_search: true
+  dump: false
+  dump_restart: false
+  prefix: ""
+  out_dir: ./result_opt/
+  trust_radius: 0.3
+  trust_update: true
+  trust_min: 0.01
+  trust_max: 0.3
+  max_energy_incr: null
+  hessian_update: bfgs
+  hessian_init: calc
+  hessian_recalc: 100
+  hessian_recalc_adapt: 2.0
+  small_eigval_thresh: 1.0e-08
+  alpha0: 1.0
+  max_micro_cycles: 25
+  rfo_overlaps: false
+  gediis: false
+  gdiis: true
+  gdiis_thresh: 0.0025
+  gediis_thresh: 0.01
+  gdiis_test_direction: true
+  adapt_step_func: false
+```
+
 ### Section `geom`
 Geometry loader options (see also `pdb2reaction.uma_pysis.GEOM_KW_DEFAULT`).
 

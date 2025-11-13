@@ -30,6 +30,130 @@ pdb2reaction ts_opt -i INPUT -q CHARGE [--spin 2S+1]
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
 
+```yaml
+geom:
+  coord_type: cart
+  freeze_atoms: []
+calc:
+  charge: 0
+  spin: 1
+  model: uma-s-1p1
+  task_name: omol
+  device: auto
+  max_neigh: null
+  radius: null
+  r_edges: false
+  out_hess_torch: true
+  freeze_atoms: null
+  hessian_calc_mode: Analytical
+  return_partial_hessian: true
+opt:
+  thresh: gau
+  max_cycles: 10000
+  print_every: 1
+  min_step_norm: 1.0e-08
+  assert_min_step: true
+  rms_force: null
+  rms_force_only: false
+  max_force_only: false
+  force_only: false
+  converge_to_geom_rms_thresh: 0.05
+  overachieve_factor: 0.0
+  check_eigval_structure: false
+  line_search: true
+  dump: false
+  dump_restart: false
+  prefix: ""
+  out_dir: ./result_ts_opt/
+hessian_dimer:
+  thresh_loose: gau_loose
+  thresh: gau
+  update_interval_hessian: 1000
+  neg_freq_thresh_cm: 5.0
+  flatten_amp_ang: 0.1
+  flatten_max_iter: 20
+  mem: 100000
+  use_lobpcg: true
+  device: auto
+  root: 0
+  dimer:
+    length: 0.0189
+    rotation_max_cycles: 15
+    rotation_method: fourier
+    rotation_thresh: 0.0001
+    rotation_tol: 1
+    rotation_max_element: 0.001
+    rotation_interpolate: true
+    rotation_disable: false
+    rotation_disable_pos_curv: true
+    rotation_remove_trans: true
+    trans_force_f_perp: true
+    bonds: null
+    N_hessian: null
+    bias_rotation: false
+    bias_translation: false
+    bias_gaussian_dot: 0.1
+    seed: null
+    write_orientations: true
+    forward_hessian: true
+  lbfgs:
+    thresh: gau
+    max_cycles: 10000
+    print_every: 1
+    min_step_norm: 1.0e-08
+    assert_min_step: true
+    rms_force: null
+    rms_force_only: false
+    max_force_only: false
+    force_only: false
+    converge_to_geom_rms_thresh: 0.05
+    overachieve_factor: 0.0
+    check_eigval_structure: false
+    line_search: true
+    dump: false
+    dump_restart: false
+    prefix: ""
+    out_dir: ./result_opt/
+    keep_last: 7
+    beta: 1.0
+    gamma_mult: false
+    max_step: 0.3
+    control_step: true
+    double_damp: true
+    mu_reg: null
+    max_mu_reg_adaptions: 10
+rsirfo:
+  thresh: gau
+  max_cycles: 10000
+  print_every: 1
+  min_step_norm: 1.0e-08
+  assert_min_step: true
+  rms_force: null
+  rms_force_only: false
+  max_force_only: false
+  force_only: false
+  converge_to_geom_rms_thresh: 0.05
+  overachieve_factor: 0.0
+  check_eigval_structure: false
+  line_search: true
+  dump: false
+  dump_restart: false
+  prefix: ""
+  out_dir: ./result_opt/
+  roots: [0]
+  hessian_ref: null
+  rx_modes: null
+  prim_coord: null
+  rx_coords: null
+  hessian_update: bofill
+  hessian_recalc_reset: true
+  max_micro_cycles: 50
+  augment_bonds: false
+  min_line_search: true
+  max_line_search: true
+  assert_neg_eigval: false
+```
+
 ### Shared sections
 - `geom`, `calc`, `opt`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms` and pushes the list into `calc.freeze_atoms`.
 

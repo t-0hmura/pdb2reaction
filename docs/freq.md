@@ -35,6 +35,30 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 ## YAML configuration (`--args-yaml`)
 Accepts a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
 
+```yaml
+geom:
+  coord_type: cart
+  freeze_atoms: []
+calc:
+  charge: 0
+  spin: 1
+  model: uma-s-1p1
+  task_name: omol
+  device: auto
+  max_neigh: null
+  radius: null
+  r_edges: false
+  out_hess_torch: true
+  freeze_atoms: null
+  hessian_calc_mode: Analytical
+  return_partial_hessian: true
+freq:
+  amplitude_ang: 0.8
+  n_frames: 20
+  max_write: 20
+  sort: value
+```
+
 ### Shared sections
 - `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms`, which are also forwarded to UMA for Hessian calculations.
 

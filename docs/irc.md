@@ -33,6 +33,51 @@ pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml) for geometry/calculator keys.
 
+```yaml
+geom:
+  coord_type: cart
+  freeze_atoms: []
+calc:
+  charge: 0
+  spin: 1
+  model: uma-s-1p1
+  task_name: omol
+  device: auto
+  max_neigh: null
+  radius: null
+  r_edges: false
+  out_hess_torch: true
+  freeze_atoms: null
+  hessian_calc_mode: Analytical
+  return_partial_hessian: true
+irc:
+  step_length: 0.1
+  max_cycles: 125
+  downhill: false
+  forward: true
+  backward: true
+  root: 0
+  hessian_init: calc
+  displ: energy
+  displ_energy: 0.001
+  displ_length: 0.1
+  rms_grad_thresh: 0.001
+  hard_rms_grad_thresh: null
+  energy_thresh: 0.000001
+  imag_below: 0.0
+  force_inflection: true
+  check_bonds: false
+  out_dir: ./result_irc/
+  prefix: ""
+  dump_fn: irc_data.h5
+  dump_every: 5
+  hessian_update: bofill
+  hessian_recalc: null
+  max_pred_steps: 500
+  loose_cycles: 3
+  corr_func: mbs
+```
+
 ### Shared sections
 - `geom`: same keys as [`opt`](opt.md#section-geom). `--freeze-links` augments `geom.freeze_atoms`.
 - `calc`: same keys as [`opt`](opt.md#section-calc). `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after merging.
