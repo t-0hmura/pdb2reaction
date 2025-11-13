@@ -57,6 +57,8 @@ Runs a one-shot pipeline centered on pocket models:
     - The extractor writes per-input pocket PDBs under `<out-dir>/pockets/`.
     - The extractor’s **first-model total pocket charge** is used as the total charge in later steps,
       cast to the nearest integer with a console note if rounding occurs.
+    - Additional extractor toggles: `--radius`, `--radius-het2het`, `--include-H2O True|False`,
+      `--exclude-backbone True|False`, `--add-linkH True|False`, `--selected_resn`, `--verbose True|False`.
 
 (1b) **Optional staged scan (single-structure only)** — *new*
     - If **exactly one** full input PDB is provided and `--scan-lists` is given, the tool performs a
