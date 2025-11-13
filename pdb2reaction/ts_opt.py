@@ -1175,23 +1175,29 @@ class HessianDimer:
 # Geometry defaults
 GEOM_KW = {
     "coord_type": "cart",     # str, coordinate representation for geom_loader ("cart" recommended here)
-    "freeze_atoms": [],       # List[int], 0-based indices to freeze
+    "freeze_atoms": [],       # list[int], 0-based indices to freeze
 }
 
 # UMA calculator defaults
 CALC_KW = {
+    # Charge and multiplicity
     "charge": 0,              # int, total charge
     "spin": 1,                # int, multiplicity (2S+1)
+
+    # Model selection
     "model": "uma-s-1p1",     # str, UMA pretrained model ID
     "task_name": "omol",      # str, dataset/task tag carried into UMA's AtomicData
-    "device": "auto",         # "cuda" | "cpu" | "auto"
+
+    # Device & graph construction
+    "device": "auto",         # str, "cuda" | "cpu" | "auto"
     "max_neigh": None,        # Optional[int], override model's neighbor cap
     "radius": None,           # Optional[float], cutoff radius (Å)
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
-    "out_hess_torch": True,   # bool, RSIRFO sets this to True for torch Hessian; HessianDimer sets per-call
-    # --- Hessian interfaces to UMA ---
-    "hessian_calc_mode": "Analytical",        # "Analytical" | "FiniteDifference"
-    "return_partial_hessian": True,           # Default: receive the active-DOF Hessian block from UMA
+    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (RSIRFO expects GPU Hessian when available)
+
+    # Hessian interfaces to UMA
+    "hessian_calc_mode": "Analytical",        # str, "Analytical" | "FiniteDifference"
+    "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block from UMA
     # freeze_atoms is injected below from the geometry CLI/YAML configuration
 }
 
@@ -1210,15 +1216,15 @@ OPT_BASE_KW = {
     "force_only": False,      # bool
 
     # Extra mechanisms (not used by inner LBFGS unless supported)
-    "converge_to_geom_rms_thresh": 0.05,
-    "overachieve_factor": 0.0,
-    "check_eigval_structure": False,
+    "converge_to_geom_rms_thresh": 0.05,  # float, RMSD-to-reference threshold (Å)
+    "overachieve_factor": 0.0,           # float, treat thresholds/this factor as convergence target
+    "check_eigval_structure": False,     # bool, ensure expected Hessian signature (TS search)
 
     # Dumping / restart
-    "dump": False,
-    "dump_restart": False,
-    "prefix": "",
-    "out_dir": "./result_ts_opt/",
+    "dump": False,            # bool, write trajectory dumps
+    "dump_restart": False,    # bool | int, write restart YAML every N cycles (False disables)
+    "prefix": "",            # str, file name prefix
+    "out_dir": "./result_ts_opt/",  # str, output directory for TS optimization artifacts
 }
 
 DIMER_KW = {
@@ -1298,23 +1304,23 @@ hessian_dimer_KW = {
 
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
 RSIRFO_KW = {
-    "roots": [0],                # which mode(s) to follow uphill
-    "hessian_ref": None,
-    "rx_modes": None,
-    "prim_coord": None,
-    "rx_coords": None,
-    "hessian_init": "calc",
-    "hessian_update": "bofill",
-    "hessian_recalc": 100,       # Optional[int], recalc exact Hessian every N cycles
-    "hessian_recalc_adapt": 2.0, # If norm(force) become 1/hessian_recalc_adapt, recalc hessian
-    "hessian_recalc_reset": True,
-    "max_micro_cycles": 50,
-    "trust_radius": 0.30,
-    "trust_max": 0.30,
-    "augment_bonds": False,
-    "min_line_search": False,
-    "max_line_search": False,
-    "assert_neg_eigval": False,
+    "roots": [0],                # list[int], mode indices to follow uphill
+    "hessian_ref": None,        # Optional[Path], reference Hessian file (HDF5)
+    "rx_modes": None,           # Optional[Sequence], reaction-mode definitions for projection
+    "prim_coord": None,         # Optional[Sequence[int]], primary coordinates for monitoring
+    "rx_coords": None,          # Optional[Sequence[int]], reaction coordinates for monitoring
+    "hessian_init": "calc",    # str, initial Hessian source ("calc" = calculator)
+    "hessian_update": "bofill", # str, Hessian update strategy
+    "hessian_recalc": 100,      # int, recalc exact Hessian every N cycles (None disables)
+    "hessian_recalc_adapt": 2.0,# float, adapt recalc interval by this factor on failure
+    "hessian_recalc_reset": True,# bool, reset recalc counter after exact Hessian
+    "max_micro_cycles": 50,     # int, micro-iterations per macro cycle
+    "trust_radius": 0.30,       # float, trust radius (Bohr)
+    "trust_max": 0.30,          # float, maximum trust radius (Bohr)
+    "augment_bonds": False,     # bool, augment reaction path based on bond analysis
+    "min_line_search": False,   # bool, enforce minimum line-search step
+    "max_line_search": False,   # bool, enforce maximum line-search step
+    "assert_neg_eigval": False, # bool, ensure a negative eigenvalue at convergence
 }
 
 

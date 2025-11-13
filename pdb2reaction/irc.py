@@ -110,52 +110,59 @@ from pdb2reaction.utils import (
 # --------------------------
 
 GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",
-    "freeze_atoms": [],  # 0-based indices
+    "coord_type": "cart",       # str, coordinate representation for geom_loader (Cartesian recommended)
+    "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
 }
 
 CALC_KW_DEFAULT: Dict[str, Any] = {
-    "charge": 0,
-    "spin": 1,
-    "model": "uma-s-1p1",
-    "task_name": "omol",
-    "device": "auto",         # "cuda" | "cpu" | "auto"
-    "max_neigh": None,
-    "radius": None,           # Å
-    "r_edges": False,
-    "out_hess_torch": True,   # IRC supports Hessian input on the GPU
-    "hessian_calc_mode": "Analytical",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
+    # Charge and multiplicity
+    "charge": 0,                # int, total charge of the system
+    "spin": 1,                  # int, multiplicity (= 2S+1)
+
+    # Model selection
+    "model": "uma-s-1p1",      # str, UMA pretrained model identifier
+    "task_name": "omol",       # str, UMA dataset/task tag stored in AtomicData
+
+    # Device & graph construction
+    "device": "auto",          # str, "cuda" | "cpu" | "auto"
+    "max_neigh": None,         # Optional[int], override model neighbor cap
+    "radius": None,            # Optional[float], cutoff radius (Å) for neighbor graph
+    "r_edges": False,          # bool, include edge vectors in the UMA graph
+    "out_hess_torch": True,    # bool, request torch.Tensor Hessian (EulerPC can use GPU Hessians)
+
+    # Hessian computation controls
+    "hessian_calc_mode": "Analytical",  # str, "FiniteDifference" | "Analytical"
 }
 
 IRC_KW_DEFAULT: Dict[str, Any] = {
     # Arguments for IRC.__init__ (forwarded to EulerPC via **kwargs)
-    "step_length": 0.10,         # Overridden by CLI --step-size
-    "max_cycles": 125,           # Overridden by CLI --max-cycles
-    "downhill": False,
-    "forward": True,             # Overridden by CLI --forward
-    "backward": True,            # Overridden by CLI --backward
-    "root": 0,                   # Overridden by CLI --root
-    "hessian_init": "calc",      # Default assumption: start from TS Hessian
-    "displ": "energy",
-    "displ_energy": 1.0e-3,
-    "displ_length": 0.10,
-    "rms_grad_thresh": 1.0e-3,
-    "hard_rms_grad_thresh": None,
-    "energy_thresh": 1.0e-6,
-    "imag_below": 0.0,
-    "force_inflection": True,
-    "check_bonds": False,
-    "out_dir": "./result_irc/",
-    "prefix": "",
-    "dump_fn": "irc_data.h5",
-    "dump_every": 5,
+    "step_length": 0.10,         # float, default step length in mass-weighted coordinates (overridden by CLI)
+    "max_cycles": 125,           # int, maximum IRC steps (overridden by CLI)
+    "downhill": False,           # bool, follow downhill potential (debug option)
+    "forward": True,             # bool, integrate forward branch (CLI override --forward)
+    "backward": True,            # bool, integrate backward branch (CLI override --backward)
+    "root": 0,                   # int, imaginary mode index for initial displacement (CLI override --root)
+    "hessian_init": "calc",      # str, initial Hessian source ("calc" = calculator-provided TS Hessian)
+    "displ": "energy",          # str, displacement metric (energy|length)
+    "displ_energy": 1.0e-3,      # float, energy step (Hartree) when displ == "energy"
+    "displ_length": 0.10,        # float, length step in mass-weighted coordinates when displ == "length"
+    "rms_grad_thresh": 1.0e-3,   # float, RMS gradient threshold for convergence (Hartree/bohr)
+    "hard_rms_grad_thresh": None,# Optional[float], stricter RMS gradient cutoff
+    "energy_thresh": 1.0e-6,     # float, energy-change threshold for convergence (Hartree)
+    "imag_below": 0.0,           # float, treat imaginary frequency below this as zero
+    "force_inflection": True,    # bool, stop when force inflection detected
+    "check_bonds": False,        # bool, enable bond-change detection during IRC
+    "out_dir": "./result_irc/",  # str, output directory
+    "prefix": "",                # str, file name prefix
+    "dump_fn": "irc_data.h5",    # str, HDF5 dump filename
+    "dump_every": 5,             # int, write dump every N steps
 
     # EulerPC-specific options
-    "hessian_update": "bofill",
-    "hessian_recalc": None,
-    "max_pred_steps": 500,
-    "loose_cycles": 3,
-    "corr_func": "mbs",
+    "hessian_update": "bofill",  # str, Hessian update algorithm
+    "hessian_recalc": None,      # Optional[int], force Hessian recalculation every N steps
+    "max_pred_steps": 500,       # int, predictor steps per segment
+    "loose_cycles": 3,           # int, cycles using looser thresholds
+    "corr_func": "mbs",          # str, correction function selection
 }
 
 

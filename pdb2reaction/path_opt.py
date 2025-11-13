@@ -87,53 +87,61 @@ from .align_freeze_atoms import align_and_refine_sequence_inplace
 
 # Geometry (input handling)
 GEOM_KW: Dict[str, Any] = {
-    "coord_type": "cart",   # GrowingString works best with Cartesian coordinates
-    "freeze_atoms": [],     # 0-based atom indices
+    "coord_type": "cart",   # str, coordinate representation for geom_loader (GrowingString prefers Cartesian)
+    "freeze_atoms": [],     # list[int], 0-based atom indices to freeze
 }
 
 # UMA calculator settings
 CALC_KW: Dict[str, Any] = {
-    "charge": 0,
-    "spin": 1,                  # multiplicity (= 2S + 1)
-    "model": "uma-s-1p1",
-    "task_name": "omol",
-    "device": "auto",
-    "max_neigh": None,
-    "radius": None,
-    "r_edges": False,
+    # Charge and multiplicity
+    "charge": 0,                 # int, total charge of the system
+    "spin": 1,                   # int, multiplicity (= 2S+1)
+
+    # Model selection
+    "model": "uma-s-1p1",        # str, UMA pretrained model identifier
+    "task_name": "omol",         # str, UMA dataset/task tag stored in AtomicData
+
+    # Device & graph construction
+    "device": "auto",            # str, "cuda" | "cpu" | "auto"
+    "max_neigh": None,           # Optional[int], override model's neighbor cap
+    "radius": None,              # Optional[float], cutoff radius (Å) for neighbor graph
+    "r_edges": False,            # bool, store edge vectors in the graph (UMA option)
+
+    # Hessian output form
+    "out_hess_torch": False,     # bool, True: return torch.Tensor Hessian on CUDA; False: numpy on CPU
 }
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 30,            # Including endpoints, the string has max_nodes + 2 images
-    "perp_thresh": 5e-3,        # Frontier growth criterion (RMS/NORM of perpendicular force)
-    "reparam_check": "rms",     # "rms" | "norm"; convergence check after reparam (RMS of structural change)
-    "reparam_every": 1,         # Reparametrize every N steps
-    "reparam_every_full": 1,    # After the path is fully grown, reparametrize every N steps
-    "param": "equi",            # "equi" (even spacing) | "energy" (denser near the peak via weighting)
-    "max_micro_cycles": 10,
-    "reset_dlc": True,          # Reset DLC coordinates when appropriate
-    "climb": True,              # Enable climbing image
-    "climb_rms": 5e-4,          # Threshold (RMS of force) to start CI
-    "climb_lanczos": True,      # Use Lanczos to estimate the HEI tangent
-    "climb_lanczos_rms": 5e-4,
-    "climb_fixed": False,       # Fix the HEI image index
-    "scheduler": None,          # Serial execution (assumes a shared calculator instance)
+    "max_nodes": 30,            # int, internal nodes; total images = max_nodes + 2 including endpoints
+    "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
+    "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
+    "reparam_every": 1,         # int, reparametrize every N steps while growing
+    "reparam_every_full": 1,    # int, reparametrize every N steps after fully grown
+    "param": "equi",            # str, "equi" (even spacing) | "energy" (weight by energy)
+    "max_micro_cycles": 10,     # int, micro-optimization cycles per macro iteration
+    "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
+    "climb": True,              # bool, enable climbing image
+    "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
+    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent
+    "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
+    "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
+    "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
 }
 
 # StringOptimizer (optimization control)
 OPT_KW: Dict[str, Any] = {
-    "type": "string",           # Tag for bookkeeping
-    "stop_in_when_full": 100,   # After fully grown, stop after N additional cycles
-    "align": False,             # Keep internal align disabled; use external Kabsch alignment instead
-    "scale_step": "global",     # "global" | "per_image"
-    "max_cycles": 100,
-    "dump": False,
-    "dump_restart": False,
-    "reparam_thresh": 1e-3,     # Convergence after reparam (RMS of step)
-    "coord_diff_thresh": 0.0,   # Near-duplicate image check (0 disables)
-    "out_dir": "./result_path_opt/",
-    "print_every": 1,
+    "type": "string",           # str, tag for bookkeeping / output labelling
+    "stop_in_when_full": 100,   # int, allow N extra cycles after the string is fully grown
+    "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
+    "scale_step": "global",     # str, "global" | "per_image" scaling policy
+    "max_cycles": 100,          # int, maximum macro cycles for the optimizer
+    "dump": False,              # bool, write optimizer trajectory to disk
+    "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
+    "reparam_thresh": 1e-3,     # float, convergence threshold for reparametrization
+    "coord_diff_thresh": 0.0,   # float, tolerance for coordinate difference before pruning
+    "out_dir": "./result_path_opt/",  # str, output directory for optimizer artifacts
+    "print_every": 1,           # int, status print frequency (cycles)
 }
 
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
