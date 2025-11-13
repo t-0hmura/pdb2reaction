@@ -1,7 +1,7 @@
 # pdb2reaction/uma_pysis.py
 
 """
-pdb2reaction uma_pysis — UMA calculator wrapper for PySisyphus
+uma_pysis — UMA calculator wrapper for PySisyphus
 ====================================================================
 
 Description

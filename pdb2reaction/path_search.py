@@ -1,7 +1,7 @@
 # pdb2reaction/path_search.py
 
 """
-pdb2reaction path_search — Recursive GSM segmentation to build a continuous multistep MEP
+path_search — Recursive GSM segmentation to build a continuous multistep MEP
 ====================================================================
 
 Usage (CLI)

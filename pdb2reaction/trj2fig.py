@@ -1,7 +1,7 @@
 # pdb2reaction/trj2fig.py
 
 """
-pdb2reaction trj2fig — Energy-profile utility for XYZ trajectories
+trj2fig — Energy-profile utility for XYZ trajectories
 ====================================================================
 
 Usage (CLI)

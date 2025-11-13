@@ -1,7 +1,7 @@
 # pdb2reaction/scan.py
 
 """
-pdb2reaction scan — Bond-length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
+scan — Bond-length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
 ====================================================================
 
 Usage (CLI)

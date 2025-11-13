@@ -1,7 +1,7 @@
 # pdb2reaction/ts_opt.py
 
 """
-pdb2reaction ts_opt — Transition-state optimization CLI
+ts_opt — Transition-state optimization CLI
 ====================================================================
 
 Usage (CLI)

@@ -1,7 +1,7 @@
 # pdb2reaction/all.py
 
 """
-pdb2reaction all — Executes the entire workflow with a SINGLE command: Extract pockets → run MEP (recursive GSM) → merge to full systems, with optional TS optimization, pseudo‑IRC, thermochemistry, and DFT per reactive segment
+all — Executes the entire workflow with a SINGLE command: Extract pockets → run MEP (recursive GSM) → merge to full systems, with optional TS optimization, pseudo‑IRC, thermochemistry, and DFT per reactive segment
 ====================================================================
 
 Usage (CLI)

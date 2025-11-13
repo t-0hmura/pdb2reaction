@@ -1,7 +1,7 @@
 # pdb2reaction/irc.py
 
 """
-pdb2reaction irc — Concise CLI for IRC calculations with the EulerPC integrator
+irc — Concise CLI for IRC calculations with the EulerPC integrator
 ====================================================================
 
 Usage (CLI)

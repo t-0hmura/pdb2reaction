@@ -1,7 +1,7 @@
 # pdb2reaction/dft.py
 
 """
-pdb2reaction dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
+dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 ====================================================================
 
 Usage (CLI)

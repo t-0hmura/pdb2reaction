@@ -1,7 +1,7 @@
 # pdb2reaction/opt.py
 
 """
-pdb2reaction opt — Single-structure geometry optimization (LBFGS or RFO)
+opt — Single-structure geometry optimization (LBFGS or RFO)
 ====================================================================
 
 Usage (CLI)
