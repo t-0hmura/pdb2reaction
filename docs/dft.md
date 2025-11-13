@@ -27,6 +27,15 @@ pdb2reaction dft -i INPUT -q CHARGE -s SPIN
 ## YAML configuration (`--args-yaml`)
 Accepts a mapping with top-level key `dft`. CLI overrides YAML values.
 
+```yaml
+dft:
+  conv_tol: 1.0e-09
+  max_cycle: 100
+  grid_level: 3
+  verbose: 4
+  out_dir: ./result_dft/
+```
+
 ### Section `dft`
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.

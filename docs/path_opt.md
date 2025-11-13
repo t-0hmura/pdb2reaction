@@ -28,6 +28,52 @@ pdb2reaction path_opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. CLI values override YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
 
+```yaml
+geom:
+  coord_type: cart
+  freeze_atoms: []
+calc:
+  charge: 0
+  spin: 1
+  model: uma-s-1p1
+  task_name: omol
+  device: auto
+  max_neigh: null
+  radius: null
+  r_edges: false
+  out_hess_torch: true
+  freeze_atoms: null
+  hessian_calc_mode: Analytical
+  return_partial_hessian: true
+gs:
+  max_nodes: 30
+  perp_thresh: 0.005
+  reparam_check: rms
+  reparam_every: 1
+  reparam_every_full: 1
+  param: equi
+  max_micro_cycles: 10
+  reset_dlc: true
+  climb: true
+  climb_rms: 0.0005
+  climb_lanczos: true
+  climb_lanczos_rms: 0.0005
+  climb_fixed: false
+  scheduler: null
+opt:
+  type: string
+  stop_in_when_full: 100
+  align: false
+  scale_step: global
+  max_cycles: 100
+  dump: false
+  dump_restart: false
+  reparam_thresh: 0.001
+  coord_diff_thresh: 0.0
+  out_dir: ./result_path_opt/
+  print_every: 1
+```
+
 ### Shared sections
 - `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms` for PDB inputs.
 
