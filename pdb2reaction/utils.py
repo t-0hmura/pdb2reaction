@@ -4,6 +4,22 @@
 utils — concise utilities for configuration, plotting, coordinates, and link-freezing
 ====================================================================
 
+Usage (API)
+-----
+    from pdb2reaction.utils import (
+        build_energy_diagram,
+        convert_xyz_to_pdb,
+        freeze_links,
+        merge_freeze_atom_indices,
+        pretty_block,
+    )
+
+Examples::
+    >>> from pathlib import Path
+    >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
+    >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
+    >>> indices = freeze_links(Path("pocket.pdb"))
+
 Description
 -----
 - **Generic helpers**
