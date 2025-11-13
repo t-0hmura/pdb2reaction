@@ -44,6 +44,18 @@ pdb2reaction all -i R.pdb [I.pdb ...] P.pdb -c SUBSTRATE_SPEC
 | `--thermo / --no-thermo` | Run vibrational analysis (freq) on R/TS/P and build Gibbs diagram. | `--no-thermo` |
 | `--dft / --no-dft` | Run single-point DFT on R/TS/P and build DFT energy diagram. | `--no-dft` |
 
+## Outputs
+- `<out-dir>/pockets/`: Pocket PDBs for each input.
+- `<out-dir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, segment folders).
+- Optional `<out-dir>/path_search/tsopt_seg_XX/` subtrees with TS optimisation, pseudo-IRC, frequency, and DFT results depending on toggles.
+- Console logs covering pocket charge summary, resolved configuration blocks, and per-stage timing.
+
+## Notes
+- The total pocket charge from the extractor (first model) is rounded to the nearest integer and used as the GSM charge.
+- Reference PDB templates for merging are taken automatically from the original inputs; the explicit `--ref-pdb` option of `path_search` is intentionally hidden in this wrapper.
+- When both `--thermo` and `--dft` are enabled, the post-processing stage also produces a DFT//UMA Gibbs diagram (DFT energy + UMA thermal correction).
+- Always provide `--ligand-charge` when formal charges are not inferable to ensure the correct total charge propagates through the pipeline.
+
 ## YAML configuration (`--args-yaml`)
 The YAML file is forwarded unchanged to `path_search`. See [`path_search`](path_search.md#yaml-configuration-args-yaml) for accepted sections (`geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`).
 
@@ -187,15 +199,3 @@ search:
   max_nodes_bridge: 5
   kink_max_nodes: 3
 ```
-
-## Outputs
-- `<out-dir>/pockets/`: Pocket PDBs for each input.
-- `<out-dir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, segment folders).
-- Optional `<out-dir>/path_search/tsopt_seg_XX/` subtrees with TS optimisation, pseudo-IRC, frequency, and DFT results depending on toggles.
-- Console logs covering pocket charge summary, resolved configuration blocks, and per-stage timing.
-
-## Notes
-- The total pocket charge from the extractor (first model) is rounded to the nearest integer and used as the GSM charge.
-- Reference PDB templates for merging are taken automatically from the original inputs; the explicit `--ref-pdb` option of `path_search` is intentionally hidden in this wrapper.
-- When both `--thermo` and `--dft` are enabled, the post-processing stage also produces a DFT//UMA Gibbs diagram (DFT energy + UMA thermal correction).
-- Always provide `--ligand-charge` when formal charges are not inferable to ensure the correct total charge propagates through the pipeline.

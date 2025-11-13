@@ -15,9 +15,6 @@ pdb2reaction add_elem_info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
 | `-o, --out PATH` | Output PDB file. If omitted, the input is overwritten. | _None_ |
 | `--overwrite` | Re-infer all element fields even when present. | `False` |
 
-## YAML configuration (`--args-yaml`)
-Not supported.
-
 ## Outputs
 - A PDB file with element symbols filled (`--out` path or the original file when omitted).
 - Console summary including counts of assigned/kept/overwritten elements and up to 50 unresolved atoms.

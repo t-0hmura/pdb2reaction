@@ -32,6 +32,30 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
+### Shared sections
+- `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms`, which are also forwarded to UMA for Hessian calculations.
+
+### Section `freq`
+Controls mode export.
+
+- `amplitude_ang` (`0.8`): Animation amplitude (Å).
+- `n_frames` (`20`): Frames per vibrational animation.
+- `max_write` (`20`): Number of modes to export.
+- `sort` (`"value"`): Ordering (`"value"` ascending or `"abs"` for absolute value).
+
+_The thermochemistry parameters (`temperature`, `pressure_atm`, `dump`) are currently CLI-only and not read from YAML._
+
+## Outputs
+- `<out-dir>/mode_XXXX_±freqcm-1.(trj|pdb)` animations for exported modes.
+- `<out-dir>/frequencies_cm-1.txt` sorted list of frequencies.
+- Optional `<out-dir>/thermoanalysis.yaml` when `--dump` is enabled.
+- Console blocks summarising resolved `geom`, `calc`, `freq`, and thermochemistry settings.
+
+## Notes
+- Imaginary modes are reported as negative frequencies; PHVA restricts the Hessian to active degrees of freedom when atoms are frozen.
+- `--hessian-calc-mode` overrides `calc.hessian_calc_mode`; Analytical mode may require more GPU memory than finite differences.
+- Mode animations use sinusoidal displacements; PDB animations employ MODEL/ENDMDL records for multi-model files.
+
 ## YAML configuration (`--args-yaml`)
 Accepts a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
 
@@ -58,27 +82,3 @@ freq:
   max_write: 20
   sort: value
 ```
-
-### Shared sections
-- `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms`, which are also forwarded to UMA for Hessian calculations.
-
-### Section `freq`
-Controls mode export.
-
-- `amplitude_ang` (`0.8`): Animation amplitude (Å).
-- `n_frames` (`20`): Frames per vibrational animation.
-- `max_write` (`20`): Number of modes to export.
-- `sort` (`"value"`): Ordering (`"value"` ascending or `"abs"` for absolute value).
-
-_The thermochemistry parameters (`temperature`, `pressure_atm`, `dump`) are currently CLI-only and not read from YAML._
-
-## Outputs
-- `<out-dir>/mode_XXXX_±freqcm-1.(trj|pdb)` animations for exported modes.
-- `<out-dir>/frequencies_cm-1.txt` sorted list of frequencies.
-- Optional `<out-dir>/thermoanalysis.yaml` when `--dump` is enabled.
-- Console blocks summarising resolved `geom`, `calc`, `freq`, and thermochemistry settings.
-
-## Notes
-- Imaginary modes are reported as negative frequencies; PHVA restricts the Hessian to active degrees of freedom when atoms are frozen.
-- `--hessian-calc-mode` overrides `calc.hessian_calc_mode`; Analytical mode may require more GPU memory than finite differences.
-- Mode animations use sinusoidal displacements; PDB animations employ MODEL/ENDMDL records for multi-model files.

@@ -34,9 +34,6 @@ _Subcommand `extract` is invoked via the Click wrapper in `pdb2reaction cli`, wh
 | `--ligand-charge TEXT` | Either a total charge (number) or mapping like `GPP:-3,MMT:-1` to distribute across unknown residues. | `None` |
 | `-v, --verbose` | Enable INFO-level logging. | `true` |
 
-## YAML configuration (`--args-yaml`)
-Not supported.
-
 ## Outputs
 - Pocket PDB(s) containing the extracted residues, with optional link hydrogens appended after a `TER` record.
 - Charge summary (protein/ligand/ion/total) printed to stdout when extraction succeeds.

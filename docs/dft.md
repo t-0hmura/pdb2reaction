@@ -24,18 +24,6 @@ pdb2reaction dft -i INPUT -q CHARGE -s SPIN
 | `--out-dir TEXT` | Output directory. | `./result_dft/` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
-## YAML configuration (`--args-yaml`)
-Accepts a mapping with top-level key `dft`. CLI overrides YAML values.
-
-```yaml
-dft:
-  conv_tol: 1.0e-09
-  max_cycle: 100
-  grid_level: 3
-  verbose: 4
-  out_dir: ./result_dft/
-```
-
 ### Section `dft`
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
@@ -54,3 +42,15 @@ _Functional/basis selection and molecular charge/spin must be supplied on the CL
 - GPU4PySCF is used when available; otherwise a CPU SCF object is built. Nonlocal VV10 is enabled automatically for `-v` functionals.
 - The YAML file must contain a mapping root; non-mapping roots raise an error via `load_yaml_dict`.
 - Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
+
+## YAML configuration (`--args-yaml`)
+Accepts a mapping with top-level key `dft`. CLI overrides YAML values.
+
+```yaml
+dft:
+  conv_tol: 1.0e-09
+  max_cycle: 100
+  grid_level: 3
+  verbose: 4
+  out_dir: ./result_dft/
+```

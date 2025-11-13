@@ -32,6 +32,34 @@ pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
 | `--preopt / --no-preopt` | Pre-optimize the initial structure before scanning. | `--preopt` |
 | `--endopt / --no-endopt` | Unbiased relaxation after each stage. | `--endopt` |
 
+### Shared sections
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: see [`opt`](opt.md#yaml-configuration-args-yaml) for all keys and defaults. `opt.dump` is internally forced to `False`; dumping is controlled by `--dump`.
+
+### Section `bias`
+Controls the harmonic restraint applied during each scan stage.
+
+- `k` (`100`): Harmonic strength in eV·Å⁻².
+
+### Section `bond`
+Parameters for UMA-based bond-change detection (mirrors `path_search`).
+
+- `device` (`"cuda"`): UMA device for bond analysis.
+- `bond_factor` (`1.20`): Covalent-radius scale factor for bond cutoff.
+- `margin_fraction` (`0.05`): Fractional tolerance when comparing bond lengths.
+- `delta_fraction` (`0.05`): Minimum fractional change to classify a bond as forming/breaking.
+
+## Outputs
+- `<out-dir>/stage_XX/scan.trj` (and `.pdb` when the input was PDB and dumping is enabled).
+- `<out-dir>/stage_XX/scan_summary.yaml` with per-step metadata.
+- Final unbiased geometries after `--endopt` stored per stage.
+- Console summaries of resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks.
+
+## Notes
+- `--scan-lists` accepts multiple literals; each defines one stage, and tuple indices are normalized to 0-based internally.
+- When `--one-based` is used (default), indices follow PDB conventions; invalid indices or non-positive target distances raise `click.BadParameter`.
+- Pre- and end-of-stage optimizations share UMA calculator instances for efficiency.
+- Stage dumping writes one trajectory per stage; `--dump` also triggers `.pdb` conversion for PDB inputs.
+
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. CLI parameters override YAML. Shared sections reuse the definitions documented for [`opt`](opt.md#yaml-configuration-args-yaml).
 
@@ -141,31 +169,3 @@ bond:
   margin_fraction: 0.05
   delta_fraction: 0.05
 ```
-
-### Shared sections
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: see [`opt`](opt.md#yaml-configuration-args-yaml) for all keys and defaults. `opt.dump` is internally forced to `False`; dumping is controlled by `--dump`.
-
-### Section `bias`
-Controls the harmonic restraint applied during each scan stage.
-
-- `k` (`100`): Harmonic strength in eV·Å⁻².
-
-### Section `bond`
-Parameters for UMA-based bond-change detection (mirrors `path_search`).
-
-- `device` (`"cuda"`): UMA device for bond analysis.
-- `bond_factor` (`1.20`): Covalent-radius scale factor for bond cutoff.
-- `margin_fraction` (`0.05`): Fractional tolerance when comparing bond lengths.
-- `delta_fraction` (`0.05`): Minimum fractional change to classify a bond as forming/breaking.
-
-## Outputs
-- `<out-dir>/stage_XX/scan.trj` (and `.pdb` when the input was PDB and dumping is enabled).
-- `<out-dir>/stage_XX/scan_summary.yaml` with per-step metadata.
-- Final unbiased geometries after `--endopt` stored per stage.
-- Console summaries of resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks.
-
-## Notes
-- `--scan-lists` accepts multiple literals; each defines one stage, and tuple indices are normalized to 0-based internally.
-- When `--one-based` is used (default), indices follow PDB conventions; invalid indices or non-positive target distances raise `click.BadParameter`.
-- Pre- and end-of-stage optimizations share UMA calculator instances for efficiency.
-- Stage dumping writes one trajectory per stage; `--dump` also triggers `.pdb` conversion for PDB inputs.
