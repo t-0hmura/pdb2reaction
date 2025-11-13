@@ -1,7 +1,7 @@
 # `all` subcommand
 
 ## Purpose
-Runs the full pipeline: pocket extraction across multiple full PDBs, minimum-energy-path search on the pockets, automatic merge back into the originals, and optional per-segment post-processing (TS optimisation, thermochemistry, DFT).
+Run an end-to-end enzymatic reaction workflow on pocket models: extract pockets, optionally perform a staged scan for a single structure, run the recursive GSM minimum-energy-path search, merge the pocket path back into the original full systems, and (optionally) execute TS optimisation, thermochemistry, and DFT post-processing per reactive segment. When exactly one structure is supplied without `--scan-lists`, enabling `--tsopt True` triggers a TSOPT-only pocket workflow (no path search).
 
 ## Usage
 ```bash
