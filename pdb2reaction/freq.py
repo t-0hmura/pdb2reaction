@@ -493,39 +493,47 @@ def _write_mode_trj_and_pdb(geom,
 
 # Geometry defaults
 GEOM_KW = {
-    "coord_type": "cart",     # str, coordinate representation for geom_loader
-    "freeze_atoms": [],       # List[int], 0-based indices to freeze
+    "coord_type": "cart",     # str, coordinate representation for geom_loader (Cartesian recommended)
+    "freeze_atoms": [],       # list[int], 0-based atom indices to freeze during UMA/Freq runs
 }
 
 # UMA calculator defaults
 CALC_KW = {
-    "charge": 0,              # int
-    "spin": 1,                # int multiplicity (2S+1)
-    "model": "uma-s-1p1",     # str, UMA pretrained model ID
-    "task_name": "omol",      # str
-    "device": "auto",         # "cuda" | "cpu" | "auto"
-    "max_neigh": None,        # Optional[int]
-    "radius": None,           # Optional[float] (Å)
-    "r_edges": False,         # bool
-    "out_hess_torch": True,   # Required: return Hessian as a torch tensor
+    # Charge and multiplicity
+    "charge": 0,              # int, total charge of the structure
+    "spin": 1,                # int, multiplicity (= 2S+1)
 
-    "hessian_calc_mode": "Analytical",  # How the Hessian is computed: "FiniteDifference" | "Analytical"
-    "return_partial_hessian": True,           # default on for freq: active-block Hessian
-    # "freeze_atoms" is not fixed here; it will be injected from GEOM_KW at runtime
+    # Model selection
+    "model": "uma-s-1p1",     # str, UMA pretrained model identifier
+    "task_name": "omol",      # str, UMA dataset/task tag stored in AtomicData
+
+    # Device & graph construction
+    "device": "auto",         # str, "cuda" | "cpu" | "auto"
+    "max_neigh": None,        # Optional[int], override model neighbor cap
+    "radius": None,           # Optional[float], cutoff radius (Å) for neighbor graph
+    "r_edges": False,         # bool, include edge vectors in the UMA graph
+
+    # Hessian output form
+    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (Freq needs torch space)
+
+    # Hessian computation controls
+    "hessian_calc_mode": "Analytical",    # str, "FiniteDifference" | "Analytical"
+    "return_partial_hessian": True,        # bool, return active-block Hessian (set freeze later)
+    # "freeze_atoms" is injected from GEOM_KW at runtime
 }
 
 # Freq writer defaults
 FREQ_KW = {
-    "amplitude_ang": 0.8,     # float, animation amplitude (Å) for both .trj and .pdb
-    "n_frames": 20,           # int, number of frames
-    "max_write": 20,          # int, number of modes to write
-    "sort": "value",          # "value" (ascending by value) | "abs" (ascending by absolute value)
+    "amplitude_ang": 0.8,     # float, animation amplitude (Å) applied to both .trj and .pdb outputs
+    "n_frames": 20,           # int, number of frames per vibrational mode
+    "max_write": 20,          # int, maximum number of modes to export
+    "sort": "value",          # str, "value" (ascending by cm^-1) | "abs" (ascending by absolute value)
 }
 
 # Thermochemistry defaults (added)
 THERMO_KW = {
-    "temperature": 298.15,    # float, Kelvin
-    "pressure_atm": 1.0,      # float, atm (converted to Pa internally)
+    "temperature": 298.15,    # float, temperature in Kelvin
+    "pressure_atm": 1.0,      # float, pressure in atm (converted to Pa internally)
     "dump": False,            # bool, write thermoanalysis.yaml when True
 }
 

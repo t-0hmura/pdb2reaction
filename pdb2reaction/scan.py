@@ -145,93 +145,98 @@ from .bond_changes import compare_structures, summarize_changes
 
 # Geometry handling (Cartesian recommended for scans)
 GEOM_KW: Dict[str, Any] = {
-    "coord_type": "cart",  # "cart" | "dlc" (Cartesians recommended for scans)
-    "freeze_atoms": [],    # 0-based indices to freeze (optional)
+    "coord_type": "cart",  # str, "cart" | "dlc" (Cartesians recommended for scans)
+    "freeze_atoms": [],    # list[int], optional 0-based indices to freeze
 }
 
 # UMA calculator defaults
 CALC_KW: Dict[str, Any] = {
-    "charge": 0,
-    "spin": 1,                # multiplicity (= 2S+1)
-    "model": "uma-s-1p1",
-    "task_name": "omol",
-    "device": "auto",
-    "max_neigh": None,
-    "radius": None,
-    "r_edges": False,
-    "out_hess_torch": False,
+    # Charge and multiplicity
+    "charge": 0,                # int, total charge of the system
+    "spin": 1,                  # int, multiplicity (= 2S+1)
+
+    # Model selection
+    "model": "uma-s-1p1",      # str, UMA pretrained model identifier
+    "task_name": "omol",       # str, UMA dataset/task tag stored in AtomicData
+
+    # Device & graph construction
+    "device": "auto",          # str, "cuda" | "cpu" | "auto"
+    "max_neigh": None,         # Optional[int], override model neighbor cap
+    "radius": None,            # Optional[float], cutoff radius (Å) for neighbor graph
+    "r_edges": False,          # bool, include edge vectors in the UMA graph
+    "out_hess_torch": False,   # bool, request numpy Hessian (converted to torch when needed)
 }
 
 # Optimizer base (convergence, dumping, etc.)
 OPT_BASE_KW: Dict[str, Any] = {
-    "thresh": "gau",          # "gau_loose"|"gau"|"gau_tight"|"gau_vtight"|"baker"|"never"
-    "max_cycles": 100,
-    "print_every": 1,
-    "min_step_norm": 1e-8,
-    "assert_min_step": True,
-    "rms_force": None,
-    "rms_force_only": False,
-    "max_force_only": False,
-    "force_only": False,
-    "converge_to_geom_rms_thresh": 0.05,
-    "overachieve_factor": 0.0,
-    "check_eigval_structure": False,
-    "dump": False,
-    "dump_restart": False,
-    "prefix": "",
-    "out_dir": "./result_scan/",
+    "thresh": "gau",          # str, convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never)
+    "max_cycles": 100,        # int, maximum optimization cycles per image
+    "print_every": 1,         # int, progress print frequency in cycles
+    "min_step_norm": 1e-8,    # float, minimum ||step|| before raising ZeroStepLength
+    "assert_min_step": True,  # bool, enforce the min_step_norm check
+    "rms_force": None,        # Optional[float], override RMS(force) convergence target
+    "rms_force_only": False,  # bool, only check RMS(force)
+    "max_force_only": False,  # bool, only check max(|force|)
+    "force_only": False,      # bool, check RMS(force) and max(|force|) only
+    "converge_to_geom_rms_thresh": 0.05,  # float, RMSD-to-reference tolerance (Å)
+    "overachieve_factor": 0.0,           # float, treat thresholds/this factor as convergence target
+    "check_eigval_structure": False,     # bool, ensure expected Hessian signature (TS search)
+    "dump": False,            # bool, write trajectory dumps
+    "dump_restart": False,    # bool | int, write restart YAML every N cycles (False disables)
+    "prefix": "",            # str, file name prefix
+    "out_dir": "./result_scan/",  # str, output directory for scan artifacts
 }
 
 # LBFGS specifics
 LBFGS_KW: Dict[str, Any] = {
     **OPT_BASE_KW,
-    "keep_last": 7,
-    "beta": 1.0,
-    "gamma_mult": False,
-    "max_step": 0.30,      # Cartesian step cap (Bohr, for cart coords)
-    "control_step": True,
-    "double_damp": True,
-    "line_search": True,
-    "mu_reg": None,
-    "max_mu_reg_adaptions": 10,
+    "keep_last": 7,            # int, number of (s, y) history pairs to retain
+    "beta": 1.0,               # float, β shift in -(H + βI)^{-1} g
+    "gamma_mult": False,       # bool, estimate β from previous cycle (Nocedal Eq. 7.20)
+    "max_step": 0.30,          # float, Cartesian step cap (Bohr when coords in Bohr)
+    "control_step": True,      # bool, rescale step to satisfy |max component| <= max_step
+    "double_damp": True,       # bool, apply double damping safeguard for LBFGS updates
+    "line_search": True,       # bool, perform line search to refine step length
+    "mu_reg": None,            # Optional[float], diagonal regularization parameter
+    "max_mu_reg_adaptions": 10,# int, limit on adaptive μ updates
 }
 
 # RFO specifics
 RFO_KW: Dict[str, Any] = {
     **OPT_BASE_KW,
-    "trust_radius": 0.30,  # Bohr
-    "trust_update": True,
-    "trust_min": 0.01,
-    "trust_max": 0.30,     # Bohr
-    "max_energy_incr": None,
-    "hessian_update": "bfgs",
-    "hessian_init": "calc",
-    "hessian_recalc": 100,
-    "hessian_recalc_adapt": 2.0,
-    "small_eigval_thresh": 1e-8,
-    "line_search": True,
-    "alpha0": 1.0,
-    "max_micro_cycles": 25,
-    "rfo_overlaps": False,
-    "gediis": False,
-    "gdiis": True,
-    "gdiis_thresh": 2.5e-3,
-    "gediis_thresh": 1.0e-2,
-    "gdiis_test_direction": True,
-    "adapt_step_func": False,
+    "trust_radius": 0.30,      # float, trust radius (Bohr)
+    "trust_update": True,      # bool, adaptively update trust radius
+    "trust_min": 0.01,         # float, minimum trust radius (Bohr)
+    "trust_max": 0.30,         # float, maximum trust radius (Bohr)
+    "max_energy_incr": None,   # Optional[float], cap on acceptable energy increase
+    "hessian_update": "bfgs",  # str, Hessian update strategy
+    "hessian_init": "calc",    # str, initial Hessian source ("calc" = calculator)
+    "hessian_recalc": 100,     # int, recalc Hessian every N cycles
+    "hessian_recalc_adapt": 2.0,# float, adapt recalc interval by this factor on failure
+    "small_eigval_thresh": 1e-8,# float, eigenvalue magnitude treated as zero
+    "line_search": True,       # bool, perform line search
+    "alpha0": 1.0,             # float, initial step length guess
+    "max_micro_cycles": 25,    # int, micro-iterations per macro cycle
+    "rfo_overlaps": False,     # bool, allow eigenvector overlaps (debug)
+    "gediis": False,           # bool, enable GEDIIS acceleration
+    "gdiis": True,             # bool, enable GDIIS acceleration
+    "gdiis_thresh": 2.5e-3,    # float, force threshold to activate GDIIS
+    "gediis_thresh": 1.0e-2,   # float, force threshold to activate GEDIIS
+    "gdiis_test_direction": True,  # bool, test predicted search direction before acceptance
+    "adapt_step_func": False,  # bool, enable adaptive step-size heuristic (off by default)
 }
 
 # Bias (harmonic well) defaults; can be overridden via YAML: section "bias"
 BIAS_KW: Dict[str, Any] = {
-    "k": 100,  # eV / Å^2
+    "k": 100,  # float, harmonic bias strength in eV/Å^2
 }
 
 # Bond-change detection (as in path_search)
 BOND_KW: Dict[str, Any] = {
-    "device": "cuda",
-    "bond_factor": 1.20,
-    "margin_fraction": 0.05,
-    "delta_fraction": 0.05,
+    "device": "cuda",            # str, device for UMA graph analysis during bond detection
+    "bond_factor": 1.20,         # float, scaling of covalent radii for bond cutoff
+    "margin_fraction": 0.05,     # float, fractional margin to tolerate small deviations
+    "delta_fraction": 0.05,      # float, change threshold to flag bond formation/breaking
 }
 def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
     try:
