@@ -23,6 +23,9 @@ Description
     model parameter gradients are disabled; dropout layers are force‑disabled;
     the model is temporarily toggled to train mode only to build the autograd
     graph and then restored to eval.
+      * if `return_partial_hessian=True`, the Hessian is reduced to the Active‑DOF
+        block (non‑frozen atoms);
+      * otherwise the full matrix is returned and columns for frozen DOF are zeroed.
   - "FiniteDifference": central differences of forces assembled on the GPU.
     Columns for frozen DOF are skipped; optionally return only the active‑DOF block.
     Default step: ε = 1.0e‑3 Å.
@@ -48,26 +51,26 @@ PySisyphus calculator interface (`implemented_properties = ["energy", "forces", 
 
 - get_forces(elem, coords)
   Returns: {"energy": E, "forces": F}
-  - F: shape (3N,), Hartree/Bohr.
+  - F: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
   - E: float, Hartree.
   - coords: Bohr in, internally converted to Å.
 
 - get_hessian(elem, coords)
   Returns: {"energy": E, "forces": F, "hessian": H}
-  - F: shape (3N,), Hartree/Bohr.
+  - F: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
   - H: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
-    active‑DOF submatrix in FiniteDifference mode).
-  - If FiniteDifference + return_partial_hessian=True: H contains only the
-    active‑DOF block (non‑frozen atoms). Otherwise H is full sized and columns
-    corresponding to frozen DOF remain zero.
-  - Type of H: NumPy (CPU) unless out_hess_torch=True, in which case a torch.Tensor
-    on the current device is returned.
+    active‑DOF submatrix in either mode).
+  - If `return_partial_hessian=True`: H contains only the Active‑DOF block
+    (non‑frozen atoms). Otherwise H is full sized and columns corresponding to
+    frozen DOF are zeroed.
 
 Notes:
 -----
-- freeze_atoms: list of 0‑based atom indices; applies only to FiniteDifference.
-- return_partial_hessian (FiniteDifference): if True, return only the active‑DOF
-  submatrix; if False, return a full (3N×3N) matrix with frozen columns left zero.
+- freeze_atoms: list of 0‑based atom indices; **applies to both Analytical and
+  FiniteDifference**. Forces on frozen atoms are returned as 0. In Hessians,
+  either the matrix is reduced to the Active‑DOF block (`return_partial_hessian=True`)
+  or (for full size) columns for frozen DOF are zeroed.
+- return_partial_hessian: if True, return only the Active‑DOF submatrix in both modes.
 - UMA loader: pretrained_mlip.get_predict_unit(model). The predictor is moved to
   the selected device, set to eval, and all nn.Dropout layers are disabled (p=0).
 - During analytical Hessian evaluation, model parameters have requires_grad=False;
@@ -127,11 +130,11 @@ CALC_KW: Dict[str, Any] = {
     "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (RSIRFO expects GPU Hessian when available)
 
     # Freeze atoms
-    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms. Corresponding forces and Non-DOF Hessian turn to 0. 
+    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms. Corresponding forces are zeroed. Non-DOF Hessian columns are set to 0 (or trimmed).
 
     # Hessian interfaces to UMA
     "hessian_calc_mode": "Analytical",        # str, "Analytical" (default) | "FiniteDifference"
-    "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block from UMA
+    "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block
 }
 
 # ===================================================================
@@ -326,12 +329,11 @@ class uma_pysis(Calculator):
             - "FiniteDifference": central-difference Hessian; the matrix is
               assembled on the GPU.
         freeze_atoms : list[int], optional
-            Atom indices (0-based). In "FiniteDifference" mode, DOFs of these
-            atoms are skipped when building Hessian columns.
-        return_partial_hessian : bool, default False
-            If True (with "FiniteDifference"), return only the Active-DOF Hessian
-            (submatrix for non-frozen atoms). If False, return a full (3N×3N)
-            matrix where frozen-DOF columns are not evaluated (remain zero).
+            Atom indices (0-based). In both modes, DOFs of these atoms are
+            treated as frozen.
+        return_partial_hessian : bool, default True
+            If True, return only the Active-DOF Hessian (submatrix for non-frozen atoms).
+            If False, return a full (3N×3N) matrix where frozen-DOF columns are 0.
         """
         super().__init__(charge=charge, mult=spin, **kwargs)
         self._core: Optional[UMAcore] = None
@@ -384,6 +386,47 @@ class uma_pysis(Calculator):
         scale = torch.tensor(H_EVAA_2_AU, device=H.device, dtype=H.dtype)
         H = H * scale
         return H.detach().cpu().numpy() if not self.out_hess_torch else H.detach()
+
+    # ---- Common utilities for freeze/active DOF ----------------
+    def _active_and_frozen_dof_idx(self, n_atoms: int):
+        frozen_set = set(self.freeze_atoms)
+        active_atoms = [i for i in range(n_atoms) if i not in frozen_set]
+        active_dof_idx = [3 * i + j for i in active_atoms for j in range(3)]
+        frozen_dof_idx = [3 * i + j for i in self.freeze_atoms for j in range(3)]
+        return active_atoms, active_dof_idx, frozen_dof_idx
+
+    def _zero_frozen_forces_ev(self, F: np.ndarray) -> np.ndarray:
+        """Zero forces (eV/Å) on frozen atoms."""
+        if F is None or not self.freeze_atoms:
+            return F
+        Fz = F.copy()
+        Fz[np.asarray(self.freeze_atoms, dtype=int)] = 0.0
+        return Fz
+
+    def _apply_analytical_active_trim(self, H: torch.Tensor) -> torch.Tensor:
+        """
+        Apply Active‑DOF trimming/column-zeroing to an Analytical Hessian.
+
+        If `return_partial_hessian=True`, reduce to Active‑DOF block.
+        Else keep full size and zero columns corresponding to frozen DOF.
+        """
+        n_atoms = H.size(0)
+        if not self.freeze_atoms:
+            return H  # nothing to do
+
+        active_atoms, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
+        H2d = H.view(n_atoms * 3, n_atoms * 3)
+
+        if self.return_partial_hessian:
+            idx = torch.tensor(active_dof_idx, device=H.device, dtype=torch.long)
+            H_sub = H2d.index_select(0, idx).index_select(1, idx)
+            n_act = len(active_atoms)
+            return H_sub.view(n_act, 3, n_act, 3)
+        else:
+            if frozen_dof_idx:
+                cols = torch.tensor(frozen_dof_idx, device=H.device, dtype=torch.long)
+                H2d.index_fill_(1, cols, 0.0)  # zero columns of frozen DOF
+            return H2d.view(n_atoms, 3, n_atoms, 3)
 
     # ---------- Finite-Difference Hessian (GPU assembly) -------------
     def _build_fd_hessian_gpu(
@@ -482,9 +525,13 @@ class uma_pysis(Calculator):
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
         res = self._core.compute(coord_ang, forces=True, hessian=False)
+
+        # Zero forces on frozen atoms (in eV/Å before conversion)
+        F_ev = self._zero_frozen_forces_ev(res["forces"])
+
         return {
             "energy": self._au_energy(res["energy"]),
-            "forces": self._au_forces(res["forces"]),
+            "forces": self._au_forces(F_ev),
         }
 
     def get_hessian(self, elem, coords):
@@ -496,6 +543,7 @@ class uma_pysis(Calculator):
         - "Analytical": autograd-based analytical Hessian (GPU).
           If a CUDA out-of-memory error occurs, a clear message is raised
           instructing you to switch to finite differences.
+          Active‑DOF trimming/column‑zeroing is applied to match FD semantics.
         - "FiniteDifference": central-difference Hessian assembled on the GPU.
           * Columns for `freeze_atoms` DOF are skipped.
           * If `return_partial_hessian` is True, return the Active-DOF submatrix;
@@ -519,17 +567,42 @@ class uma_pysis(Calculator):
                         "in the external CLI, or `hessian_calc_mode=\"FiniteDifference\"` in this calculator."
                     ) from e
                 raise
+
+            # Zero forces for frozen atoms (eV/Å)
+            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+
+            # Apply Active‑DOF trimming/column‑zeroing for Analytical
+            H = self._apply_analytical_active_trim(res["hessian"])
+
+            return {
+                "energy": self._au_energy(res["energy"]),
+                "forces": self._au_forces(res_forces_ev),
+                "hessian": self._au_hessian(H),
+            }
+
         elif mode in ("finitedifference", "finite-difference", "fd"):
             res = self._build_fd_hessian_gpu(elem, coord_ang)
+
+            # Zero forces for frozen atoms (eV/Å)
+            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+
+            return {
+                "energy": self._au_energy(res["energy"]),
+                "forces": self._au_forces(res_forces_ev),
+                "hessian": self._au_hessian(res["hessian"]),
+            }
         else:
             # Fallback: treat unknown mode as FiniteDifference
             res = self._build_fd_hessian_gpu(elem, coord_ang)
 
-        return {
-            "energy": self._au_energy(res["energy"]),
-            "forces": self._au_forces(res["forces"]),
-            "hessian": self._au_hessian(res["hessian"]),
-        }
+            # Zero forces for frozen atoms (eV/Å)
+            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+
+            return {
+                "energy": self._au_energy(res["energy"]),
+                "forces": self._au_forces(res_forces_ev),
+                "hessian": self._au_hessian(res["hessian"]),
+            }
 
 
 # ---------- CLI ----------------------------------------
