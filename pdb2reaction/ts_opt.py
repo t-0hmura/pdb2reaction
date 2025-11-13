@@ -1,64 +1,101 @@
 # pdb2reaction/ts_opt.py
 
 """
-Transition-state optimisation CLI for pdb2reaction.
+pdb2reaction ts_opt — Transition-state optimization CLI
+====================================================================
 
-Usage
+Usage (CLI)
 -----
-pdb2reaction ts_opt \
-  -i ts_cand.pdb -q 0 -s 1 \
-  --freeze-links True \
-  --max-cycles 10000 \
-  --opt-mode light \
-  --dump False \
-  --out-dir ./result_ts_opt/ \
-  --args-yaml ./args.yaml \
-  [--hessian-calc-mode FiniteDifference|Analytical]
+    pdb2reaction ts_opt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
+                        [--opt-mode light|heavy]
+                        [--freeze-links True|False]
+                        [--max-cycles N]
+                        [--dump True|False]
+                        [--out-dir DIR]
+                        [--args-yaml args.yaml]
+                        [--hessian-calc-mode Analytical|FiniteDifference]
 
-Key options
------------
-- ``--opt-mode light`` runs the HessianDimer transition-state search with periodic
-  Hessian updates.
-- ``--opt-mode heavy`` runs the RS-I-RFO Hessian-based transition-state optimiser.
+Examples::
+    # Minimal (recommended to always specify charge and spin)
+    pdb2reaction ts_opt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_ts_opt/
 
-Configuration
--------------
-YAML overrides may define the ``geom``, ``calc``, ``opt``, ``hessian_dimer``, and
-``rsirfo`` sections. HessianDimer accepts nested ``dimer`` and ``lbfgs`` dictionaries
-that are forwarded to the respective pysisyphus components.
+    # Light mode (HessianDimer) with YAML overrides and finite-difference Hessian
+    pdb2reaction ts_opt -i ts_cand.pdb -q 0 -s 1 \
+      --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
+      --out-dir ./result_ts_opt/ --args-yaml ./args.yaml \
+      --hessian-calc-mode FiniteDifference
 
-Workflow
---------
-- Structures are loaded via ``pysisyphus.helpers.geom_loader`` (PDB/XYZ/etc.).
-- The UMA calculator (``pdb2reaction.uma_pysis``) supplies energies, forces, and Hessians.
-- For PDB inputs, optimisation trajectories and ``final_geometry.xyz`` are converted to
-  PDB format.
-- Final imaginary modes are written as ``.trj`` and ``.pdb`` files (always including PDB).
+    # Heavy mode (RS-I-RFO) using YAML
+    pdb2reaction ts_opt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
+      --args-yaml ./args.yaml --out-dir ./result_ts_opt/
 
-Implementation notes
---------------------
-- HessianDimer supports selecting the search direction through ``root`` (0 = most
-  negative, 1 = second-most, ...), analogous to RS-I-RFO.
-- PHVA (active-degree-of-freedom subspace) with translation/rotation projection is
-  used to save GPU memory, mirroring ``freq.py`` and respecting ``freeze_atoms`` in
-  light mode.
-- When ``root == 0`` the implementation prefers ``torch.lobpcg`` for the lowest
-  eigenpair, falling back to ``torch.linalg.eigh`` when needed.
-- The flattening loop keeps a single exact active-subspace Hessian in memory:
-    1. After the standard Dimer loop, compute one exact Hessian and extract the
-       PHVA block.
-    2. Between geometry updates, apply a Bofill update (SR1/MS and PSB blend) to the
-       active-space Cartesian Hessian using UMA displacements ``δ = Δx`` and
-       gradient differences ``y = Δg``.
-    3. For each flatten iteration: estimate imaginary modes from the updated active
-       Hessian (mass-weighted, TR-projected), perform the flatten step, update the
-       Hessian via Bofill, refresh the Dimer direction, run a Dimer LBFGS segment, and
-       apply a final Bofill update. Continue until only one imaginary mode remains,
-       then evaluate one last exact Hessian for frequency analysis.
-- The UMA calculator receives ``freeze_atoms`` explicitly and defaults to
-  ``return_partial_hessian=True`` so PHVA returns an active-subspace block when
-  applicable.
-- ``--hessian-calc-mode`` selects between analytical and finite-difference Hessians.
+
+Description
+-----
+Transition-state optimization with two modes:
+- light: HessianDimer TS search with periodic Hessian updates and a memory-efficient
+  flatten loop to remove excess imaginary modes.
+- heavy: RS-I-RFO Hessian-based TS optimizer.
+
+Configuration is driven by YAML overrides for sections: geom, calc, opt, hessian_dimer,
+and rsirfo. The hessian_dimer section accepts nested dimer and lbfgs dictionaries that
+are forwarded to the respective pysisyphus components.
+
+Structures are loaded via pysisyphus.helpers.geom_loader (PDB/XYZ/TRJ/etc.). The UMA
+calculator (pdb2reaction.uma_pysis) provides energies, gradients, and Hessians. For PDB
+inputs, optimization trajectories and final_geometry.xyz are also converted to PDB. The
+final imaginary mode is always written as both .trj and .pdb.
+
+Key behaviors and algorithmic notes:
+- Direction selection: choose which imaginary mode to follow using root
+  (0 = most negative, 1 = second-most, ...), consistent with RS-I-RFO. For root == 0,
+  the implementation prefers torch.lobpcg for the lowest eigenpair and falls back to
+  torch.linalg.eigh as needed.
+- PHVA and TR projection: an active-degree-of-freedom (PHVA) subspace with translation/
+  rotation (TR) projection reduces GPU memory use. This mirrors freq.py and respects
+  freeze_atoms (particularly in light mode).
+- Flatten loop (light mode): a single exact active-subspace Hessian is kept in memory.
+  After the initial Dimer stage, one exact Hessian is evaluated and the PHVA block
+  extracted. Between geometry updates a Bofill update (SR1/MS and PSB blend) is applied
+  to the active-space Cartesian Hessian using displacements delta = Dx and gradient
+  differences y = Dg. Each iteration: estimate imaginary modes from the updated active
+  Hessian (mass-weighted, TR-projected), perform a flatten step, update the Hessian via
+  Bofill, refresh the Dimer direction, run a Dimer LBFGS segment, and apply a final
+  Bofill update. Continue until only one imaginary mode remains, then compute a final
+  exact Hessian for frequency analysis.
+- UMA integration: freeze_atoms are passed explicitly, and UMA defaults to
+  return_partial_hessian=True so PHVA returns an active-subspace block when applicable.
+  --hessian-calc-mode selects Analytical or FiniteDifference Hessians.
+
+
+Outputs (& Directory Layout)
+-----
+DIR (default: ./result_ts_opt/)
+  ├── final_geometry.xyz
+  ├── final_geometry.pdb                 # written if input was PDB
+  ├── optimization_all.trj               # light mode, when --dump True
+  ├── optimization_all.pdb               # PDB conversion of the above (PDB input)
+  ├── optimization.trj                   # heavy mode (RS-I-RFO)
+  ├── optimization.pdb                   # PDB conversion of the above (PDB input)
+  ├── vib/
+  │     ├── final_imag_mode_+/-XXXX.Xcm-1.trj
+  │     └── final_imag_mode_+/-XXXX.Xcm-1.pdb
+  └── .dimer_mode.dat                    # internal dimer orientation seed (light mode)
+
+
+Notes:
+-----
+- Always set charge (-q) and spin (-s) to avoid unphysical conditions.
+- --opt-mode light runs the HessianDimer with periodic Hessian-based direction refresh;
+  --opt-mode heavy runs RS-I-RFO.
+- --freeze-links is PDB-only and freezes parents of link hydrogens; these indices are
+  merged into geom.freeze_atoms and propagated to calc.freeze_atoms for UMA.
+- --hessian-calc-mode overrides calc.hessian_calc_mode from YAML. Finite-difference
+  Hessians will honor the active subspace when freeze_atoms are present.
+- Convergence and stepping behavior are configurable via YAML in hessian_dimer.lbfgs,
+  hessian_dimer.dimer, opt, and rsirfo sections (e.g., thresholds, trust radii, memory).
+- Imaginary-mode detection uses a default threshold of ~5 cm^-1; the primary mode written
+  at the end is chosen via root.
 """
 
 from __future__ import annotations

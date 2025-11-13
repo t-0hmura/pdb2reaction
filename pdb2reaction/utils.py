@@ -1,5 +1,51 @@
 # pdb2reaction/utils.py
 
+"""
+pdb2reaction.utils — concise utilities for configuration, plotting, coordinates, and link-freezing
+====================================================================
+
+Description
+-----
+- **Generic helpers**
+  - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Renders `(empty)` when `content` is empty.
+  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"` is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are left unchanged. Empty iterables become `""`.
+  - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the updated list (in place).
+  - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged, non-dicts overwrite; returns `dst`.
+  - `_get_mapping_section(cfg, path)`: Internal helper to resolve a nested mapping section. Returns a `dict` or `None`.
+  - `apply_yaml_overrides(yaml_cfg, overrides)`: For each target dictionary and its candidate key paths, find the first existing path in `yaml_cfg` and apply it via `deep_update`. Centralizes repeated `yaml_cfg.get(...)`-style merging.
+  - `load_yaml_dict(path)`: Load a YAML file whose root must be a mapping. Returns `{}` when `path` is `None`. Raises `ValueError` if the YAML root is not a mapping.
+
+- **Plotly: Energy diagram builder**
+  - `build_energy_diagram(energies, labels, ylabel="ΔE", baseline=False, showgrid=False)`:
+    Render an energy diagram where each state is a thick horizontal segment and adjacent states are connected by dotted diagonals (right end of left state → left end of right state). Segment length shrinks as the number of states grows to keep gaps readable. X ticks are centered on states and labeled by `labels`. Optional dotted baseline at the first state’s energy; optional grid. Energies are plotted as provided (no unit conversion). Returns a `plotly.graph_objs.Figure`. Validates equal lengths for `energies`/`labels` and non-empty input.
+
+- **Coordinate conversion utilities**
+  - `convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)`:
+    Overlay coordinates from an XYZ file (single or multi-frame) onto the atom ordering/topology of a reference PDB and write to `out_pdb_path`. The first frame creates/overwrites; subsequent frames append using `MODEL`/`ENDMDL`. Implemented with ASE (`ase.io.read`/`write`). Raises `ValueError` if no frames are found in the XYZ.
+
+- **Link-freezing helpers**
+  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
+  - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`; returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf` in that case).
+  - `freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/`HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms (“others”). Returns an empty list if no link hydrogens are present.
+
+Outputs (& Directory Layout)
+-----
+- This module does not create directories.
+- Functions primarily return Python objects or mutate dictionaries in place.
+- On-disk output occurs only when explicitly requested by the caller:
+  - `convert_xyz_to_pdb` writes a PDB file to `out_pdb_path` (first frame create/overwrite; subsequent frames append with `MODEL`/`ENDMDL` blocks).
+  - `build_energy_diagram` returns a Plotly `Figure`; it does not write files unless the caller saves/exports the figure.
+
+Notes:
+-----
+- Energy units in `build_energy_diagram` are passed through unchanged; ensure consistent units across states.
+- Axis/line styling in `build_energy_diagram` is fixed-width with automatic padding; segment length adapts to the number of states.
+- `load_yaml_dict` uses `yaml.safe_load` and enforces a mapping at the YAML root; empty files yield `{}`.
+- `apply_yaml_overrides` tries candidate key paths in order and applies only the first existing mapping section per target.
+- `parse_pdb_coords` skips unparseable coordinate fields and considers only `ATOM`/`HETATM` lines.
+- Dependencies: PyYAML, ASE (`ase.io.read`/`write`), Plotly (graph objects). Ensure these are installed.
+"""
+
 import math
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
 from pathlib import Path

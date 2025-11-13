@@ -1,21 +1,54 @@
 # pdb2reaction/dft.py
 
 """
-Single-point DFT using GPU4PySCF (falls back to CPU PySCF).
+dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
+====================================================================
 
-Features
---------
-- Input formats: any format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
-- Engine: GPU4PySCF + PySCF; RKS/UKS is chosen automatically from the spin multiplicity.
-- Functional / basis: pass as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").
-- Outputs (in out_dir):
-    - result.yaml        : total energy (Hartree & kcal/mol), SCF metadata, and atomic charges (Mulliken / Löwdin / IAO)
-    - input_geometry.xyz : the geometry snapshot used for SCF (as read; unchanged)
+Usage (CLI; include -q/-s explicitly to avoid wrong electronic states)
+-----
+    pdb2reaction dft -i INPUT -q CHARGE -s SPIN [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
 
-Examples
---------
-pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
-pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
+Examples::
+    pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
+    pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
+
+Description
+-----
+- Single-point DFT engine that activates GPU4PySCF when available and otherwise uses CPU PySCF.
+- RKS/UKS is selected automatically from the spin multiplicity (2S+1).
+- Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …). The geometry is written back unchanged as `input_geometry.xyz`.
+- Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd"). Names are case-insensitive in PySCF.
+- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF `grids.level`), --out-dir. Verbosity can be overridden via YAML.
+- Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
+- Atomic charges are computed from the final density: Mulliken, Löwdin, and IAO (IAO may be unavailable; see Notes).
+- Energies are reported in Hartree and kcal/mol; SCF convergence metadata and timing are recorded.
+
+Outputs (& Directory Layout)
+-----
+    OUT_DIR/  (default: ./result_dft/)
+    ├── result.yaml
+    │     energy:
+    │       hartree: <float>
+    │       kcal_per_mol: <float>
+    │       converged: <bool>
+    │       scf_time_sec: <float>
+    │       engine: "gpu4pyscf" or "pyscf(cpu)"
+    │       used_gpu: <bool>
+    │     charges:
+    │       atoms: [ {index: <int>, element: <str>}, ... ]
+    │       mulliken: [<float>, ...]
+    │       lowdin:   [<float>, ...]
+    │       iao:      [<float>, ...]  # can be null if IAO construction fails
+    └── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
+
+Notes:
+-----
+- Always set both -q/--charge and -s/--spin explicitly; incorrect values lead to the wrong electronic state (UKS for multiplicity > 1; RKS for multiplicity = 1).
+- YAML overrides: --args-yaml points to a file with top-level key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).
+- Grids and checkpointing: sets `grids.level` when supported; disables SCF checkpoint files when possible.
+- Units: input coordinates are in Å. Functional/basis names are PySCF-style and case-insensitive for common sets.
+- Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.
+- IAO charges: built from the (alpha) MO coefficients and may fail on some systems; in that case `charges.iao` is null.
 """
 
 from __future__ import annotations

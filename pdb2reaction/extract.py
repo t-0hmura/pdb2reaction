@@ -1,134 +1,150 @@
 # pdb2reaction/extract.py
 
 """
-Automated binding‑pocket (active‑site) extractor
+extract — Automated binding‑pocket (active‑site) extractor
 ====================================================================
 
-Purpose
--------
-Given a protein–substrate **complex PDB** and a substrate specification, this
-tool selects an **active‑site pocket** around the substrate, performs
-**biochemically aware truncation** (backbone/side‑chain capping with safeguards),
-and can optionally add **link hydrogens** for cut bonds. It supports single
-structures and **multi‑structure (ensemble)** processing.
-
-Typical use cases: **QM/MM**, **ML/MM**, cluster QM models.
-
-Key behavior
-----------------------
-Residue inclusion
-* Include any residue with a qualifying atom within `--radius` Å of **any substrate atom**.
-  - When `--exclude-backbone false`: **any atom** qualifies (original behavior).
-  - When `--exclude-backbone true` (default): for **amino‑acid residues**, the qualifying
-    atom must be **non‑backbone** (i.e., not in {N, H*, CA, HA*, C, O, OXT}). Non‑amino‑acid
-    residues (e.g., ligands/ions/waters) still qualify by **any atom**.
-* Independent **hetero–hetero** proximity (`--radius-het2het`): add residues if a
-  **substrate hetero atom (non‑C/H)** is within the cutoff of a **protein hetero atom**.
-  When `--exclude-backbone true`, for amino acids the protein atom must be **non‑backbone**.
-* Waters are included by default (`--include-H2O true`).
-* `--selected-resn` **force‑includes** residues (chain / insertion codes supported).
-* (When `--exclude-backbone false`) If a selected residue’s **backbone atom**
-  (N, H*, CA, HA*, C, O, OXT) contacts the substrate within either cutoff, include its
-  **peptide‑adjacent** N‑side and C‑side neighbors (C–N ≤ 1.9 Å). If a real terminus,
-  keep the respective terminal cap atoms (N/H* or C/O/OXT).
-* **Cys–Cys disulfide** partners (SG–SG ≤ 2.5 Å) are auto‑included.
-* **Proline safeguard:** if a selected **PRO** is not N‑terminal (peptide‑adjacent),
-  include the **immediately preceding amino acid**. For that neighbor, **CA is always kept**;
-  and when backbone exclusion is on, keep **C** and **O/OXT** to preserve the bond into PRO–N.
-
-Truncation
-* **Isolated residues** → keep **pure side‑chain** (remove N, CA, C, O, OXT, and N/CA H*).
-  **PRO/HYP** retain N, CA, HA, H* to keep the ring.
-* **Continuous peptide stretches** keep internal backbone; only **terminal caps** are removed
-  (N‑cap: N/H*; C‑cap: C/O/OXT).
-* With `--exclude-backbone true` (default), delete main‑chain atoms on all **non‑substrate amino acids**,
-  except the **PRO/HYP** retention and **PRO‑adjacency** preservation above.
-* **New safeguard:** For **non‑amino‑acid residues** (e.g., ligands), atoms named like protein
-  backbone ({"N","CA","HA","H","H1","H2","H3"}) are **never deleted** by capping logic.
-
-Link hydrogens (`--add-linkH`)
-* Adds **carbon‑only** link H at **1.09 Å** along the cut‑bond vector.
-  Normal residues: check **CB–CA**, **CA–N**, **CA–C**; **PRO/HYP**: **CA–C** only.
-* If any are added, append a **TER** then a contiguous **`HETATM` block** of
-  atoms named **`HL`** in residue **`LKH`** (chain `L`), with serials continued from the main block.
-* In multi‑structure mode, link‑H **targets and ordering** are enforced to be
-  **identical across models**; coordinates remain model‑specific. The `--add-linkH`
-  flag is honored in **both** single‑ and multi‑structure modes.
-
-Charge summary
-* **AMINO_ACIDS** (dict) supplies the charge for amino‑acid residues (including common variants).
-* **ION** supplies charges for common ions (if `resname` matches, e.g., ZN, MG, FE2).
-* **Waters** (HOH/WAT/TIP3/SOL) are **0**.
-* **Unknown residues** (not in AMINO_ACIDS/ION/WATER) are **0** unless `--ligand-charge` is given.
-  - `--ligand-charge <number>`: treat as the **total** charge for unknown residues in the pocket
-    (preferentially distributed across **unknown substrate** residues, else across all unknowns).
-  - `--ligand-charge "RES1:Q1,RES2:Q2,..."`: set **per‑resname** charges (e.g., `"GPP:-3,MMT:-1"`).
-    In this **mapping mode**, any other unknown residues remain **0**.
-* **Multi‑structure note:** the **charge summary is computed on the first input PDB**.
-
-Multi‑structure mode
-* Accept multiple input PDBs (same **atom count & order**). Each structure is
-  selected independently; the **union** of selected residues is applied to all.
-* Disulfides, PRO‑adjacency, and (if enabled) backbone‑contact neighbor augmentation
-  are also **unioned** for a consistent pocket topology across the ensemble.
-* Output options:
-  - Provide **one** output path → write a **multi‑MODEL** PDB (one MODEL per input).
-  - Provide **N** output paths where **N == number of inputs** → write **N** single‑model PDBs.
-  - **If `-o/--output` is omitted and there are multiple inputs**, default to **per‑file outputs**
-    named **`pocket_{original_filename}.pdb`** (e.g., `complex1.pdb` → `pocket_complex1.pdb`).
-* **Diagnostics:** atom counts (**raw** vs **after truncation**) are logged **per model**.
-
-CLI (synopsis)
---------------
+Usage (CLI input; include both minimal and full examples)
+-----
 Single structure:
-    pdb2reaction extract -i complex.pdb -c substrate.pdb [-o pocket.pdb]
-               [-r 2.6] [--radius-het2het 2.6]
-               [--include-H2O true|false] [--exclude-backbone true|false]
-               [--add-linkH true|false] [--selected-resn '123,124']
-               [--ligand-charge Q | --ligand-charge 'RES1:Q1,RES2:Q2']
-               [-v]
+    pdb2reaction extract -i complex.pdb -c <substrate_spec> [-o pocket.pdb]
+                         [-r 2.6] [--radius-het2het 2.6]
+                         [--include-H2O true|false] [--exclude-backbone true|false]
+                         [--add-linkH true|false] [--selected-resn "A:123,456"]
+                         [--ligand-charge <Q> | --ligand-charge "RES1:Q1,RES2:Q2"] [-v]
 
-Multiple structures → single multi‑MODEL:
-    pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c substrate_spec
-               -o pocket_multi.pdb [other options...]
+Multiple structures → single multi‑MODEL PDB:
+    pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c <substrate_spec>
+                         -o pocket_multi.pdb [other options...]
 
 Multiple structures → per‑structure outputs:
-    pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c substrate_spec
-               -o pocket1.pdb pocket2.pdb [...] [other options...]
-    # If `-o/--output` is omitted, pocket_complex1.pdb, pocket_complex2.pdb, ... will be generated.
+    pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c <substrate_spec>
+                         -o pocket1.pdb pocket2.pdb [...] [other options...]
+    # If -o is omitted with multiple inputs, files are named pocket_{original}.pdb.
+
+Examples::
+    # Minimal (ID‑based substrate) with explicit total ligand charge
+    pdb2reaction extract -i complex.pdb -c A:123 -o pocket.pdb --ligand-charge -3
+
+    # Substrate provided as a PDB; per‑resname charge mapping (others remain 0)
+    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb \
+                         --ligand-charge "GPP:-3,MMT:-1"
+
+    # Name‑based substrate selection including all matches (WARNING is logged)
+    pdb2reaction extract -i complex.pdb -c "GPP,MMT" -o pocket.pdb --ligand-charge -4
+
+    # Multi‑structure → single multi‑MODEL output, with hetero‑hetero proximity enabled
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
+                         -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3
+
+Description
+-----
+Extracts an active‑site pocket around specified substrate residues from a protein–substrate complex,
+applies biochemically aware truncation (backbone/side‑chain capping with safeguards), and can append
+link hydrogens for cut bonds. Supports single structures and ensembles (multi‑MODEL or per‑file outputs).
+Typical use cases include QM/MM, ML/MM, and cluster QM models.
+
+**Residue inclusion**
+* Always include the substrate residues.
+* Standard cutoff (``--radius``, default 2.6 Å):
+  - If ``--exclude-backbone false``: include any residue if **any atom** is within the cutoff.
+  - If ``--exclude-backbone true`` (default): for **amino‑acid residues**, the qualifying atom
+    must be **non‑backbone** (not in {N, H*, CA, HA*, C, O, OXT}); non‑amino‑acid residues qualify by any atom.
+* Independent hetero–hetero proximity (``--radius-het2het``):
+  add residues if a **substrate hetero atom (non‑C/H)** is within the cutoff of a **protein hetero atom**.
+  With ``--exclude-backbone true``, amino‑acid neighbors must be **non‑backbone** atoms.
+* Waters are included by default (``--include-H2O true``; HOH/WAT/TIP3/SOL).
+* ``--selected-resn`` force‑includes residues (chain and insertion codes supported).
+* When ``--exclude-backbone false`` and a selected residue’s **backbone atom** contacts the substrate
+  (within either cutoff), include its peptide‑adjacent N‑side and C‑side neighbors (C–N ≤ 1.9 Å). For true termini,
+  keep the respective terminal cap atoms (N/H* or C/O/OXT).
+* **Disulfide safeguard:** if a selected CYS/CYX forms an SG–SG contact ≤ 2.5 Å, include both partners.
+* **Proline safeguard:** if a selected **PRO** is not N‑terminal (peptide‑adjacent), include the immediately
+  preceding amino acid. For that neighbor, **CA is always kept**, and when backbone exclusion is on,
+  keep **C** and **O/OXT** (to preserve the bond into PRO–N).
+
+**Truncation (capping)**
+* **Isolated residues** → keep **pure side‑chain** (remove N, CA, C, O, OXT and N/CA H*).
+  **PRO/HYP** retain N, CA, HA, H* to keep the ring.
+* **Continuous peptide stretches** keep internal backbone; only **terminal caps** are removed
+  (N‑cap: N/H*; C‑cap: C/O/OXT). TER‑aware segmentation prevents crossing chain breaks.
+* With ``--exclude-backbone true`` (default), delete main‑chain atoms on all **non‑substrate amino acids**,
+  except for the specific PRO/HYP retention and PRO‑adjacency preservation above.
+* **Non‑amino‑acid residues**: atoms named like protein backbone ({"N","CA","HA","H","H1","H2","H3"})
+  are **never deleted** by capping logic.
+
+**Link hydrogens (``--add-linkH``)**
+* Adds **carbon‑only** link H at **1.09 Å** along the cut‑bond vector.
+  Normal residues: checks **CB–CA**, **CA–N**, **CA–C**; **PRO/HYP**: **CA–C** only.
+* If any are added, append a **TER** then a contiguous **HETATM** block with atoms named **``HL``**
+  in residue **``LKH``** (chain ``L``); serials continue from the main block.
+* In multi‑structure mode, link‑H **targets and ordering** are enforced to be **identical across models**;
+  coordinates remain model‑specific. The flag is honored in both single‑ and multi‑structure modes.
+
+**Charge summary**
+* **AMINO_ACIDS** dictionary supplies nominal integer charges for amino‑acid residues (common variants included).
+* **ION** supplies charges for common ions (e.g., ZN, MG, FE2). Waters are 0.
+* **Unknown residues** (not in AMINO_ACIDS/ION/WATER) are **0** unless ``--ligand-charge`` is given.
+  - ``--ligand-charge <number>``: total charge distributed across **unknown substrate** residues
+    (or across all unknowns if no unknown substrate).
+  - ``--ligand-charge "RES1:Q1,RES2:Q2"``: set **per‑resname** charges; any other unknown residues remain 0.
+* In multi‑structure mode the **charge summary is computed on the first input PDB** only.
+
+**Multi‑structure ensembles**
+* Accepts multiple input PDBs (same **atom count and ordering**; validated).
+* Each structure is selected independently; the **union** of selected residues is applied to all.
+  Disulfides, PRO‑adjacency, and (if enabled) backbone‑contact neighbor augmentation are also unioned.
+* Outputs:
+  - Provide **one** output path → **multi‑MODEL** PDB (one MODEL per input).
+  - Provide **N** output paths where **N == number of inputs** → **N** single‑model PDBs.
+  - If ``-o`` is omitted with multiple inputs → per‑file outputs ``pocket_{original_filename}.pdb``.
+* **Diagnostics:** atom counts (**raw** vs **after truncation**) are logged **per model**.
 
 Substrate specification
------------------------
-`-c/--center` accepts:
-* a **PDB path** (exact coordinate match on the first input; IDs propagated),
-* a list of **residue IDs**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes ok),
-* or a list of **residue names** (case‑insensitive), e.g. `'GPP,MMT'`.  
+-----
+``-c/--center`` accepts:
+* a **PDB path** (exact coordinate match on the first input; IDs propagated to others),
+* a list of **residue IDs**: ``"123,124"``, ``"A:123,B:456"``, ``"123A"``, ``"A:123A"`` (insertion codes OK),
+* or a list of **residue names** (case‑insensitive), e.g., ``"GPP,MMT"``.
   If multiple residues share the same name, **all** matches are used and a **WARNING** is logged.
 
-Notes on defaults / behavior
-----------------------------
-* `--radius` default: **2.6 Å**. If you pass `0`, it is internally nudged to **0.001 Å**
-  (non‑zero search radius).
-* `--radius-het2het` default: **0 Å** (off). Internally treated as **0.001 Å** if `0` is given.
-* `--include-H2O` default: **true**.
-* `--exclude-backbone` default: **true**.
-* `--add-linkH` default: **true**.
-* `--ligand-charge` default: **None** (unknown residues counted as 0 unless set).
-* **Output default:** if `-o` is omitted → single input: `pocket.pdb`; multiple inputs:
-  per‑file `pocket_{original_filename}.pdb`.
+Outputs (& Directory Layout)
+-----
+* **PDB file(s):**
+  - Default single‑input output: ``pocket.pdb``.
+  - Default multi‑input outputs (when ``-o`` omitted): ``pocket_{original_filename}.pdb``.
+  - Or user‑specified: one path (multi‑MODEL) / N paths (per‑structure).
+* **Link‑H block** (if added): appears after a ``TER`` as contiguous ``HETATM`` records with atom name ``HL``,
+  residue ``LKH``, chain ``L``; serial numbers continue from the main block.
+* **Logs:** INFO messages summarize selected residues, atom counts **before/after**, and **charge summary**.
+* **Python API return (when used programmatically):**
+  ``{'outputs': [paths], 'counts': [{'raw_atoms': int, 'kept_atoms': int}, ...], 'charge_summary': {...}}``.
 
-Dependencies
-------------
-* Python ≥ **3.10**   ← uses PEP 604 unions (e.g., `Set[...] | None`)
-* Biopython ≥ 1.80
-* NumPy
-
-Python API
-----------
-* `extract(args: argparse.Namespace | None = None)` — main entry point. If `args` is `None`,
-  CLI parsing is used; otherwise the provided `Namespace` is honored.
-* `extract_api(...)` — convenience wrapper for direct Python use (builds the `Namespace`
-  for you). Both return a dict: `{'outputs', 'counts', 'charge_summary'}`.
+Notes:
+-----
+* **Defaults / behavior:**
+  - ``--radius`` default: **2.6 Å**. If given **0**, internally nudged to **0.001 Å**.
+  - ``--radius-het2het`` default: **0 Å** (off). Internally treated as **0.001 Å** if ``0`` is given.
+  - ``--include-H2O`` default: **true**.
+  - ``--exclude-backbone`` default: **true**.
+  - ``--add-linkH`` default: **true**.
+  - ``--ligand-charge`` default: **None** (unknown residues counted as 0 unless set).
+  - Output default: single input → ``pocket.pdb``; multiple inputs → ``pocket_{original_filename}.pdb``.
+* **Geometry thresholds and tolerances:**
+  - Peptide adjacency: **C(prev)–N(next) ≤ 1.9 Å** (TER‑aware; avoids crossing chain breaks).
+  - Disulfide detection: **SG–SG ≤ 2.5 Å**.
+  - Link‑H distance: **1.09 Å** (C–H) along the cut‑bond vector.
+  - Exact match tolerance for substrate PDB: **1e‑3 Å** per atom.
+* **Safeguards and special cases:**
+  - **PRO/HYP** retain N, CA, HA, H* in isolated truncations; PRO’s **N‑side neighbor** is auto‑included
+    when peptide‑adjacent; **CA** on that neighbor is always kept, and with backbone exclusion
+    **C** and **O/OXT** are preserved to maintain the peptide bond into PRO–N.
+  - **Non‑amino‑acid residues** never lose atoms named like backbone (``N, CA, HA, H, H1, H2, H3``).
+  - **Waters** (HOH/WAT/TIP3/SOL) are always neutral (charge 0) and included by default.
+* **Dependencies:** Python ≥ **3.10** (PEP 604 unions), Biopython ≥ **1.80**, NumPy.
+* **Python API (for reference):**
+  - ``extract(args: argparse.Namespace | None = None)`` — main entry (CLI or programmatic).
+  - ``extract_api(...)`` — convenience wrapper that returns ``{'outputs','counts','charge_summary'}``.
 """
 
 from __future__ import annotations

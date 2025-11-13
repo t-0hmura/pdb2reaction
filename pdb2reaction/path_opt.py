@@ -1,25 +1,52 @@
 # pdb2reaction/path_opt.py
 
 """
-MEP optimization via the Growing String method.
+path_opt — Minimum-energy path (MEP) optimization via the Growing String method (pysisyphus) with a UMA calculator
+====================================================================
 
-- Endpoints: two structures (e.g., reactant/product) given by -i/--input.
-- Calculator: UMA (through the uma_pysis wrapper).
-- Path optimizer: GrowingString + StringOptimizer (pysisyphus).
-- Configuration: YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > defaults.
-- If inputs are PDB and --freeze-links=True, freeze the parent atoms of link hydrogens.
-- **Default behavior:** Before optimization, rigidly align the second endpoint to the first
-  using an external Kabsch alignment. Do **not** use StringOptimizer’s internal `align` option
-  (known to be fragile).
-- **If either endpoint specifies `freeze_atoms`, the alignment is determined using *only* those
-  atoms (RMSD over `freeze_atoms`), and the resulting rigid transform is applied to *all* atoms.**
-- Dump the highest-energy image (HEI) as gsm_hei.xyz and gsm_hei.pdb (if a PDB reference is available).
+Usage
+-----
+    pdb2reaction path_opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
+        -q <charge> [-s <multiplicity>] [--freeze-links {True|False}] \
+        [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
+        [--dump {True|False}] [--out-dir <dir>] [--args-yaml <file>]
 
-Examples
---------
-pdb2reaction path_opt -i reac.pdb prod.pdb -q 0 -s 1 \
-  --freeze-links True --max-nodes 10 --max-cycles 100 \
-  --dump True --out-dir ./result_path_opt/ --args-yaml ./args.yaml
+Examples::
+    # Minimal: two endpoints, neutral singlet
+    pdb2reaction path_opt -i reac.pdb prod.pdb -q 0 -s 1
+
+    # Typical full run with YAML overrides and dumps
+    pdb2reaction path_opt -i reac.pdb prod.pdb -q 0 -s 1 \
+      --freeze-links True --max-nodes 10 --max-cycles 100 \
+      --dump True --out-dir ./result_path_opt/ --args-yaml ./args.yaml
+
+
+Description
+-----
+- Optimize a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
+- Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
+- Configuration via YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > built-in defaults.
+- Default alignment: before optimization, the second endpoint is rigidly Kabsch-aligned to the first using an external routine. `StringOptimizer.align` is disabled (known to be fragile). If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
+- With `--climb=True` (default), a climbing-image step refines the highest-energy image; Lanczos-based tangent estimation is enabled by default (configurable via YAML).
+- After optimization, the highest-energy image (HEI) is identified and exported.
+
+Outputs (& Directory Layout)
+-----
+out_dir/ (default: ./result_path_opt/)
+  ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line holds per-image energy
+  ├─ final_geometries.pdb        # Converted from .trj when a PDB reference is available
+  ├─ gsm_hei.xyz                 # Highest-energy image with energy on the comment line
+  ├─ gsm_hei.pdb                 # HEI converted to PDB when a PDB reference is available
+  ├─ align_refine/               # Files from external alignment/refinement
+  └─ <optimizer dumps / restarts>  # Emitted when --dump=True (from pysisyphus)
+
+Notes:
+-----
+- Always set correct total charge (`-q/--charge`) and spin multiplicity (`-s/--spin`) to avoid unphysical conditions.
+- Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
+- `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
+- `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
+- Exit codes: 0 (success); 3 (optimization failed); 4 (final trajectory write error); 5 (HEI dump error); 130 (keyboard interrupt); 1 (unhandled error).
 """
 
 from __future__ import annotations

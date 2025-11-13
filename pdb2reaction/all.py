@@ -1,47 +1,61 @@
 # pdb2reaction/all.py
 
 """
-Pipeline driver for **extracting active-site pockets, running a minimum-energy
-path search, merging paths back into full systems**, and optionally performing
-TS optimisation, pseudo-IRC, thermochemistry, and DFT post-processing per
-reactive segment.
+all — Executes the entire workflow with a SINGLE command: Extract pockets → run MEP (recursive GSM) → merge to full systems, with optional TS optimization, pseudo‑IRC, thermochemistry, and DFT per reactive segment
+====================================================================
 
-Usage (example)
----------------
-pdb2reaction all -i a.pdb b.pdb c.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
-  --tsopt True --thermo True --dft True
+Usage
+-----
+    pdb2reaction all -i R.pdb [I1.pdb ...] P.pdb -c <substrate-spec> [--ligand-charge <map-or-number>]
+                      [--spin <2S+1>] [--freeze-links True|False] [--max-nodes N] [--max-cycles N]
+                      [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] [--dump True|False]
+                      [--args-yaml params.yaml] [--pre-opt True|False] [--out-dir DIR]
+                      [--tsopt True|False] [--thermo True|False] [--dft True|False]
 
-The substrate specification also accepts residue ID lists (for example,
-``-c "308,309"``).
+    # Practically required for chemically correct conditions:
+    #   -c/--center and (when needed) --ligand-charge
 
-Workflow
---------
-1. Run the binding-pocket extractor (``extract.extract_api``) on all input PDBs
-   together, producing per-structure pocket PDBs under ``<out-dir>/pockets``. All
-   extractor settings (radius, backbone handling, etc.) are exposed via this CLI.
-2. Read the total pocket charge computed by ``extract`` and use it as ``-q/--charge``
-   for the subsequent MEP search (rounded to the nearest integer with a console
-   note when rounding occurs).
-3. Execute the recursive GSM path search (``path_search.cli``) on the pocket
-   structures. Path-search parameters such as spin, ``max-nodes``, optimizer, and
-   solver mode are forwarded from this CLI.
-4. Merge the resulting pocket MEP into the original full-system templates (no
-   ``--ref-pdb`` required) and write trajectories within the ``path_search``
-   output directory.
-5. Optionally, for each segment that changes covalent connectivity:
-   - ``--tsopt True``: run ``ts_opt`` on the segment HEI (pocket), perform a
-     pseudo-IRC by displacing along the imaginary mode, optimise both directions to
-     minima, determine forward/backward correspondence via bond-state matching, and
-     generate a segment energy diagram.
-   - ``--thermo True``: run ``freq`` on (R, TS, P) to obtain vibrational analysis
-     and thermochemistry, producing a Gibbs free-energy diagram (UMA).
-   - ``--dft True``: run ``dft`` single-point evaluations on (R, TS, P) and build a
-     DFT electronic energy diagram. When both ``--thermo`` and ``--dft`` are
-     enabled, also produce a DFT//UMA Gibbs diagram (DFT energy + UMA thermal
-     correction).
+Examples::
+    # Minimal end-to-end run with explicit substrate and ligand charges
+    pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 
-Outputs (directory layout)
---------------------------
+    # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
+    pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
+      --spin 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
+      --sopt-mode lbfgs --dump False --args-yaml params.yaml --pre-opt True \
+      --out-dir result_all --tsopt True --thermo True --dft True
+
+
+Description
+-----
+Runs a single-shot pipeline that (1) extracts active-site pockets from multiple full PDBs in reaction order, (2) performs a minimum-energy path (MEP) search via recursive GSM on the pocket models, (3) merges the pocket MEP back into the original full-system templates, and (4) optionally executes, per reactive segment, TS optimization with pseudo‑IRC, thermochemistry (UMA), DFT single-point energies, and combined DFT//UMA Gibbs diagrams. The total system charge used for the path search is taken from the extractor’s first-model charge summary and rounded to the nearest integer (with a console note when rounding occurs). The extractor runs in multi‑structure union mode to enforce a consistent pocket topology across the ensemble.
+
+
+Workflow:
+-----
+1. **Pocket extraction (multi-structure union)**  
+   `extract.extract_api` generates per-structure pocket PDBs under `<out-dir>/pockets`.  
+   Substrate can be specified as: PDB path, residue-ID list (e.g., `123,124`, `A:123,B:456`, insertion codes like `123A`/`A:123A`), or residue-name list (e.g., `GPP,MMT`).  
+   Optional `--ligand-charge` accepts a number (distributed across unknown residues) or a mapping (e.g., `GPP:-3,MMT:-1`).
+
+2. **Charge propagation**  
+   The extractor’s **total** pocket charge (model #1) is used as `--charge` for the path search (rounded to integer with a console note if needed).
+
+3. **MEP search (recursive GSM)**  
+   Runs `path_search.cli` on the pocket inputs. Key knobs are forwarded: multiplicity `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb` (for the first segment in each pair), single-structure optimizer `--sopt-mode`, `--dump`, `--pre-opt`, and `--args-yaml`.  
+   Original full PDBs are auto-supplied as reference templates to enable full-system merging (no `--ref-pdb` needed from the user).
+
+4. **Merge to full systems**  
+   The resulting pocket MEP is merged back into the original inputs inside the `path_search` output directory, writing both pocket-only and full-system trajectories.
+
+5. **Optional per-segment post-processing (for segments with covalent changes)**  
+   - `--tsopt True`: Optimize the TS on the HEI pocket; perform a pseudo‑IRC by displacing along the imaginary mode, minimize in both directions, assign forward/backward correspondence by bond-state matching, and render a segment energy diagram.  
+   - `--thermo True`: Run vibrational analysis (`freq`) on (R, TS, P) to compute thermochemistry and produce a UMA Gibbs free-energy diagram.  
+   - `--dft True`: Run single-point DFT on (R, TS, P) and build a DFT electronic energy diagram. With `--thermo True`, also generate a DFT//UMA Gibbs diagram (DFT energy + UMA thermal correction).
+
+
+Outputs (& Directory Layout)
+-----
 <out-dir>/
   pockets/
     pocket_<input1_basename>.pdb
@@ -53,39 +67,33 @@ Outputs (directory layout)
     mep.pdb                     (pocket-only trajectory if pocket inputs were PDB)
     mep_w_ref.pdb               (full-system merged trajectory; references = original inputs)
     mep_w_ref_seg_XX.pdb        (per-segment merged trajectories with covalent changes)
-    summary.yaml                (segment barriers, ΔE, etc.)
+    summary.yaml                (segment barriers, ΔE, labels, etc.)
     ... (segment subfolders)
-    tsopt_seg_XX/               (present when ``--tsopt`` is enabled)
+    tsopt_seg_XX/               (present when post-processing is enabled)
       ts/ ...
       irc/ ...
-      freq/ ...                 (when ``--thermo`` is enabled)
-      dft/  ...                 (when ``--dft`` is enabled)
+      freq/ ...                 (present when `--thermo True`)
+      dft/  ...                 (present when `--dft True`)
       energy_diagram_tsopt.(html|png)
-      energy_diagram_G_UMA.(html|png)                  (when ``--thermo`` is enabled)
-      energy_diagram_DFT.(html|png)                    (when ``--dft`` is enabled)
-      energy_diagram_G_DFT_plus_UMA.(html|png)         (when ``--thermo`` and ``--dft`` are enabled)
+      energy_diagram_G_UMA.(html|png)                  (with `--thermo True`)
+      energy_diagram_DFT.(html|png)                    (with `--dft True`)
+      energy_diagram_G_DFT_plus_UMA.(html|png)         (with both `--thermo` and `--dft`)
 
-Notes
+
+Notes:
 -----
-- Requires Python ≥ 3.10.
-- ``--ref-pdb`` is intentionally hidden; the original inputs serve as templates
-  for the merge step.
-- The extractor runs in multi-structure union mode to ensure a consistent pocket
-  topology across the ensemble.
-- The charge passed to the path search is taken from the extractor’s first-model
-  charge summary, matching the extractor documentation.
-
-CLI parity with underlying tools
---------------------------------
-- Extractor options: ``center`` (PDB path / residue ID list / residue name list),
-  ``radius``, ``radius_het2het``, ``include_H2O``, ``exclude_backbone``, ``add_linkH``,
-  ``selected_resn``, ``ligand_charge``, ``verbose``.
-- Path-search options: ``spin``, ``freeze-links``, ``max-nodes``, ``max-cycles``,
-  ``climb``, ``sopt-mode``, ``dump``, ``args-yaml``, ``pre-opt``, ``out-dir`` (the
-  ``path_search`` subdirectory is created inside this location).
-- Post-processing toggles: ``tsopt`` (True/False), ``thermo`` (True/False),
-  ``dft`` (True/False).
+- **Python ≥ 3.10** is required.  
+- `-i/--input` accepts two or more **full** PDBs in reaction order (reactant [intermediates ...] product). A single `-i` may be followed by multiple space-separated files (`-i A.pdb B.pdb C.pdb`).  
+- `-c/--center` is **practically required** to define the substrate for pocket extraction (PDB path / residue IDs / residue names; chain and insertion codes allowed).  
+- `--ligand-charge` is **strongly recommended** for correct total charge assignment when ligand formal charges are not inferred; you may pass a total number or a mapping like `GPP:-3,MMT:-1`.  
+- The charge passed to the MEP search equals the extractor’s **first-model** total pocket charge (rounded to an integer).  
+- `--ref-pdb` is intentionally **hidden**; the original full inputs are automatically used as merge templates.  
+- The extractor runs in **multi-structure union** mode to keep the pocket atom topology consistent across all inputs.  
+- **Forwarded path-search options**: `--spin`, `--freeze-links` (freeze parent atoms of link hydrogens for pocket PDBs), `--max-nodes` (segment GSM; String has max_nodes+2 images including endpoints), `--max-cycles`, `--climb` (applied to the first segment in each pair), `--sopt-mode` (affects HEI±1 and kink nodes), `--dump`, `--args-yaml` (sections: geom, calc, gs, opt, sopt, bond, search), `--pre-opt`, `--out-dir`.  
+- **Post-processing toggles**: `--tsopt`, `--thermo`, `--dft`. When both `--thermo` and `--dft` are True, a **DFT//UMA** Gibbs diagram is also produced.  
+- Energy diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).  
 """
+
 
 from __future__ import annotations
 

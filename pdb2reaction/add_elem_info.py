@@ -1,25 +1,47 @@
 # pdb2reaction/add_elem_info.py
 
 """
-Add or repair PDB element symbols (columns 77–78) in files that lack or have
-incomplete element fields.
-
-- Parse the input PDB with Biopython, assign ``atom.element``, and write via ``PDBIO``.
-- Infer elements using atom names and residue context (protein, nucleic acid, water,
-  ions).
-- Overwrite the input file when no output path is provided.
-- Preserve existing element annotations unless ``--overwrite`` is specified.
+add_elem_info — Add/repair PDB element symbols (columns 77–78) using Biopython
+====================================================================
 
 Usage
 -----
-Standalone script::
+	pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
 
-    python add_elem_info.py input.pdb [-o fixed.pdb] [--overwrite]
+Examples::
+	pdb2reaction add_elem_info -i 1abc.pdb
+	pdb2reaction add_elem_info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
 
-As a pdb2reaction subcommand::
 
-    pdb2reaction add_elem_info -i input.pdb [-o fixed.pdb] [--overwrite]
+Description
+-----
+- Parses the input PDB with Biopython (PDBParser), assigns `atom.element`, and writes via `PDBIO` to populate columns 77–78.
+- Infers elements from atom names plus residue context (proteins, nucleic acids, water, ions).
+- Ion residues: prefers residue-derived elements; polyatomic ions (e.g., NH4, H3O+) are assigned per atom (H/N/O).
+- Polymers & water: maps H/D→H; water atoms to O/H; first-letter mapping for P/N/O/S; recognizes Se; carbon labels (CA/CB/CG/…) → C.
+- Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two-letter/one-letter normalization; recognizes halogens (Cl/Br/I/F).
+- Preserves existing element fields unless `--overwrite` is given; with `--overwrite`, all atoms are re-inferred and may change.
+- If no `-o/--out` is provided, overwrites the input file; if inference fails, leaves the atom’s element unset/unchanged.
+- Supports ATOM and HETATM records; works across models/chains/residues without altering coordinates.
+
+Outputs (& Directory Layout)
+-----
+- A PDB file with element columns (77–78) populated or corrected:
+  - `-o/--out` given → writes to that path.
+  - no output path → overwrites the input file.
+- Summary printed to stdout:
+  - total atoms, newly assigned, kept existing, overwritten (when `--overwrite`),
+    per‑element counts, and up to 50 unresolved atoms (model/chain/residue/atom/serial).
+
+Notes:
+-----
+- Depends on Biopython (`Bio.PDB`) and Click.
+- Existing element fields are detected by scanning the original file’s ATOM/HETATM lines
+  (serials 7–11, elements 77–78) to reflect the true presence and avoid parser side effects.
+- Recognizes standard water/nucleic/protein residue names; treats deuterium “D” as hydrogen “H”.
+- Does not alter coordinates, occupancies, B-factors, charges, altlocs, insertion codes, or record order.
 """
+
 from __future__ import annotations
 
 import argparse

@@ -1,44 +1,66 @@
 # pdb2reaction/trj2fig.py
 
 """
-Energy-profile utility for XYZ trajectories
-==========================================
+pdb2reaction trj2fig — Energy-profile utility for XYZ trajectories
+====================================================================
 
-Features
---------
-
-• Extract Hartree energies from the second-line comment of each XYZ frame.
-• Output either ΔE (relative to a reference) or absolute E (in kcal/mol or hartree).
-  - `-r init`  : use the initial frame as the reference (or the last frame when `--reverse-x` is set).
-  - `-r None`  : use absolute energies (no reference).
-  - `-r <int>` : use the specified frame index as the reference.
-• Generate a polished Plotly figure (PNG [default] / HTML / SVG / PDF) with bold ticks, consistent fonts,
-  and a spline curve.
-• Optionally write tabular data to CSV.
-• `--reverse-x` flips the x-axis so the last frame appears on the left.
-
-Examples
---------
-
-Generate a high-resolution PNG figure (x-axis reversed; the reference is the leftmost point = last frame):
-
-    trj2fig -i traj.xyz --reverse-x
-
-Write both CSV and a figure (reference frame #5, output in hartree):
-
-    trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
-
-Produce multiple outputs at once (PNG, HTML, and PDF):
-
-    trj2fig -i traj.xyz -o energy.png energy.html energy.pdf
-
-Notes
+Usage (CLI input; minimal and full command examples)
 -----
+    Minimal:
+        pdb2reaction trj2fig -i traj.xyz
 
-• The legacy `--output-peak` option has been removed.
-• The default output is `energy.png`. You can pass multiple filenames to `-o`, and/or
-  repeat `-o` to produce multiple outputs.
+    Full (all key options; multiple outputs allowed):
+        pdb2reaction trj2fig -i traj.xyz \
+            -o energy.png energy.html energy.svg energy.pdf energy.csv \
+            -r init \
+            --unit kcal \
+            --reverse-x
+
+Examples::
+    # 1) High-resolution PNG with x-axis reversed (reference is the leftmost point = last frame)
+    pdb2reaction trj2fig -i traj.xyz --reverse-x
+
+    # 2) CSV + figure (reference frame #5; output values in hartree)
+    pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
+
+    # 3) Produce multiple outputs in one run (PNG, HTML, PDF)
+    pdb2reaction trj2fig -i traj.xyz -o energy.png energy.html energy.pdf
+
+Description
+----- 
+    - Extracts Hartree energies from the second-line comment of each XYZ frame
+      (uses the first floating-point number on that line).
+    - Computes either ΔE (relative to a chosen reference) or absolute E; units: kcal/mol (default) or hartree.
+      Reference specification:
+        * -r init  : use the initial frame (or the last frame if --reverse-x is set).
+        * -r None  : use absolute energies (no reference). Also accepts "none"/"null" (case-insensitive).
+        * -r <int> : use the given 0-based frame index as the reference.
+    - Generates a polished Plotly figure (no title) with bold ticks, consistent fonts, markers,
+      and a smoothed spline curve. Supported figure outputs: PNG (default), HTML, SVG, PDF.
+    - Optionally writes a CSV table of the data.
+    - --reverse-x flips the x-axis so the last frame appears on the left
+      (and makes -r init point to that last frame).
+
+Outputs (& Directory Layout)
+-----
+    - Default output when no -o is provided: ./energy.png (current working directory).
+    - You can provide multiple filenames to -o and/or repeat -o to emit several outputs at once.
+      Supported formats:
+        * .png  : High-resolution raster figure (scale=2).
+        * .html : Standalone interactive Plotly figure.
+        * .svg  : Vector figure.
+        * .pdf  : Vector figure.
+        * .csv  : Tabular data with columns:
+                  frame (0-based), energy_hartree,
+                  <delta_kcal|energy_kcal|delta_hartree|energy_hartree> depending on --unit and reference.
+
+Notes:
+-----
+    - The legacy --output-peak option has been removed.
+    - If a frame comment lacks a parseable energy, an error is raised; if no energies are found, the run fails.
+    - Unsupported file extensions in -o cause an error.
 """
+
 from __future__ import annotations
 
 import argparse

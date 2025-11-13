@@ -1,67 +1,102 @@
 # pdb2reaction/scan.py
 
 """
-Bond-length driven staged scan with harmonic distance restraints and full relaxation.
+scan — Bond-length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
+====================================================================
 
-**This version is simplified to support only `uma_pysis`** and removes extra
-general-purpose handling to reduce overhead and speed up scans.
-
-Overview
---------
-- Input geometry: .pdb / .xyz / ... via pysisyphus.geom_loader (Cartesian recommended).
-- Calculator: UMA (via uma_pysis) wrapped by a *lean* HarmonicBiasCalculator that
-  adds per-step harmonic distance wells toward evolving targets for specified atom pairs.
-- Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
-
-Key simplifications for speed
------------------------------
-- HarmonicBiasCalculator now implements only the (elem, coords) 2-argument API that
-  pysisyphus.Geometry uses with `uma_pysis`. Geometry-style 1-arg fallbacks and broad
-  dict/array shape inference were removed.
-- Bias is computed in a.u. directly (Hartree, Bohr) using a pre‑converted k to
-  avoid repeated unit conversions.
-- Trajectory blocks are only accumulated when --dump is True.
-- No attempt to re-query energy for per-frame annotation during scan (saves an extra call).
-
-Per‑stage scheduling
---------------------
-For a given list of scan tuples [(i, j, target), ...] (targets in Å):
-
-1) Compute each pair's *Å-space* displacement Δ = (target − current_distance_Å).
-2) Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
-3) Per-pair step width is δ_k = Δ / N (Å).
-4) At step s (1..N), the temporary target becomes r_k(s) = r_k(0) + s * δ_k (Å).
-5) Relax the full structure under the harmonic wells.
-
-Outputs per stage (k = 1..K)
-----------------------------
-  stage_{k:02d}/result.xyz
-  (if the input was PDB) stage_{k:02d}/result.pdb
-  If --dump:
-    stage_{k:02d}/scan.trj
-    (if the input was PDB) stage_{k:02d}/scan.pdb
-
-Additional optional optimizations
----------------------------------
-- With --preopt True: pre-optimize the initial structure **without bias** and continue the scan
-  from that geometry. Results written to `preopt/result.xyz` (and `.pdb` if input was PDB).
-- With --endopt True: after **each stage** completes its biased stepping, perform an **additional
-  unbiased** geometry optimization of that stage's final structure before writing outputs.
-- For each stage, echo covalent-bond **formation/breaking** between the stage's *first* structure
-  and its *final* structure (the latter is the end-of-stage optimized structure when `--endopt True`).
-
-Example
--------
-pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]" \
-  --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-  --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
-  --preopt True --endopt True
-
-Notes
+Usage (CLI input; include practically necessary flags such as -q even if not strictly required)
 -----
-- Indices are 1-based by default. Use --zero-based if your tuples are 0-based.
-- Units: distances in Å in the CLI/YAML. Internally, the bias is applied in a.u.
-  (Hartree/Bohr) using a pre-converted k.
+  # Minimal (define at least one stage)
+  pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+    --scan-lists "[(I,J,TARGET_ANG)]"
+
+  # Full (repeat --scan-lists for multiple stages)
+  pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+    -s SPIN \
+    --scan-lists "[(I,J,TARGET_ANG), ...]" [--scan-lists "..."]... \
+    [--one-based|--zero-based] \
+    --max-step-size FLOAT \
+    --bias-k FLOAT \
+    --relax-max-cycles INT \
+    --opt-mode {light,lbfgs,heavy,rfo} \
+    [--freeze-links/--no-freeze-links] \
+    [--dump/--no-dump] \
+    --out-dir PATH \
+    [--args-yaml FILE] \
+    [--preopt/--no-preopt] \
+    [--endopt/--no-endopt]
+
+Examples::
+  # Single-stage, minimal inputs (PDB)
+  pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
+
+  # Two stages, LBFGS, dumping trajectories
+  pdb2reaction scan -i input.pdb -q 0 \
+    --scan-lists "[(12,45,1.35)]" \
+    --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+    --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
+    --preopt True --endopt True
+
+
+Description
+-----
+Runs a staged, bond-length–driven scan. At each step, harmonic distance wells are applied to
+specified atom pairs and the full structure is relaxed. This lean implementation supports only
+the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead and speed.
+
+Scheduling
+  • For scan tuples [(i, j, target_Å)], compute the Å-space displacement Δ = target − current_distance_Å.
+  • Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
+  • Per-pair step width δ_k = Δ / N (Å).
+  • At step s (1..N), the temporary target is r_k(s) = r_k(0) + s · δ_k (Å).
+  • Relax the full structure under the harmonic wells for that step.
+
+Harmonic bias model
+  • E_bias = Σ ½ · k · (|r_i − r_j| − target_k)².
+  • k is provided in eV/Å² (CLI/YAML) and converted once to Hartree/Bohr² internally.
+  • Coordinates are in Bohr; the UMA base returns energies in Hartree and forces in Hartree/Bohr.
+
+Optional optimizations
+  • --preopt: Pre-optimize the initial structure **without bias** before the scan; writes
+    `preopt/result.xyz` (and `.pdb` if the input was PDB), then continues from that geometry.
+  • --endopt: After **each stage** completes its biased stepping, perform an additional **unbiased**
+    optimization of that stage’s final structure before writing outputs.
+  • For each stage, covalent-bond **formation/breaking** is reported between the stage’s first
+    structure and its final structure (the latter is the end-of-stage optimized result when
+    `--endopt True`).
+
+
+Outputs (& Directory Layout)
+-----
+Base output directory (default `./result_scan/`):
+  preopt/                         # created if --preopt True
+    result.xyz
+    result.pdb                    # if input was PDB
+  stage_{k:02d}/                  # for each stage k = 1..K
+    result.xyz                    # final structure for the stage (post end-of-stage processing)
+    result.pdb                    # if input was PDB
+    scan.trj                      # only if --dump True (concatenated biased step frames)
+    scan.pdb                      # only if --dump True and input was PDB
+
+
+Notes:
+-----
+• UMA only: `uma_pysis` is the sole supported calculator.
+• Optimizers: `--opt-mode light|lbfgs` selects LBFGS; `--opt-mode heavy|rfo` selects RFOptimizer.
+  Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
+• Indexing: (i, j) are 1-based by default; use `--zero-based` if your tuples are 0-based.
+• Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
+  k converted from eV/Å² to Hartree/Bohr².
+• Performance simplifications:
+  – Bias wrapper implements only the (elem, coords) two-argument API used by `pysisyphus.Geometry`
+    with `uma_pysis`; Geometry-style 1-arg fallbacks and broad shape inference are removed.
+  – Bias is computed directly in a.u. using a pre-converted k to avoid repeated unit conversions.
+  – Trajectories are accumulated only when `--dump` is True.
+  – Energy is not re-queried for per-frame annotation during the scan to avoid extra calls.
+• PDB convenience: With `--freeze-links` (default True for PDB), parent atoms of link hydrogens
+  are detected and frozen, and merged with any user-specified frozen atoms.
+• YAML: Additional arguments can be supplied via `--args-yaml` under sections:
+  `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, and `bond`.
 """
 
 from __future__ import annotations

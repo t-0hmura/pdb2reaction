@@ -1,82 +1,83 @@
 # pdb2reaction/irc.py
-# -*- coding: utf-8 -*-
-"""Command-line interface for IRC calculations using the EulerPC integrator.
 
-Example
--------
-::
+"""
+irc — Concise CLI for IRC calculations with the EulerPC integrator
+====================================================================
 
-  pdb2reaction irc \
-    -i a.pdb -q 0 -s 1 \
-    --max-cycles 20 \
-    --step-size 0.5 \
-    --root 0 \
-    --forward True \
-    --backward False \
-    --out-dir "./result_irc/" \
-    --hessian-calc-mode Analytical \
-    --args-yaml args.yaml
-
-Overview
---------
-* The CLI accepts only the options shown above. All other parameters (geometry,
-  UMA configuration, and detailed EulerPC/IRC settings) must be provided via
-  the YAML file.
-* When the input is a ``.pdb`` file, the generated trajectories (``finished_irc.trj``),
-  ``forward_irc.trj``, and ``backward_irc.trj`` are converted to PDB format.
-
-Optional YAML layout
---------------------
-::
-
-  geom:
-    coord_type: cart
-    freeze_atoms: []
-
-  calc:
-    charge: 0
-    spin: 1
-    model: "uma-s-1p1"
-    task_name: "omol"
-    device: "auto"
-    max_neigh: null
-    radius: null
-    r_edges: false
-    out_hess_torch: true
-    hessian_calc_mode: "Analytical" # or "FiniteDifference"
-
-  irc:
-    # Base IRC settings
-    downhill: false
-    forward: true
-    backward: true
-    hessian_init: "calc"
-    displ: "energy"
-    displ_energy: 1.0e-3
-    displ_length: 0.1
-    rms_grad_thresh: 1.0e-3
-    hard_rms_grad_thresh: null
-    energy_thresh: 1.0e-6
-    imag_below: 0.0
-    force_inflection: true
-    check_bonds: false
-    prefix: ""
-    dump_fn: "irc_data.h5"
-    dump_every: 5
-
-    # EulerPC-specific settings
-    hessian_update: "bofill"
-    hessian_recalc: null
-    max_pred_steps: 500
-    loose_cycles: 3
-    corr_func: "mbs"
-
-Notes
+Usage (CLI; minimal and full examples)
 -----
-* CLI arguments override values loaded from YAML (``charge``/``spin``,
-  ``step_length`` via ``--step-size``, ``max_cycles`` via ``--max-cycles``,
-  ``root``, ``forward``/``backward``, ``out_dir`` and ``hessian_calc_mode``).
-* UMA options are passed directly to :func:`pdb2reaction.uma_pysis.uma_pysis`.
+    # Minimal (explicitly set charge/spin to avoid unintended conditions)
+    pdb2reaction irc -i a.pdb -q 0 -s 1
+
+    # Full example
+    pdb2reaction irc \
+      -i a.pdb -q 0 -s 1 \
+      --max-cycles 20 \
+      --step-size 0.5 \
+      --root 0 \
+      --forward True \
+      --backward False \
+      --out-dir "./result_irc/" \
+      --hessian-calc-mode Analytical \
+      --args-yaml args.yaml
+
+Examples::
+    # Forward-only with finite-difference Hessian and custom step size
+    pdb2reaction irc -i ts.xyz -q -1 -s 2 --forward True --backward False \
+      --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+
+    # Use a PDB input so trajectories are also exported as PDB
+    pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --out-dir ./result_irc/
+
+Description
+-----
+- Purpose: Run Intrinsic Reaction Coordinate (IRC) calculations using the EulerPC predictor–corrector integrator.
+- Inputs: Any structure readable by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, ...).
+  If the input is `.pdb`, the generated trajectories are additionally converted to PDB.
+- Configuration model: Only the CLI options listed above are accepted. All other parameters
+  (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
+  Final configuration precedence: built-in defaults → YAML → CLI.
+- Strong recommendation: Provide both `-q/--charge` and `-s/--spin` explicitly to avoid running under unintended conditions.
+- CLI options:
+  * `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
+  * `-q/--charge INT` (strongly recommended): Total charge; overrides `calc.charge` from YAML.
+  * `-s/--spin INT` (default 1; strongly recommended): Spin multiplicity (2S+1); overrides `calc.spin`.
+  * `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
+  * `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
+  * `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
+  * `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); overrides `irc.forward`.
+  * `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); overrides `irc.backward`.
+  * `--out-dir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
+  * `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
+  * `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
+
+Outputs (& Directory Layout)
+-----
+- All files are written under `--out-dir` (default: `./result_irc/`). The directory is created if missing.
+- If `irc.prefix` is set, it is prepended to filenames.
+
+    <out_dir>/
+      ├─ irc_data.h5                    # HDF5 dump written every `irc.dump_every` steps
+      ├─ <prefix>finished_irc.trj       # Full IRC trajectory (XYZ/TRJ)
+      ├─ <prefix>forward_irc.trj        # Forward path segment
+      ├─ <prefix>backward_irc.trj       # Backward path segment
+      ├─ <prefix>finished_irc.pdb       # PDB conversion (only if input was .pdb)
+      ├─ <prefix>forward_irc.pdb        # PDB conversion (only if input was .pdb)
+      └─ <prefix>backward_irc.pdb       # PDB conversion (only if input was .pdb)
+
+Notes:
+-----
+- CLI overrides YAML for:
+  `charge`→`calc.charge`, `spin`→`calc.spin`, `step-size`→`irc.step_length`, `max-cycles`→`irc.max_cycles`,
+  `root`→`irc.root`, `forward`→`irc.forward`, `backward`→`irc.backward`, `out-dir`→`irc.out_dir`,
+  `hessian-calc-mode`→`calc.hessian_calc_mode`.
+- UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
+  the calculator selects GPU/CPU automatically. If `hessian_calc_mode: "FiniteDifference"`,
+  `geom.freeze_atoms` can be used to skip frozen DOF in FD Hessian construction.
+- `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
+  for the initial displacement.
+- Standard output includes progress and timing. Exit codes: `0` on success, `130` on `KeyboardInterrupt`,
+  `1` on unhandled exceptions.
 """
 
 from __future__ import annotations

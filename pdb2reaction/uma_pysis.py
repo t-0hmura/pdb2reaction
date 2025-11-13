@@ -1,18 +1,71 @@
 # pdb2reaction/uma_pysis.py
 
 """
-UMA Calculator Wrapper for PySisyphus.
+uma_pysis — UMA calculator wrapper for PySisyphus
+====================================================================
 
-This calculator provides:
-- Energy, forces, and Hessian.
-- Two Hessian modes: "Analytical" (autograd) or "FiniteDifference" (central differences).
-- In "FiniteDifference" mode:
-  * `freeze_atoms` lets you skip perturbations for selected atoms.
-  * `return_partial_hessian` returns the Hessian only over the active (non-frozen) DOF.
-  * The Hessian is assembled on the GPU.
-- In "Analytical" mode:
-  * Hessian is build by back‑propagating UMA model twice with autograd.
-  * This option requires more VRAM and time than "FiniteDifference" mode.
+Description
+-----
+- Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA pretrained ML potentials via ASE/AtomicData.
+- Two Hessian modes:
+  * "Analytical": second‑order autograd of the UMA energy on the GPU.
+    Requires more VRAM/time than finite differences. During evaluation,
+    model parameter gradients are disabled; dropout layers are force‑disabled;
+    the model is temporarily toggled to train mode only to build the autograd
+    graph and then restored to eval.
+  * "FiniteDifference": central differences of forces assembled on the GPU.
+    Columns for frozen DOF are skipped; optionally return only the active‑DOF block.
+    Default step: ε = 1.0e‑3 Å.
+- Device handling: device="auto" selects CUDA if available, else CPU; tensors use torch.float32.
+- Neighborhood/graph: optional overrides for `max_neigh`, `radius`, `r_edges`.
+  On‑the‑fly graphs are built (`otf_graph=True`), and `task_name`, `charge`, `spin`
+  are attached to the batch.
+- Robustness: analytical path catches CUDA out‑of‑memory and advises switching to
+  finite differences.
+- Default Hessian mode at construction is "Analytical". If a falsy mode reaches
+  `get_hessian`, a fallback "FiniteDifference" is used (implementation detail).
+- Units: UMA runs in Å and eV; PySisyphus public API converts to Hartree/Bohr:
+  energy eV→Hartree, forces eV·Å⁻¹→Hartree·Bohr⁻¹, Hessian eV·Å⁻²→Hartree·Bohr⁻².
+
+Outputs
+-----
+PySisyphus calculator interface (`implemented_properties = ["energy", "forces", "hessian"]`):
+
+- get_energy(elem, coords)
+  Returns: {"energy": E}
+  • E: float, Hartree.
+  • coords: Bohr in, internally converted to Å.
+
+- get_forces(elem, coords)
+  Returns: {"energy": E, "forces": F}
+  • F: shape (3N,), Hartree/Bohr.
+  • E: float, Hartree.
+  • coords: Bohr in, internally converted to Å.
+
+- get_hessian(elem, coords)
+  Returns: {"energy": E, "forces": F, "hessian": H}
+  • F: shape (3N,), Hartree/Bohr.
+  • H: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
+    active‑DOF submatrix in FiniteDifference mode).
+  • If FiniteDifference + return_partial_hessian=True: H contains only the
+    active‑DOF block (non‑frozen atoms). Otherwise H is full sized and columns
+    corresponding to frozen DOF remain zero.
+  • Type of H: NumPy (CPU) unless out_hess_torch=True, in which case a torch.Tensor
+    on the current device is returned.
+
+Notes:
+-----
+- freeze_atoms: list of 0‑based atom indices; applies only to FiniteDifference.
+- return_partial_hessian (FiniteDifference): if True, return only the active‑DOF
+  submatrix; if False, return a full (3N×3N) matrix with frozen columns left zero.
+- UMA loader: pretrained_mlip.get_predict_unit(model). The predictor is moved to
+  the selected device, set to eval, and all nn.Dropout layers are disabled (p=0).
+- During analytical Hessian evaluation, model parameters have requires_grad=False;
+  the model is briefly set to train() to enable autograd and then restored to eval().
+  CUDA caches are cleared if needed.
+- Neighborhood defaults come from the model backbone (e.g., max_neighbors, cutoff)
+  unless explicitly overridden.
+- CLI entry point: run_pysis() registers the calculator, enabling: `uma_pysis input.yaml`.
 """
 
 from __future__ import annotations

@@ -1,110 +1,111 @@
 # pdb2reaction/path_search.py
 
 """
-Recursive GSM Segmentation for Multistep MEP Construction
-=========================================================
+path-search — Recursive GSM segmentation to build a continuous multistep MEP
+====================================================================
 
-Overview
---------
-Given two or more structures ordered along a reaction (reactant → product)—optionally with
-user‑supplied intermediates—this program constructs a *continuous* minimum‑energy path (MEP).
-It first runs a GSM to localize the high‑energy region, then **recursively** refines only
-those parts that exhibit covalent bond changes.
-
-Method (applied to each adjacent pair A → B)
---------------------------------------------
-1) Initial path:
-   Run a Growing String Method (GSM) from A to B to obtain a preliminary MEP.
-
-2) Localize the barrier:
-   Identify the highest‑energy image (HEI). Optimize its immediate neighbors (HEI−1, HEI+1)
-   as single structures to yield two nearby minima, End1 and End2 (LBFGS or RFO).
-
-3) Refine the step:
-   - If **no** covalent bond formation/breaking is detected between End1 and End2 (a “kink”),
-     skip GSM. Instead, insert `search.kink_max_nodes` (default 3) linearly interpolated
-     nodes, optimize each individually, and use them as images.
-   - Otherwise, run a *refinement* GSM between End1 and End2.
-
-4) Decide where to recurse:
-   Evaluate covalent changes for (A → End1) and (End2 → B). Recurse only on the side(s)
-   that show covalent changes.
-
-5) Stitch the subpaths:
-   Concatenate sub‑MEPs with duplicate removal via RMSD. If an endpoint mismatch remains
-   beyond a threshold, insert a short *bridge* GSM. If the interface itself shows covalent
-   changes, insert a **new recursive segment** instead of a bridge.
-
-Multi‑structure inputs (A, I1, I2, …, B)
-----------------------------------------
-- Provide at least two structures to `-i/--input` in reaction order. Both forms are accepted:
-  - Repeated `-i` flags:
-      `-i reac.pdb -i im1.pdb -i im2.pdb -i prod.pdb`
-  - A single `-i` followed by multiple paths (space‑separated):
-      `-i reac.pdb im1.pdb im2.pdb prod.pdb`
-- The algorithm is run for each adjacent pair (A→I1, I1→I2, …, I2→B). Per‑pair paths are
-  concatenated with duplicate removal; bridges or new recursive segments are added
-  automatically when needed.
-- Endpoint pre‑optimization is performed **per adjacent pair** in sequence.
-
-Behavior & assumptions
-----------------------
-- A single UMA calculator (`uma_pysis`) is shared **serially** across all stages.
-- Input alignment (when `--align True`, default):
-  After pre‑optimization of all inputs, *all* inputs are rigidly aligned and “freeze_atoms”
-  are scan+relaxed to match the **first** input using
-  `pdb2reaction.align_freeze_atoms.align_and_refine_sequence_inplace`.
-  This produces a co‑aligned set used for all subsequent steps.
-- Path representation & optimization:
-  - GSM uses pysisyphus `GrowingString` + `StringOptimizer`.
-  - HEI neighbors are optimized as *single* structures (LBFGS or RFO).
-- Covalent changes are detected via `bond_changes.compare_structures`.
-- Concatenation policy:
-  - If the endpoint mismatch ≤ `search.stitch_rmsd_thresh`, treat as duplicate and drop one.
-  - If the mismatch > `search.bridge_rmsd_thresh`, run a *bridge* GSM.
-  - If covalent changes exist across an interface, insert a **new recursive segment** instead.
-- Input pre‑optimization (`sopt‑mode`) runs unless disabled by `--pre-opt False`.
-- Configuration precedence: **CLI** > **YAML** > **defaults** (sections: `geom`, `calc`,
-  `gs`, `opt`, `sopt`, `bond`, `search`).
-- `max_nodes` may differ between step segments and bridges:
-  `search.max_nodes_segment` and `search.max_nodes_bridge`.
-- Kink handling (no covalent changes between End1–End2):
-  Skip GSM; insert `search.kink_max_nodes` linear interpolations, optimize them, and use as images.
-
-Outputs
--------
-out_dir/
-  ├─ summary.yaml                 : Run summary (MEP‑only; no input/settings dump)
-  ├─ mep.trj **or** mep.pdb       : Final MEP; if inputs are XYZ → write `mep.trj`; if inputs are PDB → write **only** `mep.pdb`
-  ├─ mep_w_ref.pdb                : Full‑system MEP (pocket merged into templates; when --ref-pdb is used)
-  ├─ mep_w_ref_seg_XX.pdb         : Per‑segment merged MEPs **only for segments with covalent changes** (when --ref-pdb)
-  ├─ mep_seg_XX.trj               : Pocket‑only per‑segment trajectory **only for segments with covalent changes**
-  ├─ mep_seg_XX.pdb               : Pocket‑only per‑segment PDB (from .trj; when a pocket PDB is available)
-  ├─ hei_seg_XX.xyz               : Pocket HEI **only for segments with covalent changes**
-  ├─ hei_seg_XX.pdb               : Pocket HEI as PDB **only for segments with covalent changes** (when a pocket PDB is available)
-  ├─ hei_w_ref_seg_XX.pdb         : Merged HEI **only for segments with covalent changes** (when --ref-pdb)
-  ├─ mep_plot.png                 : Per‑image energy profile (from trj2fig; ΔE vs image index)
-  ├─ energy_diagram.html          : State‑level energy diagram (Plotly; ΔE relative to R in kcal/mol)
-  ├─ energy_diagram.png           : PNG export of the energy diagram (if 'kaleido' is available)
-  └─ segments/
-      ├─ seg_000_gsm/ ...         : Initial GSM for the first segment
-      ├─ seg_000_left_opt/ ...    : Single‑structure optimization of HEI−1
-      ├─ seg_000_right_opt/ ...   : Single‑structure optimization of HEI+1
-      ├─ seg_000_refine_gsm/ ...  : Refined GSM between End1–End2
-      ├─ seg_000_kink_...         : Kink interpolation optimizations (when kink)
-      ├─ seg_000_seg_002_bridge_gsm/ ... : Bridge GSM (names indicate which segments are bridged)
-      ├─ seg_001_...              : Left‑side recursive substeps (if any)
-      └─ seg_002_...              : Right‑side recursive substeps (if any)
-
-Notes
+Usage (CLI)
 -----
-- The linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) is printed to the console.
-- The `labels` and `energies` (kcal/mol) passed to `build_energy_diagram` are also printed.
+	pdb2reaction path-search -i A.pdb B.pdb -q <charge> [options]
 
-- Final merge rule with --align True:
-  If `--ref-pdb` is provided and `--align True` (default), the **first** reference PDB is used
-  for *all* pairs (i.e., you may pass only one reference PDB even for multi‑structure inputs).
-  Intermediate pocket→PDB conversions keep the original behavior (use the extracted pocket PDB).
+Required-like:
+	-i/--input           Two or more structures in reaction order (repeatable or space‑separated after a single -i).
+	-q/--charge          Total system charge (integer).
+
+Recommended/common:
+	-s/--spin            Spin multiplicity (2S+1); default 1.
+	--sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
+	--max-nodes          Internal nodes for segment GSM; default 10.
+	--max-cycles         Max optimization cycles; default 1000.
+	--climb/--no-climb   Enable TS search for the first segment; default on.
+	--pre-opt/--no-pre-opt  Pre-optimize endpoints; default on.
+	--align/--no-align   Rigidly co‑align all inputs after pre‑opt; default on.
+	--args-yaml PATH     YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
+	--ref-pdb PATH [...] Full template PDB(s) for final merge (see Notes).
+	--out-dir PATH       Output directory; default ./result_path_search/
+	--dump               Save optimizer dumps; default off.
+	--freeze-links/--no-freeze-links  Freeze parents of link hydrogens for PDB input; default on.
+
+Examples::
+	# Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)
+	pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+
+	# Multistep with intermediates, YAML overrides, and PDB merge to a full system
+	pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+	    --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
+
+Description
+-----
+Constructs a continuous minimum‑energy path (MEP) between two or more structures ordered along a reaction.
+The method runs a Growing String Method (GSM) to localize barriers and **recursively** refines only those
+regions that exhibit covalent bond changes. Kinks (no bond change) are represented by linearly interpolated,
+individually optimized images. Multi‑structure inputs are processed per adjacent pair and stitched into a single MEP.
+A single UMA calculator (uma_pysis) is shared serially across all stages. Configuration precedence: CLI > YAML > defaults.
+
+Workflow:
+-----
+1) Initial path (per adjacent pair A→B): run GSM to obtain a preliminary MEP.
+2) Localize barrier: find the highest‑energy image (HEI); optimize HEI±1 as single structures → two nearby minima,
+   End1 and End2.
+3) Refine the step:
+   • If no covalent bond change between End1–End2 (a “kink”): insert `search.kink_max_nodes` linearly interpolated
+     nodes and optimize each; **skip** GSM.
+   • Otherwise: run a refinement GSM between End1 and End2.
+4) Recurse selectively: evaluate covalent changes for (A→End1) and (End2→B); recurse only on sides that change.
+5) Stitch subpaths: concatenate sub‑MEPs with duplicate removal via RMSD. If endpoints still mismatch beyond
+   `search.bridge_rmsd_thresh`, insert a *bridge* GSM. If the interface itself shows covalent changes, insert a
+   **new recursive segment** instead of a bridge.
+6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
+   refine `freeze_atoms` to match the first input. If `--ref-pdb` is supplied, merge pocket trajectories
+   into full templates and annotate segments.
+
+Outputs (& Directory Layout)
+-----
+out_dir/
+  ├─ summary.yaml                  : MEP‑level run summary (no full settings dump)
+  ├─ mep.trj **or** mep.pdb        : Final MEP (XYZ → mep.trj; PDB inputs → only mep.pdb)
+  ├─ mep_w_ref.pdb                 : Full‑system merged MEP (requires --ref-pdb)
+  ├─ mep_w_ref_seg_XX.pdb          : Per‑segment merged MEPs (only for segments with covalent changes; requires --ref-pdb)
+  ├─ mep_seg_XX.trj / mep_seg_XX.pdb : Pocket‑only per‑segment paths (only when covalent changes present; .pdb if PDB input)
+  ├─ hei_seg_XX.xyz / hei_seg_XX.pdb : Pocket HEI and PDB (for bond‑change segments)
+  ├─ hei_w_ref_seg_XX.pdb          : Merged HEI per segment (requires --ref-pdb)
+  ├─ mep_plot.png                  : ΔE profile vs image index (from trj2fig)
+  ├─ energy_diagram.html           : State‑level energy diagram (Plotly; ΔE relative to R in kcal/mol)
+  ├─ energy_diagram.png            : PNG export when 'kaleido' is available
+  └─ segments/
+      ├─ seg_000_gsm/ ...          : Initial GSM for the first segment
+      ├─ seg_000_left_opt/ ...     : HEI−1 single‑structure optimization
+      ├─ seg_000_right_opt/ ...    : HEI+1 single‑structure optimization
+      ├─ seg_000_refine_gsm/ ...   : End1–End2 refinement GSM
+      ├─ seg_000_kink_...          : Kink interpolation optimizations (when applicable)
+      ├─ seg_000_seg_002_bridge_gsm/ ... : Bridge GSMs (names indicate bridged segments)
+      ├─ seg_001_...               : Left‑side recursive substeps (if any)
+      └─ seg_002_...               : Right‑side recursive substeps (if any)
+
+Notes:
+-----
+- Inputs:
+  • Provide ≥2 structures to `-i/--input` in reaction order. Either repeat `-i` or pass multiple paths after a single `-i`.
+  • Endpoint pre‑optimization runs by default (`--pre-opt True`). With `--align True`, all inputs are co‑aligned and
+    `freeze_atoms` are refined to the first input.
+- Bond‑change detection: uses `bond_changes.compare_structures` with `bond_factor`, `margin_fraction`,
+  and `delta_fraction` thresholds.
+- Concatenation policy:
+  • Endpoint duplicate removal when RMSD ≤ `search.stitch_rmsd_thresh` (default 1e‑4 Å).
+  • Bridge GSM when gap RMSD > `search.bridge_rmsd_thresh` (default 1e‑4 Å).
+  • If an interface shows covalent changes, insert a **new recursive segment** instead of a bridge.
+- Nodes and recursion:
+  • Segment vs bridge nodes can differ via `search.max_nodes_segment` and `search.max_nodes_bridge` (segment defaults to `--max-nodes`).
+  • Kinks use `search.kink_max_nodes` (default 3) linear nodes, each optimized individually.
+  • Recursion depth is capped by `search.max_depth` (default 10).
+- Calculators & optimizers:
+  • A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
+  • GSM employs pysisyphus `GrowingString` + `StringOptimizer`; single‑structure uses LBFGS or RFO.
+- Configuration precedence: **CLI > YAML > defaults** (`geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`).
+- Final merge rule with `--align True`: when `--ref-pdb` is provided, the **first** reference PDB is used for *all* pairs
+  in the final merge (passing one file is sufficient). Without `--align`, supply one reference PDB per input.
+- Console output prints the linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) and the exact
+  labels/energies used to build the energy diagram.
 """
 
 from __future__ import annotations
