@@ -98,7 +98,7 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 
-from .uma_pysis import uma_pysis
+from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     convert_xyz_to_pdb,
     freeze_links as detect_freeze_links,
@@ -114,30 +114,14 @@ from .utils import (
 # -----------------------------------------------
 
 # Geometry options (YAML key: geom)
-GEOM_KW = {
-    "coord_type"  : "cart",  # Coordinate type: "cart" | "dlc". "dlc" can be better for small molecules.
-    "freeze_atoms": []       # 0-based indices of atoms to freeze.
-}
+GEOM_KW = dict(GEOM_KW_DEFAULT)
 
 # Calculator: UMA / uma_pysis  (YAML key: calc)
-CALC_KW = {
-    # Charge and multiplicity
-    "charge": 0,                 # int, total charge
-    "spin": 1,                   # int, multiplicity (= 2S+1); 1 for singlet
-
-    # Model selection
-    "model": "uma-s-1p1",        # str, UMA pretrained model name: "uma-s-1p1" | "uma-m-1p1"
-    "task_name": "omol",         # str, UMA dataset/task tag stored in AtomicData ("omol" for molecules)
-
-    # Device & graph construction
-    "device": "auto",            # "cuda" | "cpu" | "auto"
-    "max_neigh": None,           # Optional[int], override model's max neighbors
-    "radius": None,              # Optional[float], cutoff radius (Å); defaults to model cutoff
-    "r_edges": False,            # bool, store edge vectors in the graph (UMA option)
-
-    # Hessian output form
-    "out_hess_torch": False,     # bool, True: return torch.Tensor Hessian on CUDA; False: numpy on CPU
-}
+CALC_KW = dict(_UMA_CALC_KW)
+CALC_KW.update({
+    # Optimization expects numpy Hessians by default
+    "out_hess_torch": False,
+})
 
 # Optimizer base (common to LBFGS & RFO)  (YAML key: opt)
 OPT_BASE_KW = {

@@ -95,7 +95,7 @@ import time
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
-from pdb2reaction.uma_pysis import uma_pysis
+from pdb2reaction.uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from pdb2reaction.utils import (
     convert_xyz_to_pdb,
     load_yaml_dict,
@@ -109,30 +109,7 @@ from pdb2reaction.utils import (
 # Default configuration
 # --------------------------
 
-GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",       # str, coordinate representation for geom_loader (Cartesian recommended)
-    "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
-}
-
-CALC_KW_DEFAULT: Dict[str, Any] = {
-    # Charge and multiplicity
-    "charge": 0,                # int, total charge of the system
-    "spin": 1,                  # int, multiplicity (= 2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",      # str, UMA pretrained model identifier
-    "task_name": "omol",       # str, UMA dataset/task tag stored in AtomicData
-
-    # Device & graph construction
-    "device": "auto",          # str, "cuda" | "cpu" | "auto"
-    "max_neigh": None,         # Optional[int], override model neighbor cap
-    "radius": None,            # Optional[float], cutoff radius (Å) for neighbor graph
-    "r_edges": False,          # bool, include edge vectors in the UMA graph
-    "out_hess_torch": True,    # bool, request torch.Tensor Hessian (EulerPC can use GPU Hessians)
-
-    # Hessian computation controls
-    "hessian_calc_mode": "Analytical",  # str, "FiniteDifference" | "Analytical"
-}
+CALC_KW_DEFAULT: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 IRC_KW_DEFAULT: Dict[str, Any] = {
     # Arguments for IRC.__init__ (forwarded to EulerPC via **kwargs)
