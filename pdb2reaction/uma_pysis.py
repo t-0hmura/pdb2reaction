@@ -397,7 +397,7 @@ class uma_pysis(Calculator):
 
     def _zero_frozen_forces_ev(self, F: np.ndarray) -> np.ndarray:
         """Zero forces (eV/Å) on frozen atoms."""
-        if F is None or not self.freeze_atoms:
+        if (F is None) or (len(self.freeze_atoms) == 0):
             return F
         Fz = F.copy()
         Fz[np.asarray(self.freeze_atoms, dtype=int)] = 0.0
@@ -411,7 +411,7 @@ class uma_pysis(Calculator):
         Else keep full size and zero columns corresponding to frozen DOF.
         """
         n_atoms = H.size(0)
-        if not self.freeze_atoms:
+        if len(self.freeze_atoms) == 0:
             return H  # nothing to do
 
         active_atoms, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
