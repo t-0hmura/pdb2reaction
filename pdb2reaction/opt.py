@@ -101,11 +101,11 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    merge_detected_link_parents,
     merge_freeze_atom_indices,
 )
 
@@ -349,16 +349,19 @@ def cli(
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir
 
+        freeze = merge_freeze_atom_indices(geom_cfg)
         # Optionally infer "freeze_atoms" from link hydrogens in PDB
         if freeze_links and input_path.suffix.lower() == ".pdb":
-            try:
-                detected = detect_freeze_links(input_path)
-            except Exception as e:
-                click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
-                detected = []
-            merged = merge_freeze_atom_indices(geom_cfg, detected)
-            if merged:
-                click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+            freeze = merge_detected_link_parents(
+                geom_cfg,
+                input_path,
+                on_warning=lambda exc: click.echo(
+                    f"[freeze-links] WARNING: Could not detect link parents: {exc}",
+                    err=True,
+                ),
+            )
+            if freeze:
+                click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
 
         # Normalize and select optimizer kind
         kind = _norm_opt_mode(opt_mode)
@@ -447,16 +450,6 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
-
-
-# Avoid shadowing the click option name `freeze_links` above
-def freeze_links_helper(pdb_path: Path):
-    """
-    Small shim to keep the intent readable.
-    """
-    return freeze_links(pdb_path)
-
-
 # Allow `python -m pdb2reaction.commands.opt` direct execution
 if __name__ == "__main__":
     cli()

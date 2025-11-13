@@ -136,9 +136,9 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
+    merge_detected_link_parents,
     pretty_block,
     format_geom_for_echo,
     merge_freeze_atom_indices,
@@ -1345,16 +1345,19 @@ def cli(
     if hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
+    freeze = merge_freeze_atom_indices(geom_cfg)
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
-        try:
-            detected = detect_freeze_links(input_path)
-        except Exception as e:
-            click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
-            detected = []
-        merged = merge_freeze_atom_indices(geom_cfg, detected)
-        if merged:
-            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+        freeze = merge_detected_link_parents(
+            geom_cfg,
+            input_path,
+            on_warning=lambda exc: click.echo(
+                f"[freeze-links] WARNING: Could not detect link parents: {exc}",
+                err=True,
+            ),
+        )
+        if freeze:
+            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
 
     # ---- Paess freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian) ----
     if "freeze_atoms" in geom_cfg:

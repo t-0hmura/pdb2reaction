@@ -95,7 +95,7 @@ from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
-    freeze_links as detect_freeze_links,
+    merge_detected_link_parents,
     convert_xyz_to_pdb as _convert_xyz_to_pdb,
     pretty_block,
     format_geom_for_echo,
@@ -612,16 +612,19 @@ def cli(
     thermo_cfg["pressure_atm"]  = float(pressure_atm)
     thermo_cfg["dump"]          = bool(dump)
 
+    freeze = merge_freeze_atom_indices(geom_cfg)
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":
-        try:
-            detected = detect_freeze_links(input_path)
-        except Exception as e:
-            click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
-            detected = []
-        merged = merge_freeze_atom_indices(geom_cfg, detected)
-        if merged:
-            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+        freeze = merge_detected_link_parents(
+            geom_cfg,
+            input_path,
+            on_warning=lambda exc: click.echo(
+                f"[freeze-links] WARNING: Could not detect link parents: {exc}",
+                err=True,
+            ),
+        )
+        if freeze:
+            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
 
     out_dir_path = Path(out_dir).resolve()
     out_dir_path.mkdir(parents=True, exist_ok=True)

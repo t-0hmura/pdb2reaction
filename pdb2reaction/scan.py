@@ -134,9 +134,9 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    freeze_links as detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
+    merge_detected_link_parents,
     pretty_block,
     format_geom_for_echo,
     merge_freeze_atom_indices,
@@ -185,14 +185,6 @@ BOND_KW: Dict[str, Any] = {
     "margin_fraction": 0.05,     # float, fractional margin to tolerate small deviations
     "delta_fraction": 0.05,      # float, change threshold to flag bond formation/breaking
 }
-def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
-    try:
-        return list(detect_freeze_links(pdb_path))
-    except Exception as e:
-        click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
-        return []
-
-
 def _ensure_stage_dir(base: Path, k: int) -> Path:
     d = base / f"stage_{k:02d}"
     d.mkdir(parents=True, exist_ok=True)
@@ -574,11 +566,16 @@ def cli(
         # Merge freeze_atoms with link parents (PDB)
         freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links and input_path.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(input_path)
-            if detected:
-                freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                if freeze:
-                    click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+            freeze = merge_detected_link_parents(
+                geom_cfg,
+                input_path,
+                on_warning=lambda exc: click.echo(
+                    f"[freeze-links] WARNING: Could not detect link parents for '{input_path.name}': {exc}",
+                    err=True,
+                ),
+            )
+            if freeze:
+                click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
         # Attach freeze indices to Geometry for optimizer awareness
         if freeze:
             try:

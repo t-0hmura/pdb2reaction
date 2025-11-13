@@ -10,6 +10,7 @@ Usage (API)
         build_energy_diagram,
         convert_xyz_to_pdb,
         freeze_links,
+        merge_detected_link_parents,
         merge_freeze_atom_indices,
         pretty_block,
     )
@@ -43,6 +44,7 @@ Description
   - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
   - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`; returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf` in that case).
   - `freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/`HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms (“others”). Returns an empty list if no link hydrogens are present.
+  - `merge_detected_link_parents(geom_cfg, pdb_path, on_warning=None)`: Detect link parents via `freeze_links`, merge them into `geom_cfg["freeze_atoms"]`, and return the updated sorted list. When detection fails, `on_warning(exception)` is invoked (if provided) and the existing freeze list is kept unchanged.
 
 Outputs (& Directory Layout)
 -----
@@ -65,7 +67,7 @@ Notes:
 import math
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, List, Tuple
 
 import yaml
 from ase.io import read, write
@@ -507,3 +509,38 @@ def freeze_links(pdb_path):
         idx, dist = nearest_index((x, y, z), others)
         indices.append(idx)
     return indices
+
+
+def merge_detected_link_parents(
+    geom_cfg: Dict[str, Any],
+    pdb_path: Path,
+    *,
+    on_warning: Optional[Callable[[Exception], None]] = None,
+) -> List[int]:
+    """Detect link parents from *pdb_path* and merge them into ``geom_cfg``.
+
+    Parameters
+    ----------
+    geom_cfg
+        Geometry configuration dictionary that may already contain
+        ``"freeze_atoms"``.
+    pdb_path
+        Path to the PDB file used for link-parent detection.
+    on_warning
+        Optional callable invoked with the caught ``Exception`` when link-parent
+        detection fails. When omitted, failures are silent.
+
+    Returns
+    -------
+    list[int]
+        Sorted list of freeze-atom indices stored back into
+        ``geom_cfg["freeze_atoms"]``.
+    """
+
+    try:
+        detected = freeze_links(pdb_path)
+    except Exception as exc:  # pragma: no cover - defensive
+        if on_warning is not None:
+            on_warning(exc)
+        detected = []
+    return merge_freeze_atom_indices(geom_cfg, detected)
