@@ -23,9 +23,9 @@ Description
 - SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF `grids.level`), --out-dir. Verbosity can be overridden via YAML.
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
-    * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS)
-    * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; not available → Lowdin(S^{1/2}) fallback)
-    * IAO (charges: `lo.iao.fast_iao_mullikan_pop`; spins: `fast_iao_mullikan_spin_pop` implemented here)
+    * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS; failure → null)
+    * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; not available or failure → null)
+    * IAO (charges: `lo.iao.fast_iao_mullikan_pop`; spins: `fast_iao_mullikan_spin_pop` implemented here; failure → null)
 - Energies are reported in Hartree and kcal/mol; SCF convergence metadata and timing are recorded.
 
 Outputs (& Directory Layout)
@@ -40,10 +40,10 @@ Outputs (& Directory Layout)
     │       engine: "gpu4pyscf" or "pyscf(cpu)"
     │       used_gpu: <bool>
     │     charges [index, element, mulliken, lowdin, iao]:
-    │       - [0, H, <float>, <float>, <float or null>]
+    │       - [0, H, <float or null>, <float or null>, <float or null>]
     │       - ...
     │     spin_densities [index, element, mulliken, lowdin, iao]:
-    │       - [0, H, <float>, <float>, <float or null>]
+    │       - [0, H, <float or null>, <float or null>, <float or null>]
     │       - ...
     └── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
 
@@ -54,7 +54,7 @@ Notes:
 - Grids and checkpointing: sets `grids.level` when supported; disables SCF checkpoint files when possible.
 - Units: input coordinates are in Å. Functional/basis names are PySCF-style and case-insensitive for common sets.
 - Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.
-- IAO quantities may be unavailable if IAO construction fails; in that case the IAO column values are `null`.
+- If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column becomes `null`.
 """
 
 from __future__ import annotations
@@ -206,9 +206,9 @@ def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
 def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
     Compute atomic charges by three schemes:
-      - 'mulliken' : scf.hf.mulliken_pop
-      - 'lowdin'   : scf.hf.mulliken_pop_meta_lowdin_ao (meta-Löwdin AO)
-      - 'iao'      : lo.iao.fast_iao_mullikan_pop (None if IAO fails)
+      - 'mulliken' : scf.hf.mulliken_pop (failure → None)
+      - 'lowdin'   : scf.hf.mulliken_pop_meta_lowdin_ao (failure → None)
+      - 'iao'      : lo.iao.fast_iao_mullikan_pop (failure → None)
     """
     from pyscf.scf import hf as scf_hf
     from pyscf.lo import iao as lo_iao
@@ -219,26 +219,23 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     dm_tot = dm[0] + dm[1] if (isinstance(dm, np.ndarray) and dm.ndim == 3) else dm
 
     # Mulliken charges
-    _, mull_chg = scf_hf.mulliken_pop(mol, dm_tot, s=S, verbose=0)
-    mull_q = np.asarray(mull_chg, dtype=float).tolist()
+    mull_q: Optional[List[float]]
+    try:
+        _, mull_chg = scf_hf.mulliken_pop(mol, dm_tot, s=S, verbose=0)
+        mull_q = np.asarray(mull_chg, dtype=float).tolist()
+    except Exception as e:
+        click.echo(f"[Mulliken] WARNING: Failed to compute Mulliken charges: {e}", err=True)
+        mull_q = None
 
     # meta-Löwdin charges
+    low_q: Optional[List[float]]
     try:
         _, low_chg = scf_hf.mulliken_pop_meta_lowdin_ao(mol, dm_tot, verbose=0, s=S)
         low_q = np.asarray(low_chg, dtype=float).tolist()
     except Exception as e:
         click.echo(f"[Löwdin] WARNING: Failed to compute meta-Löwdin charges: {e}", err=True)
-        # フォールバック（通常の Lowdin）
-        w, U = np.linalg.eigh(S)
-        w = np.clip(w, 0.0, None)
-        S_half = (U * np.sqrt(w)) @ U.T
-        pop_ao_low = np.diag(S_half @ dm_tot @ S_half)
-        aoslice = mol.aoslice_by_atom()
-        pop_atom_low = np.zeros(mol.natm, dtype=float)
-        for a, (_, __, p0, p1) in enumerate(aoslice):
-            pop_atom_low[a] = float(np.sum(pop_ao_low[p0:p1]))
-        Z = mol.atom_charges()
-        low_q = (Z - pop_atom_low).astype(float).tolist()
+        # No custom fallback; return nulls
+        low_q = None
 
     # IAO charges
     iao_q: Optional[List[float]] = None
@@ -269,9 +266,9 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
 def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
     Compute atomic spin densities (Ms) by three schemes:
-      - 'mulliken' : scf.uhf.mulliken_spin_pop (RKS → zeros)
-      - 'lowdin'   : scf.uhf.mulliken_spin_pop_meta_lowdin_ao (RKS → zeros)
-      - 'iao'      : fast_iao_mullikan_spin_pop (RKS → zeros; None if IAO fails)
+      - 'mulliken' : scf.uhf.mulliken_spin_pop (RKS → zeros; failure → None)
+      - 'lowdin'   : scf.uhf.mulliken_spin_pop_meta_lowdin_ao (RKS → zeros; failure → None)
+      - 'iao'      : fast_iao_mullikan_spin_pop (RKS → zeros; failure → None)
     """
     from pyscf.scf import uhf as scf_uhf
     from pyscf.lo import iao as lo_iao
@@ -288,30 +285,17 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     # UKS/UHF: true spin-resolved analysis
     try:
         _, Ms_mull = scf_uhf.mulliken_spin_pop(mol, dm, s=S, verbose=0)
-        mull = np.asarray(Ms_mull, dtype=float).tolist()
+        mull: Optional[List[float]] = np.asarray(Ms_mull, dtype=float).tolist()
     except Exception as e:
         click.echo(f"[Spin Mulliken] WARNING: Failed to compute Mulliken spin densities: {e}", err=True)
-        # フォールバック計算
-        da, db = dm[0], dm[1]
-        diff_ao = np.einsum("ij,ji->i", (da - db), S)
-        aoslice = mol.aoslice_by_atom()
-        mull = [float(np.sum(diff_ao[p0:p1])) for _, (_, __, p0, p1) in enumerate(aoslice)]
+        mull = None
 
     try:
         _, Ms_low = scf_uhf.mulliken_spin_pop_meta_lowdin_ao(mol, dm, verbose=0, s=S)
-        low = np.asarray(Ms_low, dtype=float).tolist()
+        low: Optional[List[float]] = np.asarray(Ms_low, dtype=float).tolist()
     except Exception as e:
         click.echo(f"[Spin Löwdin] WARNING: Failed to compute meta-Löwdin spin densities: {e}", err=True)
-        # フォールバック: 普通の Lowdin(S^{1/2})
-        w, U = np.linalg.eigh(S)
-        w = np.clip(w, 0.0, None)
-        S_half = (U * np.sqrt(w)) @ U.T
-        da, db = dm[0], dm[1]
-        popA = np.diag(S_half @ da @ S_half)
-        popB = np.diag(S_half @ db @ S_half)
-        diff = popA - popB
-        aoslice = mol.aoslice_by_atom()
-        low = [float(np.sum(diff[p0:p1])) for _, (_, __, p0, p1) in enumerate(aoslice)]
+        low = None
 
     iao_ms: Optional[List[float]] = None
     try:
@@ -518,27 +502,27 @@ def cli(
         def _round_list(xs, tol=1e-10):
             return [0.0 if (x == x) and abs(x) < tol else float(x) for x in xs]  # keep NaN as-is
 
-        # Round tiny numbers
-        charges["mulliken"] = _round_list(charges["mulliken"])
-        charges["lowdin"]   = _round_list(charges["lowdin"])
-        charges["iao"]      = None if charges["iao"] is None else _round_list(charges["iao"])
-        spins["mulliken"]   = _round_list(spins["mulliken"])
-        spins["lowdin"]     = _round_list(spins["lowdin"])
-        spins["iao"]        = None if spins["iao"] is None else _round_list(spins["iao"])
+        # Round tiny numbers (None-safe)
+        charges["mulliken"] = None if charges["mulliken"] is None else _round_list(charges["mulliken"])
+        charges["lowdin"]   = None if charges["lowdin"]   is None else _round_list(charges["lowdin"])
+        charges["iao"]      = None if charges["iao"]      is None else _round_list(charges["iao"])
+        spins["mulliken"]   = None if spins["mulliken"]   is None else _round_list(spins["mulliken"])
+        spins["lowdin"]     = None if spins["lowdin"]     is None else _round_list(spins["lowdin"])
+        spins["iao"]        = None if spins["iao"]        is None else _round_list(spins["iao"])
 
         # Build per-atom tables
         charges_table: List[List[Any]] = []
         spins_table:   List[List[Any]] = []
         for i in range(mol.natm):
             elem = mol.atom_symbol(i)
-            q_mull = charges["mulliken"][i]
-            q_low  = charges["lowdin"][i]
-            q_iao  = None if charges["iao"] is None else charges["iao"][i]
+            q_mull = None if charges["mulliken"] is None else charges["mulliken"][i]
+            q_low  = None if charges["lowdin"]   is None else charges["lowdin"][i]
+            q_iao  = None if charges["iao"]      is None else charges["iao"][i]
             charges_table.append([i, elem, q_mull, q_low, q_iao])
 
-            s_mull = spins["mulliken"][i]
-            s_low  = spins["lowdin"][i]
-            s_iao  = None if spins["iao"] is None else spins["iao"][i]
+            s_mull = None if spins["mulliken"] is None else spins["mulliken"][i]
+            s_low  = None if spins["lowdin"]   is None else spins["lowdin"][i]
+            s_iao  = None if spins["iao"]      is None else spins["iao"][i]
             spins_table.append([i, elem, s_mull, s_low, s_iao])
 
         # ---- Echo charges/spins to stdout in flow style lines ----
