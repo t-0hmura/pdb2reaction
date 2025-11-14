@@ -8,7 +8,7 @@ Runs Intrinsic Reaction Coordinate (IRC) integrations with the EulerPC predictor
 pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
                  [--max-cycles N] [--step-size Δs] [--root k]
                  [--forward BOOL] [--backward BOOL]
-                 [--freeze-links/--no-freeze-links]
+                 [--freeze-links BOOL]
                  [--out-dir DIR]
                  [--hessian-calc-mode Analytical|FiniteDifference]
                  [--args-yaml FILE]
@@ -25,7 +25,7 @@ pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
 | `--root INT` | Imaginary-mode index for the initial displacement (`irc.root`). | _None_ (default `0`) |
 | `--forward BOOL` | Run forward branch (`irc.forward`). Explicit `True` or `False`. | _None_ (default `True`) |
 | `--backward BOOL` | Run backward branch (`irc.backward`). Explicit `True` or `False`. | _None_ (default `True`) |
-| `--freeze-links / --no-freeze-links` | For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `--freeze-links` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode. | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |

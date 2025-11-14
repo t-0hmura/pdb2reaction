@@ -8,8 +8,8 @@ Performs staged bond-length scans with harmonic restraints and single-structure 
 pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
                   [--one-based/--zero-based] [--max-step-size ΔÅ] [--bias-k k]
                   [--relax-max-cycles N] [--opt-mode light|lbfgs|heavy|rfo]
-                  [--freeze-links/--no-freeze-links] [--dump/--no-dump]
-                  [--out-dir DIR] [--preopt/--no-preopt] [--endopt/--no-endopt]
+                  [--freeze-links BOOL] [--dump BOOL]
+                  [--out-dir DIR] [--preopt BOOL] [--endopt BOOL]
                   [--args-yaml FILE]
 ```
 
@@ -25,12 +25,12 @@ pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
 | `--bias-k FLOAT` | Harmonic bias strength `k` (eV·Å⁻²). Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles per step (overrides `opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Relaxation optimizer (`light|lbfgs` or `heavy|rfo`). | `light` |
-| `--freeze-links / --no-freeze-links` | Freeze link-hydrogen parents for PDB inputs. | `--freeze-links` |
-| `--dump / --no-dump` | Dump stage trajectories. | `--no-dump` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. Freeze link-hydrogen parents for PDB inputs. | `True` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump stage trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_scan/` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt / --no-preopt` | Pre-optimize the initial structure before scanning. | `--preopt` |
-| `--endopt / --no-endopt` | Unbiased relaxation after each stage. | `--endopt` |
+| `--preopt BOOL` | Explicit `True`/`False`. Pre-optimize the initial structure before scanning. | `True` |
+| `--endopt BOOL` | Explicit `True`/`False`. Unbiased relaxation after each stage. | `True` |
 
 ### Shared sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: see [`opt`](opt.md#yaml-configuration-args-yaml) for all keys and defaults. `opt.dump` is internally forced to `False`; dumping is controlled by `--dump`.

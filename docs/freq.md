@@ -6,10 +6,10 @@ Computes vibrational frequencies using UMA, performs partial Hessian vibrational
 ## Usage
 ```bash
 pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
-                  [--freeze-links/--no-freeze-links]
+                  [--freeze-links BOOL]
                   [--max-write N] [--amplitude-ang Å] [--n-frames N]
                   [--sort value|abs] [--out-dir DIR]
-                  [--temperature K] [--pressure atm] [--dump/--no-dump]
+                  [--temperature K] [--pressure atm] [--dump BOOL]
                   [--hessian-calc-mode Analytical|FiniteDifference]
                   [--args-yaml FILE]
 ```
@@ -20,7 +20,7 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
-| `--freeze-links / --no-freeze-links` | For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `--freeze-links` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `True` |
 | `--max-write INT` | Number of modes to export. | `20` |
 | `--amplitude-ang FLOAT` | Animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |
@@ -28,7 +28,7 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 | `--out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
-| `--dump / --no-dump` | Write `thermoanalysis.yaml`. | `--no-dump` |
+| `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

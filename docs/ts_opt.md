@@ -6,9 +6,9 @@ Optimizes transition states using either the Hessian Dimer method ("light") or R
 ## Usage
 ```bash
 pdb2reaction ts_opt -i INPUT -q CHARGE [--spin 2S+1]
-                    [--freeze-links/--no-freeze-links]
+                    [--freeze-links BOOL]
                     [--max-cycles N] [--opt-mode light|heavy]
-                    [--dump/--no-dump] [--out-dir DIR]
+                    [--dump BOOL] [--out-dir DIR]
                     [--hessian-calc-mode Analytical|FiniteDifference]
                     [--args-yaml FILE]
 ```
@@ -19,10 +19,10 @@ pdb2reaction ts_opt -i INPUT -q CHARGE [--spin 2S+1]
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
-| `--freeze-links / --no-freeze-links` | For PDB inputs, freeze link-hydrogen parents (propagated to UMA). | `--freeze-links` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (propagated to UMA). | `True` |
 | `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | `light` → Hessian Dimer, `heavy` → RS-I-RFO. | `light` |
-| `--dump / --no-dump` | Dump optimization trajectories. | `--no-dump` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump optimization trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_ts_opt/` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
