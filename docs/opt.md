@@ -6,7 +6,7 @@ Performs single-structure geometry optimizations with pysisyphus using either th
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|rfo]
-                 [--freeze-links/--no-freeze-links] [--dump/--no-dump]
+                 [--freeze-links BOOL] [--dump BOOL]
                  [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
 ```
 
@@ -16,10 +16,10 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 | `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb`, `.xyz`, `.trj`, …). | Required |
 | `-q, --charge INT` | Total charge passed to UMA. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
-| `--freeze-links / --no-freeze-links` | When the input is PDB, detect link hydrogens and freeze their parent atoms (merged with `geom.freeze_atoms`). | `--freeze-links` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. When the input is PDB, detect link hydrogens and freeze their parent atoms (merged with `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Maximum optimization cycles (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Select optimizer: `light`/`lbfgs` → LBFGS, `heavy`/`rfo` → RFO. | `light` |
-| `--dump / --no-dump` | Emit `optimization.trj`. | `--no-dump` |
+| `--dump BOOL` | Explicit `True`/`False`. Emit `optimization.trj`. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_opt/` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

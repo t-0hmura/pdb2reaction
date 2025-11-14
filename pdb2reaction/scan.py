@@ -23,8 +23,8 @@ Usage (CLI)
         --dump {True|False} \
         --out-dir PATH \
         [--args-yaml FILE] \
-        [--preopt/--no-preopt] \
-        [--endopt/--no-endopt]
+        [--preopt {True|False}] \
+        [--endopt {True|False}]
 
 Examples::
     # Single-stage, minimal inputs (PDB)

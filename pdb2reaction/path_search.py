@@ -17,14 +17,14 @@ Recommended/common:
     --sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
     --max-nodes          Internal nodes for segment GSM; default 10.
     --max-cycles         Max optimization cycles; default 1000.
-    --climb/--no-climb   Enable TS search for the first segment; default on.
-    --pre-opt/--no-pre-opt  Pre-optimize endpoints; default on.
-    --align/--no-align   Rigidly co‑align all inputs after pre‑opt; default on.
-    --args-yaml PATH     YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
-    --ref-pdb PATH [...] Full template PDB(s) for final merge (see Notes).
-    --out-dir PATH       Output directory; default ./result_path_search/
-    --dump               Save optimizer dumps; default off.
-    --freeze-links {True|False}  Freeze parents of link hydrogens for PDB input; default on.
+    --climb {True|False}        Enable TS search for the first segment; default True.
+    --pre-opt {True|False}      Pre-optimize endpoints; default True.
+    --align/--no-align          Rigidly co‑align all inputs after pre‑opt; default on.
+    --args-yaml PATH            YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
+    --ref-pdb PATH [...]        Full template PDB(s) for final merge (see Notes).
+    --out-dir PATH              Output directory; default ./result_path_search/
+    --dump {True|False}         Save optimizer dumps; default False.
+    --freeze-links {True|False} Freeze parents of link hydrogens for PDB input; default True.
 
 Examples::
     # Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)

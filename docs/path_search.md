@@ -6,10 +6,10 @@ Runs a recursive Growing String (GSM) search across multiple structures (reactan
 ## Usage
 ```bash
 pdb2reaction path_search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
-                         [--freeze-links/--no-freeze-links]
-                         [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
-                         [--sopt-mode lbfgs|rfo|light|heavy] [--dump/--no-dump]
-                         [--out-dir DIR] [--pre-opt/--no-pre-opt]
+                         [--freeze-links BOOL]
+                         [--max-nodes N] [--max-cycles N] [--climb BOOL]
+                         [--sopt-mode lbfgs|rfo|light|heavy] [--dump BOOL]
+                         [--out-dir DIR] [--pre-opt BOOL]
                          [--align/--no-align] [--ref-pdb FILE ...]
                          [--args-yaml FILE]
 ```
@@ -20,16 +20,16 @@ pdb2reaction path_search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). A single `-i` may be followed by multiple paths. | Required |
 | `-q, --charge INT` | Total charge. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
-| `--freeze-links / --no-freeze-links` | For PDB inputs, freeze link-hydrogen parents when building pockets. | `--freeze-links` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents when building pockets. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
-| `--climb / --no-climb` | Enable climbing image for the first segment in each pair. | `--climb` |
+| `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes (`light|lbfgs` or `heavy|rfo`). | `lbfgs` |
-| `--dump / --no-dump` | Dump GSM and single-structure trajectories. | `--no-dump` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--pre-opt / --no-pre-opt` | Pre-optimise each endpoint before the GSM search. | `--pre-opt` |
-| `--align / --no-align` | Align all inputs to the first structure before searching. | `--align` |
+| `--pre-opt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before the GSM search. | `True` |
+| `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |
 | `--ref-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 
 ### Shared sections

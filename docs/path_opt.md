@@ -6,9 +6,9 @@ Optimizes a minimum-energy path between two endpoints using the pysisyphus Growi
 ## Usage
 ```bash
 pdb2reaction path_opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
-                      [--freeze-links/--no-freeze-links]
-                      [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
-                      [--dump/--no-dump] [--out-dir DIR] [--args-yaml FILE]
+                      [--freeze-links BOOL]
+                      [--max-nodes N] [--max-cycles N] [--climb BOOL]
+                      [--dump BOOL] [--out-dir DIR] [--args-yaml FILE]
 ```
 
 ## CLI options
@@ -17,11 +17,11 @@ pdb2reaction path_opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 | `-i, --input PATH PATH` | Two endpoint structures (reactant, product). | Required |
 | `-q, --charge INT` | Total charge. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
-| `--freeze-links / --no-freeze-links` | For PDB inputs, freeze link-hydrogen parents. | `--freeze-links` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents. | `True` |
 | `--max-nodes INT` | Internal nodes in the string (total images = `max_nodes + 2`). | `30` |
 | `--max-cycles INT` | Maximum optimizer cycles. | `1000` |
-| `--climb / --no-climb` | Enable climbing-image refinement. | `--climb` |
-| `--dump / --no-dump` | Dump optimizer trajectories and restarts. | `--no-dump` |
+| `--climb BOOL` | Explicit `True`/`False`. Enable climbing-image refinement. | `True` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump optimizer trajectories and restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
