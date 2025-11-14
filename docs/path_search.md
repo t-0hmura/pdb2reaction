@@ -1,11 +1,11 @@
-# `path_search` subcommand
+# `path-search` subcommand
 
 ## Purpose
 Runs a recursive Growing String (GSM) search across multiple structures (reactant → intermediates → product), stitches segment paths, and optionally merges pocket trajectories back into full PDB templates.
 
 ## Usage
 ```bash
-pdb2reaction path_search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
+pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
                          [--freeze-links BOOL]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--sopt-mode lbfgs|rfo|light|heavy] [--dump BOOL]
@@ -22,7 +22,7 @@ pdb2reaction path_search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents when building pockets. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
-| `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
+| `--max-cycles INT` | Maximum GSM optimization cycles. | `1000` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes (`light|lbfgs` or `heavy|rfo`). | `lbfgs` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories. | `False` |
