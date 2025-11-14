@@ -6,7 +6,7 @@ ts_opt — Transition-state optimization CLI
 
 Usage (CLI)
 -----
-    pdb2reaction ts_opt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
+    pdb2reaction ts-opt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
                         [--opt-mode light|heavy]
                         [--freeze-links True|False]
                         [--max-cycles N]
@@ -17,16 +17,16 @@ Usage (CLI)
 
 Examples::
     # Minimal (recommended to always specify charge and spin)
-    pdb2reaction ts_opt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_ts_opt/
+    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_ts_opt/
 
     # Light mode (HessianDimer) with YAML overrides and finite-difference Hessian
-    pdb2reaction ts_opt -i ts_cand.pdb -q 0 -s 1 \
+    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 \
       --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
       --out-dir ./result_ts_opt/ --args-yaml ./args.yaml \
       --hessian-calc-mode FiniteDifference
 
     # Heavy mode (RS-I-RFO) using YAML
-    pdb2reaction ts_opt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
+    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
       --args-yaml ./args.yaml --out-dir ./result_ts_opt/
 
 

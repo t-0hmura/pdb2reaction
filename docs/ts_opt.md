@@ -1,11 +1,11 @@
-# `ts_opt` subcommand
+# `ts-opt` subcommand
 
 ## Purpose
 Optimizes transition states using either the Hessian Dimer method ("light") or RS-I-RFO ("heavy"), leveraging UMA for energies, gradients, and Hessians, and exporting the final imaginary mode.
 
 ## Usage
 ```bash
-pdb2reaction ts_opt -i INPUT -q CHARGE [--spin 2S+1]
+pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
                     [--freeze-links BOOL]
                     [--max-cycles N] [--opt-mode light|heavy]
                     [--dump BOOL] [--out-dir DIR]

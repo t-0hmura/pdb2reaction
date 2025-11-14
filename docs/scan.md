@@ -50,9 +50,9 @@ Parameters for UMA-based bond-change detection (mirrors `path_search`).
 
 ## Outputs
 - `<out-dir>/stage_XX/scan.trj` (and `.pdb` when the input was PDB and dumping is enabled).
-- `<out-dir>/stage_XX/scan_summary.yaml` with per-step metadata.
 - Final unbiased geometries after `--endopt` stored per stage.
 - Console summaries of resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks.
+- Final human-readable stage summary printed to the terminal (no separate YAML file).
 
 ## Notes
 - `--scan-lists` accepts multiple literals; each defines one stage, and tuple indices are normalized to 0-based internally.
@@ -82,7 +82,7 @@ calc:
   return_partial_hessian: true
 opt:
   thresh: gau
-  max_cycles: 100
+  max_cycles: 10000
   print_every: 1
   min_step_norm: 1.0e-08
   assert_min_step: true
@@ -100,7 +100,7 @@ opt:
   out_dir: ./result_scan/
 lbfgs:
   thresh: gau
-  max_cycles: 100
+  max_cycles: 10000
   print_every: 1
   min_step_norm: 1.0e-08
   assert_min_step: true
@@ -126,7 +126,7 @@ lbfgs:
   max_mu_reg_adaptions: 10
 rfo:
   thresh: gau
-  max_cycles: 100
+  max_cycles: 10000
   print_every: 1
   min_step_norm: 1.0e-08
   assert_min_step: true

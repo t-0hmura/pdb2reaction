@@ -1,11 +1,11 @@
-# `path_opt` subcommand
+# `path-opt` subcommand
 
 ## Purpose
 Optimizes a minimum-energy path between two endpoints using the pysisyphus Growing String method with UMA providing energies, gradients, and Hessians.
 
 ## Usage
 ```bash
-pdb2reaction path_opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
+pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
                       [--freeze-links BOOL]
                       [--max-nodes N] [--max-cycles N] [--climb BOOL]
                       [--dump BOOL] [--out-dir DIR] [--args-yaml FILE]
@@ -44,10 +44,10 @@ Growing String controls (defaults shown in parentheses).
 StringOptimizer controls (defaults in parentheses).
 
 - `type` (`"string"`): Label for bookkeeping.
-- `stop_in_when_full` (`100`): Extra cycles allowed after full growth (overridden by `--max-cycles`).
+- `stop_in_when_full` (`1000`): Extra cycles allowed after full growth (overridden by `--max-cycles`).
 - `align` (`False`): Internal alignment disabled (external Kabsch alignment is used).
 - `scale_step` (`"global"`): Step scaling policy.
-- `max_cycles` (`100`): Macro-iteration cap (overridden by `--max-cycles`).
+- `max_cycles` (`1000`): Macro-iteration cap (overridden by `--max-cycles`).
 - `dump` (`False`), `dump_restart` (`False`): Trajectory/restart dumping (dump toggled by CLI).
 - `reparam_thresh` (`1e-3`), `coord_diff_thresh` (`0.0`): Reparametrisation and pruning thresholds.
 - `out_dir` (`"./result_path_opt/"`), `print_every` (`1`): Output location and logging cadence.
@@ -101,10 +101,10 @@ gs:
   scheduler: null
 opt:
   type: string
-  stop_in_when_full: 100
+  stop_in_when_full: 1000
   align: false
   scale_step: global
-  max_cycles: 100
+  max_cycles: 1000
   dump: false
   dump_restart: false
   reparam_thresh: 0.001
