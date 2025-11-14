@@ -1,11 +1,11 @@
-# `add_elem_info` subcommand
+# `add-elem-info` subcommand
 
 ## Purpose
 Repairs or populates element-symbol columns (77–78) in PDB files using Biopython heuristics aligned with the extractor’s residue definitions.
 
 ## Usage
 ```bash
-pdb2reaction add_elem_info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
+pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
 ```
 
 ## CLI options
