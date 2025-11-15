@@ -36,7 +36,8 @@ Description
         - -r None  : use absolute energies (no reference). Also accepts "none"/"null" (case-insensitive).
         - -r <int> : use the given 0-based frame index as the reference.
     - Generates a polished Plotly figure (no title) with bold ticks, consistent fonts, markers,
-      and a smoothed spline curve. Supported figure outputs: PNG (default), HTML, SVG, PDF.
+      and a smoothed spline curve. Supported figure outputs: PNG (default), JPEG/JPG, HTML,
+      SVG, PDF.
     - Optionally writes a CSV table of the data.
     - --reverse-x flips the x-axis so the last frame appears on the left
       (and makes -r init point to that last frame).
@@ -47,6 +48,7 @@ Outputs (& Directory Layout)
     - You can provide multiple filenames to -o and/or repeat -o to emit several outputs at once.
       Supported formats:
         - .png  : High-resolution raster figure (scale=2).
+        - .jpg/.jpeg : Raster figure (same rendering path as PNG).
         - .html : Standalone interactive Plotly figure.
         - .svg  : Vector figure.
         - .pdf  : Vector figure.
