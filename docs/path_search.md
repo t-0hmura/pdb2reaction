@@ -132,24 +132,6 @@ opt:
   out_dir: ./result_path_search/
   print_every: 1
 sopt:
-  base:
-    thresh: gau
-    max_cycles: 10000
-    print_every: 1
-    min_step_norm: 1.0e-08
-    assert_min_step: true
-    rms_force: null
-    rms_force_only: false
-    max_force_only: false
-    force_only: false
-    converge_to_geom_rms_thresh: 0.05
-    overachieve_factor: 0.0
-    check_eigval_structure: false
-    line_search: true
-    dump: false
-    dump_restart: false
-    prefix: ""
-    out_dir: ./result_path_search/
   lbfgs:
     thresh: gau
     max_cycles: 10000

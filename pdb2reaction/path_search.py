@@ -187,12 +187,6 @@ STOPT_KW.update({
     "out_dir": "./result_path_search/",
 })
 
-# Single‑structure optimization (common settings for LBFGS/RFO)
-SOPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
-SOPT_BASE_KW.update({
-    "out_dir": "./result_path_search/",
-})
-
 # LBFGS settings
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 LBFGS_KW.update({
