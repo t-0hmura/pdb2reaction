@@ -506,7 +506,7 @@ def cli(
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg   = dict(RFO_KW)
         bias_cfg  = dict(BIAS_KW)
-        bond_cfg  = dict(BOND_KW)  # <-- added
+        bond_cfg  = dict(BOND_KW)
 
         apply_yaml_overrides(
             yaml_cfg,
@@ -544,13 +544,13 @@ def cli(
         echo_calc = dict(calc_cfg)
         echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)
-        echo_bond = dict(bond_cfg)  # <-- added
+        echo_bond = dict(bond_cfg)
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("opt",  echo_opt))
         click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
         click.echo(pretty_block("bias", echo_bias))
-        click.echo(pretty_block("bond", echo_bond))  # <-- added
+        click.echo(pretty_block("bond", echo_bond))
 
         # ------------------------------------------------------------------
         # 2) Parse scan lists

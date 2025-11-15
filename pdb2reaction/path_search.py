@@ -16,7 +16,7 @@ Recommended/common:
     -s/--spin            Spin multiplicity (2S+1); default 1.
     --sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
     --max-nodes          Internal nodes for segment GSM; default 10.
-    --max-cycles         Max optimization cycles; default 1000.
+    --max-cycles         Max optimization cycles; default 100.
     --climb {True|False}        Enable TS search for the first segment; default True.
     --pre-opt {True|False}      Pre-optimize endpoints; default True.
     --align/--no-align          Rigidly co‑align all inputs after pre‑opt; default on.
@@ -1487,7 +1487,7 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
     pre_opt: bool,
-    align: bool,                # <-- added
+    align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
     # --- Robustly accept both styles for -i/--input and --ref-pdb ---
