@@ -152,10 +152,10 @@ gs:
   scheduler: null
 opt:
   type: string
-  stop_in_when_full: 1000
+  stop_in_when_full: 100
   align: false
   scale_step: global
-  max_cycles: 1000
+  max_cycles: 100
   dump: false
   dump_restart: false
   reparam_thresh: 0.001
