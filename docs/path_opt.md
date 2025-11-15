@@ -19,7 +19,7 @@ pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents. | `True` |
 | `--max-nodes INT` | Internal nodes in the string (total images = `max_nodes + 2`). | `30` |
-| `--max-cycles INT` | Maximum optimizer cycles. | `1000` |
+| `--max-cycles INT` | Maximum optimizer cycles. | `100` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing-image refinement. | `True` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimizer trajectories and restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
@@ -44,10 +44,10 @@ Growing String controls (defaults shown in parentheses).
 StringOptimizer controls (defaults in parentheses).
 
 - `type` (`"string"`): Label for bookkeeping.
-- `stop_in_when_full` (`1000`): Extra cycles allowed after full growth (overridden by `--max-cycles`).
+- `stop_in_when_full` (`100`): Extra cycles allowed after full growth (overridden by `--max-cycles`).
 - `align` (`False`): Internal alignment disabled (external Kabsch alignment is used).
 - `scale_step` (`"global"`): Step scaling policy.
-- `max_cycles` (`1000`): Macro-iteration cap (overridden by `--max-cycles`).
+- `max_cycles` (`100`): Macro-iteration cap (overridden by `--max-cycles`).
 - `dump` (`False`), `dump_restart` (`False`): Trajectory/restart dumping (dump toggled by CLI).
 - `reparam_thresh` (`1e-3`), `coord_diff_thresh` (`0.0`): Reparametrisation and pruning thresholds.
 - `out_dir` (`"./result_path_opt/"`), `print_every` (`1`): Output location and logging cadence.
@@ -101,10 +101,10 @@ gs:
   scheduler: null
 opt:
   type: string
-  stop_in_when_full: 1000
+  stop_in_when_full: 100
   align: false
   scale_step: global
-  max_cycles: 1000
+  max_cycles: 100
   dump: false
   dump_restart: false
   reparam_thresh: 0.001

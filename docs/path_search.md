@@ -22,7 +22,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents when building pockets. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
-| `--max-cycles INT` | Maximum GSM optimization cycles. | `1000` |
+| `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes (`light|lbfgs` or `heavy|rfo`). | `lbfgs` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories. | `False` |
@@ -121,10 +121,10 @@ gs:
   scheduler: null
 opt:
   type: string
-  stop_in_when_full: 1000
+  stop_in_when_full: 100
   align: false
   scale_step: global
-  max_cycles: 1000
+  max_cycles: 100
   dump: false
   dump_restart: false
   reparam_thresh: 0.001
