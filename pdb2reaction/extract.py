@@ -13,7 +13,8 @@ Single structure:
                          [-r 2.6] [--radius-het2het 2.6]
                          [--include-H2O true|false] [--exclude-backbone true|false]
                          [--add-linkH true|false] [--selected-resn "A:123,456"]
-                         [--ligand-charge <Q> | --ligand-charge "RES1:Q1,RES2:Q2"] [-v]
+                         [--ligand-charge <Q> | --ligand-charge "RES1:Q1,RES2:Q2"]
+                         [--verbose true|false]
 
 Multiple structures → single multi‑MODEL PDB:
     pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c <substrate_spec>
@@ -37,7 +38,7 @@ Examples::
 
     # Multi‑structure → single multi‑MODEL output, with hetero‑hetero proximity enabled
     pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
-                         -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3
+                         -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
 
 Description
 -----
@@ -374,8 +375,9 @@ def parse_args() -> argparse.Namespace:
               "'GPP:-3,MMT:-1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
-        "-v", "--verbose", action="store_true", default=True,
-        help="Enable INFO logging (default WARNING)."
+        "-v", "--verbose", type=str2bool, default=False,
+        help=("Enable INFO-level logging (set true to emit INFO; false keeps WARNING-level output)."
+              " Default: false.")
     )
     return p.parse_args()
 
