@@ -11,9 +11,15 @@ Usage (CLI)
     # Standard (multi-structure ensemble in reaction order)
     pdb2reaction all -i R.pdb [I1.pdb ...] P.pdb -c <substrate-spec> [--ligand-charge <map-or-number>]
                       [--spin <2S+1>] [--freeze-links True|False] [--max-nodes N] [--max-cycles N]
-                      [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] [--dump True|False]
-                      [--args-yaml params.yaml] [--pre-opt True|False] [--out-dir DIR]
+                      [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] [--opt-mode light|heavy]
+                      [--dump True|False] [--args-yaml params.yaml]
+                      [--pre-opt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
+                      [--tsopt-max-cycles N] [--freq-* overrides] [--dft-* overrides]
+
+    # Override examples (repeatable; use only what you need)
+      ... --scan-lists "[(12,45,1.35)]" --scan-one-based True --scan-bias-k 0.05 --scan-relax-max-cycles 150 \
+          --tsopt-max-cycles 250 --freq-temperature 298.15 --freq-max-write 15 --dft-func-basis "wb97x-v/def2-tzvp"
 
     # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
     pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
@@ -103,10 +109,18 @@ Runs a one-shot pipeline centered on pocket models:
 
 **Forwarded / relevant options**
   - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
-    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`.
-  - Scan (single-structure, pocket input): charge/spin from extractor; `--freeze-links`, `--args-yaml`,
-    `--pre-opt` is forwarded; stage results are auto-collected.
+    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/ts_opt/freq as shared flags.)
+  - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
+    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based/--zero-based`,
+    `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
+  - Shared UMA knobs: `--opt-mode` applies to both scan and ts_opt; `--hessian-calc-mode` applies to ts_opt and freq.
+  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream ts_opt.
+  - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
+    `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
+  - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
   - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
+  - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft` so a single file can
+    host per-module sections (see the respective subcommand docs for accepted keys).
 
 Outputs (& Directory Layout)
 -----
@@ -166,6 +180,7 @@ from typing import List, Sequence, Optional, Tuple, Dict, Any
 import sys
 import math
 import click
+from click.core import ParameterSource
 import time  # timing
 import yaml
 import numpy as np
@@ -216,6 +231,25 @@ def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[st
         else:
             i += 1
     return vals
+
+
+def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
+    """Append ``flag`` and ``value`` (converted to string) to ``args`` when ``value`` is not ``None``."""
+    if value is None:
+        return
+    if isinstance(value, bool):
+        args.extend([flag, "True" if value else "False"])
+    else:
+        args.extend([flag, str(value)])
+
+
+def _resolve_override_dir(default: Path, override: Path | None) -> Path:
+    """Return ``override`` when provided (respecting absolute paths); otherwise ``default``."""
+    if override is None:
+        return default
+    if override.is_absolute():
+        return override
+    return default.parent / override
 
 
 def _round_charge_with_note(q: float) -> int:
@@ -374,22 +408,40 @@ def _run_tsopt_on_hei(hei_pdb: Path,
                       spin: int,
                       args_yaml: Optional[Path],
                       out_dir: Path,
-                      freeze_links: bool) -> Tuple[Path, Any]:
+                      freeze_links: bool,
+                      opt_mode_default: str,
+                      overrides: Optional[Dict[str, Any]] = None) -> Tuple[Path, Any]:
     """
     Run ts_opt CLI on a HEI pocket PDB; return (final_ts_pdb_path, ts_geom)
     """
-    ts_dir = out_dir / "ts"
+    overrides = overrides or {}
+    ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
     _ensure_dir(ts_dir)
+
+    freeze_use = overrides.get("freeze_links")
+    if freeze_use is None:
+        freeze_use = freeze_links
+
+    opt_mode = overrides.get("opt_mode", opt_mode_default)
+
     ts_args: List[str] = [
         "-i", str(hei_pdb),
         "-q", str(int(charge)),
         "-s", str(int(spin)),
-        "--freeze-links", "True" if freeze_links else "False",
-        "--max-cycles", "10000",
-        "--opt-mode", "light",
-        "--dump", "False",
+        "--freeze-links", "True" if freeze_use else "False",
         "--out-dir", str(ts_dir),
     ]
+
+    if opt_mode is not None:
+        ts_args.extend(["--opt-mode", str(opt_mode)])
+
+    _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
+    _append_cli_arg(ts_args, "--dump", overrides.get("dump"))
+
+    hess_mode = overrides.get("hessian_calc_mode")
+    if hess_mode:
+        ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
+
     if args_yaml is not None:
         ts_args.extend(["--args-yaml", str(args_yaml)])
 
@@ -585,21 +637,44 @@ def _run_freq_for_state(pdb_path: Path,
                         spin: int,
                         out_dir: Path,
                         args_yaml: Optional[Path],
-                        freeze_links: bool) -> Dict[str, Any]:
+                        freeze_links: bool,
+                        overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Run freq CLI; return parsed thermo dict (may be empty).
     """
     fdir = out_dir
     _ensure_dir(fdir)
+    overrides = overrides or {}
+
+    freeze_use = overrides.get("freeze_links")
+    if freeze_use is None:
+        freeze_use = freeze_links
+
+    dump_use = overrides.get("dump")
+    if dump_use is None:
+        dump_use = True
+
     args = [
         "-i", str(pdb_path),
         "-q", str(int(q_int)),
         "-s", str(int(spin)),
-        "--freeze-links", "True" if freeze_links else "False",
-        "--max-write", "20",
+        "--freeze-links", "True" if freeze_use else "False",
         "--out-dir", str(fdir),
-        "--dump", "True",
     ]
+
+    _append_cli_arg(args, "--max-write", overrides.get("max_write"))
+    _append_cli_arg(args, "--amplitude-ang", overrides.get("amplitude_ang"))
+    _append_cli_arg(args, "--n-frames", overrides.get("n_frames"))
+    if overrides.get("sort") is not None:
+        args.extend(["--sort", str(overrides.get("sort"))])
+    _append_cli_arg(args, "--temperature", overrides.get("temperature"))
+    _append_cli_arg(args, "--pressure", overrides.get("pressure"))
+    _append_cli_arg(args, "--dump", dump_use)
+
+    hess_mode = overrides.get("hessian_calc_mode")
+    if hess_mode:
+        args.extend(["--hessian-calc-mode", str(hess_mode)])
+
     if args_yaml is not None:
         args.extend(["--args-yaml", str(args_yaml)])
     _saved = list(sys.argv)
@@ -627,20 +702,29 @@ def _run_dft_for_state(pdb_path: Path,
                        spin: int,
                        out_dir: Path,
                        args_yaml: Optional[Path],
-                       func_basis: str = "wb97x-v/def2-tzvp") -> Dict[str, Any]:
+                       func_basis: str = "wb97x-v/def2-tzvp",
+                       overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
     """
     ddir = out_dir
     _ensure_dir(ddir)
+    overrides = overrides or {}
+
+    func_basis_use = overrides.get("func_basis", func_basis)
+
     args = [
         "-i", str(pdb_path),
         "-q", str(int(q_int)),
         "-s", str(int(spin)),
-        "--func-basis", str(func_basis),
+        "--func-basis", str(func_basis_use),
         "--out-dir", str(ddir),
-        "--dump", "False",
     ]
+
+    _append_cli_arg(args, "--max-cycle", overrides.get("max_cycle"))
+    _append_cli_arg(args, "--conv-tol", overrides.get("conv_tol"))
+    _append_cli_arg(args, "--grid-level", overrides.get("grid_level"))
+
     if args_yaml is not None:
         args.extend(["--args-yaml", str(args_yaml)])
     _saved = list(sys.argv)
@@ -728,12 +812,18 @@ def _run_dft_for_state(pdb_path: Path,
 @click.option("--sopt-mode", type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),
               default="lbfgs", show_default=True,
               help="Single-structure optimizer kind for HEI±1 and kink nodes.")
+@click.option("--opt-mode", type=str, default=None,
+              help="Common optimizer mode forwarded to scan/ts_opt (--opt-mode). When unset, tools use their defaults.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump GSM / single-structure trajectories during the run.")
+              help="Dump GSM / single-structure trajectories during the run, forwarding the same flag to scan/ts_opt/freq.")
 @click.option("--args-yaml", type=click.Path(path_type=Path, exists=True, dir_okay=False),
               default=None, help="YAML with extra args for path_search (sections: geom, calc, gs, opt, sopt, bond, search).")
 @click.option("--pre-opt", "pre_opt", type=click.BOOL, default=True, show_default=True,
               help="If False, skip initial single-structure optimizations of the pocket inputs.")
+@click.option("--hessian-calc-mode",
+              type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
+              default=None,
+              help="Common UMA Hessian calculation mode forwarded to ts_opt and freq.")
 # ===== Post-processing toggles =====
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
               help="TS optimization + pseudo-IRC per reactive segment (or TSOPT-only mode for single-structure), and build energy diagrams.")
@@ -741,6 +831,34 @@ def _run_dft_for_state(pdb_path: Path,
               help="Run freq on (R,TS,P) per reactive segment (or TSOPT-only mode) and build Gibbs free-energy diagram (UMA).")
 @click.option("--dft", "do_dft", type=click.BOOL, default=False, show_default=True,
               help="Run DFT single-point on (R,TS,P) and build DFT energy diagram. With --thermo True, also generate a DFT//UMA Gibbs diagram.")
+@click.option("--tsopt-max-cycles", type=int, default=None,
+              help="Override ts_opt --max-cycles value.")
+@click.option("--tsopt-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
+              help="Override ts_opt output subdirectory (relative paths are resolved against the default).")
+@click.option("--freq-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
+              help="Override freq output base directory (relative paths resolved against the default).")
+@click.option("--freq-max-write", type=int, default=None,
+              help="Override freq --max-write value.")
+@click.option("--freq-amplitude-ang", type=float, default=None,
+              help="Override freq --amplitude-ang (Å).")
+@click.option("--freq-n-frames", type=int, default=None,
+              help="Override freq --n-frames value.")
+@click.option("--freq-sort", type=click.Choice(["value", "abs"], case_sensitive=False), default=None,
+              help="Override freq mode sorting.")
+@click.option("--freq-temperature", type=float, default=None,
+              help="Override freq thermochemistry temperature (K).")
+@click.option("--freq-pressure", type=float, default=None,
+              help="Override freq thermochemistry pressure (atm).")
+@click.option("--dft-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
+              help="Override dft output base directory (relative paths resolved against the default).")
+@click.option("--dft-func-basis", type=str, default=None,
+              help="Override dft --func-basis value.")
+@click.option("--dft-max-cycle", type=int, default=None,
+              help="Override dft --max-cycle value.")
+@click.option("--dft-conv-tol", type=float, default=None,
+              help="Override dft --conv-tol value.")
+@click.option("--dft-grid-level", type=int, default=None,
+              help="Override dft --grid-level value.")
 # ===== NEW: staged scan specification for single-structure route =====
 @click.option(
     "--scan-lists", "scan_lists_raw",
@@ -749,6 +867,20 @@ def _run_dft_for_state(pdb_path: Path,
          'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
          'Applied **after extraction** to the pocket PDB; stage results feed into path_search.',
 )
+@click.option("--scan-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
+              help="Override the scan output directory (default: <out-dir>/scan/). Relative paths are resolved against the default parent.")
+@click.option("--scan-one-based", type=click.BOOL, default=None,
+              help="Override scan indexing interpretation (True = 1-based, False = 0-based).")
+@click.option("--scan-max-step-size", type=float, default=None,
+              help="Override scan --max-step-size (Å).")
+@click.option("--scan-bias-k", type=float, default=None,
+              help="Override scan harmonic bias strength k (eV/Å^2).")
+@click.option("--scan-relax-max-cycles", type=int, default=None,
+              help="Override scan relaxation max cycles per step.")
+@click.option("--scan-preopt", type=click.BOOL, default=None,
+              help="Override scan --preopt flag.")
+@click.option("--scan-endopt", type=click.BOOL, default=None,
+              help="Override scan --endopt flag.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -769,13 +901,36 @@ def cli(
     max_cycles: int,
     climb: bool,
     sopt_mode: str,
+    opt_mode: Optional[str],
     dump: bool,
     args_yaml: Optional[Path],
     pre_opt: bool,
+    hessian_calc_mode: Optional[str],
     do_tsopt: bool,
     do_thermo: bool,
     do_dft: bool,
     scan_lists_raw: Sequence[str],
+    scan_out_dir: Optional[Path],
+    scan_one_based: Optional[bool],
+    scan_max_step_size: Optional[float],
+    scan_bias_k: Optional[float],
+    scan_relax_max_cycles: Optional[int],
+    scan_preopt_override: Optional[bool],
+    scan_endopt_override: Optional[bool],
+    tsopt_max_cycles: Optional[int],
+    tsopt_out_dir: Optional[Path],
+    freq_out_dir: Optional[Path],
+    freq_max_write: Optional[int],
+    freq_amplitude_ang: Optional[float],
+    freq_n_frames: Optional[int],
+    freq_sort: Optional[str],
+    freq_temperature: Optional[float],
+    freq_pressure: Optional[float],
+    dft_out_dir: Optional[Path],
+    dft_func_basis: Optional[str],
+    dft_max_cycle: Optional[int],
+    dft_conv_tol: Optional[float],
+    dft_grid_level: Optional[int],
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on pocket) → `path_search` and hides ref-template bookkeeping.
@@ -784,6 +939,13 @@ def cli(
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
     """
     time_start = time.perf_counter()
+
+    dump_override_requested = False
+    try:
+        dump_source = ctx.get_parameter_source("dump")
+        dump_override_requested = dump_source not in (None, ParameterSource.DEFAULT)
+    except Exception:
+        dump_override_requested = False
 
     # --- Robustly accept a single "-i" followed by multiple paths (like path_search.cli) ---
     argv_all = sys.argv[1:]
@@ -813,13 +975,54 @@ def cli(
             "or use a single PDB with --scan-lists, or a single PDB with --tsopt True."
         )
 
+    tsopt_opt_mode_default = opt_mode.lower() if opt_mode else "light"
+    tsopt_overrides: Dict[str, Any] = {}
+    if tsopt_max_cycles is not None:
+        tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)
+    if dump_override_requested:
+        tsopt_overrides["dump"] = bool(dump)
+    if tsopt_out_dir is not None:
+        tsopt_overrides["out_dir"] = tsopt_out_dir
+    if hessian_calc_mode is not None:
+        tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
+    if opt_mode is not None:
+        tsopt_overrides["opt_mode"] = tsopt_opt_mode_default
+
+    freq_overrides: Dict[str, Any] = {}
+    if freq_max_write is not None:
+        freq_overrides["max_write"] = int(freq_max_write)
+    if freq_amplitude_ang is not None:
+        freq_overrides["amplitude_ang"] = float(freq_amplitude_ang)
+    if freq_n_frames is not None:
+        freq_overrides["n_frames"] = int(freq_n_frames)
+    if freq_sort is not None:
+        freq_overrides["sort"] = freq_sort.lower()
+    if freq_temperature is not None:
+        freq_overrides["temperature"] = float(freq_temperature)
+    if freq_pressure is not None:
+        freq_overrides["pressure"] = float(freq_pressure)
+    if dump_override_requested:
+        freq_overrides["dump"] = bool(dump)
+    if hessian_calc_mode is not None:
+        freq_overrides["hessian_calc_mode"] = hessian_calc_mode
+
+    dft_overrides: Dict[str, Any] = {}
+    if dft_max_cycle is not None:
+        dft_overrides["max_cycle"] = int(dft_max_cycle)
+    if dft_conv_tol is not None:
+        dft_overrides["conv_tol"] = float(dft_conv_tol)
+    if dft_grid_level is not None:
+        dft_overrides["grid_level"] = int(dft_grid_level)
+
+    dft_func_basis_use = dft_func_basis or "wb97x-v/def2-tzvp"
+
     # --------------------------
     # Prepare directories
     # --------------------------
     out_dir = out_dir.resolve()
     pockets_dir = out_dir / "pockets"
     path_dir = out_dir / "path_search"
-    scan_dir = out_dir / "scan"  # for single-structure scan mode
+    scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)  # for single-structure scan mode
     _ensure_dir(out_dir)
     _ensure_dir(pockets_dir)
     if not single_tsopt_mode:
@@ -908,7 +1111,16 @@ def cli(
         # Use the single pocket PDB as TS initial guess
         pocket_pdb = pocket_outputs[0]
         # TS optimization
-        ts_pdb, g_ts = _run_tsopt_on_hei(pocket_pdb, q_int, spin, args_yaml, tsroot, freeze_links_flag)
+        ts_pdb, g_ts = _run_tsopt_on_hei(
+            pocket_pdb,
+            q_int,
+            spin,
+            args_yaml,
+            tsroot,
+            freeze_links_flag,
+            tsopt_opt_mode_default,
+            overrides=tsopt_overrides,
+        )
 
         # Pseudo-IRC & minimize both ends (no segment endpoints exist → fallback mapping in helper)
         irc_res = _pseudo_irc_and_match(seg_idx=1,
@@ -952,11 +1164,14 @@ def cli(
 
         # Thermochemistry (UMA) Gibbs
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
+        freq_root = _resolve_override_dir(tsroot / "freq", freq_out_dir)
+        dft_root = _resolve_override_dir(tsroot / "dft", dft_out_dir)
+
         if do_thermo:
             click.echo(f"[thermo] Single TSOPT: freq on R/TS/P")
-            tR = _run_freq_for_state(pR, q_int, spin, tsroot / "freq" / "R",  args_yaml, freeze_links_flag)
-            tT = _run_freq_for_state(pT, q_int, spin, tsroot / "freq" / "TS", args_yaml, freeze_links_flag)
-            tP = _run_freq_for_state(pP, q_int, spin, tsroot / "freq" / "P",  args_yaml, freeze_links_flag)
+            tR = _run_freq_for_state(pR, q_int, spin, freq_root / "R",  args_yaml, freeze_links_flag, overrides=freq_overrides)
+            tT = _run_freq_for_state(pT, q_int, spin, freq_root / "TS", args_yaml, freeze_links_flag, overrides=freq_overrides)
+            tP = _run_freq_for_state(pP, q_int, spin, freq_root / "P",  args_yaml, freeze_links_flag, overrides=freq_overrides)
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
             try:
                 GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", e_react))
@@ -972,9 +1187,9 @@ def cli(
         # DFT & DFT//UMA
         if do_dft:
             click.echo(f"[dft] Single TSOPT: DFT on R/TS/P")
-            dR = _run_dft_for_state(pR, q_int, spin, tsroot / "dft" / "R",  args_yaml, func_basis="wb97x-v/def2-tzvp")
-            dT = _run_dft_for_state(pT, q_int, spin, tsroot / "dft" / "TS", args_yaml, func_basis="wb97x-v/def2-tzvp")
-            dP = _run_dft_for_state(pP, q_int, spin, tsroot / "dft" / "P",  args_yaml, func_basis="wb97x-v/def2-tzvp")
+            dR = _run_dft_for_state(pR, q_int, spin, dft_root / "R",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+            dT = _run_dft_for_state(pT, q_int, spin, dft_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+            dP = _run_dft_for_state(pP, q_int, spin, dft_root / "P",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
             try:
                 eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", e_react))
                 eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", eT))
@@ -1013,16 +1228,31 @@ def cli(
         click.echo("\n=== [all] Stage 1b — Staged scan on pocket (single-structure mode) ===\n")
         _ensure_dir(scan_dir)
         pocket_pdb = pocket_outputs[0]
+        scan_preopt_use = pre_opt if scan_preopt_override is None else bool(scan_preopt_override)
+        scan_endopt_use = True if scan_endopt_override is None else bool(scan_endopt_override)
+        scan_opt_mode_use = (opt_mode.lower() if opt_mode else
+                              ("lbfgs" if sopt_mode.lower() in ("lbfgs", "light") else "rfo"))
+
         scan_args: List[str] = [
             "-i", str(pocket_pdb),
             "-q", str(int(q_int)),
             "-s", str(int(spin)),
             "--out-dir", str(scan_dir),
             "--freeze-links", "True" if freeze_links_flag else "False",
-            "--preopt", "True" if pre_opt else "False",
-            "--endopt", "True",
-            "--opt-mode", str("lbfgs" if sopt_mode.lower() in ("lbfgs", "light") else "rfo"),
+            "--preopt", "True" if scan_preopt_use else "False",
+            "--endopt", "True" if scan_endopt_use else "False",
+            "--opt-mode", str(scan_opt_mode_use),
         ]
+
+        if dump_override_requested:
+            scan_args.extend(["--dump", "True" if dump else "False"])
+
+        if scan_one_based is not None:
+            scan_args.append("--one-based" if scan_one_based else "--zero-based")
+
+        _append_cli_arg(scan_args, "--max-step-size", scan_max_step_size)
+        _append_cli_arg(scan_args, "--bias-k", scan_bias_k)
+        _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
         if args_yaml is not None:
             scan_args.extend(["--args-yaml", str(args_yaml)])
         # Forward all --scan-lists
@@ -1171,7 +1401,16 @@ def cli(
 
         # 4.1 TS optimization (optional; still needed to drive IRC & diagrams)
         if do_tsopt:
-            ts_pdb, g_ts = _run_tsopt_on_hei(hei_pocket_pdb, q_int, spin, args_yaml, seg_dir, freeze_links_flag)
+            ts_pdb, g_ts = _run_tsopt_on_hei(
+                hei_pocket_pdb,
+                q_int,
+                spin,
+                args_yaml,
+                seg_dir,
+                freeze_links_flag,
+                tsopt_opt_mode_default,
+                overrides=tsopt_overrides,
+            )
         else:
             # If TSOPT off: use the GSM HEI (pocket) as TS geometry
             ts_pdb = hei_pocket_pdb
@@ -1210,11 +1449,14 @@ def cli(
 
         # 4.4 Thermochemistry (UMA freq) and Gibbs diagram
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
+        freq_seg_root = _resolve_override_dir(seg_dir / "freq", freq_out_dir)
+        dft_seg_root = _resolve_override_dir(seg_dir / "dft", dft_out_dir)
+
         if do_thermo:
             click.echo(f"[thermo] Segment {seg_idx:02d}: freq on R/TS/P")
-            tR = _run_freq_for_state(pL, q_int, spin, seg_dir / "freq" / "R", args_yaml, freeze_links_flag)
-            tT = _run_freq_for_state(pT, q_int, spin, seg_dir / "freq" / "TS", args_yaml, freeze_links_flag)
-            tP = _run_freq_for_state(pR, q_int, spin, seg_dir / "freq" / "P", args_yaml, freeze_links_flag)
+            tR = _run_freq_for_state(pL, q_int, spin, freq_seg_root / "R", args_yaml, freeze_links_flag, overrides=freq_overrides)
+            tT = _run_freq_for_state(pT, q_int, spin, freq_seg_root / "TS", args_yaml, freeze_links_flag, overrides=freq_overrides)
+            tP = _run_freq_for_state(pR, q_int, spin, freq_seg_root / "P", args_yaml, freeze_links_flag, overrides=freq_overrides)
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
             try:
                 GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", eR))
@@ -1230,9 +1472,9 @@ def cli(
         # 4.5 DFT single-point and (optionally) DFT//UMA Gibbs
         if do_dft:
             click.echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
-            dR = _run_dft_for_state(pL, q_int, spin, seg_dir / "dft" / "R", args_yaml, func_basis="wb97x-v/def2-tzvp")
-            dT = _run_dft_for_state(pT, q_int, spin, seg_dir / "dft" / "TS", args_yaml, func_basis="wb97x-v/def2-tzvp")
-            dP = _run_dft_for_state(pR, q_int, spin, seg_dir / "dft" / "P", args_yaml, func_basis="wb97x-v/def2-tzvp")
+            dR = _run_dft_for_state(pL, q_int, spin, dft_seg_root / "R", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+            dT = _run_dft_for_state(pT, q_int, spin, dft_seg_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+            dP = _run_dft_for_state(pR, q_int, spin, dft_seg_root / "P", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
             try:
                 eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", np.nan))
                 eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", np.nan))

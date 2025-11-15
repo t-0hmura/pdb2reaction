@@ -38,18 +38,41 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--ligand-charge TEXT` | Total charge or mapping for unknown residues (recommended). | `None` |
 | `--verbose BOOLEAN` | Enable INFO-level logging in the extractor. | `True` |
 | `-s, --spin INT` | Spin multiplicity forwarded to GSM, scan, and post-processing. | `1` |
-| `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs during GSM/scan. | `True` |
+| `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs during GSM/scan (also reused by scan/ts_opt/freq). | `True` |
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
 | `--max-cycles INT` | GSM maximum optimisation cycles. | `100` |
 | `--climb BOOLEAN` | Enable transition-state climbing for the first segment in each pair. | `True` |
 | `--sopt-mode [lbfgs|rfo|light|heavy]` | Single-structure optimiser for HEI±1/kink nodes. | `lbfgs` |
-| `--dump BOOLEAN` | Dump GSM and single-structure trajectories. | `False` |
-| `--args-yaml FILE` | YAML forwarded to `path_search` (sections `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`). | _None_ |
-| `--pre-opt BOOLEAN` | Pre-optimise pocket endpoints before GSM. | `True` |
+| `--opt-mode [light|heavy]` | Shared UMA optimiser preset forwarded to scan and ts_opt (`light` ≈ LBFGS, `heavy` ≈ RFO). | _Tool default_ |
+| `--dump BOOLEAN` | Dump GSM and single-structure trajectories, propagating the same setting to scan/ts_opt/freq. | `False` |
+| `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft`. | _None_ |
+| `--pre-opt BOOLEAN` | Pre-optimise pocket endpoints before GSM (also used as the default for scan pre-optimisation). | `True` |
+| `--hessian-calc-mode [Analytical|FiniteDifference]` | Shared UMA Hessian engine forwarded to ts_opt and freq. | _None_ |
 | `--tsopt BOOLEAN` | Run TS optimisation + pseudo-IRC per reactive segment, or enable TSOPT-only mode (single input, no scan). | `False` |
 | `--thermo BOOLEAN` | Run vibrational analysis (freq) on R/TS/P and build UMA Gibbs diagram. | `False` |
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy diagram (adds DFT//UMA when `--thermo True`). | `False` |
+| `--tsopt-max-cycles INT` | Override `ts_opt --max-cycles` for every TS refinement. | _None_ |
+| `--tsopt-out-dir PATH` | Custom ts_opt subdirectory (relative paths are resolved against the default). | _None_ |
+| `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
+| `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
+| `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
+| `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
+| `--freq-sort [value|abs]` | Override freq mode sorting behaviour. | _None_ |
+| `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | _None_ |
+| `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | _None_ |
+| `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
+| `--dft-func-basis TEXT` | Override `dft --func-basis`. | _None_ |
+| `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
+| `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
+| `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
 | `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each list element is `(i,j,target\_Å)` (values are parsed from a Python-like literal). | _None_ |
+| `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan` by default). | _None_ |
+| `--scan-one-based BOOLEAN` | Force 1-based (`True`) or 0-based (`False`) scan indexing; `None` keeps the scan default (1-based). | _None_ |
+| `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
+| `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |
+| `--scan-relax-max-cycles INT` | Override scan relaxation max cycles per step. | _None_ |
+| `--scan-preopt BOOLEAN` | Override the scan pre-optimisation toggle (otherwise `--pre-opt` is reused). | _None_ |
+| `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimisation toggle. | _None_ |
 
 ## Outputs
 - `<out-dir>/pockets/`: Pocket PDBs for each input.
@@ -67,7 +90,33 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 - Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). All boolean toggles expect an explicit `True`/`False` value.
 
 ## YAML configuration (`--args-yaml`)
-The YAML file is forwarded unchanged to `path_search`. See [`path_search`](path_search.md#yaml-configuration-args-yaml) for accepted sections (`geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`).
+The same YAML file is forwarded unchanged to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
+
+- [`path_search`](path_search.md#yaml-configuration-args-yaml): `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`.
+- [`scan`](scan.md#yaml-configuration-args-yaml): `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`.
+- [`ts_opt`](ts_opt.md#yaml-configuration-args-yaml): `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`.
+- [`freq`](freq.md#yaml-configuration-args-yaml): `geom`, `calc`, `freq`, `thermo`.
+- [`dft`](dft.md#yaml-configuration-args-yaml): `dft`.
+
+Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` will be shared across modules, while module-specific blocks (for example `freq.freq` or `dft`) apply only where supported. CLI values always take precedence over the YAML contents.
+
+Example snippet combining shared and module-specific sections:
+
+```yaml
+geom:
+  coord_type: cart
+calc:
+  model: uma-s-1p1
+  hessian_calc_mode: Analytical
+gs:
+  max_nodes: 12
+freq:
+  freq:
+    max_write: 8
+dft:
+  dft:
+    grid_level: 6
+```
 
 ```yaml
 geom:
