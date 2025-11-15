@@ -183,7 +183,7 @@ def _load_two_endpoints(
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=30, show_default=True,
               help="Number of internal nodes (string has max_nodes+2 images including endpoints).")
-@click.option("--max-cycles", type=int, default=1000, show_default=True, help="Maximum optimization cycles.")
+@click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Search for a transition state (climbing image) after path growth.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,

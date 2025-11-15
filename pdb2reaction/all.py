@@ -115,7 +115,7 @@ Runs a one-shot pipeline centered on pocket models:
     `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based` True|False
     (omit to keep scan's default 1-based indexing),
     `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
-  - Shared UMA knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and ts_opt; when omitted, scan defaults to
+  - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and ts_opt; when omitted, scan defaults to
     LBFGS or RFO based on `--sopt-mode`, and ts_opt falls back to `light`. `--hessian-calc-mode` applies to ts_opt and freq.
   - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream ts_opt.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
