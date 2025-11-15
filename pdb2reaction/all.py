@@ -205,8 +205,8 @@ from . import dft as _dft_cli
 from .uma_pysis import uma_pysis
 from .trj2fig import run_trj2fig
 from .utils import build_energy_diagram, format_elapsed
-from . import scan as _scan_cli  # <-- NEW: use scan CLI when --scan-lists is provided (single-structure)
-from .add_elem_info import assign_elements as _assign_elem_info  # <-- NEW: add_elem_info preflight
+from . import scan as _scan_cli
+from .add_elem_info import assign_elements as _assign_elem_info
 
 # -----------------------------
 # Helpers
