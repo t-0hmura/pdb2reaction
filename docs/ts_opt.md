@@ -7,7 +7,9 @@ Optimizes transition states using either the Hessian Dimer method ("light") or R
 ```bash
 pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
                     [--freeze-links BOOL]
-                    [--max-cycles N] [--opt-mode light|heavy]
+                    [--max-cycles N]
+                    [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
+                               heavy|rfo|rsirfo|rs-i-rfo]
                     [--dump BOOL] [--out-dir DIR]
                     [--hessian-calc-mode Analytical|FiniteDifference]
                     [--args-yaml FILE]
@@ -21,7 +23,7 @@ pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (propagated to UMA). | `True` |
 | `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | `light` → Hessian Dimer, `heavy` → RS-I-RFO. | `light` |
+| `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimization trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_ts_opt/` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
@@ -70,6 +72,7 @@ Controls the heavy-mode RS-I-RFO optimizer. Defaults derive from [`opt`](opt.md#
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
 - In light mode, the flattened active-subspace Hessian is maintained and updated between LBFGS passes.
 - Imaginary-mode analysis uses PHVA and translation/rotation projection consistent with the frequency module.
+- The `--opt-mode` aliases shown above mirror the CLI behavior: light-side names select the Hessian Dimer workflow, while heavy-side names run RS-I-RFO.
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
