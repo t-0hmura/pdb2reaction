@@ -13,14 +13,14 @@ pdb2reaction trj2fig -i TRAJ.xyz [-o OUT ...] [--unit kcal|hartree]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | XYZ trajectory file whose comment line (2nd line) contains the energy. | Required |
-| `-o, --out PATH` | Output filenames. Repeatable; supports .png/.html/.svg/.pdf/.csv. | _None_ → `energy.png` |
+| `-o, --out PATH` | Output filenames. Repeatable; supports .png/.jpg/.jpeg/.html/.svg/.pdf/.csv. | _None_ → `energy.png` |
 | `extra_outs` | Positional filenames after options; combined with `-o`. | _None_ |
 | `--unit CHOICE` | Energy unit for output values (`kcal` or `hartree`). | `kcal` |
 | `-r, --reference TEXT` | Reference specification: `init`, `None`, or integer frame index. | `init` |
 | `--reverse-x` | Reverse x-axis so the last frame appears on the left (also flips `init`). | `False` |
 
 ## Outputs
-- Figure files (`.png`, `.html`, `.svg`, `.pdf`) showing energy or ΔE versus frame.
+- Figure files (`.png`, `.jpg`, `.jpeg`, `.html`, `.svg`, `.pdf`) showing energy or ΔE versus frame.
 - Optional `.csv` with columns `frame`, `energy_hartree`, and either `delta_kcal`, `energy_kcal`, `delta_hartree`, or `energy_hartree` depending on mode.
 - Console warning/error messages when energies cannot be parsed or unsupported extensions are requested.
 
