@@ -98,7 +98,7 @@ The same YAML file is forwarded unchanged to **every** invoked subcommand. Each 
 - [`freq`](freq.md#yaml-configuration-args-yaml): `geom`, `calc`, `freq`, `thermo`.
 - [`dft`](dft.md#yaml-configuration-args-yaml): `dft`.
 
-Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` will be shared across modules, while module-specific blocks (for example `freq.freq` or `dft`) apply only where supported. CLI values always take precedence over the YAML contents.
+Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` will be shared across modules, while module-specific blocks (for example `freq` or `dft`) apply only where supported. CLI values always take precedence over the YAML contents.
 
 Example snippet combining shared and module-specific sections:
 
@@ -111,11 +111,9 @@ calc:
 gs:
   max_nodes: 12
 freq:
-  freq:
-    max_write: 8
+  max_write: 8
 dft:
-  dft:
-    grid_level: 6
+  grid_level: 6
 ```
 
 ```yaml

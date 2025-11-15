@@ -20,7 +20,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). A single `-i` may be followed by multiple paths. | Required |
 | `-q, --charge INT` | Total charge. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents when building pockets. | `True` |
+| `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
