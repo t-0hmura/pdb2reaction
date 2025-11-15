@@ -113,10 +113,10 @@ GS_KW: Dict[str, Any] = {
 # StringOptimizer (optimization control)
 STOPT_KW: Dict[str, Any] = {
     "type": "string",           # str, tag for bookkeeping / output labelling
-    "stop_in_when_full": 100,   # int, allow N extra cycles after the string is fully grown
+    "stop_in_when_full": 1000,  # int, allow N extra cycles after the string is fully grown
     "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
     "scale_step": "global",     # str, "global" | "per_image" scaling policy
-    "max_cycles": 100,          # int, maximum macro cycles for the optimizer
+    "max_cycles": 1000,         # int, maximum macro cycles for the optimizer
     "dump": False,              # bool, write optimizer trajectory to disk
     "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
     "reparam_thresh": 1e-3,     # float, convergence threshold for reparametrization
