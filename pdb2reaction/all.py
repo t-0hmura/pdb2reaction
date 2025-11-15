@@ -11,7 +11,8 @@ Usage (CLI)
     # Standard (multi-structure ensemble in reaction order)
     pdb2reaction all -i R.pdb [I1.pdb ...] P.pdb -c <substrate-spec> [--ligand-charge <map-or-number>]
                       [--spin <2S+1>] [--freeze-links True|False] [--max-nodes N] [--max-cycles N]
-                      [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] [--opt-mode light|heavy]
+                      [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy]
+                      [--opt-mode light|lbfgs|heavy|rfo]
                       [--dump True|False] [--args-yaml params.yaml]
                       [--pre-opt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
@@ -111,9 +112,11 @@ Runs a one-shot pipeline centered on pocket models:
   - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
     `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/ts_opt/freq as shared flags.)
   - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
-    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based/--zero-based`,
+    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based` True|False
+    (omit to keep scan's default 1-based indexing),
     `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
-  - Shared UMA knobs: `--opt-mode` applies to both scan and ts_opt; `--hessian-calc-mode` applies to ts_opt and freq.
+  - Shared UMA knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and ts_opt; when omitted, scan defaults to
+    LBFGS or RFO based on `--sopt-mode`, and ts_opt falls back to `light`. `--hessian-calc-mode` applies to ts_opt and freq.
   - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream ts_opt.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
     `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.

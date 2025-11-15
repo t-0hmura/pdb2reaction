@@ -43,7 +43,7 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--max-cycles INT` | GSM maximum optimisation cycles. | `100` |
 | `--climb BOOLEAN` | Enable transition-state climbing for the first segment in each pair. | `True` |
 | `--sopt-mode [lbfgs|rfo|light|heavy]` | Single-structure optimiser for HEI±1/kink nodes. | `lbfgs` |
-| `--opt-mode [light|heavy]` | Shared UMA optimiser preset forwarded to scan and ts_opt (`light` ≈ LBFGS, `heavy` ≈ RFO). | _Tool default_ |
+| `--opt-mode [light|lbfgs|heavy|rfo]` | UMA optimiser preset for scan/ts_opt. Use `light`/`lbfgs` (LBFGS) or `heavy`/`rfo` (RFO). When omitted, scan inherits LBFGS or RFO from `--sopt-mode`, and ts_opt falls back to `light`. | `None` |
 | `--dump BOOLEAN` | Dump GSM and single-structure trajectories, propagating the same setting to scan/ts_opt/freq. | `False` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft`. | _None_ |
 | `--pre-opt BOOLEAN` | Pre-optimise pocket endpoints before GSM (also used as the default for scan pre-optimisation). | `True` |
