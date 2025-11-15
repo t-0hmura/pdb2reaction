@@ -7,7 +7,8 @@ ts_opt — Transition-state optimization CLI
 Usage (CLI)
 -----
     pdb2reaction ts-opt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
-                        [--opt-mode light|heavy]
+                        [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
+                                    heavy|rfo|rsirfo|rs-i-rfo]
                         [--freeze-links True|False]
                         [--max-cycles N]
                         [--dump True|False]
@@ -36,6 +37,9 @@ Transition-state optimization with two modes:
 - light: HessianDimer TS search with periodic Hessian updates and a memory-efficient
   flatten loop to remove excess imaginary modes.
 - heavy: RS-I-RFO Hessian-based TS optimizer.
+- CLI `--opt-mode` accepts the aliases shown above: light/lbfgs/dimer/simple/
+  simpledimer/hessian_dimer map to the Hessian Dimer workflow, whereas
+  heavy/rfo/rsirfo/rs-i-rfo select the RS-I-RFO workflow.
 
 Configuration is driven by YAML overrides for sections: geom, calc, opt, hessian_dimer,
 and rsirfo. The hessian_dimer section accepts nested dimer and lbfgs dictionaries that
