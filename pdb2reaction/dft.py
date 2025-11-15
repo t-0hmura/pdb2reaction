@@ -6,9 +6,9 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 
 Usage (CLI)
 -----
-    pdb2reaction dft -i INPUT -q CHARGE -s SPIN [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
+    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
 
-    # Always include -q/-s explicitly to avoid wrong electronic states.
+    # -q/--charge is required; -s/--spin defaults to 1 (RKS) but should be set explicitly when the state is not singlet.
 
 Examples::
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
@@ -49,7 +49,7 @@ Outputs (& Directory Layout)
 
 Notes:
 -----
-- Always set both -q/--charge and -s/--spin explicitly; incorrect values lead to the wrong electronic state (UKS for multiplicity > 1; RKS for multiplicity = 1).
+- Always supply -q/--charge (required) and prefer explicit -s/--spin to avoid unintentional multiplicities (defaults to 1 → RKS; multiplicity > 1 selects UKS).
 - YAML overrides: --args-yaml points to a file with top-level key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).
 - Grids and checkpointing: sets `grids.level` when supported; disables SCF checkpoint files when possible.
 - Units: input coordinates are in Å. Functional/basis names are PySCF-style and case-insensitive for common sets.
