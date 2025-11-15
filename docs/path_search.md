@@ -72,10 +72,13 @@ Recursive path-building controls.
 - `kink_max_nodes` (`3`): Linear interpolation nodes for skipped GSM at kinks.
 
 ## Outputs
-- `<out-dir>/mep.trj` (+ `.pdb` when pockets were PDB inputs).
-- `<out-dir>/mep_w_ref.pdb` merged full-system trajectory (requires `--ref-pdb` or auto-supplied templates).
-- `<out-dir>/summary.yaml` summarising segment barriers and classification.
-- Per-segment folders containing GSM dumps, merged structures, and diagnostic energy plots.
+- `<out-dir>/mep.trj` (and `.pdb` when the inputs were PDB pockets).
+- `<out-dir>/mep_w_ref.pdb` merged full-system MEP (requires `--ref-pdb` or auto-provided templates).
+- `<out-dir>/mep_w_ref_seg_XX.pdb` merged per-segment paths for segments with covalent changes (requires `--ref-pdb`).
+- `<out-dir>/summary.yaml` summarising barriers and classification for every recursive segment.
+- `<out-dir>/mep_plot.png` ΔE profile generated via `trj2fig` (`kcal/mol`, reference = reactant).
+- `<out-dir>/energy_diagram.html` and `.png` Plotly diagrams of state energies (relative to reactant, kcal/mol).
+- Per-segment folders (`segments/seg_000_*`) containing GSM dumps, HEI snapshots, merged HEI files, linear kink optimisations, and diagnostic energy plots.
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
 
 ## Notes
