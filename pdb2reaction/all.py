@@ -15,6 +15,11 @@ Usage (CLI)
                       [--dump True|False] [--args-yaml params.yaml]
                       [--pre-opt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
+                      [--tsopt-max-cycles N] [--freq-* overrides] [--dft-* overrides]
+
+    # Override examples (repeatable; use only what you need)
+      ... --scan-lists "[(12,45,1.35)]" --scan-one-based True --scan-bias-k 0.05 --scan-relax-max-cycles 150 \
+          --tsopt-max-cycles 250 --freq-temperature 298.15 --freq-max-write 15 --dft-func-basis "wb97x-v/def2-tzvp"
 
     # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
     pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
@@ -104,11 +109,18 @@ Runs a one-shot pipeline centered on pocket models:
 
 **Forwarded / relevant options**
   - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
-    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`. (The `--freeze-links` / `--dump` choices carry into scan/ts_opt/freq as shared flags.)
-  - Scan (single-structure, pocket input): charge/spin from extractor; `--freeze-links`, `--opt-mode`,
-    `--dump`, `--args-yaml`, `--pre-opt` are forwarded; stage results are auto-collected.
+    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/ts_opt/freq as shared flags.)
+  - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
+    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based/--zero-based`,
+    `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
   - Shared UMA knobs: `--opt-mode` applies to both scan and ts_opt; `--hessian-calc-mode` applies to ts_opt and freq.
+  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream ts_opt.
+  - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
+    `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
+  - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
   - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
+  - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft` so a single file can
+    host per-module sections (see the respective subcommand docs for accepted keys).
 
 Outputs (& Directory Layout)
 -----
