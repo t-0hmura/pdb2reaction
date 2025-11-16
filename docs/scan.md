@@ -83,7 +83,7 @@ calc:
 opt:
   thresh: gau
   max_cycles: 10000
-  print_every: 1
+  print_every: 100
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
@@ -101,7 +101,7 @@ opt:
 lbfgs:
   thresh: gau
   max_cycles: 10000
-  print_every: 1
+  print_every: 100
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
@@ -127,7 +127,7 @@ lbfgs:
 rfo:
   thresh: gau
   max_cycles: 10000
-  print_every: 1
+  print_every: 100
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null

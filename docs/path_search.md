@@ -46,7 +46,7 @@ Growing String controls for main segments. Defaults derive from `pdb2reaction.pa
 StringOptimizer controls for GSM (defaults in parentheses).
 
 - `stop_in_when_full` (`100`) and `max_cycles` (`100`): Cycle caps (CLI overrides `--max-cycles`).
-- `dump` (`False`), `dump_restart` (`False`), `out_dir` (`"./result_path_search/"`), `print_every` (`1`), `align` (`False`).
+- `dump` (`False`), `dump_restart` (`False`), `out_dir` (`"./result_path_search/"`), `print_every` (`10`), `align` (`False`).
 - Other keys mirror [`path_opt`](path_opt.md#section-opt).
 
 ### Section `sopt`
@@ -133,12 +133,12 @@ opt:
   reparam_thresh: 0.001
   coord_diff_thresh: 0.0
   out_dir: ./result_path_search/
-  print_every: 1
+  print_every: 10
 sopt:
   lbfgs:
     thresh: gau
     max_cycles: 10000
-    print_every: 1
+    print_every: 100
     min_step_norm: 1.0e-08
     assert_min_step: true
     rms_force: null
@@ -164,7 +164,7 @@ sopt:
   rfo:
     thresh: gau
     max_cycles: 10000
-    print_every: 1
+    print_every: 100
     min_step_norm: 1.0e-08
     assert_min_step: true
     rms_force: null

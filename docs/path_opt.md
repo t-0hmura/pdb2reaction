@@ -50,7 +50,7 @@ StringOptimizer controls (defaults in parentheses).
 - `max_cycles` (`100`): Macro-iteration cap (overridden by `--max-cycles`).
 - `dump` (`False`), `dump_restart` (`False`): Trajectory/restart dumping (dump toggled by CLI).
 - `reparam_thresh` (`1e-3`), `coord_diff_thresh` (`0.0`): Reparametrisation and pruning thresholds.
-- `out_dir` (`"./result_path_opt/"`), `print_every` (`1`): Output location and logging cadence.
+- `out_dir` (`"./result_path_opt/"`), `print_every` (`10`): Output location and logging cadence.
 
 ## Outputs
 - `<out-dir>/final_geometries.trj` (+ `.pdb` when a PDB reference is available).
@@ -110,5 +110,5 @@ opt:
   reparam_thresh: 0.001
   coord_diff_thresh: 0.0
   out_dir: ./result_path_opt/
-  print_every: 1
+  print_every: 10
 ```

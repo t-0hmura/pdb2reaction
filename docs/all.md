@@ -159,12 +159,12 @@ opt:
   reparam_thresh: 0.001
   coord_diff_thresh: 0.0
   out_dir: ./result_path_search/
-  print_every: 1
+  print_every: 10
 sopt:
   lbfgs:
     thresh: gau
     max_cycles: 10000
-    print_every: 1
+    print_every: 100
     min_step_norm: 1.0e-08
     assert_min_step: true
     rms_force: null
@@ -190,7 +190,7 @@ sopt:
   rfo:
     thresh: gau
     max_cycles: 10000
-    print_every: 1
+    print_every: 100
     min_step_norm: 1.0e-08
     assert_min_step: true
     rms_force: null

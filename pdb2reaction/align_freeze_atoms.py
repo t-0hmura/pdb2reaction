@@ -448,7 +448,7 @@ def scan_freeze_atoms_toward_target_inplace(
                         g_mob,
                         out_dir=str(out_dir),
                         max_cycles=int(final_cycles),
-                        print_every=1,
+                        print_every=100,
                         thresh=thresh,
                         dump=False,
                     ).run()
@@ -475,7 +475,7 @@ def scan_freeze_atoms_toward_target_inplace(
                     g_mob,
                     out_dir=str(out_dir),
                     max_cycles=int(per_step_cycles),
-                    print_every=1,
+                    print_every=100,
                     thresh=thresh,
                     dump=False,
                 ).run()

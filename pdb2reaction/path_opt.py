@@ -122,7 +122,7 @@ STOPT_KW: Dict[str, Any] = {
     "reparam_thresh": 1e-3,     # float, convergence threshold for reparametrization
     "coord_diff_thresh": 0.0,   # float, tolerance for coordinate difference before pruning
     "out_dir": "./result_path_opt/",  # str, output directory for optimizer artifacts
-    "print_every": 1,           # int, status print frequency (cycles)
+    "print_every": 10,           # int, status print frequency (cycles)
 }
 
 def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
