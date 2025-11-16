@@ -66,13 +66,17 @@ Notes:
 """
 
 import math
+import re
+import tempfile
 import time
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple
 
 import click
 import yaml
+from ase.data import chemical_symbols
 from ase.io import read, write
 import plotly.graph_objs as go
 
@@ -451,6 +455,298 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
             write(out_pdb_path, atoms)  # Create/overwrite on the first frame
         else:
             write(out_pdb_path, atoms, append=True)  # Append subsequent frames using MODEL/ENDMDL
+
+
+# =============================================================================
+# Gaussian input (.gjf) helpers
+# =============================================================================
+
+_FLOAT_PATTERN = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?"
+_GJF_COORD_RE = re.compile(
+    rf"^(?P<prefix>.*?)(?P<sep0>\s*)(?P<x>{_FLOAT_PATTERN})(?P<sep1>\s+)"
+    rf"(?P<y>{_FLOAT_PATTERN})(?P<sep2>\s+)(?P<z>{_FLOAT_PATTERN})(?P<suffix>\s*)$"
+)
+
+
+def _count_decimals(token: str) -> int:
+    if "." not in token:
+        return 6
+    mantissa = token.split(".", 1)[1]
+    mantissa = mantissa.split("e", 1)[0].split("E", 1)[0]
+    mantissa = mantissa.split("d", 1)[0].split("D", 1)[0]
+    return sum(ch.isdigit() for ch in mantissa)
+
+
+def _format_like(template: str, value: float) -> str:
+    stripped = template.strip()
+    width = len(template)
+    if not stripped:
+        formatted = f"{value:.10f}"
+    elif any(ch in stripped for ch in "eEdD"):
+        mantissa = stripped.replace("d", "e").replace("D", "E")
+        mantissa_only, _, _ = mantissa.partition("E")
+        decimals = _count_decimals(mantissa_only)
+        formatted = f"{value:.{decimals}E}"
+        if "d" in template:
+            formatted = formatted.replace("E", "d")
+        elif "D" in template:
+            formatted = formatted.replace("E", "D")
+        elif "e" in template:
+            formatted = formatted.replace("E", "e")
+    else:
+        decimals = _count_decimals(stripped)
+        formatted = f"{value:.{decimals}f}"
+    if len(formatted) < width:
+        formatted = formatted.rjust(width)
+    return formatted
+
+
+def _token_to_symbol(text: str) -> str:
+    stripped = text.strip()
+    if not stripped:
+        raise ValueError("Empty atom token in Gaussian coordinate line.")
+    token = stripped.split()[0]
+    m = re.match(r"([A-Za-z]{1,2})", token)
+    if m:
+        return m.group(1).title()
+    if token.isdigit():
+        z = int(token)
+        if 0 <= z < len(chemical_symbols):
+            return chemical_symbols[z]
+    raise ValueError(f"Could not determine element symbol from '{token}'.")
+
+
+def _convert_float(token: str) -> float:
+    return float(token.replace("D", "E").replace("d", "e"))
+
+
+@dataclass
+class GjfCoordinateLine:
+    prefix: str
+    sep0: str
+    sep1: str
+    sep2: str
+    suffix: str
+    x_template: str
+    y_template: str
+    z_template: str
+    symbol: str
+    x: float
+    y: float
+    z: float
+
+    def render(self, coords: Tuple[float, float, float]) -> str:
+        x_str = _format_like(self.x_template, coords[0])
+        y_str = _format_like(self.y_template, coords[1])
+        z_str = _format_like(self.z_template, coords[2])
+        return f"{self.prefix}{self.sep0}{x_str}{self.sep1}{y_str}{self.sep2}{z_str}{self.suffix}"
+
+
+@dataclass
+class GjfTemplate:
+    path: Path
+    prefix_lines: List[str]
+    suffix_lines: List[str]
+    coord_lines: List[GjfCoordinateLine]
+    charge: int
+    spin: int
+
+    @property
+    def natoms(self) -> int:
+        return len(self.coord_lines)
+
+    def as_xyz_string(self) -> str:
+        lines = [str(self.natoms), f"converted from {self.path.name}"]
+        for atom in self.coord_lines:
+            lines.append(f"{atom.symbol}  {atom.x:.10f}  {atom.y:.10f}  {atom.z:.10f}")
+        return "\n".join(lines) + "\n"
+
+
+@dataclass
+class PreparedInputStructure:
+    source_path: Path
+    geom_path: Path
+    gjf_template: Optional[GjfTemplate] = None
+    _tmp_geom_path: Optional[Path] = None
+
+    @property
+    def is_gjf(self) -> bool:
+        return self.gjf_template is not None
+
+    def cleanup(self) -> None:
+        if self._tmp_geom_path and self._tmp_geom_path.exists():
+            try:
+                self._tmp_geom_path.unlink()
+            except FileNotFoundError:
+                pass
+
+    def __enter__(self) -> "PreparedInputStructure":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.cleanup()
+
+
+def _parse_coord_line(line: str) -> GjfCoordinateLine:
+    match = _GJF_COORD_RE.match(line)
+    if not match:
+        raise ValueError(f"Could not parse Gaussian coordinate line: '{line}'.")
+    prefix = match.group("prefix")
+    sep0 = match.group("sep0")
+    sep1 = match.group("sep1")
+    sep2 = match.group("sep2")
+    suffix = match.group("suffix")
+    x_token = match.group("x")
+    y_token = match.group("y")
+    z_token = match.group("z")
+    symbol = _token_to_symbol(f"{prefix}{sep0}")
+    return GjfCoordinateLine(
+        prefix=prefix,
+        sep0=sep0,
+        sep1=sep1,
+        sep2=sep2,
+        suffix=suffix,
+        x_template=x_token,
+        y_template=y_token,
+        z_template=z_token,
+        symbol=symbol,
+        x=_convert_float(x_token),
+        y=_convert_float(y_token),
+        z=_convert_float(z_token),
+    )
+
+
+def parse_gjf_template(path: Path) -> GjfTemplate:
+    lines = path.read_text().splitlines()
+    section = 0
+    charge_line_idx = None
+    charge = None
+    spin = None
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            if section < 2:
+                section += 1
+            continue
+        if section < 2:
+            continue
+        tokens = stripped.split()
+        if len(tokens) < 2:
+            continue
+        try:
+            charge = int(tokens[0])
+            spin = int(tokens[1])
+        except ValueError:
+            continue
+        charge_line_idx = idx
+        break
+    if charge_line_idx is None or charge is None or spin is None:
+        raise ValueError(f"Failed to locate charge/multiplicity line in '{path}'.")
+
+    coord_start = charge_line_idx + 1
+    while coord_start < len(lines) and not lines[coord_start].strip():
+        coord_start += 1
+
+    prefix_lines = lines[:coord_start]
+    coord_lines_raw: List[str] = []
+    idx = coord_start
+    while idx < len(lines):
+        line = lines[idx]
+        if not line.strip():
+            break
+        coord_lines_raw.append(line)
+        idx += 1
+    if not coord_lines_raw:
+        raise ValueError(f"No coordinates found in '{path}'.")
+    suffix_lines = lines[idx:]
+
+    coord_lines = [_parse_coord_line(line) for line in coord_lines_raw]
+    return GjfTemplate(
+        path=path,
+        prefix_lines=prefix_lines,
+        suffix_lines=suffix_lines,
+        coord_lines=coord_lines,
+        charge=charge,
+        spin=spin,
+    )
+
+
+def prepare_input_structure(path: Path) -> PreparedInputStructure:
+    if path.suffix.lower() != ".gjf":
+        return PreparedInputStructure(source_path=path, geom_path=path)
+    template = parse_gjf_template(path)
+    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+    try:
+        tmp.write(template.as_xyz_string())
+        tmp.flush()
+    finally:
+        tmp.close()
+    tmp_path = Path(tmp.name)
+    return PreparedInputStructure(
+        source_path=path,
+        geom_path=tmp_path,
+        gjf_template=template,
+        _tmp_geom_path=tmp_path,
+    )
+
+
+def fill_charge_spin_from_gjf(
+    charge: Optional[int],
+    spin: Optional[int],
+    template: Optional[GjfTemplate],
+) -> Tuple[Optional[int], Optional[int]]:
+    if template is not None:
+        if charge is None:
+            charge = template.charge
+        if spin is None:
+            spin = template.spin
+    return charge, spin
+
+
+def resolve_charge_spin_or_raise(
+    prepared: PreparedInputStructure,
+    charge: Optional[int],
+    spin: Optional[int],
+    *,
+    spin_default: int = 1,
+    charge_default: int = 0,
+) -> Tuple[int, int]:
+    charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
+    if charge is None:
+        charge = charge_default
+    if spin is None:
+        spin = spin_default
+    return int(charge), int(spin)
+
+
+def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) -> None:
+    atoms = read(xyz_path, index=0, format="xyz")
+    if len(atoms) != template.natoms:
+        raise ValueError(
+            f"Atom count mismatch for '{xyz_path}': xyz has {len(atoms)} atoms, "
+            f"but template has {template.natoms}."
+        )
+    coords = atoms.get_positions()
+    new_lines = list(template.prefix_lines)
+    for idx, coord_line in enumerate(template.coord_lines):
+        new_lines.append(coord_line.render(tuple(map(float, coords[idx]))))
+    new_lines.extend(template.suffix_lines)
+    text = "\n".join(new_lines)
+    if not text.endswith("\n"):
+        text += "\n"
+    out_path.write_text(text)
+
+
+def maybe_convert_xyz_to_gjf(
+    xyz_path: Path,
+    template: Optional[GjfTemplate],
+    out_path: Optional[Path] = None,
+) -> Optional[Path]:
+    if template is None or not xyz_path.exists():
+        return None
+    target = out_path or xyz_path.with_suffix(".gjf")
+    convert_xyz_to_gjf(xyz_path, template, target)
+    return target
 
 
 # =============================================================================

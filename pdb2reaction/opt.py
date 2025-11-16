@@ -109,6 +109,10 @@ from .utils import (
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
+    prepare_input_structure,
+    resolve_charge_spin_or_raise,
+    maybe_convert_xyz_to_gjf,
+    GjfTemplate,
 )
 
 # -----------------------------------------------
@@ -270,6 +274,21 @@ def _maybe_convert_outputs_to_pdb(
                 click.echo("[convert] WARNING: 'optimization.trj' not found; skipping PDB conversion.", err=True)
         except Exception as e:
             click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
+
+
+def _maybe_write_final_gjf(
+    template: Optional[GjfTemplate],
+    final_xyz_path: Path,
+    out_dir: Path,
+) -> None:
+    if template is None:
+        return
+    final_gjf = out_dir / "final_geometry.gjf"
+    try:
+        maybe_convert_xyz_to_gjf(final_xyz_path, template, final_gjf)
+        click.echo(f"[convert] Wrote '{final_gjf}'.")
+    except Exception as e:
+        click.echo(f"[convert] WARNING: Failed to convert final geometry to GJF: {e}", err=True)
 # -----------------------------------------------
 # CLI
 # -----------------------------------------------
@@ -285,8 +304,15 @@ def _maybe_convert_outputs_to_pdb(
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
+@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze the parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Maximum number of optimization cycles.")
@@ -309,8 +335,8 @@ def _maybe_convert_outputs_to_pdb(
 )
 def cli(
     input_path: Path,
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     freeze_links: bool,
     max_cycles: int,
     opt_mode: str,
@@ -320,6 +346,9 @@ def cli(
     args_yaml: Optional[Path],
 ) -> None:
     time_start = time.perf_counter()
+    prepared_input = prepare_input_structure(input_path)
+    geom_input_path = prepared_input.geom_path
+    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
 
     # --------------------------
     # 1) Assemble configuration
@@ -389,7 +418,7 @@ def cli(
         coord_kwargs = dict(geom_cfg)
         coord_kwargs.pop("coord_type", None)
         geometry = geom_loader(
-            input_path,
+            geom_input_path,
             coord_type=coord_type,
             **coord_kwargs,
         )
@@ -436,6 +465,7 @@ def cli(
             get_trj_fn=optimizer.get_path_for_fn,
             final_xyz_path=final_xyz_path,
         )
+        _maybe_write_final_gjf(prepared_input.gjf_template, final_xyz_path, out_dir_path)
 
         click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
 
@@ -452,6 +482,8 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        prepared_input.cleanup()
 
 
 # Avoid shadowing the click option name `freeze_links` above

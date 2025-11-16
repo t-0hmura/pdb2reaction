@@ -107,6 +107,8 @@ from pdb2reaction.utils import (
     format_elapsed,
     detect_freeze_links,
     merge_freeze_atom_indices,
+    prepare_input_structure,
+    resolve_charge_spin_or_raise,
 )
 
 
@@ -172,8 +174,15 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge; overrides calc.charge from YAML.")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1); overrides calc.spin from YAML.")
+@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge; overrides calc.charge from YAML.")
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Spin multiplicity (2S+1); overrides calc.spin from YAML.",
+)
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
 @click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")
@@ -202,8 +211,8 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
 )
 def cli(
     input_path: Path,
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     max_cycles: Optional[int],
     step_size: Optional[float],
     root: Optional[int],
@@ -214,6 +223,9 @@ def cli(
     hessian_calc_mode: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
+    prepared_input = prepare_input_structure(input_path)
+    geom_input_path = prepared_input.geom_path
+    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
     try:
         time_start = time.perf_counter()
 
@@ -292,7 +304,7 @@ def cli(
         coord_kwargs = dict(geom_cfg)
         coord_kwargs.pop("coord_type", None)
 
-        geometry = geom_loader(input_path, coord_type=coord_type, **coord_kwargs)
+        geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
         calc_builder_or_instance = uma_pysis(**calc_cfg)
         try:
@@ -345,6 +357,8 @@ def cli(
         tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
         click.echo("Unhandled exception during IRC:\n" + tb, err=True)
         sys.exit(1)
+    finally:
+        prepared_input.cleanup()
 
 
 # Script entry point

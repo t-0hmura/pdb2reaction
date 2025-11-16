@@ -148,6 +148,9 @@ from .utils import (
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
+    prepare_input_structure,
+    resolve_charge_spin_or_raise,
+    maybe_convert_xyz_to_gjf,
 )
 from .freq import (
     _torch_device,
@@ -1280,8 +1283,22 @@ RSIRFO_KW.update({
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Total charge (defaults to 0 when omitted).",
+)
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Multiplicity (2S+1). Defaults to 1 when omitted.",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
@@ -1310,8 +1327,8 @@ RSIRFO_KW.update({
 )
 def cli(
     input_path: Path,
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     freeze_links: bool,
     max_cycles: int,
     opt_mode: str,
@@ -1321,6 +1338,10 @@ def cli(
     args_yaml: Optional[Path],
     hessian_calc_mode: Optional[str],
 ) -> None:
+    prepared_input = prepare_input_structure(input_path)
+    geom_input_path = prepared_input.geom_path
+    source_path = prepared_input.source_path
+    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
     time_start = time.perf_counter()
 
     # --------------------------
@@ -1361,9 +1382,9 @@ def cli(
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
     # Freeze links (PDB only): merge with existing list
-    if freeze_links and input_path.suffix.lower() == ".pdb":
+    if freeze_links and source_path.suffix.lower() == ".pdb":
         try:
-            detected = detect_freeze_links(input_path)
+            detected = detect_freeze_links(source_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
@@ -1410,7 +1431,7 @@ def cli(
             uma_kwargs_for_sd = dict(calc_cfg)
             # device comes from calc_cfg; out_hess_torch/return_partial_hessian handled in wrapper
             runner = HessianDimer(
-                fn=str(input_path),
+                fn=str(geom_input_path),
                 out_dir=str(out_dir_path),
                 thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
                 thresh=simple_cfg.get("thresh", "gau"),
@@ -1436,8 +1457,8 @@ def cli(
             click.echo("\n=== TS optimization (HessianDimer) finished ===\n")
 
             # Convert outputs if input is PDB
-            if input_path.suffix.lower() == ".pdb":
-                ref_pdb = input_path.resolve()
+            if source_path.suffix.lower() == ".pdb":
+                ref_pdb = source_path.resolve()
                 # final_geometry.xyz → final_geometry.pdb
                 final_xyz = out_dir_path / "final_geometry.xyz"
                 final_pdb = out_dir_path / "final_geometry.pdb"
@@ -1455,6 +1476,16 @@ def cli(
                         click.echo(f"[convert] Wrote '{opt_pdb}'.")
                     except Exception as e:
                         click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
+            else:
+                final_xyz = out_dir_path / "final_geometry.xyz"
+
+            if prepared_input.gjf_template is not None:
+                try:
+                    final_gjf = out_dir_path / "final_geometry.gjf"
+                    maybe_convert_xyz_to_gjf(final_xyz, prepared_input.gjf_template, final_gjf)
+                    click.echo(f"[convert] Wrote '{final_gjf}'.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert final geometry to GJF: {e}", err=True)
 
         else:
             # RS-I-RFO (heavy)
@@ -1462,7 +1493,7 @@ def cli(
             coord_type = geom_cfg.get("coord_type", "cart")
             coord_kwargs = dict(geom_cfg)
             coord_kwargs.pop("coord_type", None)
-            geometry = geom_loader(input_path, coord_type=coord_type, **coord_kwargs)
+            geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
             calc_builder_or_instance = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / return_partial_hessian
             try:
@@ -1493,8 +1524,8 @@ def cli(
             click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
 
             # Convert outputs if input is PDB
-            if input_path.suffix.lower() == ".pdb":
-                ref_pdb = input_path.resolve()
+            if source_path.suffix.lower() == ".pdb":
+                ref_pdb = source_path.resolve()
                 # final_geometry.xyz (from optimizer.final_fn) → final_geometry.pdb
                 final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
                 final_pdb = out_dir_path / "final_geometry.pdb"
@@ -1512,6 +1543,16 @@ def cli(
                         click.echo(f"[convert] Wrote '{opt_pdb}'.")
                     except Exception as e:
                         click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
+            else:
+                final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
+
+            if prepared_input.gjf_template is not None:
+                try:
+                    final_gjf = out_dir_path / "final_geometry.gjf"
+                    maybe_convert_xyz_to_gjf(final_xyz_path, prepared_input.gjf_template, final_gjf)
+                    click.echo(f"[convert] Wrote '{final_gjf}'.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert final geometry to GJF: {e}", err=True)
 
             # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
             geometry.set_calculator(None)
@@ -1580,6 +1621,8 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        prepared_input.cleanup()
 
 
 # Allow `python -m pdb2reaction.ts_opt` direct execution

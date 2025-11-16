@@ -101,6 +101,8 @@ from .utils import (
     format_geom_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
+    prepare_input_structure,
+    resolve_charge_spin_or_raise,
 )
 def _torch_device(auto: str = "auto") -> torch.device:
     if auto == "auto":
@@ -529,8 +531,15 @@ THERMO_KW = {
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1)")
+@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge")
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-write", type=int, default=20, show_default=True,
@@ -563,8 +572,8 @@ THERMO_KW = {
               help="How UMA computes Hessian. Defaults to 'Analytical' (can also be set via YAML).")
 def cli(
     input_path: Path,
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     freeze_links: bool,
     max_write: int,
     amplitude_ang: float,
@@ -580,7 +589,10 @@ def cli(
     hessian_calc_mode: Optional[str],
 ) -> None:
     time_start = time.perf_counter()
-    
+    prepared_input = prepare_input_structure(input_path)
+    geom_input_path = prepared_input.geom_path
+    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+
     # --------------------------
     # 1) Assemble configuration
     # --------------------------
@@ -644,7 +656,7 @@ def cli(
     coord_type = geom_cfg.get("coord_type", "cart")
     coord_kwargs = dict(geom_cfg)
     coord_kwargs.pop("coord_type", None)
-    geometry = geom_loader(input_path, coord_type=coord_type, **coord_kwargs)
+    geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
     # Masses (AU tensor for TR projection & MW->Cart conversion)
     masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
@@ -839,6 +851,8 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        prepared_input.cleanup()
 
 
 # Allow `python -m pdb2reaction.freq` direct execution

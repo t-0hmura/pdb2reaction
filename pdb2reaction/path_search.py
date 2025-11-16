@@ -155,6 +155,11 @@ from .utils import (
     format_elapsed,
     merge_freeze_atom_indices,
     build_energy_diagram,
+    prepare_input_structure,
+    fill_charge_spin_from_gjf,
+    maybe_convert_xyz_to_gjf,
+    PreparedInputStructure,
+    GjfTemplate,
 )
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
@@ -256,7 +261,7 @@ def _load_two_endpoints(
 
 # Multi‑structure loader
 def _load_structures(
-    paths: Sequence[Path],
+    inputs: Sequence[PreparedInputStructure],
     coord_type: str,
     base_freeze: Sequence[int],
     auto_freeze_links: bool,
@@ -265,14 +270,16 @@ def _load_structures(
     Load multiple geometries and assign `freeze_atoms`; return a list of geometries.
     """
     geoms: List[Any] = []
-    for p in paths:
-        g = geom_loader(p, coord_type=coord_type)
+    for prepared in inputs:
+        geom_path = prepared.geom_path
+        src_path = prepared.source_path
+        g = geom_loader(geom_path, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and p.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(p)
+        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
+            detected = _freeze_links_for_pdb(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+                click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g.freeze_atoms = np.array(freeze, dtype=int)
@@ -323,6 +330,23 @@ def _maybe_convert_to_pdb(in_path: Path, ref_pdb_path: Optional[Path], out_path:
         return out_pdb
     except Exception as e:
         click.echo(f"[convert] WARNING: Failed to convert '{in_path.name}' to PDB: {e}", err=True)
+        return None
+
+
+def _maybe_convert_to_gjf(
+    xyz_path: Path,
+    template: Optional[GjfTemplate],
+    out_path: Optional[Path] = None,
+) -> Optional[Path]:
+    try:
+        if template is None or (not xyz_path.exists()):
+            return None
+        target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
+        maybe_convert_xyz_to_gjf(xyz_path, template, target)
+        click.echo(f"[convert] Wrote '{target}'.")
+        return target
+    except Exception as e:
+        click.echo(f"[convert] WARNING: Failed to convert '{xyz_path.name}' to GJF: {e}", err=True)
         return None
 
 
@@ -495,6 +519,7 @@ def _run_gsm_between(
     out_dir: Path,
     tag: str,
     ref_pdb_path: Optional[Path],  # reference PDB for conversion
+    gjf_template: Optional[GjfTemplate] = None,
 ) -> GSMResult:
     """
     Run GSM between `gA`–`gB`, save segment outputs, and return images/energies/HEI index.
@@ -510,7 +535,10 @@ def _run_gsm_between(
         images=[gA, gB],
         calc_getter=calc_getter,
         **gs_cfg,
-    )
+)
+
+# Track the first available Gaussian template for GJF conversions
+_PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
 
     _opt_args = dict(opt_cfg)
     seg_dir = out_dir / f"{tag}_gsm"
@@ -577,7 +605,9 @@ def _run_gsm_between(
         with open(hei_xyz, "w") as f:
             f.write(s)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
+        template = gjf_template if gjf_template is not None else _PRIMARY_GJF_TEMPLATE
         _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
+        _maybe_convert_to_gjf(hei_xyz, template, seg_dir / "gsm_hei.gjf")
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
@@ -1415,8 +1445,22 @@ def _merge_final_and_write(final_images: List[Any],
           "Either repeat '-i' (e.g., '-i A -i B -i C') or use a single '-i' "
           "followed by multiple space-separated paths (e.g., '-i A B C').")
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total system charge.")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Total system charge (defaults to 0 when omitted).",
+)
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Multiplicity (2S+1). Defaults to 1 when omitted.",
+)
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For PDB input, freeze parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=10, show_default=True,
@@ -1476,8 +1520,8 @@ def _merge_final_and_write(final_images: List[Any],
 def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     freeze_links_flag: bool,
     max_nodes: int,
     max_cycles: int,
@@ -1491,6 +1535,9 @@ def cli(
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
+    prepared_inputs: List[PreparedInputStructure] = []
+    global _PRIMARY_GJF_TEMPLATE
+    _PRIMARY_GJF_TEMPLATE = None
     # --- Robustly accept both styles for -i/--input and --ref-pdb ---
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
@@ -1553,6 +1600,11 @@ def cli(
                     raise click.BadParameter("--ref-pdb must be given for each --input (same count and order). "
                                              "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
 
+        p_list = [Path(p) for p in input_paths]
+        prepared_inputs = [prepare_input_structure(p) for p in p_list]
+        if _PRIMARY_GJF_TEMPLATE is None:
+            _PRIMARY_GJF_TEMPLATE = next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None)
+
         # --------------------------
         # 1) Resolve settings (defaults ← YAML ← CLI)
         # --------------------------
@@ -1581,8 +1633,18 @@ def cli(
             ],
         )
 
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"]   = int(spin)
+        resolved_charge = charge
+        resolved_spin = spin
+        for prepared in prepared_inputs:
+            resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
+                resolved_charge, resolved_spin, prepared.gjf_template
+            )
+        if resolved_charge is None:
+            resolved_charge = 0
+        if resolved_spin is None:
+            resolved_spin = 1
+        calc_cfg["charge"] = int(resolved_charge)
+        calc_cfg["spin"] = int(resolved_spin)
 
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
@@ -1637,10 +1699,8 @@ def cli(
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        p_list = [Path(p) for p in input_paths]
-
         geoms = _load_structures(
-            paths=p_list,
+            inputs=prepared_inputs,
             coord_type=geom_cfg.get("coord_type", "cart"),
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
@@ -1849,6 +1909,7 @@ def cli(
                     click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
                     if ref_pdb_for_segments is not None:
                         _maybe_convert_to_pdb(hei_trj, ref_pdb_for_segments, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb")
+                    _maybe_convert_to_gjf(hei_trj, _PRIMARY_GJF_TEMPLATE, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.gjf")
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
         # ---- END ----
@@ -2066,6 +2127,10 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during path search:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        for prepared in prepared_inputs:
+            prepared.cleanup()
+        _PRIMARY_GJF_TEMPLATE = None
 
 
 if __name__ == "__main__":
