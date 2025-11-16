@@ -6,7 +6,7 @@ Optimizes transition states using either the Hessian Dimer method ("light") or R
 ## Usage
 ```bash
 pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
-                    [--freeze-links BOOL]
+                    [--freeze-links BOOL] [--thresh PRESET]
                     [--max-cycles N]
                     [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
                                heavy|rfo|rsirfo|rs-i-rfo]
@@ -26,6 +26,7 @@ pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
 | `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimization trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_ts_opt/` |
+| `--thresh TEXT` | Override the convergence preset for both workflows (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

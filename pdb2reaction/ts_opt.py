@@ -1291,6 +1291,12 @@ RSIRFO_KW.update({
               help="Dump optimization trajectory")
 @click.option("--out-dir", type=str, default="./result_ts_opt/", show_default=True, help="Output directory")
 @click.option(
+    "--thresh",
+    type=str,
+    default=None,
+    help="Convergence preset for the active optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -1311,6 +1317,7 @@ def cli(
     opt_mode: str,
     dump: bool,
     out_dir: str,
+    thresh: Optional[str],
     args_yaml: Optional[Path],
     hessian_calc_mode: Optional[str],
 ) -> None:
@@ -1344,6 +1351,10 @@ def cli(
     opt_cfg["max_cycles"] = int(max_cycles)
     opt_cfg["dump"]       = bool(dump)
     opt_cfg["out_dir"]    = out_dir
+    if thresh is not None:
+        opt_cfg["thresh"] = str(thresh)
+        simple_cfg["thresh"] = str(thresh)
+        rsirfo_cfg["thresh"] = str(thresh)
 
     # Hessian mode override from CLI
     if hessian_calc_mode is not None:

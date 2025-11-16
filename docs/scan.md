@@ -8,7 +8,7 @@ Performs staged bond-length scans with harmonic restraints and single-structure 
 pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
                   [--one-based/--zero-based] [--max-step-size ΔÅ] [--bias-k k]
                   [--relax-max-cycles N] [--opt-mode light|lbfgs|heavy|rfo]
-                  [--freeze-links BOOL] [--dump BOOL]
+                  [--freeze-links BOOL] [--dump BOOL] [--thresh PRESET]
                   [--out-dir DIR] [--preopt BOOL] [--endopt BOOL]
                   [--args-yaml FILE]
 ```
@@ -28,6 +28,7 @@ pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
 | `--freeze-links BOOL` | Explicit `True`/`False`. Freeze link-hydrogen parents for PDB inputs. | `True` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump stage trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_scan/` |
+| `--thresh TEXT` | Override convergence preset for pre/end optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 | `--preopt BOOL` | Explicit `True`/`False`. Pre-optimize the initial structure before scanning. | `True` |
 | `--endopt BOOL` | Explicit `True`/`False`. Unbiased relaxation after each stage. | `True` |

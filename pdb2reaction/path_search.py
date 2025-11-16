@@ -1432,6 +1432,12 @@ def _merge_final_and_write(final_images: List[Any],
               help="Dump GSM/single-optimization trajectories during the run.")
 @click.option("--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
 @click.option(
+    "--thresh",
+    type=str,
+    default=None,
+    help="Convergence preset for GSM and single optimizations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -1479,6 +1485,7 @@ def cli(
     sopt_mode: str,
     dump: bool,
     out_dir: str,
+    thresh: Optional[str],
     args_yaml: Optional[Path],
     pre_opt: bool,
     align: bool,
@@ -1585,6 +1592,10 @@ def cli(
 
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
+            lbfgs_cfg["thresh"] = str(thresh)
+            rfo_cfg["thresh"] = str(thresh)
 
         lbfgs_cfg["dump"] = bool(dump)
         rfo_cfg["dump"]   = bool(dump)
@@ -1657,12 +1668,13 @@ def cli(
             click.echo("[init] Skipping endpoint pre-optimization as requested by --pre-opt False.")
 
         # Align all inputs to the first structure, guided by freeze constraints, when requested
+        align_thresh = str(opt_cfg.get("thresh", "gau"))
         if align:
             try:
                 click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
                 _ = align_and_refine_sequence_inplace(
                     geoms,
-                    thresh="gau",
+                    thresh=align_thresh,
                     shared_calc=shared_calc,
                     out_dir=out_dir_path / "align_refine",
                     verbose=True,

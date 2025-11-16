@@ -296,6 +296,12 @@ def _maybe_convert_outputs_to_pdb(
               help="Write optimization trajectory to 'optimization.trj'.")
 @click.option("--out-dir", type=str, default="./result_opt/", show_default=True, help="Output directory.")
 @click.option(
+    "--thresh",
+    type=str,
+    default=None,
+    help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -310,6 +316,7 @@ def cli(
     opt_mode: str,
     dump: bool,
     out_dir: str,
+    thresh: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
     time_start = time.perf_counter()
@@ -343,6 +350,8 @@ def cli(
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
 
         # Optionally infer "freeze_atoms" from link hydrogens in PDB
         if freeze_links and input_path.suffix.lower() == ".pdb":

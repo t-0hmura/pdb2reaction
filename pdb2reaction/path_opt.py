@@ -191,6 +191,12 @@ def _load_two_endpoints(
 @click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True,
               help="Output directory.")
 @click.option(
+    "--thresh",
+    type=str,
+    default=None,
+    help="Convergence preset for the string optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -206,6 +212,7 @@ def cli(
     climb: bool,
     dump: bool,
     out_dir: str,
+    thresh: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
     try:
@@ -244,6 +251,8 @@ def cli(
 
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir  # Pass --out-dir to the optimizer via "out_dir"
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
 
         # Important: do not use internal alignment; use external Kabsch alignment instead
         opt_cfg["align"] = False
@@ -281,11 +290,12 @@ def cli(
         shared_calc = uma_pysis(**calc_cfg)
 
         # By default, apply external Kabsch alignment (if freeze_atoms exist, use only them)
+        align_thresh = str(opt_cfg.get("thresh", "gau"))
         try:
             click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
             _ = align_and_refine_sequence_inplace(
                 geoms,
-                thresh="gau",
+                thresh=align_thresh,
                 shared_calc=shared_calc,
                 out_dir=out_dir_path / "align_refine",
                 verbose=True,
