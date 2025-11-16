@@ -413,7 +413,7 @@ def _calc_energy(geom, uma_kwargs: dict) -> float:
     """
     Compute electronic energy (Hartree) from UMA calculator.
     """
-    calc = uma_pysis(out_hess_torch=False, **uma_kwargs)
+    calc = uma_pysis(**uma_kwargs)
     geom.set_calculator(calc)
     E = float(geom.energy)
     geom.set_calculator(None)
