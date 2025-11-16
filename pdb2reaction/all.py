@@ -177,6 +177,7 @@ Notes
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import List, Sequence, Optional, Tuple, Dict, Any
 
@@ -258,6 +259,141 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     if override.is_absolute():
         return override
     return default.parent / override
+
+
+def _read_pdb_atom_serials(pdb_path: Path) -> List[int]:
+    """Return the ATOM/HETATM serial numbers (in file order) from ``pdb_path``."""
+    serials: List[int] = []
+    try:
+        with open(pdb_path, "r") as fh:
+            for line in fh:
+                if line.startswith("ATOM") or line.startswith("HETATM"):
+                    serial_str = line[6:11].strip()
+                    if not serial_str:
+                        raise click.ClickException(
+                            f"[all] Atom record without a serial number in {pdb_path}."
+                        )
+                    serials.append(int(serial_str))
+    except FileNotFoundError:
+        raise click.ClickException(f"[all] File not found while parsing PDB: {pdb_path}")
+    if not serials:
+        raise click.ClickException(f"[all] No ATOM/HETATM records detected in {pdb_path}.")
+    return serials
+
+
+def _serial_to_pocket_index(pocket_pdb: Path) -> Dict[int, int]:
+    """Build a mapping of atom serial → pocket index (1-based) for the pocket PDB."""
+    serial_to_idx: Dict[int, int] = {}
+    idx = 0
+    try:
+        with open(pocket_pdb, "r") as fh:
+            for line in fh:
+                if line.startswith("ATOM") or line.startswith("HETATM"):
+                    serial_str = line[6:11].strip()
+                    if not serial_str:
+                        raise click.ClickException(
+                            f"[all] Pocket PDB {pocket_pdb} contains an atom without a serial number."
+                        )
+                    serial = int(serial_str)
+                    idx += 1
+                    serial_to_idx[serial] = idx
+    except FileNotFoundError:
+        raise click.ClickException(f"[all] Pocket PDB not found: {pocket_pdb}")
+    if not serial_to_idx:
+        raise click.ClickException(f"[all] Pocket PDB {pocket_pdb} has no ATOM/HETATM records.")
+    return serial_to_idx
+
+
+def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple[int, int, float]]]:
+    """Parse ``--scan-lists`` literals without re-basing atom indices."""
+    stages: List[List[Tuple[int, int, float]]] = []
+    for idx_stage, literal in enumerate(scan_lists_raw, start=1):
+        try:
+            obj = ast.literal_eval(literal)
+        except Exception as exc:  # pragma: no cover - defensive
+            raise click.BadParameter(f"Invalid literal for --scan-lists #{idx_stage}: {exc}")
+        if not isinstance(obj, (list, tuple)):
+            raise click.BadParameter(
+                f"--scan-lists #{idx_stage} must be a list/tuple of (i,j,target)."
+            )
+        tuples: List[Tuple[int, int, float]] = []
+        for t in obj:
+            if (
+                isinstance(t, (list, tuple))
+                and len(t) == 3
+                and isinstance(t[0], (int, np.integer))
+                and isinstance(t[1], (int, np.integer))
+                and isinstance(t[2], (int, float, np.floating))
+            ):
+                tuples.append((int(t[0]), int(t[1]), float(t[2])))
+            else:
+                raise click.BadParameter(
+                    f"--scan-lists #{idx_stage} contains an invalid triple: {t}"
+                )
+        if not tuples:
+            raise click.BadParameter(
+                f"--scan-lists #{idx_stage} must contain at least one (i,j,target) triple."
+            )
+        stages.append(tuples)
+    return stages
+
+
+def _format_scan_stage(stage: List[Tuple[int, int, float]]) -> str:
+    """Serialize a scan stage back into a Python-like literal string."""
+    return "[" + ", ".join(f"({i},{j},{target})" for (i, j, target) in stage) + "]"
+
+
+def _convert_scan_lists_to_pocket_indices(
+    scan_lists_raw: Sequence[str],
+    full_input_pdb: Path,
+    pocket_pdb: Path,
+) -> List[List[Tuple[int, int, float]]]:
+    """
+    Convert user-provided atom indices (based on the full input PDB) to pocket indices.
+    Returns the converted stages as lists of (i,j,target) with 1-based pocket indices.
+    """
+    if not scan_lists_raw:
+        return []
+
+    stages = _parse_scan_lists_literals(scan_lists_raw)
+    orig_serials = _read_pdb_atom_serials(full_input_pdb)
+    serial_to_pocket_idx = _serial_to_pocket_index(pocket_pdb)
+
+    converted: List[List[Tuple[int, int, float]]] = []
+    n_atoms_full = len(orig_serials)
+    for stage_idx, stage in enumerate(stages, start=1):
+        stage_converted: List[Tuple[int, int, float]] = []
+        for tuple_idx, (idx_i, idx_j, target) in enumerate(stage, start=1):
+            if idx_i <= 0 or idx_j <= 0:
+                raise click.BadParameter(
+                    f"--scan-lists #{stage_idx} tuple #{tuple_idx} must use 1-based atom indices."
+                )
+            if idx_i > n_atoms_full or idx_j > n_atoms_full:
+                raise click.BadParameter(
+                    f"--scan-lists #{stage_idx} tuple #{tuple_idx} references an atom index "
+                    f"beyond the input PDB atom count ({n_atoms_full})."
+                )
+            serial_i = orig_serials[idx_i - 1]
+            serial_j = orig_serials[idx_j - 1]
+            if serial_i not in serial_to_pocket_idx:
+                raise click.BadParameter(
+                    f"--scan-lists #{stage_idx} tuple #{tuple_idx} references atom index {idx_i} "
+                    f"(serial {serial_i}) which was removed during pocket extraction."
+                )
+            if serial_j not in serial_to_pocket_idx:
+                raise click.BadParameter(
+                    f"--scan-lists #{stage_idx} tuple #{tuple_idx} references atom index {idx_j} "
+                    f"(serial {serial_j}) which was removed during pocket extraction."
+                )
+            stage_converted.append(
+                (
+                    serial_to_pocket_idx[serial_i],
+                    serial_to_pocket_idx[serial_j],
+                    target,
+                )
+            )
+        converted.append(stage_converted)
+    return converted
 
 
 def _round_charge_with_note(q: float) -> int:
@@ -885,7 +1021,8 @@ def _run_dft_for_state(pdb_path: Path,
     type=str, multiple=True, required=False,
     help='Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable. '
          'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
-         'Applied **after extraction** to the pocket PDB; stage results feed into path_search.',
+         'Indices refer to the original all-input PDB (1-based); they are auto-mapped to the pocket after extraction. '
+         'Stage results feed into path_search.',
 )
 @click.option("--scan-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
               help="Override the scan output directory (default: <out-dir>/scan/). Relative paths are resolved against the default parent.")
@@ -1247,7 +1384,20 @@ def cli(
     if is_single and has_scan:
         click.echo("\n=== [all] Stage 1b — Staged scan on pocket (single-structure mode) ===\n")
         _ensure_dir(scan_dir)
-        pocket_pdb = pocket_outputs[0]
+        pocket_pdb = Path(pocket_outputs[0]).resolve()
+        full_input_pdb = Path(input_paths[0]).resolve()
+        converted_scan_stages = _convert_scan_lists_to_pocket_indices(
+            scan_lists_raw, full_input_pdb, pocket_pdb
+        )
+        scan_one_based_effective = True if scan_one_based is None else bool(scan_one_based)
+        scan_stage_literals: List[str] = []
+        for stage in converted_scan_stages:
+            if scan_one_based_effective:
+                stage_use = stage
+            else:
+                stage_use = [(i - 1, j - 1, target) for (i, j, target) in stage]
+            scan_stage_literals.append(_format_scan_stage(stage_use))
+        click.echo("[all] Remapped --scan-lists indices from the full PDB to the pocket ordering.")
         scan_preopt_use = pre_opt if scan_preopt_override is None else bool(scan_preopt_override)
         scan_endopt_use = True if scan_endopt_override is None else bool(scan_endopt_override)
         scan_opt_mode_use = (opt_mode.lower() if opt_mode else
@@ -1275,9 +1425,9 @@ def cli(
         _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
         if args_yaml is not None:
             scan_args.extend(["--args-yaml", str(args_yaml)])
-        # Forward all --scan-lists
-        for s in scan_lists_raw:
-            scan_args.extend(["--scan-lists", str(s)])
+        # Forward all converted --scan-lists (aligned to the pocket atom order)
+        for literal in scan_stage_literals:
+            scan_args.extend(["--scan-lists", literal])
 
         click.echo("[all] Invoking scan with arguments:")
         click.echo("  " + " ".join(scan_args))
