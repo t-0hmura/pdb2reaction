@@ -65,7 +65,7 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
-| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each list element is `(i,j,target\_Å)` (values are parsed from a Python-like literal). | _None_ |
+| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each list element is `(i,j,target\_Å)` (values are parsed from a Python-like literal). Atom indices come from the original `all` input PDB (1-based) and are remapped internally to the pocket ordering. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan` by default). | _None_ |
 | `--scan-one-based BOOLEAN` | Force 1-based (`True`) or 0-based (`False`) scan indexing; `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |

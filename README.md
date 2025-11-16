@@ -43,6 +43,8 @@ Key options:
 - `-i, --input PATH...`: Reaction-ordered PDB files (≥2 for GSM mode, 1 when combined with `--scan-lists` or `--tsopt True`).
 - `-c, --center TEXT`: Substrate specification (residue IDs or names) used to carve the binding pocket.
 - `--ligand-charge TEXT`: Total or per-residue charge assignment propagated through scan/GSM/TSOPT.
+- `--scan-lists TEXT...`: Define staged scans for single-input runs. Atom indices are taken from the **original** PDB supplied to
+  `pdb2reaction all` (1-based) and are automatically remapped onto the extracted pocket before invoking `scan`.
 - `--tsopt/--thermo/--dft BOOLEAN`: Enable TS optimisation, vibrational analysis, and DFT single-point post-processing.
 - `--args-yaml FILE`: Shared YAML file that forwards UMA/GSM configuration blocks to every invoked subcommand
   (see [`docs/all.md`](docs/all.md)).
