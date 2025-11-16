@@ -537,8 +537,8 @@ def _run_gsm_between(
         **gs_cfg,
 )
 
-# Track the first available Gaussian template for GJF conversions
-_PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
+    # Track the first available Gaussian template for GJF conversions
+    _PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
 
     _opt_args = dict(opt_cfg)
     seg_dir = out_dir / f"{tag}_gsm"
