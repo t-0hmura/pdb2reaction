@@ -74,7 +74,15 @@ import numpy as np
 
 from pysisyphus.helpers import geom_loader
 
-from .utils import load_yaml_dict, apply_yaml_overrides, pretty_block, format_elapsed
+from .utils import (
+    load_yaml_dict,
+    apply_yaml_overrides,
+    pretty_block,
+    format_elapsed,
+    prepare_input_structure,
+    resolve_charge_spin_or_raise,
+    maybe_convert_xyz_to_gjf,
+)
 
 
 # -----------------------------------------------
@@ -332,8 +340,15 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1).")
+@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Spin multiplicity (2S+1). Defaults to 1 when not provided.",
+)
 @click.option(
     "--func-basis",
     "func_basis",
@@ -355,8 +370,8 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 
 def cli(
     input_path: Path,
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     func_basis: str,
     max_cycle: int,
     conv_tol: float,
@@ -364,6 +379,9 @@ def cli(
     out_dir: str,
     args_yaml: Optional[Path],
 ) -> None:
+    prepared_input = prepare_input_structure(input_path)
+    geom_input_path = prepared_input.geom_path
+    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
     try:
         time_start = time.perf_counter()
         # --------------------------
@@ -403,13 +421,17 @@ def cli(
         # --------------------------
         # 2) Load geometry
         # --------------------------
-        geometry = geom_loader(input_path, coord_type="cart")
+        geometry = geom_loader(geom_input_path, coord_type="cart")
         xyz_s, atoms_list = _geometry_to_pyscf_atoms_string(geometry)
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
         # Write a provenance snapshot of the input geometry
-        (out_dir_path / "input_geometry.xyz").write_text(xyz_s if xyz_s.endswith("\n") else (xyz_s + "\n"))
-        click.echo(f"[write] Wrote '{out_dir_path / 'input_geometry.xyz'}'.")
+        input_xyz = out_dir_path / "input_geometry.xyz"
+        input_xyz.write_text(xyz_s if xyz_s.endswith("\n") else (xyz_s + "\n"))
+        click.echo(f"[write] Wrote '{input_xyz}'.")
+        gjf_written = maybe_convert_xyz_to_gjf(input_xyz, prepared_input.gjf_template, out_dir_path / "input_geometry.gjf")
+        if gjf_written:
+            click.echo(f"[convert] Wrote '{gjf_written}'.")
 
         # --------------------------
         # 3) Build PySCF molecule
@@ -592,6 +614,8 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        prepared_input.cleanup()
 
 
 # Enable `python -m pdb2reaction.dft` execution

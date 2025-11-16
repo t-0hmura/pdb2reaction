@@ -204,7 +204,12 @@ from . import freq as _freq_cli
 from . import dft as _dft_cli
 from .uma_pysis import uma_pysis
 from .trj2fig import run_trj2fig
-from .utils import build_energy_diagram, format_elapsed
+from .utils import (
+    build_energy_diagram,
+    format_elapsed,
+    prepare_input_structure,
+    maybe_convert_xyz_to_gjf,
+)
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
 
@@ -418,6 +423,8 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     Run ts_opt CLI on a HEI pocket PDB; return (final_ts_pdb_path, ts_geom)
     """
     overrides = overrides or {}
+    prepared_input = prepare_input_structure(hei_pdb)
+    template = prepared_input.gjf_template
     ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
     _ensure_dir(ts_dir)
 
@@ -428,7 +435,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     opt_mode = overrides.get("opt_mode", opt_mode_default)
 
     ts_args: List[str] = [
-        "-i", str(hei_pdb),
+        "-i", str(prepared_input.source_path),
         "-q", str(int(charge)),
         "-s", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
@@ -462,20 +469,30 @@ def _run_tsopt_on_hei(hei_pdb: Path,
 
     # Prefer PDB (ts_opt converts when input is PDB)
     ts_pdb = ts_dir / "final_geometry.pdb"
+    final_xyz = ts_dir / "final_geometry.xyz"
     if not ts_pdb.exists():
         # fallback: use final .xyz and convert
-        xyz_path = ts_dir / "final_geometry.xyz"
-        if not xyz_path.exists():
+        if not final_xyz.exists():
+            prepared_input.cleanup()
             raise click.ClickException("[tsopt] TS outputs not found.")
-        _path_search._maybe_convert_to_pdb(xyz_path, hei_pdb, ts_dir / "final_geometry.pdb")
+        _path_search._maybe_convert_to_pdb(final_xyz, hei_pdb, ts_dir / "final_geometry.pdb")
     ts_pdb = ts_dir / "final_geometry.pdb"
     g_ts = geom_loader(ts_pdb, coord_type="cart")
+
+    if template is not None and final_xyz.exists():
+        try:
+            final_gjf = ts_dir / "final_geometry.gjf"
+            maybe_convert_xyz_to_gjf(final_xyz, template, final_gjf)
+            click.echo(f"[tsopt] Wrote '{final_gjf}'.")
+        except Exception as e:
+            click.echo(f"[tsopt] WARNING: Failed to convert TS geometry to GJF: {e}", err=True)
 
     # Ensure calculator to have energy on g_ts
     calc = uma_pysis(charge=int(charge), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
     g_ts.set_calculator(calc)
     _ = float(g_ts.energy)
 
+    prepared_input.cleanup()
     return ts_pdb, g_ts
 
 

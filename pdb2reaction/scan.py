@@ -142,6 +142,9 @@ from .utils import (
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
+    prepare_input_structure,
+    resolve_charge_spin_or_raise,
+    maybe_convert_xyz_to_gjf,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -441,8 +444,15 @@ class HarmonicBiasCalculator:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
+@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
+)
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,
@@ -483,8 +493,8 @@ class HarmonicBiasCalculator:
               help="After each stage, run an additional unbiased optimization of the stage result.")
 def cli(
     input_path: Path,
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     scan_lists_raw: Sequence[str],
     one_based: bool,
     max_step_size: float,
@@ -499,6 +509,9 @@ def cli(
     preopt: bool,
     endopt: bool,
 ) -> None:
+    prepared_input = prepare_input_structure(input_path)
+    geom_input_path = prepared_input.geom_path
+    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
     try:
         time_start = time.perf_counter()  # start timing
         
@@ -578,7 +591,7 @@ def cli(
 
         # Load
         coord_type = geom_cfg.get("coord_type", "cart")
-        geom = geom_loader(input_path, coord_type=coord_type)
+        geom = geom_loader(geom_input_path, coord_type=coord_type)
 
         # Merge freeze_atoms with link parents (PDB)
         freeze = merge_freeze_atom_indices(geom_cfg)
@@ -641,6 +654,9 @@ def cli(
             with open(pre_xyz, "w") as f:
                 f.write(_coords3d_to_xyz_string(geom))
             click.echo(f"[write] Wrote '{pre_xyz}'.")
+            gjf_written = maybe_convert_xyz_to_gjf(pre_xyz, prepared_input.gjf_template, pre_dir / "result.gjf")
+            if gjf_written:
+                click.echo(f"[convert] Wrote '{gjf_written}'.")
             if is_pdb_input:
                 try:
                     convert_xyz_to_pdb(pre_xyz, input_path.resolve(), pre_dir / "result.pdb")
@@ -746,6 +762,9 @@ def cli(
                 with open(final_xyz, "w") as f:
                     f.write(_coords3d_to_xyz_string(geom))
                 click.echo(f"[write] Wrote '{final_xyz}'.")
+                gjf_written = maybe_convert_xyz_to_gjf(final_xyz, prepared_input.gjf_template, stage_dir / "result.gjf")
+                if gjf_written:
+                    click.echo(f"[convert] Wrote '{gjf_written}'.")
                 if is_pdb_input:
                     try:
                         convert_xyz_to_pdb(final_xyz, input_path.resolve(), stage_dir / "result.pdb")
@@ -827,6 +846,9 @@ def cli(
             with open(final_xyz, "w") as f:
                 f.write(_coords3d_to_xyz_string(geom))
             click.echo(f"[write] Wrote '{final_xyz}'.")
+            gjf_written = maybe_convert_xyz_to_gjf(final_xyz, prepared_input.gjf_template, stage_dir / "result.gjf")
+            if gjf_written:
+                click.echo(f"[convert] Wrote '{gjf_written}'.")
 
             if is_pdb_input:
                 try:
@@ -893,6 +915,8 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during scan:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        prepared_input.cleanup()
 
 
 if __name__ == "__main__":

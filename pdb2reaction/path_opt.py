@@ -78,6 +78,10 @@ from .utils import (
     format_geom_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
+    prepare_input_structure,
+    fill_charge_spin_from_gjf,
+    maybe_convert_xyz_to_gjf,
+    PreparedInputStructure,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 
@@ -137,7 +141,7 @@ def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
 
 
 def _load_two_endpoints(
-    paths: Sequence[Path],
+    inputs: Sequence[PreparedInputStructure],
     coord_type: str,
     base_freeze: Sequence[int],
     auto_freeze_links: bool,
@@ -146,14 +150,16 @@ def _load_two_endpoints(
     Load the two endpoint structures and set `freeze_atoms` as needed.
     """
     geoms = []
-    for p in paths:
-        g = geom_loader(p, coord_type=coord_type)
+    for prepared in inputs:
+        geom_path = prepared.geom_path
+        src_path = prepared.source_path
+        g = geom_loader(geom_path, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and p.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(p)
+        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
+            detected = _freeze_links_for_pdb(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+                click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g.freeze_atoms = np.array(freeze, dtype=int)
@@ -177,8 +183,22 @@ def _load_two_endpoints(
     required=True,
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Total charge.")
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1).")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Total charge (defaults to 0 when omitted).",
+)
+@click.option(
+    "-s",
+    "--spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Spin multiplicity (2S+1). Defaults to 1 when omitted.",
+)
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=30, show_default=True,
@@ -204,8 +224,8 @@ def _load_two_endpoints(
 )
 def cli(
     input_paths: Sequence[Path],
-    charge: int,
-    spin: int,
+    charge: Optional[int],
+    spin: Optional[int],
     freeze_links_flag: bool,
     max_nodes: int,
     max_cycles: int,
@@ -215,6 +235,8 @@ def cli(
     thresh: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
+    input_paths = tuple(Path(p) for p in input_paths)
+    prepared_inputs = [prepare_input_structure(p) for p in input_paths]
     try:
         time_start = time.perf_counter()
 
@@ -240,8 +262,18 @@ def cli(
         )
 
         # CLI overrides (highest precedence)
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"]   = int(spin)
+        resolved_charge = charge
+        resolved_spin = spin
+        for prepared in prepared_inputs:
+            resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
+                resolved_charge, resolved_spin, prepared.gjf_template
+            )
+        if resolved_charge is None:
+            resolved_charge = 0
+        if resolved_spin is None:
+            resolved_spin = 1
+        calc_cfg["charge"] = int(resolved_charge)
+        calc_cfg["spin"] = int(resolved_spin)
 
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
@@ -275,12 +307,11 @@ def cli(
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        # Input paths
-        p0, p1 = Path(input_paths[0]), Path(input_paths[1])
+        source_paths = [prep.source_path for prep in prepared_inputs]
 
         # Load endpoints (if PDB, merge in link-parent freezing)
         geoms = _load_two_endpoints(
-            paths=[p0, p1],
+            inputs=prepared_inputs,
             coord_type=geom_cfg.get("coord_type", "cart"),
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
@@ -416,14 +447,23 @@ def cli(
             click.echo(f"[write] Wrote '{hei_xyz}'.")
 
             ref_pdb = None
-            if input_paths[0].suffix.lower() == ".pdb":
-                ref_pdb = input_paths[0].resolve()
+            if source_paths[0].suffix.lower() == ".pdb":
+                ref_pdb = source_paths[0].resolve()
             if ref_pdb is not None:
                 hei_pdb = out_dir_path / "gsm_hei.pdb"
                 convert_xyz_to_pdb(hei_xyz, ref_pdb, hei_pdb)
                 click.echo(f"[convert] Wrote '{hei_pdb}'.")
             else:
                 click.echo("[convert] Skipped 'gsm_hei.pdb' (no PDB reference among inputs).")
+
+            template = next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None)
+            if template is not None:
+                try:
+                    hei_gjf = out_dir_path / "gsm_hei.gjf"
+                    maybe_convert_xyz_to_gjf(hei_xyz, template, hei_gjf)
+                    click.echo(f"[convert] Wrote '{hei_gjf}'.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert HEI to GJF: {e}", err=True)
 
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
@@ -441,6 +481,9 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during path optimization:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        for prepared in prepared_inputs:
+            prepared.cleanup()
 
 
 def freeze_links_helper(pdb_path: Path):
