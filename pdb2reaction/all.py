@@ -880,9 +880,9 @@ def _run_dft_for_state(pdb_path: Path,
               help="Override scan harmonic bias strength k (eV/Å^2).")
 @click.option("--scan-relax-max-cycles", type=int, default=None,
               help="Override scan relaxation max cycles per step.")
-@click.option("--scan-preopt", type=click.BOOL, default=None,
+@click.option("--scan-preopt", "scan_preopt_override", type=click.BOOL, default=None,
               help="Override scan --preopt flag.")
-@click.option("--scan-endopt", type=click.BOOL, default=None,
+@click.option("--scan-endopt", "scan_endopt_override", type=click.BOOL, default=None,
               help="Override scan --endopt flag.")
 @click.pass_context
 def cli(
