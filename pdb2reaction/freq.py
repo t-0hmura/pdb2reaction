@@ -551,7 +551,8 @@ THERMO_KW = {
 # ---- Thermochemistry options (added) ----
 @click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,
               help="Temperature (K) for thermochemistry summary.")
-@click.option("--pressure", type=float, default=THERMO_KW["pressure_atm"], show_default=True,
+@click.option("--pressure", "pressure_atm",
+              type=float, default=THERMO_KW["pressure_atm"], show_default=True,
               help="Pressure (atm) for thermochemistry summary.")
 @click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
               help="When True, write 'thermoanalysis.yaml' under out-dir.")
