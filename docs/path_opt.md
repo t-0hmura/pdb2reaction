@@ -6,7 +6,7 @@ Optimizes a minimum-energy path between two endpoints using the pysisyphus Growi
 ## Usage
 ```bash
 pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
-                      [--freeze-links BOOL]
+                      [--freeze-links BOOL] [--thresh PRESET]
                       [--max-nodes N] [--max-cycles N] [--climb BOOL]
                       [--dump BOOL] [--out-dir DIR] [--args-yaml FILE]
 ```
@@ -23,6 +23,7 @@ pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing-image refinement. | `True` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimizer trajectories and restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
+| `--thresh TEXT` | Override StringOptimizer convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ### Shared sections

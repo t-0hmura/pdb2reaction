@@ -466,6 +466,12 @@ class HarmonicBiasCalculator:
 @click.option("--out-dir", type=str, default="./result_scan/", show_default=True,
               help="Base output directory.")
 @click.option(
+    "--thresh",
+    type=str,
+    default=None,
+    help="Convergence preset for relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -488,6 +494,7 @@ def cli(
     freeze_links: bool,
     dump: bool,
     out_dir: str,
+    thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
     endopt: bool,
@@ -527,6 +534,8 @@ def cli(
         opt_cfg["out_dir"] = out_dir
         # Do not use the optimizer's own dump per step; stage dumping is controlled separately.
         opt_cfg["dump"]    = False
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
         kind = normalize_choice(
             opt_mode,
             param="--opt-mode",

@@ -6,7 +6,7 @@ Performs single-structure geometry optimizations with pysisyphus using either th
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|rfo]
-                 [--freeze-links BOOL] [--dump BOOL]
+                 [--freeze-links BOOL] [--dump BOOL] [--thresh PRESET]
                  [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
 ```
 
@@ -21,6 +21,7 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 | `--opt-mode TEXT` | Select optimizer: `light`/`lbfgs` → LBFGS, `heavy`/`rfo` → RFO. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Emit `optimization.trj`. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_opt/` |
+| `--thresh TEXT` | Override the convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ### Section `geom`
