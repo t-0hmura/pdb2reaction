@@ -8,12 +8,9 @@ and graph string methods so that multi-step enzymatic reaction mechanisms can be
 ## Installation
 
 ```bash
-# Clone this repository
-git clone https://github.com/t-0hmura/pdb2reaction.git
-cd pdb2reaction
-
-# Install with Python 3.11+
-pip install .
+pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+pip install git+https://github.com/t-0hmura/pdb2reaction.git
+huggingface-cli login
 ```
 
 > **Note**: Several dependencies (e.g., `torch`, `fairchem-core`, `gpu4pyscf-cuda12x`) expect a CUDA-capable environment. Refer
@@ -34,11 +31,11 @@ The CLI is exposed via the `pdb2reaction` entry point. Running `pdb2reaction` wi
 
 ```bash
 # Example multi-structure workflow (reactant, intermediates, product)
-pdb2reaction all -i R.pdb I1.pdb I2.pdb P.pdb \
-                -c "A:123,B:456" \
-                --ligand-charge 0 \
-                --out-dir ./result_all \
-                --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb \
+             -c "A:123,B:456" \
+             --ligand-charge 0 \
+             --out-dir ./result_all \
+             --tsopt True --thermo True --dft True
 ```
 
 Key options:
