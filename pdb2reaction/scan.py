@@ -121,16 +121,14 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
-from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
-
-EV2AU = 1.0 / AU2EV  # eV → Hartree
-H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
+from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .opt import (
     OPT_BASE_KW as _OPT_BASE_KW,
     LBFGS_KW as _LBFGS_KW,
     RFO_KW as _RFO_KW,
+    HarmonicBiasCalculator,
 )
 from .utils import (
     convert_xyz_to_pdb,
@@ -347,92 +345,6 @@ def _snapshot_geometry(g) -> Any:
             pass
 
 
-# --------------------------------------------------------------------------------------
-# Harmonic bias (well) calculator wrapper — optimized for uma_pysis
-# --------------------------------------------------------------------------------------
-
-class HarmonicBiasCalculator:
-    """
-    Wrap a base *uma_pysis* calculator and add harmonic distance wells:
-        E_bias = sum_k 0.5 * k * (|r_i − r_j| − target_k)^2
-
-    API (only the (elem, coords) call pattern used by pysisyphus.Geometry):
-        get_energy(elem, coords) -> {"energy": E_total}
-        get_forces(elem, coords) -> {"energy": E_total, "forces": F_total_flat}
-
-    Units
-    -----
-    - Incoming coords are Bohr; base `uma_pysis` returns energy [Hartree] and forces [Hartree/Bohr].
-    - `k` is provided in eV/Å^2 (CLI). Internally we convert once to Hartree/Bohr^2.
-    - Targets are specified in Å and converted on the fly to Bohr.
-    """
-
-    def __init__(self, base_calc, k: float = 10.0, pairs: Optional[List[Tuple[int, int, float]]] = None):
-        self.base = base_calc
-        self.k_evAA = float(k)  # eV / Å^2
-        self.k_au_bohr2 = self.k_evAA * H_EVAA_2_AU  # Hartree / Bohr^2
-        self._pairs: List[Tuple[int, int, float]] = list(pairs or [])  # targets in Å
-
-    # ---- control API ----
-    def set_pairs(self, pairs: List[Tuple[int, int, float]]) -> None:
-        # pairs: list of (i, j, target_length_in_Å) with 0-based indices
-        self._pairs = [(int(i), int(j), float(t)) for (i, j, t) in pairs]
-
-    # ---- bias core (coords in Bohr) ----
-    def _bias_energy_forces_bohr(self, coords_bohr: np.ndarray) -> Tuple[float, np.ndarray]:
-        """
-        coords_bohr: (N,3) in Bohr; returns (E_bias [Hartree], F_bias_flat [Hartree/Bohr]).
-        """
-        coords = np.array(coords_bohr, dtype=float).reshape(-1, 3)  # (N,3)
-        n = coords.shape[0]
-        E_bias = 0.0
-        F_bias = np.zeros((n, 3), dtype=float)
-        k = self.k_au_bohr2
-        for (i, j, target_ang) in self._pairs:
-            if not (0 <= i < n and 0 <= j < n):
-                continue
-            rij_vec = coords[i] - coords[j]               # Bohr
-            rij = float(np.linalg.norm(rij_vec))          # Bohr
-            if rij < 1e-14:
-                continue
-            target_bohr = float(target_ang) * ANG2BOHR    # Bohr
-            diff_bohr = rij - target_bohr                 # Bohr
-            E_bias += 0.5 * k * diff_bohr * diff_bohr     # Hartree
-            u = rij_vec / max(rij, 1e-14)                 # unit vector (Bohr cancels)
-            Fi = -k * diff_bohr * u                       # Hartree/Bohr
-            F_bias[i] += Fi
-            F_bias[j] -= Fi
-        return E_bias, F_bias.reshape(-1)
-
-    # ---- public API expected by Geometry/Optimizers ----
-    def get_forces(self, elem, coords):
-        coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
-        # One base call provides both energy and forces in a.u.
-        base = self.base.get_forces(elem, coords_bohr)
-        E0 = float(base["energy"])
-        F0 = np.asarray(base["forces"], dtype=float).reshape(-1)
-        Ebias, Fbias = self._bias_energy_forces_bohr(coords_bohr)
-        return {"energy": E0 + Ebias, "forces": F0 + Fbias}
-
-    def get_energy(self, elem, coords):
-        coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
-        # Use base energy + bias energy (no extra base call for forces)
-        E0 = float(self.base.get_energy(elem, coords_bohr)["energy"])
-        Ebias, _ = self._bias_energy_forces_bohr(coords_bohr)
-        return {"energy": E0 + Ebias}
-
-    # Optional convenience for components that might use combined calls
-    def get_energy_and_forces(self, elem, coords):
-        res = self.get_forces(elem, coords)
-        return res["energy"], res["forces"]
-
-    def get_energy_and_gradient(self, elem, coords):
-        res = self.get_forces(elem, coords)
-        return res["energy"], -np.asarray(res["forces"], dtype=float).reshape(-1)
-
-    # Delegate unknown attributes to base calculator
-    def __getattr__(self, name: str):
-        return getattr(self.base, name)
 @click.command(
     help="Bond-length driven scan with staged harmonic restraints and relaxation (UMA only).",
     context_settings={"help_option_names": ["-h", "--help"]},

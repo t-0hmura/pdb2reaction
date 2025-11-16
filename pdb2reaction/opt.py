@@ -6,7 +6,10 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 
 Usage (CLI)
 -----
-    pdb2reaction opt -i INPUT -q CHARGE [-s SPIN] [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
+    pdb2reaction opt -i INPUT -q CHARGE [-s SPIN]
+        [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}]
+        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] [--bias-k FLOAT]
+        [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
 
 Examples::
     pdb2reaction opt -i input.pdb -q 0
@@ -20,6 +23,7 @@ Description
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. Precedence: CLI > YAML > built-in defaults.
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
 - Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those (0-based indices), merged with any `geom.freeze_atoms`.
+- Harmonic restraints: `--dist-freeze` accepts (i,j,target Å) tuples to apply harmonic wells during the optimization. Omit the target to freeze the initial distance; the strength is set via `--bias-k` (eV/Å²).
 
 Key options (YAML keys → meaning; defaults)
 - Geometry (`geom`):
@@ -81,8 +85,9 @@ Notes:
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import ast
 import inspect
 import sys
 import textwrap
@@ -97,6 +102,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
+from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
@@ -114,6 +120,9 @@ from .utils import (
     maybe_convert_xyz_to_gjf,
     GjfTemplate,
 )
+
+EV2AU = 1.0 / AU2EV  # eV → Hartree
+H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 
 # -----------------------------------------------
 # Default settings (overridable via YAML/CLI)
@@ -240,6 +249,134 @@ _OPT_MODE_ALIASES = (
 )
 
 
+class HarmonicBiasCalculator:
+    """Wrap a base UMA calculator with harmonic distance restraints."""
+
+    def __init__(self, base_calc, k: float = 10.0, pairs: Optional[List[Tuple[int, int, float]]] = None):
+        self.base = base_calc
+        self.k_evAA = float(k)
+        self.k_au_bohr2 = self.k_evAA * H_EVAA_2_AU
+        self._pairs: List[Tuple[int, int, float]] = list(pairs or [])
+
+    def set_pairs(self, pairs: List[Tuple[int, int, float]]) -> None:
+        self._pairs = [(int(i), int(j), float(t)) for (i, j, t) in pairs]
+
+    def _bias_energy_forces_bohr(self, coords_bohr: np.ndarray) -> Tuple[float, np.ndarray]:
+        coords = np.array(coords_bohr, dtype=float).reshape(-1, 3)
+        n = coords.shape[0]
+        E_bias = 0.0
+        F_bias = np.zeros((n, 3), dtype=float)
+        k = self.k_au_bohr2
+        for (i, j, target_ang) in self._pairs:
+            if not (0 <= i < n and 0 <= j < n):
+                continue
+            rij_vec = coords[i] - coords[j]
+            rij = float(np.linalg.norm(rij_vec))
+            if rij < 1e-14:
+                continue
+            target_bohr = float(target_ang) * ANG2BOHR
+            diff_bohr = rij - target_bohr
+            E_bias += 0.5 * k * diff_bohr * diff_bohr
+            u = rij_vec / max(rij, 1e-14)
+            Fi = -k * diff_bohr * u
+            F_bias[i] += Fi
+            F_bias[j] -= Fi
+        return E_bias, F_bias.reshape(-1)
+
+    def get_forces(self, elem, coords):
+        coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
+        base = self.base.get_forces(elem, coords_bohr)
+        E0 = float(base["energy"])
+        F0 = np.asarray(base["forces"], dtype=float).reshape(-1)
+        Ebias, Fbias = self._bias_energy_forces_bohr(coords_bohr)
+        return {"energy": E0 + Ebias, "forces": F0 + Fbias}
+
+    def get_energy(self, elem, coords):
+        coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
+        E0 = float(self.base.get_energy(elem, coords_bohr)["energy"])
+        Ebias, _ = self._bias_energy_forces_bohr(coords_bohr)
+        return {"energy": E0 + Ebias}
+
+    def get_energy_and_forces(self, elem, coords):
+        res = self.get_forces(elem, coords)
+        return res["energy"], res["forces"]
+
+    def get_energy_and_gradient(self, elem, coords):
+        res = self.get_forces(elem, coords)
+        return res["energy"], -np.asarray(res["forces"], dtype=float).reshape(-1)
+
+    def __getattr__(self, name: str):
+        return getattr(self.base, name)
+
+
+def _parse_dist_freeze(
+    args: Sequence[str],
+    one_based: bool,
+) -> List[Tuple[int, int, Optional[float]]]:
+    """Parse --dist-freeze arguments into 0-based pairs with optional targets."""
+
+    parsed: List[Tuple[int, int, Optional[float]]] = []
+    for idx, raw in enumerate(args, start=1):
+        try:
+            obj = ast.literal_eval(raw)
+        except Exception as e:
+            raise click.BadParameter(f"Invalid literal for --dist-freeze #{idx}: {e}")
+        if isinstance(obj, (list, tuple)) and not obj:
+            iterable = []
+        elif isinstance(obj, (list, tuple)) and isinstance(obj[0], (list, tuple)):
+            iterable = obj
+        else:
+            iterable = [obj]
+        for entry in iterable:
+            if not (isinstance(entry, (list, tuple)) and len(entry) in (2, 3)):
+                raise click.BadParameter(
+                    f"--dist-freeze #{idx} entries must be (i,j) or (i,j,target_A): {entry}"
+                )
+            if not (
+                isinstance(entry[0], (int, np.integer))
+                and isinstance(entry[1], (int, np.integer))
+            ):
+                raise click.BadParameter(f"Atom indices in --dist-freeze #{idx} must be integers: {entry}")
+            i = int(entry[0])
+            j = int(entry[1])
+            target = None
+            if len(entry) == 3:
+                if not isinstance(entry[2], (int, float, np.floating)):
+                    raise click.BadParameter(f"Target distance must be numeric in --dist-freeze #{idx}: {entry}")
+                target = float(entry[2])
+                if target <= 0.0:
+                    raise click.BadParameter(f"Target distance must be > 0 in --dist-freeze #{idx}: {entry}")
+            if one_based:
+                i -= 1
+                j -= 1
+            if i < 0 or j < 0:
+                raise click.BadParameter(f"--dist-freeze #{idx} produced negative index after conversion: {entry}")
+            parsed.append((i, j, target))
+    return parsed
+
+
+def _resolve_dist_freeze_targets(
+    geometry,
+    tuples: List[Tuple[int, int, Optional[float]]],
+) -> List[Tuple[int, int, float]]:
+    coords_bohr = np.array(geometry.coords3d, dtype=float).reshape(-1, 3)
+    coords_ang = coords_bohr * BOHR2ANG
+    n = coords_ang.shape[0]
+    resolved: List[Tuple[int, int, float]] = []
+    for (i, j, target) in tuples:
+        if not (0 <= i < n and 0 <= j < n):
+            raise click.BadParameter(
+                f"--dist-freeze indices {(i, j)} are out of bounds for the loaded geometry (N={n})."
+            )
+        if target is None:
+            vec = coords_ang[i] - coords_ang[j]
+            dist = float(np.linalg.norm(vec))
+        else:
+            dist = float(target)
+        resolved.append((i, j, dist))
+    return resolved
+
+
 def _maybe_convert_outputs_to_pdb(
     input_path: Path,
     out_dir: Path,
@@ -313,6 +450,29 @@ def _maybe_write_final_gjf(
     show_default=False,
     help="Multiplicity (2S+1). Defaults to 1 when not provided.",
 )
+@click.option(
+    "--dist-freeze",
+    "dist_freeze_raw",
+    type=str,
+    multiple=True,
+    default=(),
+    show_default=False,
+    help="Python-like list(s) of (i,j,target_A) to restrain distances (target optional).",
+)
+@click.option(
+    "--one-based/--zero-based",
+    "one_based",
+    default=True,
+    show_default=True,
+    help="Interpret --dist-freeze indices as 1-based (default) or 0-based.",
+)
+@click.option(
+    "--bias-k",
+    type=float,
+    default=10.0,
+    show_default=True,
+    help="Harmonic restraint strength k [eV/Å^2] for --dist-freeze.",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze the parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Maximum number of optimization cycles.")
@@ -337,6 +497,9 @@ def cli(
     input_path: Path,
     charge: Optional[int],
     spin: Optional[int],
+    dist_freeze_raw: Sequence[str],
+    one_based: bool,
+    bias_k: float,
     freeze_links: bool,
     max_cycles: int,
     opt_mode: str,
@@ -349,6 +512,13 @@ def cli(
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+
+    try:
+        dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
+    except click.BadParameter as e:
+        click.echo(f"ERROR: {e}", err=True)
+        prepared_input.cleanup()
+        sys.exit(1)
 
     # --------------------------
     # 1) Assemble configuration
@@ -407,6 +577,20 @@ def cli(
         click.echo(pretty_block("calc", calc_cfg))
         click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
         click.echo(pretty_block(kind, (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
+        if dist_freeze:
+            display_pairs = []
+            for (i, j, target) in dist_freeze:
+                label = (f"{target:.4f}" if target is not None else "<current>")
+                display_pairs.append((int(i) + 1, int(j) + 1, label))
+            click.echo(
+                pretty_block(
+                    "dist_freeze (input)",
+                    {
+                        "k (eV/Å^2)": float(bias_k),
+                        "pairs_1based": display_pairs,
+                    },
+                )
+            )
 
         # --------------------------
         # 2) Prepare geometry
@@ -426,10 +610,33 @@ def cli(
         # Attach UMA calculator
         calc_builder_or_instance = uma_pysis(**calc_cfg)
         try:
-            # Some wrappers return a factory; others return a ready instance
-            geometry.set_calculator(calc_builder_or_instance())
+            base_calc = calc_builder_or_instance()
         except TypeError:
-            geometry.set_calculator(calc_builder_or_instance)
+            base_calc = calc_builder_or_instance
+        geometry.set_calculator(base_calc)
+
+        resolved_dist_freeze: List[Tuple[int, int, float]] = []
+        if dist_freeze:
+            try:
+                resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
+            except click.BadParameter as e:
+                click.echo(f"ERROR: {e}", err=True)
+                sys.exit(1)
+            click.echo(
+                pretty_block(
+                    "dist_freeze (active)",
+                    {
+                        "k (eV/Å^2)": float(bias_k),
+                        "pairs_1based": [
+                            (int(i) + 1, int(j) + 1, float(f"{t:.4f}"))
+                            for (i, j, t) in resolved_dist_freeze
+                        ],
+                    },
+                )
+            )
+            bias_calc = HarmonicBiasCalculator(base_calc, k=float(bias_k))
+            bias_calc.set_pairs(resolved_dist_freeze)
+            geometry.set_calculator(bias_calc)
 
         # --------------------------
         # 3) Build optimizer
