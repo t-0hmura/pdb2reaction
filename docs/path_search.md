@@ -9,7 +9,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
                          [--freeze-links BOOL] [--thresh PRESET]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--sopt-mode lbfgs|rfo|light|heavy] [--dump BOOL]
-                         [--outdir DIR] [--pre-opt BOOL]
+                         [--out-dir DIR] [--pre-opt BOOL]
                          [--align/--no-align] [--ref-pdb FILE ...]
                          [--args-yaml FILE]
 ```
@@ -26,7 +26,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes (`light|lbfgs` or `heavy|rfo`). | `lbfgs` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories. | `False` |
-| `--outdir TEXT` | Output directory. | `./result_path_search/` |
+| `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 | `--pre-opt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before the GSM search. | `True` |
@@ -73,12 +73,12 @@ Recursive path-building controls.
 - `kink_max_nodes` (`3`): Linear interpolation nodes for skipped GSM at kinks.
 
 ## Outputs
-- `<outdir>/mep.trj` (and `.pdb` when the inputs were PDB pockets).
-- `<outdir>/mep_w_ref.pdb` merged full-system MEP (requires `--ref-pdb` or auto-provided templates).
-- `<outdir>/mep_w_ref_seg_XX.pdb` merged per-segment paths for segments with covalent changes (requires `--ref-pdb`).
-- `<outdir>/summary.yaml` summarising barriers and classification for every recursive segment.
-- `<outdir>/mep_plot.png` ΔE profile generated via `trj2fig` (`kcal/mol`, reference = reactant).
-- `<outdir>/energy_diagram.html` and `.png` Plotly diagrams of state energies (relative to reactant, kcal/mol).
+- `<out-dir>/mep.trj` (and `.pdb` when the inputs were PDB pockets).
+- `<out-dir>/mep_w_ref.pdb` merged full-system MEP (requires `--ref-pdb` or auto-provided templates).
+- `<out-dir>/mep_w_ref_seg_XX.pdb` merged per-segment paths for segments with covalent changes (requires `--ref-pdb`).
+- `<out-dir>/summary.yaml` summarising barriers and classification for every recursive segment.
+- `<out-dir>/mep_plot.png` ΔE profile generated via `trj2fig` (`kcal/mol`, reference = reactant).
+- `<out-dir>/energy_diagram.html` and `.png` Plotly diagrams of state energies (relative to reactant, kcal/mol).
 - Per-segment folders (`segments/seg_000_*`) containing GSM dumps, HEI snapshots, merged HEI files, linear kink optimisations, and diagnostic energy plots.
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
 

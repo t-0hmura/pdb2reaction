@@ -113,7 +113,7 @@ opt:
   dump: false
   dump_restart: false
   prefix: ""
-  out_dir: ./result_ts_opt/
+  outdir: ./result_ts_opt/
 hessian_dimer:
   thresh_loose: gau_loose
   thresh: gau
@@ -162,7 +162,7 @@ hessian_dimer:
     dump: false
     dump_restart: false
     prefix: ""
-    out_dir: ./result_opt/
+    outdir: ./result_opt/
     keep_last: 7
     beta: 1.0
     gamma_mult: false
@@ -188,7 +188,7 @@ rsirfo:
   dump: false
   dump_restart: false
   prefix: ""
-  out_dir: ./result_opt/
+  outdir: ./result_opt/
   roots: [0]
   hessian_ref: null
   rx_modes: null

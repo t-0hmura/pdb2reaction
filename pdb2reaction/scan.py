@@ -21,7 +21,7 @@ Usage (CLI)
         --opt-mode {light,lbfgs,heavy,rfo} \
         --freeze-links {True|False} \
         --dump {True|False} \
-        --outdir PATH \
+        --out-dir PATH \
         [--thresh PRESET] \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
@@ -35,7 +35,7 @@ Examples::
     pdb2reaction scan -i input.pdb -q 0 \
         --scan-lists "[(12,45,1.35)]" \
         --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-        --max-step-size 0.2 --dump True --outdir ./result_scan/ --opt-mode lbfgs \
+        --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
         --preopt True --endopt True
 
 
@@ -375,7 +375,7 @@ def _snapshot_geometry(g) -> Any:
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).")
-@click.option("--outdir", type=str, default="./result_scan/", show_default=True,
+@click.option("--out-dir", type=str, default="./result_scan/", show_default=True,
               help="Base output directory.")
 @click.option(
     "--thresh",

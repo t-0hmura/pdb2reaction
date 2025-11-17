@@ -22,7 +22,7 @@ Recommended/common:
     --align/--no-align          Rigidly co‑align all inputs after pre‑opt; default on.
     --args-yaml PATH            YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
     --ref-pdb PATH [...]        Full template PDB(s) for final merge (see Notes).
-    --outdir PATH              Output directory; default ./result_path_search/
+    --out-dir PATH              Output directory; default ./result_path_search/
     --dump {True|False}         Save optimizer dumps; default False.
     --freeze-links {True|False} Freeze parents of link hydrogens for PDB input; default True.
 
@@ -32,7 +32,7 @@ Examples::
 
     # Multistep with intermediates, YAML overrides, and PDB merge to a full system
     pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-        --args-yaml params.yaml --ref-pdb holo_template.pdb --outdir ./run_ps
+        --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
 
 Description
 -----
@@ -1451,7 +1451,7 @@ def _merge_final_and_write(final_images: List[Any],
               help="Single-structure optimizer: lbfgs(light) or rfo(heavy).")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump GSM/single-optimization trajectories during the run.")
-@click.option("--outdir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
+@click.option("--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,

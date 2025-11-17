@@ -17,7 +17,7 @@ Usage (CLI)
       --amplitude-ang 0.8 \
       --n-frames 20 \
       --sort value \
-      --outdir ./result_freq/ \
+      --out-dir ./result_freq/ \
       --args-yaml ./args.yaml \
       --temperature 298.15 \
       --pressure 1.0 \
@@ -26,7 +26,7 @@ Usage (CLI)
 
 Examples::
     pdb2reaction freq -i a.pdb -q 0
-    pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --outdir ./result_freq/
+    pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq/
 
 Description
 -----
@@ -38,7 +38,7 @@ Description
 
 Outputs (& Directory Layout)
 -----
-outdir/
+out-dir/
   mode_XXXX_{±freq}cm-1.trj    # XYZ-like trajectory (Å), sinusoidal animation
   mode_XXXX_{±freq}cm-1.pdb    # MODEL/ENDMDL multi-model PDB animation
   frequencies_cm-1.txt         # All computed frequencies (cm^-1), sorted per --sort
@@ -544,7 +544,7 @@ THERMO_KW = {
               help="Number of frames per mode animation.")
 @click.option("--sort", type=click.Choice(["value", "abs"]), default="value", show_default=True,
               help="Sort modes by 'value' (cm^-1) or by absolute value.")
-@click.option("--outdir", type=str, default="./result_freq/", show_default=True, help="Output directory")
+@click.option("--out-dir", type=str, default="./result_freq/", show_default=True, help="Output directory")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -558,7 +558,7 @@ THERMO_KW = {
               type=float, default=THERMO_KW["pressure_atm"], show_default=True,
               help="Pressure (atm) for thermochemistry summary.")
 @click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
-              help="When True, write 'thermoanalysis.yaml' under outdir.")
+              help="When True, write 'thermoanalysis.yaml' under out-dir.")
 # ---- Hessian calculation mode exposed via CLI ----
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"]),

@@ -6,7 +6,7 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 
 Usage (CLI)
 -----
-    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--outdir OUT_DIR] [--args-yaml YAML]
+    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
 
     # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1),
     # but set them explicitly to avoid unphysical states.
@@ -21,7 +21,7 @@ Description
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …). The geometry is written back unchanged as `input_geometry.xyz`.
 - Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd"). Names are case-insensitive in PySCF.
-- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF `grids.level`), --outdir. Verbosity can be overridden via YAML.
+- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF `grids.level`), --out-dir. Verbosity can be overridden via YAML.
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
     * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS; failure → null)
@@ -387,7 +387,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 @click.option("--max-cycle", type=int, default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
 @click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh).")
 @click.option("--grid-level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level (PySCF grids.level).")
-@click.option("--outdir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
+@click.option("--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),

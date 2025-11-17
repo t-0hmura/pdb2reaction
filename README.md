@@ -105,7 +105,7 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 | `opt` | Optimise a single structure with UMA (LBFGS/RFO presets). | [`docs/opt.md`](docs/opt.md) |
 | `path-opt` | Run UMA optimisation on a specific path segment or snapshot. | [`docs/path_opt.md`](docs/path_opt.md) |
 | `path-search` | Launch the GSM-based reaction path search and pocket/full-system merging. | [`docs/path_search.md`](docs/path_search.md) |
-| `tsopt` | Refine transition states (with optional pseudo-IRC propagation). | [`docs/ts_opt.md`](docs/ts_opt.md) |
+| `tsopt` | Refine transition states (with optional pseudo-IRC propagation). | [`docs/tsopt.md`](docs/tsopt.md) |
 | `freq` | Compute vibrational modes, thermochemistry, and UMA energy diagrams. | [`docs/freq.md`](docs/freq.md) |
 | `irc` | Follow an intrinsic reaction coordinate starting from a TS structure. | [`docs/irc.md`](docs/irc.md) |
 | `extract` | Extract catalytic pockets from full PDB structures (also used implicitly by `all`). | [`docs/extract.md`](docs/extract.md) |

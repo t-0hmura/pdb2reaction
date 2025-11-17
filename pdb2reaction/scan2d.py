@@ -13,7 +13,7 @@ Usage (CLI)
         --opt-mode {light,lbfgs,heavy,rfo} \
         --freeze-links {True|False} \
         --dump {True|False} \
-        --outdir PATH \
+        --out-dir PATH \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
         [--baseline {first|min}] \
@@ -28,7 +28,7 @@ Examples::
     # LBFGS・トラジェクトリ出力・正方形プロット（PNG + HTML）
     pdb2reaction 2d-scan -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
-        --max-step-size 0.20 --dump True --outdir ./result_scan2d/ --opt-mode lbfgs \
+        --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode lbfgs \
         --preopt True --baseline min
 
 Description
@@ -309,7 +309,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="(Lightweight) write inner scan trajectories per d1-step as TRJ.")
-@click.option("--outdir", type=str, default="./result_scan2d/", show_default=True,
+@click.option("--out-dir", type=str, default="./result_scan2d/", show_default=True,
               help="Base output directory.")
 @click.option(
     "--thresh",

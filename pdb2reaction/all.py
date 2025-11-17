@@ -14,7 +14,7 @@ Usage (CLI)
                       [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy]
                       [--opt-mode light|lbfgs|heavy|rfo]
                       [--dump True|False] [--args-yaml params.yaml]
-                      [--pre-opt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--outdir DIR]
+                      [--pre-opt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
                       [--tsopt-max-cycles N] [--freq-* overrides] [--dft-* overrides]
 
@@ -25,13 +25,13 @@ Usage (CLI)
     # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
     pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
                       --spin 1 --freeze-links True --sopt-mode lbfgs --pre-opt True \
-                      --outdir result_all --tsopt True --thermo True --dft True
+                      --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure TSOPT-only mode (no path search):
     # if exactly one input is given, --scan-lists is NOT provided, and --tsopt True:
     # run TS optimization on the extracted pocket, do pseudo‑IRC, minimize both ends, and make diagrams.
     pdb2reaction all -i single.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
-                      --tsopt True --thermo True --dft True --outdir result_tsopt_single
+                      --tsopt True --thermo True --dft True --out-dir result_tsopt_single
 
 
 Examples
@@ -43,15 +43,15 @@ Examples
     pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
       --spin 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
       --sopt-mode lbfgs --dump False --args-yaml params.yaml --pre-opt True \
-      --outdir result_all --tsopt True --thermo True --dft True
+      --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure + scan to build an ordered series (initial + stage results) → path_search + post
     pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-      --spin 1 --outdir result_scan_all --tsopt True --thermo True --dft True
+      --spin 1 --out-dir result_scan_all --tsopt True --thermo True --dft True
 
     # Single-structure TSOPT-only mode (no path_search)
     pdb2reaction all -i A.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
-      --tsopt True --thermo True --dft True --outdir result_tsopt_only
+      --tsopt True --thermo True --dft True --out-dir result_tsopt_only
 
 
 Description
@@ -61,7 +61,7 @@ Runs a one-shot pipeline centered on pocket models:
 (1) **Active-site pocket extraction** (multi-structure union when multiple inputs)
     - Define the substrate (`-c/--center`, by PDB, residue IDs, or residue names).
     - Optionally provide `--ligand-charge` as a total number (distributed) or a mapping (e.g., `GPP:-3,MMT:-1`).
-    - The extractor writes per-input pocket PDBs under `<outdir>/pockets/`.
+    - The extractor writes per-input pocket PDBs under `<out-dir>/pockets/`.
     - The extractor’s **first-model total pocket charge** is used as the total charge in later steps,
       cast to the nearest integer with a console note if rounding occurs.
     - Additional extractor toggles: `--radius`, `--radius-het2het`, `--include-H2O True|False`,
@@ -82,7 +82,7 @@ Runs a one-shot pipeline centered on pocket models:
       as the reference template for all pocket inputs.
 
 (3) **Merge to full systems**
-    - The pocket MEP is merged back into the original full-system template(s) within `<outdir>/path_search/`.
+    - The pocket MEP is merged back into the original full-system template(s) within `<out-dir>/path_search/`.
     - Pocket-only and full-system trajectories, per-segment merged PDBs, and a summary are written.
 
 (4) **Optional per-segment post-processing** (for segments with covalent changes)
@@ -110,24 +110,24 @@ Runs a one-shot pipeline centered on pocket models:
 
 **Forwarded / relevant options**
   - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
-    `--dump`, `--pre-opt`, `--args-yaml`, `--outdir`. (`--freeze-links` / `--dump` propagate to scan/ts_opt/freq as shared flags.)
+    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/ts_opt/freq as shared flags.)
   - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
-    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-outdir`, `--scan-one-based` True|False
+    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based` True|False
     (omit to keep scan's default 1-based indexing),
     `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
   - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and ts_opt; when omitted, scan defaults to
     LBFGS or RFO based on `--sopt-mode`, and ts_opt falls back to `light`. `--hessian-calc-mode` applies to ts_opt and freq.
-  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-outdir`, and the shared knobs above tune downstream ts_opt.
-  - Frequency analysis: `--freq-outdir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
+  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream ts_opt.
+  - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
     `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
-  - DFT single-points: `--dft-outdir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
+  - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
   - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
   - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft` so a single file can
     host per-module sections (see the respective subcommand docs for accepted keys).
 
 Outputs (& Directory Layout)
 -----
-<outdir>/
+<out-dir>/
   pockets/
     pocket_<input1_basename>.pdb
     pocket_<input2_basename>.pdb
@@ -635,7 +635,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
         "-q", str(int(charge)),
         "-s", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
-        "--outdir", str(ts_dir),
+        "--out-dir", str(ts_dir),
     ]
 
     if opt_mode is not None:
@@ -872,7 +872,7 @@ def _run_freq_for_state(pdb_path: Path,
         "-q", str(int(q_int)),
         "-s", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
-        "--outdir", str(fdir),
+        "--out-dir", str(fdir),
     ]
 
     _append_cli_arg(args, "--max-write", overrides.get("max_write"))
@@ -931,7 +931,7 @@ def _run_dft_for_state(pdb_path: Path,
         "-q", str(int(q_int)),
         "-s", str(int(spin)),
         "--func-basis", str(func_basis_use),
-        "--outdir", str(ddir),
+        "--out-dir", str(ddir),
     ]
 
     _append_cli_arg(args, "--max-cycle", overrides.get("max_cycle"))
@@ -992,7 +992,7 @@ def _run_dft_for_state(pdb_path: Path,
           "When omitted, extraction is skipped and the **full input structure(s)** are used directly as pockets.")
 )
 @click.option(
-    "--outdir", "out_dir",
+    "--out-dir", "out_dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=Path("./result_all/"), show_default=True,
     help="Top-level output directory for the pipeline."
@@ -1048,9 +1048,9 @@ def _run_dft_for_state(pdb_path: Path,
               
 @click.option("--tsopt-max-cycles", type=int, default=None,
               help="Override ts_opt --max-cycles value.")
-@click.option("--tsopt-outdir", type=click.Path(path_type=Path, file_okay=False), default=None,
+@click.option("--tsopt-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
               help="Override ts_opt output subdirectory (relative paths are resolved against the default).")
-@click.option("--freq-outdir", type=click.Path(path_type=Path, file_okay=False), default=None,
+@click.option("--freq-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
               help="Override freq output base directory (relative paths resolved against the default).")
 @click.option("--freq-max-write", type=int, default=None,
               help="Override freq --max-write value.")
@@ -1064,7 +1064,7 @@ def _run_dft_for_state(pdb_path: Path,
               help="Override freq thermochemistry temperature (K).")
 @click.option("--freq-pressure", type=float, default=None,
               help="Override freq thermochemistry pressure (atm).")
-@click.option("--dft-outdir", type=click.Path(path_type=Path, file_okay=False), default=None,
+@click.option("--dft-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
               help="Override dft output base directory (relative paths resolved against the default).")
 @click.option("--dft-func-basis", type=str, default=None,
               help="Override dft --func-basis value.")
@@ -1082,8 +1082,8 @@ def _run_dft_for_state(pdb_path: Path,
          'Indices refer to the original all-input PDB (1-based); they are auto-mapped to the pocket after extraction. '
          'Stage results feed into path_search.',
 )
-@click.option("--scan-outdir", type=click.Path(path_type=Path, file_okay=False), default=None,
-              help="Override the scan output directory (default: <outdir>/scan/). Relative paths are resolved against the default parent.")
+@click.option("--scan-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
+              help="Override the scan output directory (default: <out-dir>/scan/). Relative paths are resolved against the default parent.")
 @click.option("--scan-one-based", type=click.BOOL, default=None,
               help="Override scan indexing interpretation (True = 1-based, False = 0-based).")
 @click.option("--scan-max-step-size", type=float, default=None,
@@ -1539,7 +1539,7 @@ def cli(
             "-i", str(scan_input_pdb),
             "-q", str(int(q_int)),
             "-s", str(int(spin)),
-            "--outdir", str(scan_dir),
+            "--out-dir", str(scan_dir),
             "--freeze-links", "True" if freeze_links_flag else "False",
             "--preopt", "True" if scan_preopt_use else "False",
             "--endopt", "True" if scan_endopt_use else "False",
@@ -1616,14 +1616,14 @@ def cli(
     ps_args.extend(["-q", str(q_int)])
     ps_args.extend(["-s", str(int(spin))])
 
-    # Freeze-links, nodes, cycles, climb, optimizer, dump, outdir, pre-opt, args-yaml
+    # Freeze-links, nodes, cycles, climb, optimizer, dump, out-dir, pre-opt, args-yaml
     ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
     ps_args.extend(["--max-nodes", str(int(max_nodes))])
     ps_args.extend(["--max-cycles", str(int(max_cycles))])
     ps_args.extend(["--climb", "True" if climb else "False"])
     ps_args.extend(["--sopt-mode", str(sopt_mode)])
     ps_args.extend(["--dump", "True" if dump else "False"])
-    ps_args.extend(["--outdir", str(path_dir)])
+    ps_args.extend(["--out-dir", str(path_dir)])
     ps_args.extend(["--pre-opt", "True" if pre_opt else "False"])
     if args_yaml is not None:
         ps_args.extend(["--args-yaml", str(args_yaml)])

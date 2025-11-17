@@ -12,7 +12,7 @@ pdb2reaction 2d-scan -i INPUT -q CHARGE \
                    --scan-list "[(i1,j1,low1,high1),(i2,j2,low2,high2)]" \
                    [--one-based/--zero-based] [--max-step-size ΔÅ] [--bias-k k] \
                    [--relax-max-cycles N] [--opt-mode light|lbfgs|heavy|rfo] \
-                   [--freeze-links BOOL] [--dump BOOL] [--outdir DIR] \
+                   [--freeze-links BOOL] [--dump BOOL] [--out-dir DIR] \
                    [--thresh PRESET] [--args-yaml FILE] [--preopt BOOL] \
                    [--baseline min|first] [--zmin FLOAT] [--zmax FLOAT]
 ```
@@ -31,7 +31,7 @@ pdb2reaction 2d-scan -i INPUT -q CHARGE \
 | `--opt-mode TEXT` | Relaxation backend (`light|lbfgs` for LBFGS, `heavy|rfo` for RFOptimizer). | `light` |
 | `--freeze-links BOOL` | When the input is PDB, also freeze the parent atoms of link hydrogens. | `True` |
 | `--dump BOOL` | If `True`, write `inner_path_d1_###.trj` files with the inner (d2) scan snapshots. | `False` |
-| `--outdir TEXT` | Output directory for grids/plots. | `./result_scan2d/` |
+| `--out-dir TEXT` | Output directory for grids/plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Override the UMA convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias` sections. | _None_ |
 | `--preopt BOOL` | Perform an unbiased optimization before scanning. | `True` |
@@ -53,10 +53,10 @@ pdb2reaction 2d-scan -i INPUT -q CHARGE \
    UMA single-point energy, and store the relaxed coordinates as
    `grid/point_i###_j###.xyz`. Optional inner trajectories are dumped as
    `grid/inner_path_d1_###.trj` when `--dump True`.
-6. Write all grid records into `<outdir>/surface.csv` with columns
+6. Write all grid records into `<out-dir>/surface.csv` with columns
    `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`. Energies are
    converted to kcal/mol relative to the baseline requested via `--baseline`.
-7. Generate square Plotly figures inside `<outdir>/plots/`:
+7. Generate square Plotly figures inside `<out-dir>/plots/`:
    - `scan2d_contour.png` (or `.html` fallback) for the 2D contour heatmap.
    - `scan2d_surface.html` for the 3D surface plus projected contour.
 

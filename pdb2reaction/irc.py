@@ -19,17 +19,17 @@ Usage (CLI)
       --forward True \
       --backward False \
       --freeze-links True \
-      --outdir "./result_irc/" \
+      --out-dir "./result_irc/" \
       --hessian-calc-mode Analytical \
       --args-yaml args.yaml
 
 Examples::
     # Forward-only with finite-difference Hessian and custom step size
     pdb2reaction irc -i ts.xyz -q -1 -s 2 --forward True --backward False \
-      --step-size 0.2 --hessian-calc-mode FiniteDifference --outdir ./irc_fd/
+      --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
     # Use a PDB input so trajectories are also exported as PDB
-    pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --outdir ./result_irc/
+    pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --out-dir ./result_irc/
 
 Description
 -----
@@ -51,13 +51,13 @@ Description
   - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); overrides `irc.forward`.
   - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); overrides `irc.backward`.
   - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
-  - `--outdir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
+  - `--out-dir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
   - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
 
 Outputs (& Directory Layout)
 -----
-- All files are written under `--outdir` (default: `./result_irc/`). The directory is created if missing.
+- All files are written under `--out-dir` (default: `./result_irc/`). The directory is created if missing.
 - If `irc.prefix` is set, it is prepended to filenames.
 
     <out_dir>/
@@ -73,7 +73,7 @@ Notes:
 -----
 - CLI overrides YAML for:
   `charge`→`calc.charge`, `spin`→`calc.spin`, `step-size`→`irc.step_length`, `max-cycles`→`irc.max_cycles`,
-  `root`→`irc.root`, `forward`→`irc.forward`, `backward`→`irc.backward`, `outdir`→`irc.out_dir`,
+  `root`→`irc.root`, `forward`→`irc.forward`, `backward`→`irc.backward`, `out-dir`→`irc.out_dir`,
   `hessian-calc-mode`→`calc.hessian_calc_mode`.
 - UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
   the calculator selects GPU/CPU automatically. If `hessian_calc_mode: "FiniteDifference"`,
@@ -196,7 +196,7 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     show_default=True,
     help="Freeze parent atoms of link hydrogens when the input is PDB.",
 )
-@click.option("--outdir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
+@click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
