@@ -556,11 +556,20 @@ def _compute_imag_mode_direction(ts_geom: Any,
     Compute imaginary mode direction (N×3, unit vector in Cartesian space) at TS geometry.
     Uses tsopt internal helpers to minimize new code.
     """
+    # ---- FIX: resolve torch.device safely (avoid "auto") ----
+    dev_arg = uma_kwargs.get("device", None)
+    try:
+        if dev_arg is None or (isinstance(dev_arg, str) and dev_arg.strip().lower() in ("", "auto")):
+            device_obj = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            device_obj = torch.device(dev_arg)
+    except Exception:
+        device_obj = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # full analytic Hessian (torch tensor)
     H_t = _tsopt._calc_full_hessian_torch(
         ts_geom,
         uma_kwargs=uma_kwargs,
-        device=torch.device(uma_kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")),
+        device=device_obj,
     )
     coords_bohr_t = torch.as_tensor(ts_geom.coords.reshape(-1, 3), dtype=H_t.dtype, device=H_t.device)
     # masses in a.u.
@@ -1777,45 +1786,39 @@ def cli(
                 tsopt_opt_mode_default,
                 overrides=tsopt_overrides,
             )
-        else:
-            # If TSOPT off: use the GSM HEI as TS geometry (拡張子は問わない)
-            ts_pdb = hei_pocket_path
-            g_ts = geom_loader(ts_pdb, coord_type="cart")
-            calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
-            g_ts.set_calculator(calc); _ = float(g_ts.energy)
 
-        # 4.2 Pseudo-IRC & mapping to (left,right)
-        irc_res = _pseudo_irc_and_match(
-            seg_idx=seg_idx,
-            seg_dir=seg_dir,
-            ref_pdb_for_seg=ts_pdb,
-            seg_pocket_pdb=hei_pocket_path,
-            g_ts=g_ts,
-            q_int=q_int,
-            spin=spin,
-            freeze_links_flag=freeze_links_flag,
-        )
+            # 4.2 Pseudo-IRC & mapping to (left,right)
+            irc_res = _pseudo_irc_and_match(
+                seg_idx=seg_idx,
+                seg_dir=seg_dir,
+                ref_pdb_for_seg=ts_pdb,
+                seg_pocket_pdb=hei_pocket_path,
+                g_ts=g_ts,
+                q_int=q_int,
+                spin=spin,
+                freeze_links_flag=freeze_links_flag,
+            )
 
-        gL = irc_res["left_min_geom"]
-        gR = irc_res["right_min_geom"]
-        gT = irc_res["ts_geom"]
-        # Save standardized PDBs for tools
-        struct_dir = seg_dir / "structures"
-        _ensure_dir(struct_dir)
-        pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_like")
-        pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_path, struct_dir, "ts")
-        pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_like")
+            gL = irc_res["left_min_geom"]
+            gR = irc_res["right_min_geom"]
+            gT = irc_res["ts_geom"]
+            # Save standardized PDBs for tools
+            struct_dir = seg_dir / "structures"
+            _ensure_dir(struct_dir)
+            pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_like")
+            pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_path, struct_dir, "ts")
+            pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_like")
 
-        # 4.3 Segment-level energy diagram from UMA (R,TS,P)
-        eR = float(gL.energy)
-        eT = float(gT.energy)
-        eP = float(gR.energy)
-        _write_segment_energy_diagram(
-            seg_dir / "energy_diagram_tsopt",
-            labels=["R", f"TS{seg_idx}", "P"],
-            energies_eh=[eR, eT, eP],
-            title_note="(UMA, TSOPT/IRC)",
-        )
+            # 4.3 Segment-level energy diagram from UMA (R,TS,P)
+            eR = float(gL.energy)
+            eT = float(gT.energy)
+            eP = float(gR.energy)
+            _write_segment_energy_diagram(
+                seg_dir / "energy_diagram_tsopt",
+                labels=["R", f"TS{seg_idx}", "P"],
+                energies_eh=[eR, eT, eP],
+                title_note="(UMA, TSOPT/IRC)",
+            )
 
         # 4.4 Thermochemistry (UMA freq) and Gibbs diagram
         thermo_payloads: Dict[str, Dict[str, Any]] = {}

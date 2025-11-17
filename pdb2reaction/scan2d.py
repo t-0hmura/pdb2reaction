@@ -46,12 +46,10 @@ Description
      各 (d1[i], d2[j]) に対して拘束付き最小化を行い、その座標で **バイアスなし（UMA 単発）** の
      エネルギーを評価・記録します（PES グリッド）。
 - 出力:
-  - `out_dir/grid/point_i###_j###.xyz` … 各格子点の最終座標（バイアス付き緩和の結果）
-  - `out_dir/surface.csv` … 列: i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged (True/False)
-  - `out_dir/plots/scan2d_contour.png` … 2D 等高線（Plotly, kaleido があれば PNG。無ければ HTML）
-  - `out_dir/plots/scan2d_surface.html` … 3D サーフェス + 底面投影
-- 図は添付 Plotly スクリプトを参考にし、**正方形**になるように寸法・比率を整えています。
-  （オプション `--zmin/--zmax` でカラースケールの上下限を指定可能。）
+  - `result_scan2d/surface.csv` … 列: i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged (True/False)
+  - `result_scan2d/scan2d_contour.png` … 2D 等高線（PNG）
+  - `result_scan2d/scan2d_surface.html` … 3D サーフェス + 底面投影（HTML）
+- 中間構造や最適化の作業出力は **一時ディレクトリ** にのみ保存し、`result_scan2d` 直下には置きません。
 
 Notes
 -----
@@ -60,13 +58,12 @@ Notes
 - `--baseline min|first`:
   - `min`  : グリッド最小値を 0 kcal/mol として相対化（デフォルト）
   - `first`: (i=0, j=0) の点を 0 kcal/mol として相対化
-- 大量格子の場合の PDB 書き出しはファイル数が膨大になるため、既定では .xyz のみ。
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import ast
 import math
@@ -80,12 +77,14 @@ import time
 import click
 import numpy as np
 import pandas as pd
+from scipy.interpolate import Rbf
+import plotly.graph_objects as go
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
-from pysisyphus.constants import ANG2BOHR, BOHR2ANG
+from pysisyphus.constants import ANG2BOHR
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .opt import (
@@ -132,8 +131,6 @@ _OPT_MODE_ALIASES = (
 )
 
 HARTREE_TO_KCAL_MOL = 627.50961
-
-from scipy.interpolate import Rbf  # 追加：常に RBF(200x200) 補間を実施するため
 
 
 def _ensure_dir(path: Path) -> None:
@@ -327,9 +324,6 @@ def cli(
     try:
         time_start = time.perf_counter()
 
-        # -------------------------
-        # 1) 構成の組み立て
-        # -------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
         geom_cfg   = dict(GEOM_KW)
@@ -368,6 +362,7 @@ def cli(
         )
 
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+        _ensure_dir(out_dir_path)  # 最終成果物の保存先
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
         echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
@@ -378,9 +373,6 @@ def cli(
         click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
         click.echo(pretty_block("bias", echo_bias))
 
-        # -------------------------
-        # 2) scan-list の解釈
-        # -------------------------
         (i1, j1, low1, high1), (i2, j2, low2, high2) = _parse_scan_list(scan_list_raw, one_based=one_based)
         click.echo(pretty_block("scan-list (0-based)",
             {"d1": (i1, j1, low1, high1), "d2": (i2, j2, low2, high2)}
@@ -393,14 +385,15 @@ def cli(
         click.echo(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}")
         click.echo(f"[grid] total grid points = {N1*N2}")
 
-        # -------------------------
-        # 3) Geometry 読み込み & 計算器
-        # -------------------------
-        _ensure_dir(out_dir_path)
-        grid_dir  = out_dir_path / "grid"
-        plots_dir = out_dir_path / "plots"
-        _ensure_dir(grid_dir)
-        _ensure_dir(plots_dir)
+        # ===== 一時作業ディレクトリ（中間出力はここに保存） =====
+        tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
+        tmp_grid_dir = tmp_root / "grid"
+        tmp_opt_dir  = tmp_root / "opt"
+        _ensure_dir(tmp_grid_dir)
+        _ensure_dir(tmp_opt_dir)
+
+        # 最終出力は result_scan2d 直下に保存（サブフォルダは作らない）
+        final_dir = out_dir_path
 
         coord_type = geom_cfg.get("coord_type", "cart")
         geom_outer = geom_loader(geom_input_path, coord_type=coord_type)
@@ -429,7 +422,7 @@ def cli(
             optimizer0 = _make_optimizer(
                 geom_outer, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
                 max_step_bohr=max_step_bohr_local, relax_max_cycles=relax_max_cycles,
-                out_dir=out_dir_path, prefix="preopt_"
+                out_dir=tmp_opt_dir, prefix="preopt_"
             )
             try:
                 optimizer0.run()
@@ -440,9 +433,6 @@ def cli(
 
         max_step_bohr = float(max_step_size) * ANG2BOHR
 
-        # -------------------------
-        # 4) ネスト走査 & エネルギー収集
-        # -------------------------
         records: List[Dict[str, Any]] = []
         for i_idx, d1_target in enumerate(d1_values):
             click.echo(f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---")
@@ -453,7 +443,7 @@ def cli(
             opt1 = _make_optimizer(
                 geom_outer, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
                 max_step_bohr=max_step_bohr, relax_max_cycles=relax_max_cycles,
-                out_dir=out_dir_path, prefix=f"d1_{i_idx:03d}_"
+                out_dir=tmp_opt_dir, prefix=f"d1_{i_idx:03d}_"
             )
             try:
                 opt1.run()
@@ -475,7 +465,7 @@ def cli(
                 opt2 = _make_optimizer(
                     geom_inner, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
                     max_step_bohr=max_step_bohr, relax_max_cycles=relax_max_cycles,
-                    out_dir=out_dir_path, prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_"
+                    out_dir=tmp_opt_dir, prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_"
                 )
                 try:
                     opt2.run()
@@ -489,7 +479,8 @@ def cli(
 
                 E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
-                xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
+                # 中間XYZは一時ディレクトリにのみ保存
+                xyz_path = tmp_grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
                 try:
                     s = geom_inner.as_xyz()
                     if not s.endswith("\n"):
@@ -515,7 +506,7 @@ def cli(
                 })
 
             if dump and trj_blocks:
-                trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
+                trj_path = tmp_grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
                 try:
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
@@ -523,9 +514,7 @@ def cli(
                 except Exception as e:
                     click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
 
-        # -------------------------
-        # 5) surface.csv に保存 & 相対化
-        # -------------------------
+        # ===== surface.csv（最終出力：result_scan2d直下）=====
         df = pd.DataFrame.from_records(records)
         if df.empty:
             click.echo("No grid records produced; aborting.", err=True)
@@ -537,15 +526,11 @@ def cli(
             ref = float(df["energy_hartree"].min())
         df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
 
-        surface_csv = out_dir_path / "surface.csv"
+        surface_csv = final_dir / "surface.csv"
         df.to_csv(surface_csv, index=False)
         click.echo(f"[write] Wrote '{surface_csv}'.")
 
-        # -------------------------
-        # 6) プロット（描画フォーマット統一 + RBF(200x200) 強制）
-        # -------------------------
-        import plotly.graph_objects as go
-
+        # ===== プロット（RBF 200×200固定、フォーマット統一、plotはfinal_dir直下） =====
         d1_points = df["d1_A"].to_numpy(dtype=float)
         d2_points = df["d2_A"].to_numpy(dtype=float)
         z_points  = df["energy_kcal"].to_numpy(dtype=float)
@@ -569,16 +554,28 @@ def cli(
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
 
-        # 2D 等高線（後段スクリプトの体裁へ統一）
-        c_start = float(math.floor(vmin/10.0)*10.0)
-        c_end   = float(math.ceil(vmax/10.0)*10.0)
-        c_size  = 10.0
+        # きりの良い等高線・tick用のステップ
+        def _nice_step(span: float) -> float:
+            if span <= 0:
+                return 1.0
+            raw = span / 6.0
+            mag = 10 ** math.floor(math.log10(raw))
+            for m in (0.5, 1, 2, 5, 10, 20):
+                s = m * mag
+                if raw <= s:
+                    return s
+            return 10.0 * mag
 
+        c_step = _nice_step(vmax - vmin)
+        c_start = math.floor(vmin / c_step) * c_step
+        c_end   = math.ceil (vmax / c_step) * c_step
+
+        # ---- 2D 等高線（PNG: サイズ明示）----
         fig2d = go.Figure(data=go.Contour(
             z=ZI,
             x=xi,
             y=yi,
-            contours=dict(start=c_start, end=c_end, size=c_size),
+            contours=dict(start=c_start, end=c_end, size=c_step),
             zmin=vmin,
             zmax=vmax,
             contours_coloring='heatmap',
@@ -599,7 +596,6 @@ def cli(
                 yanchor="middle"
             )
         ))
-
         fig2d.update_layout(
             width=640,
             height=600,
@@ -618,7 +614,8 @@ def cli(
                 tickcolor='#1C1C1C',
                 title_font=dict(size=18, color='#1C1C1C'),
                 tickfont=dict(size=18, color='#1C1C1C'),
-                tickformat=".1f"
+                tickvals=list(np.linspace(x_min, x_max, 6)),
+                tickformat=".2f"
             ),
             yaxis=dict(
                 range=[y_min, y_max],
@@ -632,46 +629,28 @@ def cli(
                 tickcolor='#1C1C1C',
                 title_font=dict(size=18, color='#1C1C1C'),
                 tickfont=dict(size=18, color='#1C1C1C'),
-                tickformat=".1f"
+                tickvals=list(np.linspace(y_min, y_max, 6)),
+                tickformat=".2f"
             ),
-            margin=dict(l=10, r=30, b=10, t=40)
+            margin=dict(l=10, r=10, b=10, t=40)
         )
-
-        png2d = plots_dir / "scan2d_contour.png"
+        png2d = final_dir / "scan2d_contour.png"
         fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=640, height=600)
         click.echo(f"[plot] Wrote '{png2d}'.")
 
-        # 3D サーフェス（上半分に地形／底面に平面プロジェクション、z=0 を軸中心に）
-        emin = float(np.nanmin(ZI))
-        emax = float(np.nanmax(ZI))
-        spread = max(emax - emin, 1e-9)  # 非ゼロ保障
-        z_bottom = -spread
-        z_center = 0.0
-        z_top    = +spread
+        # ---- 3D サーフェス + 底面投影 ----
+        # 地形は z の上半分に、平面は z 軸の完全な底面に
+        spread = vmax - vmin if (vmax > vmin) else 1.0
+        z_bottom = vmin - spread
+        z_top    = vmax
 
-        Z_surf = z_center + (ZI - emin) * (z_top - z_center) / spread  # emin→中心, emax→上端
-        Z_plane = np.full_like(ZI, z_bottom)
-
-        # z 軸の目盛り（中心 0 を起点、±spread をカバー）
-        # 見やすい刻み幅を動的決定（概ね 5〜7 分割）
-        def _nice_step(x: float) -> float:
-            if x <= 0:
-                return 10.0
-            raw = x / 6.0
-            mag = 10 ** math.floor(math.log10(raw))
-            for m in (1, 2, 5, 10):
-                s = m * mag
-                if raw <= s:
-                    return s
-            return 10.0 * mag
-
-        tick_step = _nice_step(spread)
-        z_ticks = np.arange(-spread, spread + 0.5*tick_step, tick_step)
-        # ラベルは「中心0起点」のスケールを表示（z 軸の数値そのもの）
-        z_ticktexts = [f"{t:.0f}" if abs(t) >= 1 else f"{t:.2f}" for t in z_ticks]
+        # z軸のtickは zmin(=vmin)未満を出さない + きりの良い数字
+        z_step = _nice_step(vmax - vmin)
+        z_start_tick = math.ceil(vmin / z_step) * z_step  # 最初のtickはvmin以上
+        z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
 
         surface3d = go.Surface(
-            x=XI, y=YI, z=Z_surf,
+            x=XI, y=YI, z=ZI,
             colorscale='plasma',
             cmin=vmin, cmax=vmax,
             colorbar=dict(
@@ -694,7 +673,7 @@ def cli(
                     "show": True,
                     "start": c_start,
                     "end": c_end,
-                    "size": c_size,
+                    "size": c_step,
                     "color": "black",
                     "project": {"z": True},
                 }
@@ -703,7 +682,7 @@ def cli(
         )
 
         plane_proj = go.Surface(
-            x=XI, y=YI, z=Z_plane,
+            x=XI, y=YI, z=np.full_like(ZI, z_bottom),
             surfacecolor=ZI,
             colorscale='plasma',
             cmin=vmin, cmax=vmax,
@@ -714,6 +693,8 @@ def cli(
 
         fig3d = go.Figure(data=[surface3d, plane_proj])
         fig3d.update_layout(
+            title="2D PES with bottom projection",
+            width=800, height=700,
             scene=dict(
                 bgcolor="rgba(0,0,0,0)",
                 xaxis=dict(
@@ -733,11 +714,10 @@ def cli(
                     showbackground=False
                 ),
                 zaxis=dict(
-                    title="Energy (kcal/mol; 0 at center)",
+                    title="Energy (kcal/mol)",
                     range=[z_bottom, z_top],
                     tickmode="array",
-                    tickvals=z_ticks.tolist(),
-                    ticktext=z_ticktexts,
+                    tickvals=z_ticks,  # vmin未満のtickは含めない
                     showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
                     ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
                     showgrid=True, gridcolor='rgba(0,0,0,0.1)',
@@ -745,12 +725,11 @@ def cli(
                     showbackground=False
                 ),
             ),
-            width=800, height=700,
-            margin=dict(r=20, l=10, b=10, t=40),
+            margin=dict(l=10, r=20, b=10, t=40),
             paper_bgcolor="white",
         )
 
-        html3d = plots_dir / "scan2d_surface.html"
+        html3d = final_dir / "scan2d_surface.html"
         fig3d.write_html(str(html3d))
         click.echo(f"[plot] Wrote '{html3d}'.")
 
