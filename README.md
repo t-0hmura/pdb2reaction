@@ -18,38 +18,79 @@ to each project's installation guide when configuring GPUs or HPC nodes.
 
 ## Usage
 
-The CLI is exposed via the `pdb2reaction` entry point. Running `pdb2reaction` without arguments is equivalent to invoking
-`pdb2reaction all`, which executes the full pocket-to-product workflow:
+The CLI is exposed via the `pdb2reaction` entry point declared in `pyproject.toml`. The Click group in
+[`pdb2reaction/cli.py`](pdb2reaction/cli.py) sets `all` as its default subcommand, so running `pdb2reaction ...` or
+`pdb2reaction all ...` is equivalent. All workflows require `-i/--input` (full PDBs in reaction order) and `-c/--center`
+(substrate definition for pocket extraction).
 
-1. Extract catalytic pockets from the supplied PDB structures.
-2. (Optional) Run staged distance scans to build additional intermediates for single-structure inputs.
-3. Search reaction paths with the GSM-based `path_search` engine and merge pocket structures back into the full models.
-4. (Optional) Refine transition states, generate pseudo-IRC pathways, compute vibrational thermochemistry, and evaluate
-   DFT single-point energies for every reactive segment.
+### Workflow modes
 
-### Default pipeline
+#### Multi-structure GSM pipeline
 
 ```bash
-# Example multi-structure workflow (reactant, intermediates, product)
 pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb \
              -c "A:123,B:456" \
-             --ligand-charge 0 \
+             --ligand-charge "GPP:-3,MMT:-1" \
              --out-dir ./result_all \
              --tsopt True --thermo True --dft True
 ```
 
-Key options:
+Multiple full systems are processed in reaction order. The command extracts pockets, runs the recursive GSM-based
+`path_search`, merges the pocket minimum-energy path back into the full structures, and (optionally) executes TS
+optimisation, vibrational analysis, and DFT single points for each reactive segment.
 
-- `-i, --input PATH...`: Reaction-ordered PDB files (≥2 for GSM mode, 1 when combined with `--scan-lists` or `--tsopt True`).
-- `-c, --center TEXT`: Substrate specification (residue IDs or names) used to carve the binding pocket.
-- `--ligand-charge TEXT`: Total or per-residue charge assignment propagated through scan/GSM/TSOPT.
-- `--scan-lists TEXT...`: Define staged scans for single-input runs. Atom indices are taken from the **original** PDB supplied to
-  `pdb2reaction all` (1-based) and are automatically remapped onto the extracted pocket before invoking `scan`.
-- `--tsopt/--thermo/--dft BOOLEAN`: Enable TS optimisation, vibrational analysis, and DFT single-point post-processing.
-- `--args-yaml FILE`: Shared YAML file that forwards UMA/GSM configuration blocks to every invoked subcommand
-  (see [`docs/all.md`](docs/all.md)).
+#### Single-structure + staged scan (feeds GSM)
 
-Refer to [`docs/all.md`](docs/all.md) for the exhaustive option list, YAML schema, and output description.
+```bash
+pdb2reaction -i SINGLE.pdb \
+             -c "308,309" \
+             --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+             --spin 1 --out-dir ./result_scan_all \
+             --tsopt True --thermo True --dft True
+```
+
+Providing exactly one input PDB alongside `--scan-lists` performs a staged distance scan **on the extracted pocket** using
+UMA. Each `stage_XX/result.pdb` becomes an ordered intermediate/product candidate that feeds the subsequent `path_search`
+run before the results are merged back into the full system.
+
+#### Single-structure TSOPT-only mode
+
+```bash
+pdb2reaction -i SINGLE.pdb \
+             -c "GPP,MMT" \
+             --ligand-charge "GPP:-3,MMT:-1" \
+             --tsopt True --thermo True --dft True \
+             --out-dir ./result_tsopt_only
+```
+
+Supplying a single input **without** `--scan-lists` while setting `--tsopt True` skips the path search entirely. The tool
+optimises the pocket TS, performs a pseudo-IRC to minimise both ends, and can run `freq`/`dft` on the resulting R/TS/P trio
+to build UMA, Gibbs, DFT, and DFT//UMA diagrams.
+
+### Important flags and behaviours
+
+- `-i/--input PATH...`: Two or more full PDBs for GSM mode, or one PDB when paired with `--scan-lists` **or** `--tsopt True`.
+  A single `-i` may be followed by multiple filenames.
+- `-c/--center TEXT`: Substrate definition for pocket extraction. Accepts PDB paths, residue IDs (e.g., `A:123,B:456`), or
+  residue names (`GPP,MMT`).
+- `--ligand-charge TEXT`: Total charge or mapping (e.g., `GPP:-3,MMT:-1`). The first pocket’s total charge is rounded to an
+  integer and reused for scan/GSM/TS optimisation.
+- `--scan-lists TEXT...`: One or more Python-style lists describing staged scans for single-input runs. Each `(i, j, target_Å)`
+  tuple uses indices from the original full PDB (1-based) and is auto-remapped onto the extracted pocket.
+- `--tsopt/--thermo/--dft BOOLEAN`: Enable TS optimisation + pseudo-IRC, vibrational analysis (UMA Gibbs diagram), and DFT
+  single-point post-processing (adds a DFT//UMA Gibbs diagram when combined with `--thermo True`).
+- `--sopt-mode` / `--opt-mode`: Optimiser presets. `--opt-mode` is forwarded to the staged scan and TS optimisation; when it is
+  omitted, the scan inherits LBFGS or RFO based on `--sopt-mode`, and TS optimisation defaults to `light`.
+- Shared knobs (`--freeze-links`, `--dump`, `--pre-opt`, `--hessian-calc-mode`, etc.) propagate to scan, GSM, TS optimisation,
+  and post-processing stages.
+- `--args-yaml FILE`: A YAML file forwarded unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft`, allowing shared
+  UMA/GSM configuration blocks (see [`docs/all.md`](docs/all.md)).
+- Outputs: `<out-dir>/pockets/` holds extracted pockets, `<out-dir>/scan/` stores staged scan results,
+  `<out-dir>/path_search/` contains GSM outputs (plus per-segment TS/freq/DFT folders), and `<out-dir>/tsopt_single/` is used by
+  TSOPT-only runs.
+
+Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). Refer to
+[`docs/all.md`](docs/all.md) for a full option matrix, YAML schemas, and output details.
 
 ### CLI subcommands
 
