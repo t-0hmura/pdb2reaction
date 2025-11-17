@@ -790,15 +790,30 @@ def _pseudo_irc_and_match(seg_idx: int,
     finally:
         sys.argv = _saved_argv
 
-    # 2) Read endpoints
-    elems: List[str]
-    c_first: np.ndarray
-    c_last: np.ndarray
-
+    # 2) File paths
     finished_pdb = irc_dir / "finished_irc.pdb"
     forward_trj = irc_dir / "forward_irc.trj"
     backward_trj = irc_dir / "backward_irc.trj"
     finished_trj = irc_dir / "finished_irc.trj"
+
+    # 2a) finished_irc.trj のみ PDB へ変換（可能な場合のみ）
+    try:
+        if finished_trj.exists() and (not finished_pdb.exists()):
+            # 参照PDBは（優先）セグメントポケットPDB、なければ TS 入力が PDB の場合に使用
+            ref_for_conv: Optional[Path] = None
+            if seg_pocket_pdb.suffix.lower() == ".pdb":
+                ref_for_conv = seg_pocket_pdb
+            elif ref_pdb_for_seg.suffix.lower() == ".pdb":
+                ref_for_conv = ref_pdb_for_seg
+            if ref_for_conv is not None:
+                _path_search._maybe_convert_to_pdb(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
+    except Exception as e:
+        click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
+
+    # 3) Read endpoints（finished優先。なければ F/B からフォールバック）
+    elems: List[str]
+    c_first: np.ndarray
+    c_last: np.ndarray
 
     if finished_pdb.exists():
         coords_models, elems = _pdb_models_to_coords_and_elems(finished_pdb)
@@ -818,7 +833,7 @@ def _pseudo_irc_and_match(seg_idx: int,
         # By convention: left ~ backward end, right ~ forward end (may be remapped below)
         c_first, c_last = c_b_last, c_f_last
 
-    # 3) Build geoms and energies
+    # 4) Build geoms and energies
     shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
     g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
@@ -826,7 +841,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     _path_search._ensure_calc_on_geom(g_right, shared_calc);  _ = float(g_right.energy)
     _path_search._ensure_calc_on_geom(g_ts,    shared_calc);  _ = float(g_ts.energy)
 
-    # 4) Optional mapping to segment endpoints (if available)
+    # 5) Optional mapping to segment endpoints (if available)
     left_tag = "backward"
     right_tag = "forward"
     seg_pocket_path = seg_dir.parent / f"mep_seg_{seg_idx:02d}.pdb"
@@ -859,25 +874,12 @@ def _pseudo_irc_and_match(seg_idx: int,
         except Exception as e:
             click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
 
-    # 5) IRC plots (if present)
+    # 6) プロットは finished_irc.trj のみ
     try:
-        if forward_trj.exists():
-            run_trj2fig(forward_trj,  [irc_dir / f"irc_forward_plot.png"],  unit="kcal", reference="init", reverse_x=False)
-        if backward_trj.exists():
-            run_trj2fig(backward_trj, [irc_dir / f"irc_backward_plot.png"], unit="kcal", reference="init", reverse_x=False)
         if finished_trj.exists():
             run_trj2fig(finished_trj, [irc_dir / f"irc_finished_plot.png"], unit="kcal", reference="init", reverse_x=False)
     except Exception as e:
-        click.echo(f"[irc] WARNING: failed to plot IRC trajectories: {e}", err=True)
-
-    # 6) Dump tiny two-point trj for each side
-    try:
-        for side, gmin in (("left", g_left), ("right", g_right)):
-            trj = irc_dir / f"irc_{side}.trj"
-            _path_search._write_xyz_trj_with_energy([g_ts, gmin], [float(g_ts.energy), float(gmin.energy)], trj)
-            run_trj2fig(trj, [irc_dir / f"irc_{side}_plot.png"], unit="kcal", reference="init", reverse_x=False)
-    except Exception:
-        pass
+        click.echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
 
     return {
         "left_min_geom": g_left,
