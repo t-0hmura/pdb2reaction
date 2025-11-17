@@ -42,7 +42,8 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes:
 -----
-- Always set correct total charge (`-q/--charge`) and spin multiplicity (`-s/--spin`) to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when provided and otherwise fall back to `0`/`1`.
+  Override them explicitly to avoid unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
@@ -83,6 +84,8 @@ from .utils import (
     fill_charge_spin_from_gjf,
     maybe_convert_xyz_to_gjf,
     PreparedInputStructure,
+    charge_option,
+    spin_option,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 
@@ -173,22 +176,8 @@ def _load_two_endpoints(
     required=True,
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
-@click.option(
-    "-q",
-    "--charge",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Total charge (defaults to 0 when omitted).",
-)
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Spin multiplicity (2S+1). Defaults to 1 when omitted.",
-)
+@charge_option()
+@spin_option()
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=30, show_default=True,

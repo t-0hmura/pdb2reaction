@@ -89,7 +89,8 @@ DIR (default: ./result_ts_opt/)
 
 Notes:
 -----
-- Always set charge (-q) and spin (-s) to avoid unphysical conditions.
+- Charge/spin resolution: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when the input is `.gjf` and otherwise
+  default to `0`/`1`. Override them explicitly to avoid unphysical conditions.
 - --opt-mode light runs the HessianDimer with periodic Hessian-based direction refresh;
   --opt-mode heavy runs RS-I-RFO.
 - --freeze-links is PDB-only and freezes parents of link hydrogens; these indices are
@@ -151,6 +152,8 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
+    charge_option,
+    spin_option,
 )
 from .freq import (
     _torch_device,
@@ -1283,22 +1286,8 @@ RSIRFO_KW.update({
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option(
-    "-q",
-    "--charge",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Total charge (defaults to 0 when omitted).",
-)
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Multiplicity (2S+1). Defaults to 1 when omitted.",
-)
+@charge_option()
+@spin_option()
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")

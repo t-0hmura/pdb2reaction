@@ -18,8 +18,8 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `True` |
 | `--max-write INT` | Number of modes to export. | `20` |
 | `--amplitude-ang FLOAT` | Animation amplitude (Å). | `0.8` |
@@ -55,6 +55,8 @@ _The thermochemistry parameters (`temperature`, `pressure_atm`, `dump`) are curr
 - Imaginary modes are reported as negative frequencies; PHVA restricts the Hessian to active degrees of freedom when atoms are frozen.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode`; Analytical mode may require more GPU memory than finite differences.
 - Mode animations use sinusoidal displacements; PDB animations employ MODEL/ENDMDL records for multi-model files.
+- Charge/spin inherit `.gjf` template metadata when the input is `.gjf`; otherwise they default to `0`/`1`. Override them
+  explicitly to enforce the correct state.
 
 ## YAML configuration (`--args-yaml`)
 Accepts a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).

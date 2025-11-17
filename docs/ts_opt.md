@@ -19,8 +19,8 @@ pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (propagated to UMA). | `True` |
 | `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |
@@ -69,7 +69,8 @@ Controls the heavy-mode RS-I-RFO optimizer. Defaults derive from [`opt`](opt.md#
 - Optional `.dimer_mode.dat` (light mode) and dump files when `--dump` is enabled.
 
 ## Notes
-- Always provide accurate charge and multiplicity; they are propagated to UMA.
+- Charge/spin inherit `.gjf` template metadata when present; otherwise the CLI defaults to `0`/`1`. Override them explicitly to
+  ensure the UMA calculations use the intended state.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
 - In light mode, the flattened active-subspace Hessian is maintained and updated between LBFGS passes.
 - Imaginary-mode analysis uses PHVA and translation/rotation projection consistent with the frequency module.

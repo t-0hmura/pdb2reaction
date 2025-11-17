@@ -15,8 +15,8 @@ pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Two endpoint structures (reactant, product). | Required |
-| `-q, --charge INT` | Total charge. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents. | `True` |
 | `--max-nodes INT` | Internal nodes in the string (total images = `max_nodes + 2`). | `30` |
 | `--max-cycles INT` | Maximum optimizer cycles. | `100` |
@@ -58,6 +58,8 @@ StringOptimizer controls (defaults in parentheses).
 - `<out-dir>/gsm_hei.xyz` (+ `.pdb` for PDB inputs) for the highest-energy image.
 - `<out-dir>/align_refine/` alignment diagnostics.
 - Optional optimizer dumps/restarts when `--dump` or YAML toggles them.
+- Charge/spin values default to `.gjf` template metadata when the endpoints are `.gjf`; otherwise they fall back to `0`/`1`.
+  Override them explicitly to enforce the intended electronic state.
 
 ## Notes
 - Inputs are rigidly aligned via Kabsch before optimisation; if freeze atoms are present, only those atoms guide the fit.

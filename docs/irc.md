@@ -18,8 +18,8 @@ pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps (overrides `irc.max_cycles`). | _None_ (use YAML/default `125`) |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates (overrides `irc.step_length`). | _None_ (default `0.10`) |
 | `--root INT` | Imaginary-mode index for the initial displacement (`irc.root`). | _None_ (default `0`) |
@@ -58,6 +58,8 @@ EulerPC / IRC controls (defaults in parentheses).
 - CLI boolean options `--forward` and `--backward` require explicit `True` or `False` (e.g., `--forward True`).
 - When the input is PDB, trajectory files are converted to PDB using the input topology.
 - IRC calculations reuse the UMA calculator across steps; large `step_length` values may destabilise the integration.
+- Charge/spin inherit `.gjf` template metadata when available; otherwise the CLI defaults to `0`/`1`. Override them explicitly to
+  keep the IRC on the intended potential-energy surface.
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml) for geometry/calculator keys.

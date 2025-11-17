@@ -6,8 +6,8 @@ freq — Vibrational frequency analysis, mode export, and PHVA-based thermochemi
 
 Usage (CLI)
 -----
-    # Minimum (charge is effectively required to avoid wrong conditions)
-    pdb2reaction freq -i INPUT.(pdb|xyz|trj) -q CHARGE
+    # Minimum (charge defaults to .gjf metadata or 0; specify explicitly when possible)
+    pdb2reaction freq -i INPUT.(pdb|xyz|trj) [-q CHARGE]
 
     # Full example (all key options shown)
     pdb2reaction freq \
@@ -103,6 +103,8 @@ from .utils import (
     merge_freeze_atom_indices,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    charge_option,
+    spin_option,
 )
 def _torch_device(auto: str = "auto") -> torch.device:
     if auto == "auto":
@@ -531,15 +533,8 @@ THERMO_KW = {
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge")
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
-)
+@charge_option()
+@spin_option()
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-write", type=int, default=20, show_default=True,

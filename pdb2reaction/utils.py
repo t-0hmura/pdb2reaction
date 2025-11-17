@@ -73,11 +73,55 @@ import time
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List, Tuple
+from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
 
 import click
 import yaml
 from ase.data import chemical_symbols
+
+_ClickCallable = TypeVar("_ClickCallable", bound=Callable[..., Any])
+
+
+def charge_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
+    """Reusable Click option decorator for charge (inherits .gjf defaults)."""
+
+    default_help = (
+        "Total charge. Defaults to the value parsed from a Gaussian .gjf template when available, "
+        "otherwise 0."
+    )
+
+    def decorator(func: _ClickCallable) -> _ClickCallable:
+        return click.option(
+            "-q",
+            "--charge",
+            type=int,
+            default=None,
+            show_default=False,
+            help=help_text or default_help,
+        )(func)
+
+    return decorator
+
+
+def spin_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
+    """Reusable Click option decorator for spin multiplicity (inherits .gjf defaults)."""
+
+    default_help = (
+        "Spin multiplicity (2S+1). Defaults to the value parsed from a Gaussian .gjf template when available, "
+        "otherwise 1."
+    )
+
+    def decorator(func: _ClickCallable) -> _ClickCallable:
+        return click.option(
+            "-s",
+            "--spin",
+            type=int,
+            default=None,
+            show_default=False,
+            help=help_text or default_help,
+        )(func)
+
+    return decorator
 from ase.io import read, write
 import plotly.graph_objs as go
 
