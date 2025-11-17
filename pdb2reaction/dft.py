@@ -8,7 +8,8 @@ Usage (CLI)
 -----
     pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
 
-    # -q/--charge is required; -s/--spin defaults to 1 (RKS) but should be set explicitly when the state is not singlet.
+    # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1),
+    # but set them explicitly to avoid unphysical states.
 
 Examples::
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
@@ -49,7 +50,8 @@ Outputs (& Directory Layout)
 
 Notes:
 -----
-- Always supply -q/--charge (required) and prefer explicit -s/--spin to avoid unintentional multiplicities (defaults to 1 → RKS; multiplicity > 1 selects UKS).
+- Charge/spin resolution: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when present and otherwise fall back
+  to `0`/`1`. Provide explicit values whenever possible to enforce the intended state (multiplicity > 1 selects UKS).
 - YAML overrides: --args-yaml points to a file with top-level key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).
 - Grids and checkpointing: sets `grids.level` when supported; disables SCF checkpoint files when possible.
 - Units: input coordinates are in Å. Functional/basis names are PySCF-style and case-insensitive for common sets.
@@ -82,6 +84,8 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
+    charge_option,
+    spin_option,
 )
 
 
@@ -340,15 +344,8 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
-@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Spin multiplicity (2S+1). Defaults to 1 when not provided.",
-)
+@charge_option()
+@spin_option()
 @click.option(
     "--func-basis",
     "func_basis",

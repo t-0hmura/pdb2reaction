@@ -103,6 +103,8 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    charge_option,
+    spin_option,
 )
 
 # 2D スキャンで使う既定群（必要部分のみ上書き）
@@ -286,15 +288,8 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
-)
+@charge_option()
+@spin_option()
 @click.option(
     "--scan-list", "scan_list_raw",
     type=str, required=True,

@@ -16,8 +16,8 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb`, `.xyz`, `.trj`, …). | Required |
-| `-q, --charge INT` | Total charge passed to UMA. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge passed to UMA. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--dist-freeze TEXT` | Repeatable Python-like literal describing `(i, j, targetÅ)` tuples for harmonic restraints. Omit the target to freeze the initial distance. | _None_ |
 | `--one-based / --zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `--one-based` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` (eV·Å⁻²) applied to every `--dist-freeze` tuple. | `10.0` |
@@ -81,7 +81,8 @@ Specific to RFOptimizer (`--opt-mode heavy|rfo`).
 - Console blocks summarising resolved `geom`, `calc`, `opt`, and LBFGS/RFO settings.
 
 ## Notes
-- Always provide the chemically correct charge and multiplicity.
+- Charge/spin resolution: when the input is `.gjf`, the CLI inherits the template charge/spin; otherwise it defaults to `0`/`1`.
+  Override them explicitly to enforce the chemically correct state.
 - `--freeze-links` is PDB-only and merges link parents into `geom.freeze_atoms`.
 - `--dist-freeze` lets you apply harmonic restraints to selected atom pairs; omit the target distance to freeze the current separation. Adjust the strength with `--bias-k` (eV·Å⁻²).
 - CLI precedence: CLI > YAML > built-in defaults.

@@ -10,10 +10,10 @@ Usage (CLI)
 
 Required-like:
     -i/--input           Two or more structures in reaction order (repeatable or space‑separated after a single -i).
-    -q/--charge          Total system charge (integer).
+    -q/--charge          Total system charge (defaults to a .gjf template value or 0 when omitted).
 
 Recommended/common:
-    -s/--spin            Spin multiplicity (2S+1); default 1.
+    -s/--spin            Spin multiplicity (2S+1); defaults to a .gjf template value or 1 when omitted.
     --sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
     --max-nodes          Internal nodes for segment GSM; default 10.
     --max-cycles         Max optimization cycles; default 100.
@@ -160,6 +160,8 @@ from .utils import (
     maybe_convert_xyz_to_gjf,
     PreparedInputStructure,
     GjfTemplate,
+    charge_option,
+    spin_option,
 )
 from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
 from .bond_changes import compare_structures, summarize_changes
@@ -1434,22 +1436,8 @@ def _merge_final_and_write(final_images: List[Any],
           "Either repeat '-i' (e.g., '-i A -i B -i C') or use a single '-i' "
           "followed by multiple space-separated paths (e.g., '-i A B C').")
 )
-@click.option(
-    "-q",
-    "--charge",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Total system charge (defaults to 0 when omitted).",
-)
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Multiplicity (2S+1). Defaults to 1 when omitted.",
-)
+@charge_option()
+@spin_option()
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For PDB input, freeze parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=10, show_default=True,

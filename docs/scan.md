@@ -17,8 +17,8 @@ pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--scan-lists TEXT` | Repeatable Python-like list literal of `(i, j, targetÅ)` triples defining each scan stage. | Required |
 | `--one-based / --zero-based` | Interpret `(i, j)` indices as 1-based (default) or 0-based. | `--one-based` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per integration step (Å). | `0.20` |
@@ -65,6 +65,8 @@ Parameters for UMA-based bond-change detection (mirrors `path_search`).
 - When `--one-based` is used (default), indices follow PDB conventions; invalid indices or non-positive target distances raise `click.BadParameter`.
 - Pre- and end-of-stage optimizations share UMA calculator instances for efficiency.
 - Stage dumping writes one trajectory per stage; `--dump` also triggers `.pdb` conversion for PDB inputs.
+- Charge/spin inherit `.gjf` template metadata when available; otherwise they default to `0`/`1`. Override them explicitly for the
+  chemically correct state.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. CLI parameters override YAML. Shared sections reuse the definitions documented for [`opt`](opt.md#yaml-configuration-args-yaml).

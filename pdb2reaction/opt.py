@@ -31,7 +31,8 @@ Key options (YAML keys → meaning; defaults)
   - `coord_type`: "cart" (default) | "dlc" (often better for small molecules).
   - `freeze_atoms`: list[int], 0-based indices to freeze (default: []).
 - Calculator (`calc`, UMA via `uma_pysis`):
-  - `charge` (required via `-q`), `spin` (multiplicity; default 1—set explicitly for the correct state).
+  - `charge` (overridden by `-q`; defaults to a `.gjf` template value when available, otherwise `0`),
+    `spin` (`-s`; defaults to the template multiplicity or `1`). Always set explicit physical values to avoid surprises.
   - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
   - `device`: "auto" (GPU if available) | "cuda" | "cpu".
   - `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
@@ -75,7 +76,8 @@ Outputs (& Directory Layout)
 
 Notes:
 -----
-- **Required physics:** `-q/--charge` is required. Always set `-s/--spin` for the correct multiplicity (default is 1).
+- **Charge/spin defaults:** `-q/--charge` and `-s/--spin` fall back to `.gjf` template values (when the input is `.gjf`) or to
+  `0`/`1`. Override them explicitly for the chemically correct state to avoid unphysical conditions.
 - **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by pysisyphus `geom_loader`. `geom.coord_type="dlc"` can improve stability for small molecules.
 - **Freeze links (PDB only):** With `--freeze-links` (default), parent atoms of link hydrogens are detected and frozen; indices are 0-based and merged with `geom.freeze_atoms`.
 - **PDB conversion caveat:** Conversions reuse the input PDB topology; ensure atom order/topology match the optimized coordinates.
@@ -121,6 +123,8 @@ from .utils import (
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
     GjfTemplate,
+    charge_option,
+    spin_option,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -443,15 +447,8 @@ def _maybe_write_final_gjf(
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
-)
+@charge_option()
+@spin_option()
 @click.option(
     "--dist-freeze",
     "dist_freeze_raw",

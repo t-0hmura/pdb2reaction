@@ -146,6 +146,8 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
+    charge_option,
+    spin_option,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -351,15 +353,8 @@ def _snapshot_geometry(g) -> Any:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge.")
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Multiplicity (2S+1). Defaults to 1 when not provided.",
-)
+@charge_option()
+@spin_option()
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,

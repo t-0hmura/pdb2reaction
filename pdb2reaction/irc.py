@@ -39,11 +39,12 @@ Description
 - Configuration model: Only the CLI options listed above are accepted. All other parameters
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
   Final configuration precedence: built-in defaults → YAML → CLI.
-- Strong recommendation: Provide both `-q/--charge` and `-s/--spin` explicitly to avoid running under unintended conditions.
+- Charge/spin defaults: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when provided and otherwise fall back
+  to `0`/`1`. Set them explicitly to avoid running under unintended conditions.
 - CLI options:
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
-  - `-q/--charge INT` (strongly recommended): Total charge; overrides `calc.charge` from YAML.
-  - `-s/--spin INT` (default 1; strongly recommended): Spin multiplicity (2S+1); overrides `calc.spin`.
+  - `-q/--charge INT`: Total charge; overrides `calc.charge` from YAML and defaults to a `.gjf` template value or `0` when omitted.
+  - `-s/--spin INT` (default 1): Spin multiplicity (2S+1); overrides `calc.spin` and defaults to the template multiplicity or `1`.
   - `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
   - `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
   - `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
@@ -109,6 +110,8 @@ from pdb2reaction.utils import (
     merge_freeze_atom_indices,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    charge_option,
+    spin_option,
 )
 
 
@@ -174,14 +177,11 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@click.option("-q", "--charge", type=int, default=None, show_default=False, help="Total charge; overrides calc.charge from YAML.")
-@click.option(
-    "-s",
-    "--spin",
-    type=int,
-    default=None,
-    show_default=False,
-    help="Spin multiplicity (2S+1); overrides calc.spin from YAML.",
+@charge_option(
+    "Total charge; overrides calc.charge from YAML. Defaults to the .gjf template value when present, otherwise 0."
+)
+@spin_option(
+    "Spin multiplicity (2S+1); overrides calc.spin from YAML. Defaults to the .gjf template value when present, otherwise 1."
 )
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")

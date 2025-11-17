@@ -18,8 +18,8 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). A single `-i` may be followed by multiple paths. | Required |
-| `-q, --charge INT` | Total charge. | Required |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
@@ -87,6 +87,8 @@ Recursive path-building controls.
 - `--ref-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, GSM and single-structure optimizations emit trajectories and restart YAML files.
+- Charge/spin inherit `.gjf` template metadata when available; otherwise the CLI defaults to `0`/`1`. Override them explicitly
+  when you need a different electronic state.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. CLI parameters override YAML values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
