@@ -67,6 +67,7 @@ Refer to [`docs/all.md`](docs/all.md) for the exhaustive option list, YAML schem
 | `trj2fig` | Convert trajectory data to interactive diagrams (Plotly/Kaleido). | [`docs/trj2fig.md`](docs/trj2fig.md) |
 | `add-elem-info` | Augment PDB files with missing element metadata. | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
 | `dft` | Run single-point DFT calculations on UMA geometries using PySCF/gpu4pyscf. | [`docs/dft.md`](docs/dft.md) |
+| `2d-scan` | Explore two harmonic distance restraints simultaneously and build 2D PES grids with UMA relaxations. | [`docs/scan2d.md`](docs/scan2d.md) |
 
 Each subcommand accepts `-h/--help` for inline usage hints and can also consume `--args-yaml` files that match the schemas
 documented above.
