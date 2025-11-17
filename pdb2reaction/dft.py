@@ -11,7 +11,7 @@ Usage (CLI)
     # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1),
     # but set them explicitly to avoid unphysical states.
 
-Examples::
+Examples:::
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
     pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
 
@@ -141,6 +141,44 @@ def _geometry_to_pyscf_atoms_string(geometry) -> Tuple[str, Sequence[Tuple[str, 
 
 def _hartree_to_kcalmol(Eh: float) -> float:
     return float(Eh * HARTREE_TO_KCALMOL)
+
+
+# ---- Aux-basis chooser for DF (JKFIT) ----
+def _choose_auxbasis_for_orbital_basis(basis: str) -> Optional[str]:
+    """
+    Pick a practical JKFIT auxiliary basis for density fitting from the orbital basis name.
+    Policy:
+      - def2 family:
+          * SVP  → def2-SVP-JKFIT
+          * TZ*  → def2-TZVPP-JKFIT
+          * QZ*  → def2-QZVPP-JKFIT
+          * otherwise → def2-universal-jkfit
+      - (aug-)cc-pVXZ family: use cc-pVXZ-JKFIT
+      - Pople (6-31G**, 6-311G** ...): use "weigend"
+      - Unknown → None (delegate to PySCF default)
+    """
+    if not basis:
+        return None
+    b = basis.strip().lower()
+    # def2 family
+    if "def2" in b:
+        if "svp" in b and "tz" not in b and "qz" not in b:
+            return "def2-svp-jkfit"
+        if "tz" in b:
+            return "def2-tzvpp-jkfit"
+        if "qz" in b:
+            return "def2-qzvpp-jkfit"
+        return "def2-universal-jkfit"
+    # (aug-)cc-pVXZ family
+    if "cc-pv" in b:  # matches both cc-pv and aug-cc-pv
+        if "dz" in b: return "cc-pvdz-jkfit"
+        if "tz" in b: return "cc-pvtz-jkfit"
+        if "qz" in b: return "cc-pvqz-jkfit"
+        if "5z" in b: return "cc-pv5z-jkfit"
+    # Pople family
+    if "6-31" in b or "6-311" in b:
+        return "weigend"
+    return None
 
 
 # ---------------- Flow-style YAML helper (only for inner row lists) -----------
@@ -400,6 +438,9 @@ def cli(
             raise click.BadParameter("Multiplicity (spin) must be >= 1.")
         spin2s = multiplicity - 1  # PySCF expects 2S
 
+        # ---- choose aux-basis for DF from orbital basis ----
+        aux_basis_guess = _choose_auxbasis_for_orbital_basis(basis)
+
         # Echo resolved config
         out_dir_path = Path(dft_cfg["out_dir"]).resolve()
         echo_cfg = {
@@ -473,6 +514,17 @@ def cli(
             using_gpu = False
             engine_label = "pyscf(cpu)"
 
+        # ---- Enable density fitting (RI/DF) & set aux-basis if available ----
+        try:
+            mf = mf.density_fit()
+            if aux_basis_guess:
+                try:
+                    mf.with_df.auxbasis = aux_basis_guess
+                except Exception as e:
+                    click.echo(f"[df] WARNING: Could not set auxbasis='{aux_basis_guess}': {e}", err=True)
+        except Exception as e:
+            click.echo(f"[df] WARNING: density_fit() failed or not available: {e}", err=True)
+
         # SCF settings
         mf.xc = xc
         mf.max_cycle = int(dft_cfg["max_cycle"])
@@ -515,8 +567,13 @@ def cli(
         # --------------------------
         # 6) Charges (Mulliken / meta-Löwdin-AO / IAO) & Spin densities
         # --------------------------
-        charges = _compute_atomic_charges(mol, mf)
-        spins   = _compute_atomic_spin_densities(mol, mf)
+        try:
+            mf_for_analysis = mf.to_cpu()  # GPU → CPU (no-op on CPU backend)
+        except Exception:
+            mf_for_analysis = mf
+
+        charges = _compute_atomic_charges(mol, mf_for_analysis)
+        spins   = _compute_atomic_spin_densities(mol, mf_for_analysis)
 
         def _round_list(xs, tol=1e-10):
             return [0.0 if (x == x) and abs(x) < tol else float(x) for x in xs]  # keep NaN as-is
