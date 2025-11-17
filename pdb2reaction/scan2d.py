@@ -387,9 +387,9 @@ def cli(
 
         # ===== 一時作業ディレクトリ（中間出力はここに保存） =====
         tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
-        tmp_grid_dir = tmp_root / "grid"
+        grid_dir = out_dir_path / "grid"
         tmp_opt_dir  = tmp_root / "opt"
-        _ensure_dir(tmp_grid_dir)
+        _ensure_dir(grid_dir)
         _ensure_dir(tmp_opt_dir)
 
         # 最終出力は result_scan2d 直下に保存（サブフォルダは作らない）
@@ -480,7 +480,7 @@ def cli(
                 E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
                 # 中間XYZは一時ディレクトリにのみ保存
-                xyz_path = tmp_grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
+                xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
                 try:
                     s = geom_inner.as_xyz()
                     if not s.endswith("\n"):
@@ -506,7 +506,7 @@ def cli(
                 })
 
             if dump and trj_blocks:
-                trj_path = tmp_grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
+                trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
                 try:
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
@@ -634,7 +634,7 @@ def cli(
             ),
             margin=dict(l=10, r=10, b=10, t=40)
         )
-        png2d = final_dir / "scan2d_contour.png"
+        png2d = final_dir / "scan2d_map.png"
         fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=640, height=600)
         click.echo(f"[plot] Wrote '{png2d}'.")
 
@@ -693,7 +693,7 @@ def cli(
 
         fig3d = go.Figure(data=[surface3d, plane_proj])
         fig3d.update_layout(
-            title="2D PES with bottom projection",
+            title="Energy Landscape with 2D PES Scan",
             width=800, height=700,
             scene=dict(
                 bgcolor="rgba(0,0,0,0)",
@@ -714,7 +714,7 @@ def cli(
                     showbackground=False
                 ),
                 zaxis=dict(
-                    title="Energy (kcal/mol)",
+                    title="Potential Energy (kcal/mol)",
                     range=[z_bottom, z_top],
                     tickmode="array",
                     tickvals=z_ticks,  # vmin未満のtickは含めない
@@ -729,7 +729,7 @@ def cli(
             paper_bgcolor="white",
         )
 
-        html3d = final_dir / "scan2d_surface.html"
+        html3d = final_dir / "scan2d_landscape.html"
         fig3d.write_html(str(html3d))
         click.echo(f"[plot] Wrote '{html3d}'.")
 
