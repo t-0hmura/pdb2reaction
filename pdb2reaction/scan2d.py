@@ -635,7 +635,7 @@ def cli(
             margin=dict(l=10, r=10, b=10, t=40)
         )
         png2d = final_dir / "scan2d_map.png"
-        fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=660, height=600)
+        fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
         click.echo(f"[plot] Wrote '{png2d}'.")
 
         # ---- 3D サーフェス + 底面投影 ----
