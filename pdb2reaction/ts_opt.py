@@ -320,7 +320,7 @@ def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
     """
     Return true Cartesian gradient (shape 3N,) in Hartree/Bohr.
     """
-    calc = uma_pysis(out_hess_torch=False, **uma_kwargs)
+    calc = uma_pysis(**uma_kwargs)
     geom.set_calculator(calc)
     g = np.array(geom.gradient, dtype=float).reshape(-1)
     geom.set_calculator(None)
@@ -432,9 +432,8 @@ def _write_mode_trj_and_pdb(geom,
         amp_ang = amplitude_ang
         steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
         traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
-        traj_bohr = traj_ang.reshape(n_frames, -1, 3) * ANG2BOHR
         comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
-        trj_str = make_trj_str(geom.atoms, traj_bohr, comments=comments)
+        trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
         out_trj.write_text(trj_str, encoding="utf-8")
     except Exception:
         with out_trj.open("w", encoding="utf-8") as f:
@@ -811,7 +810,7 @@ class HessianDimer:
     # ----- One dimer segment for up to n_steps; returns (steps_done, converged) -----
     def _dimer_segment(self, threshold: str, n_steps: int) -> Tuple[int, bool]:
         # Dimer calculator using current mode as initial N
-        calc_sp = uma_pysis(out_hess_torch=False, **self.uma_kwargs)
+        calc_sp = uma_pysis(**self.uma_kwargs)
 
         # Merge user dimer kwargs (but enforce N_raw & write_orientations)
         dimer_kwargs = dict(self.dimer_kwargs)

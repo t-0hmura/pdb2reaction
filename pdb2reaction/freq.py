@@ -470,9 +470,8 @@ def _write_mode_trj_and_pdb(geom,
         amp_ang = amplitude_ang
         steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
         traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
-        traj_bohr = traj_ang.reshape(n_frames, -1, 3) * ANG2BOHR
         comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
-        trj_str = make_trj_str(geom.atoms, traj_bohr, comments=comments)
+        trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
         out_trj.write_text(trj_str, encoding="utf-8")
     except Exception:
         with out_trj.open("w", encoding="utf-8") as f:

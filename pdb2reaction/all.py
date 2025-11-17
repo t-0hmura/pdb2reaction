@@ -173,6 +173,8 @@ Notes
 - **Single-structure** で `--scan-lists` **または** `--tsopt True` のいずれかが与えられていれば実行可能。
   それ以外は従来通り、**少なくとも2構造**の入力が必要です。
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
+- **NEW**: `-c/--center` を省略した場合は抽出をスキップし、**入力の全体構造**をそのままポケット入力として用います。
+  この場合の全体電荷は既定で 0 とし、`--ligand-charge <number>` を与えたときはその数値を**全体系の電荷**として用います（四捨五入で整数化）。
 """
 
 from __future__ import annotations
@@ -211,6 +213,8 @@ from .utils import (
     format_elapsed,
     prepare_input_structure,
     maybe_convert_xyz_to_gjf,
+    # ↓↓↓ 追加（GJF から電荷・多重度を拾うため）
+    resolve_charge_spin_or_raise,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -980,11 +984,12 @@ def _run_dft_for_state(pdb_path: Path,
 )
 @click.option(
     "-c", "--center", "center_spec",
-    type=str, required=True,
+    type=str, required=False, default=None,
     help=("Substrate specification for the extractor: "
           "a PDB path, a residue-ID list like '123,124' or 'A:123,B:456' "
           "(insertion codes OK: '123A' / 'A:123A'), "
-          "or a residue-name list like 'GPP,MMT'.")
+          "or a residue-name list like 'GPP,MMT'. "
+          "When omitted, extraction is skipped and the **full input structure(s)** are used directly as pockets.")
 )
 @click.option(
     "--out-dir", "out_dir",
@@ -1095,7 +1100,7 @@ def _run_dft_for_state(pdb_path: Path,
 def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
-    center_spec: str,
+    center_spec: Optional[str],
     out_dir: Path,
     radius: float,
     radius_het2het: float,
@@ -1240,7 +1245,7 @@ def cli(
 
     # --------------------------
     # Preflight: add_elem_info only for inputs lacking element fields
-    # → Create fixed copies under a temporary folder inside out_dir (used ONLY for extraction)
+    # → Create fixed copies under a temporary folder inside out_dir (usable for extraction or direct use)
     # --------------------------
     elem_tmp_dir = out_dir / "add_elem_info"
     inputs_for_extract: List[Path] = []
@@ -1268,47 +1273,102 @@ def cli(
 
     extract_inputs = tuple(inputs_for_extract)
 
-    click.echo("\n=== [all] Stage 1/3 — Active-site pocket extraction (multi-structure union when applicable) ===\n")
+    # Determine if extraction is skipped
+    skip_extract = (center_spec is None) or (str(center_spec).strip() == "")
 
+    # --------------------------
+    # Stage 1: Extraction (or skip)
+    # --------------------------
     # Build per-structure pocket output file list (one per input full PDB for extraction)
     pocket_outputs: List[Path] = []
     for p in extract_inputs:
         pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
 
-    # Run extractor via its public API (multi-structure union mode)
-    try:
-        ex_res = extract_api(
-            complex_pdb=[str(p) for p in extract_inputs],
-            center=center_spec,
-            output=[str(p) for p in pocket_outputs],
-            radius=float(radius),
-            radius_het2het=float(radius_het2het),
-            include_H2O=bool(include_h2o),
-            exclude_backbone=bool(exclude_backbone),
-            add_linkH=bool(add_linkh),
-            selected_resn=selected_resn or "",
-            ligand_charge=ligand_charge,
-            verbose=bool(verbose),
-        )
-    except Exception as e:
-        raise click.ClickException(f"[all] Extractor failed: {e}")
+    if not skip_extract:
+        click.echo("\n=== [all] Stage 1/3 — Active-site pocket extraction (multi-structure union when applicable) ===\n")
+        # Run extractor via its public API (multi-structure union mode)
+        try:
+            ex_res = extract_api(
+                complex_pdb=[str(p) for p in extract_inputs],
+                center=center_spec,
+                output=[str(p) for p in pocket_outputs],
+                radius=float(radius),
+                radius_het2het=float(radius_het2het),
+                include_H2O=bool(include_h2o),
+                exclude_backbone=bool(exclude_backbone),
+                add_linkH=bool(add_linkh),
+                selected_resn=selected_resn or "",
+                ligand_charge=ligand_charge,
+                verbose=bool(verbose),
+            )
+        except Exception as e:
+            raise click.ClickException(f"[all] Extractor failed: {e}")
 
-    # Report extractor outputs and charge breakdown
-    click.echo("[all] Pocket files:")
-    for op in pocket_outputs:
-        click.echo(f"  - {op}")
+        # Report extractor outputs and charge breakdown
+        click.echo("[all] Pocket files:")
+        for op in pocket_outputs:
+            click.echo(f"  - {op}")
 
-    try:
-        cs = ex_res.get("charge_summary", {})
-        q_total = float(cs.get("total_charge", 0.0))
-        q_prot = float(cs.get("protein_charge", 0.0))
-        q_lig = float(cs.get("ligand_total_charge", 0.0))
-        q_ion = float(cs.get("ion_total_charge", 0.0))
-        click.echo("\n[all] Charge summary from extractor (model #1):")
-        click.echo(f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}")
-        q_int = _round_charge_with_note(q_total)
-    except Exception as e:
-        raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
+        try:
+            cs = ex_res.get("charge_summary", {})
+            q_total = float(cs.get("total_charge", 0.0))
+            q_prot = float(cs.get("protein_charge", 0.0))
+            q_lig = float(cs.get("ligand_total_charge", 0.0))
+            q_ion = float(cs.get("ion_total_charge", 0.0))
+            click.echo("\n[all] Charge summary from extractor (model #1):")
+            click.echo(f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}")
+            q_int = _round_charge_with_note(q_total)
+        except Exception as e:
+            raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
+    else:
+        click.echo("\n=== [all] Stage 1 — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n")
+        # ---- New: Prefer GJF charge/spin (first input) when available ----
+        first_input = input_paths[0].resolve()
+        gjf_charge: Optional[int] = None
+        gjf_spin: Optional[int] = None
+        if first_input.suffix.lower() == ".gjf":
+            try:
+                with prepare_input_structure(first_input) as prepared:
+                    gjf_charge, gjf_spin = resolve_charge_spin_or_raise(prepared, charge=None, spin=None)
+                click.echo(f"[all] Detected from GJF (first input): charge={gjf_charge:+d}, spin={gjf_spin}")
+            except Exception as e:
+                click.echo(f"[all] NOTE: failed to parse charge/spin from GJF '{first_input.name}': {e}", err=True)
+
+        # Determine if user explicitly provided spin
+        user_provided_spin = True
+        try:
+            spin_source = ctx.get_parameter_source("spin")
+            user_provided_spin = (spin_source not in (None, ParameterSource.DEFAULT))
+        except Exception:
+            user_provided_spin = True  # be conservative
+
+        # Charge precedence: numeric --ligand-charge > GJF (if any) > 0
+        q_total_fallback: float
+        numeric_ligand_charge: Optional[float] = None
+        if ligand_charge is not None:
+            try:
+                numeric_ligand_charge = float(ligand_charge)
+            except Exception:
+                numeric_ligand_charge = None
+
+        if numeric_ligand_charge is not None:
+            q_total_fallback = numeric_ligand_charge
+            click.echo(f"[all] Using --ligand-charge as TOTAL system charge: {q_total_fallback:+g}")
+        elif gjf_charge is not None:
+            q_total_fallback = float(gjf_charge)
+            click.echo(f"[all] Using total charge from first GJF: {q_total_fallback:+g}")
+        else:
+            q_total_fallback = 0.0
+            if ligand_charge is not None:
+                click.echo("[all] NOTE: non-numeric --ligand-charge is ignored without --center; defaulting total charge to 0 (no GJF charge available).", err=True)
+            else:
+                click.echo("[all] NOTE: No total charge provided; defaulting to 0. Supply '--ligand-charge <number>' to override.")
+        q_int = _round_charge_with_note(q_total_fallback)
+
+        # Spin precedence: explicit --spin > GJF (if any) > existing default
+        if (not user_provided_spin) and (gjf_spin is not None):
+            spin = int(gjf_spin)
+            click.echo(f"[all] Spin multiplicity set from GJF: {spin}")
 
     # --------------------------
     # Other path: single-structure + --tsopt True (and NO scan-lists) → TSOPT-only mode
@@ -1318,11 +1378,11 @@ def cli(
         tsroot = out_dir / "tsopt_single"
         _ensure_dir(tsroot)
 
-        # Use the single pocket PDB as TS initial guess
-        pocket_pdb = pocket_outputs[0]
+        # Use the single pocket PDB as TS initial guess (or full PDB when extraction is skipped)
+        ts_initial_pdb = (pocket_outputs[0] if not skip_extract else input_paths[0].resolve())
         # TS optimization
         ts_pdb, g_ts = _run_tsopt_on_hei(
-            pocket_pdb,
+            ts_initial_pdb,
             q_int,
             spin,
             args_yaml,
@@ -1337,7 +1397,7 @@ def cli(
             seg_idx=1,
             seg_dir=tsroot,
             ref_pdb_for_seg=ts_pdb,
-            seg_pocket_pdb=pocket_pdb,
+            seg_pocket_pdb=ts_initial_pdb,
             g_ts=g_ts,
             q_int=q_int,
             spin=spin,
@@ -1363,7 +1423,7 @@ def cli(
         # Save standardized PDBs
         struct_dir = tsroot / "structures"
         _ensure_dir(struct_dir)
-        pocket_ref = pocket_pdb
+        pocket_ref = ts_initial_pdb
         pR = _save_single_geom_as_pdb_for_tools(g_react, pocket_ref, struct_dir, "reactant")
         pT = _save_single_geom_as_pdb_for_tools(gT,       pocket_ref, struct_dir, "ts")
         pP = _save_single_geom_as_pdb_for_tools(g_prod,   pocket_ref, struct_dir, "product")
@@ -1445,13 +1505,22 @@ def cli(
     # --------------------------
     pockets_for_path: List[Path]
     if is_single and has_scan:
-        click.echo("\n=== [all] Stage 1b — Staged scan on pocket (single-structure mode) ===\n")
+        click.echo("\n=== [all] Stage 1b — Staged scan on input ===\n")
         _ensure_dir(scan_dir)
-        pocket_pdb = Path(pocket_outputs[0]).resolve()
-        full_input_pdb = Path(input_paths[0]).resolve()
-        converted_scan_stages = _convert_scan_lists_to_pocket_indices(
-            scan_lists_raw, full_input_pdb, pocket_pdb
-        )
+
+        if skip_extract:
+            # Use the FULL input directly; indices already refer to the full PDB.
+            scan_input_pdb = Path(input_paths[0]).resolve()
+            converted_scan_stages = _parse_scan_lists_literals(scan_lists_raw)
+        else:
+            # Use the pocket and re-map indices from the full PDB to the pocket order.
+            scan_input_pdb = Path(pocket_outputs[0]).resolve()
+            full_input_pdb = Path(input_paths[0]).resolve()
+            converted_scan_stages = _convert_scan_lists_to_pocket_indices(
+                scan_lists_raw, full_input_pdb, scan_input_pdb
+            )
+            click.echo("[all] Remapped --scan-lists indices from the full PDB to the pocket ordering.")
+
         scan_one_based_effective = True if scan_one_based is None else bool(scan_one_based)
         scan_stage_literals: List[str] = []
         for stage in converted_scan_stages:
@@ -1460,14 +1529,14 @@ def cli(
             else:
                 stage_use = [(i - 1, j - 1, target) for (i, j, target) in stage]
             scan_stage_literals.append(_format_scan_stage(stage_use))
-        click.echo("[all] Remapped --scan-lists indices from the full PDB to the pocket ordering.")
+
         scan_preopt_use = pre_opt if scan_preopt_override is None else bool(scan_preopt_override)
         scan_endopt_use = True if scan_endopt_override is None else bool(scan_endopt_override)
         scan_opt_mode_use = (opt_mode.lower() if opt_mode else
                               ("lbfgs" if sopt_mode.lower() in ("lbfgs", "light") else "rfo"))
 
         scan_args: List[str] = [
-            "-i", str(pocket_pdb),
+            "-i", str(scan_input_pdb),
             "-q", str(int(q_int)),
             "-s", str(int(spin)),
             "--out-dir", str(scan_dir),
@@ -1488,7 +1557,7 @@ def cli(
         _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
         if args_yaml is not None:
             scan_args.extend(["--args-yaml", str(args_yaml)])
-        # Forward all converted --scan-lists (aligned to the pocket atom order)
+        # Forward all converted --scan-lists
         for literal in scan_stage_literals:
             scan_args.extend(["--scan-lists", literal])
 
@@ -1520,16 +1589,21 @@ def cli(
         for p in stage_results:
             click.echo(f"  - {p}")
 
-        # Input series to path_search: [initial pocket, stage_01/result.pdb, stage_02/result.pdb, ...]
-        pockets_for_path = [pocket_pdb] + stage_results
+        # Input series to path_search: [initial (pocket or full), stage_01/result.pdb, stage_02/result.pdb, ...]
+        pockets_for_path = [scan_input_pdb] + stage_results
     else:
-        # Multi-structure standard route: use per-input pocket PDBs
-        pockets_for_path = list(pocket_outputs)
+        # Multi-structure standard route
+        if skip_extract:
+            # Use FULL inputs (possibly element-fixed) directly
+            pockets_for_path = [p.resolve() for p in inputs_for_extract]
+        else:
+            # Use per-input pocket PDBs
+            pockets_for_path = list(pocket_outputs)
 
     # --------------------------
-    # Stage 2: Path search on pockets (auto-supplying ref templates = original full PDBs)
+    # Stage 2: Path search on pockets (or full structures) (auto-supplying ref templates = original full PDBs)
     # --------------------------
-    click.echo("\n=== [all] Stage 2/3 — MEP search on pocket structures (recursive GSM) ===\n")
+    click.echo("\n=== [all] Stage 2/3 — MEP search on input structures (recursive GSM) ===\n")
 
     # Build path_search CLI args using *repeated* options (robust for Click)
     ps_args: List[str] = []
