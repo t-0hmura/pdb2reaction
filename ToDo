@@ -3,6 +3,7 @@ irc: Enable Active DOF input
 all: Reuse TS Eigen Value for Freq from TS opt
 
 [Debugging...]
+scan2d
 thermo
 trj2fig
 dft

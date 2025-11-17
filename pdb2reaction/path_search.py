@@ -187,8 +187,8 @@ GS_KW.update({
 # StringOptimizer (GSM optimization control)
 STOPT_KW: Dict[str, Any] = dict(_PATH_STOPT_KW)
 STOPT_KW.update({
-    "stop_in_when_full": 1000,
-    "max_cycles": 1000,
+    "stop_in_when_full": 100,
+    "max_cycles": 100,
     "out_dir": "./result_path_search/",
 })
 
