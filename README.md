@@ -28,8 +28,10 @@ The CLI is exposed via the `pdb2reaction` entry point declared in `pyproject.tom
 #### Multi-structure GSM pipeline
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" # Minimal
+# Minimal
+pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 
+# Additional Option
 pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb \
              -c "GPP,MMT" \
              --ligand-charge "GPP:-3,MMT:-1" \
@@ -44,8 +46,10 @@ optimisation, vibrational analysis, and DFT single points for each reactive segm
 #### Single-structure + staged scan (feeds GSM)
 
 ```bash
-pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists "[(10,55,2.20),(23,34,1.80)]" # Minimal
+# Minimal
+pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists "[(10,55,2.20),(23,34,1.80)]"
 
+# Additional Option
 pdb2reaction -i SINGLE.pdb \
              -c "GPP,MMT" \
              --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
@@ -60,8 +64,10 @@ run before the results are merged back into the full system.
 #### Single-structure TSOPT-only mode
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" # Minimal
+# Minimal
+pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 
+# Additional Option
 pdb2reaction -i TS_CANDIDATE.pdb \
              -c "GPP,MMT" \
              --ligand-charge "GPP:-3,MMT:-1" \
