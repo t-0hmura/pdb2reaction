@@ -91,15 +91,6 @@ to build UMA, Gibbs, DFT, and DFT//UMA diagrams.
   tuple uses indices from the original full PDB (1-based) and is auto-remapped onto the extracted pocket.
 - `--tsopt/--thermo/--dft BOOLEAN`: Enable TS optimisation + pseudo-IRC, vibrational analysis (UMA Gibbs diagram), and DFT
   single-point post-processing (adds a DFT//UMA Gibbs diagram when combined with `--thermo True`).
-- `--sopt-mode` / `--opt-mode`: Optimiser presets. `--opt-mode` is forwarded to the staged scan and TS optimisation; when it is
-  omitted, the scan inherits LBFGS or RFO based on `--sopt-mode`, and TS optimisation defaults to `light`.
-- Shared knobs (`--freeze-links`, `--dump`, `--pre-opt`, `--hessian-calc-mode`, etc.) propagate to scan, GSM, TS optimisation,
-  and post-processing stages.
-- `--args-yaml FILE`: A YAML file forwarded unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft`, allowing shared
-  UMA/GSM configuration blocks (see [`docs/all.md`](docs/all.md)).
-- Outputs: `<out-dir>/pockets/` holds extracted pockets, `<out-dir>/scan/` stores staged scan results,
-  `<out-dir>/path_search/` contains GSM outputs (plus per-segment TS/freq/DFT folders), and `<out-dir>/tsopt_single/` is used by
-  TSOPT-only runs.
 
 Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). Refer to
 [`docs/all.md`](docs/all.md) for a full option matrix, YAML schemas, and output details.
