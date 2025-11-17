@@ -147,7 +147,7 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    detect_freeze_links,
+    detect_freeze_links_safe,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -223,17 +223,6 @@ SEARCH_KW: Dict[str, Any] = {
     "kink_max_nodes": 3,           # int, nodes for linear interpolation when skipping GSM at a kink
 }
 
-def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
-    """
-    Detect parent atoms of link hydrogens in a PDB; return 0‑based indices. Silent on failure.
-    """
-    try:
-        return detect_freeze_links(pdb_path)
-    except Exception as e:
-        click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
-        return []
-
-
 def _load_two_endpoints(
     paths: Sequence[Path],
     coord_type: str,
@@ -248,7 +237,7 @@ def _load_two_endpoints(
         g = geom_loader(p, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and p.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(p)
+            detected = detect_freeze_links_safe(p)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
                 click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
@@ -276,7 +265,7 @@ def _load_structures(
         g = geom_loader(geom_path, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and src_path.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(src_path)
+            detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
                 click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")

@@ -207,6 +207,7 @@ from .uma_pysis import uma_pysis
 from .trj2fig import run_trj2fig
 from .utils import (
     build_energy_diagram,
+    detect_freeze_links_safe,
     format_elapsed,
     prepare_input_structure,
     maybe_convert_xyz_to_gjf,
@@ -649,12 +650,9 @@ def _pseudo_irc_and_match(seg_idx: int,
     Returns dict with paths/energies/geoms for {left, ts, right}, and small IRC plots.
     """
     # Freeze parents of link-H if requested
-    freeze_atoms = []
+    freeze_atoms: List[int] = []
     if freeze_links_flag and seg_pocket_pdb.suffix.lower() == ".pdb":
-        try:
-            freeze_atoms = list(_path_search._freeze_links_for_pdb(seg_pocket_pdb))
-        except Exception:
-            freeze_atoms = []
+        freeze_atoms = detect_freeze_links_safe(seg_pocket_pdb)
 
     # Mode direction
     uma_kwargs = dict(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")

@@ -132,7 +132,7 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    detect_freeze_links,
+    detect_freeze_links_safe,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -194,14 +194,6 @@ _OPT_MODE_ALIASES = (
     (("light", "lbfgs"), "lbfgs"),
     (("heavy", "rfo"), "rfo"),
 )
-
-
-def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
-    try:
-        return list(detect_freeze_links(pdb_path))
-    except Exception as e:
-        click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
-        return []
 
 
 def _ensure_stage_dir(base: Path, k: int) -> Path:
@@ -508,7 +500,7 @@ def cli(
         # Merge freeze_atoms with link parents (PDB)
         freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links and input_path.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(input_path)
+            detected = detect_freeze_links_safe(input_path)
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
                 if freeze:

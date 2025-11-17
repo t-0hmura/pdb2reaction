@@ -6,7 +6,9 @@ Performs single-structure geometry optimizations with pysisyphus using either th
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|rfo]
-                 [--freeze-links BOOL] [--dump BOOL] [--thresh PRESET]
+                 [--freeze-links BOOL] [--dist-freeze "[(i,j,target), ...]"]
+                 [--one-based/--zero-based] [--bias-k k]
+                 [--dump BOOL] [--thresh PRESET]
                  [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
 ```
 
@@ -16,6 +18,9 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 | `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb`, `.xyz`, `.trj`, …). | Required |
 | `-q, --charge INT` | Total charge passed to UMA. | Required |
 | `-s, --spin INT` | Spin multiplicity (2S+1). | `1` |
+| `--dist-freeze TEXT` | Repeatable Python-like literal describing `(i, j, targetÅ)` tuples for harmonic restraints. Omit the target to freeze the initial distance. | _None_ |
+| `--one-based / --zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `--one-based` |
+| `--bias-k FLOAT` | Harmonic bias strength `k` (eV·Å⁻²) applied to every `--dist-freeze` tuple. | `10.0` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When the input is PDB, detect link hydrogens and freeze their parent atoms (merged with `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Maximum optimization cycles (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Select optimizer: `light`/`lbfgs` → LBFGS, `heavy`/`rfo` → RFO. | `light` |
@@ -44,7 +49,7 @@ UMA calculator options (see also `pdb2reaction/uma_pysis.py`).
 Shared optimizer controls.
 
 - `thresh` (`"gau"`): Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
-- `max_cycles` (`10000`), `print_every` (`1`), `dump` (`False`), `dump_restart` (`False`), `prefix` (`""`), `out_dir` (`"./result_opt/"`).
+- `max_cycles` (`10000`), `print_every` (`100`), `dump` (`False`), `dump_restart` (`False`), `prefix` (`""`), `out_dir` (`"./result_opt/"`).
 - Safeguards: `min_step_norm` (`1e-8`), `assert_min_step` (`True`).
 - Convergence flags: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
 - Extras: `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
@@ -70,6 +75,7 @@ Specific to RFOptimizer (`--opt-mode heavy|rfo`).
 
 ## Outputs
 - `final_geometry.xyz` (+ `.pdb` when the input was PDB).
+- `final_geometry.gjf` when the input supplied a Gaussian template (GJF) so headers/basis can be reused.
 - Optional `optimization.trj` (+ `.pdb` when dumping and PDB input).
 - Optional restart YAML files when `opt.dump_restart` is set.
 - Console blocks summarising resolved `geom`, `calc`, `opt`, and LBFGS/RFO settings.
@@ -77,6 +83,7 @@ Specific to RFOptimizer (`--opt-mode heavy|rfo`).
 ## Notes
 - Always provide the chemically correct charge and multiplicity.
 - `--freeze-links` is PDB-only and merges link parents into `geom.freeze_atoms`.
+- `--dist-freeze` lets you apply harmonic restraints to selected atom pairs; omit the target distance to freeze the current separation. Adjust the strength with `--bias-k` (eV·Å⁻²).
 - CLI precedence: CLI > YAML > built-in defaults.
 - Exit codes: `0` success, `2` zero-step error, `3` optimizer failure, `130` interrupt, `1` unexpected error.
 

@@ -72,6 +72,7 @@ from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     convert_xyz_to_pdb,
     detect_freeze_links,
+    detect_freeze_links_safe,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -129,17 +130,6 @@ STOPT_KW: Dict[str, Any] = {
     "print_every": 10,           # int, status print frequency (cycles)
 }
 
-def _freeze_links_for_pdb(pdb_path: Path) -> Sequence[int]:
-    """
-    Detect the parent atoms of link hydrogens in a PDB and return 0‑based indices.
-    """
-    try:
-        return detect_freeze_links(pdb_path)
-    except Exception as e:
-        click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
-        return []
-
-
 def _load_two_endpoints(
     inputs: Sequence[PreparedInputStructure],
     coord_type: str,
@@ -156,7 +146,7 @@ def _load_two_endpoints(
         g = geom_loader(geom_path, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and src_path.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(src_path)
+            detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
                 click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
