@@ -253,6 +253,19 @@ def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
     return scf_uhf.mulliken_spin_pop(pmol, [dm_a, dm_b], s_iao, verbose)
 
 
+# ---- Small helpers to remove duplication ------------------------------------
+def _get_occupied_orbitals(mf) -> np.ndarray:
+    """Return occupied MO coefficients (AO→MO) for RKS or UKS/UHF."""
+    mo = mf.mo_coeff
+    mo_occ = mf.mo_occ
+    if isinstance(mo, np.ndarray) and mo.ndim == 2:
+        occ_idx = np.asarray(mo_occ) > 0
+        return mo[:, occ_idx]
+    else:
+        occ_idx = np.asarray(mo_occ[0]) > 0
+        return mo[0][:, occ_idx]
+
+
 def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
     Compute atomic charges by three schemes:
@@ -269,37 +282,25 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     dm_tot = dm[0] + dm[1] if (isinstance(dm, np.ndarray) and dm.ndim == 3) else dm
 
     # Mulliken charges
-    mull_q: Optional[List[float]]
     try:
         _, mull_chg = scf_hf.mulliken_pop(mol, dm_tot, s=S, verbose=0)
-        mull_q = np.asarray(mull_chg, dtype=float).tolist()
+        mull_q: Optional[List[float]] = np.asarray(mull_chg, dtype=float).tolist()
     except Exception as e:
         click.echo(f"[Mulliken] WARNING: Failed to compute Mulliken charges: {e}", err=True)
         mull_q = None
 
     # meta-Löwdin charges
-    low_q: Optional[List[float]]
     try:
         _, low_chg = scf_hf.mulliken_pop_meta_lowdin_ao(mol, dm_tot, verbose=0, s=S)
-        low_q = np.asarray(low_chg, dtype=float).tolist()
+        low_q: Optional[List[float]] = np.asarray(low_chg, dtype=float).tolist()
     except Exception as e:
         click.echo(f"[Löwdin] WARNING: Failed to compute meta-Löwdin charges: {e}", err=True)
-        # No custom fallback; return nulls
         low_q = None
 
     # IAO charges
-    iao_q: Optional[List[float]] = None
+    iao_q: Optional[List[float]]
     try:
-        mo = mf.mo_coeff
-        mo_occ = mf.mo_occ
-        if isinstance(mo, np.ndarray) and mo.ndim == 2:
-            occ_idx = np.asarray(mo_occ) > 0
-            orbocc = mo[:, occ_idx]
-        else:
-            occ_idx = np.asarray(mo_occ[0]) > 0
-            orbocc = mo[0][:, occ_idx]
-        iaos = lo_iao.iao(mol, orbocc, minao="minao")
-        # ※ PySCF 側は Mulliken 綴り
+        iaos = lo_iao.iao(mol, _get_occupied_orbitals(mf), minao="minao")
         _, iao_chg = lo_iao.fast_iao_mullikan_pop(mol, dm, iaos, verbose=0)
         iao_q = np.asarray(iao_chg, dtype=float).tolist()
     except Exception as e:
@@ -332,7 +333,6 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
         zeros = [0.0] * nat
         return {"mulliken": zeros, "lowdin": zeros, "iao": zeros}
 
-    # UKS/UHF: true spin-resolved analysis
     try:
         _, Ms_mull = scf_uhf.mulliken_spin_pop(mol, dm, s=S, verbose=0)
         mull: Optional[List[float]] = np.asarray(Ms_mull, dtype=float).tolist()
@@ -347,17 +347,9 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
         click.echo(f"[Spin Löwdin] WARNING: Failed to compute meta-Löwdin spin densities: {e}", err=True)
         low = None
 
-    iao_ms: Optional[List[float]] = None
+    iao_ms: Optional[List[float]]
     try:
-        mo = mf.mo_coeff
-        mo_occ = mf.mo_occ
-        if isinstance(mo, np.ndarray) and mo.ndim == 2:
-            occ_idx = np.asarray(mo_occ) > 0
-            orbocc = mo[:, occ_idx]
-        else:
-            occ_idx = np.asarray(mo_occ[0]) > 0
-            orbocc = mo[0][:, occ_idx]
-        iaos = lo_iao.iao(mol, orbocc, minao="minao")
+        iaos = lo_iao.iao(mol, _get_occupied_orbitals(mf), minao="minao")
         _, Ms_iao = fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=0)
         iao_ms = np.asarray(Ms_iao, dtype=float).tolist()
     except Exception as e:
@@ -495,24 +487,17 @@ def cli(
         # --------------------------
         using_gpu = False
         engine_label = "pyscf(cpu)"
+        make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
         try:
             import gpu4pyscf
             gpu4pyscf.activate()  # patch PySCF backends to GPU where supported
             from gpu4pyscf import dft as gdf
-            if spin2s == 0:
-                mf = gdf.RKS(mol)
-            else:
-                mf = gdf.UKS(mol)
+            mf = make_ks(gdf)
             using_gpu = True
             engine_label = "gpu4pyscf"
         except Exception:
             from pyscf import dft as pdft
-            if spin2s == 0:
-                mf = pdft.RKS(mol)
-            else:
-                mf = pdft.UKS(mol)
-            using_gpu = False
-            engine_label = "pyscf(cpu)"
+            mf = make_ks(pdft)
 
         # ---- Enable density fitting (RI/DF) & set aux-basis if available ----
         try:
@@ -579,12 +564,9 @@ def cli(
             return [0.0 if (x == x) and abs(x) < tol else float(x) for x in xs]  # keep NaN as-is
 
         # Round tiny numbers (None-safe)
-        charges["mulliken"] = None if charges["mulliken"] is None else _round_list(charges["mulliken"])
-        charges["lowdin"]   = None if charges["lowdin"]   is None else _round_list(charges["lowdin"])
-        charges["iao"]      = None if charges["iao"]      is None else _round_list(charges["iao"])
-        spins["mulliken"]   = None if spins["mulliken"]   is None else _round_list(spins["mulliken"])
-        spins["lowdin"]     = None if spins["lowdin"]     is None else _round_list(spins["lowdin"])
-        spins["iao"]        = None if spins["iao"]        is None else _round_list(spins["iao"])
+        for dct in (charges, spins):
+            for key in ("mulliken", "lowdin", "iao"):
+                dct[key] = None if dct[key] is None else _round_list(dct[key])
 
         # Build per-atom tables
         charges_table: List[List[Any]] = []
@@ -617,17 +599,7 @@ def cli(
         spins_rows_flow   = [FlowList(r) for r in spins_table]
 
         result_yaml = {
-            "input": {
-                "charge": int(charge),
-                "multiplicity": multiplicity,
-                "spin (PySCF expects 2S)": spin2s,
-                "xc": xc,
-                "basis": basis,
-                "conv_tol": dft_cfg["conv_tol"],
-                "max_cycle": dft_cfg["max_cycle"],
-                "grid_level": dft_cfg["grid_level"],
-                "out_dir": str(out_dir_path),
-            },
+            "input": dict(echo_cfg),  # reuse echoed configuration
             "energy": {
                 "hartree": e_h,
                 "kcal_per_mol": e_kcal,

@@ -10,6 +10,7 @@ and graph string methods so that multi-step enzymatic reaction mechanisms can be
 ```bash
 pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
+plotly_get_chrome -y
 huggingface-cli login
 ```
 

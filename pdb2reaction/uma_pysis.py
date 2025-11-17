@@ -144,6 +144,23 @@ CALC_KW: Dict[str, Any] = {
 }
 
 # ===================================================================
+#                         helpers
+# ===================================================================
+def _cast_atomicdata_floats_(obj: AtomicData, dtype: torch.dtype, device: torch.device) -> AtomicData:
+    """
+    Cast ONLY floating-point tensors contained in an AtomicData to the given dtype/device.
+    Keeps integer tensors (e.g., indices) as-is to avoid breaking collaters and validators.
+    Ensures pos/cell/cell_offsets have identical dtype as required by AtomicData.validate().
+    """
+    for k, v in vars(obj).items():
+        if torch.is_tensor(v):
+            if v.is_floating_point():
+                setattr(obj, k, v.to(device=device, dtype=dtype))
+            else:
+                setattr(obj, k, v.to(device=device))
+    return obj
+
+# ===================================================================
 #                         UMA core wrapper
 # ===================================================================
 class UMAcore:
@@ -175,7 +192,7 @@ class UMAcore:
 
         # Load predictor and place it on target device & dtype --------
         self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
-        # <<< precision-aware >>>  (uses module-level _tdtype configured by uma_pysis)
+        # precision-aware (uses module-level _tdtype configured by uma_pysis)
         self.predict.model.to(self.device, dtype=_tdtype)
         self.predict.model.eval()
         # Hard-disable dropout
@@ -220,9 +237,14 @@ class UMAcore:
             max_neigh=max_neigh,
             radius   =radius,
             r_edges  =r_edges,
-        ).to(self.device, dtype=_tdtype)
+        ).to(self.device)
+        # Ensure float fields (pos/cell/cell_offsets/...) share dtype _tdtype
+        data = _cast_atomicdata_floats_(data, _tdtype, self.device)
+
         data.dataset = self.task_name
-        batch = self._collater([data], otf_graph=True).to(self.device, dtype=_tdtype)
+        batch = self._collater([data], otf_graph=True).to(self.device)
+        # Collation may re-create tensors; enforce float dtype consistency again
+        batch = _cast_atomicdata_floats_(batch, _tdtype, self.device)
         return batch
 
     # ----------------------------------------------------------------
@@ -255,7 +277,7 @@ class UMAcore:
         batch = self._ase_to_batch(atoms)
 
         need_grad = bool(forces or hessian)
-        # <<< precision-aware >>>
+        # precision-aware position dtype
         pos = batch.pos.detach().clone().to(self.device, dtype=_tdtype)
         pos.requires_grad_(need_grad)
         batch.pos = pos

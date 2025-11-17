@@ -67,7 +67,7 @@ Runs a one-shot pipeline centered on pocket models:
     - Additional extractor toggles: `--radius`, `--radius-het2het`, `--include-H2O True|False`,
       `--exclude-backbone True|False`, `--add-linkH True|False`, `--selected_resn`, `--verbose True|False`.
 
-(1b) **Optional staged scan (single-structure only)** — *new*
+(1b) **Optional staged scan (single-structure only)**
     - If **exactly one** full input PDB is provided and `--scan-lists` is given, the tool performs a
       **staged, bond-length–driven scan** *on the extracted pocket PDB* using the UMA calculator.
     - For each stage, the final relaxed structure (`stage_XX/result.pdb`) is collected as an
@@ -92,7 +92,7 @@ Runs a one-shot pipeline centered on pocket models:
     - `--dft True`: Do DFT single-point on (R, TS, P) and add a DFT diagram.
       With `--thermo True`, also generate a **DFT//UMA** Gibbs diagram.
 
-(Alt) **Single-structure TSOPT-only mode** — *new*
+(Alt) **Single-structure TSOPT-only mode**
     - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
       the tool skips (2)-(3) and:
         • Runs `ts_opt` on the **pocket** of that structure,  
@@ -262,47 +262,75 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     return default.parent / override
 
 
-def _read_pdb_atom_serials(pdb_path: Path) -> List[int]:
-    """Return the ATOM/HETATM serial numbers (in file order) from ``pdb_path``."""
-    serials: List[int] = []
-    try:
-        with open(pdb_path, "r") as fh:
-            for line in fh:
-                if line.startswith("ATOM") or line.startswith("HETATM"):
-                    serial_str = line[6:11].strip()
-                    if not serial_str:
-                        raise click.ClickException(
-                            f"[all] Atom record without a serial number in {pdb_path}."
-                        )
-                    serials.append(int(serial_str))
-    except FileNotFoundError:
-        raise click.ClickException(f"[all] File not found while parsing PDB: {pdb_path}")
-    if not serials:
-        raise click.ClickException(f"[all] No ATOM/HETATM records detected in {pdb_path}.")
-    return serials
+# [FIX] --- begin: robust atom key helpers (serial 依存の廃止) ---------------------------
+
+def _parse_atom_key_from_line(line: str) -> Optional[Tuple[str, str, str, str, str, str]]:
+    """
+    Extract a structural identity key from a PDB ATOM/HETATM record.
+
+    Returns:
+        (chainID, resName, resSeq, iCode, atomName, altLoc), with blanks normalized to ''.
+    """
+    if not (line.startswith("ATOM") or line.startswith("HETATM")):
+        return None
+    atomname = line[12:16].strip()
+    altloc   = (line[16] if len(line) > 16 else " ").strip()
+    resname  = line[17:20].strip()
+    chain    = (line[21] if len(line) > 21 else " ").strip()
+    resseq   = line[22:26].strip()
+    icode    = (line[26] if len(line) > 26 else " ").strip()
+    return (chain, resname, resseq, icode, atomname, altloc)
 
 
-def _serial_to_pocket_index(pocket_pdb: Path) -> Dict[int, int]:
-    """Build a mapping of atom serial → pocket index (1-based) for the pocket PDB."""
-    serial_to_idx: Dict[int, int] = {}
+def _pocket_key_to_index(pocket_pdb: Path) -> Dict[Tuple[str, str, str, str, str, str], int]:
+    """
+    Build mapping: structural atom key -> pocket index (1-based by file order).
+    """
+    key2idx: Dict[Tuple[str, str, str, str, str, str], int] = {}
     idx = 0
     try:
-        with open(pocket_pdb, "r") as fh:
+        with open(pocket_pdb, "r", encoding="utf-8", errors="ignore") as fh:
             for line in fh:
                 if line.startswith("ATOM") or line.startswith("HETATM"):
-                    serial_str = line[6:11].strip()
-                    if not serial_str:
-                        raise click.ClickException(
-                            f"[all] Pocket PDB {pocket_pdb} contains an atom without a serial number."
-                        )
-                    serial = int(serial_str)
+                    key = _parse_atom_key_from_line(line)
+                    if key is None:
+                        continue
                     idx += 1
-                    serial_to_idx[serial] = idx
+                    key2idx[key] = idx
     except FileNotFoundError:
         raise click.ClickException(f"[all] Pocket PDB not found: {pocket_pdb}")
-    if not serial_to_idx:
+    if not key2idx:
         raise click.ClickException(f"[all] Pocket PDB {pocket_pdb} has no ATOM/HETATM records.")
-    return serial_to_idx
+    return key2idx
+
+
+def _read_full_atom_keys_in_file_order(full_pdb: Path) -> List[Tuple[str, str, str, str, str, str]]:
+    """
+    Read ATOM/HETATM lines and return keys in the original file order.
+    """
+    keys: List[Tuple[str, str, str, str, str, str]] = []
+    try:
+        with open(full_pdb, "r", encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                if line.startswith("ATOM") or line.startswith("HETATM"):
+                    key = _parse_atom_key_from_line(line)
+                    if key is not None:
+                        keys.append(key)
+    except FileNotFoundError:
+        raise click.ClickException(f"[all] File not found while parsing PDB: {full_pdb}")
+    if not keys:
+        raise click.ClickException(f"[all] No ATOM/HETATM records detected in {full_pdb}.")
+    return keys
+
+
+def _format_atom_key_for_msg(key: Tuple[str, str, str, str, str, str]) -> str:
+    """Pretty string for diagnostics."""
+    chain, resn, resseq, icode, atom, alt = key
+    res = f"{chain}:{resn}{resseq}{(icode if icode else '')}"
+    alt_sfx = f",alt={alt}" if alt else ""
+    return f"{res}:{atom}{alt_sfx}"
+
+# [FIX] --- end: robust atom key helpers (serial 依存の廃止) -----------------------------
 
 
 def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple[int, int, float]]]:
@@ -352,16 +380,50 @@ def _convert_scan_lists_to_pocket_indices(
     """
     Convert user-provided atom indices (based on the full input PDB) to pocket indices.
     Returns the converted stages as lists of (i,j,target) with 1-based pocket indices.
+
+    [FIX] serial には依存せず、(chainID, resName, resSeq, iCode, atomName, altLoc) の「構造的キー」で対応付ける。
     """
     if not scan_lists_raw:
         return []
 
     stages = _parse_scan_lists_literals(scan_lists_raw)
-    orig_serials = _read_pdb_atom_serials(full_input_pdb)
-    serial_to_pocket_idx = _serial_to_pocket_index(pocket_pdb)
+
+    # [FIX] 元構造のキー配列（1-based indexと整合）と、ポケット側のキー→index辞書を用意
+    orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
+    key_to_pocket_idx  = _pocket_key_to_index(pocket_pdb)
+
+    n_atoms_full = len(orig_keys_in_order)
+
+    def _map_full_index_to_pocket(idx_one_based: int, stage_idx: int, tuple_idx: int, side_label: str) -> int:
+        """
+        1-based のフル PDB index を、ポケット PDB の 1-based index に変換。
+        厳密一致→(altloc無視)→(icode無視)→(両方無視)の順でフォールバック。
+        """
+        key = orig_keys_in_order[idx_one_based - 1]
+
+        # 候補キー列を順に試す
+        chain, resn, resseq, icode, atom, alt = key
+        candidates = [
+            key,
+            (chain, resn, resseq, icode, atom, ''),   # altloc 無視
+            (chain, resn, resseq, '',    atom, alt), # iCode 無視
+            (chain, resn, resseq, '',    atom, ''),  # 両方無視
+        ]
+        for k in candidates:
+            hit = key_to_pocket_idx.get(k, None)
+            if hit is not None:
+                return hit
+
+        # 見つからない → 抽出で除外された等。親切なメッセージを出す。
+        msg_key = _format_atom_key_for_msg(key)
+        raise click.BadParameter(
+            f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) references atom index {idx_one_based} "
+            f"(key {msg_key}) which is not present in the pocket after extraction. "
+            f"Increase extraction coverage (e.g., --radius/--radius-het2het, --selected_resn, or set --exclude-backbone False), "
+            f"or choose atoms that survive in the pocket."
+        )
 
     converted: List[List[Tuple[int, int, float]]] = []
-    n_atoms_full = len(orig_serials)
     for stage_idx, stage in enumerate(stages, start=1):
         stage_converted: List[Tuple[int, int, float]] = []
         for tuple_idx, (idx_i, idx_j, target) in enumerate(stage, start=1):
@@ -374,25 +436,11 @@ def _convert_scan_lists_to_pocket_indices(
                     f"--scan-lists #{stage_idx} tuple #{tuple_idx} references an atom index "
                     f"beyond the input PDB atom count ({n_atoms_full})."
                 )
-            serial_i = orig_serials[idx_i - 1]
-            serial_j = orig_serials[idx_j - 1]
-            if serial_i not in serial_to_pocket_idx:
-                raise click.BadParameter(
-                    f"--scan-lists #{stage_idx} tuple #{tuple_idx} references atom index {idx_i} "
-                    f"(serial {serial_i}) which was removed during pocket extraction."
-                )
-            if serial_j not in serial_to_pocket_idx:
-                raise click.BadParameter(
-                    f"--scan-lists #{stage_idx} tuple #{tuple_idx} references atom index {idx_j} "
-                    f"(serial {serial_j}) which was removed during pocket extraction."
-                )
-            stage_converted.append(
-                (
-                    serial_to_pocket_idx[serial_i],
-                    serial_to_pocket_idx[serial_j],
-                    target,
-                )
-            )
+
+            pi = _map_full_index_to_pocket(idx_i, stage_idx, tuple_idx, "i")
+            pj = _map_full_index_to_pocket(idx_j, stage_idx, tuple_idx, "j")
+
+            stage_converted.append((pi, pj, target))
         converted.append(stage_converted)
     return converted
 
@@ -505,16 +553,23 @@ def _compute_imag_mode_direction(ts_geom: Any,
     Uses ts_opt internal helpers to minimize new code.
     """
     # full analytic Hessian (torch tensor)
-    H_t = _ts_opt._calc_full_hessian_torch(ts_geom, uma_kwargs=uma_kwargs,
-                                           device=torch.device(uma_kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")))
+    H_t = _ts_opt._calc_full_hessian_torch(
+        ts_geom,
+        uma_kwargs=uma_kwargs,
+        device=torch.device(uma_kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")),
+    )
     coords_bohr_t = torch.as_tensor(ts_geom.coords.reshape(-1, 3), dtype=H_t.dtype, device=H_t.device)
     # masses in a.u.
     from ase.data import atomic_masses
     masses_amu = np.array([atomic_masses[z] for z in ts_geom.atomic_numbers])
     masses_au_t = torch.as_tensor(masses_amu * _ts_opt.AMU2AU, dtype=H_t.dtype, device=H_t.device)
-    mode = _ts_opt._mode_direction_by_root(H_t, coords_bohr_t, masses_au_t,
-                                           root=0,
-                                           freeze_idx=list(freeze_atoms) if len(freeze_atoms) > 0 else None)
+    mode = _ts_opt._mode_direction_by_root(
+        H_t,
+        coords_bohr_t,
+        masses_au_t,
+        root=0,
+        freeze_idx=list(freeze_atoms) if len(freeze_atoms) > 0 else None,
+    )
     # ensure unit length
     norm = float(np.linalg.norm(mode.reshape(-1)))
     if norm <= 0:
@@ -985,6 +1040,7 @@ def _run_dft_for_state(pdb_path: Path,
               help="Run freq on (R,TS,P) per reactive segment (or TSOPT-only mode) and build Gibbs free-energy diagram (UMA).")
 @click.option("--dft", "do_dft", type=click.BOOL, default=False, show_default=True,
               help="Run DFT single-point on (R,TS,P) and build DFT energy diagram. With --thermo True, also generate a DFT//UMA Gibbs diagram.")
+              
 @click.option("--tsopt-max-cycles", type=int, default=None,
               help="Override ts_opt --max-cycles value.")
 @click.option("--tsopt-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
@@ -1013,7 +1069,6 @@ def _run_dft_for_state(pdb_path: Path,
               help="Override dft --conv-tol value.")
 @click.option("--dft-grid-level", type=int, default=None,
               help="Override dft --grid-level value.")
-# ===== NEW: staged scan specification for single-structure route =====
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=False,
@@ -1278,14 +1333,16 @@ def cli(
         )
 
         # Pseudo-IRC & minimize both ends (no segment endpoints exist → fallback mapping in helper)
-        irc_res = _pseudo_irc_and_match(seg_idx=1,
-                                        seg_dir=tsroot,
-                                        ref_pdb_for_seg=ts_pdb,
-                                        seg_pocket_pdb=pocket_pdb,
-                                        g_ts=g_ts,
-                                        q_int=q_int,
-                                        spin=spin,
-                                        freeze_links_flag=freeze_links_flag)
+        irc_res = _pseudo_irc_and_match(
+            seg_idx=1,
+            seg_dir=tsroot,
+            ref_pdb_for_seg=ts_pdb,
+            seg_pocket_pdb=pocket_pdb,
+            g_ts=g_ts,
+            q_int=q_int,
+            spin=spin,
+            freeze_links_flag=freeze_links_flag,
+        )
         gL = irc_res["left_min_geom"]
         gR = irc_res["right_min_geom"]
         gT = irc_res["ts_geom"]
@@ -1312,10 +1369,12 @@ def cli(
         pP = _save_single_geom_as_pdb_for_tools(g_prod,   pocket_ref, struct_dir, "product")
 
         # UMA energy diagram (R, TS, P)
-        _write_segment_energy_diagram(tsroot / "energy_diagram_tsopt",
-                                      labels=["R", "TS", "P"],
-                                      energies_eh=[e_react, eT, e_prod],
-                                      title_note="(UMA, TSOPT/IRC)")
+        _write_segment_energy_diagram(
+            tsroot / "energy_diagram_tsopt",
+            labels=["R", "TS", "P"],
+            energies_eh=[e_react, eT, e_prod],
+            title_note="(UMA, TSOPT/IRC)",
+        )
 
         # Thermochemistry (UMA) Gibbs
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
@@ -1332,10 +1391,12 @@ def cli(
                 GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", e_react))
                 GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", eT))
                 GP = float(tP.get("sum_EE_and_thermal_free_energy_ha", e_prod))
-                _write_segment_energy_diagram(tsroot / "energy_diagram_G_UMA",
-                                              labels=["R", "TS", "P"],
-                                              energies_eh=[GR, GT, GP],
-                                              title_note="(Gibbs, UMA)")
+                _write_segment_energy_diagram(
+                    tsroot / "energy_diagram_G_UMA",
+                    labels=["R", "TS", "P"],
+                    energies_eh=[GR, GT, GP],
+                    title_note="(Gibbs, UMA)",
+                )
             except Exception as e:
                 click.echo(f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True)
 
@@ -1349,10 +1410,12 @@ def cli(
                 eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", e_react))
                 eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", eT))
                 eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", e_prod))
-                _write_segment_energy_diagram(tsroot / "energy_diagram_DFT",
-                                              labels=["R", "TS", "P"],
-                                              energies_eh=[eR_dft, eT_dft, eP_dft],
-                                              title_note="(DFT wb97x-v/def2-tzvp)")
+                _write_segment_energy_diagram(
+                    tsroot / "energy_diagram_DFT",
+                    labels=["R", "TS", "P"],
+                    energies_eh=[eR_dft, eT_dft, eP_dft],
+                    title_note="(DFT wb97x-v/def2-tzvp)",
+                )
             except Exception as e:
                 click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
 
@@ -1364,10 +1427,12 @@ def cli(
                     GR_dftUMA = eR_dft + dG_R
                     GT_dftUMA = eT_dft + dG_T
                     GP_dftUMA = eP_dft + dG_P
-                    _write_segment_energy_diagram(tsroot / "energy_diagram_G_DFT_plus_UMA",
-                                                  labels=["R", "TS", "P"],
-                                                  energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                                                  title_note="(Gibbs, DFT//UMA)")
+                    _write_segment_energy_diagram(
+                        tsroot / "energy_diagram_G_DFT_plus_UMA",
+                        labels=["R", "TS", "P"],
+                        energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                        title_note="(Gibbs, DFT//UMA)",
+                    )
                 except Exception as e:
                     click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
 
@@ -1587,14 +1652,16 @@ def cli(
             g_ts.set_calculator(calc); _ = float(g_ts.energy)
 
         # 4.2 Pseudo-IRC & mapping to (left,right)
-        irc_res = _pseudo_irc_and_match(seg_idx=seg_idx,
-                                        seg_dir=seg_dir,
-                                        ref_pdb_for_seg=ts_pdb,
-                                        seg_pocket_pdb=hei_pocket_pdb,
-                                        g_ts=g_ts,
-                                        q_int=q_int,
-                                        spin=spin,
-                                        freeze_links_flag=freeze_links_flag)
+        irc_res = _pseudo_irc_and_match(
+            seg_idx=seg_idx,
+            seg_dir=seg_dir,
+            ref_pdb_for_seg=ts_pdb,
+            seg_pocket_pdb=hei_pocket_pdb,
+            g_ts=g_ts,
+            q_int=q_int,
+            spin=spin,
+            freeze_links_flag=freeze_links_flag,
+        )
 
         gL = irc_res["left_min_geom"]
         gR = irc_res["right_min_geom"]
@@ -1610,10 +1677,12 @@ def cli(
         eR = float(gL.energy)
         eT = float(gT.energy)
         eP = float(gR.energy)
-        _write_segment_energy_diagram(seg_dir / "energy_diagram_tsopt",
-                                      labels=["R", f"TS{seg_idx}", "P"],
-                                      energies_eh=[eR, eT, eP],
-                                      title_note="(UMA, TSOPT/IRC)")
+        _write_segment_energy_diagram(
+            seg_dir / "energy_diagram_tsopt",
+            labels=["R", f"TS{seg_idx}", "P"],
+            energies_eh=[eR, eT, eP],
+            title_note="(UMA, TSOPT/IRC)",
+        )
 
         # 4.4 Thermochemistry (UMA freq) and Gibbs diagram
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
@@ -1630,10 +1699,12 @@ def cli(
                 GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", eR))
                 GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", eT))
                 GP = float(tP.get("sum_EE_and_thermal_free_energy_ha", eP))
-                _write_segment_energy_diagram(seg_dir / "energy_diagram_G_UMA",
-                                              labels=["R", f"TS{seg_idx}", "P"],
-                                              energies_eh=[GR, GT, GP],
-                                              title_note="(Gibbs, UMA)")
+                _write_segment_energy_diagram(
+                    seg_dir / "energy_diagram_G_UMA",
+                    labels=["R", f"TS{seg_idx}", "P"],
+                    energies_eh=[GR, GT, GP],
+                    title_note="(Gibbs, UMA)",
+                )
             except Exception as e:
                 click.echo(f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True)
 
@@ -1648,10 +1719,12 @@ def cli(
                 eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", np.nan))
                 eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", np.nan))
                 if all(map(np.isfinite, [eR_dft, eT_dft, eP_dft])):
-                    _write_segment_energy_diagram(seg_dir / "energy_diagram_DFT",
-                                                  labels=["R", f"TS{seg_idx}", "P"],
-                                                  energies_eh=[eR_dft, eT_dft, eP_dft],
-                                                  title_note="(DFT wb97x-v/def2-tzvp)")
+                    _write_segment_energy_diagram(
+                        seg_dir / "energy_diagram_DFT",
+                        labels=["R", f"TS{seg_idx}", "P"],
+                        energies_eh=[eR_dft, eT_dft, eP_dft],
+                        title_note="(DFT wb97x-v/def2-tzvp)",
+                    )
                 else:
                     click.echo("[dft] WARNING: some DFT energies missing; diagram skipped.", err=True)
             except Exception as e:
@@ -1669,10 +1742,12 @@ def cli(
                     GR_dftUMA = eR_dft + dG_R
                     GT_dftUMA = eT_dft + dG_T
                     GP_dftUMA = eP_dft + dG_P
-                    _write_segment_energy_diagram(seg_dir / "energy_diagram_G_DFT_plus_UMA",
-                                                  labels=["R", f"TS{seg_idx}", "P"],
-                                                  energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                                                  title_note="(Gibbs, DFT//UMA)")
+                    _write_segment_energy_diagram(
+                        seg_dir / "energy_diagram_G_DFT_plus_UMA",
+                        labels=["R", f"TS{seg_idx}", "P"],
+                        energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                        title_note="(Gibbs, DFT//UMA)",
+                    )
                 except Exception as e:
                     click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
 
