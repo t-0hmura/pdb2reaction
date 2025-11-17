@@ -22,6 +22,7 @@ Usage (CLI)
         --freeze-links {True|False} \
         --dump {True|False} \
         --out-dir PATH \
+        [--thresh PRESET] \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
         [--endopt {True|False}]
@@ -71,9 +72,11 @@ Outputs (& Directory Layout)
 Base output directory (default `./result_scan/`):
   preopt/                         # created if --preopt True
     result.xyz
+    result.gjf                    # if the original input provided a GJF template
     result.pdb                    # if input was PDB
   stage_{k:02d}/                  # for each stage k = 1..K
     result.xyz                    # final structure for the stage (post end-of-stage processing)
+    result.gjf                    # if the original input provided a GJF template
     result.pdb                    # if input was PDB
     scan.trj                      # only if --dump True (concatenated biased step frames)
     scan.pdb                      # only if --dump True and input was PDB
@@ -497,6 +500,23 @@ def cli(
         coord_type = geom_cfg.get("coord_type", "cart")
         geom = geom_loader(geom_input_path, coord_type=coord_type)
 
+        max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
+
+        def _make_optimizer(kind_local: str, _out_dir: Path, _prefix: str):
+            common = dict(opt_cfg)
+            common["out_dir"] = str(_out_dir)
+            common["prefix"] = _prefix
+            common["max_cycles"] = int(relax_max_cycles)
+            if kind_local == "lbfgs":
+                args = {**lbfgs_cfg, **common}
+                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
+                return LBFGS(geom, **args)
+            args = {**rfo_cfg, **common}
+            tr = float(rfo_cfg.get("trust_radius", 0.30))
+            args["trust_radius"] = min(tr, max_step_bohr)
+            args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
+            return RFOptimizer(geom, **args)
+
         # Merge freeze_atoms with link parents (PDB)
         freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links and input_path.suffix.lower() == ".pdb":
@@ -527,25 +547,7 @@ def cli(
             pre_dir.mkdir(parents=True, exist_ok=True)
             geom.set_calculator(base_calc)
             click.echo(f"[preopt] Unbiased relaxation ({kind}) ...")
-            # Local optimizer factory for preopt
-            max_step_bohr_local = float(max_step_size) * ANG2BOHR  # ensure step controls are in Bohr
-            def _make_optimizer_pre(kind_local: str, _out_dir: Path, _prefix: str):
-                common = dict(opt_cfg)
-                common["out_dir"] = str(_out_dir)
-                common["prefix"] = _prefix
-                if kind_local == "lbfgs":
-                    args = {**lbfgs_cfg, **common}
-                    args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr_local)
-                    args["max_cycles"] = int(relax_max_cycles)
-                    return LBFGS(geom, **args)
-                else:
-                    args = {**rfo_cfg, **common}
-                    tr = float(rfo_cfg.get("trust_radius", 0.30))
-                    args["trust_radius"] = min(tr, max_step_bohr_local)
-                    args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr_local)
-                    args["max_cycles"] = int(relax_max_cycles)
-                    return RFOptimizer(geom, **args)
-            optimizer0 = _make_optimizer_pre(kind, pre_dir, "preopt_")
+            optimizer0 = _make_optimizer(kind, pre_dir, "preopt_")
             try:
                 optimizer0.run()
             except ZeroStepLength:
@@ -575,26 +577,6 @@ def cli(
         # ------------------------------------------------------------------
         # 4) Stage-by-stage scan
         # ------------------------------------------------------------------
-
-        # Optimizer factory (per step or end-of-stage, fresh instance)
-        max_step_bohr = float(max_step_size) * ANG2BOHR  # ensure step controls are in Bohr
-        def _make_optimizer(kind: str, _out_dir: Path, _prefix: str):
-            common = dict(opt_cfg)
-            common["out_dir"] = str(_out_dir)
-            common["prefix"] = _prefix
-            if kind == "lbfgs":
-                args = {**lbfgs_cfg, **common}
-                # Cap LBFGS step size in Bohr by the global Å limit converted to Bohr.
-                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
-                args["max_cycles"] = int(relax_max_cycles)
-                return LBFGS(geom, **args)
-            else:
-                args = {**rfo_cfg, **common}
-                tr = float(rfo_cfg.get("trust_radius", 0.30))
-                args["trust_radius"] = min(tr, max_step_bohr)
-                args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
-                args["max_cycles"] = int(relax_max_cycles)
-                return RFOptimizer(geom, **args)
 
         # Iterate stages
         for k, tuples in enumerate(stages, start=1):
