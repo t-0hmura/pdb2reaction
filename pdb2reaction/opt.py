@@ -9,7 +9,8 @@ Usage (CLI)
     pdb2reaction opt -i INPUT -q CHARGE [-s SPIN]
         [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}]
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] [--bias-k FLOAT]
-        [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
+        [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--thresh PRESET]
+        [--args-yaml FILE]
 
 Examples::
     pdb2reaction opt -i input.pdb -q 0
@@ -66,6 +67,7 @@ Outputs (& Directory Layout)
 - `out_dir/` (default: `./result_opt/`)
   - `final_geometry.xyz` — final optimized geometry (always).
   - `final_geometry.pdb` — converted from XYZ when the input was a PDB.
+  - `final_geometry.gjf` — emitted when the input provided a Gaussian template (GJF) to reuse headers/basis.
   - `optimization.trj` — trajectory (written when `--dump` or `opt.dump: true`).
   - `optimization.pdb` — converted from TRJ when input was a PDB and dumping is enabled.
   - `restart*.yml` — optional restart files every N cycles when `opt.dump_restart` is set (file names depend on optimizer).

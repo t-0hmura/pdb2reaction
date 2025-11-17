@@ -95,6 +95,7 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
+    detect_freeze_links_safe,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
@@ -135,15 +136,6 @@ HARTREE_TO_KCAL_MOL = 627.50961
 
 
 # ---- 小物ユーティリティ ----
-
-def _freeze_links_for_pdb(pdb_path: Path) -> List[int]:
-    from .utils import detect_freeze_links
-    try:
-        return list(detect_freeze_links(pdb_path))
-    except Exception as e:
-        click.echo(f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}", err=True)
-        return []
-
 
 def _ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -460,7 +452,7 @@ def cli(
         # freeze-atoms（PDB のリンク親の凍結をマージ）
         freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links and input_path.suffix.lower() == ".pdb":
-            detected = _freeze_links_for_pdb(input_path)
+            detected = detect_freeze_links_safe(input_path)
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
                 if freeze:

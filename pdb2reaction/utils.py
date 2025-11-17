@@ -46,6 +46,7 @@ Description
   - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
   - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`; returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf` in that case).
   - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/`HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms (“others”). Returns an empty list if no link hydrogens are present.
+  - `detect_freeze_links_safe(pdb_path)`: Wrapper that catches unexpected parser failures, prints a `[freeze-links]` warning, and always returns a list (possibly empty).
 
 Outputs (& Directory Layout)
 -----
@@ -837,3 +838,16 @@ def detect_freeze_links(pdb_path):
         idx, dist = nearest_index((x, y, z), others)
         indices.append(idx)
     return indices
+
+
+def detect_freeze_links_safe(pdb_path: Path) -> List[int]:
+    """Return link-parent indices with a `[freeze-links]` warning instead of raising."""
+
+    try:
+        return list(detect_freeze_links(pdb_path))
+    except Exception as e:  # pragma: no cover - defensive logging helper
+        click.echo(
+            f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}",
+            err=True,
+        )
+        return []
