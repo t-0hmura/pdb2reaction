@@ -1774,6 +1774,11 @@ def cli(
             click.echo(f"[post] WARNING: HEI pocket file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.", err=True)
             continue
 
+        struct_dir = seg_dir / "structures"
+        _ensure_dir(struct_dir)
+        state_structs: Dict[str, Path] = {}
+        uma_ref_energies: Dict[str, float] = {}
+
         # 4.1 TS optimization (optional; still needed to drive IRC & diagrams)
         if do_tsopt:
             ts_pdb, g_ts = _run_tsopt_on_hei(
@@ -1803,89 +1808,155 @@ def cli(
             gR = irc_res["right_min_geom"]
             gT = irc_res["ts_geom"]
             # Save standardized PDBs for tools
-            struct_dir = seg_dir / "structures"
-            _ensure_dir(struct_dir)
             pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_like")
             pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_path, struct_dir, "ts")
             pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_like")
+            state_structs = {"R": pL, "TS": pT, "P": pR}
 
             # 4.3 Segment-level energy diagram from UMA (R,TS,P)
             eR = float(gL.energy)
             eT = float(gT.energy)
             eP = float(gR.energy)
+            uma_ref_energies = {"R": eR, "TS": eT, "P": eP}
             _write_segment_energy_diagram(
                 seg_dir / "energy_diagram_tsopt",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_eh=[eR, eT, eP],
                 title_note="(UMA, TSOPT/IRC)",
             )
+        elif (do_thermo or do_dft):
+            seg_pocket_path = _find_with_suffixes(seg_root / f"mep_seg_{seg_idx:02d}", [".pdb"])
+            if seg_pocket_path is None:
+                click.echo(
+                    f"[post] WARNING: mep_seg_{seg_idx:02d}.pdb not found; cannot run thermo/DFT without --tsopt. Skipping segment.",
+                    err=True,
+                )
+                continue
+
+            freeze_atoms: List[int] = []
+            if freeze_links_flag and seg_pocket_path.suffix.lower() == ".pdb":
+                freeze_atoms = detect_freeze_links_safe(seg_pocket_path)
+
+            try:
+                gL, gR = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+            except Exception as e:
+                click.echo(
+                    f"[post] WARNING: failed to load segment endpoints from {seg_pocket_path.name}: {e}. Skipping segment.",
+                    err=True,
+                )
+                continue
+
+            try:
+                g_ts = geom_loader(hei_pocket_path, coord_type="cart")
+            except Exception as e:
+                click.echo(
+                    f"[post] WARNING: failed to load HEI geometry for segment {seg_idx:02d}: {e}. Skipping segment.",
+                    err=True,
+                )
+                continue
+
+            ref_for_ts = seg_pocket_path if seg_pocket_path.suffix.lower() == ".pdb" else hei_pocket_path
+            pL = _save_single_geom_as_pdb_for_tools(gL, seg_pocket_path, struct_dir, "reactant_like")
+            pR = _save_single_geom_as_pdb_for_tools(gR, seg_pocket_path, struct_dir, "product_like")
+            pT = _save_single_geom_as_pdb_for_tools(g_ts, ref_for_ts, struct_dir, "ts_from_hei")
+            state_structs = {"R": pL, "TS": pT, "P": pR}
 
         # 4.4 Thermochemistry (UMA freq) and Gibbs diagram
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
         freq_seg_root = _resolve_override_dir(seg_dir / "freq", freq_out_dir)
         dft_seg_root = _resolve_override_dir(seg_dir / "dft", dft_out_dir)
 
+        if (do_thermo or do_dft) and (not state_structs):
+            click.echo(
+                f"[post] WARNING: No segment structures prepared for segment {seg_idx:02d}; skipping thermo/DFT.",
+                err=True,
+            )
+            continue
+
+        p_react = state_structs.get("R")
+        p_ts = state_structs.get("TS")
+        p_prod = state_structs.get("P")
+
         if do_thermo:
-            click.echo(f"[thermo] Segment {seg_idx:02d}: freq on R/TS/P")
-            tR = _run_freq_for_state(pL, q_int, spin, freq_seg_root / "R", args_yaml, freeze_links_flag, overrides=freq_overrides)
-            tT = _run_freq_for_state(pT, q_int, spin, freq_seg_root / "TS", args_yaml, freeze_links_flag, overrides=freq_overrides)
-            tP = _run_freq_for_state(pR, q_int, spin, freq_seg_root / "P", args_yaml, freeze_links_flag, overrides=freq_overrides)
-            thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-            try:
-                GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", eR))
-                GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", eT))
-                GP = float(tP.get("sum_EE_and_thermal_free_energy_ha", eP))
-                _write_segment_energy_diagram(
-                    seg_dir / "energy_diagram_G_UMA",
-                    labels=["R", f"TS{seg_idx}", "P"],
-                    energies_eh=[GR, GT, GP],
-                    title_note="(Gibbs, UMA)",
+            if not (p_react and p_ts and p_prod):
+                click.echo(
+                    f"[thermo] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping thermo.",
+                    err=True,
                 )
-            except Exception as e:
-                click.echo(f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True)
+            else:
+                click.echo(f"[thermo] Segment {seg_idx:02d}: freq on R/TS/P")
+                tR = _run_freq_for_state(p_react, q_int, spin, freq_seg_root / "R", args_yaml, freeze_links_flag, overrides=freq_overrides)
+                tT = _run_freq_for_state(p_ts, q_int, spin, freq_seg_root / "TS", args_yaml, freeze_links_flag, overrides=freq_overrides)
+                tP = _run_freq_for_state(p_prod, q_int, spin, freq_seg_root / "P", args_yaml, freeze_links_flag, overrides=freq_overrides)
+                thermo_payloads = {"R": tR, "TS": tT, "P": tP}
+                try:
+                    GR = float(tR.get("sum_EE_and_thermal_free_energy_ha", uma_ref_energies.get("R", np.nan)))
+                    GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", uma_ref_energies.get("TS", np.nan)))
+                    GP = float(tP.get("sum_EE_and_thermal_free_energy_ha", uma_ref_energies.get("P", np.nan)))
+                    gibbs_vals = [GR, GT, GP]
+                    if all(np.isfinite(gibbs_vals)):
+                        _write_segment_energy_diagram(
+                            seg_dir / "energy_diagram_G_UMA",
+                            labels=["R", f"TS{seg_idx}", "P"],
+                            energies_eh=gibbs_vals,
+                            title_note="(Gibbs, UMA)",
+                        )
+                    else:
+                        click.echo("[thermo] NOTE: Gibbs energies non-finite; diagram skipped.")
+                except Exception as e:
+                    click.echo(f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True)
 
         # 4.5 DFT single-point and (optionally) DFT//UMA Gibbs
         if do_dft:
-            click.echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
-            dR = _run_dft_for_state(pL, q_int, spin, dft_seg_root / "R", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-            dT = _run_dft_for_state(pT, q_int, spin, dft_seg_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-            dP = _run_dft_for_state(pR, q_int, spin, dft_seg_root / "P", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-            try:
-                eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", np.nan))
-                eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", np.nan))
-                eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", np.nan))
-                if all(map(np.isfinite, [eR_dft, eT_dft, eP_dft])):
-                    _write_segment_energy_diagram(
-                        seg_dir / "energy_diagram_DFT",
-                        labels=["R", f"TS{seg_idx}", "P"],
-                        energies_eh=[eR_dft, eT_dft, eP_dft],
-                        title_note="(DFT wb97x-v/def2-tzvp)",
-                    )
-                else:
-                    click.echo("[dft] WARNING: some DFT energies missing; diagram skipped.", err=True)
-            except Exception as e:
-                click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
-
-            # DFT//UMA thermal Gibbs (E_DFT + ΔG_therm(UMA))
-            if do_thermo:
+            if not (p_react and p_ts and p_prod):
+                click.echo(
+                    f"[dft] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping DFT.",
+                    err=True,
+                )
+            else:
+                click.echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
+                dR = _run_dft_for_state(p_react, q_int, spin, dft_seg_root / "R", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+                dT = _run_dft_for_state(p_ts, q_int, spin, dft_seg_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+                dP = _run_dft_for_state(p_prod, q_int, spin, dft_seg_root / "P", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
                 try:
-                    dG_R = float((thermo_payloads.get("R", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
-                    dG_T = float((thermo_payloads.get("TS", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
-                    dG_P = float((thermo_payloads.get("P", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
-                    eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", eR))
-                    eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", eT))
-                    eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", eP))
-                    GR_dftUMA = eR_dft + dG_R
-                    GT_dftUMA = eT_dft + dG_T
-                    GP_dftUMA = eP_dft + dG_P
-                    _write_segment_energy_diagram(
-                        seg_dir / "energy_diagram_G_DFT_plus_UMA",
-                        labels=["R", f"TS{seg_idx}", "P"],
-                        energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                        title_note="(Gibbs, DFT//UMA)",
-                    )
+                    eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", np.nan))
+                    eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", np.nan))
+                    eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", np.nan))
+                    if all(map(np.isfinite, [eR_dft, eT_dft, eP_dft])):
+                        _write_segment_energy_diagram(
+                            seg_dir / "energy_diagram_DFT",
+                            labels=["R", f"TS{seg_idx}", "P"],
+                            energies_eh=[eR_dft, eT_dft, eP_dft],
+                            title_note="(DFT wb97x-v/def2-tzvp)",
+                        )
+                    else:
+                        click.echo("[dft] WARNING: some DFT energies missing; diagram skipped.", err=True)
                 except Exception as e:
-                    click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
+                    click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
+
+                # DFT//UMA thermal Gibbs (E_DFT + ΔG_therm(UMA))
+                if do_thermo:
+                    try:
+                        dG_R = float((thermo_payloads.get("R", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
+                        dG_T = float((thermo_payloads.get("TS", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
+                        dG_P = float((thermo_payloads.get("P", {}) or {}).get("thermal_correction_free_energy_ha", 0.0))
+                        eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", uma_ref_energies.get("R", np.nan)))
+                        eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", uma_ref_energies.get("TS", np.nan)))
+                        eP_dft = float(((dP or {}).get("energy", {}) or {}).get("hartree", uma_ref_energies.get("P", np.nan)))
+                        GR_dftUMA = eR_dft + dG_R
+                        GT_dftUMA = eT_dft + dG_T
+                        GP_dftUMA = eP_dft + dG_P
+                        if all(np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])):
+                            _write_segment_energy_diagram(
+                                seg_dir / "energy_diagram_G_DFT_plus_UMA",
+                                labels=["R", f"TS{seg_idx}", "P"],
+                                energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                title_note="(Gibbs, DFT//UMA)",
+                            )
+                        else:
+                            click.echo("[dft//uma] WARNING: DFT//UMA Gibbs energies non-finite; diagram skipped.", err=True)
+                    except Exception as e:
+                        click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
 
     click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
 
