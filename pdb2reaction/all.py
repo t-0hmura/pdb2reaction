@@ -3,7 +3,7 @@
 """
 all — SINGLE command to execute an end-to-end enzymatic reaction workflow:
 Extract pockets → (optional) staged scan on a single structure → MEP (recursive GSM) → merge to full systems,
-with optional TS optimization, pseudo‑IRC, thermochemistry, DFT, and DFT//UMA diagrams
+with optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and DFT//UMA diagrams
 ================================================================================================================
 
 Usage (CLI)
@@ -29,7 +29,7 @@ Usage (CLI)
 
     # Single-structure TSOPT-only mode (no path search):
     # if exactly one input is given, --scan-lists is NOT provided, and --tsopt True:
-    # run TS optimization on the extracted pocket, do pseudo‑IRC, minimize both ends, and make diagrams.
+    # run TS optimization on the extracted pocket, do IRC (EulerPC), minimize both ends by IRC termination, and make diagrams.
     pdb2reaction all -i single.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
                       --tsopt True --thermo True --dft True --out-dir result_tsopt_single
 
@@ -86,8 +86,8 @@ Runs a one-shot pipeline centered on pocket models:
     - Pocket-only and full-system trajectories, per-segment merged PDBs, and a summary are written.
 
 (4) **Optional per-segment post-processing** (for segments with covalent changes)
-    - `--tsopt True`: Optimize TS on the HEI pocket; perform a pseudo‑IRC by displacing along the
-      imaginary mode; assign forward/backward correspondence by bond-state matching; render a segment diagram.
+    - `--tsopt True`: Optimize TS on the HEI pocket; perform an **IRC (EulerPC)**; assign forward/backward
+      correspondence by bond-state matching; render a segment diagram.
     - `--thermo True`: Compute UMA thermochemistry on (R, TS, P) and add a Gibbs diagram.
     - `--dft True`: Do DFT single-point on (R, TS, P) and add a DFT diagram.
       With `--thermo True`, also generate a **DFT//UMA** Gibbs diagram.
@@ -96,7 +96,7 @@ Runs a one-shot pipeline centered on pocket models:
     - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
       the tool skips (2)-(3) and:
         • Runs `tsopt` on the **pocket** of that structure,  
-        • Does a pseudo‑IRC and minimizes both ends,  
+        • Runs **IRC (EulerPC)** from TS and obtains both ends,  
         • Builds UMA energy diagrams for **R–TS–P**,  
         • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.  
       ※ このモードに**限り**、IRCで得た両端のうち**エネルギーが高い方を反応物 (R)** として採用します。
@@ -117,7 +117,7 @@ Runs a one-shot pipeline centered on pocket models:
     `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
   - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and tsopt; when omitted, scan defaults to
     LBFGS or RFO based on `--sopt-mode`, and tsopt falls back to `light`. `--hessian-calc-mode` applies to tsopt and freq.
-  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt.
+  - TS optimization / IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt/irc.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
     `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
   - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
@@ -133,8 +133,8 @@ Outputs (& Directory Layout)
     pocket_<input2_basename>.pdb
     ...
   scan/                                  # present only in single-structure+scan mode
-    stage_01/result.pdb
-    stage_02/result.pdb
+    stage_01/result.pdb (or .xyz/.gjf)
+    stage_02/result.pdb (or .xyz/.gjf)
     ...
   path_search/                           # present when path_search is executed
     mep.trj
@@ -156,9 +156,9 @@ Outputs (& Directory Layout)
     ts/ ...
     irc/ ...
     structures/
-      reactant.pdb
-      ts.pdb
-      product.pdb
+      reactant.(pdb|xyz)
+      ts.(pdb|xyz)
+      product.(pdb|xyz)
     freq/ ...                            # with --thermo True
     dft/  ...                            # with --dft True
     energy_diagram_tsopt.(html|png)
@@ -190,7 +190,6 @@ from click.core import ParameterSource
 import time  # timing
 import yaml
 import numpy as np
-import torch
 
 # Biopython for PDB parsing (post-processing helpers)
 from Bio import PDB
@@ -218,6 +217,7 @@ from .utils import (
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
+from . import irc as _irc_cli  # ← IRC を公式 CLI から呼ぶ
 
 # -----------------------------
 # Helpers
@@ -549,74 +549,83 @@ def _load_segment_end_geoms(seg_pdb: Path, freeze_atoms: Sequence[int]) -> Tuple
     return gL, gR
 
 
-def _compute_imag_mode_direction(ts_geom: Any,
-                                 uma_kwargs: Dict[str, Any],
-                                 freeze_atoms: Sequence[int]) -> np.ndarray:
-    """
-    Compute imaginary mode direction (N×3, unit vector in Cartesian space) at TS geometry.
-    Uses tsopt internal helpers to minimize new code.
-    """
-    # ---- FIX: resolve torch.device safely (avoid "auto") ----
-    dev_arg = uma_kwargs.get("device", None)
-    try:
-        if dev_arg is None or (isinstance(dev_arg, str) and dev_arg.strip().lower() in ("", "auto")):
-            device_obj = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        else:
-            device_obj = torch.device(dev_arg)
-    except Exception:
-        device_obj = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # full analytic Hessian (torch tensor)
-    H_t = _tsopt._calc_full_hessian_torch(
-        ts_geom,
-        uma_kwargs=uma_kwargs,
-        device=device_obj,
-    )
-    coords_bohr_t = torch.as_tensor(ts_geom.coords.reshape(-1, 3), dtype=H_t.dtype, device=H_t.device)
-    # masses in a.u.
-    from ase.data import atomic_masses
-    masses_amu = np.array([atomic_masses[z] for z in ts_geom.atomic_numbers])
-    masses_au_t = torch.as_tensor(masses_amu * _tsopt.AMU2AU, dtype=H_t.dtype, device=H_t.device)
-    mode = _tsopt._mode_direction_by_root(
-        H_t,
-        coords_bohr_t,
-        masses_au_t,
-        root=0,
-        freeze_idx=list(freeze_atoms) if len(freeze_atoms) > 0 else None,
-    )
-    # ensure unit length
-    norm = float(np.linalg.norm(mode.reshape(-1)))
-    if norm <= 0:
-        raise click.ClickException("[post] Imaginary mode direction has zero norm.")
-    return (mode / norm)
-
-
-def _displaced_geometry_along_mode(geom: Any,
-                                   mode_xyz: np.ndarray,
-                                   amplitude_ang: float,
-                                   freeze_atoms: Sequence[int]) -> Any:
-    """
-    Displace geometry along mode by ± amplitude (Å). Returns new Geometry.
-    """
-    coords_bohr = np.asarray(geom.coords3d, dtype=float)  # Bohr
-    disp_bohr = (amplitude_ang / BOHR2ANG) * np.asarray(mode_xyz, dtype=float)  # (N,3)
-    new_coords_bohr = coords_bohr + disp_bohr
-    return _path_search._new_geom_from_coords(geom.atoms, new_coords_bohr, coord_type=geom.coord_type, freeze_atoms=freeze_atoms)
-
-
 def _save_single_geom_as_pdb_for_tools(g: Any, ref_pdb: Path, out_dir: Path, name: str) -> Path:
     """
     Write a single-geometry XYZ/TRJ with energy and convert to PDB using the pocket ref (for downstream CLI tools).
-    Returns PDB path.
+    Returns a path to the written structure (PDB when可能, otherwise XYZ).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     xyz_trj = out_dir / f"{name}.trj"
     _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
-    pdb_out = out_dir / f"{name}.pdb"
-    _path_search._maybe_convert_to_pdb(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
-    return pdb_out
+
+    # [FIX] ref が PDB のときのみ PDB 変換を試行。非 PDB の場合は XYZ を返す（下流 CLI は拡張子非依存で受理）。
+    if ref_pdb.suffix.lower() == ".pdb":
+        pdb_out = out_dir / f"{name}.pdb"
+        try:
+            _path_search._maybe_convert_to_pdb(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
+            if pdb_out.exists():
+                return pdb_out
+        except Exception:
+            pass  # フォールバックへ
+
+    return xyz_trj
 
 
-# ==== 追加: 汎用ファイル探索（最小限） ===============================================
+def _read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    """
+    Lightweight XYZ trajectory reader: return (elements, first_coords[Å], last_coords[Å]).
+    Assumes standard multi-frame XYZ: natoms line, comment line, natoms atom lines.
+    """
+    try:
+        lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception as e:
+        raise click.ClickException(f"[irc] Failed to read XYZ/TRJ: {trj_path} ({e})")
+
+    i = 0
+    n = len(lines)
+    first_elems: Optional[List[str]] = None
+    first_coords: Optional[np.ndarray] = None
+    last_elems: Optional[List[str]] = None
+    last_coords: Optional[np.ndarray] = None
+
+    while i < n:
+        # natoms
+        try:
+            nat = int(lines[i].strip().split()[0])
+        except Exception:
+            raise click.ClickException(f"[irc] Malformed XYZ/TRJ at line {i+1}: {trj_path}")
+        i += 1
+        # comment
+        if i < n:
+            i += 1
+        # atoms
+        if i + nat > n:
+            raise click.ClickException(f"[irc] Unexpected EOF while reading frame in {trj_path}")
+        elems: List[str] = []
+        coords: List[List[float]] = []
+        for k in range(nat):
+            parts = lines[i + k].split()
+            if len(parts) < 4:
+                raise click.ClickException(f"[irc] Malformed atom line at {i+k+1} in {trj_path}")
+            elems.append(parts[0])
+            coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        i += nat
+        arr = np.array(coords, dtype=float)
+        if first_elems is None:
+            first_elems = elems
+            first_coords = arr
+        last_elems = elems
+        last_coords = arr
+
+    if first_elems is None or first_coords is None or last_elems is None or last_coords is None:
+        raise click.ClickException(f"[irc] No frames found in {trj_path}")
+
+    # sanity: element list should match
+    if first_elems != last_elems:
+        raise click.ClickException(f"[irc] Element list changed across frames in {trj_path}")
+
+    return first_elems, first_coords, last_coords
+
 
 def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[Path]:
     """
@@ -642,10 +651,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     """
     Run tsopt CLI on a HEI pocket structure; return (final_geom_path, ts_geom).
 
-    【変更点（最小限）】
-      - 入力ファイルは拡張子を尊重してそのまま渡す（.pdb/.xyz/.gjf を想定）
-      - 出力は final_geometry.{pdb|xyz|gjf} の存在を優先順で検出し、存在するものを返す
-      - 非PDB入力時は、PDB変換はリファレンスPDBが無い場合は行わず、そのまま読み込む
+    入力拡張子は尊重（.pdb/.xyz/.gjf）。出力は final_geometry.{pdb|xyz|gjf} を優先順で検出。
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
@@ -660,7 +666,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     opt_mode = overrides.get("opt_mode", opt_mode_default)
 
     ts_args: List[str] = [
-        "-i", str(hei_pdb),  # ★ 修正: prepared_input.source_path ではなく元のパスをそのまま渡す
+        "-i", str(hei_pdb),  # 元のパスをそのまま渡す
         "-q", str(int(charge)),
         "-s", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
@@ -717,7 +723,6 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     elif ts_gjf.exists():
         ts_geom_path = ts_gjf
     else:
-        # 旧ロジック: 非PDB出力でも XYZ が無ければエラー
         raise click.ClickException("[tsopt] TS outputs not found.")
 
     # 読み込み
@@ -750,105 +755,124 @@ def _pseudo_irc_and_match(seg_idx: int,
                           spin: int,
                           freeze_links_flag: bool) -> Dict[str, Any]:
     """
-    From a TS pocket geometry, perform pseudo-IRC:
-      - compute imag. mode
-      - displace ± (0.25 Å) and optimize both to minima (LBFGS)
-      - map each min to left/right segment endpoint by bond-change check (if segment endpoints exist)
-        *If no segment endpoints are available (single-structure TSOPT-only mode), fall back to (plus, minus).*
-    Returns dict with paths/energies/geoms for {left, ts, right}, and small IRC plots.
+    [REPLACED] Run IRC via the official irc CLI (EulerPC), then map ends to (left,right).
+
+    - Run irc on the TS structure into seg_dir/irc
+    - Read endpoints (first/last of finished_irc or last of backward/forward)
+    - Optionally map to segment endpoints (if available)
+    - Return geoms and tags
     """
-    # Freeze parents of link-H if requested
+    # Freeze parents of link-H if requested (PDBのみ意味あり)
     freeze_atoms: List[int] = []
     if freeze_links_flag and seg_pocket_pdb.suffix.lower() == ".pdb":
         freeze_atoms = detect_freeze_links_safe(seg_pocket_pdb)
 
-    # Mode direction
-    uma_kwargs = dict(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
-    mode_xyz = _compute_imag_mode_direction(g_ts, uma_kwargs=uma_kwargs, freeze_atoms=freeze_atoms)
-
-    # Displace ± and optimize
+    # 1) Run IRC (EulerPC)
     irc_dir = seg_dir / "irc"
     _ensure_dir(irc_dir)
-    amp = 0.25  # Å; small stable displacement
-    g_plus0 = _displaced_geometry_along_mode(g_ts,  mode_xyz, +amp, freeze_atoms)
-    g_minus0 = _displaced_geometry_along_mode(g_ts, mode_xyz, -amp, freeze_atoms)
 
-    # Shared UMA calc
-    shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
-    # LBFGS settings (reuse defaults)
-    sopt_cfg = dict(_path_search.LBFGS_KW)
-    sopt_cfg["dump"] = True
-    sopt_cfg["out_dir"] = str(irc_dir)
-
-    # Optimize
-    g_plus  = _path_search._optimize_single(g_plus0, shared_calc, "lbfgs", sopt_cfg, irc_dir, tag=f"seg_{seg_idx:02d}_irc_plus",  ref_pdb_path=seg_pocket_pdb)
-    g_minus = _path_search._optimize_single(g_minus0, shared_calc, "lbfgs", sopt_cfg, irc_dir, tag=f"seg_{seg_idx:02d}_irc_minus", ref_pdb_path=seg_pocket_pdb)
-
-    # IRC mini plots (TS→min)
+    irc_args: List[str] = [
+        "-i", str(ref_pdb_for_seg),     # TS geometry file (PDB/XYZ/GJF)
+        "-q", str(int(q_int)),
+        "-s", str(int(spin)),
+        "--out-dir", str(irc_dir),
+        "--freeze-links", "True" if (freeze_links_flag and ref_pdb_for_seg.suffix.lower() == ".pdb") else "False",
+    ]
+    click.echo(f"[irc] Running EulerPC IRC → out={irc_dir}")
+    _saved_argv = list(sys.argv)
     try:
-        trj_plus  = irc_dir / f"seg_{seg_idx:02d}_irc_plus_opt/optimization.trj"
-        trj_minus = irc_dir / f"seg_{seg_idx:02d}_irc_minus_opt/optimization.trj"
-        if trj_plus.exists():
-            run_trj2fig(trj_plus, [irc_dir / f"irc_plus_plot.png"], unit="kcal", reference="init", reverse_x=False)
-        if trj_minus.exists():
-            run_trj2fig(trj_minus, [irc_dir / f"irc_minus_plot.png"], unit="kcal", reference="init", reverse_x=False)
-    except Exception as e:
-        click.echo(f"[irc] WARNING: failed to plot IRC mini plots: {e}", err=True)
+        sys.argv = ["pdb2reaction", "irc"] + irc_args
+        _irc_cli.cli.main(args=irc_args, standalone_mode=False)
+    except SystemExit as e:
+        code = getattr(e, "code", 1)
+        if code not in (None, 0):
+            raise click.ClickException(f"[irc] irc terminated with exit code {code}.")
+    finally:
+        sys.argv = _saved_argv
 
-    # Try to load segment endpoints (pocket-only) — available only after path_search
-    gL_end = None
-    gR_end = None
+    # 2) Read endpoints
+    elems: List[str]
+    c_first: np.ndarray
+    c_last: np.ndarray
+
+    finished_pdb = irc_dir / "finished_irc.pdb"
+    forward_trj = irc_dir / "forward_irc.trj"
+    backward_trj = irc_dir / "backward_irc.trj"
+    finished_trj = irc_dir / "finished_irc.trj"
+
+    if finished_pdb.exists():
+        coords_models, elems = _pdb_models_to_coords_and_elems(finished_pdb)
+        c_first, c_last = coords_models[0], coords_models[-1]
+    elif finished_trj.exists():
+        elems, c_first, c_last = _read_xyz_first_last(finished_trj)
+    else:
+        # fallback: assemble from forward/backward
+        if not (forward_trj.exists() and backward_trj.exists()):
+            raise click.ClickException("[irc] Expected 'finished_irc.(pdb|trj)' or both forward/backward trj files.")
+        # read last of forward, last of backward; for first we can use backward first, but last/last suffices
+        e_f, _, c_f_last = _read_xyz_first_last(forward_trj)
+        e_b, _, c_b_last = _read_xyz_first_last(backward_trj)
+        if e_f != e_b:
+            raise click.ClickException("[irc] Element list mismatch between forward/backward trajectories.")
+        elems = e_f
+        # By convention: left ~ backward end, right ~ forward end (may be remapped below)
+        c_first, c_last = c_b_last, c_f_last
+
+    # 3) Build geoms and energies
+    shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
+    g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
+    g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
+    _path_search._ensure_calc_on_geom(g_left,  shared_calc);  _ = float(g_left.energy)
+    _path_search._ensure_calc_on_geom(g_right, shared_calc);  _ = float(g_right.energy)
+    _path_search._ensure_calc_on_geom(g_ts,    shared_calc);  _ = float(g_ts.energy)
+
+    # 4) Optional mapping to segment endpoints (if available)
+    left_tag = "backward"
+    right_tag = "forward"
     seg_pocket_path = seg_dir.parent / f"mep_seg_{seg_idx:02d}.pdb"
     if seg_pocket_path.exists():
         try:
             gL_end, gR_end = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+            bond_cfg = dict(_path_search.BOND_KW)
+
+            def _matches(x, y) -> bool:
+                try:
+                    chg, _ = _path_search._has_bond_change(x, y, bond_cfg)
+                    return (not chg)
+                except Exception:
+                    return (_path_search._rmsd_between(x, y, align=True) < 1e-3)
+
+            # First attempt: bond-change match
+            left_cand  = g_left  if _matches(g_left,  gL_end) else (g_right if _matches(g_right, gL_end) else None)
+            right_cand = g_left  if _matches(g_left,  gR_end) else (g_right if _matches(g_right, gR_end) else None)
+            if left_cand is not None and right_cand is not None and left_cand is not right_cand:
+                if left_cand is g_right:
+                    g_left, g_right = g_right, g_left
+                    left_tag, right_tag = right_tag, left_tag
+            else:
+                # Fallback by RMSD
+                dL = _path_search._rmsd_between(g_left,  gL_end, align=True)
+                dR = _path_search._rmsd_between(g_right, gL_end, align=True)
+                if dR < dL:
+                    g_left, g_right = g_right, g_left
+                    left_tag, right_tag = right_tag, left_tag
         except Exception as e:
-            click.echo(f"[post] WARNING: failed to load segment endpoints: {e}", err=True)
+            click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
 
-    # Decide mapping
-    bond_cfg = dict(_path_search.BOND_KW)
-
-    def _matches(x, y) -> bool:
-        try:
-            chg, _ = _path_search._has_bond_change(x, y, bond_cfg)
-            return (not chg)
-        except Exception:
-            # fallback: small RMSD threshold
-            return (_path_search._rmsd_between(x, y, align=True) < 1e-3)
-
-    candidates = [("plus", g_plus), ("minus", g_minus)]
-    mapping: Dict[str, Any] = {"left": None, "right": None}
-
-    if (gL_end is not None) and (gR_end is not None):
-        # First pass: exact match on bond changes
-        for tag, g in candidates:
-            if _matches(g, gL_end) and not _matches(g, gR_end):
-                mapping["left"] = (tag, g)
-            elif _matches(g, gR_end) and not _matches(g, gL_end):
-                mapping["right"] = (tag, g)
-        # Second pass: fill missing by RMSD
-        for side, g_end in (("left", gL_end), ("right", gR_end)):
-            if mapping[side] is None:
-                remain = [(t, gg) for (t, gg) in candidates if mapping.get("left", (None, None))[0] != t and mapping.get("right", (None, None))[0] != t]
-                if not remain:
-                    remain = candidates
-                best = min(remain, key=lambda p: _path_search._rmsd_between(p[1], g_end, align=True))
-                mapping[side] = best
-    else:
-        # Fallback (single-structure TSOPT-only mode): keep a deterministic assignment
-        mapping["left"] = ("minus", g_minus)
-        mapping["right"] = ("plus", g_plus)
-
-    # Energies (ensure calculator)
-    for _, g in candidates:
-        _path_search._ensure_calc_on_geom(g, shared_calc)
-        _ = float(g.energy)
-    _path_search._ensure_calc_on_geom(g_ts, shared_calc); _ = float(g_ts.energy)
-
-    # Dump tiny TS↔min trj for each direction
+    # 5) IRC plots (if present)
     try:
-        for side in ("left", "right"):
-            tag, gmin = mapping[side]
+        if forward_trj.exists():
+            run_trj2fig(forward_trj,  [irc_dir / f"irc_forward_plot.png"],  unit="kcal", reference="init", reverse_x=False)
+        if backward_trj.exists():
+            run_trj2fig(backward_trj, [irc_dir / f"irc_backward_plot.png"], unit="kcal", reference="init", reverse_x=False)
+        if finished_trj.exists():
+            run_trj2fig(finished_trj, [irc_dir / f"irc_finished_plot.png"], unit="kcal", reference="init", reverse_x=False)
+    except Exception as e:
+        click.echo(f"[irc] WARNING: failed to plot IRC trajectories: {e}", err=True)
+
+    # 6) Dump tiny two-point trj for each side
+    try:
+        for side, gmin in (("left", g_left), ("right", g_right)):
             trj = irc_dir / f"irc_{side}.trj"
             _path_search._write_xyz_trj_with_energy([g_ts, gmin], [float(g_ts.energy), float(gmin.energy)], trj)
             run_trj2fig(trj, [irc_dir / f"irc_{side}_plot.png"], unit="kcal", reference="init", reverse_x=False)
@@ -856,11 +880,11 @@ def _pseudo_irc_and_match(seg_idx: int,
         pass
 
     return {
-        "left_min_geom": mapping["left"][1],
-        "right_min_geom": mapping["right"][1],
+        "left_min_geom": g_left,
+        "right_min_geom": g_right,
         "ts_geom": g_ts,
-        "left_tag": mapping["left"][0],
-        "right_tag": mapping["right"][0],
+        "left_tag": left_tag,
+        "right_tag": right_tag,
         "freeze_atoms": freeze_atoms,
     }
 
@@ -920,7 +944,7 @@ def _run_freq_for_state(pdb_path: Path,
         "-i", str(pdb_path),
         "-q", str(int(q_int)),
         "-s", str(int(spin)),
-        "--freeze-links", "True" if freeze_use else "False",
+        "--freeze-links", "True" if freeze_use and (pdb_path.suffix.lower() == ".pdb") else "False",
         "--out-dir", str(fdir),
     ]
 
@@ -1089,7 +1113,7 @@ def _run_dft_for_state(pdb_path: Path,
               help="Common UMA Hessian calculation mode forwarded to tsopt and freq.")
 # ===== Post-processing toggles =====
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
-              help="TS optimization + pseudo-IRC per reactive segment (or TSOPT-only mode for single-structure), and build energy diagrams.")
+              help="TS optimization + IRC per reactive segment (or TSOPT-only mode for single-structure), and build energy diagrams.")
 @click.option("--thermo", "do_thermo", type=click.BOOL, default=False, show_default=True,
               help="Run freq on (R,TS,P) per reactive segment (or TSOPT-only mode) and build Gibbs free-energy diagram (UMA).")
 @click.option("--dft", "do_dft", type=click.BOOL, default=False, show_default=True,
@@ -1441,7 +1465,7 @@ def cli(
             overrides=tsopt_overrides,
         )
 
-        # Pseudo-IRC & minimize both ends (no segment endpoints exist → fallback mapping in helper)
+        # IRC (EulerPC) で両端取得（TSOPT-only なのでセグメント端点は無い → 左右は後で R/P 規則で選別）
         irc_res = _pseudo_irc_and_match(
             seg_idx=1,
             seg_dir=tsroot,
@@ -1459,17 +1483,17 @@ def cli(
         # Ensure UMA energies
         eL = float(gL.energy)
         eT = float(gT.energy)
-        eR = float(gR.energy)
+        eR_ = float(gR.energy)
 
         # In this mode ONLY: assign Reactant/Product so that higher-energy end is the Reactant
-        if eL >= eR:
+        if eL >= eR_:
             g_react, e_react = gL, eL
-            g_prod,  e_prod  = gR, eR
+            g_prod,  e_prod  = gR, eR_
         else:
-            g_react, e_react = gR, eR
+            g_react, e_react = gR, eR_
             g_prod,  e_prod  = gL, eL
 
-        # Save standardized PDBs
+        # Save standardized structures (PDB if possible; otherwise XYZ)
         struct_dir = tsroot / "structures"
         _ensure_dir(struct_dir)
         pocket_ref = ts_initial_pdb
@@ -1482,7 +1506,7 @@ def cli(
             tsroot / "energy_diagram_tsopt",
             labels=["R", "TS", "P"],
             energies_eh=[e_react, eT, e_prod],
-            title_note="(UMA, TSOPT/IRC)",
+            title_note="(UMA, TSOPT + IRC)",
         )
 
         # Thermochemistry (UMA) Gibbs
@@ -1553,6 +1577,13 @@ def cli(
     # Stage 1b: Optional scan (single-structure only) to build ordered pocket inputs
     # --------------------------
     pockets_for_path: List[Path]
+    # [FIX] scan を抽出スキップで使う場合は PDB 入力を強制
+    if is_single and has_scan and skip_extract and input_paths[0].suffix.lower() != ".pdb":
+        raise click.ClickException(
+            "[all] --scan-lists を抽出スキップで用いる場合、入力は PDB が必須です。"
+            " -c/--center を指定してポケット PDB を作成してからスキャンを実行してください。"
+        )
+
     if is_single and has_scan:
         click.echo("\n=== [all] Stage 1b — Staged scan on input ===\n")
         _ensure_dir(scan_dir)
@@ -1627,18 +1658,18 @@ def cli(
             sys.argv = _saved_argv
 
         # Collect stage results as pocket inputs
-        stage_pdbs = sorted((scan_dir).glob("stage_*/*"))
         stage_results: List[Path] = []
-        for p in stage_pdbs:
-            if p.name == "result.pdb":
-                stage_results.append(p.resolve())
+        for st in sorted(scan_dir.glob("stage_*")):
+            res = _find_with_suffixes(st / "result", [".pdb", ".xyz", ".gjf"])
+            if res:
+                stage_results.append(res.resolve())
         if not stage_results:
-            raise click.ClickException("[all] No stage result PDBs found under scan/.")
+            raise click.ClickException("[all] No stage result structures found under scan/ (looked for result.[pdb|xyz|gjf]).")
         click.echo("[all] Collected scan stage pocket files:")
         for p in stage_results:
             click.echo(f"  - {p}")
 
-        # Input series to path_search: [initial (pocket or full), stage_01/result.pdb, stage_02/result.pdb, ...]
+        # Input series to path_search: [initial (pocket or full), stage_01/result, stage_02/result, ...]
         pockets_for_path = [scan_input_pdb] + stage_results
     else:
         # Multi-structure standard route
@@ -1792,7 +1823,7 @@ def cli(
                 overrides=tsopt_overrides,
             )
 
-            # 4.2 Pseudo-IRC & mapping to (left,right)
+            # 4.2 Run IRC (EulerPC) & mapping to (left,right)
             irc_res = _pseudo_irc_and_match(
                 seg_idx=seg_idx,
                 seg_dir=seg_dir,
@@ -1807,7 +1838,7 @@ def cli(
             gL = irc_res["left_min_geom"]
             gR = irc_res["right_min_geom"]
             gT = irc_res["ts_geom"]
-            # Save standardized PDBs for tools
+            # Save standardized structures (PDB if possible; otherwise XYZ)
             pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_like")
             pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_path, struct_dir, "ts")
             pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_like")
@@ -1822,7 +1853,7 @@ def cli(
                 seg_dir / "energy_diagram_tsopt",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_eh=[eR, eT, eP],
-                title_note="(UMA, TSOPT/IRC)",
+                title_note="(UMA, TSOPT + IRC)",
             )
         elif (do_thermo or do_dft):
             seg_pocket_path = _find_with_suffixes(seg_root / f"mep_seg_{seg_idx:02d}", [".pdb"])
