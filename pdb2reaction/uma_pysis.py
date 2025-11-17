@@ -29,7 +29,9 @@ Description
   - "FiniteDifference": central differences of forces assembled on the GPU.
     Columns for frozen DOF are skipped; optionally return only the active‑DOF block.
     Default step: ε = 1.0e‑3 Å.
-- Device handling: device="auto" selects CUDA if available, else CPU; tensors use torch.float32.
+- Device handling: device="auto" selects CUDA if available, else CPU; tensors use torch.float32 by default.
+- **Precision option**: set `double_precision=True` to run energy/forces/Hessian in float64 (double) end‑to‑end.
+  By default (`False`), float32 (single) is used. This toggles both model/graph tensors and working arrays.
 - Neighborhood/graph: optional overrides for `max_neigh`, `radius`, `r_edges`.
   On‑the‑fly graphs are built (`otf_graph=True`), and `task_name`, `charge`, `spin`
   are attached to the batch.
@@ -103,6 +105,7 @@ F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr�
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
 # Unified host/GPU dtypes for this implementation
+# NOTE: Will be overridden to float64 when `double_precision=True` in uma_pysis.__init__
 _ndtype = np.float32
 _tdtype = torch.float32
 
@@ -135,6 +138,9 @@ CALC_KW: Dict[str, Any] = {
     # Hessian interfaces to UMA
     "hessian_calc_mode": "Analytical",        # str, "Analytical" (default) | "FiniteDifference"
     "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block
+
+    # Precision
+    "double_precision": False,                # bool, if True use float64 for energy/forces/Hessian
 }
 
 # ===================================================================
@@ -169,6 +175,7 @@ class UMAcore:
 
         # Load predictor and place it on target device & dtype --------
         self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
+        # <<< precision-aware >>>  (uses module-level _tdtype configured by uma_pysis)
         self.predict.model.to(self.device, dtype=_tdtype)
         self.predict.model.eval()
         # Hard-disable dropout
@@ -213,9 +220,9 @@ class UMAcore:
             max_neigh=max_neigh,
             radius   =radius,
             r_edges  =r_edges,
-        ).to(self.device)
+        ).to(self.device, dtype=_tdtype)
         data.dataset = self.task_name
-        batch = self._collater([data], otf_graph=True).to(self.device)
+        batch = self._collater([data], otf_graph=True).to(self.device, dtype=_tdtype)
         return batch
 
     # ----------------------------------------------------------------
@@ -248,6 +255,7 @@ class UMAcore:
         batch = self._ase_to_batch(atoms)
 
         need_grad = bool(forces or hessian)
+        # <<< precision-aware >>>
         pos = batch.pos.detach().clone().to(self.device, dtype=_tdtype)
         pos.requires_grad_(need_grad)
         batch.pos = pos
@@ -317,6 +325,7 @@ class uma_pysis(Calculator):
         freeze_atoms: Optional[Sequence[int]] = CALC_KW["freeze_atoms"],
         hessian_calc_mode: str = CALC_KW["hessian_calc_mode"],
         return_partial_hessian: bool = CALC_KW["return_partial_hessian"],
+        double_precision: bool = CALC_KW["double_precision"],
         # -------------------------------------------------------------------
         **kwargs,
     ):
@@ -334,7 +343,18 @@ class uma_pysis(Calculator):
         return_partial_hessian : bool, default True
             If True, return only the Active-DOF Hessian (submatrix for non-frozen atoms).
             If False, return a full (3N×3N) matrix where frozen-DOF columns are 0.
+        double_precision : bool, default False
+            If True, run energy/forces/Hessian in float64 end-to-end (model, graph tensors,
+            working arrays). If False (default), use float32 for performance.
         """
+        global _ndtype, _tdtype
+        if bool(double_precision):
+            _ndtype = np.float64
+            _tdtype = torch.float64
+        else:
+            _ndtype = np.float32
+            _tdtype = torch.float32
+
         super().__init__(charge=charge, mult=spin, **kwargs)
         self._core: Optional[UMAcore] = None
         self._core_kw = dict(
@@ -351,6 +371,7 @@ class uma_pysis(Calculator):
         self.hessian_calc_mode = hessian_calc_mode
         self.freeze_atoms: List[int] = sorted(set(int(i) for i in (freeze_atoms or [])))
         self.return_partial_hessian = bool(return_partial_hessian)
+        self.double_precision = bool(double_precision)
 
     # ---------- helpers ---------------------------------------------
     def _ensure_core(self, elem: Sequence[str]):
@@ -454,7 +475,7 @@ class uma_pysis(Calculator):
           - "forces"  : np.ndarray, shape (N, 3), eV/Å
           - "hessian" : torch.Tensor, shape (N_out,3,N_out,3), eV/Å² on device
         """
-        dev = self._core.device
+        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu") if self._core is None else self._core.device
         dtype = _tdtype
 
         n_atoms = len(elem)
