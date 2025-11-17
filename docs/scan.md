@@ -50,10 +50,15 @@ Parameters for UMA-based bond-change detection (mirrors `path_search`).
 - `delta_fraction` (`0.05`): Minimum fractional change to classify a bond as forming/breaking.
 
 ## Outputs
-- `<out-dir>/stage_XX/scan.trj` (and `.pdb` when the input was PDB and dumping is enabled).
-- Final unbiased geometries after `--endopt` stored per stage.
-- Console summaries of resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks.
-- Final human-readable stage summary printed to the terminal (no separate YAML file).
+- `<out-dir>/preopt/` when `--preopt True`:
+  - `result.xyz` and, when the original input supplied a Gaussian template, `result.gjf`.
+  - `result.pdb` when the input file was PDB.
+- `<out-dir>/stage_XX/` for each stage:
+  - `result.xyz` (final structure after optional `--endopt`).
+  - `result.gjf` when a Gaussian template was available from the input.
+  - `result.pdb` when the input file was PDB.
+  - `scan.trj` when `--dump True` (biased step trajectory) and `scan.pdb` in addition when the input was PDB.
+- Console summaries of resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus the final stage summary printed to the terminal (no separate YAML file).
 
 ## Notes
 - `--scan-lists` accepts multiple literals; each defines one stage, and tuple indices are normalized to 0-based internally.
