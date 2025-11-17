@@ -6,29 +6,29 @@ ts_opt — Transition-state optimization CLI
 
 Usage (CLI)
 -----
-    pdb2reaction ts-opt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
+    pdb2reaction tsopt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
                         [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
                                     heavy|rfo|rsirfo|rs-i-rfo]
                         [--freeze-links True|False]
                         [--max-cycles N]
                         [--dump True|False]
-                        [--out-dir DIR]
+                        [--outdir DIR]
                         [--args-yaml args.yaml]
                         [--hessian-calc-mode Analytical|FiniteDifference]
 
 Examples::
     # Minimal (recommended to always specify charge and spin)
-    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_ts_opt/
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --outdir ./result_ts_opt/
 
     # Light mode (HessianDimer) with YAML overrides and finite-difference Hessian
-    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 \
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 \
       --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
-      --out-dir ./result_ts_opt/ --args-yaml ./args.yaml \
+      --outdir ./result_ts_opt/ --args-yaml ./args.yaml \
       --hessian-calc-mode FiniteDifference
 
     # Heavy mode (RS-I-RFO) using YAML
-    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
-      --args-yaml ./args.yaml --out-dir ./result_ts_opt/
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
+      --args-yaml ./args.yaml --outdir ./result_ts_opt/
 
 
 Description
@@ -1294,7 +1294,7 @@ RSIRFO_KW.update({
               help="light (=Dimer) or heavy (=RSIRFO)")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump optimization trajectory")
-@click.option("--out-dir", type=str, default="./result_ts_opt/", show_default=True, help="Output directory")
+@click.option("--outdir", type=str, default="./result_ts_opt/", show_default=True, help="Output directory")
 @click.option(
     "--thresh",
     type=str,

@@ -9,12 +9,12 @@ Usage (CLI)
     pdb2reaction opt -i INPUT -q CHARGE [-s SPIN]
         [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}]
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] [--bias-k FLOAT]
-        [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--thresh PRESET]
+        [--dump {True|False}] [--outdir DIR] [--max-cycles N] [--thresh PRESET]
         [--args-yaml FILE]
 
 Examples::
     pdb2reaction opt -i input.pdb -q 0
-    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump True --out-dir ./result_opt/ --args-yaml ./args.yaml
+    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump True --outdir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----
@@ -479,7 +479,7 @@ def _maybe_write_final_gjf(
               help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO). Aliases: light|lbfgs|heavy|rfo.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Write optimization trajectory to 'optimization.trj'.")
-@click.option("--out-dir", type=str, default="./result_opt/", show_default=True, help="Output directory.")
+@click.option("--outdir", type=str, default="./result_opt/", show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,

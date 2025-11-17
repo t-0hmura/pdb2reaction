@@ -36,7 +36,7 @@ pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb \
              -c "GPP,MMT" \
              --ligand-charge "GPP:-3,MMT:-1" \
-             --out-dir ./result_all \
+             --outdir ./result_all \
              --tsopt True --thermo True --dft True
 ```
 
@@ -54,7 +54,7 @@ pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists 
 pdb2reaction -i SINGLE.pdb \
              -c "GPP,MMT" \
              --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-             --spin 1 --out-dir ./result_scan_all \
+             --spin 1 --outdir ./result_scan_all \
              --tsopt True --thermo True --dft True
 ```
 
@@ -73,7 +73,7 @@ pdb2reaction -i TS_CANDIDATE.pdb \
              -c "GPP,MMT" \
              --ligand-charge "GPP:-3,MMT:-1" \
              --tsopt True --thermo True --dft True \
-             --out-dir ./result_tsopt_only
+             --outdir ./result_tsopt_only
 ```
 
 Supplying a single input **without** `--scan-lists` while setting `--tsopt True` skips the path search entirely. The tool
@@ -105,7 +105,7 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 | `opt` | Optimise a single structure with UMA (LBFGS/RFO presets). | [`docs/opt.md`](docs/opt.md) |
 | `path-opt` | Run UMA optimisation on a specific path segment or snapshot. | [`docs/path_opt.md`](docs/path_opt.md) |
 | `path-search` | Launch the GSM-based reaction path search and pocket/full-system merging. | [`docs/path_search.md`](docs/path_search.md) |
-| `ts-opt` | Refine transition states (with optional pseudo-IRC propagation). | [`docs/ts_opt.md`](docs/ts_opt.md) |
+| `tsopt` | Refine transition states (with optional pseudo-IRC propagation). | [`docs/ts_opt.md`](docs/ts_opt.md) |
 | `freq` | Compute vibrational modes, thermochemistry, and UMA energy diagrams. | [`docs/freq.md`](docs/freq.md) |
 | `irc` | Follow an intrinsic reaction coordinate starting from a TS structure. | [`docs/irc.md`](docs/irc.md) |
 | `extract` | Extract catalytic pockets from full PDB structures (also used implicitly by `all`). | [`docs/extract.md`](docs/extract.md) |

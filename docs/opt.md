@@ -9,7 +9,7 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
                  [--freeze-links BOOL] [--dist-freeze "[(i,j,target), ...]"]
                  [--one-based/--zero-based] [--bias-k k]
                  [--dump BOOL] [--thresh PRESET]
-                 [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
+                 [--outdir DIR] [--max-cycles N] [--args-yaml FILE]
 ```
 
 ## CLI options
@@ -25,7 +25,7 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 | `--max-cycles INT` | Maximum optimization cycles (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Select optimizer: `light`/`lbfgs` → LBFGS, `heavy`/`rfo` → RFO. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Emit `optimization.trj`. | `False` |
-| `--out-dir TEXT` | Output directory. | `./result_opt/` |
+| `--outdir TEXT` | Output directory. | `./result_opt/` |
 | `--thresh TEXT` | Override the convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

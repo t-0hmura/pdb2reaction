@@ -8,7 +8,7 @@ Optimizes a minimum-energy path between two endpoints using the pysisyphus Growi
 pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
                       [--freeze-links BOOL] [--thresh PRESET]
                       [--max-nodes N] [--max-cycles N] [--climb BOOL]
-                      [--dump BOOL] [--out-dir DIR] [--args-yaml FILE]
+                      [--dump BOOL] [--outdir DIR] [--args-yaml FILE]
 ```
 
 ## CLI options
@@ -22,7 +22,7 @@ pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 | `--max-cycles INT` | Maximum optimizer cycles. | `100` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing-image refinement. | `True` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimizer trajectories and restarts. | `False` |
-| `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
+| `--outdir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override StringOptimizer convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
@@ -54,9 +54,9 @@ StringOptimizer controls (defaults in parentheses).
 - `out_dir` (`"./result_path_opt/"`), `print_every` (`10`): Output location and logging cadence.
 
 ## Outputs
-- `<out-dir>/final_geometries.trj` (+ `.pdb` when a PDB reference is available).
-- `<out-dir>/gsm_hei.xyz` (+ `.pdb` for PDB inputs) for the highest-energy image.
-- `<out-dir>/align_refine/` alignment diagnostics.
+- `<outdir>/final_geometries.trj` (+ `.pdb` when a PDB reference is available).
+- `<outdir>/gsm_hei.xyz` (+ `.pdb` for PDB inputs) for the highest-energy image.
+- `<outdir>/align_refine/` alignment diagnostics.
 - Optional optimizer dumps/restarts when `--dump` or YAML toggles them.
 - Charge/spin values default to `.gjf` template metadata when the endpoints are `.gjf`; otherwise they fall back to `0`/`1`.
   Override them explicitly to enforce the intended electronic state.

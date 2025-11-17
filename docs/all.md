@@ -11,7 +11,7 @@ pdb2reaction all -i R.pdb [I.pdb ...] P.pdb -c SUBSTRATE_SPEC \
                  [--freeze-links True|False] [--max-nodes N] [--max-cycles N] \
                  [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] \
                  [--dump True|False] [--pre-opt True|False] \
-                 [--args-yaml FILE] [--out-dir DIR] \
+                 [--args-yaml FILE] [--outdir DIR] \
                  [--tsopt True|False] [--thermo True|False] [--dft True|False]
 
 # Single-structure + staged scan (pocket scan results become intermediates)
@@ -28,7 +28,7 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more full PDBs in reaction order, or a single PDB when used with `--scan-lists` or `--tsopt True`. A single `-i` may be followed by multiple files. | Required |
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs like `123,124` / `A:123,B:456`, or residue names like `GPP,MMT`). | Required |
-| `--out-dir PATH` | Top-level output directory. | `./result_all/` |
+| `--outdir PATH` | Top-level output directory. | `./result_all/` |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
 | `--include-H2O BOOLEAN` | Include waters (set `False` to drop HOH/WAT/TIP3/SOL). | `True` |
@@ -52,21 +52,21 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--thermo BOOLEAN` | Run vibrational analysis (freq) on R/TS/P and build UMA Gibbs diagram. | `False` |
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy diagram (adds DFT//UMA when `--thermo True`). | `False` |
 | `--tsopt-max-cycles INT` | Override `ts_opt --max-cycles` for every TS refinement. | _None_ |
-| `--tsopt-out-dir PATH` | Custom ts_opt subdirectory (relative paths are resolved against the default). | _None_ |
-| `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
+| `--tsopt-outdir PATH` | Custom ts_opt subdirectory (relative paths are resolved against the default). | _None_ |
+| `--freq-outdir PATH` | Base directory override for freq outputs. | _None_ |
 | `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
 | `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
 | `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
 | `--freq-sort [value|abs]` | Override freq mode sorting behaviour. | _None_ |
 | `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | _None_ |
 | `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | _None_ |
-| `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
+| `--dft-outdir PATH` | Base directory override for DFT outputs. | _None_ |
 | `--dft-func-basis TEXT` | Override `dft --func-basis`. | _None_ |
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
 | `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each list element is `(i,j,target\_Å)` (values are parsed from a Python-like literal). Atom indices come from the original `all` input PDB (1-based) and are remapped internally to the pocket ordering. | _None_ |
-| `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan` by default). | _None_ |
+| `--scan-outdir PATH` | Override the scan output directory (`<outdir>/scan` by default). | _None_ |
 | `--scan-one-based BOOLEAN` | Force 1-based (`True`) or 0-based (`False`) scan indexing; `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
 | `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |
@@ -75,11 +75,11 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimisation toggle. | _None_ |
 
 ## Outputs
-- `<out-dir>/pockets/`: Pocket PDBs for each input.
-- `<out-dir>/scan/`: Present when `--scan-lists` is used; contains staged pocket scan results (`stage_XX/result.pdb`).
-- `<out-dir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, per-segment folders).
-- `<out-dir>/path_search/tsopt_seg_XX/`: Present when post-processing is enabled; includes TS optimisation, pseudo-IRC, frequency, and DFT outputs plus diagrams.
-- `<out-dir>/tsopt_single/`: Present only in TSOPT-only mode (single structure, `--tsopt True`, no scan); contains TS optimisation outputs and diagrams.
+- `<outdir>/pockets/`: Pocket PDBs for each input.
+- `<outdir>/scan/`: Present when `--scan-lists` is used; contains staged pocket scan results (`stage_XX/result.pdb`).
+- `<outdir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, per-segment folders).
+- `<outdir>/path_search/tsopt_seg_XX/`: Present when post-processing is enabled; includes TS optimisation, pseudo-IRC, frequency, and DFT outputs plus diagrams.
+- `<outdir>/tsopt_single/`: Present only in TSOPT-only mode (single structure, `--tsopt True`, no scan); contains TS optimisation outputs and diagrams.
 - Console logs covering pocket charge summary, resolved configuration blocks, scan stages, and per-stage timing.
 
 ## Notes

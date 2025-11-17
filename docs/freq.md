@@ -8,7 +8,7 @@ Computes vibrational frequencies using UMA, performs partial Hessian vibrational
 pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
                   [--freeze-links BOOL]
                   [--max-write N] [--amplitude-ang Å] [--n-frames N]
-                  [--sort value|abs] [--out-dir DIR]
+                  [--sort value|abs] [--outdir DIR]
                   [--temperature K] [--pressure atm] [--dump BOOL]
                   [--hessian-calc-mode Analytical|FiniteDifference]
                   [--args-yaml FILE]
@@ -25,7 +25,7 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 | `--amplitude-ang FLOAT` | Animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |
 | `--sort CHOICE` | Mode ordering: `value` (cm⁻¹) or `abs`. | `value` |
-| `--out-dir TEXT` | Output directory. | `./result_freq/` |
+| `--outdir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
@@ -46,9 +46,9 @@ Controls mode export.
 _The thermochemistry parameters (`temperature`, `pressure_atm`, `dump`) are currently CLI-only and not read from YAML._
 
 ## Outputs
-- `<out-dir>/mode_XXXX_±freqcm-1.(trj|pdb)` animations for exported modes.
-- `<out-dir>/frequencies_cm-1.txt` sorted list of frequencies.
-- Optional `<out-dir>/thermoanalysis.yaml` when `--dump` is enabled.
+- `<outdir>/mode_XXXX_±freqcm-1.(trj|pdb)` animations for exported modes.
+- `<outdir>/frequencies_cm-1.txt` sorted list of frequencies.
+- Optional `<outdir>/thermoanalysis.yaml` when `--dump` is enabled.
 - Console blocks summarising resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
 ## Notes

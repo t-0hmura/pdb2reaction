@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
         -q <charge> [-s <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
-        [--dump {True|False}] [--out-dir <dir>] [--args-yaml <file>]
+        [--dump {True|False}] [--outdir <dir>] [--args-yaml <file>]
 
 Examples::
     # Minimal: two endpoints, neutral singlet
@@ -18,7 +18,7 @@ Examples::
     # Typical full run with YAML overrides and dumps
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -s 1 \
       --freeze-links True --max-nodes 10 --max-cycles 100 \
-      --dump True --out-dir ./result_path_opt/ --args-yaml ./args.yaml
+      --dump True --outdir ./result_path_opt/ --args-yaml ./args.yaml
 
 
 Description
@@ -187,7 +187,7 @@ def _load_two_endpoints(
               help="Search for a transition state (climbing image) after path growth.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump optimizer trajectory/restarts during the run.")
-@click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True,
+@click.option("--outdir", "out_dir", type=str, default="./result_path_opt/", show_default=True,
               help="Output directory.")
 @click.option(
     "--thresh",
@@ -261,7 +261,7 @@ def cli(
         gs_cfg["climb_lanczos"] = bool(climb)
 
         opt_cfg["dump"]       = bool(dump)
-        opt_cfg["out_dir"]    = out_dir  # Pass --out-dir to the optimizer via "out_dir"
+        opt_cfg["out_dir"]    = out_dir  # Pass --outdir to the optimizer via "out_dir"
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
 

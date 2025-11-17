@@ -9,7 +9,7 @@ pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
                  [--max-cycles N] [--step-size Δs] [--root k]
                  [--forward BOOL] [--backward BOOL]
                  [--freeze-links BOOL]
-                 [--out-dir DIR]
+                 [--outdir DIR]
                  [--hessian-calc-mode Analytical|FiniteDifference]
                  [--args-yaml FILE]
 ```
@@ -26,7 +26,7 @@ pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
 | `--forward BOOL` | Run forward branch (`irc.forward`). Explicit `True` or `False`. | _None_ (default `True`) |
 | `--backward BOOL` | Run backward branch (`irc.backward`). Explicit `True` or `False`. | _None_ (default `True`) |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `True` |
-| `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
+| `--outdir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode. | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
@@ -50,8 +50,8 @@ EulerPC / IRC controls (defaults in parentheses).
 - EulerPC specifics: `hessian_update` (`"bofill"`), `hessian_recalc` (`null`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`"mbs"`).
 
 ## Outputs
-- `<out-dir>/irc_data.h5` (written every `dump_every` steps).
-- `<out-dir>/<prefix>finished_irc.trj` plus optional forward/backward `.trj` and `.pdb` files when the input was PDB.
+- `<outdir>/irc_data.h5` (written every `dump_every` steps).
+- `<outdir>/<prefix>finished_irc.trj` plus optional forward/backward `.trj` and `.pdb` files when the input was PDB.
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus timing.
 
 ## Notes

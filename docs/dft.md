@@ -8,7 +8,7 @@ Runs single-point DFT calculations using GPU4PySCF when available (falling back 
 pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] \
                  [--func-basis "FUNC/BASIS"] \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--args-yaml FILE]
+                 [--outdir DIR] [--args-yaml FILE]
 ```
 
 ## CLI options
@@ -21,7 +21,7 @@ pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] \
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
 | `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
-| `--out-dir TEXT` | Output directory. | `./result_dft/` |
+| `--outdir TEXT` | Output directory. | `./result_dft/` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ### Section `dft`
@@ -34,8 +34,8 @@ pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] \
 _Functional/basis selection must be supplied on the CLI. Charge/spin inherit `.gjf` template metadata when present and otherwise default to `0`/`1`; set them explicitly for non-default states._
 
 ## Outputs
-- `<out-dir>/input_geometry.xyz`: Geometry snapshot passed to PySCF (identical coordinates to the input file).
-- `<out-dir>/result.yaml`:
+- `<outdir>/input_geometry.xyz`: Geometry snapshot passed to PySCF (identical coordinates to the input file).
+- `<outdir>/result.yaml`:
   - `energy` block with Hartree/kcal·mol⁻¹ values, convergence flag, wall time, and engine metadata (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
   - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (IAO may be `null` if unavailable).
   - `spin_densities`: Mulliken, meta-Löwdin, and IAO atomic spin densities (restricted cases report zero/`null` as appropriate).

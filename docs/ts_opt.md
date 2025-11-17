@@ -1,16 +1,16 @@
-# `ts-opt` subcommand
+# `tsopt` subcommand
 
 ## Purpose
 Optimizes transition states using either the Hessian Dimer method ("light") or RS-I-RFO ("heavy"), leveraging UMA for energies, gradients, and Hessians, and exporting the final imaginary mode.
 
 ## Usage
 ```bash
-pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
+pdb2reaction tsopt -i INPUT -q CHARGE [--spin 2S+1]
                     [--freeze-links BOOL] [--thresh PRESET]
                     [--max-cycles N]
                     [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
                                heavy|rfo|rsirfo|rs-i-rfo]
-                    [--dump BOOL] [--out-dir DIR]
+                    [--dump BOOL] [--outdir DIR]
                     [--hessian-calc-mode Analytical|FiniteDifference]
                     [--args-yaml FILE]
 ```
@@ -25,7 +25,7 @@ pdb2reaction ts-opt -i INPUT -q CHARGE [--spin 2S+1]
 | `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimization trajectories. | `False` |
-| `--out-dir TEXT` | Output directory. | `./result_ts_opt/` |
+| `--outdir TEXT` | Output directory. | `./result_ts_opt/` |
 | `--thresh TEXT` | Override the convergence preset for both workflows (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
@@ -63,9 +63,9 @@ Controls the heavy-mode RS-I-RFO optimizer. Defaults derive from [`opt`](opt.md#
 - Other trust-region parameters inherit from [`opt`](opt.md#section-rfo).
 
 ## Outputs
-- `<out-dir>/final_geometry.xyz` (+ `.pdb` when the input was PDB).
-- `<out-dir>/optimization.trj` or `optimization_all.trj` (mode-dependent) and PDB conversions when applicable.
-- `<out-dir>/vib/final_imag_mode_±XXXX.Xcm-1.(trj|pdb)` for the converged imaginary mode.
+- `<outdir>/final_geometry.xyz` (+ `.pdb` when the input was PDB).
+- `<outdir>/optimization.trj` or `optimization_all.trj` (mode-dependent) and PDB conversions when applicable.
+- `<outdir>/vib/final_imag_mode_±XXXX.Xcm-1.(trj|pdb)` for the converged imaginary mode.
 - Optional `.dimer_mode.dat` (light mode) and dump files when `--dump` is enabled.
 
 ## Notes
