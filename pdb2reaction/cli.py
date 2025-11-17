@@ -22,7 +22,7 @@ from .scan import cli as scan_cmd
 from .opt import cli as opt_cmd
 from .path_opt import cli as path_opt_cmd
 from .path_search import cli as path_search_cmd
-from .ts_opt import cli as ts_opt_cmd
+from .tsopt import cli as tsopt_cmd
 from .freq import cli as freq_cmd
 from .irc import cli as irc_cmd
 from .trj2fig import cli as trj2fig_cmd
@@ -70,14 +70,14 @@ cli.add_command(scan_cmd, name="scan")
 cli.add_command(opt_cmd, name="opt")
 cli.add_command(path_opt_cmd, name="path-opt")
 cli.add_command(path_search_cmd, name="path-search")
-cli.add_command(ts_opt_cmd, name="ts-opt")
+cli.add_command(tsopt_cmd, name="tsopt")
 cli.add_command(freq_cmd, name="freq")
 cli.add_command(irc_cmd, name="irc")
 cli.add_command(extract_cmd, name="extract")
 cli.add_command(trj2fig_cmd, name="trj2fig")
 cli.add_command(add_elem_info_cmd, name="add-elem-info")
 cli.add_command(dft_cmd, name="dft")
-cli.add_command(scan2d_cmd, name="2d-scan")
+cli.add_command(scan2d_cmd, name="scan2d")
 
 
 if __name__ == "__main__":

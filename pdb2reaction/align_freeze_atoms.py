@@ -22,7 +22,7 @@ Examples::
 
 Description
 -----
-API-only utilities to co-align and refine pre-optimized `pysisyphus.Geometry` objects—typically adjacent
+API-only utilities to co-align and refine preoptimized `pysisyphus.Geometry` objects—typically adjacent
 images along a reaction path—using `freeze_atoms`. A rigid alignment is performed first (with special
 handling when 1 or 2 atoms are frozen), followed by a staged “scan toward reference + local relaxation”
 that moves the frozen atoms toward the reference in small steps while relaxing the surroundings.
@@ -570,7 +570,7 @@ def align_and_refine_sequence_inplace(
     (g0←g1), (g1←g2), ... i.e., each g_{i+1} is aligned/refined to g_i.
     Returns a list of per-pair result dicts.
 
-    Intended to be used after pre-optimization in `path_search.py`.
+    Intended to be used after preoptimization in `path_search.py`.
     """
     geoms = list(geoms)
     if len(geoms) <= 1:

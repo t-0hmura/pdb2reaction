@@ -58,7 +58,7 @@ Harmonic bias model
   - Coordinates are in Bohr; the UMA base returns energies in Hartree and forces in Hartree/Bohr.
 
 Optional optimizations
-  - --preopt: Pre-optimize the initial structure **without bias** before the scan; writes
+  - --preopt: preoptimize the initial structure **without bias** before the scan; writes
     `preopt/result.xyz` (and `.pdb` if the input was PDB), then continues from that geometry.
   - --endopt: After **each stage** completes its biased stepping, perform an additional **unbiased**
     optimization of that stage’s final structure before writing outputs.
@@ -390,7 +390,7 @@ def _snapshot_geometry(g) -> Any:
     help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias, bond).",
 )
 @click.option("--preopt", type=click.BOOL, default=True, show_default=True,
-              help="Pre-optimize initial structure without bias before the scan.")
+              help="preoptimize initial structure without bias before the scan.")
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
 def cli(
@@ -535,7 +535,7 @@ def cli(
         is_pdb_input = (input_path.suffix.lower() == ".pdb")
 
         # ------------------------------------------------------------------
-        # Optional pre-optimization WITHOUT bias
+        # Optional preoptimization WITHOUT bias
         # ------------------------------------------------------------------
         if preopt:
             pre_dir = out_dir_path / "preopt"

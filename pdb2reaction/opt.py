@@ -149,7 +149,7 @@ OPT_BASE_KW = {
     # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
     # |  Preset    | Purpose                                                    | max|F|  | RMS(F) | max|step| | RMS(step)   |
     # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # | gau_loose  | Loose/quick pre-optimization; rough path searches          | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
+    # | gau_loose  | Loose/quick preoptimization; rough path searches          | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
     # | gau        | Standard "Gaussian-like" tightness for routine work        | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
     # | gau_tight  | Tighter; better structures / freq / TS refinement          | 1.5e-5  | 1.0e-5 | 6.0e-5    | 4.0e-5      |
     # | gau_vtight | Very tight; benchmarking/high-precision final structures    | 2.0e-6  | 1.0e-6 | 6.0e-6    | 4.0e-6      |

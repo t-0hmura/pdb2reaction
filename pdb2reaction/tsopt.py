@@ -1,12 +1,12 @@
-# pdb2reaction/ts_opt.py
+# pdb2reaction/tsopt.py
 
 """
-ts_opt — Transition-state optimization CLI
+tsopt — Transition-state optimization CLI
 ====================================================================
 
 Usage (CLI)
 -----
-    pdb2reaction ts-opt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
+    pdb2reaction tsopt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
                         [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
                                     heavy|rfo|rsirfo|rs-i-rfo]
                         [--freeze-links True|False]
@@ -18,17 +18,17 @@ Usage (CLI)
 
 Examples::
     # Minimal (recommended to always specify charge and spin)
-    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_ts_opt/
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_tsopt/
 
     # Light mode (HessianDimer) with YAML overrides and finite-difference Hessian
-    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 \
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 \
       --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
-      --out-dir ./result_ts_opt/ --args-yaml ./args.yaml \
+      --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
       --hessian-calc-mode FiniteDifference
 
     # Heavy mode (RS-I-RFO) using YAML
-    pdb2reaction ts-opt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
-      --args-yaml ./args.yaml --out-dir ./result_ts_opt/
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
+      --args-yaml ./args.yaml --out-dir ./result_tsopt/
 
 
 Description
@@ -74,7 +74,7 @@ Key behaviors and algorithmic notes:
 
 Outputs (& Directory Layout)
 -----
-DIR (default: ./result_ts_opt/)
+DIR (default: ./result_tsopt/)
   ├── final_geometry.xyz
   ├── final_geometry.pdb                 # written if input was PDB
   ├── optimization_all.trj               # light mode, when --dump True
@@ -1195,7 +1195,7 @@ CALC_KW = dict(_UMA_CALC_KW)
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
 OPT_BASE_KW = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
-    "out_dir": "./result_ts_opt/",
+    "out_dir": "./result_tsopt/",
 })
 
 DIMER_KW = {
@@ -1294,7 +1294,7 @@ RSIRFO_KW.update({
               help="light (=Dimer) or heavy (=RSIRFO)")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump optimization trajectory")
-@click.option("--out-dir", type=str, default="./result_ts_opt/", show_default=True, help="Output directory")
+@click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory")
 @click.option(
     "--thresh",
     type=str,
@@ -1613,6 +1613,6 @@ def cli(
         prepared_input.cleanup()
 
 
-# Allow `python -m pdb2reaction.ts_opt` direct execution
+# Allow `python -m pdb2reaction.tsopt` direct execution
 if __name__ == "__main__":
     cli()

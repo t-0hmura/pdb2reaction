@@ -9,7 +9,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
                          [--freeze-links BOOL] [--thresh PRESET]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--sopt-mode lbfgs|rfo|light|heavy] [--dump BOOL]
-                         [--out-dir DIR] [--pre-opt BOOL]
+                         [--out-dir DIR] [--preopt BOOL]
                          [--align/--no-align] [--ref-pdb FILE ...]
                          [--args-yaml FILE]
 ```
@@ -29,7 +29,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--pre-opt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before the GSM search. | `True` |
+| `--preopt BOOL` | Explicit `True`/`False`. preoptimise each endpoint before the GSM search. | `True` |
 | `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |
 | `--ref-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 

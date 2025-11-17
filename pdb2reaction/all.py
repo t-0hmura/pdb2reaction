@@ -14,7 +14,7 @@ Usage (CLI)
                       [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy]
                       [--opt-mode light|lbfgs|heavy|rfo]
                       [--dump True|False] [--args-yaml params.yaml]
-                      [--pre-opt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
+                      [--preopt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
                       [--tsopt-max-cycles N] [--freq-* overrides] [--dft-* overrides]
 
@@ -24,7 +24,7 @@ Usage (CLI)
 
     # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
     pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
-                      --spin 1 --freeze-links True --sopt-mode lbfgs --pre-opt True \
+                      --spin 1 --freeze-links True --sopt-mode lbfgs --preopt True \
                       --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure TSOPT-only mode (no path search):
@@ -42,7 +42,7 @@ Examples
     # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
     pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
       --spin 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
-      --sopt-mode lbfgs --dump False --args-yaml params.yaml --pre-opt True \
+      --sopt-mode lbfgs --dump False --args-yaml params.yaml --preopt True \
       --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure + scan to build an ordered series (initial + stage results) → path_search + post
@@ -95,7 +95,7 @@ Runs a one-shot pipeline centered on pocket models:
 (Alt) **Single-structure TSOPT-only mode**
     - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
       the tool skips (2)-(3) and:
-        • Runs `ts_opt` on the **pocket** of that structure,  
+        • Runs `tsopt` on the **pocket** of that structure,  
         • Does a pseudo‑IRC and minimizes both ends,  
         • Builds UMA energy diagrams for **R–TS–P**,  
         • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.  
@@ -110,19 +110,19 @@ Runs a one-shot pipeline centered on pocket models:
 
 **Forwarded / relevant options**
   - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
-    `--dump`, `--pre-opt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/ts_opt/freq as shared flags.)
+    `--dump`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as shared flags.)
   - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
-    `--args-yaml`, `--pre-opt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based` True|False
+    `--args-yaml`, `--preopt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based` True|False
     (omit to keep scan's default 1-based indexing),
     `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
-  - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and ts_opt; when omitted, scan defaults to
-    LBFGS or RFO based on `--sopt-mode`, and ts_opt falls back to `light`. `--hessian-calc-mode` applies to ts_opt and freq.
-  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream ts_opt.
+  - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and tsopt; when omitted, scan defaults to
+    LBFGS or RFO based on `--sopt-mode`, and tsopt falls back to `light`. `--hessian-calc-mode` applies to tsopt and freq.
+  - TS optimization / pseudo-IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
     `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
   - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
   - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
-  - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `ts_opt`, `freq`, and `dft` so a single file can
+  - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft` so a single file can
     host per-module sections (see the respective subcommand docs for accepted keys).
 
 Outputs (& Directory Layout)
@@ -202,7 +202,7 @@ from pysisyphus.constants import BOHR2ANG, AU2KCALPERMOL
 # Local imports from the package
 from .extract import extract_api
 from . import path_search as _path_search
-from . import ts_opt as _ts_opt
+from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
 from .uma_pysis import uma_pysis
@@ -554,10 +554,10 @@ def _compute_imag_mode_direction(ts_geom: Any,
                                  freeze_atoms: Sequence[int]) -> np.ndarray:
     """
     Compute imaginary mode direction (N×3, unit vector in Cartesian space) at TS geometry.
-    Uses ts_opt internal helpers to minimize new code.
+    Uses tsopt internal helpers to minimize new code.
     """
     # full analytic Hessian (torch tensor)
-    H_t = _ts_opt._calc_full_hessian_torch(
+    H_t = _tsopt._calc_full_hessian_torch(
         ts_geom,
         uma_kwargs=uma_kwargs,
         device=torch.device(uma_kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")),
@@ -566,8 +566,8 @@ def _compute_imag_mode_direction(ts_geom: Any,
     # masses in a.u.
     from ase.data import atomic_masses
     masses_amu = np.array([atomic_masses[z] for z in ts_geom.atomic_numbers])
-    masses_au_t = torch.as_tensor(masses_amu * _ts_opt.AMU2AU, dtype=H_t.dtype, device=H_t.device)
-    mode = _ts_opt._mode_direction_by_root(
+    masses_au_t = torch.as_tensor(masses_amu * _tsopt.AMU2AU, dtype=H_t.dtype, device=H_t.device)
+    mode = _tsopt._mode_direction_by_root(
         H_t,
         coords_bohr_t,
         masses_au_t,
@@ -607,6 +607,21 @@ def _save_single_geom_as_pdb_for_tools(g: Any, ref_pdb: Path, out_dir: Path, nam
     return pdb_out
 
 
+# ==== 追加: 汎用ファイル探索（最小限） ===============================================
+
+def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[Path]:
+    """
+    Given a base path without extension, return the first existing file among base.suffix for suffixes.
+    """
+    for s in suffixes:
+        p = base_no_ext.with_suffix(s)
+        if p.exists():
+            return p
+    return None
+
+
+# -------------------------------------------------------------------------------------
+
 def _run_tsopt_on_hei(hei_pdb: Path,
                       charge: int,
                       spin: int,
@@ -616,7 +631,12 @@ def _run_tsopt_on_hei(hei_pdb: Path,
                       opt_mode_default: str,
                       overrides: Optional[Dict[str, Any]] = None) -> Tuple[Path, Any]:
     """
-    Run ts_opt CLI on a HEI pocket PDB; return (final_ts_pdb_path, ts_geom)
+    Run tsopt CLI on a HEI pocket structure; return (final_geom_path, ts_geom).
+
+    【変更点（最小限）】
+      - 入力ファイルは拡張子を尊重してそのまま渡す（.pdb/.xyz/.gjf を想定）
+      - 出力は final_geometry.{pdb|xyz|gjf} の存在を優先順で検出し、存在するものを返す
+      - 非PDB入力時は、PDB変換はリファレンスPDBが無い場合は行わず、そのまま読み込む
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
@@ -631,7 +651,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     opt_mode = overrides.get("opt_mode", opt_mode_default)
 
     ts_args: List[str] = [
-        "-i", str(prepared_input.source_path),
+        "-i", str(hei_pdb),  # ★ 修正: prepared_input.source_path ではなく元のパスをそのまま渡す
         "-q", str(int(charge)),
         "-s", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
@@ -651,34 +671,54 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     if args_yaml is not None:
         ts_args.extend(["--args-yaml", str(args_yaml)])
 
-    click.echo(f"[tsopt] Running ts_opt on HEI → out={ts_dir}")
+    click.echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
     _saved = list(sys.argv)
     try:
-        sys.argv = ["pdb2reaction", "ts_opt"] + ts_args
-        _ts_opt.cli.main(args=ts_args, standalone_mode=False)
+        sys.argv = ["pdb2reaction", "tsopt"] + ts_args
+        _tsopt.cli.main(args=ts_args, standalone_mode=False)
     except SystemExit as e:
         code = getattr(e, "code", 1)
         if code not in (None, 0):
-            raise click.ClickException(f"[tsopt] ts_opt exit code {code}.")
+            raise click.ClickException(f"[tsopt] tsopt exit code {code}.")
     finally:
         sys.argv = _saved
 
-    # Prefer PDB (ts_opt converts when input is PDB)
+    # 出力候補を優先順に検出
     ts_pdb = ts_dir / "final_geometry.pdb"
-    final_xyz = ts_dir / "final_geometry.xyz"
-    if not ts_pdb.exists():
-        # fallback: use final .xyz and convert
-        if not final_xyz.exists():
-            prepared_input.cleanup()
-            raise click.ClickException("[tsopt] TS outputs not found.")
-        _path_search._maybe_convert_to_pdb(final_xyz, hei_pdb, ts_dir / "final_geometry.pdb")
-    ts_pdb = ts_dir / "final_geometry.pdb"
-    g_ts = geom_loader(ts_pdb, coord_type="cart")
+    ts_xyz = ts_dir / "final_geometry.xyz"
+    ts_gjf = ts_dir / "final_geometry.gjf"
 
-    if template is not None and final_xyz.exists():
+    ts_geom_path: Optional[Path] = None
+
+    if ts_pdb.exists():
+        ts_geom_path = ts_pdb
+    elif ts_xyz.exists():
+        # 入力がPDBのときだけ、参照PDBを用いてPDB変換を試みる
+        if hei_pdb.suffix.lower() == ".pdb":
+            try:
+                _path_search._maybe_convert_to_pdb(ts_xyz, hei_pdb, ts_pdb)
+                if ts_pdb.exists():
+                    ts_geom_path = ts_pdb
+                else:
+                    ts_geom_path = ts_xyz
+            except Exception:
+                ts_geom_path = ts_xyz
+        else:
+            ts_geom_path = ts_xyz
+    elif ts_gjf.exists():
+        ts_geom_path = ts_gjf
+    else:
+        # 旧ロジック: 非PDB出力でも XYZ が無ければエラー
+        raise click.ClickException("[tsopt] TS outputs not found.")
+
+    # 読み込み
+    g_ts = geom_loader(ts_geom_path, coord_type="cart")
+
+    # 可能なら GJF も書き出し（テンプレートがあり、XYZ が存在する場合）
+    if (template is not None) and ts_xyz.exists():
         try:
             final_gjf = ts_dir / "final_geometry.gjf"
-            maybe_convert_xyz_to_gjf(final_xyz, template, final_gjf)
+            maybe_convert_xyz_to_gjf(ts_xyz, template, final_gjf)
             click.echo(f"[tsopt] Wrote '{final_gjf}'.")
         except Exception as e:
             click.echo(f"[tsopt] WARNING: Failed to convert TS geometry to GJF: {e}", err=True)
@@ -689,7 +729,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     _ = float(g_ts.energy)
 
     prepared_input.cleanup()
-    return ts_pdb, g_ts
+    return ts_geom_path, g_ts
 
 
 def _pseudo_irc_and_match(seg_idx: int,
@@ -1027,17 +1067,17 @@ def _run_dft_for_state(pdb_path: Path,
               default="lbfgs", show_default=True,
               help="Single-structure optimizer kind for HEI±1 and kink nodes.")
 @click.option("--opt-mode", type=str, default=None,
-              help="Common optimizer mode forwarded to scan/ts_opt (--opt-mode). When unset, tools use their defaults.")
+              help="Common optimizer mode forwarded to scan/tsopt (--opt-mode). When unset, tools use their defaults.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump GSM / single-structure trajectories during the run, forwarding the same flag to scan/ts_opt/freq.")
+              help="Dump GSM / single-structure trajectories during the run, forwarding the same flag to scan/tsopt/freq.")
 @click.option("--args-yaml", type=click.Path(path_type=Path, exists=True, dir_okay=False),
               default=None, help="YAML with extra args for path_search (sections: geom, calc, gs, opt, sopt, bond, search).")
-@click.option("--pre-opt", "pre_opt", type=click.BOOL, default=True, show_default=True,
+@click.option("--preopt", "preopt", type=click.BOOL, default=True, show_default=True,
               help="If False, skip initial single-structure optimizations of the pocket inputs.")
 @click.option("--hessian-calc-mode",
               type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
               default=None,
-              help="Common UMA Hessian calculation mode forwarded to ts_opt and freq.")
+              help="Common UMA Hessian calculation mode forwarded to tsopt and freq.")
 # ===== Post-processing toggles =====
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
               help="TS optimization + pseudo-IRC per reactive segment (or TSOPT-only mode for single-structure), and build energy diagrams.")
@@ -1047,9 +1087,9 @@ def _run_dft_for_state(pdb_path: Path,
               help="Run DFT single-point on (R,TS,P) and build DFT energy diagram. With --thermo True, also generate a DFT//UMA Gibbs diagram.")
               
 @click.option("--tsopt-max-cycles", type=int, default=None,
-              help="Override ts_opt --max-cycles value.")
+              help="Override tsopt --max-cycles value.")
 @click.option("--tsopt-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
-              help="Override ts_opt output subdirectory (relative paths are resolved against the default).")
+              help="Override tsopt output subdirectory (relative paths are resolved against the default).")
 @click.option("--freq-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
               help="Override freq output base directory (relative paths resolved against the default).")
 @click.option("--freq-max-write", type=int, default=None,
@@ -1119,7 +1159,7 @@ def cli(
     opt_mode: Optional[str],
     dump: bool,
     args_yaml: Optional[Path],
-    pre_opt: bool,
+    preopt: bool,
     hessian_calc_mode: Optional[str],
     do_tsopt: bool,
     do_thermo: bool,
@@ -1530,7 +1570,7 @@ def cli(
                 stage_use = [(i - 1, j - 1, target) for (i, j, target) in stage]
             scan_stage_literals.append(_format_scan_stage(stage_use))
 
-        scan_preopt_use = pre_opt if scan_preopt_override is None else bool(scan_preopt_override)
+        scan_preopt_use = preopt if scan_preopt_override is None else bool(scan_preopt_override)
         scan_endopt_use = True if scan_endopt_override is None else bool(scan_endopt_override)
         scan_opt_mode_use = (opt_mode.lower() if opt_mode else
                               ("lbfgs" if sopt_mode.lower() in ("lbfgs", "light") else "rfo"))
@@ -1616,7 +1656,7 @@ def cli(
     ps_args.extend(["-q", str(q_int)])
     ps_args.extend(["-s", str(int(spin))])
 
-    # Freeze-links, nodes, cycles, climb, optimizer, dump, out-dir, pre-opt, args-yaml
+    # Freeze-links, nodes, cycles, climb, optimizer, dump, out-dir, preopt, args-yaml
     ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
     ps_args.extend(["--max-nodes", str(int(max_nodes))])
     ps_args.extend(["--max-cycles", str(int(max_cycles))])
@@ -1624,18 +1664,32 @@ def cli(
     ps_args.extend(["--sopt-mode", str(sopt_mode)])
     ps_args.extend(["--dump", "True" if dump else "False"])
     ps_args.extend(["--out-dir", str(path_dir)])
-    ps_args.extend(["--pre-opt", "True" if pre_opt else "False"])
+    ps_args.extend(["--preopt", "True" if preopt else "False"])
     if args_yaml is not None:
         ps_args.extend(["--args-yaml", str(args_yaml)])
 
-    # Auto-provide ref templates (original full PDBs) for full-system merge.
+    # Auto-provide ref templates (original full PDBs) for full-system merge,
+    # but only when the ALL inputs are PDB files.
+    def _is_pdb(path: Path) -> bool:
+        return path.suffix.lower() == ".pdb"
+
+    gave_ref_pdb = False  # optional: used below to print accurate merge info
+
     # Multi-structure: one ref per original input; single+scan: reuse the single template for all pockets.
     if is_single and has_scan:
-        for _ in pockets_for_path:
-            ps_args.extend(["--ref-pdb", str(input_paths[0])])
+        if _is_pdb(input_paths[0]):
+            for _ in pockets_for_path:
+                ps_args.extend(["--ref-pdb", str(input_paths[0])])
+            gave_ref_pdb = True
+        else:
+            click.echo("[all] NOTE: skipping --ref-pdb (single+scan: original input is not a PDB).")
     else:
-        for p in input_paths:
-            ps_args.extend(["--ref-pdb", str(p)])
+        if all(_is_pdb(p) for p in input_paths):
+            for p in input_paths:
+                ps_args.extend(["--ref-pdb", str(p)])
+            gave_ref_pdb = True
+        else:
+            click.echo("[all] NOTE: skipping --ref-pdb (one or more original inputs are not PDB).")
 
     click.echo("[all] Invoking path_search with arguments:")
     click.echo("  " + " ".join(ps_args))
@@ -1657,10 +1711,14 @@ def cli(
     # Stage 3: Merge (performed by path_search when --ref-pdb was supplied)
     # --------------------------
     click.echo("\n=== [all] Stage 3/3 — Merge into full-system templates ===\n")
-    click.echo("[all] Merging was carried out by path_search using the original inputs as templates.")
-    click.echo(f"[all] Final products can be found under: {path_dir}")
-    click.echo("  - mep_w_ref.pdb            (full-system merged trajectory)")
-    click.echo("  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)")
+    if gave_ref_pdb:
+        click.echo("[all] Merging was carried out by path_search using the original inputs as templates.")
+        click.echo(f"[all] Final products can be found under: {path_dir}")
+        click.echo("  - mep_w_ref.pdb            (full-system merged trajectory)")
+        click.echo("  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)")
+    else:
+        click.echo("[all] --ref-pdb was not provided; full-system merged trajectories are not produced.")
+        click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
     click.echo("  - energy.png / energy_diagram.*")
     click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
@@ -1701,15 +1759,16 @@ def cli(
         _ensure_dir(seg_dir)
 
         # HEI pocket file prepared by path_search (only for bond-change segments)
-        hei_pocket_pdb = seg_root / f"hei_seg_{seg_idx:02d}.pdb"
-        if not hei_pocket_pdb.exists():
-            click.echo(f"[post] WARNING: HEI pocket PDB not found for segment {seg_idx:02d}; skipping TSOPT.", err=True)
+        hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
+        hei_pocket_path = _find_with_suffixes(hei_base, [".pdb", ".xyz", ".gjf"])
+        if hei_pocket_path is None:
+            click.echo(f"[post] WARNING: HEI pocket file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.", err=True)
             continue
 
         # 4.1 TS optimization (optional; still needed to drive IRC & diagrams)
         if do_tsopt:
             ts_pdb, g_ts = _run_tsopt_on_hei(
-                hei_pocket_pdb,
+                hei_pocket_path,
                 q_int,
                 spin,
                 args_yaml,
@@ -1719,8 +1778,8 @@ def cli(
                 overrides=tsopt_overrides,
             )
         else:
-            # If TSOPT off: use the GSM HEI (pocket) as TS geometry
-            ts_pdb = hei_pocket_pdb
+            # If TSOPT off: use the GSM HEI as TS geometry (拡張子は問わない)
+            ts_pdb = hei_pocket_path
             g_ts = geom_loader(ts_pdb, coord_type="cart")
             calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
             g_ts.set_calculator(calc); _ = float(g_ts.energy)
@@ -1730,7 +1789,7 @@ def cli(
             seg_idx=seg_idx,
             seg_dir=seg_dir,
             ref_pdb_for_seg=ts_pdb,
-            seg_pocket_pdb=hei_pocket_pdb,
+            seg_pocket_pdb=hei_pocket_path,
             g_ts=g_ts,
             q_int=q_int,
             spin=spin,
@@ -1743,9 +1802,9 @@ def cli(
         # Save standardized PDBs for tools
         struct_dir = seg_dir / "structures"
         _ensure_dir(struct_dir)
-        pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_pdb, struct_dir, "reactant_like")
-        pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_pdb, struct_dir, "ts")
-        pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_pdb, struct_dir, "product_like")
+        pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_like")
+        pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_path, struct_dir, "ts")
+        pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_like")
 
         # 4.3 Segment-level energy diagram from UMA (R,TS,P)
         eR = float(gL.energy)

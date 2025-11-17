@@ -1,4 +1,4 @@
-# `2d-scan` subcommand
+# `scan2d` subcommand
 
 ## Purpose
 Performs a two-distance, two-dimensional scan with harmonic restraints on each
@@ -8,7 +8,7 @@ whose energies are always evaluated without bias.
 
 ## Usage
 ```bash
-pdb2reaction 2d-scan -i INPUT -q CHARGE \
+pdb2reaction scan2d -i INPUT -q CHARGE \
                    --scan-list "[(i1,j1,low1,high1),(i2,j2,low2,high2)]" \
                    [--one-based/--zero-based] [--max-step-size ΔÅ] [--bias-k k] \
                    [--relax-max-cycles N] [--opt-mode light|lbfgs|heavy|rfo] \
@@ -41,7 +41,7 @@ pdb2reaction 2d-scan -i INPUT -q CHARGE \
 ## Algorithm overview
 1. Load the structure via `geom_loader` and resolve charge/spin (CLI overrides >
    embedded template > defaults).
-2. Optionally run an unbiased LBFGS/RFO pre-optimization with the UMA
+2. Optionally run an unbiased LBFGS/RFO preoptimization with the UMA
    calculator configured by `--args-yaml`.
 3. Parse the two quadruples from `--scan-list`, normalize them to 0-based indices
    (unless `--zero-based`), and build two linear grids according to

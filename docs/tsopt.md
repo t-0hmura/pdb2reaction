@@ -25,7 +25,7 @@ pdb2reaction tsopt -i INPUT -q CHARGE [--spin 2S+1]
 | `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump optimization trajectories. | `False` |
-| `--outdir TEXT` | Output directory. | `./result_ts_opt/` |
+| `--outdir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override the convergence preset for both workflows (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
@@ -113,7 +113,7 @@ opt:
   dump: false
   dump_restart: false
   prefix: ""
-  outdir: ./result_ts_opt/
+  outdir: ./result_tsopt/
 hessian_dimer:
   thresh_loose: gau_loose
   thresh: gau

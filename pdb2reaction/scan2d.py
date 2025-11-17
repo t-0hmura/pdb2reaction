@@ -1,10 +1,10 @@
 """
-2d-scan — Two-distance 2D scan with harmonic restraints (UMA only)
+scan2d — Two-distance 2D scan with harmonic restraints (UMA only)
 ==================================================================
 
 Usage (CLI)
 -----
-    pdb2reaction 2d-scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
         [--one-based|--zero-based] \
         --max-step-size FLOAT \
@@ -22,11 +22,11 @@ Usage (CLI)
 
 Examples::
     # 最小例（2つの距離レンジを与える）
-    pdb2reaction 2d-scan -i input.pdb -q 0 \
+    pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]"
 
     # LBFGS・トラジェクトリ出力・正方形プロット（PNG + HTML）
-    pdb2reaction 2d-scan -i input.pdb -q 0 \
+    pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
         --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode lbfgs \
         --preopt True --baseline min
@@ -114,8 +114,8 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
     "out_dir": "./result_scan2d/",
-    "dump": False,            # per-grid での巨大化を避けるため、デフォルトは False
-    "max_cycles": 100,        # 1 ステップの緩和を軽量に（必要に応じて --relax-max-cycles で上書き）
+    "dump": False,
+    "max_cycles": 100,
 })
 
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
@@ -124,30 +124,23 @@ LBFGS_KW.update({"out_dir": "./result_scan2d/"})
 RFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RFO_KW.update({"out_dir": "./result_scan2d/"})
 
-# ハーモニック拘束の既定（強め：グリッド点で距離を保つため）
 BIAS_KW: Dict[str, Any] = {"k": 100.0}  # eV/Å^2
 
-# opt-mode エイリアス
 _OPT_MODE_ALIASES = (
     (("light", "lbfgs"), "lbfgs"),
     (("heavy", "rfo"),   "rfo"),
 )
 
-# 単位変換
 HARTREE_TO_KCAL_MOL = 627.50961
 
+from scipy.interpolate import Rbf  # 追加：常に RBF(200x200) 補間を実施するため
 
-# ---- 小物ユーティリティ ----
 
 def _ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
 def _snapshot_geometry(g) -> Any:
-    """
-    pysisyphus.Geometry をスナップショット。
-    （既存 scan.py と同様：一時 XYZ 経由で独立ジオメトリを得る）
-    """
     s = g.as_xyz()
     if not s.endswith("\n"):
         s += "\n"
@@ -171,11 +164,6 @@ def _snapshot_geometry(g) -> Any:
 
 
 def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int,int,float,float], Tuple[int,int,float,float]]:
-    """
-    --scan-list で渡された Python 風リスト:
-      "[(i1,j1,low1,high1),(i2,j2,low2,high2)]"
-    を 0-based に正規化して返す。
-    """
     try:
         obj = ast.literal_eval(raw)
     except Exception as e:
@@ -208,10 +196,6 @@ def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int,int,float,flo
 
 
 def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
-    """
-    [low, high] を最大ステップ h で均等分割。
-    差が 0 の場合は長さ 1 の配列 [low] を返す。
-    """
     if h <= 0.0:
         raise click.BadParameter("--max-step-size must be > 0.")
     delta = abs(high - low)
@@ -241,23 +225,7 @@ def _make_optimizer(geom, kind: str, lbfgs_cfg: Dict[str,Any], rfo_cfg: Dict[str
         return RFOptimizer(geom, **args)
 
 
-def _try_write_png(fig, path_png: Path, width: int, height: int) -> Optional[Path]:
-    """
-    kaleido があれば PNG を出力。無ければ None を返す。
-    """
-    try:
-        fig.write_image(str(path_png), scale=2, engine="kaleido", width=width, height=height)
-        return path_png
-    except Exception as e:
-        click.echo(f"[plot] PNG export failed (kaleido not available?): {e}", err=True)
-        return None
-
-
-# --- B 案の良点を取り込んだ: unbiased SP エネルギー取得の安全関数 ---
 def _unbiased_energy_hartree(geom, base_calc) -> float:
-    """
-    現在座標で UMA の非拘束エネルギー（Hartree）を評価する（属性差異に頑健）。
-    """
     coords_bohr = np.asarray(geom.coords3d, dtype=float).reshape(-1, 3)
     for name in ("elem", "elements", "elems"):
         elems = getattr(geom, name, None)
@@ -266,7 +234,6 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
                 return float(base_calc.get_energy(elems, coords_bohr)["energy"])
             except Exception:
                 pass
-    # 最後の手段: Geometry 側の計算器を base に張替えて取得
     try:
         geom.set_calculator(base_calc)
         elems = getattr(geom, "elem", getattr(geom, "elements", getattr(geom, "elems", None)))
@@ -274,8 +241,6 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     except Exception:
         return float("nan")
 
-
-# ---- CLI 本体 ----
 
 @click.command(
     help="2D distance scan with harmonic restraints (UMA only).",
@@ -324,10 +289,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
 )
 @click.option("--preopt", type=click.BOOL, default=True, show_default=True,
-              help="Pre-optimize initial structure without bias before the scan.")
+              help="preoptimize initial structure without bias before the scan.")
 @click.option("--baseline", type=click.Choice(["min","first"]), default="min", show_default=True,
               help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).")
-# --- B 案から取り込み：プロットのカラースケールを CLI から制御 ---
 @click.option("--zmin", type=float, default=None, show_default=False,
               help="Lower bound of color scale for plots (kcal/mol).")
 @click.option("--zmax", type=float, default=None, show_default=False,
@@ -358,7 +322,6 @@ def cli(
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
 
-    # charge/spin の解決（CLI > ファイル）
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
 
     try:
@@ -388,11 +351,10 @@ def cli(
             ],
         )
 
-        # CLI override
         calc_cfg["charge"]  = int(charge)
         calc_cfg["spin"]    = int(spin)
         opt_cfg["out_dir"]  = out_dir
-        opt_cfg["dump"]     = False  # per-grid の巨大化防止（--dump は内側のみ）
+        opt_cfg["dump"]     = False
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
         if bias_k is not None:
@@ -405,7 +367,6 @@ def cli(
             allowed_hint="light|lbfgs|heavy|rfo",
         )
 
-        # Echo config
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
@@ -444,7 +405,6 @@ def cli(
         coord_type = geom_cfg.get("coord_type", "cart")
         geom_outer = geom_loader(geom_input_path, coord_type=coord_type)
 
-        # freeze-atoms（PDB のリンク親の凍結をマージ）
         freeze = merge_freeze_atom_indices(geom_cfg)
         if freeze_links and input_path.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(input_path)
@@ -459,11 +419,9 @@ def cli(
             except Exception:
                 pass
 
-        # UMA 計算器
         base_calc = uma_pysis(**calc_cfg)
         biased    = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
 
-        # 任意の preopt（無拘束）
         if preopt:
             click.echo("[preopt] Unbiased relaxation of the initial structure ...")
             geom_outer.set_calculator(base_calc)
@@ -480,20 +438,17 @@ def cli(
             except OptimizationError as e:
                 click.echo(f"[preopt] OptimizationError — {e}", err=True)
 
-        # ステップ上限（Bohr）
         max_step_bohr = float(max_step_size) * ANG2BOHR
 
         # -------------------------
         # 4) ネスト走査 & エネルギー収集
         # -------------------------
         records: List[Dict[str, Any]] = []
-        # 外側：d1（まず d1 の拘束のみで位置合わせ）
         for i_idx, d1_target in enumerate(d1_values):
             click.echo(f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---")
-            # d1 のみ拘束
             geom_outer.set_calculator(biased)
             biased.set_pairs([(i1, j1, float(d1_target))])
-            geom_outer.set_calculator(biased)  # flush caches
+            geom_outer.set_calculator(biased)
 
             opt1 = _make_optimizer(
                 geom_outer, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
@@ -507,7 +462,6 @@ def cli(
             except OptimizationError as e:
                 click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
 
-            # 内側：d2（d1 を固定し、d2 を走査）
             geom_inner = _snapshot_geometry(geom_outer)
             geom_inner.set_calculator(biased)
 
@@ -516,7 +470,7 @@ def cli(
             for j_idx, d2_target in enumerate(d2_values):
                 biased.set_pairs([(i1, j1, float(d1_target)),
                                   (i2, j2, float(d2_target))])
-                geom_inner.set_calculator(biased)  # flush
+                geom_inner.set_calculator(biased)
 
                 opt2 = _make_optimizer(
                     geom_inner, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
@@ -533,10 +487,8 @@ def cli(
                     click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True)
                     converged = False
 
-                # その点での UMA 単発エネルギー（無拘束）を評価（B 案の堅牢版関数を使用）
                 E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
-                # 書き出し
                 xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
                 try:
                     s = geom_inner.as_xyz()
@@ -548,7 +500,6 @@ def cli(
                     click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
 
                 if dump and trj_blocks is not None:
-                    # 軽量：ステップの最終スナップのみを積む
                     sblock = geom_inner.as_xyz()
                     if not sblock.endswith("\n"):
                         sblock += "\n"
@@ -580,7 +531,6 @@ def cli(
             click.echo("No grid records produced; aborting.", err=True)
             sys.exit(1)
 
-        # 相対化（kcal/mol）
         if baseline == "first":
             ref = float(df.loc[(df["i"]==0) & (df["j"]==0), "energy_hartree"].iloc[0])
         else:
@@ -592,142 +542,217 @@ def cli(
         click.echo(f"[write] Wrote '{surface_csv}'.")
 
         # -------------------------
-        # 6) プロット（2D 等高線 & 3D + 投影）
+        # 6) プロット（描画フォーマット統一 + RBF(200x200) 強制）
         # -------------------------
-        try:
-            # グリッド形状にピボット（不足があれば RBF 補間にフォールバック）
-            piv = df.pivot(index="d2_A", columns="d1_A", values="energy_kcal")
-            x_vals = np.array(piv.columns, dtype=float)
-            y_vals = np.array(piv.index, dtype=float)
-            Z = piv.values  # shape (len(y), len(x))
+        import plotly.graph_objects as go
 
-            # 欠損があれば RBF 補間（任意・フォールバック）
-            if np.isnan(Z).any():
-                click.echo("[plot] Missing grid points detected; filling with RBF interpolation.")
-                try:
-                    from scipy.interpolate import Rbf
-                    # 有効点のみ
-                    dfe = df[np.isfinite(df["energy_kcal"])]
-                    rbf = Rbf(dfe["d1_A"], dfe["d2_A"], dfe["energy_kcal"], function="multiquadric")
-                    XI, YI = np.meshgrid(x_vals, y_vals)
-                    Z = rbf(XI, YI)
-                except Exception as e:
-                    click.echo(f"[plot] RBF interpolation failed: {e}", err=True)
-                    # NaN を単純埋め
-                    Z = np.nan_to_num(Z, nan=np.nanmean(Z))
+        d1_points = df["d1_A"].to_numpy(dtype=float)
+        d2_points = df["d2_A"].to_numpy(dtype=float)
+        z_points  = df["energy_kcal"].to_numpy(dtype=float)
+        mask = np.isfinite(d1_points) & np.isfinite(d2_points) & np.isfinite(z_points)
+        if not np.any(mask):
+            click.echo("[plot] No finite data for plotting.", err=True)
+            sys.exit(1)
 
-            # --- B 案の良点：zmin/zmax を CLI で上書き可能に ---
-            zmin_eff = float(np.nanmin(Z)) if zmin is None else float(zmin)
-            zmax_eff = float(np.nanmax(Z)) if zmax is None else float(zmax)
+        x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))
+        y_min, y_max = float(np.min(d2_points[mask])), float(np.max(d2_points[mask]))
 
-            # 2D 等高線（正方形 + 軸スケール固定）
-            import plotly.graph_objects as go
+        xi = np.linspace(x_min, x_max, 200)
+        yi = np.linspace(y_min, y_max, 200)
+        XI, YI = np.meshgrid(xi, yi)
 
-            fig2d = go.Figure(data=go.Contour(
-                z=Z,
-                x=x_vals,  # d1
-                y=y_vals,  # d2
-                contours=dict(
-                    start=float(np.floor(zmin_eff/10.0)*10.0),
-                    end=float(np.ceil(zmax_eff/10.0)*10.0),
-                    size=10.0
-                ),
-                zmin=zmin_eff, zmax=zmax_eff,
-                contours_coloring="heatmap",
-                colorscale="plasma",
-                colorbar=dict(
-                    title=dict(text="(kcal/mol)", side="top"),
-                    ticks="inside",
-                ),
-            ))
-            # 正方形に（B 案取り込み：scaleanchor）
-            fig2d.update_layout(
-                width=720, height=720,
-                xaxis_title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) distance (Å)",
-                yaxis_title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) distance (Å)",
-                plot_bgcolor="white",
+        rbf = Rbf(d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric")
+        ZI = rbf(XI, YI)
+
+        vmin = float(np.nanmin(ZI)) if zmin is None else float(zmin)
+        vmax = float(np.nanmax(ZI)) if zmax is None else float(zmax)
+        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+            vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
+
+        # 2D 等高線（後段スクリプトの体裁へ統一）
+        c_start = float(math.floor(vmin/10.0)*10.0)
+        c_end   = float(math.ceil(vmax/10.0)*10.0)
+        c_size  = 10.0
+
+        fig2d = go.Figure(data=go.Contour(
+            z=ZI,
+            x=xi,
+            y=yi,
+            contours=dict(start=c_start, end=c_end, size=c_size),
+            zmin=vmin,
+            zmax=vmax,
+            contours_coloring='heatmap',
+            colorscale='plasma',
+            colorbar=dict(
+                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color='#1C1C1C')),
+                tickfont=dict(size=14, color='#1C1C1C'),
+                ticks="inside",
+                ticklen=10,
+                tickcolor='#1C1C1C',
+                outlinecolor='#1C1C1C',
+                outlinewidth=2,
+                lenmode="fraction",
+                len=1.11,
+                x=1.05,
+                y=0.53,
+                xanchor="left",
+                yanchor="middle"
+            )
+        ))
+
+        fig2d.update_layout(
+            width=640,
+            height=600,
+            xaxis_title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) distance (Å)",
+            yaxis_title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) distance (Å)",
+            plot_bgcolor='white',
+            xaxis=dict(
+                range=[x_min, x_max],
+                showline=True,
+                linewidth=3,
+                linecolor='#1C1C1C',
+                mirror=True,
+                tickson='boundaries',
+                ticks='inside',
+                tickwidth=3,
+                tickcolor='#1C1C1C',
+                title_font=dict(size=18, color='#1C1C1C'),
+                tickfont=dict(size=18, color='#1C1C1C'),
+                tickformat=".1f"
+            ),
+            yaxis=dict(
+                range=[y_min, y_max],
+                showline=True,
+                linewidth=3,
+                linecolor='#1C1C1C',
+                mirror=True,
+                tickson='boundaries',
+                ticks='inside',
+                tickwidth=3,
+                tickcolor='#1C1C1C',
+                title_font=dict(size=18, color='#1C1C1C'),
+                tickfont=dict(size=18, color='#1C1C1C'),
+                tickformat=".1f"
+            ),
+            margin=dict(l=10, r=30, b=10, t=40)
+        )
+
+        png2d = plots_dir / "scan2d_contour.png"
+        fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=640, height=600)
+        click.echo(f"[plot] Wrote '{png2d}'.")
+
+        # 3D サーフェス（上半分に地形／底面に平面プロジェクション、z=0 を軸中心に）
+        emin = float(np.nanmin(ZI))
+        emax = float(np.nanmax(ZI))
+        spread = max(emax - emin, 1e-9)  # 非ゼロ保障
+        z_bottom = -spread
+        z_center = 0.0
+        z_top    = +spread
+
+        Z_surf = z_center + (ZI - emin) * (z_top - z_center) / spread  # emin→中心, emax→上端
+        Z_plane = np.full_like(ZI, z_bottom)
+
+        # z 軸の目盛り（中心 0 を起点、±spread をカバー）
+        # 見やすい刻み幅を動的決定（概ね 5〜7 分割）
+        def _nice_step(x: float) -> float:
+            if x <= 0:
+                return 10.0
+            raw = x / 6.0
+            mag = 10 ** math.floor(math.log10(raw))
+            for m in (1, 2, 5, 10):
+                s = m * mag
+                if raw <= s:
+                    return s
+            return 10.0 * mag
+
+        tick_step = _nice_step(spread)
+        z_ticks = np.arange(-spread, spread + 0.5*tick_step, tick_step)
+        # ラベルは「中心0起点」のスケールを表示（z 軸の数値そのもの）
+        z_ticktexts = [f"{t:.0f}" if abs(t) >= 1 else f"{t:.2f}" for t in z_ticks]
+
+        surface3d = go.Surface(
+            x=XI, y=YI, z=Z_surf,
+            colorscale='plasma',
+            cmin=vmin, cmax=vmax,
+            colorbar=dict(
+                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color='#1C1C1C')),
+                tickfont=dict(size=14, color='#1C1C1C'),
+                ticks="inside",
+                ticklen=10,
+                tickcolor='#1C1C1C',
+                outlinecolor='#1C1C1C',
+                outlinewidth=2,
+                lenmode="fraction",
+                len=1.11,
+                x=1.05,
+                y=0.53,
+                xanchor="left",
+                yanchor="middle",
+            ),
+            contours={
+                "z": {
+                    "show": True,
+                    "start": c_start,
+                    "end": c_end,
+                    "size": c_size,
+                    "color": "black",
+                    "project": {"z": True},
+                }
+            },
+            name="3D Surface"
+        )
+
+        plane_proj = go.Surface(
+            x=XI, y=YI, z=Z_plane,
+            surfacecolor=ZI,
+            colorscale='plasma',
+            cmin=vmin, cmax=vmax,
+            showscale=False,
+            opacity=1.0,
+            name="2D Contour Projection (Bottom)"
+        )
+
+        fig3d = go.Figure(data=[surface3d, plane_proj])
+        fig3d.update_layout(
+            scene=dict(
+                bgcolor="rgba(0,0,0,0)",
                 xaxis=dict(
-                    range=[min(x_vals), max(x_vals)],
-                    showline=True, linewidth=3, linecolor="#1C1C1C", mirror=True,
-                    ticks="inside", tickwidth=3, tickcolor="#1C1C1C",
+                    title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) (Å)",
+                    range=[x_min, x_max],
+                    showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
+                    ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
+                    gridcolor='rgba(0,0,0,0.1)', zerolinecolor='rgba(0,0,0,0.1)',
+                    showbackground=False
                 ),
                 yaxis=dict(
-                    range=[min(y_vals), max(y_vals)],
-                    showline=True, linewidth=3, linecolor="#1C1C1C", mirror=True,
-                    ticks="inside", tickwidth=3, tickcolor="#1C1C1C",
+                    title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) (Å)",
+                    range=[y_min, y_max],
+                    showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
+                    ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
+                    gridcolor='rgba(0,0,0,0.1)', zerolinecolor='rgba(0,0,0,0.1)',
+                    showbackground=False
                 ),
-                margin=dict(l=10, r=10, t=40, b=10),
-            )
-            # 軸スケール固定で真の正方
-            fig2d.update_yaxes(scaleanchor="x", scaleratio=1)
-
-            png2d = _try_write_png(fig2d, plots_dir / "scan2d_contour.png", width=720, height=720)
-            if png2d:
-                click.echo(f"[plot] Wrote '{png2d}'.")
-            else:
-                html2d = plots_dir / "scan2d_contour.html"
-                fig2d.write_html(str(html2d))
-                click.echo(f"[plot] Wrote '{html2d}' (HTML fallback).")
-
-            # 3D サーフェス + 底面投影（立方体比）
-            XI, YI = np.meshgrid(x_vals, y_vals)
-            surface = go.Surface(
-                x=XI, y=YI, z=Z,
-                colorscale="plasma",
-                cmin=zmin_eff, cmax=zmax_eff,
-                colorbar=dict(
-                    title=dict(text="(kcal/mol)", side="top"),
-                    ticks="inside",
+                zaxis=dict(
+                    title="Energy (kcal/mol; 0 at center)",
+                    range=[z_bottom, z_top],
+                    tickmode="array",
+                    tickvals=z_ticks.tolist(),
+                    ticktext=z_ticktexts,
+                    showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
+                    ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
+                    showgrid=True, gridcolor='rgba(0,0,0,0.1)',
+                    zerolinecolor='rgba(0,0,0,0.1)',
+                    showbackground=False
                 ),
-                contours={
-                    "z": {
-                        "show": True,
-                        "start": float(np.floor(zmin_eff/10.0)*10.0),
-                        "end": float(np.ceil(zmax_eff/10.0)*10.0),
-                        "size": 10.0,
-                        "color": "black",
-                        "project": {"z": True},
-                    }
-                },
-                name="3D Surface",
-            )
+            ),
+            width=800, height=700,
+            margin=dict(r=20, l=10, b=10, t=40),
+            paper_bgcolor="white",
+        )
 
-            contour_proj = go.Surface(
-                x=XI, y=YI, z=np.full_like(Z, zmin_eff - 1.0),  # 少し下に投影
-                surfacecolor=Z, showscale=False, colorscale="plasma",
-                cmin=zmin_eff, cmax=zmax_eff, opacity=1.0, name="2D Projection"
-            )
-
-            fig3d = go.Figure(data=[surface, contour_proj])
-            fig3d.update_layout(
-                title="2D PES with bottom projection",
-                width=800, height=800,
-                scene=dict(
-                    bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) (Å)",
-                               showline=True, linewidth=4, linecolor="#1C1C1C", mirror=True,
-                               ticks="inside", tickwidth=4, tickcolor="#1C1C1C",
-                               showbackground=False),
-                    yaxis=dict(title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) (Å)",
-                               showline=True, linewidth=4, linecolor="#1C1C1C", mirror=True,
-                               ticks="inside", tickwidth=4, tickcolor="#1C1C1C",
-                               showbackground=False),
-                    zaxis=dict(title="Energy (kcal/mol)",
-                               showline=True, linewidth=4, linecolor="#1C1C1C", mirror=True,
-                               ticks="inside", tickwidth=4, tickcolor="#1C1C1C",
-                               showbackground=False),
-                    aspectmode="cube",   # 立方体（x,y,z を等尺に）
-                ),
-                margin=dict(l=10, r=10, t=40, b=10),
-                paper_bgcolor="white",
-            )
-
-            html3d = plots_dir / "scan2d_surface.html"
-            fig3d.write_html(str(html3d))
-            click.echo(f"[plot] Wrote '{html3d}'.")
-
-        except Exception as e:
-            click.echo(f"[plot] WARNING: plotting failed: {e}", err=True)
+        html3d = plots_dir / "scan2d_surface.html"
+        fig3d.write_html(str(html3d))
+        click.echo(f"[plot] Wrote '{html3d}'.")
 
         click.echo("\n=== 2D Scan finished ===\n")
         click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start))

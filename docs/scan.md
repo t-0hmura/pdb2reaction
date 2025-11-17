@@ -30,7 +30,7 @@ pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
 | `--out-dir TEXT` | Output directory. | `./result_scan/` |
 | `--thresh TEXT` | Override convergence preset for pre/end optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt BOOL` | Explicit `True`/`False`. Pre-optimize the initial structure before scanning. | `True` |
+| `--preopt BOOL` | Explicit `True`/`False`. preoptimize the initial structure before scanning. | `True` |
 | `--endopt BOOL` | Explicit `True`/`False`. Unbiased relaxation after each stage. | `True` |
 
 ### Shared sections

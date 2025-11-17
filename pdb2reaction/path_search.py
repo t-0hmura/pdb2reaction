@@ -18,7 +18,7 @@ Recommended/common:
     --max-nodes          Internal nodes for segment GSM; default 10.
     --max-cycles         Max optimization cycles; default 100.
     --climb {True|False}        Enable TS search for the first segment; default True.
-    --pre-opt {True|False}      Pre-optimize endpoints; default True.
+    --preopt {True|False}      preoptimize endpoints; default True.
     --align/--no-align          Rigidly co‑align all inputs after pre‑opt; default on.
     --args-yaml PATH            YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
     --ref-pdb PATH [...]        Full template PDB(s) for final merge (see Notes).
@@ -86,7 +86,7 @@ Notes:
 -----
 - Inputs:
   - Provide ≥2 structures to `-i/--input` in reaction order. Either repeat `-i` or pass multiple paths after a single `-i`.
-  - Endpoint pre‑optimization runs by default (`--pre-opt True`). With `--align True`, all inputs are co‑aligned and
+  - Endpoint pre‑optimization runs by default (`--preopt True`). With `--align True`, all inputs are co‑aligned and
     `freeze_atoms` are refined to the first input.
 - Bond‑change detection: uses `bond_changes.compare_structures` with `bond_factor`, `margin_fraction`,
   and `delta_fraction` thresholds.
@@ -1465,8 +1465,8 @@ def _merge_final_and_write(final_images: List[Any],
     help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search)."
 )
 @click.option(
-    "--pre-opt",
-    "pre_opt",
+    "--preopt",
+    "preopt",
     type=click.BOOL,
     default=True,
     show_default=True,
@@ -1478,7 +1478,7 @@ def _merge_final_and_write(final_images: List[Any],
     "align",
     default=True,
     show_default=True,
-    help=("After pre-optimization, align all inputs to the *first* input and match freeze_atoms "
+    help=("After preoptimization, align all inputs to the *first* input and match freeze_atoms "
           "using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, "
           "the first reference PDB will be used for all pairs in the final merge.")
 )
@@ -1508,7 +1508,7 @@ def cli(
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
-    pre_opt: bool,
+    preopt: bool,
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
@@ -1668,8 +1668,8 @@ def cli(
         click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
-        # Echo pre-optimization and alignment flags
-        click.echo(pretty_block("run_flags", {"pre_opt": bool(pre_opt), "align": bool(align)}))
+        # Echo preoptimization and alignment flags
+        click.echo(pretty_block("run_flags", {"preopt": bool(preopt), "align": bool(align)}))
 
         # --------------------------
         # 2) Prepare inputs
@@ -1694,7 +1694,7 @@ def cli(
                 ref_pdb_for_segments = p.resolve()
                 break
 
-        if pre_opt:
+        if preopt:
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
                 tag = f"init{i:02d}"
@@ -1702,7 +1702,7 @@ def cli(
                 new_geoms.append(g_opt)
             geoms = new_geoms
         else:
-            click.echo("[init] Skipping endpoint pre-optimization as requested by --pre-opt False.")
+            click.echo("[init] Skipping endpoint preoptimization as requested by --preopt False.")
 
         # Align all inputs to the first structure, guided by freeze constraints, when requested
         align_thresh = str(opt_cfg.get("thresh", "gau"))
