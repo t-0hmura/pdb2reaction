@@ -555,7 +555,7 @@ def _save_single_geom_as_pdb_for_tools(g: Any, ref_pdb: Path, out_dir: Path, nam
     Returns a path to the written structure (PDB when可能, otherwise XYZ).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    xyz_trj = out_dir / f"{name}.trj"
+    xyz_trj = out_dir / f"{name}.xyz"
     _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
 
     # [FIX] ref が PDB のときのみ PDB 変換を試行。非 PDB の場合は XYZ を返す（下流 CLI は拡張子非依存で受理）。
@@ -834,12 +834,18 @@ def _pseudo_irc_and_match(seg_idx: int,
         c_first, c_last = c_b_last, c_f_last
 
     # 4) Build geoms and energies
-    shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
+    # 4) Build geoms and energies
     g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
-    _path_search._ensure_calc_on_geom(g_left,  shared_calc);  _ = float(g_left.energy)
-    _path_search._ensure_calc_on_geom(g_right, shared_calc);  _ = float(g_right.energy)
-    _path_search._ensure_calc_on_geom(g_ts,    shared_calc);  _ = float(g_ts.energy)
+    # Reuse the UMA calculator already attached to the TS by tsopt
+    shared_calc = getattr(g_ts, "calculator", None)
+    if shared_calc is None:
+        shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
+        g_ts.set_calculator(shared_calc)
+    # Use exactly the same calculator (which already knows the correct per-atom elem list)
+    g_left.set_calculator(shared_calc);  _ = float(g_left.energy)
+    g_right.set_calculator(shared_calc); _ = float(g_right.energy)
+    _ = float(g_ts.energy)
 
     # 5) Optional mapping to segment endpoints (if available)
     left_tag = "backward"
@@ -908,7 +914,6 @@ def _write_segment_energy_diagram(prefix: Path,
         ylabel="ΔE (kcal/mol)",
         baseline=True,
         showgrid=False,
-        title=f"{prefix.name} {title_note}",
     )
     html = prefix.with_suffix(".html")
     png = prefix.with_suffix(".png")
