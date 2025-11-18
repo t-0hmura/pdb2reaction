@@ -5,17 +5,20 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 ====================================================================
 
 Usage (CLI)
------
-    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--engine {gpu|cpu|auto}] [--args-yaml YAML]
-
-    # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1).
-    # Set them explicitly to avoid unphysical states. Here, SPIN means multiplicity (2S+1).
+-----------
+    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q <charge> [-s <spin>] \
+        [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
+        [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
+        [--args-yaml <file>]
 
 Examples
------
+--------
+    # Default GPU-first policy with an explicit functional/basis pair
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
-    pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
-    pdb2reaction dft -i input.xyz -q -1 -s 2 --engine cpu
+
+    # Tight SCF controls with a larger basis and CPU-only fallback
+    pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" \
+        --max-cycle 150 --conv-tol 1e-9 --engine cpu
 
 Description
 -----

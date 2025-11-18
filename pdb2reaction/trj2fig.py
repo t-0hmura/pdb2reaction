@@ -5,31 +5,24 @@ trj2fig — Energy-profile utility for XYZ trajectories
 ====================================================================
 
 Usage (CLI)
------
-    Package CLI (Click-based):
-        Minimal:
-            pdb2reaction trj2fig -i traj.xyz
+-----------
+    # Package CLI (Click-based)
+    pdb2reaction trj2fig -i traj.xyz [-o OUTPUT ...] [-r {init|None|INT}] \
+        [--unit {kcal|hartree}] [--reverse-x]
 
-        Full (all key options; multiple outputs allowed):
-            pdb2reaction trj2fig -i traj.xyz \
-                -o energy.png energy.html energy.svg energy.pdf energy.csv \
-                -r init \
-                --unit kcal \
-                --reverse-x
-
-    Standalone script (argparse):
-        python trj2fig.py -i traj.xyz -o energy.png energy.html
+    # Standalone script (argparse)
+    python trj2fig.py -i traj.xyz [-o OUTPUT ...] [-r {init|None|INT}] \
+        [--unit {kcal|hartree}] [--reverse-x]
 
 Examples
------
-    # 1) High-resolution PNG with x-axis reversed
-    #    (reference is the leftmost point = last frame)
+--------
+    # High-resolution PNG with x-axis reversed (reference is the last frame)
     pdb2reaction trj2fig -i traj.xyz --reverse-x
 
-    # 2) CSV + figure (reference frame #5; output values in hartree)
+    # CSV + figure (reference frame #5; output values in hartree)
     pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
-    # 3) Produce multiple outputs in one run (PNG, HTML, PDF)
+    # Produce multiple outputs in one run (PNG, HTML, PDF)
     pdb2reaction trj2fig -i traj.xyz -o energy.png energy.html energy.pdf
 
 Description

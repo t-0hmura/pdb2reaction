@@ -5,17 +5,21 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 ====================================================================
 
 Usage (CLI)
------
-    pdb2reaction opt -i INPUT -q CHARGE [-s SPIN]
-        [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}]
-        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] [--bias-k FLOAT]
-        [--dump {True|False}] [--out-dir DIR] [--max-cycles N] [--thresh PRESET]
-        [--args-yaml FILE]
+-----------
+    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q <charge> [-s <spin>] \
+        [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] \
+        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
+        [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
+        [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>]
 
 Examples
------
-    pdb2reaction opt -i input.pdb -q 0
-    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump True --out-dir ./result_opt/ --args-yaml ./args.yaml
+--------
+    # Minimal geometry optimization with default LBFGS settings
+    pdb2reaction opt -i input.pdb -q 0 -s 1
+
+    # RFO with trajectory dumps and YAML overrides
+    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump True \
+        --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----
