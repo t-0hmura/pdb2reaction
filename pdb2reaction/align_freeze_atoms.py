@@ -355,7 +355,6 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     P_sel, Q_sel = P[use], Q[use]
     n_used = int(P_sel.shape[0])
 
-    # *** CHANGED: evaluate RMSD on the same selection used for Kabsch ***
     before_sel = _rmsd(P_sel, Q_sel)
 
     R, t = kabsch_R_t(P_sel, Q_sel)
@@ -391,14 +390,21 @@ def scan_freeze_atoms_toward_target_inplace(
     device: str = "auto",
     verbose: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Move the `freeze_atoms` of `g_mob` toward the reference (`g_ref`) by `step_A` Å
-    per iteration. At each step, keep the frozen atoms fixed and run a short LBFGS
-    relaxation on the remaining atoms. Finally, enforce exact coincidence of the
-    frozen atoms and perform a finishing relaxation. Updates `g_mob` in place.
+    """Iteratively move ``g_mob.freeze_atoms`` toward ``g_ref`` with staged relaxations.
 
-    Returns:
-        dict(max_remaining_A, n_steps, converged)
+    Workflow:
+        1. Ensure ``g_mob`` carries a calculator. When absent, attach UMA using
+           ``shared_calc`` or the provided ``charge``, ``spin``, ``model``, and
+           ``device`` values.
+        2. Displace each frozen atom toward its reference position by at most
+           ``step_A`` Å per iteration and update the geometry in place.
+        3. After each displacement, freeze those atoms and run LBFGS for
+           ``per_step_cycles`` cycles using the ``thresh`` convergence preset.
+        4. When the remaining distance is smaller than one step, force exact
+           coincidence, perform a finishing LBFGS segment for ``final_cycles``
+           cycles, and stop. Abort if ``max_steps`` is exceeded.
+
+    Returns ``{"max_remaining_A": float, "n_steps": int, "converged": bool}``.
     """
     P = _coords3d(g_ref)  # bohr
     Q = _coords3d(g_mob)  # bohr
@@ -519,17 +525,21 @@ def align_and_refine_pair_inplace(
     device: str = "auto",
     verbose: bool = True,
 ) -> Dict[str, Any]:
-    """
-    For a pair (g_ref, g_mob), perform:
-      (1) rigid alignment (special cases for freeze=1/2, otherwise Kabsch), then
-      (2) scan + relaxation (stepwise matching of `freeze_atoms` to the reference).
-    Updates `g_mob` in place.
+    """Rigidly align and then scan/relax ``g_mob`` toward ``g_ref`` in place.
 
-    Returns:
-        {
-          "align": {before_A, after_A, n_used, mode},
-          "scan":  {max_remaining_A, n_steps, converged}
-        }
+    1. :func:`align_second_to_first_kabsch_inplace` handles the rigid fit,
+       including the single- and double-anchor special cases.
+    2. :func:`scan_freeze_atoms_toward_target_inplace` moves ``freeze_atoms``
+       toward the reference in stages and relaxes the surroundings using the
+       supplied UMA calculator settings.
+
+    The keyword arguments mirror the scan helper so callers can share a
+    calculator, adjust step sizes and convergence, and direct optimizer output.
+
+    Returns ``{"align": {...}, "scan": {...}}`` where ``align`` reports RMSD
+    before/after the rigid fit along with ``n_used`` and the mode string, and
+    ``scan`` matches the dictionary returned by
+    :func:`scan_freeze_atoms_toward_target_inplace`.
     """
     # Rigid alignment
     align_res = align_second_to_first_kabsch_inplace(g_ref, g_mob, verbose=verbose)
@@ -565,12 +575,15 @@ def align_and_refine_sequence_inplace(
     device: str = "auto",
     verbose: bool = True,
 ) -> List[Dict[str, Any]]:
-    """
-    For a list [g0, g1, g2, ...], apply `align_and_refine_pair_inplace` in order:
-    (g0←g1), (g1←g2), ... i.e., each g_{i+1} is aligned/refined to g_i.
-    Returns a list of per-pair result dicts.
+    """Align/relax each geometry against its predecessor along ``geoms``.
 
-    Intended to be used after preoptimization in `path_search.py`.
+    Creates ``pair_XX`` subdirectories under ``out_dir`` and invokes
+    :func:`align_and_refine_pair_inplace` for every adjacent pair, passing through
+    the calculator, UMA configuration, and step-size controls. Useful after the
+    preoptimization stage in :mod:`pdb2reaction.path_search`.
+
+    Returns a list of per-pair dictionaries; returns ``[]`` immediately when
+    fewer than two geometries are supplied.
     """
     geoms = list(geoms)
     if len(geoms) <= 1:
