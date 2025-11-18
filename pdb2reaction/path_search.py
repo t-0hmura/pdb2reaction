@@ -278,16 +278,6 @@ def _load_structures(
     return geoms
 
 
-def _ensure_calc_on_geom(g, calc) -> None:
-    """
-    Attach a pysisyphus Calculator to a Geometry (overwrite if necessary).
-    """
-    try:
-        g.set_calculator(calc)
-    except Exception:
-        g.set_calculator(calc)
-
-
 def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path: Path) -> None:
     """
     Write an XYZ `.trj` with the energy on line 2 of each block.
@@ -457,7 +447,7 @@ def _energy_of(g) -> float:
     """
     Return the energy (Hartree) of a Geometry (ensures calculator is attached).
     """
-    _ensure_calc_on_geom(g, getattr(g, "calculator", None))
+    g.set_calculator(getattr(g, "calculator", None))
     return float(g.energy)
 
 
@@ -517,7 +507,7 @@ def _run_gsm_between(
     """
     # Attach calculator to endpoints
     for g in (gA, gB):
-        _ensure_calc_on_geom(g, shared_calc)
+        g.set_calculator(shared_calc)
 
     def calc_getter():
         return shared_calc
@@ -617,7 +607,7 @@ def _optimize_single(
     """
     Run single‑structure optimization (LBFGS/RFO) and return the final Geometry.
     """
-    _ensure_calc_on_geom(g, shared_calc)
+    g.set_calculator(shared_calc)
 
     seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
     seg_dir.mkdir(parents=True, exist_ok=True)
@@ -641,7 +631,7 @@ def _optimize_single(
             g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
         except Exception:
             pass
-        _ensure_calc_on_geom(g_final, shared_calc)
+        g_final.set_calculator(shared_calc)
         return g_final
     except Exception:
         return g
@@ -1685,7 +1675,7 @@ def cli(
 
         shared_calc = uma_pysis(**calc_cfg)
         for g in geoms:
-            _ensure_calc_on_geom(g, shared_calc)
+            g.set_calculator(shared_calc)
 
         # If any input is PDB, treat as "PDB input" for final output handling.
         ref_pdb_for_segments: Optional[Path] = None

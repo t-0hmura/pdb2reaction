@@ -862,9 +862,9 @@ def _pseudo_irc_and_match(seg_idx: int,
     shared_calc = uma_pysis(**calc_args)
     g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
-    _path_search._ensure_calc_on_geom(g_left,  shared_calc);  _ = float(g_left.energy)
-    _path_search._ensure_calc_on_geom(g_right, shared_calc);  _ = float(g_right.energy)
-    _path_search._ensure_calc_on_geom(g_ts,    shared_calc);  _ = float(g_ts.energy)
+    g_left.set_calculator(shared_calc);  _ = float(g_left.energy)
+    g_right.set_calculator(shared_calc);  _ = float(g_right.energy)
+    g_ts.set_calculator(shared_calc);     _ = float(g_ts.energy)
 
     # 5) Optional mapping to segment endpoints (if available)
     left_tag = "backward"
