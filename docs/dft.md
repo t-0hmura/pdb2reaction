@@ -8,7 +8,7 @@ Runs single-point DFT calculations using GPU4PySCF when available (falling back 
 pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] \
                  [--func-basis "FUNC/BASIS"] \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--args-yaml FILE]
+                 [--out-dir DIR] [--engine gpu|cpu|auto] [--args-yaml FILE]
 ```
 
 ## CLI options
@@ -22,6 +22,7 @@ pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] \
 | `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory. | `./result_dft/` |
+| `--engine [gpu|cpu|auto]` | Preferred backend: GPU (GPU4PySCF when available), CPU, or auto (try GPU then CPU). | `gpu` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ### Section `dft`
@@ -42,7 +43,7 @@ _Functional/basis selection must be supplied on the CLI. Charge/spin inherit `.g
 - Console pretty block summarising charge, multiplicity, spin (2S), functional, basis, convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used when available; otherwise a CPU SCF object is built. Nonlocal VV10 is enabled automatically for functionals ending with `-v` or containing `vv10`.
+- GPU4PySCF is used when available; otherwise a CPU SCF object is built (unless `--engine cpu` forces CPU). Nonlocal VV10 is enabled automatically for functionals ending with `-v` or containing `vv10`.
 - The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
 - Charge/spin inherit `.gjf` template metadata when available; otherwise they default to `0`/`1`. Override them explicitly to
   ensure the correct RKS/UKS solver is chosen for the intended multiplicity.
