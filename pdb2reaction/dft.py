@@ -433,6 +433,18 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     default=None,
     help='Optional YAML overrides under key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).',
 )
+@click.option(
+    "--chk-in",
+    type=click.Path(path_type=Path, exists=False, dir_okay=False),
+    default=None,
+    help="Optional SCF checkpoint to use as the initial density guess.",
+)
+@click.option(
+    "--chk-out",
+    type=click.Path(path_type=Path, exists=False, dir_okay=False),
+    default=None,
+    help="Optional path to write the SCF checkpoint after completion.",
+)
 
 def cli(
     input_path: Path,
@@ -445,6 +457,8 @@ def cli(
     out_dir: str,
     engine: str,
     args_yaml: Optional[Path],
+    chk_in: Optional[Path],
+    chk_out: Optional[Path],
 ) -> None:
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
@@ -555,13 +569,36 @@ def cli(
 
         mf = _configure_scf_object(mf, aux_basis_guess, dft_cfg, xc)
 
+        dm0 = None
+        chk_in_path = Path(chk_in).resolve() if chk_in else None
+        if chk_in_path is not None:
+            if chk_in_path.exists():
+                try:
+                    from pyscf import scf as pyscf_scf
+
+                    _, scf_data = pyscf_scf.chkfile.load_scf(str(chk_in_path))
+                    mo_coeff = scf_data.get("mo_coeff")
+                    mo_occ = scf_data.get("mo_occ")
+                    if mo_coeff is not None and mo_occ is not None:
+                        dm0 = mf.make_rdm1(mo_coeff, mo_occ)
+                        click.echo(f"[chk] Loaded initial guess from '{chk_in_path}'.")
+                    else:
+                        click.echo(
+                            f"[chk] WARNING: Checkpoint '{chk_in_path}' is missing orbital data; ignoring.",
+                            err=True,
+                        )
+                except Exception as e:
+                    click.echo(f"[chk] WARNING: Failed to load checkpoint '{chk_in_path}': {e}", err=True)
+            else:
+                click.echo(f"[chk] WARNING: Checkpoint '{chk_in_path}' not found; continuing without it.", err=True)
+
         # --------------------------
         # 5) Run SCF
         # --------------------------
         click.echo("\n=== DFT single-point started (GPU if available) ===\n")
         tic_scf = time.time()
         try:
-            e_tot = mf.kernel()
+            e_tot = mf.kernel(dm0=dm0)
         except Exception as scf_exc:
             if using_gpu:
                 click.echo(
@@ -575,7 +612,7 @@ def cli(
                 using_gpu = False
                 engine_label = "pyscf(cpu)"
                 tic_scf = time.time()
-                e_tot = mf.kernel()
+                e_tot = mf.kernel(dm0=dm0)
             else:
                 raise
         toc_scf = time.time()
@@ -596,6 +633,18 @@ def cli(
             mf_for_analysis = mf.to_cpu()  # GPU → CPU (no-op on CPU backend)
         except Exception:
             mf_for_analysis = mf
+
+        if chk_out:
+            chk_out_path = Path(chk_out).resolve()
+            try:
+                chk_out_path.parent.mkdir(parents=True, exist_ok=True)
+                from pyscf import scf as pyscf_scf
+
+                mf_for_chk = getattr(mf, "to_cpu", lambda: mf)()
+                pyscf_scf.chkfile.dump_scf(mf_for_chk, str(chk_out_path))
+                click.echo(f"[chk] Saved checkpoint to '{chk_out_path}'.")
+            except Exception as e:
+                click.echo(f"[chk] WARNING: Failed to write checkpoint '{chk_out_path}': {e}", err=True)
 
         charges = _compute_atomic_charges(mol, mf_for_analysis)
         spins   = _compute_atomic_spin_densities(mol, mf_for_analysis)

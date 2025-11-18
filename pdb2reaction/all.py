@@ -1039,7 +1039,9 @@ def _run_dft_for_state(pdb_path: Path,
                        args_yaml: Optional[Path],
                        func_basis: str = "wb97m-v/def2-tzvpd",
                        overrides: Optional[Dict[str, Any]] = None,
-                       engine: str = "gpu") -> Dict[str, Any]:
+                       engine: str = "gpu",
+                       chk_in: Optional[Path] = None,
+                       chk_out: Optional[Path] = None) -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
     """
@@ -1062,6 +1064,10 @@ def _run_dft_for_state(pdb_path: Path,
     _append_cli_arg(args, "--max-cycle", overrides.get("max_cycle"))
     _append_cli_arg(args, "--conv-tol", overrides.get("conv_tol"))
     _append_cli_arg(args, "--grid-level", overrides.get("grid_level"))
+    if chk_in is not None:
+        args.extend(["--chk-in", str(chk_in)])
+    if chk_out is not None:
+        args.extend(["--chk-out", str(chk_out)])
 
     if args_yaml is not None:
         args.extend(["--args-yaml", str(args_yaml)])
@@ -1082,6 +1088,42 @@ def _run_dft_for_state(pdb_path: Path,
         except Exception:
             return {}
     return {}
+
+
+def _run_dft_sequence(state_jobs: Sequence[Tuple[str, Optional[Path], Path]],
+                      q_int: int,
+                      spin: int,
+                      args_yaml: Optional[Path],
+                      func_basis: str,
+                      overrides: Optional[Dict[str, Any]],
+                      engine: str,
+                      enable_chk: bool) -> Dict[str, Dict[str, Any]]:
+    """Run DFT on a sequence of states, optionally chaining SCF checkpoints."""
+    results: Dict[str, Dict[str, Any]] = {}
+    prev_chk: Optional[Path] = None
+    for label, pdb_path, out_dir in state_jobs:
+        if pdb_path is None:
+            continue
+        chk_in = prev_chk if enable_chk else None
+        chk_out = (out_dir / "scf.chk") if enable_chk else None
+        res = _run_dft_for_state(
+            pdb_path,
+            q_int,
+            spin,
+            out_dir,
+            args_yaml,
+            func_basis=func_basis,
+            overrides=overrides,
+            engine=engine,
+            chk_in=chk_in,
+            chk_out=chk_out,
+        )
+        results[label] = res
+        if enable_chk and chk_out is not None and chk_out.exists():
+            prev_chk = chk_out
+        elif enable_chk:
+            prev_chk = None
+    return results
 
 
 # -----------------------------
@@ -1204,6 +1246,8 @@ def _run_dft_for_state(pdb_path: Path,
               default="gpu",
               show_default=True,
               help="Preferred DFT backend: GPU (default), CPU, or auto (try GPU then CPU).")
+@click.option("--dft-chk", "dft_chk", type=click.BOOL, default=False, show_default=True,
+              help="When True, store PySCF checkpoints per state and reuse the previous density as the next initial guess.")
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=False,
@@ -1277,6 +1321,7 @@ def cli(
     dft_conv_tol: Optional[float],
     dft_grid_level: Optional[int],
     dft_engine: str,
+    dft_chk: bool,
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on pocket) → `path_search` and hides ref-template bookkeeping.
@@ -1602,9 +1647,24 @@ def cli(
         # DFT & DFT//UMA
         if do_dft:
             click.echo(f"[dft] Single TSOPT: DFT on R/TS/P")
-            dR = _run_dft_for_state(pR, q_int, spin, dft_root / "R",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
-            dT = _run_dft_for_state(pT, q_int, spin, dft_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
-            dP = _run_dft_for_state(pP, q_int, spin, dft_root / "P",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
+            dft_jobs = [
+                ("R", pR, dft_root / "R"),
+                ("TS", pT, dft_root / "TS"),
+                ("P", pP, dft_root / "P"),
+            ]
+            dft_payloads = _run_dft_sequence(
+                dft_jobs,
+                q_int,
+                spin,
+                args_yaml,
+                dft_func_basis_use,
+                dft_overrides,
+                dft_engine,
+                enable_chk=dft_chk,
+            )
+            dR = dft_payloads.get("R")
+            dT = dft_payloads.get("TS")
+            dP = dft_payloads.get("P")
             try:
                 eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", e_react))
                 eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", eT))
@@ -2016,9 +2076,24 @@ def cli(
                 )
             else:
                 click.echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
-                dR = _run_dft_for_state(p_react, q_int, spin, dft_seg_root / "R", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
-                dT = _run_dft_for_state(p_ts, q_int, spin, dft_seg_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
-                dP = _run_dft_for_state(p_prod, q_int, spin, dft_seg_root / "P", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
+                dft_jobs = [
+                    ("R", p_react, dft_seg_root / "R"),
+                    ("TS", p_ts, dft_seg_root / "TS"),
+                    ("P", p_prod, dft_seg_root / "P"),
+                ]
+                dft_payloads = _run_dft_sequence(
+                    dft_jobs,
+                    q_int,
+                    spin,
+                    args_yaml,
+                    dft_func_basis_use,
+                    dft_overrides,
+                    dft_engine,
+                    enable_chk=dft_chk,
+                )
+                dR = dft_payloads.get("R")
+                dT = dft_payloads.get("TS")
+                dP = dft_payloads.get("P")
                 try:
                     eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", np.nan))
                     eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", np.nan))
