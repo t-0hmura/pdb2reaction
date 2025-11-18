@@ -1246,7 +1246,7 @@ def _run_dft_sequence(state_jobs: Sequence[Tuple[str, Optional[Path], Path]],
               default="gpu",
               show_default=True,
               help="Preferred DFT backend: GPU (default), CPU, or auto (try GPU then CPU).")
-@click.option("--dft-chk", "dft_chk", type=click.BOOL, default=False, show_default=True,
+@click.option("--dft-chk", "dft_chk", type=click.BOOL, default=True, show_default=True,
               help="When True, store PySCF checkpoints per state and reuse the previous density as the next initial guess.")
 @click.option(
     "--scan-lists", "scan_lists_raw",
