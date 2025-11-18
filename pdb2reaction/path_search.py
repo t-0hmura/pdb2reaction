@@ -2,31 +2,50 @@
 
 """
 path_search — Recursive GSM segmentation to build a continuous multistep MEP
-====================================================================
+============================================================================
 
 Usage (CLI)
------
+-----------
     pdb2reaction path-search -i A.pdb B.pdb -q <charge> [options]
 
 Required-like:
-    -i/--input           Two or more structures in reaction order (repeatable or space‑separated after a single -i).
-    -q/--charge          Total system charge (defaults to a .gjf template value or 0 when omitted).
+    -i/--input
+        Two or more structures in reaction order (repeatable or space‑separated after a single -i).
+    -q/--charge
+        Total system charge (defaults to a .gjf template value or 0 when omitted).
 
 Recommended/common:
-    -s/--spin            Spin multiplicity (2S+1); defaults to a .gjf template value or 1 when omitted.
-    --sopt-mode          Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs.
-    --max-nodes          Internal nodes for segment GSM; default 10.
-    --max-cycles         Max optimization cycles; default 100.
-    --climb {True|False}        Enable TS search for the first segment; default True.
-    --preopt {True|False}      preoptimize endpoints; default True.
-    --align/--no-align          Rigidly co‑align all inputs after pre‑opt; default on.
-    --args-yaml PATH            YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
-    --ref-pdb PATH [...]        Full template PDB(s) for final merge (see Notes).
-    --out-dir PATH              Output directory; default ./result_path_search/
-    --dump {True|False}         Save optimizer dumps; default False.
-    --freeze-links {True|False} Freeze parents of link hydrogens for PDB input; default True.
+    -s/--spin
+        Spin multiplicity (2S+1); defaults to a .gjf template value or 1 when omitted.
+    --sopt-mode
+        Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs
+        (aliases: light → lbfgs, heavy → rfo).
+    --max-nodes
+        Internal nodes for segment GSM; default 10.
+    --max-cycles
+        Max optimization cycles; default 100.
+    --climb {True|False}
+        Enable TS search for the first segment; default True.
+    --preopt {True|False}
+        Preoptimize endpoints; default True.
+    --align/--no-align
+        Rigidly co‑align all inputs after pre‑opt; default on.
+    --args-yaml PATH
+        YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
+    --thresh STR
+        Convergence preset for GSM and single optimizations
+        (gau_loose|gau|gau_tight|gau_vtight|baker|never).
+    --ref-pdb PATH [...]
+        Full template PDB(s) for final merge (see Notes).
+    --out-dir PATH
+        Output directory; default ./result_path_search/
+    --dump {True|False}
+        Save optimizer dumps; default False.
+    --freeze-links {True|False}
+        Freeze parents of link hydrogens for PDB input; default True.
 
-Examples::
+Examples
+--------
     # Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)
     pdb2reaction path-search -i reactant.pdb product.pdb -q 0
 
@@ -35,15 +54,16 @@ Examples::
         --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
 
 Description
------
+-----------
 Constructs a continuous minimum‑energy path (MEP) between two or more structures ordered along a reaction.
 The method runs a Growing String Method (GSM) to localize barriers and **recursively** refines only those
 regions that exhibit covalent bond changes. Kinks (no bond change) are represented by linearly interpolated,
 individually optimized images. Multi‑structure inputs are processed per adjacent pair and stitched into a single MEP.
-A single UMA calculator (uma_pysis) is shared serially across all stages. Configuration precedence: CLI > YAML > defaults.
+A single UMA calculator (uma_pysis) is shared serially across all stages. Configuration precedence:
+**CLI > YAML > defaults**.
 
-Workflow:
------
+Workflow
+--------
 1) Initial path (per adjacent pair A→B): run GSM to obtain a preliminary MEP.
 2) Localize barrier: find the highest‑energy image (HEI); optimize HEI±1 as single structures → two nearby minima,
    End1 and End2.
@@ -52,37 +72,37 @@ Workflow:
      nodes and optimize each; **skip** GSM.
    - Otherwise: run a refinement GSM between End1 and End2.
 4) Recurse selectively: evaluate covalent changes for (A→End1) and (End2→B); recurse only on sides that change.
-5) Stitch subpaths: concatenate sub‑MEPs with duplicate removal via RMSD. If endpoints still mismatch beyond
+5) Stitch subpaths: concatenate sub‑MEPs with duplicate removal via RMSD. If endpoints mismatch beyond
    `search.bridge_rmsd_thresh`, insert a *bridge* GSM.
    - If the interface itself shows covalent changes, insert a **new recursive segment** instead of a bridge.
 6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
    refine `freeze_atoms` to match the first input. If `--ref-pdb` is supplied, merge pocket trajectories
-   into full templates and annotate segments.
+   into full templates and annotate segments (requires PDB pocket inputs).
 
 Outputs (& Directory Layout)
------
+----------------------------
 out_dir/
   ├─ summary.yaml                  : MEP‑level run summary (no full settings dump)
   ├─ mep.trj **or** mep.pdb        : Final MEP (XYZ → mep.trj; PDB inputs → only mep.pdb)
-  ├─ mep_w_ref.pdb                 : Full‑system merged MEP (requires --ref-pdb)
+  ├─ mep_w_ref.pdb                 : Full‑system merged MEP (requires --ref-pdb; expects PDB pocket inputs)
   ├─ mep_w_ref_seg_XX.pdb          : Per‑segment merged MEPs (only for segments with covalent changes; requires --ref-pdb)
   ├─ mep_seg_XX.trj / mep_seg_XX.pdb : Pocket‑only per‑segment paths (only when covalent changes present; .pdb if PDB input)
-  ├─ hei_seg_XX.xyz / hei_seg_XX.pdb : Pocket HEI and PDB (for bond‑change segments)
-  ├─ hei_w_ref_seg_XX.pdb          : Merged HEI per segment (requires --ref-pdb)
+  ├─ hei_seg_XX.xyz / hei_seg_XX.pdb : Pocket HEI (for bond‑change segments); optional hei_seg_XX.gjf if a .gjf template is available
+  ├─ hei_w_ref_seg_XX.pdb          : Merged HEI per segment (requires --ref-pdb; bond‑change segments only)
   ├─ mep_plot.png                  : ΔE profile vs image index (from trj2fig)
   ├─ energy_diagram.html           : State‑level energy diagram (Plotly; ΔE relative to R in kcal/mol)
   ├─ energy_diagram.png            : PNG export when 'kaleido' is available
   └─ segments/
-      ├─ seg_000_gsm/ ...          : Initial GSM for the first segment
-      ├─ seg_000_left_opt/ ...     : HEI−1 single‑structure optimization
-      ├─ seg_000_right_opt/ ...    : HEI+1 single‑structure optimization
-      ├─ seg_000_refine_gsm/ ...   : End1–End2 refinement GSM
-      ├─ seg_000_kink_...          : Kink interpolation optimizations (when applicable)
+      ├─ seg_000_gsm/ ...                : Initial GSM for the first segment
+      ├─ seg_000_left_<lbfgs|rfo>_opt/   : HEI−1 single‑structure optimization
+      ├─ seg_000_right_<lbfgs|rfo>_opt/  : HEI+1 single‑structure optimization
+      ├─ seg_000_refine_gsm/ ...         : End1–End2 refinement GSM (when bond changes are present)
+      ├─ seg_000_kink_...                : Kink interpolation optimizations (when applicable)
       ├─ seg_000_seg_002_bridge_gsm/ ... : Bridge GSMs (names indicate bridged segments)
-      ├─ seg_001_...               : Left‑side recursive substeps (if any)
-      └─ seg_002_...               : Right‑side recursive substeps (if any)
+      ├─ seg_001_...                     : Left‑side recursive substeps (if any)
+      └─ seg_002_...                     : Right‑side recursive substeps (if any)
 
-Notes:
+Notes
 -----
 - Inputs:
   - Provide ≥2 structures to `-i/--input` in reaction order. Either repeat `-i` or pass multiple paths after a single `-i`.
@@ -101,7 +121,6 @@ Notes:
 - Calculators & optimizers:
   - A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
   - GSM employs pysisyphus `GrowingString` + `StringOptimizer`; single‑structure uses LBFGS or RFO.
-- Configuration precedence: **CLI > YAML > defaults** (`geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`).
 - Final merge rule with `--align True`: when `--ref-pdb` is provided, the **first** reference PDB is used for *all* pairs
   in the final merge (passing one file is sufficient). Without `--align`, supply one reference PDB per input.
 - Console output prints the linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) and the exact
@@ -112,15 +131,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable  # Callable for type hints
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable
 
 import sys
 import traceback
 import textwrap
 import tempfile
 import os
-import time  # timing
-import re    # used in _segment_base_id
+import time
+import re
 
 import click
 import numpy as np
@@ -163,7 +182,7 @@ from .utils import (
     charge_option,
     spin_option,
 )
-from .trj2fig import run_trj2fig  # auto‑generate an energy plot when a .trj is produced
+from .trj2fig import run_trj2fig
 from .bond_changes import compare_structures, summarize_changes
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 
@@ -208,22 +227,23 @@ RFO_KW.update({
 
 # Covalent‑bond change detection
 BOND_KW: Dict[str, Any] = {
-    "device": "cuda",            # str, device for UMA graph analysis during bond detection
-    "bond_factor": 1.20,         # float, scaling of covalent radii for bond cutoff
-    "margin_fraction": 0.05,     # float, fractional margin to tolerate small deviations
-    "delta_fraction": 0.05,      # float, change threshold to flag bond formation/breaking
+    "device": "cuda",
+    "bond_factor": 1.20,
+    "margin_fraction": 0.05,
+    "delta_fraction": 0.05,
 }
 
 # Global search control
 SEARCH_KW: Dict[str, Any] = {
-    "max_depth": 10,               # int, recursion depth cap for segment refinement
-    "stitch_rmsd_thresh": 1.0e-4,  # float, ≤ this → treat endpoints as duplicates on stitching
-    "bridge_rmsd_thresh": 1.0e-4,  # float, > this → insert a bridge GSM
-    "rmsd_align": True,            # bool, retained for compatibility (ignored internally)
-    "max_nodes_segment": 10,       # int, max_nodes override for recursive segments
-    "max_nodes_bridge": 5,         # int, max_nodes override for bridge GSMs
-    "kink_max_nodes": 3,           # int, nodes for linear interpolation when skipping GSM at a kink
+    "max_depth": 10,
+    "stitch_rmsd_thresh": 1.0e-4,
+    "bridge_rmsd_thresh": 1.0e-4,
+    "rmsd_align": True,  # retained for compatibility (ignored internally)
+    "max_nodes_segment": 10,
+    "max_nodes_bridge": 5,
+    "kink_max_nodes": 3,
 }
+
 
 def _load_two_endpoints(
     paths: Sequence[Path],
@@ -319,6 +339,9 @@ def _maybe_convert_to_gjf(
     template: Optional[GjfTemplate],
     out_path: Optional[Path] = None,
 ) -> Optional[Path]:
+    """
+    Convert XYZ to Gaussian input using a template, when available.
+    """
     try:
         if template is None or (not xyz_path.exists()):
             return None
@@ -355,7 +378,7 @@ def _rmsd_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] =
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     """
-    Return for covalent bonds forming/breaking between `x` and `y`.
+    Determine if covalent bonds form/break between `x` and `y`. Returns (changed?, summary_text).
     """
     res = compare_structures(
         x, y,
@@ -369,8 +392,6 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     summary = summarize_changes(x, res, one_based=True)
     return (formed or broken), summary
 
-
-# ---------- Minimal GS configuration helper ----------
 
 def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, Any]:
     """
@@ -499,13 +520,12 @@ def _run_gsm_between(
     opt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
-    ref_pdb_path: Optional[Path],  # reference PDB for conversion
+    ref_pdb_path: Optional[Path],
     gjf_template: Optional[GjfTemplate] = None,
 ) -> GSMResult:
     """
     Run GSM between `gA`–`gB`, save segment outputs, and return images/energies/HEI index.
     """
-    # Attach calculator to endpoints
     for g in (gA, gB):
         g.set_calculator(shared_calc)
 
@@ -516,14 +536,11 @@ def _run_gsm_between(
         images=[gA, gB],
         calc_getter=calc_getter,
         **gs_cfg,
-)
+    )
 
-    # Track the first available Gaussian template for GJF conversions
-    _PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
-
-    _opt_args = dict(opt_cfg)
     seg_dir = out_dir / f"{tag}_gsm"
     seg_dir.mkdir(parents=True, exist_ok=True)
+    _opt_args = dict(opt_cfg)
     _opt_args["out_dir"] = str(seg_dir)
 
     optimizer = StringOptimizer(
@@ -581,14 +598,16 @@ def _run_gsm_between(
         lines = s.splitlines()
         if len(lines) >= 2 and lines[0].strip().isdigit():
             lines[1] = f"{hei_E:.12f}"
-            s = "\n" if s.endswith("\n") else ""
-            s = "\n".join([lines[0], f"{hei_E:.12f}"] + lines[2:]) + "\n"
+        s_out = "\n".join(lines)
+        if not s_out.endswith("\n"):
+            s_out += "\n"
         with open(hei_xyz, "w") as f:
-            f.write(s)
+            f.write(s_out)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
-        template = gjf_template if gjf_template is not None else _PRIMARY_GJF_TEMPLATE
         _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
-        _maybe_convert_to_gjf(hei_xyz, template, seg_dir / "gsm_hei.gjf")
+        # Optional GJF conversion can be added by passing a template into this function.
+        if gjf_template is not None:
+            _maybe_convert_to_gjf(hei_xyz, gjf_template, seg_dir / "gsm_hei.gjf")
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
@@ -602,7 +621,7 @@ def _optimize_single(
     sopt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
-    ref_pdb_path: Optional[Path],  # for PDB conversion
+    ref_pdb_path: Optional[Path],
 ):
     """
     Run single‑structure optimization (LBFGS/RFO) and return the final Geometry.
@@ -645,7 +664,7 @@ def _refine_between(
     opt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
-    ref_pdb_path: Optional[Path],  # for PDB conversion
+    ref_pdb_path: Optional[Path],
 ) -> GSMResult:
     """
     Refine End1–End2 via GSM (force climb=True).
@@ -658,12 +677,12 @@ def _maybe_bridge_segments(
     tail_g,
     head_g,
     shared_calc,
-    gs_cfg: Dict[str, Any],  # bridge‑specific GS config
+    gs_cfg: Dict[str, Any],
     opt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
     rmsd_thresh: float,
-    ref_pdb_path: Optional[Path],  # for PDB conversion
+    ref_pdb_path: Optional[Path],
 ) -> Optional[GSMResult]:
     """
     Run a bridge GSM if two segment endpoints are farther than the threshold.
@@ -680,15 +699,15 @@ def _stitch_paths(
     stitch_rmsd_thresh: float,
     bridge_rmsd_thresh: float,
     shared_calc,
-    gs_cfg,   # GS config for bridges (climb=False, max_nodes=search.max_nodes_bridge)
+    gs_cfg,
     opt_cfg,
     out_dir: Path,
     tag: str,
-    ref_pdb_path: Optional[Path],  # for PDB conversion
-    bond_cfg: Optional[Dict[str, Any]] = None,  # detect bond changes between adjacent parts
-    segment_builder: Optional[Callable[[Any, Any, str], "CombinedPath"]] = None,  # builds a recursive segment
-    segments_out: Optional[List["SegmentReport"]] = None,  # append inserted segment summaries in order
-    bridge_pair_index: Optional[int] = None,   # pair index to tag bridge frames across pairs
+    ref_pdb_path: Optional[Path],
+    bond_cfg: Optional[Dict[str, Any]] = None,
+    segment_builder: Optional[Callable[[Any, Any, str], "CombinedPath"]] = None,
+    segments_out: Optional[List["SegmentReport"]] = None,
+    bridge_pair_index: Optional[int] = None,
 ) -> Tuple[List[Any], List[float]]:
     """
     Concatenate path parts (images, energies). Insert bridge GSMs when needed.
@@ -827,7 +846,7 @@ def _stitch_paths(
 class CombinedPath:
     images: List[Any]
     energies: List[float]
-    segments: List[SegmentReport]  # segment summaries in final output order
+    segments: List[SegmentReport]
 
 
 def _build_multistep_path(
@@ -989,8 +1008,8 @@ def _build_multistep_path(
 
     stitched_imgs, stitched_E = _stitch_paths(
         parts,
-        stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-3)),
-        bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-2)),
+        stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-4)),
+        bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
         shared_calc=shared_calc,
         gs_cfg=gs_bridge_cfg,
         opt_cfg=opt_cfg,
@@ -1252,7 +1271,6 @@ def _merge_final_and_write(final_images: List[Any],
     """
     Merge the entire pocket MEP into full templates (for all pairs) and write outputs.
     """
-    # NOTE: In --align True mode, caller may pass a single ref PDB replicated per pair.
     if len(ref_pdbs) != len(pocket_inputs):
         raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
 
@@ -1343,7 +1361,7 @@ def _merge_final_and_write(final_images: List[Any],
         keymapA = keymaps[pi]
         keymapB = keymaps[pi+1]
 
-        # Existing output: per‑segment merged MEP only when covalent changes are present
+        # Per‑segment merged MEP only when covalent changes are present
         if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
             seg_indices_for_frames = [seg_idx] * len(seg_frames)
             blocks, _ = _merge_pair_to_full(
@@ -1420,7 +1438,7 @@ def _merge_final_and_write(final_images: List[Any],
     "-i", "--input",
     "input_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    multiple=True,   # allow: -i A -i B -i C   or   -i A B C
+    multiple=True,
     required=True,
     help=("Two or more structures in reaction order. "
           "Either repeat '-i' (e.g., '-i A -i B -i C') or use a single '-i' "
@@ -1462,7 +1480,6 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="If False, skip initial single-structure optimizations of inputs."
 )
-# Input alignment switch (default True)
 @click.option(
     "--align/--no-align",
     "align",
@@ -1472,7 +1489,6 @@ def _merge_final_and_write(final_images: List[Any],
           "using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, "
           "the first reference PDB will be used for all pairs in the final merge.")
 )
-# Full template PDBs for merge
 @click.option(
     "--ref-pdb",
     "ref_pdb_paths",
@@ -1505,7 +1521,8 @@ def cli(
     prepared_inputs: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
-    # --- Robustly accept both styles for -i/--input and --ref-pdb ---
+
+    # Robustly accept both styles for -i/--input and --ref-pdb
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
         i = 0
@@ -1521,7 +1538,7 @@ def cli(
                 i += 1
         return vals
 
-    argv_all = sys.argv[1:]  # drop program name
+    argv_all = sys.argv[1:]
     i_vals = _collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []
@@ -1547,9 +1564,8 @@ def cli(
                 )
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
-    # --- end of robust parsing fix ---
 
-    time_start = time.perf_counter()  # start timing
+    time_start = time.perf_counter()
     try:
         # --------------------------
         # 0) Input validation (multi‑structure)
@@ -1560,7 +1576,6 @@ def cli(
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
         if do_merge:
             if align:
-                # With --align True we will use only the *first* ref PDB for all pairs (replicated later).
                 pass
             else:
                 if len(ref_pdb_paths) != len(input_paths):
@@ -1658,7 +1673,6 @@ def cli(
         click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
-        # Echo preoptimization and alignment flags
         click.echo(pretty_block("run_flags", {"preopt": bool(preopt), "align": bool(align)}))
 
         # --------------------------
@@ -1767,8 +1781,8 @@ def cli(
                 parts = [(combined_imgs, combined_Es), (pair_path.images, pair_path.energies)]
                 combined_imgs, combined_Es = _stitch_paths(
                     parts=parts,
-                    stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-3)),
-                    bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-2)),
+                    stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-4)),
+                    bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
                     shared_calc=shared_calc,
                     gs_cfg=gs_bridge_cfg,
                     opt_cfg=opt_cfg,
@@ -1815,7 +1829,6 @@ def cli(
             except Exception as e:
                 click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
         else:
-            # Create a temporary .trj for plotting/conversion, but do not keep it
             tmp_trj = tempfile.NamedTemporaryFile("w+", suffix=".trj", delete=False)
             tmp_trj_path = Path(tmp_trj.name)
             tmp_trj.close()
@@ -1838,9 +1851,8 @@ def cli(
                 except Exception:
                     pass
 
-        # ---- Pocket‑only per‑segment trajectories & HEIs ----
+        # Pocket‑only per‑segment trajectories & HEIs (bond‑change segments only)
         try:
-            # Map frames → segment indices
             frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
             seg_to_frames: Dict[int, List[int]] = {}
             for ii, sidx in enumerate(frame_seg_indices):
@@ -1854,7 +1866,6 @@ def cli(
                 if not idxs:
                     continue
 
-                # (A) Only for bond‑change segments: pocket‑only per‑segment path
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     seg_imgs = [combined_all.images[j] for j in idxs]
                     seg_Es = [combined_all.energies[j] for j in idxs]
@@ -1864,7 +1875,6 @@ def cli(
                     if ref_pdb_for_segments is not None:
                         _maybe_convert_to_pdb(seg_trj, ref_pdb_for_segments, out_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb")
 
-                # (B) HEI pocket files only for bond‑change segments
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     energies_seg = [combined_all.energies[j] for j in idxs]
                     imax_rel = int(np.argmax(np.array(energies_seg, dtype=float)))
@@ -1879,7 +1889,6 @@ def cli(
                     _maybe_convert_to_gjf(hei_trj, _PRIMARY_GJF_TEMPLATE, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.gjf")
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
-        # ---- END ----
 
         if do_merge:
             click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
@@ -1888,7 +1897,7 @@ def cli(
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:
                     raise click.BadParameter("--ref-pdb must provide at least one file when performing final merge with --align True.")
                 first_ref = Path(ref_pdb_paths[0])
-                ref_list_for_merge = [first_ref for _ in input_paths]  # replicate for all (length == n_inputs)
+                ref_list_for_merge = [first_ref for _ in input_paths]
             else:
                 ref_list_for_merge = [Path(p) for p in ref_pdb_paths]
 
@@ -1947,10 +1956,9 @@ def cli(
             click.echo("\n[segments] (no segment reports)")
 
         # --------------------------
-        # 6) Energy diagram from bond‑change segments (state labeling; **compressed**)
+        # 6) Energy diagram (compressed state sequence)
         # --------------------------
         try:
-            # Map each segment index → list of frame indices
             frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
             seg_to_frames: Dict[int, List[int]] = {}
             for ii, sidx in enumerate(frame_seg_indices):
@@ -1958,7 +1966,6 @@ def cli(
                     continue
                 seg_to_frames.setdefault(int(sidx), []).append(ii)
 
-            # Build TS groups (each bond‑change segment starts a group)
             ts_groups: List[Dict[str, Any]] = []
             ts_count = 0
             current: Optional[Dict[str, Any]] = None
@@ -1969,7 +1976,6 @@ def cli(
                     continue
 
                 if s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)":
-                    # New TS group
                     ts_count += 1
                     imax = max(idxs, key=lambda j: combined_all.energies[j])
                     ts_e = float(combined_all.energies[imax])
@@ -1984,15 +1990,11 @@ def cli(
                     }
                     ts_groups.append(current)
                 else:
-                    # Kink/bridge: fold into current group as "extra" and update tail energy
                     if current is not None:
                         current["tail_im_energy"] = float(combined_all.energies[idxs[-1]])
                         current["has_extra"] = True
-                    else:
-                        # pre‑TS region without bond change → ignore
-                        pass
 
-            # [CLAMP] Clip endpoints to first/last bond‑change segment edges
+            # Clip endpoints to first/last bond‑change segment edges
             start_idx_for_diag = 0
             end_idx_for_diag = len(combined_all.energies) - 1
             bc_segments_in_order: List[SegmentReport] = [
@@ -2009,7 +2011,6 @@ def cli(
                 if idxs_last_bc:
                     end_idx_for_diag = int(idxs_last_bc[-1])
 
-            # Compose compressed labels/energies & human‑readable chain
             labels: List[str] = ["R"]
             energies_eh: List[float] = [float(combined_all.energies[start_idx_for_diag])]
             chain_tokens: List[str] = ["R"]
@@ -2017,36 +2018,29 @@ def cli(
             for i, g in enumerate(ts_groups, start=1):
                 last_group = (i == len(ts_groups))
 
-                # TS
                 labels.append(g["ts_label"])
                 energies_eh.append(g["ts_energy"])
                 chain_tokens.extend(["-->", g["ts_label"]])
 
-                # For the **last** TS group: compress directly to P (no IMs)
                 if last_group:
                     continue
 
-                # IM1 (always keep)
                 labels.append(f"IM{i}_1")
                 energies_eh.append(g["first_im_energy"])
                 chain_tokens.extend(["-->", f"IM{i}_1"])
 
-                # IM2 (represent all extra kink/bridge before next TS)
                 if g["has_extra"]:
                     labels.append(f"IM{i}_2")
                     energies_eh.append(g["tail_im_energy"])
                     chain_tokens.extend(["-|-->", f"IM{i}_2"])
 
-            # Product
             labels.append("P")
             energies_eh.append(float(combined_all.energies[end_idx_for_diag]))
             chain_tokens.extend(["-->", "P"])
 
-            # Convert to kcal/mol relative to R
             e0 = energies_eh[0]
             energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
 
-            # Log exact inputs to build_energy_diagram, and the human‑readable chain
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
             energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
             click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")

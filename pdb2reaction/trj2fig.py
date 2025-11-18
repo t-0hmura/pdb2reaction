@@ -6,18 +6,24 @@ trj2fig — Energy-profile utility for XYZ trajectories
 
 Usage (CLI)
 -----
-    Minimal:
-        pdb2reaction trj2fig -i traj.xyz
+    Package CLI (Click-based):
+        Minimal:
+            pdb2reaction trj2fig -i traj.xyz
 
-    Full (all key options; multiple outputs allowed):
-        pdb2reaction trj2fig -i traj.xyz \
-            -o energy.png energy.html energy.svg energy.pdf energy.csv \
-            -r init \
-            --unit kcal \
-            --reverse-x
+        Full (all key options; multiple outputs allowed):
+            pdb2reaction trj2fig -i traj.xyz \
+                -o energy.png energy.html energy.svg energy.pdf energy.csv \
+                -r init \
+                --unit kcal \
+                --reverse-x
 
-Examples::
-    # 1) High-resolution PNG with x-axis reversed (reference is the leftmost point = last frame)
+    Standalone script (argparse):
+        python trj2fig.py -i traj.xyz -o energy.png energy.html
+
+Examples
+-----
+    # 1) High-resolution PNG with x-axis reversed
+    #    (reference is the leftmost point = last frame)
     pdb2reaction trj2fig -i traj.xyz --reverse-x
 
     # 2) CSV + figure (reference frame #5; output values in hartree)
@@ -27,17 +33,16 @@ Examples::
     pdb2reaction trj2fig -i traj.xyz -o energy.png energy.html energy.pdf
 
 Description
------ 
+-----
     - Extracts Hartree energies from the second-line comment of each XYZ frame
-      (uses the first floating-point number on that line).
+      (uses the first decimal number on that line; scientific notation/exponents are not parsed).
     - Computes either ΔE (relative to a chosen reference) or absolute E; units: kcal/mol (default) or hartree.
       Reference specification:
         - -r init  : use the initial frame (or the last frame if --reverse-x is set).
         - -r None  : use absolute energies (no reference). Also accepts "none"/"null" (case-insensitive).
         - -r <int> : use the given 0-based frame index as the reference.
-    - Generates a polished Plotly figure (no title) with bold ticks, consistent fonts, markers,
-      and a smoothed spline curve. Supported figure outputs: PNG (default), JPEG/JPG, HTML,
-      SVG, PDF.
+    - Generates a polished Plotly figure (no title) with strong ticks, consistent fonts, markers,
+      and a smoothed spline curve. Supported figure outputs: PNG (default), JPEG/JPG, HTML, SVG, PDF.
     - Optionally writes a CSV table of the data.
     - --reverse-x flips the x-axis so the last frame appears on the left
       (and makes -r init point to that last frame).
@@ -45,21 +50,25 @@ Description
 Outputs (& Directory Layout)
 -----
     - Default output when no -o is provided: ./energy.png (current working directory).
-    - You can provide multiple filenames to -o and/or repeat -o to emit several outputs at once.
+    - You can provide multiple filenames to -o. In the package CLI (Click), you may also repeat -o
+      and/or list extra filenames positionally after the options.
       Supported formats:
-        - .png  : High-resolution raster figure (scale=2).
-        - .jpg/.jpeg : Raster figure (same rendering path as PNG).
-        - .html : Standalone interactive Plotly figure.
-        - .svg  : Vector figure.
-        - .pdf  : Vector figure.
-        - .csv  : Tabular data with columns:
-                  frame (0-based), energy_hartree,
-                  <delta_kcal|energy_kcal|delta_hartree|energy_hartree> depending on --unit and reference.
+        - .png       : High-resolution raster figure (scale=2).
+        - .jpg/.jpeg : Raster figure.
+        - .html      : Standalone interactive Plotly figure.
+        - .svg       : Vector figure.
+        - .pdf       : Vector figure.
+        - .csv       : Tabular data with columns:
+                       frame (0-based), energy_hartree (raw),
+                       and one of {delta_kcal, energy_kcal, delta_hartree, energy_hartree}
+                       depending on --unit and reference selection.
+                       Note: when --unit hartree and -r None, the second and third columns
+                       are identical by design.
 
-Notes:
+Notes
 -----
     - The legacy --output-peak option has been removed.
-    - If a frame comment lacks a parseable energy, an error is raised; if no energies are found, the run fails.
+    - If a frame comment lacks a parseable decimal number, an error is raised; if no energies are found, the run fails.
     - Unsupported file extensions in -o cause an error.
 """
 
@@ -88,6 +97,9 @@ MARKER_SIZE = 6        # marker size
 def read_energies_xyz(fname: Path | str) -> List[float]:
     """
     Extract Hartree energies from the second-line comment of each XYZ frame.
+
+    The first decimal number found on the comment line is used
+    (scientific notation/exponents are not parsed).
     """
     energies: List[float] = []
     with open(fname, encoding="utf-8") as fh:
@@ -140,14 +152,13 @@ def _resolve_reference_index(
     """
     Decide the reference index and whether to compute a ΔE series.
 
-    Returns (reference_index or None, is_delta)
+    Returns (reference_index or None, is_delta).
     """
     if ref_spec is None:
         return None, False  # absolute energies
     if ref_spec == "init":
         idx = 0 if not reverse_x else n_frames - 1
         return idx, True
-    # integer index
     idx = int(ref_spec)
     if idx < 0 or idx >= n_frames:
         raise IndexError(f"Reference index {idx} out of range (0..{n_frames-1}).")
@@ -163,7 +174,7 @@ def transform_series(
     """
     Compute the y-series and its axis label.
 
-    Returns (values, ylabel, is_delta)
+    Returns (values, ylabel, is_delta).
     """
     ref_spec = _parse_reference_spec(ref_spec_raw)
     ref_idx, is_delta = _resolve_reference_index(len(energies_hartree), ref_spec, reverse_x)
@@ -205,7 +216,7 @@ def build_figure(delta_or_abs: Sequence[float], ylabel: str, reverse_x: bool) ->
     """
     fig = go.Figure(
         go.Scatter(
-            x=list(range(len(delta_or_abs)))),
+            x=list(range(len(delta_or_abs))))
     )
     fig.data[0].update(
         y=list(delta_or_abs),
@@ -296,7 +307,7 @@ def parse_cli() -> argparse.Namespace:
         "--out",
         nargs="+",
         default=["energy.png"],
-        help="Output file(s) [.png/.html/.svg/.pdf/.csv]. Multiple names allowed.",
+        help="Output file(s) [.png/.jpg/.jpeg/.html/.svg/.pdf/.csv]. Multiple names allowed.",
     )
     p.add_argument("--unit", choices=["kcal", "hartree"], default="kcal", help="Energy unit")
     p.add_argument(
@@ -344,7 +355,7 @@ def main() -> None:
 @click.option(
     "-i",
     "--input",
-    "input_path",  # explicit internal argument name
+    "input_path",
     required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="XYZ trajectory file",
@@ -353,14 +364,14 @@ def main() -> None:
     "-o",
     "--out",
     "outs",
-    multiple=True,                      # allow repeating -o
-    default=(),                         # default is empty (we inject the fallback later)
+    multiple=True,
+    default=(),
     type=click.Path(dir_okay=False, path_type=Path),
-    help="Output file(s). You can repeat -o, and/or list extra filenames after options "
-         "(.png/.html/.svg/.pdf/.csv). If nothing is given, defaults to energy.png.",
+    help="Output file(s). You can repeat -o and/or list extra filenames after options "
+         "(.png/.jpg/.jpeg/.html/.svg/.pdf/.csv). If nothing is given, defaults to energy.png.",
 )
 @click.argument(
-    "extra_outs",                        # also accept extra filenames provided positionally after options
+    "extra_outs",
     nargs=-1,
     type=click.Path(dir_okay=False, path_type=Path),
 )
@@ -392,7 +403,6 @@ def cli(
     # Combine outputs from -o with positional filenames that follow the options
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
-        # Use the default when nothing is specified
         all_outs = [Path("energy.png")]
     run_trj2fig(input_path, all_outs, unit, reference, reverse_x)
 

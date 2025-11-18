@@ -1,11 +1,11 @@
 # pdb2reaction/scan.py
 
 """
-scan — Bond-length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
-====================================================================
+scan — Bond‑length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
+=====================================================================================================
 
 Usage (CLI)
------
+-----------
     # Minimal (define at least one stage)
     pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
         --scan-lists "[(I,J,TARGET_ANG)]"
@@ -27,7 +27,8 @@ Usage (CLI)
         [--preopt {True|False}] \
         [--endopt {True|False}]
 
-Examples::
+Examples
+--------
     # Single-stage, minimal inputs (PDB)
     pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
 
@@ -40,64 +41,60 @@ Examples::
 
 
 Description
------
-Runs a staged, bond-length–driven scan. At each step, harmonic distance wells are applied to
-specified atom pairs and the full structure is relaxed. This lean implementation supports only
-the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead and speed.
+-----------
+Runs a staged, bond‑length–driven scan. At each step, harmonic distance wells are applied to
+specified atom pairs and the full structure is relaxed. This implementation supports only
+the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead.
 
 Scheduling
-  - For scan tuples [(i, j, target_Å)], compute the Å-space displacement Δ = target − current_distance_Å.
+  - For scan tuples [(i, j, target_Å)], compute the Å‑space displacement Δ = target − current_distance_Å.
   - Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
-  - Per-pair step width δ_k = Δ / N (Å).
+  - Per‑pair step width δ_k = Δ / N (Å).
   - At step s (1..N), the temporary target is r_k(s) = r_k(0) + s · δ_k (Å).
   - Relax the full structure under the harmonic wells for that step.
 
 Harmonic bias model
   - E_bias = Σ ½ · k · (|r_i − r_j| − target_k)².
-  - k is provided in eV/Å² (CLI/YAML) and converted once to Hartree/Bohr² internally.
+  - k is provided in eV/Å² (CLI/YAML) and is converted once to Hartree/Bohr² by the bias wrapper.
   - Coordinates are in Bohr; the UMA base returns energies in Hartree and forces in Hartree/Bohr.
 
 Optional optimizations
   - --preopt: preoptimize the initial structure **without bias** before the scan; writes
     `preopt/result.xyz` (and `.pdb` if the input was PDB), then continues from that geometry.
-  - --endopt: After **each stage** completes its biased stepping, perform an additional **unbiased**
+  - --endopt: after **each stage** completes its biased stepping, perform an additional **unbiased**
     optimization of that stage’s final structure before writing outputs.
-  - For each stage, covalent-bond **formation/breaking** is reported between the stage’s first
-    structure and its final structure (the latter is the end-of-stage optimized result when
+  - For each stage, covalent‑bond **formation/breaking** is reported between the stage’s first
+    structure and its final structure (the latter is the end‑of‑stage optimized result when
     `--endopt True`).
+  - By default, both `--preopt` and `--endopt` are enabled.
 
-
-Outputs (& Directory Layout)
------
+Outputs (& directory layout)
+----------------------------
 Base output directory (default `./result_scan/`):
   preopt/                         # created if --preopt True
     result.xyz
     result.gjf                    # if the original input provided a GJF template
     result.pdb                    # if input was PDB
   stage_{k:02d}/                  # for each stage k = 1..K
-    result.xyz                    # final structure for the stage (post end-of-stage processing)
+    result.xyz                    # final structure for the stage (post end‑of‑stage processing)
     result.gjf                    # if the original input provided a GJF template
     result.pdb                    # if input was PDB
     scan.trj                      # only if --dump True (concatenated biased step frames)
     scan.pdb                      # only if --dump True and input was PDB
 
-
-Notes:
+Notes
 -----
 - UMA only: `uma_pysis` is the sole supported calculator.
 - Optimizers: `--opt-mode light|lbfgs` selects LBFGS; `--opt-mode heavy|rfo` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
-- Indexing: (i, j) are 1-based by default; use `--zero-based` if your tuples are 0-based.
+- Indexing: (i, j) are 1‑based by default; use `--zero-based` if your tuples are 0‑based.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
   k converted from eV/Å² to Hartree/Bohr².
 - Performance simplifications:
-  - Bias wrapper implements only the (elem, coords) two-argument API used by `pysisyphus.Geometry`
-    with `uma_pysis`; Geometry-style 1-arg fallbacks and broad shape inference are removed.
-  - Bias is computed directly in a.u. using a pre-converted k to avoid repeated unit conversions.
   - Trajectories are accumulated only when `--dump` is True.
-  - Energy is not re-queried for per-frame annotation during the scan to avoid extra calls.
-- PDB convenience: With `--freeze-links` (default True for PDB), parent atoms of link hydrogens
-  are detected and frozen, and merged with any user-specified frozen atoms.
+  - Energy is not re‑queried for per‑frame annotation during the scan to avoid extra calls.
+- PDB convenience: With `--freeze-links` (default True), parent atoms of link hydrogens
+  are detected and frozen for PDB inputs, and merged with any user‑specified frozen atoms.
 - YAML: Additional arguments can be supplied via `--args-yaml` under sections:
   `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, and `bond`.
 """
@@ -301,7 +298,8 @@ def _schedule_for_stage(
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     """
-    Return for covalent bonds forming/breaking between `x` and `y`.
+    Return whether covalent bonds formed or broke between `x` and `y`,
+    and a one-based human-readable summary.
     """
     res = compare_structures(
         x, y,
@@ -368,9 +366,9 @@ def _snapshot_geometry(g) -> Any:
 @click.option("--bias-k", type=float, default=100, show_default=True,
               help="Harmonic well strength k [eV/Å^2].")
 @click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
-              help="Maximum optimizer cycles per step.")
+              help="Maximum optimizer cycles per relaxation (preopt, per-step, and end-of-stage).")
 @click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="Per-step relaxation mode: light (=LBFGS) or heavy (=RFO).")
+              help="Relaxation mode: light (=LBFGS) or heavy (=RFO).")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
@@ -390,7 +388,7 @@ def _snapshot_geometry(g) -> Any:
     help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias, bond).",
 )
 @click.option("--preopt", type=click.BOOL, default=True, show_default=True,
-              help="preoptimize initial structure without bias before the scan.")
+              help="Preoptimize initial structure without bias before the scan.")
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
 def cli(
@@ -415,8 +413,8 @@ def cli(
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
     try:
-        time_start = time.perf_counter()  # start timing
-        
+        time_start = time.perf_counter()
+
         # ------------------------------------------------------------------
         # 1) Assemble configuration (defaults ← YAML ← CLI)
         # ------------------------------------------------------------------
@@ -483,7 +481,7 @@ def cli(
         K = len(stages)
         click.echo(f"[scan] Received {K} stage(s).")
 
-        # Prepare end-of-run summary collector (minimal additions)
+        # Prepare end-of-run summary collector
         stages_summary: List[Dict[str, Any]] = []
 
         # ------------------------------------------------------------------
@@ -523,8 +521,7 @@ def cli(
         # Attach freeze indices to Geometry for optimizer awareness
         if freeze:
             try:
-                import numpy as _np
-                geom.freeze_atoms = _np.array(freeze, dtype=int)
+                geom.freeze_atoms = np.array(freeze, dtype=int)
             except Exception:
                 pass
 
@@ -579,7 +576,7 @@ def cli(
             click.echo(f"\n--- Stage {k}/{K} ---")
             click.echo(f"Targets (i,j,target Å): {tuples}")
 
-            # Snapshot **beginning** geometry of this stage for bond-change comparison
+            # Snapshot beginning geometry of this stage for bond-change comparison
             start_geom_for_stage = _snapshot_geometry(geom)
 
             # Current coordinates (Bohr) and schedule computed in Å
@@ -590,7 +587,7 @@ def cli(
             click.echo(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}")
             click.echo(f"[stage {k}] steps N = {Nsteps}")
 
-            # ---- record per-stage summary (for final echo) ----
+            # Record per-stage summary
             srec: Dict[str, Any] = {
                 "index": int(k),
                 "pairs_1based": [(int(i)+1, int(j)+1) for (i, j, _) in tuples],
@@ -601,7 +598,6 @@ def cli(
                 "bond_change": {"changed": None, "summary": ""},
             }
             stages_summary.append(srec)
-            # ---------------------------------------------------
 
             trj_blocks: List[str] = [] if dump else None
 
@@ -620,7 +616,7 @@ def cli(
                     except OptimizationError as e:
                         click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
 
-                # ---- Echo bond changes: start vs final (possibly endopt) ----
+                # Bond changes: start vs final (possibly endopt)
                 try:
                     changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
                     click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
@@ -628,15 +624,10 @@ def cli(
                         click.echo(textwrap.indent(summary.strip(), prefix="  "))
                     if not changed:
                         click.echo("  (no covalent changes detected)")
-                    # record to summary
-                    try:
-                        srec["bond_change"]["changed"] = bool(changed)
-                        srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
-                    except Exception:
-                        pass
+                    srec["bond_change"]["changed"] = bool(changed)
+                    srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
                 except Exception as e:
                     click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
-                # -------------------------------------------------------------
 
                 # Write current (possibly endopted) geometry as the stage result
                 final_xyz = stage_dir / "result.xyz"
@@ -661,8 +652,7 @@ def cli(
 
                 # Update bias well targets (still in Å; wrapper converts internally)
                 biased.set_pairs([(i, j, t) for ((i, j), t) in zip(pairs, step_targets)])
-                # IMPORTANT: only the calculator's internal state changed -> flush Geometry caches
-                # Re-attaching the same calculator marks the geometry "dirty" so the next call recomputes E/F
+                # Flushing Geometry caches by re-attaching the calculator
                 geom.set_calculator(biased)
 
                 # Build optimizer and relax (with bias)
@@ -692,7 +682,7 @@ def cli(
                 except OptimizationError as e:
                     click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
 
-            # ---- Echo bond changes: start vs final (possibly endopt) ----
+            # Bond changes: start vs final (possibly endopt)
             try:
                 changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
                 click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
@@ -700,15 +690,10 @@ def cli(
                     click.echo(textwrap.indent(summary.strip(), prefix="  "))
                 if not changed:
                     click.echo("  (no covalent changes detected)")
-                # record to summary
-                try:
-                    srec["bond_change"]["changed"] = bool(changed)
-                    srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
-                except Exception:
-                    pass
+                srec["bond_change"]["changed"] = bool(changed)
+                srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
             except Exception as e:
                 click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
-            # -------------------------------------------------------------
 
             # Stage outputs
             if dump and trj_blocks:
@@ -741,12 +726,11 @@ def cli(
         # ------------------------------------------------------------------
         # 5) Final summary echo (human‑friendly)
         # ------------------------------------------------------------------
-        def _echo_human_summary(_stages: List[Dict[str, Any]], _max_step_size: float) -> None:
+        def _echo_summary(_stages: List[Dict[str, Any]]) -> None:
             """
-            Print a readable end-of-run summary like the requested example.
+            Print a readable end-of-run summary.
             """
             def _fmt_target_value(x: float) -> str:
-                # 2.600 -> "2.6", 1.500 -> "1.5"
                 s = f"{x:.3f}".rstrip("0").rstrip(".")
                 return s
 
@@ -782,7 +766,7 @@ def cli(
                     click.echo("  (no covalent changes detected)")
                 click.echo("")  # blank line between stages
 
-        _echo_human_summary(stages_summary, float(max_step_size))
+        _echo_summary(stages_summary)
         # ------------------------------------------------------------------
 
         click.echo("\n=== Scan finished ===\n")

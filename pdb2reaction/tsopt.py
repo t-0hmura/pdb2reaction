@@ -16,11 +16,12 @@ Usage (CLI)
                         [--args-yaml args.yaml]
                         [--hessian-calc-mode Analytical|FiniteDifference]
 
-Examples::
-    # Minimal (recommended to always specify charge and spin)
+Examples
+-----
+    # Minimal (recommended: always specify charge and spin)
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_tsopt/
 
-    # Light mode (HessianDimer) with YAML overrides and finite-difference Hessian
+    # Light mode (Hessian Dimer) with YAML overrides and finite-difference Hessian
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 \
       --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
       --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
@@ -34,73 +35,88 @@ Examples::
 Description
 -----
 Transition-state optimization with two modes:
-- light: HessianDimer TS search with periodic Hessian updates and a memory-efficient
-  flatten loop to remove excess imaginary modes.
-- heavy: RS-I-RFO Hessian-based TS optimizer.
-- CLI `--opt-mode` accepts the aliases shown above: light/lbfgs/dimer/simple/
-  simpledimer/hessian_dimer map to the Hessian Dimer workflow, whereas
-  heavy/rfo/rsirfo/rs-i-rfo select the RS-I-RFO workflow.
 
-Configuration is driven by YAML overrides for sections: geom, calc, opt, hessian_dimer,
-and rsirfo. The hessian_dimer section accepts nested dimer and lbfgs dictionaries that
-are forwarded to the respective pysisyphus components.
+- **light**: Hessian Dimer TS search with periodic Hessian-based direction refresh and a
+  memory-efficient flatten loop to eliminate excess imaginary modes. After the initial dimer
+  stage, one exact Hessian is evaluated and its active (PHVA) block is kept and updated by
+  Bofill (SR1/MS and PSB blend) between geometry updates. Once only one imaginary mode remains,
+  a final exact Hessian is computed for frequency analysis.
+  *If `root != 0`, the specified root is used only to seed the initial dimer direction; the
+  algorithm then follows the most negative mode (`root = 0`) on subsequent updates.*
 
-Structures are loaded via pysisyphus.helpers.geom_loader (PDB/XYZ/TRJ/etc.). The UMA
-calculator (pdb2reaction.uma_pysis) provides energies, gradients, and Hessians. For PDB
-inputs, optimization trajectories and final_geometry.xyz are also converted to PDB. The
-final imaginary mode is always written as both .trj and .pdb.
+- **heavy**: RS-I-RFO Hessian-based TS optimizer.
 
-Key behaviors and algorithmic notes:
-- Direction selection: choose which imaginary mode to follow using root
-  (0 = most negative, 1 = second-most, ...), consistent with RS-I-RFO. For root == 0,
-  the implementation prefers torch.lobpcg for the lowest eigenpair and falls back to
-  torch.linalg.eigh as needed.
-- PHVA and TR projection: an active-degree-of-freedom (PHVA) subspace with translation/
-  rotation (TR) projection reduces GPU memory use. This mirrors freq.py and respects
-  freeze_atoms (particularly in light mode).
-- Flatten loop (light mode): a single exact active-subspace Hessian is kept in memory.
-  After the initial Dimer stage, one exact Hessian is evaluated and the PHVA block
-  extracted. Between geometry updates a Bofill update (SR1/MS and PSB blend) is applied
-  to the active-space Cartesian Hessian using displacements delta = Dx and gradient
-  differences y = Dg. Each iteration: estimate imaginary modes from the updated active
-  Hessian (mass-weighted, TR-projected), perform a flatten step, update the Hessian via
-  Bofill, refresh the Dimer direction, run a Dimer LBFGS segment, and apply a final
-  Bofill update. Continue until only one imaginary mode remains, then compute a final
-  exact Hessian for frequency analysis.
-- UMA integration: freeze_atoms are passed explicitly, and UMA defaults to
-  return_partial_hessian=True so PHVA returns an active-subspace block when applicable.
-  --hessian-calc-mode selects Analytical or FiniteDifference Hessians.
+The CLI `--opt-mode` accepts the aliases shown above:
+`light/lbfgs/dimer/simple/simpledimer/hessian_dimer` map to the Hessian Dimer workflow, and
+`heavy/rfo/rsirfo/rs-i-rfo` select RS-I-RFO.
 
+Configuration is driven by YAML overrides for sections: `geom`, `calc`, `opt`, `hessian_dimer`,
+and `rsirfo`. The `hessian_dimer` section accepts nested `dimer` and `lbfgs` dictionaries
+forwarded to the respective pysisyphus components. The optional key `use_lobpcg` in
+`hessian_dimer` is **deprecated and ignored**; the implementation always tries LOBPCG for the
+lowest eigenpair when `root == 0`, falling back to `torch.linalg.eigh` as needed.
+
+Structures are loaded via `pysisyphus.helpers.geom_loader` (PDB/XYZ/TRJ/etc.). The UMA
+calculator (`pdb2reaction.uma_pysis`) provides energies, gradients, and Hessians. UMA may return
+an active-subspace (partial) Hessian block when `freeze_atoms` are present; finite-difference
+Hessians honor the active subspace. `--hessian-calc-mode` selects Analytical or FiniteDifference.
+
+For PDB inputs, optimization trajectories and the final geometry are also converted to PDB.
+The final imaginary mode is always written as both `.trj` and `.pdb`.
+
+Key behaviors and algorithmic notes
+-----
+- **Direction selection**: choose which imaginary mode to follow using `root`
+  (0 = most negative). For `root == 0`, the code prefers `torch.lobpcg` for the lowest eigenpair
+  and falls back to `torch.linalg.eigh` when necessary. In *light* mode with `root != 0`,
+  the initial dimer direction uses that root once and subsequent updates default to `root = 0`.
+
+- **PHVA and TR projection**: an active-degree-of-freedom (PHVA) subspace with translation/
+  rotation (TR) projection reduces GPU memory use. This respects `freeze_atoms`. A heavy
+  clone-based TR self-check is disabled to conserve VRAM.
+
+- **Flatten loop (light mode)**: one exact active-subspace Hessian is evaluated and then updated
+  in-place by Bofill using displacements Δx and gradient differences Δg. Each iteration:
+  estimate imaginary modes from the updated active Hessian (mass-weighted, TR-projected),
+  perform a flatten step, update the Hessian via Bofill, refresh the dimer direction, run a
+  dimer–LBFGS segment, and apply a final Bofill update. Continue until only one imaginary mode
+  remains, then compute a final exact Hessian for frequency analysis.
+
+- **UMA integration**: `freeze_atoms` are propagated to UMA. Finite-difference Hessians honor
+  the active subspace. UMA defaults to returning a partial (active) Hessian when applicable.
 
 Outputs (& Directory Layout)
 -----
-DIR (default: ./result_tsopt/)
-  ├── final_geometry.xyz
-  ├── final_geometry.pdb                 # written if input was PDB
-  ├── optimization_all.trj               # light mode, when --dump True
-  ├── optimization_all.pdb               # PDB conversion of the above (PDB input)
-  ├── optimization.trj                   # heavy mode (RS-I-RFO)
-  ├── optimization.pdb                   # PDB conversion of the above (PDB input)
-  ├── vib/
-  │     ├── final_imag_mode_+/-XXXX.Xcm-1.trj
-  │     └── final_imag_mode_+/-XXXX.Xcm-1.pdb
-  └── .dimer_mode.dat                    # internal dimer orientation seed (light mode)
+DIR (default: `./result_tsopt/`)
+  ├── `final_geometry.xyz`
+  ├── `final_geometry.pdb`                 # written if input was PDB
+  ├── `optimization_all.trj`               # light mode, when `--dump True`
+  ├── `optimization_all.pdb`               # PDB conversion of the above (PDB input)
+  ├── `optimization.trj`                   # heavy mode (RS-I-RFO)
+  ├── `optimization.pdb`                   # PDB conversion of the above (PDB input)
+  ├── `vib/`
+  │     ├── `final_imag_mode_+/-XXXX.Xcm-1.trj`
+  │     └── `final_imag_mode_+/-XXXX.Xcm-1.pdb`
+  └── `.dimer_mode.dat`                    # internal dimer orientation seed (light mode)
 
-
-Notes:
+Notes
 -----
-- Charge/spin resolution: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when the input is `.gjf` and otherwise
-  default to `0`/`1`. Override them explicitly to avoid unphysical conditions.
-- --opt-mode light runs the HessianDimer with periodic Hessian-based direction refresh;
-  --opt-mode heavy runs RS-I-RFO.
-- --freeze-links is PDB-only and freezes parents of link hydrogens; these indices are
-  merged into geom.freeze_atoms and propagated to calc.freeze_atoms for UMA.
-- --hessian-calc-mode overrides calc.hessian_calc_mode from YAML. Finite-difference
-  Hessians will honor the active subspace when freeze_atoms are present.
-- Convergence and stepping behavior are configurable via YAML in hessian_dimer.lbfgs,
-  hessian_dimer.dimer, opt, and rsirfo sections (e.g., thresholds, trust radii, memory).
-- Imaginary-mode detection uses a default threshold of ~5 cm^-1; the primary mode written
-  at the end is chosen via root.
+- **Charge/spin**: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when the input
+  is `.gjf`; otherwise they default to `0` and `1`. Override explicitly to avoid unphysical
+  conditions.
+
+- `--opt-mode light` runs Hessian Dimer with periodic Hessian-based direction refresh;
+  `--opt-mode heavy` runs RS-I-RFO.
+
+- `--freeze-links` is PDB-only and freezes parents of link hydrogens; these indices are merged
+  into `geom.freeze_atoms` and also propagated to `calc.freeze_atoms` for UMA.
+
+- Convergence and stepping behavior are configurable via YAML in
+  `hessian_dimer.lbfgs`, `hessian_dimer.dimer`, `opt`, and `rsirfo` sections
+  (e.g., thresholds, trust radii, memory).
+
+- Imaginary-mode detection uses a default threshold of ~5 cm⁻¹; the primary mode written
+  at the end is chosen via `root`.
 """
 
 from __future__ import annotations
@@ -232,10 +248,9 @@ def _self_check_tr_projection(H_t: torch.Tensor,
                               masses_au_t: torch.Tensor,
                               freeze_idx: Optional[List[int]] = None) -> Tuple[float, float, int]:
     """
-    (Low-VRAM) Skipped heavy clone-based check. Keep signature for compatibility.
+    Lightweight TR-projection diagnostic. Returns zeros for residuals (clone-based
+    checks disabled to conserve VRAM) and the rank estimate of the TR basis used.
     """
-    # To conserve VRAM, do not allocate a full clone for checks.
-    # Return zeros and rank estimate based on current TR basis only.
     with torch.no_grad():
         N = coords_bohr_t.shape[0]
         if freeze_idx and len(freeze_idx) > 0:
@@ -261,7 +276,7 @@ def _mode_direction_by_root(H_t: torch.Tensor,
     Get the eigenvector (Cartesian space) corresponding to the `root`-th most negative
     eigenvalue (root=0: most negative) of the mass-weighted, TR-projected Hessian.
     PHVA (active-subspace) is applied if freeze_idx is provided: frozen DOFs are zero.
-    root==0 prefers torch.lobpcg; fallback to eigh (UPLO='U').
+    For root==0 the routine prefers LOBPCG and falls back to eigh as needed.
     """
     with torch.no_grad():
         # In-place: mass weight + (active-subspace) TR projection
@@ -577,7 +592,7 @@ def _modes_from_Hact_embedded(H_act: torch.Tensor,
 
         # Embed to full 3N (mass-weighted eigenvectors)
         modes_full = torch.zeros((Vsub.shape[1], 3 * N), dtype=Hmw.dtype, device=device)
-        mask_dof = _active_mask_dof(N, list(set(range(N)) - set(active_idx)))  # give frozen list
+        mask_dof = _active_mask_dof(N, list(set(range(N)) - set(active_idx)))
         mask_t = torch.as_tensor(mask_dof, dtype=torch.bool, device=device)
         modes_full[:, mask_t] = Vsub.T
         # frequencies
@@ -657,8 +672,8 @@ def _bofill_update_active(H_act: torch.Tensor,
                           eps: float = 1e-12) -> torch.Tensor:
     """
     Memory-efficient Bofill update on the *active* Cartesian Hessian block.
-    Apply symmetric rank-1/2 updates directly **in place** using only the **upper triangle**
-    index set (and mirror to the lower) to avoid allocating large NxN temporaries.
+    Apply symmetric rank-1/2 updates directly in place using only the upper triangle
+    index set (and mirror to the lower) to avoid allocating large temporaries.
     No explicit (H+H^T)/2 symmetrization step is performed.
     """
     device = H_act.device
@@ -670,7 +685,7 @@ def _bofill_update_active(H_act: torch.Tensor,
     g1 = torch.as_tensor(g_new_act, dtype=dtype, device=device).reshape(-1)
     y = g1 - g0
 
-    # Use current symmetric H_act for matvec (no extra allocation)
+    # Use current symmetric H_act for matvec
     Hd = H_act @ d
     xi = y - Hd
 
@@ -729,13 +744,14 @@ class HessianDimer:
       - Pass-through kwargs: `dimer_kwargs` and `lbfgs_kwargs` to tune internals.
       - Hard cap on total LBFGS steps across segments: `max_total_cycles`.
       - PHVA (active DOF subspace) + TR projection for mode picking,
-        respecting ``freeze_atoms``, with in-place operations. When ``root == 0`` the
-        implementation prefers LOBPCG.
-      - The flatten loop uses a *Bofill*-updated active Hessian block, so the
+        respecting `freeze_atoms`. For `root == 0` the implementation prefers LOBPCG.
+      - The flatten loop uses a Bofill-updated active Hessian block, so the
         expensive exact Hessian is evaluated only once before the flatten loop and
         once at the end for the final frequency analysis.
-      - UMA calculator kwargs accept ``freeze_atoms`` and ``hessian_calc_mode`` and
-        default to ``return_partial_hessian=True`` (active-block Hessian when frozen).
+      - UMA calculator kwargs accept `freeze_atoms` and `hessian_calc_mode` and
+        default to returning a partial (active) Hessian when applicable.
+
+    Note: the `use_lobpcg` argument is deprecated and ignored.
     """
 
     def __init__(self,
@@ -748,18 +764,18 @@ class HessianDimer:
                  flatten_amp_ang: float = 0.20,
                  flatten_max_iter: int = 20,
                  mem: int = 100000,
-                 use_lobpcg: bool = True,  # kept for backward compat (not used when root!=0)
+                 use_lobpcg: bool = True,  # deprecated; ignored
                  uma_kwargs: Optional[dict] = None,
                  device: str = "auto",
                  dump: bool = False,
                  #
-                 # New:
                  root: int = 0,
                  dimer_kwargs: Optional[Dict[str, Any]] = None,
                  lbfgs_kwargs: Optional[Dict[str, Any]] = None,
                  max_total_cycles: int = 10000,
                  #
-                # Pass geom kwargs so freeze-links and YAML geometry overrides apply on the light path (fix #1)
+                 # Propagate geometry kwargs so freeze-links and YAML geometry overrides
+                 # also apply in light mode.
                  geom_kwargs: Optional[Dict[str, Any]] = None,
                  ) -> None:
 
@@ -774,13 +790,13 @@ class HessianDimer:
         self.flatten_amp_ang = float(flatten_amp_ang)
         self.flatten_max_iter = int(flatten_max_iter)
         self.mem = int(mem)
-        self.use_lobpcg = bool(use_lobpcg)  # used only when root==0 shortcut
+        self.use_lobpcg = bool(use_lobpcg)  # deprecated; ignored
         self.root = int(root)
         self.dimer_kwargs = dict(dimer_kwargs or {})
         self.lbfgs_kwargs = dict(lbfgs_kwargs or {})
         self.max_total_cycles = int(max_total_cycles)
 
-        # Track total cycles globally across ALL loops/segments (fix #2)
+        # Track total cycles globally across all loops/segments
         self._cycles_spent = 0
 
         # UMA settings
@@ -794,7 +810,7 @@ class HessianDimer:
         self.masses_amu = np.array([atomic_masses[z] for z in self.geom.atomic_numbers])
         self.masses_au_t = torch.as_tensor(self.masses_amu * AMU2AU, dtype=torch.float32)
 
-        # --- Preserve freeze list (for PHVA) ---
+        # Preserve freeze list (for PHVA)
         self.freeze_atoms: List[int] = list(gkw.get("freeze_atoms", [])) if "freeze_atoms" in gkw else []
 
         # Device
@@ -817,9 +833,9 @@ class HessianDimer:
         dimer_kwargs.update({
             "calculator": calc_sp,
             "N_raw": str(self.mode_path),
-            "write_orientations": False,  # runner override to reduce IO
-            "seed": 0,                    # runner override for determinism
-            "mem": self.mem,              # accepted by Calculator base through **kwargs
+            "write_orientations": False,
+            "seed": 0,
+            "mem": self.mem,
         })
         dimer = Dimer(**dimer_kwargs)
 
@@ -852,7 +868,7 @@ class HessianDimer:
     def _dimer_loop(self, threshold: str) -> int:
         """
         Run multiple LBFGS segments separated by periodic Hessian-based mode updates.
-        Consumes from a *global* cycle budget self.max_total_cycles (fix #2).
+        Consumes from the global cycle budget self.max_total_cycles.
         """
         steps_in_this_call = 0
         while True:
@@ -891,66 +907,6 @@ class HessianDimer:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         return steps_in_this_call
-
-    # ----- Flatten (resolve multiple imaginary modes) -----
-    def _flatten_once(self) -> bool:
-        """
-        Legacy: exact-Hessian-based flattening (kept for reference / fallback).
-        """
-        H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
-        freqs_cm, modes = _frequencies_cm_and_modes(
-            H_t, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3), self.device,
-            freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-        )
-        del H_t
-        neg_idx_all = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
-        if len(neg_idx_all) <= 1:
-            del modes
-            return False
-
-        # Identify the "primary" imaginary by root among negative modes
-        order = np.argsort(freqs_cm[neg_idx_all])  # ascending (more negative first)
-        root_clamped = max(0, min(self.root, len(order) - 1))
-        primary_idx = neg_idx_all[order[root_clamped]]
-
-        targets = [i for i in neg_idx_all if i != primary_idx]
-        if not targets:
-            del modes
-            return False
-
-        # Reference structure and energy
-        ref = self.geom.coords.reshape(-1, 3).copy()
-        _ = _calc_energy(self.geom, self.uma_kwargs)  # E_ref (unused, but keeps semantics)
-
-        # mass scaling so that carbon ~ amplitude
-        mass_scale = np.sqrt(12.011 / self.masses_amu)[:, None]
-        amp_bohr = self.flatten_amp_ang / BOHR2ANG
-
-        disp_total = np.zeros_like(ref)
-        for idx in targets:
-            v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)  # mass-weighted eigenvector embedded to 3N
-            # Convert to Cartesian step direction already done downstream in writer,
-            # but for flattening we only need a normalized direction in Cartesian:
-            # use masses to unweight:
-            m3 = np.repeat(self.masses_amu, 3).reshape(-1, 3)
-            v_cart = v_mw / np.sqrt(m3)
-            v_cart /= np.linalg.norm(v_cart)
-            disp0 = amp_bohr * mass_scale * v_cart
-
-            self.geom.coords = (ref +  disp0).reshape(-1)
-            E_plus  = _calc_energy(self.geom, self.uma_kwargs)
-            self.geom.coords = (ref -  disp0).reshape(-1)
-            E_minus = _calc_energy(self.geom, self.uma_kwargs)
-            self.geom.coords = ref.reshape(-1)
-
-            disp_total += (disp0 if E_plus <= E_minus else -disp0)
-
-        del modes
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        self.geom.coords = (ref + disp_total).reshape(-1)
-        return True
 
     def _flatten_once_with_modes(self, freqs_cm: np.ndarray, modes: torch.Tensor) -> bool:
         """
@@ -1009,7 +965,6 @@ class HessianDimer:
                                         dtype=H_t.dtype, device=H_t.device)
 
         if H_t.size(0) == 3 * N:
-            # Skip heavy TR-projection residual check to conserve VRAM.
             print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
             mode_xyz = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
@@ -1026,14 +981,14 @@ class HessianDimer:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # (2) Loose loop
-        if self.root!=0:
-            print("[WARNING] root != 0. Use this 'root' in first dimer loop")
-            print(f"Dimer Loop with initial direction from mode {self.root}...")
-            self.root=0
+        # (2) Loose loop (or initial pass)
+        if self.root != 0:
+            print("[WARNING] root != 0. Using this root only for the initial dimer loop.")
+            print(f"Dimer loop with initial direction from mode {self.root}...")
+            self.root = 0
             self.thresh_loose = self.thresh
         else:
-            print("Loose Dimer Loop...")
+            print("Loose dimer loop...")
 
         self._dimer_loop(self.thresh_loose)
 
@@ -1058,11 +1013,11 @@ class HessianDimer:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        print("Normal Dimer Loop...")
+        print("Normal dimer loop...")
         self._dimer_loop(self.thresh)
 
-        # (4) Flatten Loop — *reduced* exact Hessian calls via Bofill updates (active DOF only)
-        print("Flatten Loop with Bofill-updated active Hessian...")
+        # (4) Flatten loop — reduced exact Hessian calls via Bofill updates (active DOF only)
+        print("Flatten loop with Bofill-updated active Hessian...")
 
         # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
         H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
@@ -1077,15 +1032,15 @@ class HessianDimer:
             torch.cuda.empty_cache()
 
         # Gradient & coordinates snapshot for quasi-Newton updates
-        x_prev = self.geom.coords.copy().reshape(-1)             # (3N,)
-        g_prev = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)  # (3N,)
+        x_prev = self.geom.coords.copy().reshape(-1)
+        g_prev = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
-        # Flatten iterations with *approximate* Hessian updates
+        # Flatten iterations with approximate Hessian updates
         for it in range(self.flatten_max_iter):
             if (self.max_total_cycles - self._cycles_spent) <= 0:
                 break
 
-            # (a) Estimate current imaginary modes using the *active* Hessian
+            # (a) Estimate current imaginary modes using the active Hessian
             freqs_est = _frequencies_from_Hact(H_act, self.geom.atomic_numbers,
                                                self.geom.coords.reshape(-1, 3), active_idx, self.device)
             n_imag = int(np.sum(freqs_est < -abs(self.neg_freq_thresh_cm)))
@@ -1098,7 +1053,7 @@ class HessianDimer:
                 H_act, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3), active_idx, self.device
             )
 
-            # (c) Do flatten step using the approximate modes
+            # (c) Flatten using the approximate modes
             x_before_flat = self.geom.coords.copy().reshape(-1)
             did_flatten = self._flatten_once_with_modes(freqs_cm_approx, modes_embedded)
             if not did_flatten:
@@ -1164,7 +1119,7 @@ class HessianDimer:
             order = np.argsort(freqs_cm[neg_idx])
             primary_idx = neg_idx[order[max(0, min(self.root, len(order)-1))]]
             # convert mass-weighted mode to Cartesian here for writing
-            mode_mw = modes[primary_idx]  # (3N,)
+            mode_mw = modes[primary_idx]
             masses_amu_t = torch.as_tensor(self.masses_amu, dtype=mode_mw.dtype, device=mode_mw.device)
             m3 = torch.repeat_interleave(masses_amu_t, 3)
             v_cart = (mode_mw / torch.sqrt(m3)).detach().cpu().numpy()
@@ -1200,73 +1155,73 @@ OPT_BASE_KW.update({
 
 DIMER_KW = {
     # --- Geometry / length ---
-    "length": 0.0189,                 # float, dimer half-length in Bohr (≈ 0.01 Å)
+    "length": 0.0189,                 # dimer half-length in Bohr (≈ 0.01 Å)
 
     # --- Rotation loop settings ---
-    "rotation_max_cycles": 15,        # int, max rotation cycles per update
+    "rotation_max_cycles": 15,        # max rotation cycles per update
     "rotation_method": "fourier",     # "fourier" (robust) | "direct" (steepest-like)
-    "rotation_thresh": 1e-4,          # float, threshold on ||rot_force||
-    "rotation_tol": 1,                # float (deg), skip rotation if |angle| < tol
-    "rotation_max_element": 0.001,    # float, max element for direct rotation step (Bohr)
-    "rotation_interpolate": True,     # bool, interpolate f1 during rotation (Fourier method)
-    "rotation_disable": False,        # bool, disable rotation (use given N as-is)
-    "rotation_disable_pos_curv": True,# bool, if curvature positive after rotation, restore previous N
-    "rotation_remove_trans": True,    # bool, remove net translation from N
+    "rotation_thresh": 1e-4,          # threshold on ||rot_force||
+    "rotation_tol": 1,                # degrees; skip rotation if |angle| < tol
+    "rotation_max_element": 0.001,    # max element for direct rotation step (Bohr)
+    "rotation_interpolate": True,     # interpolate f1 during rotation (Fourier method)
+    "rotation_disable": False,        # disable rotation (use given N as-is)
+    "rotation_disable_pos_curv": True,# if curvature positive after rotation, restore previous N
+    "rotation_remove_trans": True,    # remove net translation from N
 
     # --- Translational part of projected force ---
-    "trans_force_f_perp": True,       # bool, include perpendicular force into translational component when C<0
+    "trans_force_f_perp": True,       # include perpendicular force into translational component when C<0
 
     # --- Initial guess helpers (mutually exclusive) ---
     "bonds": None,                    # Optional[List[Tuple[int,int]]], use weighted-bond mode as N_raw
     "N_hessian": None,                # Optional[str], path to HDF5 Hessian; use 1st imag. mode as N_raw
 
     # --- Optional bias potentials for robustness ---
-    "bias_rotation": False,           # bool, quadratic bias along initial N during rotation
-    "bias_translation": False,        # bool, add Gaussians along the path to stabilize translation
-    "bias_gaussian_dot": 0.1,         # float, target dot product when tuning Gaussian height
+    "bias_rotation": False,           # quadratic bias along initial N during rotation
+    "bias_translation": False,        # add Gaussians along the path to stabilize translation
+    "bias_gaussian_dot": 0.1,         # target dot product when tuning Gaussian height
 
     # --- Stochastic control / IO ---
-    "seed": None,                     # Optional[int], RNG seed; Runner sets to 0 for determinism
-    "write_orientations": True,       # bool, write N.trj each call; Runner overrides to False to reduce IO
+    "seed": None,                     # RNG seed; Runner sets to 0 for determinism
+    "write_orientations": True,       # write N.trj each call; Runner overrides to False to reduce IO
 
     # --- Hessian forwarding ---
-    "forward_hessian": True,          # bool, allow forwarding get_hessian to wrapped calculator
+    "forward_hessian": True,          # allow forwarding get_hessian to wrapped calculator
 }
 
-# ---------- Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW ----------
+# Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW
 LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
-    "thresh_loose": "gau_loose",      # str, loose threshold preset for first pass
-    "thresh": "gau",                  # str, main threshold preset for TS search
-    "update_interval_hessian": 1000,  # int, LBFGS cycles per Hessian refresh for direction
-    "neg_freq_thresh_cm": 5.0,        # float, treat ν < -this as imaginary (cm^-1)
-    "flatten_amp_ang": 0.10,          # float, mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 20,           # int, max flattening iterations
-    "mem": 100000,                    # int, scratch/IO memory passed through Calculator (**kwargs)
-    "use_lobpcg": True,               # kept for compat (root==0 uses LOBPCG regardless; fallback if fails)
-    "device": "auto",                 # str, "cuda"|"cpu"|"auto" for torch-side ops
-    "root": 0,                        # int, 0: follow the most negative mode
-    "dimer": {**DIMER_KW},            # Dict, default kwargs forwarded to Dimer (Runner may override some)
-    "lbfgs": {**LBFGS_TS_KW},         # Dict, default kwargs forwarded to inner LBFGS
+    "thresh_loose": "gau_loose",      # loose threshold preset for first pass
+    "thresh": "gau",                  # main threshold preset for TS search
+    "update_interval_hessian": 1000,  # LBFGS cycles per Hessian refresh for direction
+    "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
+    "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
+    "flatten_max_iter": 20,           # max flattening iterations
+    "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
+    "use_lobpcg": True,               # deprecated (ignored)
+    "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
+    "root": 0,                        # 0: follow the most negative mode
+    "dimer": {**DIMER_KW},            # default kwargs forwarded to Dimer (Runner may override some)
+    "lbfgs": {**LBFGS_TS_KW},         # default kwargs forwarded to inner LBFGS
 }
 
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
 RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RSIRFO_KW.update({
-    "roots": [0],               # list[int], mode indices to follow uphill
-    "hessian_ref": None,        # Optional[Path], reference Hessian file (HDF5)
-    "rx_modes": None,           # Optional[Sequence], reaction-mode definitions for projection
-    "prim_coord": None,         # Optional[Sequence[int]], primary coordinates for monitoring
-    "rx_coords": None,          # Optional[Sequence[int]], reaction coordinates for monitoring
-    "hessian_update": "bofill", # str, Hessian update strategy (override base "bfgs")
-    "hessian_recalc_reset": True,# bool, reset recalc counter after exact Hessian
-    "max_micro_cycles": 50,     # int, micro-iterations per macro cycle (heavier than base)
-    "augment_bonds": False,     # bool, augment reaction path based on bond analysis
-    "min_line_search": True,    # bool, enforce minimum line-search step
-    "max_line_search": True,    # bool, enforce maximum line-search step
-    "assert_neg_eigval": False, # bool, ensure a negative eigenvalue at convergence
+    "roots": [0],               # mode indices to follow uphill
+    "hessian_ref": None,        # reference Hessian file (HDF5)
+    "rx_modes": None,           # reaction-mode definitions for projection
+    "prim_coord": None,         # primary coordinates for monitoring
+    "rx_coords": None,          # reaction coordinates for monitoring
+    "hessian_update": "bofill", # override base "bfgs"
+    "hessian_recalc_reset": True,# reset recalc counter after exact Hessian
+    "max_micro_cycles": 50,     # micro-iterations per macro cycle
+    "augment_bonds": False,     # augment reaction path based on bond analysis
+    "min_line_search": True,    # enforce minimum line-search step
+    "max_line_search": True,    # enforce maximum line-search step
+    "assert_neg_eigval": False, # ensure a negative eigenvalue at convergence
 })
 
 
@@ -1380,7 +1335,7 @@ def cli(
         if merged:
             click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
-    # ---- Paess freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian) ----
+    # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
     if "freeze_atoms" in geom_cfg:
         calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
@@ -1417,7 +1372,6 @@ def cli(
         if kind == "light":
             # HessianDimer runner construction
             uma_kwargs_for_sd = dict(calc_cfg)
-            # device comes from calc_cfg; out_hess_torch/return_partial_hessian handled in wrapper
             runner = HessianDimer(
                 fn=str(geom_input_path),
                 out_dir=str(out_dir_path),
@@ -1428,7 +1382,7 @@ def cli(
                 flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
                 flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 20)),
                 mem=int(simple_cfg.get("mem", 100000)),
-                use_lobpcg=bool(simple_cfg.get("use_lobpcg", True)),
+                use_lobpcg=bool(simple_cfg.get("use_lobpcg", True)),  # deprecated; ignored
                 uma_kwargs=uma_kwargs_for_sd,
                 device=str(simple_cfg.get("device", calc_cfg.get("device", "auto"))),
                 dump=bool(opt_cfg["dump"]),
@@ -1436,13 +1390,13 @@ def cli(
                 dimer_kwargs=dict(simple_cfg.get("dimer", {})),
                 lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
                 max_total_cycles=int(opt_cfg["max_cycles"]),
-                # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner (fix #1)
+                # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                 geom_kwargs=dict(geom_cfg),
             )
 
-            click.echo("\n=== TS optimization (HessianDimer) started ===\n")
+            click.echo("\n=== TS optimization (Hessian Dimer) started ===\n")
             runner.run()
-            click.echo("\n=== TS optimization (HessianDimer) finished ===\n")
+            click.echo("\n=== TS optimization (Hessian Dimer) finished ===\n")
 
             # Convert outputs if input is PDB
             if source_path.suffix.lower() == ".pdb":
@@ -1483,7 +1437,7 @@ def cli(
             coord_kwargs.pop("coord_type", None)
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
-            calc_builder_or_instance = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / return_partial_hessian
+            calc_builder_or_instance = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
             try:
                 geometry.set_calculator(calc_builder_or_instance())
             except TypeError:
@@ -1561,7 +1515,7 @@ def cli(
                     H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), act_idx, device
                 )
 
-            neg_idx = np.where(freqs_cm < -5.0)[0]  # use same threshold default as HessianDimer
+            neg_idx = np.where(freqs_cm < -5.0)[0]  # same threshold default as HessianDimer
             if len(neg_idx) == 0:
                 click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
             else:

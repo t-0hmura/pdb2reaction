@@ -16,29 +16,32 @@ Examples::
 
 Description
 -----
-- Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA pretrained ML potentials via ASE/AtomicData.
-- Two Hessian modes:
-  - "Analytical": second‑order autograd of the UMA energy on the GPU.
+- Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA
+  pretrained ML potentials via ASE/AtomicData.
+- Two Hessian modes (on the selected device; GPU if available):
+  - **Analytical**: second‑order autograd of the UMA energy.
     Requires more VRAM/time than finite differences. During evaluation,
     model parameter gradients are disabled; dropout layers are force‑disabled;
-    the model is temporarily toggled to train mode only to build the autograd
-    graph and then restored to eval.
+    the model is temporarily toggled to `train()` only to build the autograd
+    graph and then restored to `eval()`.
       * if `return_partial_hessian=True`, the Hessian is reduced to the Active‑DOF
         block (non‑frozen atoms);
       * otherwise the full matrix is returned and columns for frozen DOF are zeroed.
-  - "FiniteDifference": central differences of forces assembled on the GPU.
-    Columns for frozen DOF are skipped; optionally return only the active‑DOF block.
-    Default step: ε = 1.0e‑3 Å.
-- Device handling: device="auto" selects CUDA if available, else CPU; tensors use torch.float32 by default.
-- **Precision option**: set `double_precision=True` to run energy/forces/Hessian in float64 (double) end‑to‑end.
-  By default (`False`), float32 (single) is used. This toggles both model/graph tensors and working arrays.
+  - **FiniteDifference**: central differences of forces, assembled on the selected
+    device. Columns for frozen DOF are skipped; optionally return only the
+    active‑DOF block. Default step: ε = 1.0e‑3 Å.
+- Device handling: `device="auto"` selects CUDA if available, else CPU; tensors use
+  `torch.float32` by default.
+- **Precision option**: set `double_precision=True` to run energy/forces/Hessian in
+  float64 (double) end‑to‑end. By default (`False`), float32 (single) is used. This
+  toggles both model/graph tensors and working arrays.
 - Neighborhood/graph: optional overrides for `max_neigh`, `radius`, `r_edges`.
-  On‑the‑fly graphs are built (`otf_graph=True`), and `task_name`, `charge`, `spin`
-  are attached to the batch.
+  On‑the‑fly graphs are built (`otf_graph=True`), and `task_name` is attached to
+  the batch; charge/spin are stored in `Atoms.info`.
 - Robustness: analytical path catches CUDA out‑of‑memory and advises switching to
   finite differences.
-- Default Hessian mode at construction is "Analytical". If a falsy mode reaches
-  `get_hessian`, a fallback "FiniteDifference" is used (implementation detail).
+- Default Hessian mode at construction is `"Analytical"`. If `hessian_calc_mode`
+  is falsy *or unrecognized* in `get_hessian`, `"FiniteDifference"` is used.
 - Units: UMA runs in Å and eV; PySisyphus public API converts to Hartree/Bohr:
   energy eV→Hartree, forces eV·Å⁻¹→Hartree·Bohr⁻¹, Hessian eV·Å⁻²→Hartree·Bohr⁻².
 
@@ -46,41 +49,42 @@ Outputs
 -----
 PySisyphus calculator interface (`implemented_properties = ["energy", "forces", "hessian"]`):
 
-- get_energy(elem, coords)
-  Returns: {"energy": E}
-  - E: float, Hartree.
-  - coords: Bohr in, internally converted to Å.
+- `get_energy(elem, coords)`
+  Returns: `{"energy": E}`
+  - `E`: float, Hartree.
+  - `coords`: Bohr in, internally converted to Å.
 
-- get_forces(elem, coords)
-  Returns: {"energy": E, "forces": F}
-  - F: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
-  - E: float, Hartree.
-  - coords: Bohr in, internally converted to Å.
+- `get_forces(elem, coords)`
+  Returns: `{"energy": E, "forces": F}`
+  - `F`: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
+  - `E`: float, Hartree.
+  - `coords`: Bohr in, internally converted to Å.
 
-- get_hessian(elem, coords)
-  Returns: {"energy": E, "forces": F, "hessian": H}
-  - F: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
-  - H: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
+- `get_hessian(elem, coords)`
+  Returns: `{"energy": E, "forces": F, "hessian": H}`
+  - `F`: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
+  - `H`: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
     active‑DOF submatrix in either mode).
-  - If `return_partial_hessian=True`: H contains only the Active‑DOF block
-    (non‑frozen atoms). Otherwise H is full sized and columns corresponding to
+  - If `return_partial_hessian=True`: `H` contains only the Active‑DOF block
+    (non‑frozen atoms). Otherwise `H` is full sized and columns corresponding to
     frozen DOF are zeroed.
 
-Notes:
+Notes
 -----
-- freeze_atoms: list of 0‑based atom indices; **applies to both Analytical and
+- `freeze_atoms`: list of 0‑based atom indices; **applies to both Analytical and
   FiniteDifference**. Forces on frozen atoms are returned as 0. In Hessians,
   either the matrix is reduced to the Active‑DOF block (`return_partial_hessian=True`)
   or (for full size) columns for frozen DOF are zeroed.
-- return_partial_hessian: if True, return only the Active‑DOF submatrix in both modes.
-- UMA loader: pretrained_mlip.get_predict_unit(model). The predictor is moved to
-  the selected device, set to eval, and all nn.Dropout layers are disabled (p=0).
-- During analytical Hessian evaluation, model parameters have requires_grad=False;
-  the model is briefly set to train() to enable autograd and then restored to eval().
+- `return_partial_hessian`: if True, return only the Active‑DOF submatrix in both modes.
+- UMA loader: `pretrained_mlip.get_predict_unit(model)`. The predictor is moved to
+  the selected device, set to eval, and all `nn.Dropout` layers are disabled (`p=0`).
+- During analytical Hessian evaluation, model parameters have `requires_grad=False`;
+  the model is briefly set to `train()` to enable autograd and then restored to `eval()`.
   CUDA caches are cleared if needed.
-- Neighborhood defaults come from the model backbone (e.g., max_neighbors, cutoff)
+- Neighborhood defaults come from the model backbone (e.g., `max_neighbors`, `cutoff`)
   unless explicitly overridden.
-- CLI entry point: run_pysis() registers the calculator, enabling: `uma_pysis input.yaml`.
+- CLI entry point: `run_pysis()` registers the calculator, enabling:
+  `uma_pysis input.yaml`.
 """
 
 from __future__ import annotations
@@ -105,13 +109,13 @@ F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr�
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
 # Unified host/GPU dtypes for this implementation
-# NOTE: Will be overridden to float64 when `double_precision=True` in uma_pysis.__init__
+# Overridden to float64 when `double_precision=True` in uma_pysis.__init__
 _ndtype = np.float32
 _tdtype = torch.float32
 
-# Default for geom_loader
+# Default for potential geometry loader integrations
 GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",       # str, coordinate representation for geom_loader (Cartesian recommended)
+    "coord_type": "cart",       # coordinate representation (Cartesian recommended)
     "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
 }
 
@@ -130,17 +134,17 @@ CALC_KW: Dict[str, Any] = {
     "max_neigh": None,        # Optional[int], override model's neighbor cap
     "radius": None,           # Optional[float], cutoff radius (Å)
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
-    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (RSIRFO expects GPU Hessian when available)
+    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor
 
     # Freeze atoms
-    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms. Corresponding forces are zeroed. Non-DOF Hessian columns are set to 0 (or trimmed).
+    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms
 
     # Hessian interfaces to UMA
-    "hessian_calc_mode": "Analytical",        # str, "Analytical" (default) | "FiniteDifference"
-    "return_partial_hessian": True,           # bool, receive only the active-DOF Hessian block
+    "hessian_calc_mode": "Analytical",        # "Analytical" (default) | "FiniteDifference"
+    "return_partial_hessian": True,           # receive only the active-DOF Hessian block
 
     # Precision
-    "double_precision": False,                # bool, if True use float64 for energy/forces/Hessian
+    "double_precision": False,                # if True use float64 for energy/forces/Hessian
 }
 
 # ===================================================================
@@ -356,9 +360,9 @@ class uma_pysis(Calculator):
         ----------
         hessian_calc_mode : {"Analytical", "FiniteDifference"}, default "Analytical"
             Select how to compute the Hessian in `get_hessian()`.
-            - "Analytical": autograd-based analytical Hessian (GPU).
+            - "Analytical": autograd-based analytical Hessian.
             - "FiniteDifference": central-difference Hessian; the matrix is
-              assembled on the GPU.
+              assembled on the selected device.
         freeze_atoms : list[int], optional
             Atom indices (0-based). In both modes, DOFs of these atoms are
             treated as frozen.
@@ -425,7 +429,6 @@ class uma_pysis(Calculator):
         """
         n = H.size(0)
         H = H.view(n * 3, n * 3)
-        # Use a same-device/dtype scalar to avoid unintended FP64 promotion.
         scale = torch.tensor(H_EVAA_2_AU, device=H.device, dtype=H.dtype)
         H = H * scale
         return H.detach().cpu().numpy() if not self.out_hess_torch else H.detach()
@@ -455,7 +458,7 @@ class uma_pysis(Calculator):
         """
         n_atoms = H.size(0)
         if len(self.freeze_atoms) == 0:
-            return H  # nothing to do
+            return H
 
         active_atoms, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
         H2d = H.view(n_atoms * 3, n_atoms * 3)
@@ -471,7 +474,7 @@ class uma_pysis(Calculator):
                 H2d.index_fill_(1, cols, 0.0)  # zero columns of frozen DOF
             return H2d.view(n_atoms, 3, n_atoms, 3)
 
-    # ---------- Finite-Difference Hessian (GPU assembly) -------------
+    # ---------- Finite-Difference Hessian (GPU/CPU assembly) -------------
     def _build_fd_hessian_gpu(
         self,
         elem: Sequence[str],
@@ -481,7 +484,7 @@ class uma_pysis(Calculator):
     ) -> Dict[str, Any]:
         """
         Assemble the Hessian by central differences of forces, with the matrix
-        stored and operated on the GPU:
+        stored and operated on the selected device:
 
             H_[:, k] = -(F(x + h e_k) - F(x - h e_k)) / (2 h)
 
@@ -497,7 +500,7 @@ class uma_pysis(Calculator):
           - "forces"  : np.ndarray, shape (N, 3), eV/Å
           - "hessian" : torch.Tensor, shape (N_out,3,N_out,3), eV/Å² on device
         """
-        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu") if self._core is None else self._core.device
+        dev = self._core.device
         dtype = _tdtype
 
         n_atoms = len(elem)
@@ -513,7 +516,7 @@ class uma_pysis(Calculator):
         energy0_eV = res0["energy"]
         F0 = res0["forces"].astype(_ndtype, copy=False)  # (N,3) eV/Å
 
-        # GPU-side Hessian storage (2D for easy column insertion)
+        # Device-side Hessian storage (2D for easy column insertion)
         H = torch.zeros((dof, dof), device=dev, dtype=dtype)
 
         # Host-side work arrays for coordinate perturbations
@@ -535,7 +538,7 @@ class uma_pysis(Calculator):
             res_m = self._core.compute(coord_minus, forces=True, hessian=False)
             Fm = res_m["forces"].reshape(-1).astype(_ndtype, copy=False)
 
-            # Column on GPU
+            # Column on device
             Fp_t = torch.from_numpy(Fp).to(dev, dtype=dtype)
             Fm_t = torch.from_numpy(Fm).to(dev, dtype=dtype)
             col = -(Fp_t - Fm_t) / (2.0 * eps_ang)  # (3N,) eV/Å²
@@ -583,14 +586,16 @@ class uma_pysis(Calculator):
 
         Modes
         -----
-        - "Analytical": autograd-based analytical Hessian (GPU).
+        - "Analytical": autograd-based analytical Hessian.
           If a CUDA out-of-memory error occurs, a clear message is raised
           instructing you to switch to finite differences.
           Active‑DOF trimming/column‑zeroing is applied to match FD semantics.
-        - "FiniteDifference": central-difference Hessian assembled on the GPU.
+        - "FiniteDifference": central-difference Hessian assembled on the selected device.
           * Columns for `freeze_atoms` DOF are skipped.
           * If `return_partial_hessian` is True, return the Active-DOF submatrix;
             otherwise return a full-size matrix (frozen columns remain zero).
+
+        If `hessian_calc_mode` is falsy or unrecognized, FiniteDifference is used.
         """
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
@@ -600,7 +605,6 @@ class uma_pysis(Calculator):
             try:
                 res = self._core.compute(coord_ang, forces=True, hessian=True)
             except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-                # Detect CUDA OOM patterns
                 msg = str(e).lower()
                 if "out of memory" in msg and "cuda" in msg:
                     raise RuntimeError(
@@ -623,29 +627,17 @@ class uma_pysis(Calculator):
                 "hessian": self._au_hessian(H),
             }
 
-        elif mode in ("finitedifference", "finite-difference", "fd"):
-            res = self._build_fd_hessian_gpu(elem, coord_ang)
+        # FiniteDifference (default/fallback)
+        res = self._build_fd_hessian_gpu(elem, coord_ang)
 
-            # Zero forces for frozen atoms (eV/Å)
-            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+        # Zero forces for frozen atoms (eV/Å)
+        res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
 
-            return {
-                "energy": self._au_energy(res["energy"]),
-                "forces": self._au_forces(res_forces_ev),
-                "hessian": self._au_hessian(res["hessian"]),
-            }
-        else:
-            # Fallback: treat unknown mode as FiniteDifference
-            res = self._build_fd_hessian_gpu(elem, coord_ang)
-
-            # Zero forces for frozen atoms (eV/Å)
-            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
-
-            return {
-                "energy": self._au_energy(res["energy"]),
-                "forces": self._au_forces(res_forces_ev),
-                "hessian": self._au_hessian(res["hessian"]),
-            }
+        return {
+            "energy": self._au_energy(res["energy"]),
+            "forces": self._au_forces(res_forces_ev),
+            "hessian": self._au_hessian(res["hessian"]),
+        }
 
 
 # ---------- CLI ----------------------------------------

@@ -99,7 +99,8 @@ Charge summary
 
 Multi-structure ensembles
 -----
-- Accepts multiple input PDBs (same **atom count and ordering**; validated).
+- Accepts multiple input PDBs (same **atom count**; ordering is **assumed identical** and is
+  **spot‑checked** at the beginning and end of the atom list).
 - Each structure is selected independently; the **union** of selected residues is applied to all.
   Disulfides, PRO‑adjacency, and (if enabled) backbone‑contact neighbor augmentation are also unioned.
 - Outputs:
@@ -125,7 +126,8 @@ Outputs (& Directory Layout)
 - **Link‑H block** (if added): appears after a ``TER`` as contiguous ``HETATM`` records with atom name ``HL``,
   residue ``LKH``, chain ``L``; serial numbers continue from the main block.
 - **Logs:** INFO messages summarize selected residues, atom counts **before/after**, and **charge summary**.
-- **Python API return (when used programmatically):**
+- **Python API return:**
+  ``extract(..., api=True)`` or ``extract_api(...)`` returns
   ``{'outputs': [paths], 'counts': [{'raw_atoms': int, 'kept_atoms': int}, ...], 'charge_summary': {...}}``.
 
 Notes:
@@ -139,20 +141,20 @@ Notes:
   - ``--ligand-charge`` default: **None** (unknown residues counted as 0 unless set).
   - Output default: single input → ``pocket.pdb``; multiple inputs → ``pocket_{original_filename}.pdb``.
 - **Geometry thresholds and tolerances:**
-  - Peptide adjacency: **C(prev)–N(next) ≤ 1.9 Å** (TER‑aware; avoids crossing chain breaks).
+  - Peptide adjacency: **C(prev)–N(next) ≤ 1.9 Å** (distance‑based; practical TER awareness).
   - Disulfide detection: **SG–SG ≤ 2.5 Å**.
   - Link‑H distance: **1.09 Å** (C–H) along the cut‑bond vector.
   - Exact match tolerance for substrate PDB: **1e‑3 Å** per atom.
 - **Safeguards and special cases:**
   - **PRO/HYP** retain N, CA, HA, H* in isolated truncations; PRO’s **N‑side neighbor** is auto‑included
     when peptide‑adjacent; **CA** on that neighbor is always kept, and with backbone exclusion
-    - **C** and **O/OXT** are preserved to maintain the peptide bond into PRO–N.
+    **C** and **O/OXT** are preserved to maintain the peptide bond into PRO–N.
   - **Non‑amino‑acid residues** never lose atoms named like backbone (``N, CA, HA, H, H1, H2, H3``).
   - **Waters** (HOH/WAT/TIP3/SOL) are always neutral (charge 0) and included by default.
 - **Dependencies:** Python ≥ **3.10** (PEP 604 unions), Biopython ≥ **1.80**, NumPy.
 - **Python API (for reference):**
-  - ``extract(args: argparse.Namespace | None = None)`` — main entry (CLI or programmatic).
-  - ``extract_api(...)`` — convenience wrapper that returns ``{'outputs','counts','charge_summary'}``.
+  - ``extract(args: argparse.Namespace | None = None, api=False)`` — main entry (CLI or programmatic).
+  - ``extract_api(...)`` — convenience wrapper that returns ``{'outputs','counts','charge_summary'}`` when used programmatically.
 """
 
 from __future__ import annotations
@@ -343,7 +345,9 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "-r", "--radius", type=float, default=2.6,
-        help="Cutoff (Å): include any residue with any atom within this distance of a substrate atom. (default: 2.6)"
+        help=("Cutoff (Å) around substrate atoms. With --exclude-backbone true (default), an **amino-acid** "
+              "neighbor must have a **non-backbone** atom within this distance; otherwise **any atom** suffices. "
+              "(default: 2.6)")
     )
     p.add_argument(
         "--radius-het2het", type=float, default=0,
@@ -549,7 +553,6 @@ def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Res
         if not matches:
             raise ValueError(f"Residue name '{rn}' not found in complex.")
         if len(matches) > 1:
-            # Log once per residue name
             try:
                 sample = ", ".join(_fmt_res_id(r) for r in matches[:5])
             except Exception:
@@ -592,7 +595,8 @@ def are_peptide_adjacent(prev_res: PDB.Residue.Residue,
 
     Notes
     -----
-    Guards against TER-crossing when chain IDs are blank (single chain bucket).
+    Distance‑based criterion; in practice this avoids crossing TER boundaries because missing
+    atoms or long inter‑residue distances will fail the check.
     """
     if prev_res.get_resname() not in AMINO_ACIDS or next_res.get_resname() not in AMINO_ACIDS:
         return False
@@ -826,24 +830,6 @@ def augment_backbone_contact_neighbors(structure,
 # ---------------------------------------------------------------------
 #   Backbone trimming / skip-map generation
 # ---------------------------------------------------------------------
-
-def continuous_segments(sorted_ids: List[Tuple]):
-    """
-    (Kept for compatibility; unused in TER-aware segmentation below.)
-    """
-    segs, cur, prev = [], [], None
-    for fid in sorted_ids:
-        idx = fid[3][1]
-        if prev is None or idx == prev + 1:
-            cur.append(fid)
-        else:
-            segs.append(cur)
-            cur = [fid]
-        prev = idx
-    if cur:
-        segs.append(cur)
-    return segs
-
 
 def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[Tuple],
                        exclude_backbone: bool,
@@ -1219,7 +1205,7 @@ def compute_charge_summary(structure,
       - ligand_total_charge : float
       - ion_total_charge : float
       - ion_charges : list[(str tag, float)]
-      - unknown_residue_charges : dict[str -> float]  # for verbose one‑line log
+      - unknown_residue_charges : dict[str -> float]  # for concise per‑resname log
     """
     per_map: Dict[ResidueKey, float] = {}
     aa_charge = 0.0
@@ -1256,7 +1242,7 @@ def compute_charge_summary(structure,
     total_spec, mapping_spec = _parse_ligand_charge_option(ligand_charge)
 
     if total_spec is not None:
-        # Original behavior: distribute total across unknown substrate if present, else across all unknowns
+        # Distribute total across unknown substrate if present, else across all unknowns
         targets = unknown_substrate_fids if unknown_substrate_fids else unknown_fids
         if targets:
             per_res_val = float(total_spec) / float(len(targets))
@@ -1267,7 +1253,7 @@ def compute_charge_summary(structure,
             total = sum(per_map.values())
             aa_charge = sum(q for k, q in per_map.items() if k[4] in AMINO_ACIDS)
     elif mapping_spec is not None:
-        # New behavior: per‑resname mapping. Unspecified unknown residues remain 0.
+        # Per‑resname mapping. Unspecified unknown residues remain 0.
         for fid in unknown_fids:
             res = structure[fid[1]][fid[2]].child_dict[fid[3]]
             rn = res.get_resname().upper()
@@ -1312,13 +1298,11 @@ def log_charge_summary(prefix: str,
     ion_total = summary.get("ion_total_charge", sum(q for _, q in ion_list))
     unk_map: Dict[str, float] = summary.get("unknown_residue_charges", {}) or {}
 
-    # ---- New one‑line verbose output of specified/unknown residue charges ----
-    # Example: "GPP: -3, MMT: -1, OPP: 0"
     if unk_map:
         items = ", ".join(f"{res}: {q:g}" for res, q in sorted(unk_map.items()))
-        logging.info("%s Each ligand charges: %s", prefix, items)
+        logging.info("%s Per-resname ligand charges: %s", prefix, items)
     else:
-        logging.info("%s Each ligand residue charges: (none)", prefix)
+        logging.info("%s Per-resname ligand charges: (none)", prefix)
 
     logging.info("%s Net protein charge: %+g", prefix, protein)
     logging.info("%s Net ligand charge: %+g", prefix, ligand)
@@ -1441,7 +1425,10 @@ def _disulfide_partner_keys(structure, candidate_keys: Set[ResidueKey],
 
 def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
     """
-    Ensure the same atom count and ordering across all input structures.
+    Light consistency check across inputs:
+    - Enforce identical atom counts.
+    - Spot‑check ordering at the beginning and end of the atom list; if mismatched there (and overall lists differ),
+      raise an error.
     """
     def signature(st: PDB.Structure.Structure) -> List[str]:
         sig: List[str] = []
@@ -1595,10 +1582,10 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             sel_ids = _keys_to_fids(st, union_sel_keys)
             bb_ids = _keys_to_fids(st, union_bb_contact_keys & _fids_to_keys(st, sel_ids))
             sub_ids = {r.get_full_id() for r in subs}
-            _ = augment_backbone_contact_neighbors(st, sel_ids, bb_ids, sub_ids)
+            # single call performs neighbor augmentation and returns cap-preservation flags
+            kn_fids, kc_fids = augment_backbone_contact_neighbors(st, sel_ids, bb_ids, sub_ids)
             after_keys = _fids_to_keys(st, sel_ids)
             added_neighbor_union |= (after_keys - union_sel_keys)
-            kn_fids, kc_fids = augment_backbone_contact_neighbors(st, sel_ids, bb_ids, sub_ids)
             keep_ncap_union |= _fids_to_keys(st, kn_fids)
             keep_ccap_union |= _fids_to_keys(st, kc_fids)
         if added_neighbor_union:
@@ -1768,11 +1755,13 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
     ----
     args : argparse.Namespace | None
         If None, parse CLI args. Otherwise, use the provided Namespace.
+    api : bool
+        If True, return a structured result dictionary; if False (CLI), return None.
 
     Returns
     -------
-    dict
-        { 'outputs', 'counts', 'charge_summary' }
+    dict | None
+        When api=True, returns { 'outputs', 'counts', 'charge_summary' }. Otherwise, None.
     """
     if args is None:
         args = parse_args()
@@ -1971,7 +1960,7 @@ def extract_api(complex_pdb: List[str],
     Returns
     -------
     dict
-        Same structure as `extract(...)`.
+        Same structure as `extract(..., api=True)`.
     """
     if not output:
         output = ['pocket.pdb']

@@ -2,8 +2,9 @@
 
 """
 all — SINGLE command to execute an end-to-end enzymatic reaction workflow:
-Extract pockets → (optional) staged scan on a single structure → MEP (recursive GSM) → merge to full systems,
-with optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and DFT//UMA diagrams
+Extract pockets → (optional) staged scan on a single structure → MEP (recursive GSM) → merge to full systems
+(when PDB templates are available), with optional TS optimization, IRC (EulerPC), thermochemistry,
+DFT, and DFT//UMA diagrams
 ================================================================================================================
 
 Usage (CLI)
@@ -78,13 +79,15 @@ Runs a one-shot pipeline centered on pocket models:
 
 (2) **MEP search (recursive GSM) on pocket inputs**
     - Runs `path_search` with options forwarded from this command.
-    - For multi-input runs, the original **full** PDBs are supplied as **merge references** automatically.
-      In the scan-derived series (single-structure case), the single original full PDB is reused (repeated)
-      as the reference template for all pocket inputs.
+    - For multi-input runs, the original **full** PDBs are supplied as **merge references** automatically
+      **only when the original inputs are PDB files**. In the single-structure scan series, if the original
+      full input is a PDB, the same template is reused for all pocket inputs.
 
 (3) **Merge to full systems**
-    - The pocket MEP is merged back into the original full-system template(s) within `<out-dir>/path_search/`.
-    - Pocket-only and full-system trajectories, per-segment merged PDBs, and a summary are written.
+    - When reference full-system PDB templates have been supplied (see (2)), the pocket MEP is merged back
+      into the original full-system template(s) within `<out-dir>/path_search/`.
+    - If references are not supplied (e.g., inputs are not PDB or extraction is skipped), only pocket-level
+      outputs are produced and no merged `mep_w_ref*.pdb` files are written.
 
 (4) **Optional per-segment post-processing** (for segments with covalent changes)
     - `--tsopt True`: Optimize TS on the HEI pocket; perform an **IRC (EulerPC)**; assign forward/backward
@@ -96,28 +99,35 @@ Runs a one-shot pipeline centered on pocket models:
 (Alt) **Single-structure TSOPT-only mode**
     - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
       the tool skips (2)-(3) and:
-        • Runs `tsopt` on the **pocket** of that structure,
+        • Runs `tsopt` on the **pocket** of that structure (or the full input when extraction is skipped),
         • Runs **IRC (EulerPC)** from TS and obtains both ends,
         • Builds UMA energy diagrams for **R–TS–P**,
         • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.
       In this special mode only, the higher-energy IRC endpoint is treated as the reactant (R).
 
 **Charge handling**
-  - The extractor’s **first-model total pocket charge** is used as the path/scan/TSOPT total charge (rounded to int).
+  - With extraction enabled, the extractor’s **first-model total pocket charge** is used (rounded to int).
+  - With extraction **skipped** (`-c/--center` omitted), the **total system charge** is set as:
+      1) a numeric `--ligand-charge` value (if provided), otherwise
+      2) parsed from the **first input GJF** (if the first input is `.gjf`), otherwise
+      3) default **0**.
+    Spin precedence when extraction is skipped: explicit `--spin` > GJF value (if available) > default.
 
 **Inputs**
-  - `-i/--input` accepts two or more **full** PDBs in reaction order (reactant [intermediates ...] product), or
-    **a single** full PDB (with `--scan-lists` *or* `--tsopt True`).
+  - `-i/--input` accepts two or more **full structures** in reaction order (reactant [intermediates ...] product).
+    Accepted formats are **PDB/XYZ/GJF** when **extraction is skipped**. When using extraction (`-c/--center`),
+    inputs must be **PDB**. For **single-structure + scan**, the input must be a **PDB**.
 
 **Forwarded / relevant options**
   - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
     `--dump`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as shared flags.)
   - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
-    `--args-yaml`, `--preopt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based` True|False
-    (omit to keep scan's default 1-based indexing),
-    `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
+    `--args-yaml`, `--preopt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based`
+    (omit to keep scan's default 1‑based indexing), `--scan-max-step-size`, `--scan-bias-k`,
+    `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`).
   - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and tsopt; when omitted, scan defaults to
-    LBFGS or RFO based on `--sopt-mode`, and tsopt falls back to `light`. `--hessian-calc-mode` applies to tsopt and freq.
+    LBFGS or RFO based on `--sopt-mode`, and tsopt falls back to `light`.
+    `--hessian-calc-mode` applies to tsopt and freq.
   - TS optimization / IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt/irc.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
     `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
@@ -141,8 +151,8 @@ Outputs (& Directory Layout)
     mep.trj
     energy.png
     mep.pdb
-    mep_w_ref.pdb
-    mep_w_ref_seg_XX.pdb
+    mep_w_ref.pdb                        # only when ref PDB templates were supplied
+    mep_w_ref_seg_XX.pdb                 # only when ref PDB templates were supplied
     summary.yaml
     tsopt_seg_XX/                        # when post-processing is enabled
       ts/ ...
@@ -174,9 +184,10 @@ Notes
 - A **single-structure** run works only when `--scan-lists` **or** `--tsopt True` is provided; otherwise you still need
   **at least two structures**.
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
-- **NEW**: Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
+- Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
   The total charge defaults to 0; providing `--ligand-charge <number>` sets that value as the **overall system charge**
-  (rounded to the nearest integer).
+  (rounded). If the first input is a GJF, its charge/spin are used when `--ligand-charge` (numeric) and `--spin`
+  are not explicitly provided.
 """
 
 from __future__ import annotations
@@ -223,7 +234,7 @@ from .utils import (
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
-from . import irc as _irc_cli 
+from . import irc as _irc_cli
 
 # -----------------------------
 # Helpers
@@ -278,7 +289,6 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Return a UMA calculator configuration honoring YAML overrides when provided."""
-
     cfg: Dict[str, Any] = dict(CALC_KW)
     cfg["charge"] = int(charge)
     cfg["spin"] = int(spin)
@@ -401,7 +411,7 @@ def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple
     for idx_stage, literal in enumerate(scan_lists_raw, start=1):
         try:
             obj = ast.literal_eval(literal)
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:
             raise click.BadParameter(f"Invalid literal for --scan-lists #{idx_stage}: {exc}")
         if not isinstance(obj, (list, tuple)):
             raise click.BadParameter(
@@ -574,7 +584,7 @@ def _pdb_models_to_coords_and_elems(pdb_path: Path) -> Tuple[List[np.ndarray], L
     for a in atoms0:
         el = (a.element or "").strip()
         if not el:
-            # fall back: derive from atom name
+            # derive from atom name
             nm = a.get_name().strip()
             el = "".join([c for c in nm if c.isalpha()])[:2].title() or "C"
         elems.append(el)
@@ -818,10 +828,10 @@ def _pseudo_irc_and_match(seg_idx: int,
                           calc_cfg: Optional[Dict[str, Any]],
                           args_yaml: Optional[Path]) -> Dict[str, Any]:
     """
-    [REPLACED] Run IRC via the official irc CLI (EulerPC), then map ends to (left,right).
+    Run IRC via the irc CLI (EulerPC), then map ends to (left,right).
 
     - Run irc on the TS structure into seg_dir/irc
-    - Read endpoints (first/last of finished_irc or last of backward/forward)
+    - Read endpoints from finished_irc.trj
     - Optionally map to segment endpoints (if available)
     - Return geoms and tags
     """
@@ -858,8 +868,6 @@ def _pseudo_irc_and_match(seg_idx: int,
 
     # 2) File paths
     finished_pdb = irc_dir / "finished_irc.pdb"
-    forward_trj = irc_dir / "forward_irc.trj"
-    backward_trj = irc_dir / "backward_irc.trj"
     finished_trj = irc_dir / "finished_irc.trj"
 
     # 2a) Convert finished_irc.trj to PDB when possible
@@ -876,11 +884,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
 
-    # 3) Read endpoints (prefer finished outputs; fall back to forward/backward if needed)
-    elems: List[str]
-    c_first: np.ndarray
-    c_last: np.ndarray
-
+    # 3) Read endpoints
     elems, c_first, c_last = _read_xyz_first_last(finished_trj)
 
     # 4) Build geoms and energies
@@ -1129,9 +1133,11 @@ def _run_dft_sequence(state_jobs: Sequence[Tuple[str, Optional[Path], Path]],
     "-i", "--input", "input_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True, required=True,
-    help=("Two or more **full** PDBs in reaction order (reactant [intermediates ...] product), "
-          "or a single **full** PDB (with --scan-lists or with --tsopt True). "
-          "You may pass a single '-i' followed by multiple space-separated files (e.g., '-i A.pdb B.pdb C.pdb').")
+    help=("Two or more **full structures** (PDB/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
+          "or a single **full structure** (with --scan-lists or with --tsopt True). "
+          "Extraction (-c/--center) requires PDB inputs. When using --scan-lists without extraction, "
+          "the input must be a PDB. You may pass a single '-i' followed by multiple space-separated files "
+          "(e.g., '-i A.pdb B.pdb C.pdb').")
 )
 @click.option(
     "-c", "--center", "center_spec",
@@ -1193,10 +1199,9 @@ def _run_dft_sequence(state_jobs: Sequence[Tuple[str, Optional[Path], Path]],
 @click.option("--tsopt", "do_tsopt", type=click.BOOL, default=False, show_default=True,
               help="TS optimization + IRC per reactive segment (or TSOPT-only mode for single-structure), and build energy diagrams.")
 @click.option("--thermo", "do_thermo", type=click.BOOL, default=False, show_default=True,
-              help="Run freq on (R,TS,P) per reactive segment (or TSOPT-only mode) and build Gibbs free-energy diagram (UMA).")
+              help="Run freq on (R, TS, P) per reactive segment (or TSOPT-only mode) and build Gibbs free-energy diagram (UMA).")
 @click.option("--dft", "do_dft", type=click.BOOL, default=False, show_default=True,
-              help="Run DFT single-point on (R,TS,P) and build DFT energy diagram. With --thermo True, also generate a DFT//UMA Gibbs diagram.")
-              
+              help="Run DFT single-point on (R, TS, P) and build DFT energy diagram. With --thermo True, also generate a DFT//UMA Gibbs diagram.")
 @click.option("--tsopt-max-cycles", type=int, default=None,
               help="Override tsopt --max-cycles value.")
 @click.option("--tsopt-out-dir", type=click.Path(path_type=Path, file_okay=False), default=None,
@@ -1482,7 +1487,7 @@ def cli(
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
         click.echo("\n=== [all] Stage 1 — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n")
-        # ---- New: Prefer GJF charge/spin (first input) when available ----
+        # ---- Prefer GJF charge/spin (first input) when available ----
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
         gjf_spin: Optional[int] = None

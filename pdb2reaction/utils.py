@@ -1,11 +1,11 @@
 # pdb2reaction/utils.py
 
 """
-utils — concise utilities for configuration, plotting, coordinates, and link-freezing
-====================================================================
+utils — concise utilities for configuration, plotting, coordinates, Gaussian templates, and link-freezing
+=========================================================================================================
 
 Usage (API)
------
+-----------
     from pdb2reaction.utils import (
         build_energy_diagram,
         convert_xyz_to_pdb,
@@ -15,55 +15,104 @@ Usage (API)
         pretty_block,
     )
 
-Examples::
+Examples:
     >>> from pathlib import Path
     >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
     >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
     >>> indices = detect_freeze_links(Path("pocket.pdb"))
 
 Description
------
+-----------
 - **Generic helpers**
-  - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Renders `(empty)` when `content` is empty.
-  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"` is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are left unchanged. Empty iterables become `""`.
-  - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
-  - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the updated list (in place).
-  - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalise CLI-style string options using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when no alias matches.
-  - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged, non-dicts overwrite; returns `dst`.
-  - `_get_mapping_section(cfg, path)`: Internal helper to resolve a nested mapping section. Returns a `dict` or `None`.
-  - `apply_yaml_overrides(yaml_cfg, overrides)`: For each target dictionary and its candidate key paths, find the first existing path in `yaml_cfg` and apply it via `deep_update`. Centralizes repeated `yaml_cfg.get(...)`-style merging.
-  - `load_yaml_dict(path)`: Load a YAML file whose root must be a mapping. Returns `{}` when `path` is `None`. Raises `ValueError` if the YAML root is not a mapping.
+  - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses
+    `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `"{}"`.
+  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"`
+    is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are
+    left unchanged. Empty iterables become `""`.
+  - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given
+    a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
+  - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into
+    `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the
+    updated list (in place).
+  - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalize CLI-style string options
+    using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when
+    no alias matches.
+  - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged,
+    non-dicts overwrite; returns `dst`.
+  - `_get_mapping_section(cfg, path)`: Internal helper to resolve a nested mapping section. Returns a `dict`
+    or `None`.
+  - `apply_yaml_overrides(yaml_cfg, overrides)`: For each target dictionary and its candidate key paths,
+    find the first existing path in `yaml_cfg` and apply it via `deep_update`. Centralizes repeated
+    `yaml_cfg.get(...)`-style merging.
+  - `load_yaml_dict(path)`: Load a YAML file whose root must be a mapping. Returns `{}` when `path` is `None`.
+    Raises `ValueError` if the YAML root is not a mapping.
+  - CLI option decorators:
+    - `charge_option(help_text=None)`: Reusable Click option decorator for total charge (inherits `.gjf`
+      defaults when available).
+    - `spin_option(help_text=None)`: Reusable Click option decorator for spin multiplicity (inherits `.gjf`
+      defaults when available).
+
+- **Gaussian input (.gjf) helpers**
+  - `parse_gjf_template(path)`: Parse a Gaussian input template to extract charge/multiplicity and coordinate
+    lines while preserving non-coordinate text. Returns a `GjfTemplate`.
+  - `prepare_input_structure(path)`: If `path` is a `.gjf`, write a temporary XYZ (derived from the template)
+    and return a `PreparedInputStructure` context manager that cleans up the temporary file on exit; otherwise
+    returns a structure referring to `path` directly.
+  - `fill_charge_spin_from_gjf(charge, spin, template)`: Fill `charge`/`spin` from a template when unspecified.
+  - `resolve_charge_spin_or_raise(prepared, charge, spin, spin_default=1, charge_default=0)`: Resolve charge
+    and multiplicity using a template when present, otherwise fall back to the provided defaults; returns
+    integers `(charge, spin)`.
+  - `convert_xyz_to_gjf(xyz_path, template, out_path)`: Render new coordinates into the given `.gjf` template
+    while preserving formatting.
+  - `maybe_convert_xyz_to_gjf(xyz_path, template, out_path=None)`: Convenience wrapper that returns the output
+    path when conversion occurs, otherwise `None`.
 
 - **Plotly: Energy diagram builder**
   - `build_energy_diagram(energies, labels, ylabel="ΔE", baseline=False, showgrid=False)`:
-    Render an energy diagram where each state is a thick horizontal segment and adjacent states are connected by dotted diagonals (right end of left state → left end of right state). Segment length shrinks as the number of states grows to keep gaps readable. X ticks are centered on states and labeled by `labels`. Optional dotted baseline at the first state’s energy; optional grid. Energies are plotted as provided (no unit conversion). Returns a `plotly.graph_objs.Figure`. Validates equal lengths for `energies`/`labels` and non-empty input.
+    Render an energy diagram where each state is a thick horizontal segment and adjacent states are connected
+    by dotted diagonals (right end of left state → left end of right state). Segment length shrinks as the
+    number of states grows to keep gaps readable. X ticks are centered on states and labeled by `labels`.
+    Optional dotted baseline at the first state’s energy; optional grid. Energies are plotted as provided
+    (no unit conversion). Returns a `plotly.graph_objs.Figure`. Validates equal lengths for `energies`/`labels`
+    and non-empty input.
 
 - **Coordinate conversion utilities**
   - `convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)`:
-    Overlay coordinates from an XYZ file (single or multi-frame) onto the atom ordering/topology of a reference PDB and write to `out_pdb_path`. The first frame creates/overwrites; subsequent frames append using `MODEL`/`ENDMDL`. Implemented with ASE (`ase.io.read`/`write`). Raises `ValueError` if no frames are found in the XYZ.
+    Overlay coordinates from an XYZ file (single or multi-frame) onto the atom ordering/topology of a
+    reference PDB and write to `out_pdb_path`. The first frame creates/overwrites; subsequent frames append
+    using `MODEL`/`ENDMDL`. Implemented with ASE (`ase.io.read`/`write`). Raises `ValueError` if no frames
+    are found in the XYZ.
 
 - **Link-freezing helpers**
-  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
-  - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`; returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf` in that case).
-  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/`HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms (“others”). Returns an empty list if no link hydrogens are present.
-  - `detect_freeze_links_safe(pdb_path)`: Wrapper that catches unexpected parser failures, prints a `[freeze-links]` warning, and always returns a list (possibly empty).
+  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from
+    link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns
+    (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
+  - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`;
+    returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf`).
+  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/
+    `HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms
+    (“others”). Returns an empty list if no link hydrogens are present.
+  - `detect_freeze_links_safe(pdb_path)`: Wrapper that catches unexpected parser failures, prints a
+    `[freeze-links]` warning, and always returns a list (possibly empty).
 
 Outputs (& Directory Layout)
------
+----------------------------
 - This module does not create directories.
 - Functions primarily return Python objects or mutate dictionaries in place.
 - On-disk output occurs only when explicitly requested by the caller:
   - `convert_xyz_to_pdb` writes a PDB file to `out_pdb_path` (first frame create/overwrite; subsequent frames append with `MODEL`/`ENDMDL` blocks).
+  - `convert_xyz_to_gjf`/`maybe_convert_xyz_to_gjf` write a `.gjf` file with updated coordinates.
+  - `prepare_input_structure` writes a temporary `.xyz` when the input is a `.gjf`; the temp file is cleaned up when the context manager exits.
   - `build_energy_diagram` returns a Plotly `Figure`; it does not write files unless the caller saves/exports the figure.
 
-Notes:
+Notes
 -----
 - Energy units in `build_energy_diagram` are passed through unchanged; ensure consistent units across states.
 - Axis/line styling in `build_energy_diagram` is fixed-width with automatic padding; segment length adapts to the number of states.
 - `load_yaml_dict` uses `yaml.safe_load` and enforces a mapping at the YAML root; empty files yield `{}`.
 - `apply_yaml_overrides` tries candidate key paths in order and applies only the first existing mapping section per target.
 - `parse_pdb_coords` skips unparseable coordinate fields and considers only `ATOM`/`HETATM` lines.
-- Dependencies: PyYAML, ASE (`ase.io.read`/`write`), Plotly (graph objects), Click (for CLI error reporting). Ensure these are installed.
+- Dependencies: PyYAML, ASE (`ase.io.read`/`write`, `ase.data.chemical_symbols`), Plotly (graph objects), Click (for CLI error reporting/options). Ensure these are installed.
 """
 
 import math
@@ -83,7 +132,7 @@ _ClickCallable = TypeVar("_ClickCallable", bound=Callable[..., Any])
 
 
 def charge_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
-    """Reusable Click option decorator for charge (inherits .gjf defaults)."""
+    """Reusable Click option decorator for total charge (inherits `.gjf` defaults when available)."""
 
     default_help = (
         "Total charge. Defaults to the value parsed from a Gaussian .gjf template when available, "
@@ -104,7 +153,7 @@ def charge_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable],
 
 
 def spin_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
-    """Reusable Click option decorator for spin multiplicity (inherits .gjf defaults)."""
+    """Reusable Click option decorator for spin multiplicity (inherits `.gjf` defaults when available)."""
 
     default_help = (
         "Spin multiplicity (2S+1). Defaults to the value parsed from a Gaussian .gjf template when available, "
@@ -122,6 +171,8 @@ def spin_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _
         )(func)
 
     return decorator
+
+
 from ase.io import read, write
 import plotly.graph_objs as go
 
@@ -134,17 +185,17 @@ import plotly.graph_objs as go
 def pretty_block(title: str, content: Dict[str, Any]) -> str:
     """
     Return a YAML-formatted block with an underlined title.
-    """
 
+    Empty mappings render as "{}".
+    """
     body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + (body if body else "(empty)") + "\n"
+    return f"{title}\n" + "-" * len(title) + "\n" + body + "\n"
 
 
 def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalise geometry configuration for CLI echo output.
+    Normalize geometry configuration for CLI echo output.
     """
-
     g = dict(geom_cfg)
     freeze_atoms = g.get("freeze_atoms")
     if freeze_atoms is None:
@@ -164,7 +215,6 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
     """Return a formatted elapsed-time string with the provided ``prefix`` label."""
-
     finish = end_time if end_time is not None else time.perf_counter()
     elapsed = max(0.0, finish - start_time)
     hours, rem = divmod(elapsed, 3600)
@@ -181,7 +231,6 @@ def merge_freeze_atom_indices(
     Existing entries are preserved, duplicates removed, and the result sorted.
     The updated list is returned.
     """
-
     merged: set[int] = set()
     base = geom_cfg.get("freeze_atoms", [])
     if isinstance(base, _Iterable):
@@ -202,8 +251,7 @@ def normalize_choice(
     alias_groups: _Sequence[tuple[_Sequence[str], str]],
     allowed_hint: str,
 ) -> str:
-    """Normalise *value* using alias groups and raise ``click.BadParameter`` on failure."""
-
+    """Normalize *value* using alias groups and raise ``click.BadParameter`` on failure."""
     key = (value or "").strip().lower()
     for aliases, canonical in alias_groups:
         if any(key == alias.lower() for alias in aliases):
@@ -218,7 +266,6 @@ def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str,
     """
     Recursively update mapping *dst* with *src*, returning *dst*.
     """
-
     for k, v in (src or {}).items():
         if isinstance(v, dict) and isinstance(dst.get(k), dict):
             deep_update(dst[k], v)
@@ -261,9 +308,8 @@ def apply_yaml_overrides(
             )
 
         This mirrors the previous ``deep_update(..., yaml_cfg.get(...))`` pattern
-        while centralising the shared logic.
+        while centralizing the shared logic.
     """
-
     for target, paths in overrides:
         for path in paths:
             norm_path = tuple(path)
@@ -277,7 +323,6 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
     """
     Load a YAML file whose root must be a mapping. Return an empty dict if *path* is None.
     """
-
     if not path:
         return {}
 
@@ -298,7 +343,7 @@ def build_energy_diagram(
     labels: Sequence[str],
     ylabel: str = "ΔE",
     baseline: bool = False,
-    showgrid=False,
+    showgrid: bool = False,
 ) -> go.Figure:
     """
     Plot an energy diagram using Plotly.
@@ -845,7 +890,7 @@ def nearest_index(point, pool):
     Returns:
         A tuple (index, distance) where:
             - index is the 0-based index of the nearest entry in *pool* (or -1 if *pool* is empty).
-            - distance is the Euclidean distance to that entry.
+            - distance is the Euclidean distance to that entry (``inf`` if *pool* is empty).
     """
     x, y, z = point
     best_i = -1
@@ -886,7 +931,6 @@ def detect_freeze_links(pdb_path):
 
 def detect_freeze_links_safe(pdb_path: Path) -> List[int]:
     """Return link-parent indices with a `[freeze-links]` warning instead of raising."""
-
     try:
         return list(detect_freeze_links(pdb_path))
     except Exception as e:  # pragma: no cover - defensive logging helper
