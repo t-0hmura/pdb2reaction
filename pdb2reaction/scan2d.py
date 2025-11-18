@@ -21,11 +21,11 @@ Usage (CLI)
         [--zmin FLOAT] [--zmax FLOAT]
 
 Examples::
-    # 最小例（2つの距離レンジを与える）
+    # Minimal example (two distance ranges)
     pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]"
 
-    # LBFGS・トラジェクトリ出力・正方形プロット（PNG + HTML）
+    # LBFGS with trajectory dumping and square plots (PNG + HTML)
     pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
         --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode lbfgs \
@@ -33,31 +33,33 @@ Examples::
 
 Description
 -----
-- 2 本の原子間距離 (d1, d2) を同時に扱う 2D スキャンです。
-- 入力は Python 風リスト `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` を **--scan-list** で 1 つ渡します。
-  - デフォルトは 1-based インデックスです（--zero-based で 0-based に切替可）。
-- ステップ幅の決定は 1D スキャンと同様に、与えた `--max-step-size = h (Å)` を上限に
-  - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`
-  - 値列: `d1_values = linspace(low1, high1, N1 + 1)`（差が 0 の場合は `[low1]`）
-           `d2_values = linspace(low2, high2, N2 + 1)`（差が 0 の場合は `[low2]`）
-- スキャンの流れ（ネスト走査）:
-  1) d1 の各値 d1[i] に対して、d1 のみの拘束で最小化（バイアスは d1 のみ）。
-  2) その最小化後構造をスナップショットし、**d1 を固定しつつ d2 を走査**（d2[j] へ順に）。
-     各 (d1[i], d2[j]) に対して拘束付き最小化を行い、その座標で **バイアスなし（UMA 単発）** の
-     エネルギーを評価・記録します（PES グリッド）。
-- 出力:
-  - `result_scan2d/surface.csv` … 列: i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged (True/False)
-  - `result_scan2d/scan2d_contour.png` … 2D 等高線（PNG）
-  - `result_scan2d/scan2d_surface.html` … 3D サーフェス + 底面投影（HTML）
-- 中間構造や最適化の作業出力は **一時ディレクトリ** にのみ保存し、`result_scan2d` 直下には置きません。
+- A 2D scan that optimizes two inter-atomic distances (d1, d2) simultaneously.
+- Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
+  - Indices are 1-based by default; pass --zero-based to switch to 0-based.
+- The step schedule mirrors the 1D scan with `--max-step-size = h (Å)` as an upper bound:
+  - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
+  - Value arrays: `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` when the range is zero)
+                 `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` when the range is zero).
+- Nested scan procedure:
+  1) For each d1[i], minimize with only the d1 restraint (d1 bias only).
+  2) Snapshot that minimum, **freeze d1**, and iterate **d2** across d2[j]. Each pair (d1[i], d2[j])
+     runs a constrained minimization whose energy is evaluated **without the harmonic bias** (single UMA call)
+     and recorded on the PES grid.
+- Outputs:
+  - `result_scan2d/surface.csv`: columns i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged (True/False)
+  - `result_scan2d/scan2d_contour.png`: 2D contour plot (PNG)
+  - `result_scan2d/scan2d_surface.html`: 3D surface + base-plane projection (HTML)
+- Intermediate geometries and optimization artifacts are kept **only in a temporary directory** and never dumped
+  directly under `result_scan2d`.
 
 Notes
 -----
-- UMA のみ（calculator は `uma_pysis`）。1D `scan.py` と同じ HarmonicBias を使用。
-- 収束は LBFGS/RFO のいずれか（--opt-mode）。ステップ／トラスト半径は Å 指定上限を Bohr に変換して上限化。
+- UMA only (`uma_pysis` calculator) and the same HarmonicBias implementation as the 1D scan.
+- Convergence is controlled by LBFGS or RFO depending on --opt-mode. Ångström limits are converted to Bohr for
+  the internal trust-radius caps.
 - `--baseline min|first`:
-  - `min`  : グリッド最小値を 0 kcal/mol として相対化（デフォルト）
-  - `first`: (i=0, j=0) の点を 0 kcal/mol として相対化
+  - `min`  : shift PES values so that the global minimum is 0 kcal/mol (default)
+  - `first`: shift so that the first grid point (i=0, j=0) is 0 kcal/mol
 """
 
 from __future__ import annotations
@@ -106,7 +108,7 @@ from .utils import (
     spin_option,
 )
 
-# 2D スキャンで使う既定群（必要部分のみ上書き）
+# Default keyword dictionaries for the 2D scan (override only the knobs we touch)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
@@ -477,7 +479,7 @@ def cli(
 
                 E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
-                # 中間XYZは一時ディレクトリにのみ保存
+                # Keep intermediate XYZ snapshots only inside the temporary directory
                 xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
                 try:
                     s = geom_inner.as_xyz()
@@ -512,7 +514,7 @@ def cli(
                 except Exception as e:
                     click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
 
-        # ===== surface.csv（最終出力：result_scan2d直下）=====
+        # ===== surface.csv (final output directly under result_scan2d) =====
         df = pd.DataFrame.from_records(records)
         if df.empty:
             click.echo("No grid records produced; aborting.", err=True)
@@ -528,7 +530,7 @@ def cli(
         df.to_csv(surface_csv, index=False)
         click.echo(f"[write] Wrote '{surface_csv}'.")
 
-        # ===== プロット（RBF 200×200固定、フォーマット統一、plotはfinal_dir直下） =====
+        # ===== Plots (RBF on a fixed 200×200 grid, unified layout, placed under final_dir) =====
         d1_points = df["d1_A"].to_numpy(dtype=float)
         d2_points = df["d2_A"].to_numpy(dtype=float)
         z_points  = df["energy_kcal"].to_numpy(dtype=float)
@@ -552,7 +554,7 @@ def cli(
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
 
-        # きりの良い等高線・tick用のステップ
+        # Choose neat contour/tick steps
         def _nice_step(span: float) -> float:
             if span <= 0:
                 return 1.0
@@ -568,7 +570,7 @@ def cli(
         c_start = math.floor(vmin / c_step) * c_step
         c_end   = math.ceil (vmax / c_step) * c_step
 
-        # ---- 2D 等高線（PNG: サイズ明示）----
+        # ---- 2D contour plot (PNG with explicit size) ----
         fig2d = go.Figure(data=go.Contour(
             z=ZI,
             x=xi,
@@ -636,15 +638,15 @@ def cli(
         fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
         click.echo(f"[plot] Wrote '{png2d}'.")
 
-        # ---- 3D サーフェス + 底面投影 ----
-        # 地形は z の上半分に、平面は z 軸の完全な底面に
+        # ---- 3D surface plus base-plane projection ----
+        # Keep the surface in the upper half of the z-axis and the plane flush with the bottom
         spread = vmax - vmin if (vmax > vmin) else 1.0
         z_bottom = vmin - spread
         z_top    = vmax
 
-        # z軸のtickは zmin(=vmin)未満を出さない + きりの良い数字
+        # Avoid ticks below zmin (= vmin) and snap to sensible values
         z_step = _nice_step(vmax - vmin)
-        z_start_tick = math.ceil(vmin / z_step) * z_step  # 最初のtickはvmin以上
+        z_start_tick = math.ceil(vmin / z_step) * z_step  # First tick must be ≥ vmin
         z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
 
         surface3d = go.Surface(
@@ -715,7 +717,7 @@ def cli(
                     title="Potential Energy (kcal/mol)",
                     range=[z_bottom, z_top],
                     tickmode="array",
-                    tickvals=z_ticks,  # vmin未満のtickは含めない
+                    tickvals=z_ticks,  # No ticks below vmin
                     showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
                     ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
                     showgrid=True, gridcolor='rgba(0,0,0,0.1)',
