@@ -389,6 +389,13 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 @click.option("--grid-level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level (PySCF grids.level).")
 @click.option("--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
+    "--engine",
+    type=click.Choice(["gpu", "cpu", "auto"], case_sensitive=False),
+    default="gpu",
+    show_default=True,
+    help="Preferred SCF backend: GPU (GPU4PySCF when available), CPU, or auto (try GPU then CPU).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -404,6 +411,7 @@ def cli(
     conv_tol: float,
     grid_level: int,
     out_dir: str,
+    engine: str,
     args_yaml: Optional[Path],
 ) -> None:
     prepared_input = prepare_input_structure(input_path)
@@ -445,6 +453,7 @@ def cli(
             "max_cycle": dft_cfg["max_cycle"],
             "grid_level": dft_cfg["grid_level"],
             "out_dir": str(out_dir_path),
+            "engine": engine,
         }
         click.echo(pretty_block("dft", echo_cfg))
 
@@ -485,19 +494,34 @@ def cli(
         # --------------------------
         # 4) Activate GPU & build SCF object
         # --------------------------
+        engine = (engine or "gpu").strip().lower()
         using_gpu = False
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
-        try:
-            import gpu4pyscf
-            gpu4pyscf.activate()  # patch PySCF backends to GPU where supported
-            from gpu4pyscf import dft as gdf
-            mf = make_ks(gdf)
-            using_gpu = True
-            engine_label = "gpu4pyscf"
-        except Exception:
+        gpu_exc: Optional[str] = None
+        if engine in ("gpu", "auto"):
+            try:
+                import gpu4pyscf
+                gpu4pyscf.activate()  # patch PySCF backends to GPU where supported
+                from gpu4pyscf import dft as gdf
+                mf = make_ks(gdf)
+                using_gpu = True
+                engine_label = "gpu4pyscf"
+            except Exception as e:
+                gpu_exc = str(e)
+                if engine == "gpu":
+                    click.echo(
+                        f"[gpu] WARNING: GPU backend requested but unavailable ({gpu_exc}); falling back to CPU.",
+                        err=True,
+                    )
+        if not using_gpu:
             from pyscf import dft as pdft
             mf = make_ks(pdft)
+            if engine == "gpu" and gpu_exc is None:
+                click.echo(
+                    "[gpu] WARNING: GPU backend requested but unavailable (unknown error); falling back to CPU.",
+                    err=True,
+                )
 
         # ---- Enable density fitting (RI/DF) & set aux-basis if available ----
         try:

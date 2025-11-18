@@ -17,6 +17,7 @@ Usage (CLI)
                       [--preopt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
                       [--tsopt True|False] [--thermo True|False] [--dft True|False]
                       [--tsopt-max-cycles N] [--freq-* overrides] [--dft-* overrides]
+                      [--dft-engine gpu|cpu|auto]
 
     # Override examples (repeatable; use only what you need)
       ... --scan-lists "[(12,45,1.35)]" --scan-one-based True --scan-bias-k 0.05 --scan-relax-max-cycles 150 \
@@ -120,7 +121,7 @@ Runs a one-shot pipeline centered on pocket models:
   - TS optimization / IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt/irc.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
     `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
-  - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`.
+  - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`, `--dft-engine`.
   - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
   - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft` so a single file can
     host per-module sections (see the respective subcommand docs for accepted keys).
@@ -1053,7 +1054,8 @@ def _run_dft_for_state(pdb_path: Path,
                        out_dir: Path,
                        args_yaml: Optional[Path],
                        func_basis: str = "wb97x-v/def2-tzvp",
-                       overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                       overrides: Optional[Dict[str, Any]] = None,
+                       engine: str = "gpu") -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
     """
@@ -1070,6 +1072,8 @@ def _run_dft_for_state(pdb_path: Path,
         "--func-basis", str(func_basis_use),
         "--out-dir", str(ddir),
     ]
+    if engine:
+        args.extend(["--engine", str(engine)])
 
     _append_cli_arg(args, "--max-cycle", overrides.get("max_cycle"))
     _append_cli_arg(args, "--conv-tol", overrides.get("conv_tol"))
@@ -1211,6 +1215,11 @@ def _run_dft_for_state(pdb_path: Path,
               help="Override dft --conv-tol value.")
 @click.option("--dft-grid-level", type=int, default=None,
               help="Override dft --grid-level value.")
+@click.option("--dft-engine",
+              type=click.Choice(["gpu", "cpu", "auto"], case_sensitive=False),
+              default="gpu",
+              show_default=True,
+              help="Preferred DFT backend: GPU (default), CPU, or auto (try GPU then CPU).")
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=False,
@@ -1283,6 +1292,7 @@ def cli(
     dft_max_cycle: Optional[int],
     dft_conv_tol: Optional[float],
     dft_grid_level: Optional[int],
+    dft_engine: str,
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on pocket) → `path_search` and hides ref-template bookkeeping.
@@ -1608,9 +1618,9 @@ def cli(
         # DFT & DFT//UMA
         if do_dft:
             click.echo(f"[dft] Single TSOPT: DFT on R/TS/P")
-            dR = _run_dft_for_state(pR, q_int, spin, dft_root / "R",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-            dT = _run_dft_for_state(pT, q_int, spin, dft_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-            dP = _run_dft_for_state(pP, q_int, spin, dft_root / "P",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+            dR = _run_dft_for_state(pR, q_int, spin, dft_root / "R",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
+            dT = _run_dft_for_state(pT, q_int, spin, dft_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
+            dP = _run_dft_for_state(pP, q_int, spin, dft_root / "P",  args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
             try:
                 eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", e_react))
                 eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", eT))
@@ -2022,9 +2032,9 @@ def cli(
                 )
             else:
                 click.echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
-                dR = _run_dft_for_state(p_react, q_int, spin, dft_seg_root / "R", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-                dT = _run_dft_for_state(p_ts, q_int, spin, dft_seg_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
-                dP = _run_dft_for_state(p_prod, q_int, spin, dft_seg_root / "P", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides)
+                dR = _run_dft_for_state(p_react, q_int, spin, dft_seg_root / "R", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
+                dT = _run_dft_for_state(p_ts, q_int, spin, dft_seg_root / "TS", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
+                dP = _run_dft_for_state(p_prod, q_int, spin, dft_seg_root / "P", args_yaml, func_basis=dft_func_basis_use, overrides=dft_overrides, engine=dft_engine)
                 try:
                     eR_dft = float(((dR or {}).get("energy", {}) or {}).get("hartree", np.nan))
                     eT_dft = float(((dT or {}).get("energy", {}) or {}).get("hartree", np.nan))
