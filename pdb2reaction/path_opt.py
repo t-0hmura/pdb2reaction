@@ -134,7 +134,7 @@ STOPT_KW: Dict[str, Any] = {
     "reparam_thresh": 1e-3,
     "coord_diff_thresh": 0.0,
     "out_dir": "./result_path_opt/",
-    "print_every": 10,
+    "print_every": 5,
 }
 
 
