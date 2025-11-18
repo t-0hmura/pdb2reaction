@@ -5,7 +5,7 @@ Optimizes a minimum-energy path between two endpoints using the pysisyphus Growi
 
 ## Usage
 ```bash
-pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
+pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--mult 2S+1]
                       [--freeze-links BOOL] [--thresh PRESET]
                       [--max-nodes N] [--max-cycles N] [--climb BOOL]
                       [--dump BOOL] [--out-dir DIR] [--args-yaml FILE]
@@ -16,7 +16,7 @@ pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--spin 2S+1]
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Two endpoint structures (reactant, product). | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents. | `True` |
 | `--max-nodes INT` | Internal nodes in the string (total images = `max_nodes + 2`). | `30` |
 | `--max-cycles INT` | Maximum optimizer cycles. | `100` |

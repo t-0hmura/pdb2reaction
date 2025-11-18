@@ -110,7 +110,7 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
@@ -257,7 +257,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option(
     "--scan-list", "scan_list_raw",
     type=str, required=True,

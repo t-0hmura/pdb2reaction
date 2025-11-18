@@ -5,7 +5,7 @@ Runs a recursive Growing String (GSM) search across multiple structures (reactan
 
 ## Usage
 ```bash
-pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
+pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
                          [--freeze-links BOOL] [--thresh PRESET]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--sopt-mode lbfgs|rfo|light|heavy] [--dump BOOL]
@@ -19,7 +19,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--spin 2S+1]
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). A single `-i` may be followed by multiple paths. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |

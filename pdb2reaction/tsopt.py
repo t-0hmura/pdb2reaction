@@ -6,7 +6,7 @@ tsopt — Transition-state optimization CLI
 
 Usage (CLI)
 -----------
-    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
+    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--opt-mode {light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
                      heavy|rfo|rsirfo|rs-i-rfo}] \
         [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
@@ -16,17 +16,17 @@ Usage (CLI)
 Examples
 --------
     # Minimal (recommended: always specify charge and spin)
-    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light \
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light \
         --out-dir ./result_tsopt/
 
     # Light mode (Hessian Dimer) with YAML overrides and finite-difference Hessian
-    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 \
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
         --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
         --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
         --hessian-calc-mode FiniteDifference
 
     # Heavy mode (RS-I-RFO) using YAML
-    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
         --args-yaml ./args.yaml --out-dir ./result_tsopt/
 
 
@@ -99,7 +99,7 @@ out_dir/ (default: ./result_tsopt/)
 
 Notes
 -----
-- **Charge/spin**: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when the input
+- **Charge/spin**: `-q/--charge` and `-m/--mult` inherit `.gjf` template values when the input
   is `.gjf`; otherwise they default to `0` and `1`. Override explicitly to avoid unphysical
   conditions.
 
@@ -167,7 +167,7 @@ from .utils import (
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 from .freq import (
     _torch_device,
@@ -1239,7 +1239,7 @@ RSIRFO_KW.update({
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")

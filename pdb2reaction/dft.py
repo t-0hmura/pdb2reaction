@@ -6,7 +6,7 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 
 Usage (CLI)
 -----------
-    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-s <spin>] \
+    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-m <multiplicity>] \
         [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
         [--args-yaml <file>]
@@ -14,10 +14,10 @@ Usage (CLI)
 Examples
 --------
     # Default GPU-first policy with an explicit functional/basis pair
-    pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
+    pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis "wb97m-v/6-31g**"
 
     # Tight SCF controls with a larger basis and CPU-only fallback
-    pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" \
+    pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
         --max-cycle 150 --conv-tol 1e-9 --engine cpu
 
 Description
@@ -54,7 +54,7 @@ out_dir/ (default: ./result_dft/)
 
 Notes
 -----
-- Charge/spin resolution: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when present
+- Charge/spin resolution: `-q/--charge` and `-m/--mult` inherit values from `.gjf` templates when present
   and otherwise fall back to `0`/`1`. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
 - YAML overrides: `--args-yaml` points to a file with top-level key `dft` (`conv_tol`, `max_cycle`,
@@ -91,7 +91,7 @@ from .utils import (
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 
 
@@ -413,7 +413,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option(
     "--func-basis",
     "func_basis",

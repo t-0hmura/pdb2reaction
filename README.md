@@ -54,7 +54,7 @@ pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists 
 pdb2reaction -i SINGLE.pdb \
              -c "GPP,MMT" \
              --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-             --spin 1 --outdir ./result_scan_all \
+             --mult 1 --outdir ./result_scan_all \
              --tsopt True --thermo True --dft True
 ```
 

@@ -10,7 +10,7 @@ DFT, and DFT//UMA diagrams
 Usage (CLI)
 -----------
     pdb2reaction all -i INPUT1 [INPUT2 ...] -c <substrate-spec> \
-        [--ligand-charge <number|"RES:Q,...">] [--spin <2S+1>] \
+        [--ligand-charge <number|"RES:Q,...">] [--mult <2S+1>] \
         [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--sopt-mode {lbfgs|rfo|light|heavy}] \
         [--opt-mode {light|lbfgs|heavy|rfo}] [--dump {True|False}] \
@@ -35,13 +35,13 @@ Examples
 
     # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
     pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
-        --spin 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
+        --mult 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
         --sopt-mode lbfgs --dump False --args-yaml params.yaml --preopt True \
         --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure + scan to build an ordered series before path_search + post-processing
     pdb2reaction all -i A.pdb -c "308,309" \
-        --scan-lists "[(10,55,2.20),(23,34,1.80)]" --spin 1 --out-dir result_scan_all \
+        --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --out-dir result_scan_all \
         --tsopt True --thermo True --dft True
 
     # Single-structure TSOPT-only mode (no path_search)
@@ -104,7 +104,7 @@ Runs a one-shot pipeline centered on pocket models:
       1) a numeric `--ligand-charge` value (if provided), otherwise
       2) parsed from the **first input GJF** (if the first input is `.gjf`), otherwise
       3) default **0**.
-    Spin precedence when extraction is skipped: explicit `--spin` > GJF value (if available) > default.
+    Spin precedence when extraction is skipped: explicit `--mult` > GJF value (if available) > default.
 
 **Inputs**
   - `-i/--input` accepts two or more **full structures** in reaction order (reactant [intermediates ...] product).
@@ -112,7 +112,7 @@ Runs a one-shot pipeline centered on pocket models:
     inputs must be **PDB**. For **single-structure + scan**, the input must be a **PDB**.
 
 **Forwarded / relevant options**
-  - Path search: `--spin`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
+  - Path search: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
     `--dump`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as shared flags.)
   - Scan (single-structure, pocket input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
     `--args-yaml`, `--preopt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based`
@@ -179,7 +179,7 @@ Notes
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
 - Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
   The total charge defaults to 0; providing `--ligand-charge <number>` sets that value as the **overall system charge**
-  (rounded). If the first input is a GJF, its charge/spin are used when `--ligand-charge` (numeric) and `--spin`
+  (rounded). If the first input is a GJF, its charge/spin are used when `--ligand-charge` (numeric) and `--mult`
   are not explicitly provided.
 """
 
@@ -732,7 +732,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     ts_args: List[str] = [
         "-i", str(hei_pdb),  # forward the original path unchanged
         "-q", str(int(charge)),
-        "-s", str(int(spin)),
+        "-m", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
         "--out-dir", str(ts_dir),
     ]
@@ -840,7 +840,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     irc_args: List[str] = [
         "-i", str(ref_pdb_for_seg),     # TS geometry file (PDB/XYZ/GJF)
         "-q", str(int(q_int)),
-        "-s", str(int(spin)),
+        "-m", str(int(spin)),
         "--out-dir", str(irc_dir),
         "--freeze-links", "True" if (freeze_links_flag and ref_pdb_for_seg.suffix.lower() == ".pdb") else "False",
     ]
@@ -989,7 +989,7 @@ def _run_freq_for_state(pdb_path: Path,
     args = [
         "-i", str(pdb_path),
         "-q", str(int(q_int)),
-        "-s", str(int(spin)),
+        "-m", str(int(spin)),
         "--freeze-links", "True" if freeze_use and (pdb_path.suffix.lower() == ".pdb") else "False",
         "--out-dir", str(fdir),
     ]
@@ -1049,7 +1049,7 @@ def _run_dft_for_state(pdb_path: Path,
     args = [
         "-i", str(pdb_path),
         "-q", str(int(q_int)),
-        "-s", str(int(spin)),
+        "-m", str(int(spin)),
         "--func-basis", str(func_basis_use),
         "--out-dir", str(ddir),
     ]
@@ -1165,7 +1165,7 @@ def _run_dft_sequence(state_jobs: Sequence[Tuple[str, Optional[Path], Path]],
                     "or a mapping like 'GPP:-3,MMT:-1'."))
 @click.option("--verbose", type=click.BOOL, default=True, show_default=True, help="Enable INFO-level logging inside extractor.")
 # ===== Path search knobs (subset of path_search.cli) =====
-@click.option("-s", "--spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
+@click.option("-m", "--mult", "spin", type=int, default=1, show_default=True, help="Multiplicity (2S+1).")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For pocket PDB input, freeze parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=10, show_default=True,
@@ -1523,7 +1523,7 @@ def cli(
                 click.echo("[all] NOTE: No total charge provided; defaulting to 0. Supply '--ligand-charge <number>' to override.")
         q_int = _round_charge_with_note(q_total_fallback)
 
-        # Spin precedence: explicit --spin > GJF (if any) > existing default
+        # Spin precedence: explicit --mult > GJF (if any) > existing default
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
             click.echo(f"[all] Spin multiplicity set from GJF: {spin}")
@@ -1721,7 +1721,7 @@ def cli(
         scan_args: List[str] = [
             "-i", str(scan_input_pdb),
             "-q", str(int(q_int)),
-            "-s", str(int(spin)),
+            "-m", str(int(spin)),
             "--out-dir", str(scan_dir),
             "--freeze-links", "True" if freeze_links_flag else "False",
             "--preopt", "True" if scan_preopt_use else "False",
@@ -1797,7 +1797,7 @@ def cli(
 
     # Charge & spin
     ps_args.extend(["-q", str(q_int)])
-    ps_args.extend(["-s", str(int(spin))])
+    ps_args.extend(["-m", str(int(spin))])
 
     # Freeze-links, nodes, cycles, climb, optimizer, dump, out-dir, preopt, args-yaml
     ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])

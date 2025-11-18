@@ -18,7 +18,7 @@ pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--scan-lists TEXT` | Repeatable Python-like list literal of `(i, j, targetÅ)` triples defining each scan stage. | Required |
 | `--one-based / --zero-based` | Interpret `(i, j)` indices as 1-based (default) or 0-based. | `--one-based` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per integration step (Å). | `0.20` |

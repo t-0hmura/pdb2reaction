@@ -5,7 +5,7 @@ Optimizes transition states using either the Hessian Dimer method ("light") or R
 
 ## Usage
 ```bash
-pdb2reaction tsopt -i INPUT -q CHARGE [--spin 2S+1]
+pdb2reaction tsopt -i INPUT -q CHARGE [--mult 2S+1]
                     [--freeze-links BOOL] [--thresh PRESET]
                     [--max-cycles N]
                     [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
@@ -20,7 +20,7 @@ pdb2reaction tsopt -i INPUT -q CHARGE [--spin 2S+1]
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (propagated to UMA). | `True` |
 | `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |

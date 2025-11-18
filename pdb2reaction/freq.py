@@ -98,7 +98,7 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 
 
@@ -498,7 +498,7 @@ THERMO_KW = {
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-write", type=int, default=20, show_default=True,
