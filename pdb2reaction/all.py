@@ -21,7 +21,7 @@ Usage (CLI)
 
     # Override examples (repeatable; use only what you need)
       ... --scan-lists "[(12,45,1.35)]" --scan-one-based True --scan-bias-k 0.05 --scan-relax-max-cycles 150 \
-          --tsopt-max-cycles 250 --freq-temperature 298.15 --freq-max-write 15 --dft-func-basis "wb97x-v/def2-tzvp"
+          --tsopt-max-cycles 250 --freq-temperature 298.15 --freq-max-write 15 --dft-func-basis "wb97m-v/def2-tzvpd"
 
     # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
     pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
@@ -1053,7 +1053,7 @@ def _run_dft_for_state(pdb_path: Path,
                        spin: int,
                        out_dir: Path,
                        args_yaml: Optional[Path],
-                       func_basis: str = "wb97x-v/def2-tzvp",
+                       func_basis: str = "wb97m-v/def2-tzvpd",
                        overrides: Optional[Dict[str, Any]] = None,
                        engine: str = "gpu") -> Dict[str, Any]:
     """
@@ -1376,7 +1376,7 @@ def cli(
     if dft_grid_level is not None:
         dft_overrides["grid_level"] = int(dft_grid_level)
 
-    dft_func_basis_use = dft_func_basis or "wb97x-v/def2-tzvp"
+    dft_func_basis_use = dft_func_basis or "wb97m-v/def2-tzvpd"
 
     # Shared YAML configuration (used locally for calc overrides; still forwarded downstream via --args-yaml)
     yaml_cfg = load_yaml_dict(args_yaml)
@@ -1629,7 +1629,7 @@ def cli(
                     tsroot / "energy_diagram_DFT",
                     labels=["R", "TS", "P"],
                     energies_eh=[eR_dft, eT_dft, eP_dft],
-                    title_note="(DFT wb97x-v/def2-tzvp)",
+                    title_note=f"(DFT {dft_func_basis_use})",
                 )
             except Exception as e:
                 click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
@@ -2044,7 +2044,7 @@ def cli(
                             seg_dir / "energy_diagram_DFT",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_eh=[eR_dft, eT_dft, eP_dft],
-                            title_note="(DFT wb97x-v/def2-tzvp)",
+                            title_note=f"(DFT {dft_func_basis_use})",
                         )
                     else:
                         click.echo("[dft] WARNING: some DFT energies missing; diagram skipped.", err=True)
