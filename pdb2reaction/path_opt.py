@@ -7,7 +7,7 @@ path_opt — Minimum-energy path (MEP) optimization via the Growing String metho
 Usage (CLI)
 -----------
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
-        [-q <charge>] [-s <multiplicity>] [--freeze-links {True|False}] \
+        [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
         [--args-yaml <file>]
@@ -15,10 +15,10 @@ Usage (CLI)
 Examples
 --------
     # Minimal: two endpoints, neutral singlet
-    pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -s 1
+    pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1
 
     # Typical full run with YAML overrides, dumps, and a convergence preset
-    pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -s 1 \
+    pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1 \
       --freeze-links True --max-nodes 10 --max-cycles 100 \
       --climb True --dump True --out-dir ./result_path_opt/ \
       --thresh gau_tight --args-yaml ./args.yaml
@@ -47,7 +47,7 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when provided and otherwise fall back to `0`/`1`. Override explicitly to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` and `-m/--mult` inherit `.gjf` template values when provided and otherwise fall back to `0`/`1`. Override explicitly to avoid unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
@@ -89,7 +89,7 @@ from .utils import (
     maybe_convert_xyz_to_gjf,
     PreparedInputStructure,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 
@@ -182,7 +182,7 @@ def _load_two_endpoints(
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=30, show_default=True,

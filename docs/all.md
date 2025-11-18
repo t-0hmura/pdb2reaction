@@ -7,7 +7,7 @@ Run an end-to-end enzymatic reaction workflow on pocket models: extract pockets,
 ```bash
 # Multi-structure ensemble (reaction order)
 pdb2reaction all -i R.pdb [I.pdb ...] P.pdb -c SUBSTRATE_SPEC \
-                 [--ligand-charge MAP_OR_NUMBER] [--spin 2S+1] \
+                 [--ligand-charge MAP_OR_NUMBER] [--mult 2S+1] \
                  [--freeze-links True|False] [--max-nodes N] [--max-cycles N] \
                  [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] \
                  [--dump True|False] [--preopt True|False] \
@@ -37,7 +37,7 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
 | `--ligand-charge TEXT` | Total charge or mapping for unknown residues (recommended). | `None` |
 | `--verbose BOOLEAN` | Enable INFO-level logging in the extractor. | `True` |
-| `-s, --spin INT` | Spin multiplicity forwarded to GSM, scan, and post-processing. | `1` |
+| `-m, --mult INT` | Spin multiplicity forwarded to GSM, scan, and post-processing. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs during GSM/scan (also reused by scan/tsopt/freq). | `True` |
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
 | `--max-cycles INT` | GSM maximum optimisation cycles. | `100` |

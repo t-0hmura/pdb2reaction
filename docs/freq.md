@@ -5,7 +5,7 @@ Computes vibrational frequencies using UMA, performs partial Hessian vibrational
 
 ## Usage
 ```bash
-pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
+pdb2reaction freq -i INPUT -q CHARGE [--mult 2S+1]
                   [--freeze-links BOOL]
                   [--max-write N] [--amplitude-ang Å] [--n-frames N]
                   [--sort value|abs] [--out-dir DIR]
@@ -19,7 +19,7 @@ pdb2reaction freq -i INPUT -q CHARGE [--spin 2S+1]
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `True` |
 | `--max-write INT` | Number of modes to export. | `20` |
 | `--amplitude-ang FLOAT` | Animation amplitude (Å). | `0.8` |

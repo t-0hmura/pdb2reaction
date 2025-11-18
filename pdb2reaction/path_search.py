@@ -7,7 +7,7 @@ path_search — Recursive GSM segmentation to build a continuous multistep MEP
 Usage (CLI)
 -----------
     pdb2reaction path-search -i STRUCT1 STRUCT2 [STRUCT3 ...] [-q <charge>] \
-        [-s <spin>] [--sopt-mode {lbfgs|rfo|light|heavy}] \
+        [-m <multiplicity>] [--sopt-mode {lbfgs|rfo|light|heavy}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--preopt {True|False}] [--align/--no-align] [--thresh <preset>] \
         [--ref-pdb <path> ...] [--out-dir <dir>] [--args-yaml <file>] \
@@ -21,7 +21,7 @@ Core inputs (strongly recommended):
         Total system charge (defaults to a .gjf template value or 0 when omitted).
 
 Recommended/common:
-    -s/--spin
+    -m/--mult
         Spin multiplicity (2S+1); defaults to a .gjf template value or 1 when omitted.
     --sopt-mode
         Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs
@@ -187,7 +187,7 @@ from .utils import (
     PreparedInputStructure,
     GjfTemplate,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 from .trj2fig import run_trj2fig
 from .bond_changes import compare_structures, summarize_changes
@@ -1452,7 +1452,7 @@ def _merge_final_and_write(final_images: List[Any],
           "followed by multiple space-separated paths (e.g., '-i A B C').")
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For PDB input, freeze parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=10, show_default=True,

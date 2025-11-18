@@ -5,7 +5,7 @@ Runs Intrinsic Reaction Coordinate (IRC) integrations with the EulerPC predictor
 
 ## Usage
 ```bash
-pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
+pdb2reaction irc -i INPUT -q CHARGE [--mult 2S+1]
                  [--max-cycles N] [--step-size Δs] [--root k]
                  [--forward BOOL] [--backward BOOL]
                  [--freeze-links BOOL]
@@ -19,7 +19,7 @@ pdb2reaction irc -i INPUT -q CHARGE [--spin 2S+1]
 | --- | --- | --- |
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps (overrides `irc.max_cycles`). | _None_ (use YAML/default `125`) |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates (overrides `irc.step_length`). | _None_ (default `0.10`) |
 | `--root INT` | Imaginary-mode index for the initial displacement (`irc.root`). | _None_ (default `0`) |

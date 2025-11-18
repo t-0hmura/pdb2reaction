@@ -5,7 +5,7 @@ Performs single-structure geometry optimizations with pysisyphus using either th
 
 ## Usage
 ```bash
-pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|rfo]
+pdb2reaction opt -i INPUT -q CHARGE [--mult 2S+1] [--opt-mode light|lbfgs|heavy|rfo]
                  [--freeze-links BOOL] [--dist-freeze "[(i,j,target), ...]"]
                  [--one-based/--zero-based] [--bias-k k]
                  [--dump BOOL] [--thresh PRESET]
@@ -17,7 +17,7 @@ pdb2reaction opt -i INPUT -q CHARGE [--spin 2S+1] [--opt-mode light|lbfgs|heavy|
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb`, `.xyz`, `.trj`, …). | Required |
 | `-q, --charge INT` | Total charge passed to UMA. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--dist-freeze TEXT` | Repeatable Python-like literal describing `(i, j, targetÅ)` tuples for harmonic restraints. Omit the target to freeze the initial distance. | _None_ |
 | `--one-based / --zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `--one-based` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` (eV·Å⁻²) applied to every `--dist-freeze` tuple. | `10.0` |

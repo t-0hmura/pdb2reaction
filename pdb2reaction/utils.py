@@ -50,7 +50,7 @@ Description
   - CLI option decorators:
     - `charge_option(help_text=None)`: Reusable Click option decorator for total charge (inherits `.gjf`
       defaults when available).
-    - `spin_option(help_text=None)`: Reusable Click option decorator for spin multiplicity (inherits `.gjf`
+    - `multiplicity_option(help_text=None)`: Reusable Click option decorator for spin multiplicity (inherits `.gjf`
       defaults when available).
 
 - **Gaussian input (.gjf) helpers**
@@ -154,7 +154,7 @@ def charge_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable],
     return decorator
 
 
-def spin_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
+def multiplicity_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
     """Reusable Click option decorator for spin multiplicity (inherits `.gjf` defaults when available)."""
 
     default_help = (
@@ -164,8 +164,8 @@ def spin_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _
 
     def decorator(func: _ClickCallable) -> _ClickCallable:
         return click.option(
-            "-s",
-            "--spin",
+            "-m",
+            "--mult",
             type=int,
             default=None,
             show_default=False,

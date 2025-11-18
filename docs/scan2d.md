@@ -22,7 +22,7 @@ pdb2reaction scan2d -i INPUT -q CHARGE \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--scan-list TEXT` | **Single** Python-like literal with two `(i, j, lowÅ, highÅ)` quadruples, one per distance. | Required |
 | `--one-based / --zero-based` | Interpret `(i, j)` indices in `--scan-list` as 1-based or 0-based. | `--one-based` |
 | `--max-step-size FLOAT` | Largest change allowed for either distance per grid increment. Determines the number of points. | `0.20` |

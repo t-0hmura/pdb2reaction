@@ -16,7 +16,7 @@ pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge supplied to PySCF. | `.gjf` template value or `0` |
-| `-s, --spin INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
 | `--func-basis TEXT` | Functional and basis in `FUNC/BASIS` form (quotes recommended when using `*`). | `wb97m-v/6-31g**` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
 | `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |

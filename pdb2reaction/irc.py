@@ -6,7 +6,7 @@ irc — Concise CLI for IRC calculations with the EulerPC integrator
 
 Usage (CLI)
 -----------
-    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
+    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
         [--freeze-links {True|False}] [--out-dir <dir>] \
@@ -16,11 +16,11 @@ Usage (CLI)
 Examples
 --------
     # Forward-only with finite-difference Hessian and custom step size
-    pdb2reaction irc -i ts.xyz -q -1 -s 2 --forward True --backward False \
+    pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward True --backward False \
         --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
     # Use a PDB input so trajectories are also exported as PDB
-    pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --out-dir ./result_irc/
+    pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 Description
 -----------
@@ -30,14 +30,14 @@ Description
 - Configuration model: Only the CLI options listed above are accepted. All other parameters
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
   Final configuration precedence: built-in defaults → YAML → CLI.
-- Charge/spin defaults: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when provided and otherwise fall back
+- Charge/spin defaults: `-q/--charge` and `-m/--mult` inherit values from `.gjf` templates when provided and otherwise fall back
   to `0`/`1`. Set them explicitly to avoid running under unintended conditions.
 
 CLI options
 -----------
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
   - `-q/--charge INT`: Total charge; overrides `calc.charge` from YAML and defaults to a `.gjf` template value or `0` when omitted.
-  - `-s/--spin INT` (default 1): Spin multiplicity (2S+1); overrides `calc.spin` and defaults to the template multiplicity or `1`.
+  - `-m/--mult INT` (default 1): Spin multiplicity (2S+1); overrides `calc.spin` and defaults to the template multiplicity or `1`.
   - `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
   - `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
   - `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
@@ -64,7 +64,7 @@ All files honor ``irc.prefix`` when it is set; the directory is created if missi
 Notes
 -----
 - CLI overrides YAML for:
-  `charge`→`calc.charge`, `spin`→`calc.spin`, `step-size`→`irc.step_length`, `max-cycles`→`irc.max_cycles`,
+  `charge`→`calc.charge`, `mult`→`calc.spin`, `step-size`→`irc.step_length`, `max-cycles`→`irc.max_cycles`,
   `root`→`irc.root`, `forward`→`irc.forward`, `backward`→`irc.backward`, `out-dir`→`irc.out_dir`,
   `hessian-calc-mode`→`calc.hessian_calc_mode`.
 - UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
@@ -104,7 +104,7 @@ from pdb2reaction.utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 
 
@@ -171,7 +171,7 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
 @charge_option(
     "Total charge; overrides calc.charge from YAML. Defaults to the .gjf template value when present, otherwise 0."
 )
-@spin_option(
+@multiplicity_option(
     "Spin multiplicity (2S+1); overrides calc.spin from YAML. Defaults to the .gjf template value when present, otherwise 1."
 )
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")

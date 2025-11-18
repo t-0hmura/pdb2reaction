@@ -6,7 +6,7 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 
 Usage (CLI)
 -----------
-    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
+    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
@@ -15,10 +15,10 @@ Usage (CLI)
 Examples
 --------
     # Minimal geometry optimization with default LBFGS settings
-    pdb2reaction opt -i input.pdb -q 0 -s 1
+    pdb2reaction opt -i input.pdb -q 0 -m 1
 
     # RFO with trajectory dumps and YAML overrides
-    pdb2reaction opt -i input.pdb -q 0 -s 1 --opt-mode rfo --dump True \
+    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode rfo --dump True \
         --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
@@ -37,7 +37,7 @@ Key options (YAML keys → meaning; defaults)
   - `freeze_atoms`: list[int], 0‑based indices to freeze (default: []).
 - Calculator (`calc`, UMA via `uma_pysis`):
   - `charge` (overridden by `-q`; defaults to a `.gjf` template value when available, otherwise `0`),
-    `spin` (`-s`; defaults to the template multiplicity or `1`). Prefer explicitly setting physically correct values.
+    `spin` (`-m`; defaults to the template multiplicity or `1`). Prefer explicitly setting physically correct values.
   - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
   - `device`: "auto" (GPU if available) | "cuda" | "cpu".
   - `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
@@ -85,7 +85,7 @@ Console output echoes the resolved geom/calc/opt/(lbfgs|rfo) blocks, per-print p
 
 Notes
 -----
-- **Charge/spin defaults:** `-q/--charge` and `-s/--spin` fall back to `.gjf` template values (when available) or to
+- **Charge/spin defaults:** `-q/--charge` and `-m/--mult` fall back to `.gjf` template values (when available) or to
   `0`/`1`. Override them explicitly to avoid unphysical states.
 - **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type="dlc"` can improve stability for small molecules.
 - **Freeze links (PDB only):** With `--freeze-links` (default), parent atoms of link hydrogens are detected and frozen; indices are 0‑based and merged with `geom.freeze_atoms`.
@@ -133,7 +133,7 @@ from .utils import (
     maybe_convert_xyz_to_gjf,
     GjfTemplate,
     charge_option,
-    spin_option,
+    multiplicity_option,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -456,7 +456,7 @@ def _maybe_write_final_gjf(
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @charge_option()
-@spin_option()
+@multiplicity_option()
 @click.option(
     "--dist-freeze",
     "dist_freeze_raw",
