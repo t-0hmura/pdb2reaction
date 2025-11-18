@@ -6,7 +6,7 @@ scan — Bond‑length–driven staged scan with harmonic distance restraints an
 
 Usage (CLI)
 -----------
-    pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q <charge> \
+    pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q <charge>] \
         [--scan-lists "[(I,J,TARGET_ANG), ...]" ...] [-s <spin>] \
         [--one-based|--zero-based] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \

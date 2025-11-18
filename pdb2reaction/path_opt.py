@@ -7,7 +7,7 @@ path_opt — Minimum-energy path (MEP) optimization via the Growing String metho
 Usage (CLI)
 -----------
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
-        -q <charge> [-s <multiplicity>] [--freeze-links {True|False}] \
+        [-q <charge>] [-s <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
         [--args-yaml <file>]

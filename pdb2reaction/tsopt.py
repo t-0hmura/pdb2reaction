@@ -6,7 +6,7 @@ tsopt — Transition-state optimization CLI
 
 Usage (CLI)
 -----------
-    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} -q <charge> -s <spin> \
+    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
         [--opt-mode {light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
                      heavy|rfo|rsirfo|rs-i-rfo}] \
         [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
