@@ -4,18 +4,16 @@
 add-elem-info — Add/repair PDB element symbols (columns 77–78) using Biopython
 ===============================================================================
 
-Usage
------
-As a package subcommand (Click):
+Usage (CLI)
+-----------
     pdb2reaction add-elem-info -i input.pdb [-o fixed.pdb] [--overwrite]
 
-As a standalone script (argparse):
-    python -m pdb2reaction.add_elem_info input.pdb [-o fixed.pdb] [--overwrite]
-    # or
-    python add_elem_info.py input.pdb [-o fixed.pdb] [--overwrite]
-
-Examples::
+Examples
+--------
+    # Populate element fields in-place
     pdb2reaction add-elem-info -i 1abc.pdb
+
+    # Write to a new file and allow overwriting existing symbols
     pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
 
 Description
@@ -36,14 +34,15 @@ Description
 - Supports ATOM and HETATM records; works across models/chains/residues without altering
   coordinates.
 
-Outputs
--------
-- A PDB file with element columns (77–78) populated or corrected:
-  - `-o/--out` given → writes to that path.
-  - no output path → overwrites the input file.
-- Summary printed to stdout:
-  - total atoms, newly assigned, kept existing, overwritten (only nonzero with `--overwrite`),
-    per‑element counts, and up to 50 unresolved atoms (model/chain/residue/atom/serial).
+Outputs (& Directory Layout)
+----------------------------
+<output>/ (default: overwrite the input file unless -o/--out is provided)
+  └─ PDB with element columns 77–78 populated or corrected (written to --out when supplied)
+
+Standard output summary
+  ├─ Total atoms processed and how many were newly assigned, kept, or overwritten.
+  ├─ Per-element counts for the final structure.
+  └─ Up to 50 unresolved atoms (model/chain/residue/atom/serial) when inference fails.
 
 Notes
 -----
@@ -380,5 +379,3 @@ def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
         click.echo(f"[ERR] Failed: {e}", err=True)
         sys.exit(2)
 
-if __name__ == "__main__":
-    main()

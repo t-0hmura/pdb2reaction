@@ -6,27 +6,18 @@ irc — Concise CLI for IRC calculations with the EulerPC integrator
 
 Usage (CLI)
 -----------
-    # Minimal (explicitly set charge/spin to avoid unintended conditions)
-    pdb2reaction irc -i a.pdb -q 0 -s 1
-
-    # Full example
-    pdb2reaction irc \
-      -i a.pdb -q 0 -s 1 \
-      --max-cycles 20 \
-      --step-size 0.5 \
-      --root 0 \
-      --forward True \
-      --backward False \
-      --freeze-links True \
-      --out-dir "./result_irc/" \
-      --hessian-calc-mode Analytical \
-      --args-yaml args.yaml
+    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} -q <charge> -s <spin> \
+        [--max-cycles <int>] [--step-size <float>] [--root <int>] \
+        [--forward {True|False}] [--backward {True|False}] \
+        [--freeze-links {True|False}] [--out-dir <dir>] \
+        [--hessian-calc-mode {Analytical|FiniteDifference}] \
+        [--args-yaml <file>]
 
 Examples
 --------
     # Forward-only with finite-difference Hessian and custom step size
     pdb2reaction irc -i ts.xyz -q -1 -s 2 --forward True --backward False \
-      --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+        --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
     # Use a PDB input so trajectories are also exported as PDB
     pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --out-dir ./result_irc/
@@ -57,19 +48,18 @@ CLI options
   - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
 
-Outputs & directory layout
---------------------------
-All files are written under `--out-dir` (default: `./result_irc/`). The directory is created if missing.
-If `irc.prefix` is set, it is prepended to filenames.
+Outputs (& Directory Layout)
+----------------------------
+out_dir/ (default: ./result_irc/)
+  ├─ irc_data.h5                    # Optional HDF5 dump (if enabled by EulerPC)
+  ├─ <prefix>finished_irc.trj       # Full IRC trajectory (TRJ)
+  ├─ <prefix>forward_irc.trj        # Forward-only segment (TRJ)
+  ├─ <prefix>backward_irc.trj       # Backward-only segment (TRJ)
+  ├─ <prefix>finished_irc.pdb       # PDB conversions (written when the input was .pdb)
+  ├─ <prefix>forward_irc.pdb        # PDB conversions (written when the input was .pdb)
+  └─ <prefix>backward_irc.pdb       # PDB conversions (written when the input was .pdb)
 
-    <out_dir>/
-      ├─ irc_data.h5                    # HDF5 dump (if enabled by the underlying engine)
-      ├─ <prefix>finished_irc.trj       # Full IRC trajectory (TRJ)
-      ├─ <prefix>forward_irc.trj        # Forward path segment (TRJ)
-      ├─ <prefix>backward_irc.trj       # Backward path segment (TRJ)
-      ├─ <prefix>finished_irc.pdb       # PDB conversion (only if input was .pdb)
-      ├─ <prefix>forward_irc.pdb        # PDB conversion (only if input was .pdb)
-      └─ <prefix>backward_irc.pdb       # PDB conversion (only if input was .pdb)
+All files honor ``irc.prefix`` when it is set; the directory is created if missing.
 
 Notes
 -----
@@ -357,8 +347,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-# Script entry point
-if __name__ == "__main__":
-    cli()

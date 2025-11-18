@@ -5,20 +5,23 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 ====================================================================
 
 Usage (CLI)
------
-    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--engine {gpu|cpu|auto}] [--args-yaml YAML]
-
-    # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1).
-    # Set them explicitly to avoid unphysical states. Here, SPIN means multiplicity (2S+1).
+-----------
+    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q <charge> [-s <spin>] \
+        [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
+        [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
+        [--args-yaml <file>]
 
 Examples
------
+--------
+    # Default GPU-first policy with an explicit functional/basis pair
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
-    pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
-    pdb2reaction dft -i input.xyz -q -1 -s 2 --engine cpu
+
+    # Tight SCF controls with a larger basis and CPU-only fallback
+    pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" \
+        --max-cycle 150 --conv-tol 1e-9 --engine cpu
 
 Description
------
+-----------
 - Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and CPU PySCF fallback.
   The backend policy is controlled by `--engine`:
   * `gpu`  (default): try GPU4PySCF; on failure, fall back to CPU.
@@ -43,35 +46,11 @@ Description
 - The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
 
 Outputs (& Directory Layout)
------
-    OUT_DIR/  (default: ./result_dft/)
-    ├── result.yaml
-    │     input:
-    │       charge: <int>
-    │       multiplicity: <int>
-    │       spin (PySCF expects 2S): <int>
-    │       xc: <str>
-    │       basis: <str>
-    │       conv_tol: <float>
-    │       max_cycle: <int>
-    │       grid_level: <int>
-    │       out_dir: <str>
-    │       engine: "gpu" | "cpu" | "auto"
-    │     energy:
-    │       hartree: <float>
-    │       kcal_per_mol: <float>
-    │       converged: <bool>
-    │       scf_time_sec: <float>
-    │       engine: "gpu4pyscf" or "pyscf(cpu)"
-    │       used_gpu: <bool>
-    │     charges [index, element, mulliken, lowdin, iao]:
-    │       - [0, H, <float or null>, <float or null>, <float or null>]
-    │       - ...
-    │     spin_densities [index, element, mulliken, lowdin, iao]:
-    │       - [0, H, <float or null>, <float or null>, <float or null>]
-    │       - ...
-    ├── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
-    └── input_geometry.gjf  # optional; written when a Gaussian template is available
+----------------------------
+out_dir/ (default: ./result_dft/)
+  ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, timing, and per-atom charge/spin tables
+  ├─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
+  └─ input_geometry.gjf         # Convenience GJF written when a Gaussian template is available
 
 Notes
 -----
@@ -700,8 +679,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-# Enable `python -m pdb2reaction.dft` execution
-if __name__ == "__main__":
-    cli()

@@ -5,7 +5,7 @@ align_freeze_atoms — Rigid alignment and staged “scan + relaxation” utilit
 ====================================================================
 
 Usage (API)
------
+-----------
     from pdb2reaction.align_freeze_atoms import (
         align_and_refine_pair_inplace,
         align_and_refine_sequence_inplace,
@@ -14,14 +14,15 @@ Usage (API)
         scan_freeze_atoms_toward_target_inplace,
     )
 
-Examples::
+Examples
+--------
     >>> from pdb2reaction.align_freeze_atoms import align_and_refine_pair_inplace
     >>> result = align_and_refine_pair_inplace(g_ref, g_mob, verbose=False)
     >>> result["align"]["mode"]
     'kabsch'
 
 Description
------
+-----------
 API-only utilities to co-align and refine preoptimized `pysisyphus.Geometry` objects—typically adjacent
 images along a reaction path—using `freeze_atoms`. A rigid alignment is performed first (with special
 handling when the **union** of `freeze_atoms` across the pair has size 1 or 2), followed by a staged
@@ -62,13 +63,14 @@ Provided functionality (concise):
     Applies the pair procedure along [g0, g1, g2, ...] as (g0←g1), (g1←g2), ... and returns a list of per-pair results.
 
 Outputs (& Directory Layout)
------
-- Default base directory: `./result_align_refine/`
-  - Pair API: uses `out_dir/` for stepwise and final LBFGS runs.
-  - Sequence API: creates subdirectories `pair_00/`, `pair_01/`, ... under `out_dir/`, one per adjacent pair.
-- Directories are created even when optimizer dumping is disabled; LBFGS is invoked with `dump=False`.
+----------------------------
+out_dir/ (default: ./result_align_refine/)
+  ├─ <pair>/                         # Pair API writes stepwise and final LBFGS artifacts directly under out_dir
+  └─ pair_00/, pair_01/, ...         # Sequence API creates one subdirectory per adjacent pair
 
-Notes:
+Directories are created even when optimizer dumping is disabled; LBFGS always runs with ``dump=False``.
+
+Notes
 -----
 - Units & conventions:
   - User-facing distances/thresholds are in Å; internal coordinates are in bohr (conversion via `BOHR2ANG`).

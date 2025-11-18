@@ -78,7 +78,3 @@ cli.add_command(trj2fig_cmd, name="trj2fig")
 cli.add_command(add_elem_info_cmd, name="add-elem-info")
 cli.add_command(dft_cmd, name="dft")
 cli.add_command(scan2d_cmd, name="scan2d")
-
-
-if __name__ == "__main__":
-    cli()

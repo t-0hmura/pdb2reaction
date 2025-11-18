@@ -466,7 +466,3 @@ def freeze_links_helper(pdb_path: Path):
     Expose detect_freeze_links for external callers/tests.
     """
     return detect_freeze_links(pdb_path)
-
-
-if __name__ == "__main__":
-    cli()

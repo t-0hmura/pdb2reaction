@@ -5,35 +5,33 @@ tsopt — Transition-state optimization CLI
 ====================================================================
 
 Usage (CLI)
------
-    pdb2reaction tsopt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
-                        [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
-                                    heavy|rfo|rsirfo|rs-i-rfo]
-                        [--freeze-links True|False]
-                        [--max-cycles N]
-                        [--dump True|False]
-                        [--out-dir DIR]
-                        [--args-yaml args.yaml]
-                        [--hessian-calc-mode Analytical|FiniteDifference]
+-----------
+    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} -q <charge> -s <spin> \
+        [--opt-mode {light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
+                     heavy|rfo|rsirfo|rs-i-rfo}] \
+        [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
+        [--out-dir <dir>] [--args-yaml <file>] \
+        [--hessian-calc-mode {Analytical|FiniteDifference}]
 
 Examples
------
+--------
     # Minimal (recommended: always specify charge and spin)
-    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_tsopt/
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light \
+        --out-dir ./result_tsopt/
 
     # Light mode (Hessian Dimer) with YAML overrides and finite-difference Hessian
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 \
-      --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
-      --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
-      --hessian-calc-mode FiniteDifference
+        --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
+        --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
+        --hessian-calc-mode FiniteDifference
 
     # Heavy mode (RS-I-RFO) using YAML
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
-      --args-yaml ./args.yaml --out-dir ./result_tsopt/
+        --args-yaml ./args.yaml --out-dir ./result_tsopt/
 
 
 Description
------
+-----------
 Transition-state optimization with two modes:
 
 - **light**: Hessian Dimer TS search with periodic Hessian-based direction refresh and a
@@ -65,7 +63,7 @@ For PDB inputs, optimization trajectories and the final geometry are also conver
 The final imaginary mode is always written as both `.trj` and `.pdb`.
 
 Key behaviors and algorithmic notes
------
+-----------------------------------
 - **Direction selection**: choose which imaginary mode to follow using `root`
   (0 = most negative). For `root == 0`, the code prefers `torch.lobpcg` for the lowest eigenpair
   and falls back to `torch.linalg.eigh` when necessary. In *light* mode with `root != 0`,
@@ -86,18 +84,18 @@ Key behaviors and algorithmic notes
   the active subspace. UMA defaults to returning a partial (active) Hessian when applicable.
 
 Outputs (& Directory Layout)
------
-DIR (default: `./result_tsopt/`)
-  ├── `final_geometry.xyz`
-  ├── `final_geometry.pdb`                 # written if input was PDB
-  ├── `optimization_all.trj`               # light mode, when `--dump True`
-  ├── `optimization_all.pdb`               # PDB conversion of the above (PDB input)
-  ├── `optimization.trj`                   # heavy mode (RS-I-RFO)
-  ├── `optimization.pdb`                   # PDB conversion of the above (PDB input)
-  ├── `vib/`
-  │     ├── `final_imag_mode_+/-XXXX.Xcm-1.trj`
-  │     └── `final_imag_mode_+/-XXXX.Xcm-1.pdb`
-  └── `.dimer_mode.dat`                    # internal dimer orientation seed (light mode)
+----------------------------
+out_dir/ (default: ./result_tsopt/)
+  ├─ final_geometry.xyz              # Optimized TS in XYZ format
+  ├─ final_geometry.pdb              # Written when the input was PDB
+  ├─ optimization_all.trj            # Light-mode trajectory when --dump True
+  ├─ optimization_all.pdb            # PDB conversion of the above (PDB input)
+  ├─ optimization.trj                # Heavy-mode (RS-I-RFO) trajectory
+  ├─ optimization.pdb                # PDB conversion of the heavy-mode trajectory (PDB input)
+  ├─ vib/
+  │   ├─ final_imag_mode_±XXXX.Xcm-1.trj  # Final imaginary mode animation (.trj)
+  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb  # PDB animation of the same mode
+  └─ .dimer_mode.dat                 # Internal dimer orientation seed (light mode)
 
 Notes
 -----
@@ -1565,8 +1563,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-# Allow `python -m pdb2reaction.tsopt` direct execution
-if __name__ == "__main__":
-    cli()

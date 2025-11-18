@@ -45,19 +45,17 @@ Description
   1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only).
   2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints** and
      record the **unbiased** single-point energy (harmonic bias removed for evaluation).
-- Outputs:
-  - `result_scan2d/surface.csv`
-      Columns: `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`
-  - `result_scan2d/scan2d_map.png`
-      2D contour/heatmap (PNG).
-  - `result_scan2d/scan2d_landscape.html`
-      3D surface with a base-plane projection (HTML).
-  - `result_scan2d/grid/point_i###_j###.xyz`
-      Constrained, relaxed geometries for each grid point.
-  - `result_scan2d/grid/inner_path_d1_###.trj` (only when `--dump True`)
-      Per-outer-step inner trajectory (sequence of d2 snapshots) in XYZ/TRJ format.
-- Optimizer scratch/artifacts are written to a **temporary directory**; only the files listed
-  above are written under `result_scan2d/`.
+Outputs (& Directory Layout)
+----------------------------
+out_dir/ (default: ./result_scan2d/)
+  ├─ surface.csv                  # Grid metadata: i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged
+  ├─ scan2d_map.png               # 2D contour/heatmap of the PES
+  ├─ scan2d_landscape.html        # 3D surface with a base-plane projection
+  └─ grid/
+      ├─ point_i###_j###.xyz      # Constrained, relaxed geometries for each grid point
+      └─ inner_path_d1_###.trj    # Written only when --dump True; captures inner d2 trajectories per outer step
+
+Optimizer scratch artifacts live in temporary directories; only the files above persist under ``out_dir``.
 
 Notes
 -----
@@ -749,7 +747,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-if __name__ == "__main__":
-    cli()
