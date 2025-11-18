@@ -362,7 +362,7 @@ def cli(
         )
 
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        _ensure_dir(out_dir_path)  # 最終成果物の保存先
+        _ensure_dir(out_dir_path)
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
         echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
@@ -385,14 +385,12 @@ def cli(
         click.echo(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}")
         click.echo(f"[grid] total grid points = {N1*N2}")
 
-        # ===== 一時作業ディレクトリ（中間出力はここに保存） =====
         tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
         grid_dir = out_dir_path / "grid"
         tmp_opt_dir  = tmp_root / "opt"
         _ensure_dir(grid_dir)
         _ensure_dir(tmp_opt_dir)
 
-        # 最終出力は result_scan2d 直下に保存（サブフォルダは作らない）
         final_dir = out_dir_path
 
         coord_type = geom_cfg.get("coord_type", "cart")
