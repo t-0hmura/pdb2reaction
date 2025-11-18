@@ -212,12 +212,11 @@ from .utils import (
     format_elapsed,
     prepare_input_structure,
     maybe_convert_xyz_to_gjf,
-    # ↓↓↓ 追加（GJF から電荷・多重度を拾うため）
     resolve_charge_spin_or_raise,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
-from . import irc as _irc_cli  # ← IRC を公式 CLI から呼ぶ
+from . import irc as _irc_cli 
 
 # -----------------------------
 # Helpers
@@ -834,18 +833,12 @@ def _pseudo_irc_and_match(seg_idx: int,
         c_first, c_last = c_b_last, c_f_last
 
     # 4) Build geoms and energies
-    # 4) Build geoms and energies
+    shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
     g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
-    # Reuse the UMA calculator already attached to the TS by tsopt
-    shared_calc = getattr(g_ts, "calculator", None)
-    if shared_calc is None:
-        shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
-        g_ts.set_calculator(shared_calc)
-    # Use exactly the same calculator (which already knows the correct per-atom elem list)
-    g_left.set_calculator(shared_calc);  _ = float(g_left.energy)
-    g_right.set_calculator(shared_calc); _ = float(g_right.energy)
-    _ = float(g_ts.energy)
+    _path_search._ensure_calc_on_geom(g_left,  shared_calc);  _ = float(g_left.energy)
+    _path_search._ensure_calc_on_geom(g_right, shared_calc);  _ = float(g_right.energy)
+    _path_search._ensure_calc_on_geom(g_ts,    shared_calc);  _ = float(g_ts.energy)
 
     # 5) Optional mapping to segment endpoints (if available)
     left_tag = "backward"
