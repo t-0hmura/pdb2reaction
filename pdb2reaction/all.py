@@ -288,8 +288,6 @@ def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] =
     return cfg
 
 
-# [FIX] --- begin: robust atom key helpers (removes serial-number dependence) ---------------------------
-
 def _parse_atom_key_from_line(line: str) -> Optional[Tuple[str, str, str, str, str, str]]:
     """
     Extract a structural identity key from a PDB ATOM/HETATM record.
@@ -356,8 +354,6 @@ def _format_atom_key_for_msg(key: Tuple[str, str, str, str, str, str]) -> str:
     alt_sfx = f",alt={alt}" if alt else ""
     return f"{res}:{atom}{alt_sfx}"
 
-# [FIX] --- end: robust atom key helpers (removes serial-number dependence) -----------------------------
-
 
 def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple[int, int, float]]]:
     """Parse ``--scan-lists`` literals without re-basing atom indices."""
@@ -407,15 +403,15 @@ def _convert_scan_lists_to_pocket_indices(
     Convert user-provided atom indices (based on the full input PDB) to pocket indices.
     Returns the converted stages as lists of (i,j,target) with 1-based pocket indices.
 
-    [FIX] Use structural keys (chainID, resName, resSeq, iCode, atomName, altLoc) instead of serial numbers.
+    Structural keys (chainID, resName, resSeq, iCode, atomName, altLoc) are used instead of serial numbers.
     """
     if not scan_lists_raw:
         return []
 
     stages = _parse_scan_lists_literals(scan_lists_raw)
 
-    # [FIX] Prepare the key sequence for the full structure (aligned with 1-based indices)
-    #       and the key→index dictionary on the pocket side
+    # Prepare the key sequence for the full structure (aligned with 1-based indices)
+    # and the key→index dictionary on the pocket side
     orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
     key_to_pocket_idx  = _pocket_key_to_index(pocket_pdb)
 
@@ -581,8 +577,8 @@ def _save_single_geom_as_pdb_for_tools(g: Any, ref_pdb: Path, out_dir: Path, nam
     xyz_trj = out_dir / f"{name}.xyz"
     _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
 
-    # [FIX] Attempt the PDB conversion only when the reference is a PDB; otherwise return the XYZ
-    #       (downstream CLI entry points accept any extension).
+    # Attempt the PDB conversion only when the reference is a PDB; otherwise return the XYZ
+    # (downstream CLI entry points accept any extension).
     if ref_pdb.suffix.lower() == ".pdb":
         pdb_out = out_dir / f"{name}.pdb"
         try:
@@ -1614,7 +1610,6 @@ def cli(
     # Stage 1b: Optional scan (single-structure only) to build ordered pocket inputs
     # --------------------------
     pockets_for_path: List[Path]
-    # [FIX] Require PDB input when running scan with extraction skipped
     if is_single and has_scan and skip_extract and input_paths[0].suffix.lower() != ".pdb":
         raise click.ClickException(
             "[all] When using --scan-lists while skipping extraction, the input must be a PDB file. "
