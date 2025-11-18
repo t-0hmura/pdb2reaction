@@ -204,7 +204,7 @@ from . import path_search as _path_search
 from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
-from .uma_pysis import uma_pysis
+from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
 from .trj2fig import run_trj2fig
 from .utils import (
     build_energy_diagram,
@@ -213,6 +213,8 @@ from .utils import (
     prepare_input_structure,
     maybe_convert_xyz_to_gjf,
     resolve_charge_spin_or_raise,
+    load_yaml_dict,
+    apply_yaml_overrides,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -263,6 +265,26 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     if override.is_absolute():
         return override
     return default.parent / override
+
+
+# Default UMA calculator configuration (overridable via YAML `calc` section)
+CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
+
+
+def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Return a UMA calculator configuration honoring YAML overrides when provided."""
+
+    cfg: Dict[str, Any] = dict(CALC_KW)
+    cfg["charge"] = int(charge)
+    cfg["spin"] = int(spin)
+    if yaml_cfg:
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (cfg, (("calc",),)),
+            ],
+        )
+    return cfg
 
 
 # [FIX] --- begin: robust atom key helpers (serial 依存の廃止) ---------------------------
@@ -642,6 +664,7 @@ def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[
 def _run_tsopt_on_hei(hei_pdb: Path,
                       charge: int,
                       spin: int,
+                      calc_cfg: Optional[Dict[str, Any]],
                       args_yaml: Optional[Path],
                       out_dir: Path,
                       freeze_links: bool,
@@ -737,7 +760,8 @@ def _run_tsopt_on_hei(hei_pdb: Path,
             click.echo(f"[tsopt] WARNING: Failed to convert TS geometry to GJF: {e}", err=True)
 
     # Ensure calculator to have energy on g_ts
-    calc = uma_pysis(charge=int(charge), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
+    calc_args = dict(calc_cfg) if calc_cfg is not None else _build_calc_cfg(charge, spin)
+    calc = uma_pysis(**calc_args)
     g_ts.set_calculator(calc)
     _ = float(g_ts.energy)
 
@@ -752,7 +776,8 @@ def _pseudo_irc_and_match(seg_idx: int,
                           g_ts: Any,
                           q_int: int,
                           spin: int,
-                          freeze_links_flag: bool) -> Dict[str, Any]:
+                          freeze_links_flag: bool,
+                          calc_cfg: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
     [REPLACED] Run IRC via the official irc CLI (EulerPC), then map ends to (left,right).
 
@@ -833,7 +858,8 @@ def _pseudo_irc_and_match(seg_idx: int,
         c_first, c_last = c_b_last, c_f_last
 
     # 4) Build geoms and energies
-    shared_calc = uma_pysis(charge=int(q_int), spin=int(spin), model="uma-s-1p1", task_name="omol", device="auto")
+    calc_args = dict(calc_cfg) if calc_cfg is not None else _build_calc_cfg(q_int, spin)
+    shared_calc = uma_pysis(**calc_args)
     g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
     _path_search._ensure_calc_on_geom(g_left,  shared_calc);  _ = float(g_left.energy)
@@ -1304,6 +1330,9 @@ def cli(
 
     dft_func_basis_use = dft_func_basis or "wb97x-v/def2-tzvp"
 
+    # Shared YAML configuration (used locally for calc overrides; still forwarded downstream via --args-yaml)
+    yaml_cfg = load_yaml_dict(args_yaml)
+
     # --------------------------
     # Prepare directories
     # --------------------------
@@ -1443,6 +1472,8 @@ def cli(
             spin = int(gjf_spin)
             click.echo(f"[all] Spin multiplicity set from GJF: {spin}")
 
+    calc_cfg_shared = _build_calc_cfg(q_int, spin, yaml_cfg)
+
     # --------------------------
     # Other path: single-structure + --tsopt True (and NO scan-lists) → TSOPT-only mode
     # --------------------------
@@ -1458,6 +1489,7 @@ def cli(
             ts_initial_pdb,
             q_int,
             spin,
+            calc_cfg_shared,
             args_yaml,
             tsroot,
             freeze_links_flag,
@@ -1475,6 +1507,7 @@ def cli(
             q_int=q_int,
             spin=spin,
             freeze_links_flag=freeze_links_flag,
+            calc_cfg=calc_cfg_shared,
         )
         gL = irc_res["left_min_geom"]
         gR = irc_res["right_min_geom"]
@@ -1816,6 +1849,7 @@ def cli(
                 hei_pocket_path,
                 q_int,
                 spin,
+                calc_cfg_shared,
                 args_yaml,
                 seg_dir,
                 freeze_links_flag,
@@ -1833,6 +1867,7 @@ def cli(
                 q_int=q_int,
                 spin=spin,
                 freeze_links_flag=freeze_links_flag,
+                calc_cfg=calc_cfg_shared,
             )
 
             gL = irc_res["left_min_geom"]
