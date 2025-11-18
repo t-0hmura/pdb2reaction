@@ -372,7 +372,7 @@ def _parse_dist_freeze(
 def _resolve_dist_freeze_targets(
     geometry,
     tuples: List[Tuple[int, int, Optional[float]]],
-) -> List[Tuple[int, int, float]]]:
+) -> List[Tuple[int, int, float]]:
     coords_bohr = np.array(geometry.coords3d, dtype=float).reshape(-1, 3)
     coords_ang = coords_bohr * BOHR2ANG
     n = coords_ang.shape[0]
