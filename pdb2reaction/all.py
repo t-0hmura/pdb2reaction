@@ -95,11 +95,11 @@ Runs a one-shot pipeline centered on pocket models:
 (Alt) **Single-structure TSOPT-only mode**
     - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
       the tool skips (2)-(3) and:
-        • Runs `tsopt` on the **pocket** of that structure,  
-        • Runs **IRC (EulerPC)** from TS and obtains both ends,  
-        • Builds UMA energy diagrams for **R–TS–P**,  
-        • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.  
-      ※ このモードに**限り**、IRCで得た両端のうち**エネルギーが高い方を反応物 (R)** として採用します。
+        • Runs `tsopt` on the **pocket** of that structure,
+        • Runs **IRC (EulerPC)** from TS and obtains both ends,
+        • Builds UMA energy diagrams for **R–TS–P**,
+        • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.
+      In this special mode only, the higher-energy IRC endpoint is treated as the reactant (R).
 
 **Charge handling**
   - The extractor’s **first-model total pocket charge** is used as the path/scan/TSOPT total charge (rounded to int).
@@ -169,12 +169,13 @@ Outputs (& Directory Layout)
 Notes
 -----
 - **Python ≥ 3.10** is required.
-- **Substrate (`-c/--center`) と（必要に応じて）`--ligand-charge` の指定が実用上ほぼ必須**です。
-- **Single-structure** で `--scan-lists` **または** `--tsopt True` のいずれかが与えられていれば実行可能。
-  それ以外は従来通り、**少なくとも2構造**の入力が必要です。
+- Specifying the substrate (`-c/--center`) and, when needed, `--ligand-charge` is practically mandatory.
+- A **single-structure** run works only when `--scan-lists` **or** `--tsopt True` is provided; otherwise you still need
+  **at least two structures**.
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
-- **NEW**: `-c/--center` を省略した場合は抽出をスキップし、**入力の全体構造**をそのままポケット入力として用います。
-  この場合の全体電荷は既定で 0 とし、`--ligand-charge <number>` を与えたときはその数値を**全体系の電荷**として用います（四捨五入で整数化）。
+- **NEW**: Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
+  The total charge defaults to 0; providing `--ligand-charge <number>` sets that value as the **overall system charge**
+  (rounded to the nearest integer).
 """
 
 from __future__ import annotations
@@ -287,7 +288,7 @@ def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] =
     return cfg
 
 
-# [FIX] --- begin: robust atom key helpers (serial 依存の廃止) ---------------------------
+# [FIX] --- begin: robust atom key helpers (removes serial-number dependence) ---------------------------
 
 def _parse_atom_key_from_line(line: str) -> Optional[Tuple[str, str, str, str, str, str]]:
     """
@@ -355,7 +356,7 @@ def _format_atom_key_for_msg(key: Tuple[str, str, str, str, str, str]) -> str:
     alt_sfx = f",alt={alt}" if alt else ""
     return f"{res}:{atom}{alt_sfx}"
 
-# [FIX] --- end: robust atom key helpers (serial 依存の廃止) -----------------------------
+# [FIX] --- end: robust atom key helpers (removes serial-number dependence) -----------------------------
 
 
 def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple[int, int, float]]]:
@@ -406,14 +407,15 @@ def _convert_scan_lists_to_pocket_indices(
     Convert user-provided atom indices (based on the full input PDB) to pocket indices.
     Returns the converted stages as lists of (i,j,target) with 1-based pocket indices.
 
-    [FIX] serial には依存せず、(chainID, resName, resSeq, iCode, atomName, altLoc) の「構造的キー」で対応付ける。
+    [FIX] Use structural keys (chainID, resName, resSeq, iCode, atomName, altLoc) instead of serial numbers.
     """
     if not scan_lists_raw:
         return []
 
     stages = _parse_scan_lists_literals(scan_lists_raw)
 
-    # [FIX] 元構造のキー配列（1-based indexと整合）と、ポケット側のキー→index辞書を用意
+    # [FIX] Prepare the key sequence for the full structure (aligned with 1-based indices)
+    #       and the key→index dictionary on the pocket side
     orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
     key_to_pocket_idx  = _pocket_key_to_index(pocket_pdb)
 
@@ -421,31 +423,31 @@ def _convert_scan_lists_to_pocket_indices(
 
     def _map_full_index_to_pocket(idx_one_based: int, stage_idx: int, tuple_idx: int, side_label: str) -> int:
         """
-        1-based のフル PDB index を、ポケット PDB の 1-based index に変換。
-        厳密一致→(altloc無視)→(icode無視)→(両方無視)の順でフォールバック。
+        Convert a 1-based index from the full PDB into the pocket's 1-based index.
+        Fall back in the order: strict match → ignore altloc → ignore iCode → ignore both.
         """
         key = orig_keys_in_order[idx_one_based - 1]
 
-        # 候補キー列を順に試す
+        # Try candidate keys in order of decreasing strictness
         chain, resn, resseq, icode, atom, alt = key
         candidates = [
             key,
-            (chain, resn, resseq, icode, atom, ''),   # altloc 無視
-            (chain, resn, resseq, '',    atom, alt), # iCode 無視
-            (chain, resn, resseq, '',    atom, ''),  # 両方無視
+            (chain, resn, resseq, icode, atom, ''),   # ignore altloc
+            (chain, resn, resseq, '',    atom, alt),  # ignore iCode
+            (chain, resn, resseq, '',    atom, ''),   # ignore both
         ]
         for k in candidates:
             hit = key_to_pocket_idx.get(k, None)
             if hit is not None:
                 return hit
 
-        # 見つからない → 抽出で除外された等。親切なメッセージを出す。
+        # Not found → likely removed during extraction; emit a helpful error message
         msg_key = _format_atom_key_for_msg(key)
         raise click.BadParameter(
             f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) references atom index {idx_one_based} "
             f"(key {msg_key}) which is not present in the pocket after extraction. "
-            f"Increase extraction coverage (e.g., --radius/--radius-het2het, --selected_resn, or set --exclude-backbone False), "
-            f"or choose atoms that survive in the pocket."
+            "Increase extraction coverage (e.g., --radius/--radius-het2het, --selected_resn, or set --exclude-backbone False), "
+            "or choose atoms that survive in the pocket."
         )
 
     converted: List[List[Tuple[int, int, float]]] = []
@@ -573,13 +575,14 @@ def _load_segment_end_geoms(seg_pdb: Path, freeze_atoms: Sequence[int]) -> Tuple
 def _save_single_geom_as_pdb_for_tools(g: Any, ref_pdb: Path, out_dir: Path, name: str) -> Path:
     """
     Write a single-geometry XYZ/TRJ with energy and convert to PDB using the pocket ref (for downstream CLI tools).
-    Returns a path to the written structure (PDB when可能, otherwise XYZ).
+    Returns a path to the written structure (PDB when possible, otherwise XYZ).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     xyz_trj = out_dir / f"{name}.xyz"
     _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
 
-    # [FIX] ref が PDB のときのみ PDB 変換を試行。非 PDB の場合は XYZ を返す（下流 CLI は拡張子非依存で受理）。
+    # [FIX] Attempt the PDB conversion only when the reference is a PDB; otherwise return the XYZ
+    #       (downstream CLI entry points accept any extension).
     if ref_pdb.suffix.lower() == ".pdb":
         pdb_out = out_dir / f"{name}.pdb"
         try:
@@ -587,7 +590,7 @@ def _save_single_geom_as_pdb_for_tools(g: Any, ref_pdb: Path, out_dir: Path, nam
             if pdb_out.exists():
                 return pdb_out
         except Exception:
-            pass  # フォールバックへ
+            pass  # fall back to the XYZ path
 
     return xyz_trj
 
@@ -673,7 +676,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     """
     Run tsopt CLI on a HEI pocket structure; return (final_geom_path, ts_geom).
 
-    入力拡張子は尊重（.pdb/.xyz/.gjf）。出力は final_geometry.{pdb|xyz|gjf} を優先順で検出。
+    Honor the input extension (.pdb/.xyz/.gjf) and pick the first available final_geometry.{pdb|xyz|gjf} output.
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
@@ -688,7 +691,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     opt_mode = overrides.get("opt_mode", opt_mode_default)
 
     ts_args: List[str] = [
-        "-i", str(hei_pdb),  # 元のパスをそのまま渡す
+        "-i", str(hei_pdb),  # forward the original path unchanged
         "-q", str(int(charge)),
         "-s", str(int(spin)),
         "--freeze-links", "True" if freeze_use else "False",
@@ -720,7 +723,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     finally:
         sys.argv = _saved
 
-    # 出力候補を優先順に検出
+    # Look for outputs in order of preference
     ts_pdb = ts_dir / "final_geometry.pdb"
     ts_xyz = ts_dir / "final_geometry.xyz"
     ts_gjf = ts_dir / "final_geometry.gjf"
@@ -730,7 +733,7 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     if ts_pdb.exists():
         ts_geom_path = ts_pdb
     elif ts_xyz.exists():
-        # 入力がPDBのときだけ、参照PDBを用いてPDB変換を試みる
+        # Only attempt conversion to PDB when the input was PDB
         if hei_pdb.suffix.lower() == ".pdb":
             try:
                 _path_search._maybe_convert_to_pdb(ts_xyz, hei_pdb, ts_pdb)
@@ -747,10 +750,10 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     else:
         raise click.ClickException("[tsopt] TS outputs not found.")
 
-    # 読み込み
+    # Load the resulting geometry
     g_ts = geom_loader(ts_geom_path, coord_type="cart")
 
-    # 可能なら GJF も書き出し（テンプレートがあり、XYZ が存在する場合）
+    # Write a GJF file as well when a template and XYZ are available
     if (template is not None) and ts_xyz.exists():
         try:
             final_gjf = ts_dir / "final_geometry.gjf"
@@ -786,7 +789,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     - Optionally map to segment endpoints (if available)
     - Return geoms and tags
     """
-    # Freeze parents of link-H if requested (PDBのみ意味あり)
+    # Freeze parents of link-H if requested (only meaningful when the pocket is PDB)
     freeze_atoms: List[int] = []
     if freeze_links_flag and seg_pocket_pdb.suffix.lower() == ".pdb":
         freeze_atoms = detect_freeze_links_safe(seg_pocket_pdb)
@@ -820,10 +823,10 @@ def _pseudo_irc_and_match(seg_idx: int,
     backward_trj = irc_dir / "backward_irc.trj"
     finished_trj = irc_dir / "finished_irc.trj"
 
-    # 2a) finished_irc.trj のみ PDB へ変換（可能な場合のみ）
+    # 2a) Convert finished_irc.trj to PDB when possible
     try:
         if finished_trj.exists() and (not finished_pdb.exists()):
-            # 参照PDBは（優先）セグメントポケットPDB、なければ TS 入力が PDB の場合に使用
+            # Prefer the segment pocket PDB as reference, otherwise fall back to the TS input PDB
             ref_for_conv: Optional[Path] = None
             if seg_pocket_pdb.suffix.lower() == ".pdb":
                 ref_for_conv = seg_pocket_pdb
@@ -834,7 +837,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
 
-    # 3) Read endpoints（finished優先。なければ F/B からフォールバック）
+    # 3) Read endpoints (prefer finished outputs; fall back to forward/backward if needed)
     elems: List[str]
     c_first: np.ndarray
     c_last: np.ndarray
@@ -899,7 +902,7 @@ def _pseudo_irc_and_match(seg_idx: int,
         except Exception as e:
             click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
 
-    # 6) プロットは finished_irc.trj のみ
+    # 6) Plot only when finished_irc.trj exists
     try:
         if finished_trj.exists():
             run_trj2fig(finished_trj, [irc_dir / f"irc_finished_plot.png"], unit="kcal", reference="init", reverse_x=False)
@@ -1497,7 +1500,7 @@ def cli(
             overrides=tsopt_overrides,
         )
 
-        # IRC (EulerPC) で両端取得（TSOPT-only なのでセグメント端点は無い → 左右は後で R/P 規則で選別）
+        # Run IRC (EulerPC) to obtain both ends (TSOPT-only has no segment endpoints, so map to R/P afterward)
         irc_res = _pseudo_irc_and_match(
             seg_idx=1,
             seg_dir=tsroot,
@@ -1610,11 +1613,11 @@ def cli(
     # Stage 1b: Optional scan (single-structure only) to build ordered pocket inputs
     # --------------------------
     pockets_for_path: List[Path]
-    # [FIX] scan を抽出スキップで使う場合は PDB 入力を強制
+    # [FIX] Require PDB input when running scan with extraction skipped
     if is_single and has_scan and skip_extract and input_paths[0].suffix.lower() != ".pdb":
         raise click.ClickException(
-            "[all] --scan-lists を抽出スキップで用いる場合、入力は PDB が必須です。"
-            " -c/--center を指定してポケット PDB を作成してからスキャンを実行してください。"
+            "[all] When using --scan-lists while skipping extraction, the input must be a PDB file. "
+            "Specify -c/--center to build a pocket PDB before running the scan."
         )
 
     if is_single and has_scan:
