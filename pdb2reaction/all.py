@@ -766,7 +766,6 @@ def _run_tsopt_on_hei(hei_pdb: Path,
     calc_args = dict(calc_cfg) if calc_cfg is not None else _build_calc_cfg(charge, spin)
     calc = uma_pysis(**calc_args)
     g_ts.set_calculator(calc)
-    _ = float(g_ts.energy)
 
     prepared_input.cleanup()
     return ts_geom_path, g_ts
@@ -869,9 +868,8 @@ def _pseudo_irc_and_match(seg_idx: int,
     shared_calc = uma_pysis(**calc_args)
     g_left  = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last,  freeze_atoms)
-    g_left.set_calculator(shared_calc);  _ = float(g_left.energy)
-    g_right.set_calculator(shared_calc);  _ = float(g_right.energy)
-    g_ts.set_calculator(shared_calc);     _ = float(g_ts.energy)
+    g_left.set_calculator(shared_calc)
+    g_right.set_calculator(shared_calc)
 
     # 5) Optional mapping to segment endpoints (if available)
     left_tag = "backward"
