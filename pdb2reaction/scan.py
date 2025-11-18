@@ -6,26 +6,13 @@ scan — Bond‑length–driven staged scan with harmonic distance restraints an
 
 Usage (CLI)
 -----------
-    # Minimal (define at least one stage)
-    pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
-        --scan-lists "[(I,J,TARGET_ANG)]"
-
-    # Full (repeat --scan-lists for multiple stages)
-    pdb2reaction scan -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
-        -s SPIN \
-        --scan-lists "[(I,J,TARGET_ANG), ...]" [--scan-lists "..."]... \
-        [--one-based|--zero-based] \
-        --max-step-size FLOAT \
-        --bias-k FLOAT \
-        --relax-max-cycles INT \
-        --opt-mode {light,lbfgs,heavy,rfo} \
-        --freeze-links {True|False} \
-        --dump {True|False} \
-        --out-dir PATH \
-        [--thresh PRESET] \
-        [--args-yaml FILE] \
-        [--preopt {True|False}] \
-        [--endopt {True|False}]
+    pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q <charge> \
+        [--scan-lists "[(I,J,TARGET_ANG), ...]" ...] [-s <spin>] \
+        [--one-based|--zero-based] [--max-step-size <float>] \
+        [--bias-k <float>] [--relax-max-cycles <int>] \
+        [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] \
+        [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
+        [--args-yaml <file>] [--preopt {True|False}] [--endopt {True|False}]
 
 Examples
 --------

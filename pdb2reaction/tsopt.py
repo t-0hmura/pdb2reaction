@@ -5,31 +5,29 @@ tsopt — Transition-state optimization CLI
 ====================================================================
 
 Usage (CLI)
------
-    pdb2reaction tsopt -i INPUT.(pdb|xyz|trj) -q CHARGE -s SPIN
-                        [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
-                                    heavy|rfo|rsirfo|rs-i-rfo]
-                        [--freeze-links True|False]
-                        [--max-cycles N]
-                        [--dump True|False]
-                        [--out-dir DIR]
-                        [--args-yaml args.yaml]
-                        [--hessian-calc-mode Analytical|FiniteDifference]
+-----------
+    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} -q <charge> -s <spin> \
+        [--opt-mode {light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
+                     heavy|rfo|rsirfo|rs-i-rfo}] \
+        [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
+        [--out-dir <dir>] [--args-yaml <file>] \
+        [--hessian-calc-mode {Analytical|FiniteDifference}]
 
 Examples
------
+--------
     # Minimal (recommended: always specify charge and spin)
-    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light --out-dir ./result_tsopt/
+    pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode light \
+        --out-dir ./result_tsopt/
 
     # Light mode (Hessian Dimer) with YAML overrides and finite-difference Hessian
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 \
-      --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
-      --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
-      --hessian-calc-mode FiniteDifference
+        --freeze-links True --opt-mode light --max-cycles 10000 --dump False \
+        --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
+        --hessian-calc-mode FiniteDifference
 
     # Heavy mode (RS-I-RFO) using YAML
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -s 1 --opt-mode heavy \
-      --args-yaml ./args.yaml --out-dir ./result_tsopt/
+        --args-yaml ./args.yaml --out-dir ./result_tsopt/
 
 
 Description

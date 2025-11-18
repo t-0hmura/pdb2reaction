@@ -5,40 +5,28 @@ extract — Automated binding‑pocket (active‑site) extractor
 ====================================================================
 
 Usage (CLI)
------
-    # Minimal and full examples shown below.
+-----------
+    pdb2reaction extract -i INPUT.pdb [INPUT2.pdb ...] -c <substrate_spec> \
+        [-o OUTPUT.pdb ...] [-r <Å>] [--radius-het2het <Å>] \
+        [--include-H2O {true|false}] [--exclude-backbone {true|false}] \
+        [--add-linkH {true|false}] [--selected-resn "CHAIN:RES" ...] \
+        [--ligand-charge <number|"RES:Q,...">] [--verbose {true|false}]
 
-Single structure:
-    pdb2reaction extract -i complex.pdb -c <substrate_spec> [-o pocket.pdb]
-                         [-r 2.6] [--radius-het2het 2.6]
-                         [--include-H2O true|false] [--exclude-backbone true|false]
-                         [--add-linkH true|false] [--selected-resn "A:123,456"]
-                         [--ligand-charge <Q> | --ligand-charge "RES1:Q1,RES2:Q2"]
-                         [--verbose true|false]
-
-Multiple structures → single multi‑MODEL PDB:
-    pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c <substrate_spec>
-                         -o pocket_multi.pdb [other options...]
-
-Multiple structures → per‑structure outputs:
-    pdb2reaction extract -i complex1.pdb complex2.pdb [...] -c <substrate_spec>
-                         -o pocket1.pdb pocket2.pdb [...] [other options...]
-    # If -o is omitted with multiple inputs, files are named pocket_{original}.pdb.
-
-Examples::
-    # Minimal (ID‑based substrate) with explicit total ligand charge
+Examples
+--------
+    # Minimal (ID-based substrate) with explicit total ligand charge
     pdb2reaction extract -i complex.pdb -c A:123 -o pocket.pdb --ligand-charge -3
 
-    # Substrate provided as a PDB; per‑resname charge mapping (others remain 0)
+    # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
     pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb \
-                         --ligand-charge "GPP:-3,MMT:-1"
+        --ligand-charge "GPP:-3,MMT:-1"
 
-    # Name‑based substrate selection including all matches (WARNING is logged)
+    # Name-based substrate selection including all matches (WARNING is logged)
     pdb2reaction extract -i complex.pdb -c "GPP,MMT" -o pocket.pdb --ligand-charge -4
 
-    # Multi‑structure → single multi‑MODEL output, with hetero‑hetero proximity enabled
+    # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
     pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
-                         -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
+        -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
 
 Description
 -----

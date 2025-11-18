@@ -8,52 +8,45 @@ DFT, and DFT//UMA diagrams
 ================================================================================================================
 
 Usage (CLI)
------
-    # Standard (multi-structure ensemble in reaction order)
-    pdb2reaction all -i R.pdb [I1.pdb ...] P.pdb -c <substrate-spec> [--ligand-charge <map-or-number>]
-                      [--spin <2S+1>] [--freeze-links True|False] [--max-nodes N] [--max-cycles N]
-                      [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy]
-                      [--opt-mode light|lbfgs|heavy|rfo]
-                      [--dump True|False] [--args-yaml params.yaml]
-                      [--preopt True|False] [--hessian-calc-mode Analytical|FiniteDifference] [--out-dir DIR]
-                      [--tsopt True|False] [--thermo True|False] [--dft True|False]
-                      [--tsopt-max-cycles N] [--freq-* overrides] [--dft-* overrides]
-                      [--dft-engine gpu|cpu|auto]
+-----------
+    pdb2reaction all -i INPUT1 [INPUT2 ...] -c <substrate-spec> \
+        [--ligand-charge <number|"RES:Q,...">] [--spin <2S+1>] \
+        [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
+        [--climb {True|False}] [--sopt-mode {lbfgs|rfo|light|heavy}] \
+        [--opt-mode {light|lbfgs|heavy|rfo}] [--dump {True|False}] \
+        [--args-yaml <file>] [--preopt {True|False}] \
+        [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
+        [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
+        [--tsopt-max-cycles <int>] [--freq-* overrides] [--dft-* overrides] \
+        [--dft-engine {gpu|cpu|auto}] [--scan-lists "[(...)]" ...]
 
-    # Override examples (repeatable; use only what you need)
-      ... --scan-lists "[(12,45,1.35)]" --scan-one-based True --scan-bias-k 0.05 --scan-relax-max-cycles 150 \
-          --tsopt-max-cycles 250 --freq-temperature 298.15 --freq-max-write 15 --dft-func-basis "wb97m-v/def2-tzvpd"
+    # Single-structure scan builder (repeat --scan-lists to define stages)
+    pdb2reaction all -i INPUT.pdb -c <substrate-spec> --scan-lists "[(...)]" [...]
 
-    # Single-structure + staged scan (the scan creates intermediate/product candidates after extraction)
-    pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" [--scan-lists "..."] \
-                      --spin 1 --freeze-links True --sopt-mode lbfgs --preopt True \
-                      --out-dir result_all --tsopt True --thermo True --dft True
-
-    # Single-structure TSOPT-only mode (no path search):
-    # if exactly one input is given, --scan-lists is NOT provided, and --tsopt True:
-    # run TS optimization on the extracted pocket, do IRC (EulerPC), minimize both ends by IRC termination, and make diagrams.
-    pdb2reaction all -i single.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
-                      --tsopt True --thermo True --dft True --out-dir result_tsopt_single
+    # Single-structure TSOPT-only mode (no path_search) when --scan-lists is omitted and --tsopt True
+    pdb2reaction all -i INPUT.pdb -c <substrate-spec> --tsopt True [other options]
 
 
 Examples
------
+--------
     # Minimal end-to-end run with explicit substrate and ligand charges (multi-structure)
-    pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
+    pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
+        --ligand-charge "GPP:-3,MMT:-1"
 
     # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
     pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
-      --spin 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
-      --sopt-mode lbfgs --dump False --args-yaml params.yaml --preopt True \
-      --out-dir result_all --tsopt True --thermo True --dft True
+        --spin 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
+        --sopt-mode lbfgs --dump False --args-yaml params.yaml --preopt True \
+        --out-dir result_all --tsopt True --thermo True --dft True
 
-    # Single-structure + scan to build an ordered series (initial + stage results) → path_search + post
-    pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-      --spin 1 --out-dir result_scan_all --tsopt True --thermo True --dft True
+    # Single-structure + scan to build an ordered series before path_search + post-processing
+    pdb2reaction all -i A.pdb -c "308,309" \
+        --scan-lists "[(10,55,2.20),(23,34,1.80)]" --spin 1 --out-dir result_scan_all \
+        --tsopt True --thermo True --dft True
 
     # Single-structure TSOPT-only mode (no path_search)
     pdb2reaction all -i A.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
-      --tsopt True --thermo True --dft True --out-dir result_tsopt_only
+        --tsopt True --thermo True --dft True --out-dir result_tsopt_only
 
 
 Description

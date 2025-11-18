@@ -6,27 +6,18 @@ irc — Concise CLI for IRC calculations with the EulerPC integrator
 
 Usage (CLI)
 -----------
-    # Minimal (explicitly set charge/spin to avoid unintended conditions)
-    pdb2reaction irc -i a.pdb -q 0 -s 1
-
-    # Full example
-    pdb2reaction irc \
-      -i a.pdb -q 0 -s 1 \
-      --max-cycles 20 \
-      --step-size 0.5 \
-      --root 0 \
-      --forward True \
-      --backward False \
-      --freeze-links True \
-      --out-dir "./result_irc/" \
-      --hessian-calc-mode Analytical \
-      --args-yaml args.yaml
+    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} -q <charge> -s <spin> \
+        [--max-cycles <int>] [--step-size <float>] [--root <int>] \
+        [--forward {True|False}] [--backward {True|False}] \
+        [--freeze-links {True|False}] [--out-dir <dir>] \
+        [--hessian-calc-mode {Analytical|FiniteDifference}] \
+        [--args-yaml <file>]
 
 Examples
 --------
     # Forward-only with finite-difference Hessian and custom step size
     pdb2reaction irc -i ts.xyz -q -1 -s 2 --forward True --backward False \
-      --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+        --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
     # Use a PDB input so trajectories are also exported as PDB
     pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --out-dir ./result_irc/
