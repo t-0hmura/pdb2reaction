@@ -148,10 +148,10 @@ Outputs (& Directory Layout)
       irc/ ...
       freq/ ...                          # with --thermo True
       dft/  ...                          # with --dft True
-      energy_diagram_tsopt.(html|png)
-      energy_diagram_G_UMA.(html|png)
-      energy_diagram_DFT.(html|png)
-      energy_diagram_G_DFT_plus_UMA.(html|png)
+      energy_diagram_tsopt.(png)
+      energy_diagram_G_UMA.(png)
+      energy_diagram_DFT.(png)
+      energy_diagram_G_DFT_plus_UMA.(png)
   tsopt_single/                          # present only in single-structure TSOPT-only mode
     ts/ ...
     irc/ ...
@@ -161,10 +161,10 @@ Outputs (& Directory Layout)
       product.(pdb|xyz)
     freq/ ...                            # with --thermo True
     dft/  ...                            # with --dft True
-    energy_diagram_tsopt.(html|png)
-    energy_diagram_G_UMA.(html|png)
-    energy_diagram_DFT.(html|png)
-    energy_diagram_G_DFT_plus_UMA.(html|png)
+    energy_diagram_tsopt.(png)
+    energy_diagram_G_UMA.(png)
+    energy_diagram_DFT.(png)
+    energy_diagram_G_DFT_plus_UMA.(png)
 
 Notes
 -----
@@ -926,7 +926,7 @@ def _write_segment_energy_diagram(prefix: Path,
                                   energies_eh: List[float],
                                   title_note: str) -> None:
     """
-    Write energy diagram (HTML + PNG) using utils.build_energy_diagram.
+    Write energy diagram (PNG) using utils.build_energy_diagram.
     """
     if not energies_eh:
         return
@@ -939,14 +939,12 @@ def _write_segment_energy_diagram(prefix: Path,
         baseline=True,
         showgrid=False,
     )
-    html = prefix.with_suffix(".html")
     png = prefix.with_suffix(".png")
-    fig.write_html(str(html))
     try:
         fig.write_image(str(png), scale=2)
     except Exception:
         pass
-    click.echo(f"[diagram] Wrote energy diagram → {html.name} / {png.name}")
+    click.echo(f"[diagram] Wrote energy diagram → {png.name}")
 
 
 def _run_freq_for_state(pdb_path: Path,

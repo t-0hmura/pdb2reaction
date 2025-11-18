@@ -130,7 +130,7 @@ IRC_KW_DEFAULT: Dict[str, Any] = {
     "backward": True,            # bool, integrate backward branch (CLI override --backward)
     "root": 0,                   # int, imaginary mode index for initial displacement (CLI override --root)
     "hessian_init": "calc",      # str, initial Hessian source ("calc" = calculator-provided TS Hessian)
-    "displ": "energy",          # str, displacement metric (energy|length)
+    "displ": "energy",           # str, displacement metric (energy|length)
     "displ_energy": 1.0e-3,      # float, energy step (Hartree) when displ == "energy"
     "displ_length": 0.10,        # float, length step in mass-weighted coordinates when displ == "length"
     "rms_grad_thresh": 1.0e-3,   # float, RMS gradient threshold for convergence (Hartree/bohr)
@@ -141,8 +141,6 @@ IRC_KW_DEFAULT: Dict[str, Any] = {
     "check_bonds": False,        # bool, enable bond-change detection during IRC
     "out_dir": "./result_irc/",  # str, output directory
     "prefix": "",                # str, file name prefix
-    "dump_fn": "irc_data.h5",    # str, HDF5 dump filename
-    "dump_every": 5,             # int, write dump every N steps
 
     # EulerPC-specific options
     "hessian_update": "bofill",  # str, Hessian update algorithm
