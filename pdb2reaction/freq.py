@@ -6,8 +6,9 @@ freq — Vibrational frequency analysis, mode export, and PHVA-based thermochemi
 
 Usage (CLI)
 -----
-    # Minimum (charge defaults to .gjf metadata or 0; specify explicitly when possible)
-    pdb2reaction freq -i INPUT.(pdb|xyz|trj) [-q CHARGE]
+    # Minimum (charge/multiplicity are resolved from the input when available; otherwise 0/1).
+    # Specify them explicitly when possible.
+    pdb2reaction freq -i INPUT.(pdb|xyz|trj) [-q CHARGE] [-s MULT]
 
     # Full example (all key options shown)
     pdb2reaction freq \
@@ -35,6 +36,7 @@ Description
 - Exports animated modes (.trj and .pdb) and prints a Gaussian-style thermochemistry summary.
 - Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); CLI values override YAML.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
+- The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
 
 Outputs (& Directory Layout)
 -----
@@ -106,6 +108,8 @@ from .utils import (
     charge_option,
     spin_option,
 )
+
+
 def _torch_device(auto: str = "auto") -> torch.device:
     if auto == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -167,26 +171,24 @@ def _mw_projected_hessian(H_t: torch.Tensor,
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
         m3 = torch.repeat_interleave(masses_amu_t, 3)
-        # Use a single base vector for inverse sqrt mass and create views (no extra large allocations)
         inv_sqrt_m = torch.sqrt(1.0 / m3)
         inv_sqrt_m_col = inv_sqrt_m.view(1, -1)
         inv_sqrt_m_row = inv_sqrt_m.view(-1, 1)
 
-        # In-place mass-weighting on input Hessian
         H_t.mul_(inv_sqrt_m_row)
         H_t.mul_(inv_sqrt_m_col)
 
-        Q, _ = _tr_orthonormal_basis(coords_bohr_t, masses_au_t)  # (3N, r)
+        Q, _ = _tr_orthonormal_basis(coords_bohr_t, masses_au_t)
         Qt = Q.T
 
-        QtH = Qt @ H_t                   # (r,3N)
+        QtH = Qt @ H_t
         H_t.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
 
-        HQ = QtH.T                       # (3N,r)
+        HQ = QtH.T
         H_t.addmm_(HQ, Qt, beta=1.0, alpha=-1.0)
 
-        QtHQ = QtH @ Q                   # (r,r)
-        tmp = Q @ QtHQ                   # (3N,r)
+        QtHQ = QtH @ Q
+        tmp = Q @ QtHQ
         H_t.addmm_(tmp, Qt, beta=1.0, alpha=1.0)
 
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
@@ -194,11 +196,10 @@ def _mw_projected_hessian(H_t: torch.Tensor,
 
         if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
-        # Return the in-place updated mass-weighted & TR-projected Hessian
         return H_t
 
 
-# ---- PHVA helper: mass-weighted Hessian without TR projection (for active subspace) ----
+# PHVA helper: mass-weighted Hessian without TR projection (for active subspace)
 def _mass_weighted_hessian(H_t: torch.Tensor,
                            masses_au_t: torch.Tensor) -> torch.Tensor:
     """
@@ -211,7 +212,6 @@ def _mass_weighted_hessian(H_t: torch.Tensor,
         inv_sqrt_m = torch.sqrt(1.0 / m3)
         inv_sqrt_m_col = inv_sqrt_m.view(1, -1)
         inv_sqrt_m_row = inv_sqrt_m.view(-1, 1)
-        # In-place mass-weighting on input Hessian
         H_t.mul_(inv_sqrt_m_row)
         H_t.mul_(inv_sqrt_m_col)
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
@@ -232,14 +232,13 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
     Partial Hessian Vibrational Analysis (PHVA). Supports two cases:
 
       A) Full Hessian given (3N×3N):
-         1) build Hmw = M^{-1/2} H M^{-1/2}
+         1) mass-weight the full Hessian
          2) take the active subspace by removing DOF of frozen atoms
-         3) perform TR projection **only in the active subspace** (always applied)
+         3) perform TR projection **only in the active subspace**
          4) diagonalize and embed eigenvectors back to 3N by zero-filling frozen DOF
 
-      B) Already-reduced (active-block) Hessian given (3N_act×3N_act), e.g.
-         when UMA is called with return_partial_hessian=True:
-         1) mass-weight with **active** masses only
+      B) Already-reduced (active-block) Hessian given (3N_act×3N_act):
+         1) mass-weight using only active masses
          2) TR projection in the active space
          3) diagonalize and embed back to 3N by zero-filling frozen DOF
 
@@ -250,40 +249,29 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
     with torch.no_grad():
         Z = np.array(atomic_numbers, dtype=int)
         N = int(len(Z))
-        masses_amu = np.array([atomic_masses[z] for z in Z])  # amu
+        masses_amu = np.array([atomic_masses[z] for z in Z])
         masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=H_t.dtype, device=device)
         coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H_t.dtype, device=device)
 
-        # --------------------------------------------
-        # PHVA path (active DOF subspace with TR-proj)
-        # --------------------------------------------
         if freeze_idx is not None and len(freeze_idx) > 0:
-            # Active atom indices
             frozen_set = set(int(i) for i in freeze_idx if 0 <= int(i) < N)
             active_idx = [i for i in range(N) if i not in frozen_set]
             n_active = len(active_idx)
             if n_active == 0:
-                # All atoms are frozen → no modes
                 freqs_cm = np.zeros((0,), dtype=float)
                 modes = torch.zeros((0, 3 * N), dtype=H_t.dtype, device=H_t.device)
                 return freqs_cm, modes
 
-            # Determine whether the provided Hessian is already the active block (3N_act×3N_act).
             expected_act_dim = 3 * n_active
             is_partial = (H_t.shape[0] == expected_act_dim and H_t.shape[1] == expected_act_dim)
 
             if is_partial:
-                # --- Case B: Active-subspace Hessian supplied ---
-                # Mass-weight using only active atoms → project TR modes in the active space
-                # → diagonalise → embed back into the full space.
                 masses_act = masses_au_t[active_idx]
                 coords_act = coords_bohr_t[active_idx, :]
 
-                # in-place mass-weight (active masses)
                 Hmw_act = _mass_weighted_hessian(H_t, masses_act)
 
-                # TR basis and projection in the active space
-                Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
+                Q, _ = _tr_orthonormal_basis(coords_act, masses_act)
                 Qt = Q.T
                 QtH = Qt @ Hmw_act
                 Hmw_act.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
@@ -291,10 +279,8 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 QtHQ = QtH @ Q
                 Hmw_act.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
 
-                # Diagonalize (upper triangle only; no symmetrization)
                 omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="U")
 
-                # Free the (only) Hessian ASAP
                 del Hmw_act
                 del H_t
                 if torch.cuda.is_available():
@@ -302,9 +288,8 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
 
                 sel = torch.abs(omega2) > tol
                 omega2 = omega2[sel]
-                Vsub = Vsub[:, sel]  # (3N_act, nsel)
+                Vsub = Vsub[:, sel]
 
-                # Embed to full 3N (mass-weighted eigenvectors)
                 modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=Vsub.dtype, device=Vsub.device)
                 mask_dof = torch.ones(3 * N, dtype=torch.bool, device=Vsub.device)
                 for i in frozen_set:
@@ -313,16 +298,12 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 del Q, Qt, QtH, QtHQ, mask_dof
 
             else:
-                # --- Case A: Full Hessian (3N×3N) supplied ---
-                # Apply full mass-weighting → extract the active block → project TR modes in the active space.
                 H_t = _mass_weighted_hessian(H_t, masses_au_t)
 
-                # Build active mask (boolean) and immediately carve out the active block
                 mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
                 for i in frozen_set:
                     mask_dof[3 * i:3 * i + 3] = False
 
-                # Create the reduced Hessian; free the full one immediately to keep only one in VRAM
                 H_act = H_t[mask_dof][:, mask_dof]
                 del H_t
                 if torch.cuda.is_available():
@@ -332,7 +313,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
 
                 coords_act = coords_bohr_t[active_idx, :]
                 masses_act = masses_au_t[active_idx]
-                Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
+                Q, _ = _tr_orthonormal_basis(coords_act, masses_act)
                 Qt = Q.T
 
                 QtH = Qt @ H_t
@@ -343,28 +324,24 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 QtH = QtH @ Q
                 H_t.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
 
-                # No symmetrization; diagonalize using upper triangle only
                 omega2, Vsub = torch.linalg.eigh(H_t, UPLO="U")
 
-                # Free the (only) Hessian ASAP
                 del H_t
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
                 sel = torch.abs(omega2) > tol
                 omega2 = omega2[sel]
-                Vsub = Vsub[:, sel]  # (3N_act, nsel)
+                Vsub = Vsub[:, sel]
 
                 modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=Vsub.dtype, device=Vsub.device)
-                modes[:, mask_dof] = Vsub.T  # (nsel, 3N_act) → place into active DOF
+                modes[:, mask_dof] = Vsub.T
                 del Vsub, mask_dof, Q, Qt, QtH
 
         else:
-            # Legacy behavior: TR-projection in full DOF → diagonalization (both in-place; no symmetrization)
             H_t = _mw_projected_hessian(H_t, coords_bohr_t, masses_au_t)
             omega2, V = torch.linalg.eigh(H_t, UPLO="U")
 
-            # Free the (only) Hessian ASAP
             del H_t
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -374,7 +351,6 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
             modes = V[:, sel].T
             del V
 
-        # Convert to frequencies (cm^-1)
         s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
         hnu = s_new * torch.sqrt(torch.abs(omega2))
         hnu = torch.where(omega2 < 0, -hnu, hnu)
@@ -406,7 +382,6 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
     UMA calculator producing Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
     """
     kw = dict(uma_kwargs or {})
-    # Ensure torch tensor output & honor hessian mode / freeze / partial-return flags from cfg
     kw["out_hess_torch"] = True
     calc = uma_pysis(**kw)
     H_t = calc.get_hessian(geom.atoms, geom.coords)["hessian"].to(device=device)
@@ -432,10 +407,11 @@ def _write_mode_trj_and_pdb(geom,
                             n_frames: int = 20,
                             comment: str = "mode",
                             ref_pdb: Optional[Path] = None) -> None:
-    """Write a single mode animation as .trj (XYZ-like) and .pdb.
+    """
+    Write a single mode animation as .trj (XYZ-like) and .pdb.
 
     If `ref_pdb` is provided and is a .pdb file, the .pdb is generated by
-    converting the .trj using the input PDB as the template (same as path_opt).
+    converting the .trj using the input PDB as the template; on failure, an ASE fallback is used.
     """
     ref_ang = geom.coords.reshape(-1, 3) * BOHR2ANG
     mode = mode_vec_3N.reshape(-1, 3).copy()
@@ -443,19 +419,16 @@ def _write_mode_trj_and_pdb(geom,
 
     # .trj (concatenated XYZ-like trajectory)
     if ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb":
-        # Emit a simple XYZ-like trajectory in Å for the converter
         with out_trj.open("w", encoding="utf-8") as f:
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
-                coords = ref_ang + phase * amplitude_ang * mode  # Å
+                coords = ref_ang + phase * amplitude_ang * mode
                 f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
                 for sym, (x, y, z) in zip(geom.atoms, coords):
                     f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
-        # Generate PDB using the input PDB as template
         try:
             _convert_xyz_to_pdb(out_trj, ref_pdb, out_pdb)
         except Exception:
-            # Fallback: generate MODEL/ENDMDL using ASE
             atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
@@ -464,7 +437,7 @@ def _write_mode_trj_and_pdb(geom,
                 write(out_pdb, ai, append=(i != 0))
         return
 
-    # If no ref_pdb is given, use the legacy behavior (use pysisyphus.make_trj_str if available)
+    # If no ref_pdb is given, write TRJ using pysisyphus.make_trj_str when available
     try:
         from pysisyphus.xyzloader import make_trj_str  # type: ignore
         amp_ang = amplitude_ang
@@ -503,17 +476,17 @@ CALC_KW = dict(_UMA_CALC_KW)
 
 # Freq writer defaults
 FREQ_KW = {
-    "amplitude_ang": 0.8,     # float, animation amplitude (Å) applied to both .trj and .pdb outputs
-    "n_frames": 20,           # int, number of frames per vibrational mode
-    "max_write": 20,          # int, maximum number of modes to export
-    "sort": "value",          # str, "value" (ascending by cm^-1) | "abs" (ascending by absolute value)
+    "amplitude_ang": 0.8,     # animation amplitude (Å) applied to both .trj and .pdb outputs
+    "n_frames": 20,           # number of frames per vibrational mode
+    "max_write": 20,          # maximum number of modes to export
+    "sort": "value",          # "value" (ascending by cm^-1) | "abs" (ascending by absolute value)
 }
 
-# Thermochemistry defaults (added)
+# Thermochemistry defaults
 THERMO_KW = {
-    "temperature": 298.15,    # float, temperature in Kelvin
-    "pressure_atm": 1.0,      # float, pressure in atm (converted to Pa internally)
-    "dump": False,            # bool, write thermoanalysis.yaml when True
+    "temperature": 298.15,    # temperature in Kelvin
+    "pressure_atm": 1.0,      # pressure in atm (converted to Pa internally)
+    "dump": False,            # write thermoanalysis.yaml when True
 }
 
 
@@ -537,7 +510,7 @@ THERMO_KW = {
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-write", type=int, default=20, show_default=True,
-              help="Number of modes to write (ascending by frequency value).")
+              help="How many modes to export (after sorting per --sort).")
 @click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
               help="Animation amplitude (Å) used for both .trj and .pdb.")
 @click.option("--n-frames", type=int, default=20, show_default=True,
@@ -551,7 +524,7 @@ THERMO_KW = {
     default=None,
     help="YAML with extra args (sections: geom, calc, freq).",
 )
-# ---- Thermochemistry options (added) ----
+# Thermochemistry options
 @click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,
               help="Temperature (K) for thermochemistry summary.")
 @click.option("--pressure", "pressure_atm",
@@ -559,7 +532,7 @@ THERMO_KW = {
               help="Pressure (atm) for thermochemistry summary.")
 @click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
               help="When True, write 'thermoanalysis.yaml' under out-dir.")
-# ---- Hessian calculation mode exposed via CLI ----
+# Hessian calculation mode
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"]),
               default=None,
@@ -665,7 +638,7 @@ def cli(
         # Inject freeze list into UMA calc config for Hessian construction,
         # and ensure partial Hessian return is default True (can be overridden by YAML).
         freeze_list = list(geom_cfg.get("freeze_atoms", []))
-        calc_cfg = dict(calc_cfg)  # copy before mutation
+        calc_cfg = dict(calc_cfg)
         calc_cfg["freeze_atoms"] = freeze_list
         calc_cfg.setdefault("return_partial_hessian", True)
 
@@ -681,12 +654,10 @@ def cli(
             freeze_idx=freeze_list if len(freeze_list) > 0 else None
         )
 
-        # Immediately drop the Hessian reference at the caller level as well
         del H_t
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # sort order
         if freq_cfg["sort"] == "abs":
             order = np.argsort(np.abs(freqs_cm))
         else:
@@ -701,7 +672,7 @@ def cli(
         # write modes
         for k, idx in enumerate(order[:n_write], start=1):
             freq = float(freqs_cm[idx])
-            mode_cart_3N = _mw_mode_to_cart(modes_mw[idx], masses_au_t)  # (3N,)
+            mode_cart_3N = _mw_mode_to_cart(modes_mw[idx], masses_au_t)
             out_trj = out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.trj"
             out_pdb = out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb"
             _write_mode_trj_and_pdb(
@@ -714,27 +685,23 @@ def cli(
                 comment=f"mode {k}  {freq:+.2f} cm-1",
                 ref_pdb=ref_pdb,
             )
-        # also write a simple list
         (out_dir_path / "frequencies_cm-1.txt").write_text(
             "\n".join(f"{i+1:4d}  {float(freqs_cm[j]):+12.4f}" for i, j in enumerate(order)),
             encoding="utf-8"
         )
 
-        # Drop modes after use if large
         del modes_mw
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         # --------------------------
-        # 4) Thermochemistry summary (default on)
+        # 4) Thermochemistry summary
         # --------------------------
         try:
-            # Lazy import so that freq-only users can still run without thermoanalysis installed
             from thermoanalysis.QCData import QCData
             from thermoanalysis.thermo import thermochemistry
             from thermoanalysis.constants import J2AU, NA, J2CAL
 
-            # Prepare QCData dict
             qc_data = {
                 "coords3d": geometry.coords.reshape(-1, 3) * BOHR2ANG,  # Å
                 "wavenumbers": freqs_cm,                                 # cm^-1
@@ -750,31 +717,27 @@ def cli(
 
             tr = thermochemistry(qc, T, pressure=p_pa)  # default: QRRHO
 
-            # Converters
             au2CalMol = (1.0 / J2AU) * NA * J2CAL
             to_cal_per_mol = lambda x: float(x) * au2CalMol
             J_per_Kmol_to_cal_per_Kmol = lambda j: float(j) * J2CAL
 
-            # Counts
             n_imag = int(np.sum(freqs_cm < 0.0))
 
-            # Compose summary
             EE = float(tr.U_el)
             ZPE = float(tr.ZPE)
-            dE_therm = float(tr.U_therm)               # Thermal correction to Energy (includes ZPE)
-            dH_therm = float(tr.H - tr.U_el)           # Thermal correction to Enthalpy (= U_therm + kBT)
-            dG_therm = float(tr.dG)                    # Thermal correction to Free Energy (= G - EE)
+            dE_therm = float(tr.U_therm)
+            dH_therm = float(tr.H - tr.U_el)
+            dG_therm = float(tr.dG)
 
             sum_EE_ZPE = EE + ZPE
-            sum_EE_thermal_E = float(tr.U_tot)         # = EE + U_therm
-            sum_EE_thermal_H = float(tr.H)             # = H
-            sum_EE_thermal_G = float(tr.G)             # = G
+            sum_EE_thermal_E = float(tr.U_tot)
+            sum_EE_thermal_H = float(tr.H)
+            sum_EE_thermal_G = float(tr.G)
 
-            E_thermal_cal = to_cal_per_mol(tr.U_therm)               # cal/mol
-            Cv_cal_per_Kmol = J_per_Kmol_to_cal_per_Kmol(tr.c_tot)   # cal/(mol*K)
-            S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)               # cal/(mol*K)
+            E_thermal_cal = to_cal_per_mol(tr.U_therm)
+            Cv_cal_per_Kmol = J_per_Kmol_to_cal_per_Kmol(tr.c_tot)
+            S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)
 
-            # Echo summary (Gaussian-like)
             click.echo("\nThermochemistry Summary")
             click.echo("------------------------")
             click.echo(f"Temperature (K)         = {T:.2f}")
@@ -802,7 +765,6 @@ def cli(
             click.echo(f"Entropy (S)                            = {_calK(S_cal_per_Kmol)}")
             click.echo("")
 
-            # Dump YAML when requested
             if bool(thermo_cfg["dump"]):
                 out_yaml = out_dir_path / "thermoanalysis.yaml"
                 payload = {

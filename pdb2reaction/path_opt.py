@@ -2,48 +2,52 @@
 
 """
 path_opt — Minimum-energy path (MEP) optimization via the Growing String method (pysisyphus) with a UMA calculator
-====================================================================
+===================================================================================================================
 
 Usage (CLI)
------
+-----------
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
         -q <charge> [-s <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
-        [--dump {True|False}] [--out-dir <dir>] [--args-yaml <file>]
+        [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
+        [--args-yaml <file>]
 
-Examples::
+Examples
+--------
     # Minimal: two endpoints, neutral singlet
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -s 1
 
-    # Typical full run with YAML overrides and dumps
+    # Typical full run with YAML overrides, dumps, and a convergence preset
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -s 1 \
       --freeze-links True --max-nodes 10 --max-cycles 100 \
-      --dump True --out-dir ./result_path_opt/ --args-yaml ./args.yaml
+      --climb True --dump True --out-dir ./result_path_opt/ \
+      --thresh gau_tight --args-yaml ./args.yaml
 
 
 Description
------
-- Optimize a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
+-----------
+- Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
 - Configuration via YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > built-in defaults.
-- Default alignment: before optimization, the second endpoint is rigidly Kabsch-aligned to the first using an external routine. `StringOptimizer.align` is disabled (known to be fragile). If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
-- With `--climb=True` (default), a climbing-image step refines the highest-energy image; Lanczos-based tangent estimation is enabled by default (configurable via YAML).
-- After optimization, the highest-energy image (HEI) is identified and exported.
+- Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
+- With `--climb=True` (default), a climbing-image step refines the highest-energy image; the Lanczos-based tangent estimate is toggled to the same boolean as `--climb` (enabled iff `--climb=True`).
+- `--thresh` sets the convergence preset used by the string optimizer and by the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
+- After optimization, the highest-energy image (HEI) is identified as the highest-energy internal local maximum (preferring internal nodes). If none exist, the maximum among internal nodes is used; if there are no internal nodes, the global maximum is used. The selected HEI is exported.
 
 Outputs (& Directory Layout)
------
+----------------------------
 out_dir/ (default: ./result_path_opt/)
-  ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line holds per-image energy
-  ├─ final_geometries.pdb        # Converted from .trj when a PDB reference is available
+  ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line carries per-image energy when available
+  ├─ final_geometries.pdb        # Converted from .trj when the *first* endpoint is a PDB
   ├─ gsm_hei.xyz                 # Highest-energy image with energy on the comment line
-  ├─ gsm_hei.pdb                 # HEI converted to PDB when a PDB reference is available
+  ├─ gsm_hei.pdb                 # HEI converted to PDB when the *first* endpoint is a PDB
+  ├─ gsm_hei.gjf                 # HEI written using a detected .gjf template, when available
   ├─ align_refine/               # Files from external alignment/refinement
   └─ <optimizer dumps / restarts>  # Emitted when --dump=True (from pysisyphus)
 
-Notes:
+Notes
 -----
-- Charge/spin: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when provided and otherwise fall back to `0`/`1`.
-  Override them explicitly to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` and `-s/--spin` inherit `.gjf` template values when provided and otherwise fall back to `0`/`1`. Override explicitly to avoid unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
@@ -102,36 +106,37 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 30,            # int, internal nodes; total images = max_nodes + 2 including endpoints
-    "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
-    "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
-    "reparam_every": 1,         # int, reparametrize every N steps while growing
-    "reparam_every_full": 1,    # int, reparametrize every N steps after fully grown
-    "param": "equi",            # str, "equi" (even spacing) | "energy" (weight by energy)
-    "max_micro_cycles": 10,     # int, micro-optimization cycles per macro iteration
-    "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
-    "climb": True,              # bool, enable climbing image
-    "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent
-    "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
-    "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
-    "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
+    "max_nodes": 30,
+    "perp_thresh": 5e-3,
+    "reparam_check": "rms",
+    "reparam_every": 1,
+    "reparam_every_full": 1,
+    "param": "equi",
+    "max_micro_cycles": 10,
+    "reset_dlc": True,
+    "climb": True,
+    "climb_rms": 5e-4,
+    "climb_lanczos": True,
+    "climb_lanczos_rms": 5e-4,
+    "climb_fixed": False,
+    "scheduler": None,
 }
 
 # StringOptimizer (optimization control)
 STOPT_KW: Dict[str, Any] = {
-    "type": "string",           # str, tag for bookkeeping / output labelling
-    "stop_in_when_full": 100,   # int, allow N extra cycles after the string is fully grown
-    "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
-    "scale_step": "global",     # str, "global" | "per_image" scaling policy
-    "max_cycles": 100,          # int, maximum macro cycles for the optimizer
-    "dump": False,              # bool, write optimizer trajectory to disk
-    "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
-    "reparam_thresh": 1e-3,     # float, convergence threshold for reparametrization
-    "coord_diff_thresh": 0.0,   # float, tolerance for coordinate difference before pruning
-    "out_dir": "./result_path_opt/",  # str, output directory for optimizer artifacts
-    "print_every": 10,           # int, status print frequency (cycles)
+    "type": "string",
+    "stop_in_when_full": 100,
+    "align": False,
+    "scale_step": "global",
+    "max_cycles": 100,
+    "dump": False,
+    "dump_restart": False,
+    "reparam_thresh": 1e-3,
+    "coord_diff_thresh": 0.0,
+    "out_dir": "./result_path_opt/",
+    "print_every": 10,
 }
+
 
 def _load_two_endpoints(
     inputs: Sequence[PreparedInputStructure],
@@ -193,7 +198,7 @@ def _load_two_endpoints(
     "--thresh",
     type=str,
     default=None,
-    help="Convergence preset for the string optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help="Convergence preset for the string optimizer and pre-alignment (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
     "--args-yaml",
@@ -229,7 +234,6 @@ def cli(
         gs_cfg   = dict(GS_KW)
         opt_cfg  = dict(STOPT_KW)
 
-        # Prefer centralized override helper (imports from utils)
         apply_yaml_overrides(
             yaml_cfg,
             [
@@ -258,14 +262,15 @@ def cli(
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
+        # Lanczos tangent estimation follows the --climb toggle.
         gs_cfg["climb_lanczos"] = bool(climb)
 
         opt_cfg["dump"]       = bool(dump)
-        opt_cfg["out_dir"]    = out_dir  # Pass --out-dir to the optimizer via "out_dir"
+        opt_cfg["out_dir"]    = out_dir
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
 
-        # Important: do not use internal alignment; use external Kabsch alignment instead
+        # Use external Kabsch alignment; keep internal alignment disabled.
         opt_cfg["align"] = False
 
         # For display: resolved configuration
@@ -288,7 +293,6 @@ def cli(
 
         source_paths = [prep.source_path for prep in prepared_inputs]
 
-        # Load endpoints (if PDB, merge in link-parent freezing)
         geoms = _load_two_endpoints(
             inputs=prepared_inputs,
             coord_type=geom_cfg.get("coord_type", "cart"),
@@ -299,7 +303,7 @@ def cli(
         # Shared UMA calculator (reuse the same instance for all images)
         shared_calc = uma_pysis(**calc_cfg)
 
-        # By default, apply external Kabsch alignment (if freeze_atoms exist, use only them)
+        # External Kabsch alignment (if freeze_atoms exist, use only them)
         align_thresh = str(opt_cfg.get("thresh", "gau"))
         try:
             click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
@@ -330,13 +334,12 @@ def cli(
             **gs_cfg,
         )
 
-        # StringOptimizer expects 'out_dir' under the key "out_dir"
         opt_args = dict(opt_cfg)
         opt_args["out_dir"] = str(out_dir_path)
 
         optimizer = StringOptimizer(
             geometry=gs,
-            **{k: v for k, v in opt_args.items() if k != "type"}  # 'type' is just a tag
+            **{k: v for k, v in opt_args.items() if k != "type"}
         )
 
         # --------------------------
@@ -388,15 +391,11 @@ def cli(
 
         try:
             energies = np.array(gs.energy, dtype=float)
-            # --- HEI identification logic ---
-            # Choose the internal local maximum (exclude endpoints) with the highest energy,
-            # i.e., nodes whose immediate neighbors have lower energy.
-            # Fallback 1: if none exist, pick the maximum among internal nodes (exclude endpoints).
-            # Fallback 2: if internal nodes are unavailable, pick the global maximum.
+            # HEI identification: prefer internal local maxima; otherwise pick the
+            # highest-energy internal node; if no internal nodes exist, pick the global maximum.
             nE = int(len(energies))
             hei_idx = None
             if nE >= 3:
-                # Strict internal local maxima (both neighbors lower)
                 candidates = [i for i in range(1, nE - 1)
                               if energies[i] > energies[i - 1] and energies[i] > energies[i + 1]]
                 if candidates:
@@ -404,12 +403,9 @@ def cli(
                     rel = int(np.argmax(cand_es))
                     hei_idx = int(candidates[rel])
                 else:
-                    # Fallback 1: maximum over internal nodes (exclude endpoints)
-                    if nE > 2:
-                        rel = int(np.argmax(energies[1:-1]))
-                        hei_idx = 1 + rel
+                    rel = int(np.argmax(energies[1:-1]))
+                    hei_idx = 1 + rel
             if hei_idx is None:
-                # Fallback 2: global maximum
                 hei_idx = int(np.argmax(energies))
 
             hei_geom = gs.images[hei_idx]
