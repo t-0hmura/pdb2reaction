@@ -881,23 +881,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     c_first: np.ndarray
     c_last: np.ndarray
 
-    if finished_pdb.exists():
-        coords_models, elems = _pdb_models_to_coords_and_elems(finished_pdb)
-        c_first, c_last = coords_models[0], coords_models[-1]
-    elif finished_trj.exists():
-        elems, c_first, c_last = _read_xyz_first_last(finished_trj)
-    else:
-        # fallback: assemble from forward/backward
-        if not (forward_trj.exists() and backward_trj.exists()):
-            raise click.ClickException("[irc] Expected 'finished_irc.(pdb|trj)' or both forward/backward trj files.")
-        # read last of forward, last of backward; for first we can use backward first, but last/last suffices
-        e_f, _, c_f_last = _read_xyz_first_last(forward_trj)
-        e_b, _, c_b_last = _read_xyz_first_last(backward_trj)
-        if e_f != e_b:
-            raise click.ClickException("[irc] Element list mismatch between forward/backward trajectories.")
-        elems = e_f
-        # By convention: left ~ backward end, right ~ forward end (may be remapped below)
-        c_first, c_last = c_b_last, c_f_last
+    elems, c_first, c_last = _read_xyz_first_last(finished_trj)
 
     # 4) Build geoms and energies
     calc_args = dict(calc_cfg) if calc_cfg is not None else _build_calc_cfg(q_int, spin)

@@ -380,7 +380,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "--func-basis",
     "func_basis",
     type=str,
-    default="wb97m-v/6-31g**",
+    default="wb97m-v/def2-tzvpd",
     show_default=True,
     help='Exchange–correlation functional and basis set as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").',
 )
@@ -501,8 +501,6 @@ def cli(
         gpu_exc: Optional[str] = None
         if engine in ("gpu", "auto"):
             try:
-                import gpu4pyscf
-                gpu4pyscf.activate()  # patch PySCF backends to GPU where supported
                 from gpu4pyscf import dft as gdf
                 mf = make_ks(gdf)
                 using_gpu = True
