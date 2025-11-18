@@ -1,96 +1,84 @@
 # `opt` subcommand
 
-## Purpose
-Performs single-structure geometry optimizations with pysisyphus using either the LBFGS ("light") or RFOptimizer ("heavy") algorithms backed by the UMA machine-learning calculator.
+## Overview
+`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. The command applies settings in the priority order **CLI > `--args-yaml` > built-in defaults**, making it easy to keep lightweight defaults while selectively overriding options.
+
+When the starting structure is a PDB, two PDB-specific conveniences are available:
+- With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
+- Output conversion produces `final_geometry.pdb` (and `optimization.pdb` when dumping trajectories) using the input PDB as the topology reference.
+
+A Gaussian `.gjf` template, when detected, seeds the charge/spin defaults and enables automatic export of the optimized structure as `final_geometry.gjf`.
 
 ## Usage
 ```bash
-pdb2reaction opt -i INPUT -q CHARGE [--mult 2S+1] [--opt-mode light|lbfgs|heavy|rfo]
-                 [--freeze-links BOOL] [--dist-freeze "[(i,j,target), ...]"]
-                 [--one-based/--zero-based] [--bias-k k]
-                 [--dump BOOL] [--thresh PRESET]
-                 [--out-dir DIR] [--max-cycles N] [--args-yaml FILE]
+pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
+                 [--opt-mode light|lbfgs|heavy|rfo] [--freeze-links BOOL] \
+                 [--dist-freeze "[(i,j,target_A), ...]"] [--one-based|--zero-based] \
+                 [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
+                 [--max-cycles N] [--thresh PRESET] [--args-yaml FILE]
 ```
+
+### Key behaviours
+- **Optimizers**: `--opt-mode light|lbfgs` → L-BFGS; `--opt-mode heavy|rfo` → rational-function optimizer with trust-region control.
+- **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
+- **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If no template exists, the fallback is `0/1`. Always pass the physically correct values explicitly.
+- **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
+- **Dumping**: `--dump True` mirrors `opt.dump=True` and writes `optimization.trj` (+ `.pdb` for PDB inputs). `opt.dump_restart` can emit restart YAML snapshots.
+- **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb`, `.xyz`, `.trj`, …). | Required |
-| `-q, --charge INT` | Total charge passed to UMA. | `.gjf` template value or `0` |
-| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--dist-freeze TEXT` | Repeatable Python-like literal describing `(i, j, targetÅ)` tuples for harmonic restraints. Omit the target to freeze the initial distance. | _None_ |
+| `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
+| `-q, --charge INT` | Total charge. Falls back to `.gjf` template or `0`. | Template/`0` |
+| `-m, --mult INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
+| `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_A)` tuples for harmonic restraints. | _None_ |
 | `--one-based / --zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `--one-based` |
-| `--bias-k FLOAT` | Harmonic bias strength `k` (eV·Å⁻²) applied to every `--dist-freeze` tuple. | `10.0` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. When the input is PDB, detect link hydrogens and freeze their parent atoms (merged with `geom.freeze_atoms`). | `True` |
-| `--max-cycles INT` | Maximum optimization cycles (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Select optimizer: `light`/`lbfgs` → LBFGS, `heavy`/`rfo` → RFO. | `light` |
-| `--dump BOOL` | Explicit `True`/`False`. Emit `optimization.trj`. | `False` |
-| `--out-dir TEXT` | Output directory. | `./result_opt/` |
-| `--thresh TEXT` | Override the convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-
-### Section `geom`
-Geometry loader options (see also `pdb2reaction.uma_pysis.GEOM_KW_DEFAULT`).
-
-- `coord_type` (`"cart"`): Coordinate representation for `geom_loader` (`"cart"` or `"dlc"`).
-- `freeze_atoms` (`[]`): 0-based indices to freeze; merged with link parents when `--freeze-links`.
-
-### Section `calc`
-UMA calculator options (see also `pdb2reaction/uma_pysis.py`).
-
-- `charge` / `spin`: Overridden by `-q/-s`.
-- `model` (`"uma-s-1p1"`) and `task_name` (`"omol"`): UMA checkpoint and dataset tag.
-- `device` (`"auto"`), `max_neigh`, `radius`, `r_edges`: Graph/device controls.
-- `out_hess_torch` (`True`): Request a Torch Hessian (GPU-friendly).
-- `freeze_atoms`: Auto-filled from `geom.freeze_atoms`.
-- `hessian_calc_mode` (`"Analytical"`) and `return_partial_hessian` (`True`): UMA Hessian controls.
-
-### Section `opt`
-Shared optimizer controls.
-
-- `thresh` (`"gau"`): Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
-- `max_cycles` (`10000`), `print_every` (`100`), `dump` (`False`), `dump_restart` (`False`), `prefix` (`""`), `out_dir` (`"./result_opt/"`).
-- Safeguards: `min_step_norm` (`1e-8`), `assert_min_step` (`True`).
-- Convergence flags: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
-- Extras: `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
-
-### Section `lbfgs`
-Specific to the LBFGS optimizer (`--opt-mode light|lbfgs`).
-
-- `keep_last` (`7`): Memory depth.
-- `beta` (`1.0`), `gamma_mult` (`False`): Initial scaling.
-- Step control: `max_step` (`0.30`), `control_step` (`True`).
-- Safeguards: `double_damp` (`True`).
-- Regularization: `mu_reg` (`None`), `max_mu_reg_adaptions` (`10`).
-
-### Section `rfo`
-Specific to RFOptimizer (`--opt-mode heavy|rfo`).
-
-- Trust region: `trust_radius` (`0.30`), `trust_min` (`0.01`), `trust_max` (`0.30`), `trust_update` (`True`).
-- Energy guard: `max_energy_incr` (`None`).
-- Hessian management: `hessian_update` (`"bfgs"`), `hessian_init` (`"calc"`), `hessian_recalc` (`100`), `hessian_recalc_adapt` (`2.0`).
-- Numerics: `small_eigval_thresh` (`1e-8`), `line_search` (`True`), `alpha0` (`1.0`), `max_micro_cycles` (`25`), `rfo_overlaps` (`False`).
-- DIIS controls: `gdiis` (`True`), `gediis` (`False`), `gdiis_thresh` (`2.5e-3`), `gediis_thresh` (`1.0e-2`), `gdiis_test_direction` (`True`).
-- `adapt_step_func` (`False`).
+| `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
+| `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
+| `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
+| `--opt-mode TEXT` | Choose optimizer: `light`/`lbfgs` or `heavy`/`rfo`. | `light` |
+| `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
+| `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
+| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | YAML/default |
+| `--args-yaml FILE` | Supply YAML overrides (sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`). | _None_ |
 
 ## Outputs
-- `final_geometry.xyz` (+ `.pdb` when the input was PDB).
-- `final_geometry.gjf` when the input supplied a Gaussian template (GJF) so headers/basis can be reused.
-- Optional `optimization.trj` (+ `.pdb` when dumping and PDB input).
-- Optional restart YAML files when `opt.dump_restart` is set.
-- Console blocks summarising resolved `geom`, `calc`, `opt`, and LBFGS/RFO settings.
+```
+out_dir/
+├─ final_geometry.xyz          # Always written
+├─ final_geometry.pdb          # Only when the input was a PDB
+├─ final_geometry.gjf          # When a Gaussian template was detected
+├─ optimization.trj            # Only if dumping is enabled
+├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs)
+└─ restart*.yml                # Optional restarts when opt.dump_restart is set
+```
+The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
-## Notes
-- Charge/spin resolution: when the input is `.gjf`, the CLI inherits the template charge/spin; otherwise it defaults to `0`/`1`.
-  Override them explicitly to enforce the chemically correct state.
-- `--freeze-links` is PDB-only and merges link parents into `geom.freeze_atoms`.
-- `--dist-freeze` lets you apply harmonic restraints to selected atom pairs; omit the target distance to freeze the current separation. Adjust the strength with `--bias-k` (eV·Å⁻²).
-- CLI precedence: CLI > YAML > built-in defaults.
-- Exit codes: `0` success, `2` zero-step error, `3` optimizer failure, `130` interrupt, `1` unexpected error.
+## YAML sections (`--args-yaml`)
+CLI values override YAML, which override the defaults below.
 
-## YAML configuration (`--args-yaml`)
-Pass a YAML mapping; CLI values override YAML, which override the defaults below.
+### `geom`
+- `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.
+- `freeze_atoms` (`[]`): Base 0-based frozen indices; automatically merged with CLI link detection.
 
+### `calc`
+- UMA configuration (`model`, `task_name`, device selection, neighbor radii, Hessian format, etc.).
+- `charge`/`spin` mirror the CLI options; defaults come from `.gjf` when present.
+
+### `opt`
+Shared optimizer controls used by both LBFGS and RFO:
+- `thresh` presets (Gaussian-like or Baker rule). Presets translate to the force/step thresholds documented in `pdb2reaction/opt.py`.
+- `max_cycles`, `print_every` (`10`), `min_step_norm` (`1e-8`), `assert_min_step`, convergence toggles (`rms_force`, etc.), RMSD-based `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
+- Dumping/bookkeeping fields (`dump`, `dump_restart`, `prefix`, `out_dir`).
+
+### `lbfgs`
+Extends `opt` with L-BFGS specifics: `keep_last`, `beta`, `gamma_mult`, `max_step`, `control_step`, `double_damp`, and the optional regularisation parameters `mu_reg`/`max_mu_reg_adaptions`.
+
+### `rfo`
+Extends `opt` with RFOptimizer fields: trust-region sizing (`trust_radius`, `trust_min`, `trust_max`, `trust_update`), `max_energy_incr`, Hessian management (`hessian_update`, `hessian_init`, `hessian_recalc`, `hessian_recalc_adapt`, `small_eigval_thresh`), micro-iteration controls (`alpha0`, `max_micro_cycles`, `rfo_overlaps`), DIIS helpers (`gdiis`, `gediis`, thresholds, `gdiis_test_direction`), and `adapt_step_func`.
+
+### Example YAML
 ```yaml
 geom:
   coord_type: cart
@@ -111,7 +99,7 @@ calc:
 opt:
   thresh: gau
   max_cycles: 10000
-  print_every: 100
+  print_every: 10
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
@@ -129,7 +117,7 @@ opt:
 lbfgs:
   thresh: gau
   max_cycles: 10000
-  print_every: 100
+  print_every: 10
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
@@ -155,7 +143,7 @@ lbfgs:
 rfo:
   thresh: gau
   max_cycles: 10000
-  print_every: 100
+  print_every: 10
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
