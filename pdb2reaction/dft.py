@@ -6,7 +6,7 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 
 Usage (CLI)
 -----------
-    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q <charge> [-s <spin>] \
+    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-s <spin>] \
         [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
         [--args-yaml <file>]

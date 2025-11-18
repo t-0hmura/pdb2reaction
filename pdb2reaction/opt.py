@@ -6,7 +6,7 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 
 Usage (CLI)
 -----------
-    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q <charge> [-s <spin>] \
+    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
         [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \

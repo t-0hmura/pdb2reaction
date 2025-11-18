@@ -6,7 +6,7 @@ irc — Concise CLI for IRC calculations with the EulerPC integrator
 
 Usage (CLI)
 -----------
-    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} -q <charge> -s <spin> \
+    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
         [--freeze-links {True|False}] [--out-dir <dir>] \

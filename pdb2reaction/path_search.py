@@ -6,7 +6,7 @@ path_search — Recursive GSM segmentation to build a continuous multistep MEP
 
 Usage (CLI)
 -----------
-    pdb2reaction path-search -i STRUCT1 STRUCT2 [STRUCT3 ...] -q <charge> \
+    pdb2reaction path-search -i STRUCT1 STRUCT2 [STRUCT3 ...] [-q <charge>] \
         [-s <spin>] [--sopt-mode {lbfgs|rfo|light|heavy}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--preopt {True|False}] [--align/--no-align] [--thresh <preset>] \
@@ -14,7 +14,7 @@ Usage (CLI)
         [--freeze-links {True|False}] [--dump {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}]
 
-Required-like:
+Core inputs (strongly recommended):
     -i/--input
         Two or more structures in reaction order (repeatable or space‑separated after a single -i).
     -q/--charge
