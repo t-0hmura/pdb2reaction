@@ -374,9 +374,9 @@ def parse_args() -> argparse.Namespace:
               "'GPP:-3,MMT:-1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
-        "-v", "--verbose", type=str2bool, default=False,
-        help=("Enable INFO-level logging (set true to emit INFO; false keeps WARNING-level output)."
-              " Default: false.")
+        "-v", "--verbose", type=str2bool, default=True,
+        help=("Enable INFO-level logging."
+              " Default: True.")
     )
     return p.parse_args()
 
