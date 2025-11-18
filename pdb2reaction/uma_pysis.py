@@ -5,17 +5,18 @@ uma_pysis — UMA calculator wrapper for PySisyphus
 ====================================================================
 
 Usage (API)
------
+-----------
     from pdb2reaction.uma_pysis import uma_pysis
 
-Examples::
+Examples
+--------
     >>> from pdb2reaction.uma_pysis import uma_pysis
     >>> calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1")
     >>> calc.get_energy(["C", "O"], coords)
     {'energy': -228.123456}
 
 Description
------
+-----------
 - Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA
   pretrained ML potentials via ASE/AtomicData.
 - Two Hessian modes (on the selected device; GPU if available):
@@ -45,29 +46,15 @@ Description
 - Units: UMA runs in Å and eV; PySisyphus public API converts to Hartree/Bohr:
   energy eV→Hartree, forces eV·Å⁻¹→Hartree·Bohr⁻¹, Hessian eV·Å⁻²→Hartree·Bohr⁻².
 
-Outputs
------
-PySisyphus calculator interface (`implemented_properties = ["energy", "forces", "hessian"]`):
+Outputs (& Directory Layout)
+----------------------------
+In-memory calculator interface (`implemented_properties = ["energy", "forces", "hessian"]`)
+  ├─ get_energy(elem, coords)  → ``{"energy": E}`` (E in Hartree; coords supplied in Bohr and converted to Å internally)
+  ├─ get_forces(elem, coords)  → ``{"energy": E, "forces": F}`` (F has 3N components in Hartree/Bohr; frozen DOF set to 0)
+  └─ get_hessian(elem, coords) → ``{"energy": E, "forces": F, "hessian": H}``
+        • ``H`` has shape (3N, 3N) in Hartree/Bohr² or (3N_active, 3N_active) when ``return_partial_hessian=True``
+        • Columns for frozen DOF are zeroed in the full-size form
 
-- `get_energy(elem, coords)`
-  Returns: `{"energy": E}`
-  - `E`: float, Hartree.
-  - `coords`: Bohr in, internally converted to Å.
-
-- `get_forces(elem, coords)`
-  Returns: `{"energy": E, "forces": F}`
-  - `F`: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
-  - `E`: float, Hartree.
-  - `coords`: Bohr in, internally converted to Å.
-
-- `get_hessian(elem, coords)`
-  Returns: `{"energy": E, "forces": F, "hessian": H}`
-  - `F`: shape (3N,), Hartree/Bohr. Components for `freeze_atoms` are zeroed.
-  - `H`: shape (3N, 3N), Hartree/Bohr² (or (3N_active, 3N_active) if returning the
-    active‑DOF submatrix in either mode).
-  - If `return_partial_hessian=True`: `H` contains only the Active‑DOF block
-    (non‑frozen atoms). Otherwise `H` is full sized and columns corresponding to
-    frozen DOF are zeroed.
 
 Notes
 -----
@@ -647,7 +634,3 @@ def run_pysis():
     """
     run.CALC_DICT["uma_pysis"] = uma_pysis
     run.run()
-
-
-if __name__ == "__main__":
-    run_pysis()

@@ -55,19 +55,19 @@ Optional optimizations
     `--endopt True`).
   - By default, both `--preopt` and `--endopt` are enabled.
 
-Outputs (& directory layout)
+Outputs (& Directory Layout)
 ----------------------------
-Base output directory (default `./result_scan/`):
-  preopt/                         # created if --preopt True
-    result.xyz
-    result.gjf                    # if the original input provided a GJF template
-    result.pdb                    # if input was PDB
-  stage_{k:02d}/                  # for each stage k = 1..K
-    result.xyz                    # final structure for the stage (post end‑of‑stage processing)
-    result.gjf                    # if the original input provided a GJF template
-    result.pdb                    # if input was PDB
-    scan.trj                      # only if --dump True (concatenated biased step frames)
-    scan.pdb                      # only if --dump True and input was PDB
+out_dir/ (default: ./result_scan/)
+  ├─ preopt/                      # Created when --preopt True; holds the unbiased starting optimization
+  │   ├─ result.xyz
+  │   ├─ result.gjf               # Present when the original input provided a GJF template
+  │   └─ result.pdb               # Present when the input was PDB
+  └─ stage_{k:02d}/               # One directory per stage (k = 1..K)
+      ├─ result.xyz               # Final structure for the stage (after optional endopt)
+      ├─ result.gjf               # Present when the original input provided a GJF template
+      ├─ result.pdb               # Present when the input was PDB
+      ├─ scan.trj                 # Written only when --dump True (concatenated biased frames)
+      └─ scan.pdb                 # Written only when --dump True and the input was PDB
 
 Notes
 -----
@@ -769,7 +769,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-if __name__ == "__main__":
-    cli()

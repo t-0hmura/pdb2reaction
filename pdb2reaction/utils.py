@@ -15,7 +15,8 @@ Usage (API)
         pretty_block,
     )
 
-Examples:
+Examples
+--------
     >>> from pathlib import Path
     >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
     >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
@@ -97,13 +98,14 @@ Description
 
 Outputs (& Directory Layout)
 ----------------------------
-- This module does not create directories.
-- Functions primarily return Python objects or mutate dictionaries in place.
-- On-disk output occurs only when explicitly requested by the caller:
-  - `convert_xyz_to_pdb` writes a PDB file to `out_pdb_path` (first frame create/overwrite; subsequent frames append with `MODEL`/`ENDMDL` blocks).
-  - `convert_xyz_to_gjf`/`maybe_convert_xyz_to_gjf` write a `.gjf` file with updated coordinates.
-  - `prepare_input_structure` writes a temporary `.xyz` when the input is a `.gjf`; the temp file is cleaned up when the context manager exits.
-  - `build_energy_diagram` returns a Plotly `Figure`; it does not write files unless the caller saves/exports the figure.
+General behavior
+  ├─ The module does not create directories on its own.
+  ├─ Most helpers return Python objects or mutate dictionaries in place.
+  └─ On-disk effects occur only when explicitly invoked:
+        • ``convert_xyz_to_pdb`` writes to ``out_pdb_path`` (first frame overwrite, subsequent frames append MODEL/ENDMDL).
+        • ``convert_xyz_to_gjf`` / ``maybe_convert_xyz_to_gjf`` render updated ``.gjf`` files.
+        • ``prepare_input_structure`` emits a temporary ``.xyz`` for ``.gjf`` inputs and cleans it up at context exit.
+        • ``build_energy_diagram`` returns a Plotly ``Figure``; saving/exporting is up to the caller.
 
 Notes
 -----
@@ -523,7 +525,8 @@ def build_energy_diagram(
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
 
-    Notes:
+    Notes
+    -----
         - *xyz_path* may contain one or many frames. For multi‑frame trajectories,
           a MODEL/ENDMDL block is appended for each subsequent frame in the output PDB.
         - On the first frame the output file is created/overwritten; subsequent frames are appended.
@@ -852,7 +855,8 @@ def parse_pdb_coords(pdb_path):
             - lkhs: list of tuples (x, y, z, line) for atoms where residue name is 'LKH'
               and atom name is 'HL'.
 
-    Notes:
+    Notes
+    -----
         - Coordinates are read from standard PDB columns:
           X: columns 31–38, Y: 39–46, Z: 47–54 (1-based indexing).
     """

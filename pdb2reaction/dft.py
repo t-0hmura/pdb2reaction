@@ -21,7 +21,7 @@ Examples
         --max-cycle 150 --conv-tol 1e-9 --engine cpu
 
 Description
------
+-----------
 - Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and CPU PySCF fallback.
   The backend policy is controlled by `--engine`:
   * `gpu`  (default): try GPU4PySCF; on failure, fall back to CPU.
@@ -46,35 +46,11 @@ Description
 - The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
 
 Outputs (& Directory Layout)
------
-    OUT_DIR/  (default: ./result_dft/)
-    ├── result.yaml
-    │     input:
-    │       charge: <int>
-    │       multiplicity: <int>
-    │       spin (PySCF expects 2S): <int>
-    │       xc: <str>
-    │       basis: <str>
-    │       conv_tol: <float>
-    │       max_cycle: <int>
-    │       grid_level: <int>
-    │       out_dir: <str>
-    │       engine: "gpu" | "cpu" | "auto"
-    │     energy:
-    │       hartree: <float>
-    │       kcal_per_mol: <float>
-    │       converged: <bool>
-    │       scf_time_sec: <float>
-    │       engine: "gpu4pyscf" or "pyscf(cpu)"
-    │       used_gpu: <bool>
-    │     charges [index, element, mulliken, lowdin, iao]:
-    │       - [0, H, <float or null>, <float or null>, <float or null>]
-    │       - ...
-    │     spin_densities [index, element, mulliken, lowdin, iao]:
-    │       - [0, H, <float or null>, <float or null>, <float or null>]
-    │       - ...
-    ├── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
-    └── input_geometry.gjf  # optional; written when a Gaussian template is available
+----------------------------
+out_dir/ (default: ./result_dft/)
+  ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, timing, and per-atom charge/spin tables
+  ├─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
+  └─ input_geometry.gjf         # Convenience GJF written when a Gaussian template is available
 
 Notes
 -----
@@ -703,8 +679,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-# Enable `python -m pdb2reaction.dft` execution
-if __name__ == "__main__":
-    cli()

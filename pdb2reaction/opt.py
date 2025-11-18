@@ -22,7 +22,7 @@ Examples
         --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
------
+-----------
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy"); aliases: light|lbfgs|heavy|rfo.
@@ -71,16 +71,17 @@ Key options (YAML keys → meaning; defaults)
   - DIIS helpers: `gdiis` True; `gediis` False; `gdiis_thresh` 2.5e-3 (vs RMS(step)); `gediis_thresh` 1.0e-2 (vs RMS(force)); `gdiis_test_direction` True.
   - Step model: `adapt_step_func` False.
 
-Outputs & Directory Layout
------
-- `out_dir/` (default: `./result_opt/`)
-  - `final_geometry.xyz` — final optimized geometry (always).
-  - `final_geometry.pdb` — converted from XYZ when the input was a PDB.
-  - `final_geometry.gjf` — emitted when a Gaussian template was provided (to reuse headers/basis).
-  - `optimization.trj` — trajectory (written when `--dump` or `opt.dump: true`).
-  - `optimization.pdb` — converted from TRJ when input was a PDB and dumping is enabled.
-  - `restart*.yml` — optional restart files every N cycles when `opt.dump_restart` is set (file names depend on optimizer).
-- The tool prints resolved configuration blocks (`geom`, `calc`, `opt`, and `lbfgs` or `rfo`), progress every `print_every` cycles, and a final wall‑clock time summary.
+Outputs (& Directory Layout)
+----------------------------
+out_dir/ (default: ./result_opt/)
+  ├─ final_geometry.xyz          # Final optimized structure (always written)
+  ├─ final_geometry.pdb          # Written when the input was a PDB
+  ├─ final_geometry.gjf          # Emitted when a Gaussian template was supplied
+  ├─ optimization.trj            # Optimization trajectory (written when --dump or opt.dump True)
+  ├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs only)
+  └─ restart*.yml                # Optional restart dumps when opt.dump_restart is enabled
+
+Console output echoes the resolved geom/calc/opt/(lbfgs|rfo) blocks, per-print progress, and final wall-clock time.
 
 Notes
 -----
@@ -697,7 +698,3 @@ def cli(
     finally:
         prepared_input.cleanup()
 
-
-# Allow `python -m pdb2reaction.commands.opt` direct execution
-if __name__ == "__main__":
-    cli()

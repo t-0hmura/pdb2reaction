@@ -5,10 +5,11 @@ bond_changes — Bond-change detection and reporting utilities
 ====================================================================
 
 Usage (API)
------
+-----------
     from pdb2reaction.bond_changes import compare_structures, summarize_changes
 
-Examples::
+Examples
+--------
     >>> result = compare_structures(geom_reactant, geom_product, device="cpu")
     >>> print(summarize_changes(geom_product, result))
     Bond formed (1):
@@ -16,7 +17,7 @@ Examples::
     Bond broken: None
 
 Description
------
+-----------
 This module compares two molecular geometries with identical atom types and ordering and reports covalent bonds that are formed
 or broken between the structures. Bond perception uses element-specific covalent radii and configurable tolerances; distances are computed with PyTorch on CPU or CUDA.
 
@@ -52,14 +53,14 @@ Data container:
   - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.
   - `distances_1: Optional[np.ndarray]`, `distances_2: Optional[np.ndarray]` — square distance matrices (shape N×N).
 
-Outputs
------
-- No files or directories are created.
-- `compare_structures` returns a `BondChangeResult` as described above.
-- `summarize_changes` returns a multi-line string; typical headings:
-  - `Bond formed (k):` followed by `- ElemI-ElemJ : D1 Å --> D2 Å` (if distances available).
-  - `Bond broken (m):` followed by lines in the same format.
-  - If a set is empty, the section reads `None`.
+Outputs (& Directory Layout)
+----------------------------
+In-memory results
+  ├─ ``compare_structures`` → ``BondChangeResult`` with formed/broken index pairs and optional distance matrices.
+  └─ ``summarize_changes`` → Multi-line string report (Bond formed/Bond broken sections with Å-length changes when available).
+
+This module does not create files or directories.
+
 
 Notes
 -----

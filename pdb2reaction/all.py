@@ -50,7 +50,7 @@ Examples
 
 
 Description
------
+-----------
 Runs a one-shot pipeline centered on pocket models:
 
 (1) **Active-site pocket extraction** (multi-structure union when multiple inputs)
@@ -130,45 +130,45 @@ Runs a one-shot pipeline centered on pocket models:
     host per-module sections (see the respective subcommand docs for accepted keys).
 
 Outputs (& Directory Layout)
------
-<out-dir>/
-  pockets/
-    pocket_<input1_basename>.pdb
-    pocket_<input2_basename>.pdb
-    ...
-  scan/                                  # present only in single-structure+scan mode
-    stage_01/result.pdb (or .xyz/.gjf)
-    stage_02/result.pdb (or .xyz/.gjf)
-    ...
-  path_search/                           # present when path_search is executed
-    mep.trj
-    energy.png
-    mep.pdb
-    mep_w_ref.pdb                        # only when ref PDB templates were supplied
-    mep_w_ref_seg_XX.pdb                 # only when ref PDB templates were supplied
-    summary.yaml
-    tsopt_seg_XX/                        # when post-processing is enabled
-      ts/ ...
-      irc/ ...
-      freq/ ...                          # with --thermo True
-      dft/  ...                          # with --dft True
-      energy_diagram_tsopt.(png)
-      energy_diagram_G_UMA.(png)
-      energy_diagram_DFT.(png)
-      energy_diagram_G_DFT_plus_UMA.(png)
-  tsopt_single/                          # present only in single-structure TSOPT-only mode
-    ts/ ...
-    irc/ ...
-    structures/
-      reactant.(pdb|xyz)
-      ts.(pdb|xyz)
-      product.(pdb|xyz)
-    freq/ ...                            # with --thermo True
-    dft/  ...                            # with --dft True
-    energy_diagram_tsopt.(png)
-    energy_diagram_G_UMA.(png)
-    energy_diagram_DFT.(png)
-    energy_diagram_G_DFT_plus_UMA.(png)
+----------------------------
+<out-dir>/ (default: ./result_all/)
+  ├─ pockets/                            # created when extraction (-c/--center) is run
+  │   ├─ pocket_<input1_basename>.pdb
+  │   ├─ pocket_<input2_basename>.pdb
+  │   └─ ...
+  ├─ scan/                               # present only in single-structure + scan mode
+  │   ├─ stage_01/result.(pdb|xyz|gjf)
+  │   ├─ stage_02/result.(pdb|xyz|gjf)
+  │   └─ ...
+  ├─ path_search/                        # emitted when the GSM step executes
+  │   ├─ mep.trj
+  │   ├─ energy.png
+  │   ├─ mep.pdb
+  │   ├─ mep_w_ref.pdb                   # only if reference full PDB templates were supplied
+  │   ├─ mep_w_ref_seg_XX.pdb            # only if reference full PDB templates were supplied
+  │   ├─ summary.yaml
+  │   └─ tsopt_seg_XX/                   # created when downstream post-processing runs
+  │       ├─ ts/ ...
+  │       ├─ irc/ ...
+  │       ├─ freq/ ...                   # with --thermo True
+  │       ├─ dft/  ...                   # with --dft True
+  │       ├─ energy_diagram_tsopt.(png)
+  │       ├─ energy_diagram_G_UMA.(png)
+  │       ├─ energy_diagram_DFT.(png)
+  │       └─ energy_diagram_G_DFT_plus_UMA.(png)
+  └─ tsopt_single/                       # present only in single-structure TSOPT-only mode
+      ├─ ts/ ...
+      ├─ irc/ ...
+      ├─ structures/
+      │   ├─ reactant.(pdb|xyz)
+      │   ├─ ts.(pdb|xyz)
+      │   └─ product.(pdb|xyz)
+      ├─ freq/ ...                       # with --thermo True
+      ├─ dft/  ...                       # with --dft True
+      ├─ energy_diagram_tsopt.(png)
+      ├─ energy_diagram_G_UMA.(png)
+      ├─ energy_diagram_DFT.(png)
+      └─ energy_diagram_G_DFT_plus_UMA.(png)
 
 Notes
 -----
@@ -2112,7 +2112,3 @@ def cli(
                         click.echo(f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}", err=True)
 
     click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
-
-
-if __name__ == "__main__":
-    cli()

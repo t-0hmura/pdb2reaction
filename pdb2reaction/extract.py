@@ -29,7 +29,7 @@ Examples
         -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
 
 Description
------
+-----------
 Extracts an active‑site pocket around specified substrate residues from a protein–substrate complex,
 applies biochemically aware truncation (backbone/side‑chain capping with safeguards), and can append
 link hydrogens for cut bonds. Supports single structures and ensembles (multi‑MODEL or per‑file outputs).
@@ -106,19 +106,19 @@ Substrate specification
   If multiple residues share the same name, **all** matches are used and a **WARNING** is logged.
 
 Outputs (& Directory Layout)
------
-- **PDB file(s):**
-  - Default single‑input output: ``pocket.pdb``.
-  - Default multi‑input outputs (when ``-o`` omitted): ``pocket_{original_filename}.pdb``.
-  - Or user‑specified: one path (multi‑MODEL) / N paths (per‑structure).
-- **Link‑H block** (if added): appears after a ``TER`` as contiguous ``HETATM`` records with atom name ``HL``,
-  residue ``LKH``, chain ``L``; serial numbers continue from the main block.
-- **Logs:** INFO messages summarize selected residues, atom counts **before/after**, and **charge summary**.
-- **Python API return:**
-  ``extract(..., api=True)`` or ``extract_api(...)`` returns
-  ``{'outputs': [paths], 'counts': [{'raw_atoms': int, 'kept_atoms': int}, ...], 'charge_summary': {...}}``.
+----------------------------
+<output>/ (default: pocket.pdb for single input; pocket_<source>.pdb per input when -o is omitted)
+  ├─ pocket.pdb                         # default single-input pocket
+  ├─ pocket_<original_filename>.pdb     # default per-input pocket when multiple inputs and -o omitted
+  └─ <user_paths>.pdb                   # custom outputs; one path = multi-MODEL, N paths = per-structure
 
-Notes:
+Link hydrogens, logs, and programmatic use
+  ├─ Link-H block (when added) follows a TER as contiguous HETATM records named HL in residue LKH (chain L).
+  ├─ INFO logs summarize residue selection, raw/kept atom counts, and the charge summary.
+  └─ ``extract(..., api=True)`` / ``extract_api(...)`` returns ``{"outputs": [...], "counts": [...], "charge_summary": {...}}``.
+
+
+Notes
 -----
 - **Defaults / behavior:**
   - ``--radius`` default: **2.6 Å**. If given **0**, internally nudged to **0.001 Å**.
@@ -1966,7 +1966,3 @@ def extract_api(complex_pdb: List[str],
         verbose=verbose,
     )
     return extract(ns, api=True)
-
-
-if __name__ == "__main__":
-    extract()

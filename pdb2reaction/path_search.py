@@ -87,26 +87,27 @@ Workflow
 
 Outputs (& Directory Layout)
 ----------------------------
-out_dir/
-  ├─ summary.yaml                  : MEP‑level run summary (no full settings dump)
-  ├─ mep.trj **or** mep.pdb        : Final MEP (XYZ → mep.trj; PDB inputs → only mep.pdb)
-  ├─ mep_w_ref.pdb                 : Full‑system merged MEP (requires --ref-pdb; expects PDB pocket inputs)
-  ├─ mep_w_ref_seg_XX.pdb          : Per‑segment merged MEPs (only for segments with covalent changes; requires --ref-pdb)
-  ├─ mep_seg_XX.trj / mep_seg_XX.pdb : Pocket‑only per‑segment paths (only when covalent changes present; .pdb if PDB input)
-  ├─ hei_seg_XX.xyz / hei_seg_XX.pdb : Pocket HEI (for bond‑change segments); optional hei_seg_XX.gjf if a .gjf template is available
-  ├─ hei_w_ref_seg_XX.pdb          : Merged HEI per segment (requires --ref-pdb; bond‑change segments only)
-  ├─ mep_plot.png                  : ΔE profile vs image index (from trj2fig)
-  ├─ energy_diagram.html           : State‑level energy diagram (Plotly; ΔE relative to R in kcal/mol)
-  ├─ energy_diagram.png            : PNG export when 'kaleido' is available
+out_dir/ (default: ./result_path_search/)
+  ├─ summary.yaml                    # Run-level summary (no exhaustive settings dump)
+  ├─ mep.trj                         # Final MEP as XYZ (written when inputs were XYZ/XYZ-like)
+  ├─ mep.pdb                         # Final MEP as PDB (written when inputs were PDB)
+  ├─ mep_w_ref.pdb                   # Full-system merged path (requires --ref-pdb and PDB pocket inputs)
+  ├─ mep_w_ref_seg_XX.pdb            # Per-segment merged paths (bond-change segments; requires --ref-pdb)
+  ├─ mep_seg_XX.trj / mep_seg_XX.pdb # Pocket-only segment paths (bond-change segments; format follows input)
+  ├─ hei_seg_XX.xyz / hei_seg_XX.pdb # Highest-energy image snapshots; hei_seg_XX.gjf when a template is available
+  ├─ hei_w_ref_seg_XX.pdb            # Merged HEI per bond-change segment (requires --ref-pdb)
+  ├─ mep_plot.png                    # ΔE profile vs. image index (from trj2fig)
+  ├─ energy_diagram.html             # State-level energy diagram (Plotly; ΔE relative to R in kcal/mol)
+  ├─ energy_diagram.png              # PNG export of the diagram when kaleido is installed
   └─ segments/
-      ├─ seg_000_gsm/ ...                : Initial GSM for the first segment
-      ├─ seg_000_left_<lbfgs|rfo>_opt/   : HEI−1 single‑structure optimization
-      ├─ seg_000_right_<lbfgs|rfo>_opt/  : HEI+1 single‑structure optimization
-      ├─ seg_000_refine_gsm/ ...         : End1–End2 refinement GSM (when bond changes are present)
-      ├─ seg_000_kink_...                : Kink interpolation optimizations (when applicable)
-      ├─ seg_000_seg_002_bridge_gsm/ ... : Bridge GSMs (names indicate bridged segments)
-      ├─ seg_001_...                     : Left‑side recursive substeps (if any)
-      └─ seg_002_...                     : Right‑side recursive substeps (if any)
+      ├─ seg_000_gsm/ ...                # Initial GSM for each primary segment
+      ├─ seg_000_left_<lbfgs|rfo>_opt/   # HEI-1 single-structure optimization
+      ├─ seg_000_right_<lbfgs|rfo>_opt/  # HEI+1 single-structure optimization
+      ├─ seg_000_refine_gsm/ ...         # Refinement GSM (bond-change segments)
+      ├─ seg_000_kink_...                # Kink interpolation optimizations (when applicable)
+      ├─ seg_000_seg_002_bridge_gsm/ ... # Bridge GSMs; path indicates bridged segments
+      ├─ seg_001_...                     # Left-side recursive substeps (if any)
+      └─ seg_002_...                     # Right-side recursive substeps (if any)
 
 Notes
 -----
@@ -2098,7 +2099,3 @@ def cli(
         for prepared in prepared_inputs:
             prepared.cleanup()
         _PRIMARY_GJF_TEMPLATE = None
-
-
-if __name__ == "__main__":
-    cli()

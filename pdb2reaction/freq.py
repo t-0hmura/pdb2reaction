@@ -22,7 +22,7 @@ Examples
     pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq/
 
 Description
------
+-----------
 - Computes vibrational frequencies and normal modes using the UMA calculator.
 - Supports Partial Hessian Vibrational Analysis (PHVA) when atoms are frozen.
 - Exports animated modes (.trj and .pdb) and prints a Gaussian-style thermochemistry summary.
@@ -31,14 +31,14 @@ Description
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
 
 Outputs (& Directory Layout)
------
-out-dir/
-  mode_XXXX_{±freq}cm-1.trj    # XYZ-like trajectory (Å), sinusoidal animation
-  mode_XXXX_{±freq}cm-1.pdb    # MODEL/ENDMDL multi-model PDB animation
-  frequencies_cm-1.txt         # All computed frequencies (cm^-1), sorted per --sort
-  [thermoanalysis.yaml]        # Optional thermochemistry summary when --dump True
+----------------------------
+out_dir/ (default: ./result_freq/)
+  ├─ mode_XXXX_{±freq}cm-1.trj    # XYZ-like trajectory (Å) with sinusoidal motion per mode
+  ├─ mode_XXXX_{±freq}cm-1.pdb    # Multi-MODEL PDB animation generated from the input template
+  ├─ frequencies_cm-1.txt         # All computed frequencies (cm^-1), sorted according to --sort
+  └─ thermoanalysis.yaml          # Thermochemistry summary (written only when --dump True and thermoanalysis is available)
 
-Notes:
+Notes
 -----
 - Input geometry: .pdb, .xyz, .trj (via pysisyphus ``geom_loader``). For PDB, ``--freeze-links`` (default: True)
   detects parent atoms of link hydrogens and merges them with any ``geom.freeze_atoms``; the merged list is echoed.
@@ -801,8 +801,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-# Allow `python -m pdb2reaction.freq` direct execution
-if __name__ == "__main__":
-    cli()
