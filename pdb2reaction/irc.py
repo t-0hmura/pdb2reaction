@@ -5,8 +5,7 @@ irc — Concise CLI for IRC calculations with the EulerPC integrator
 ====================================================================
 
 Usage (CLI)
------
-    # Minimal and full examples shown below.
+-----------
     # Minimal (explicitly set charge/spin to avoid unintended conditions)
     pdb2reaction irc -i a.pdb -q 0 -s 1
 
@@ -23,7 +22,8 @@ Usage (CLI)
       --hessian-calc-mode Analytical \
       --args-yaml args.yaml
 
-Examples::
+Examples
+--------
     # Forward-only with finite-difference Hessian and custom step size
     pdb2reaction irc -i ts.xyz -q -1 -s 2 --forward True --backward False \
       --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
@@ -32,16 +32,18 @@ Examples::
     pdb2reaction irc -i ts.pdb -q 0 -s 1 --max-cycles 50 --out-dir ./result_irc/
 
 Description
------
+-----------
 - Purpose: Run Intrinsic Reaction Coordinate (IRC) calculations using the EulerPC predictor–corrector integrator.
 - Inputs: Any structure readable by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, ...).
-  If the input is `.pdb`, the generated trajectories are additionally converted to PDB.
+  If the input is `.pdb`, trajectory files written by the run are additionally converted to PDB.
 - Configuration model: Only the CLI options listed above are accepted. All other parameters
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
   Final configuration precedence: built-in defaults → YAML → CLI.
 - Charge/spin defaults: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when provided and otherwise fall back
   to `0`/`1`. Set them explicitly to avoid running under unintended conditions.
-- CLI options:
+
+CLI options
+-----------
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
   - `-q/--charge INT`: Total charge; overrides `calc.charge` from YAML and defaults to a `.gjf` template value or `0` when omitted.
   - `-s/--spin INT` (default 1): Spin multiplicity (2S+1); overrides `calc.spin` and defaults to the template multiplicity or `1`.
@@ -55,21 +57,21 @@ Description
   - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
 
-Outputs (& Directory Layout)
------
-- All files are written under `--out-dir` (default: `./result_irc/`). The directory is created if missing.
-- If `irc.prefix` is set, it is prepended to filenames.
+Outputs & directory layout
+--------------------------
+All files are written under `--out-dir` (default: `./result_irc/`). The directory is created if missing.
+If `irc.prefix` is set, it is prepended to filenames.
 
     <out_dir>/
-      ├─ irc_data.h5                    # HDF5 dump written every `irc.dump_every` steps
-      ├─ <prefix>finished_irc.trj       # Full IRC trajectory (XYZ/TRJ)
-      ├─ <prefix>forward_irc.trj        # Forward path segment
-      ├─ <prefix>backward_irc.trj       # Backward path segment
+      ├─ irc_data.h5                    # HDF5 dump (if enabled by the underlying engine)
+      ├─ <prefix>finished_irc.trj       # Full IRC trajectory (TRJ)
+      ├─ <prefix>forward_irc.trj        # Forward path segment (TRJ)
+      ├─ <prefix>backward_irc.trj       # Backward path segment (TRJ)
       ├─ <prefix>finished_irc.pdb       # PDB conversion (only if input was .pdb)
       ├─ <prefix>forward_irc.pdb        # PDB conversion (only if input was .pdb)
       └─ <prefix>backward_irc.pdb       # PDB conversion (only if input was .pdb)
 
-Notes:
+Notes
 -----
 - CLI overrides YAML for:
   `charge`→`calc.charge`, `spin`→`calc.spin`, `step-size`→`irc.step_length`, `max-cycles`→`irc.max_cycles`,
@@ -78,6 +80,7 @@ Notes:
 - UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
   the calculator selects GPU/CPU automatically. If `hessian_calc_mode: "FiniteDifference"`,
   `geom.freeze_atoms` can be used to skip frozen DOF in FD Hessian construction.
+  The geometry's freeze list is also forwarded to the calculator as `calc.freeze_atoms`.
 - `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
   for the initial displacement.
 - Standard output includes progress and timing. Exit codes: `0` on success, `130` on `KeyboardInterrupt`,
@@ -250,7 +253,6 @@ def cli(
         calc_cfg["spin"]   = int(spin)
 
         if hessian_calc_mode is not None:
-            # pass through exactly as chosen; uma_pysis normalizes internally
             calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
         if max_cycles is not None:
@@ -284,7 +286,7 @@ def cli(
                 )
 
         # Ensure the calculator receives the freeze list used by geometry
-        #      (so FD Hessian can skip frozen DOF, etc.)
+        # (so FD Hessian can skip frozen DOF, etc.)
         calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
         out_dir_path = Path(irc_cfg["out_dir"]).resolve()
@@ -305,11 +307,9 @@ def cli(
         geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
         calc_builder_or_instance = uma_pysis(**calc_cfg)
-        try:
-            # Case 1: builder function returned
+        if callable(calc_builder_or_instance):
             geometry.set_calculator(calc_builder_or_instance())
-        except TypeError:
-            # Case 2: calculator instance returned directly
+        else:
             geometry.set_calculator(calc_builder_or_instance)
 
         # --------------------------

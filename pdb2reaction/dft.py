@@ -6,33 +6,57 @@ dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
 
 Usage (CLI)
 -----
-    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--args-yaml YAML]
+    pdb2reaction dft -i INPUT -q CHARGE [-s SPIN] [--func-basis "FUNC/BASIS"] [--max-cycle N] [--conv-tol Eh] [--grid-level L] [--out-dir OUT_DIR] [--engine {gpu|cpu|auto}] [--args-yaml YAML]
 
-    # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1),
-    # but set them explicitly to avoid unphysical states.
+    # -q/--charge and -s/--spin fall back to .gjf template values when available (otherwise 0/1).
+    # Set them explicitly to avoid unphysical states. Here, SPIN means multiplicity (2S+1).
 
-Examples:::
+Examples
+-----
     pdb2reaction dft -i input.pdb -q 0 -s 1 --func-basis "wb97m-v/6-31g**"
     pdb2reaction dft -i input.pdb -q 0 -s 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9
+    pdb2reaction dft -i input.xyz -q -1 -s 2 --engine cpu
 
 Description
 -----
-- Single-point DFT engine that activates GPU4PySCF when available and otherwise uses CPU PySCF.
+- Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and CPU PySCF fallback.
+  The backend policy is controlled by `--engine`:
+  * `gpu`  (default): try GPU4PySCF; on failure, fall back to CPU.
+  * `cpu`            : use CPU PySCF only.
+  * `auto`           : try GPU4PySCF, otherwise CPU.
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
-- Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …). The geometry is written back unchanged as `input_geometry.xyz`.
-- Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd"). Names are case-insensitive in PySCF.
-- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF `grids.level`), --out-dir. Verbosity can be overridden via YAML.
+- Inputs: any structure format supported by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, …).
+  The geometry is written back unchanged as `input_geometry.xyz`. If a Gaussian `.gjf` template
+  is present, a convenience `input_geometry.gjf` is also written.
+- Functional/basis specified as "FUNC/BASIS" via `--func-basis` (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").
+  Names are case-insensitive in PySCF.
+- Density fitting (DF) is enabled when possible. A practical JKFIT auxiliary basis is guessed
+  from the chosen orbital basis (def2/cc-pVXZ/Pople families).
+- SCF controls: `--conv-tol` (Eh), `--max-cycle`, `--grid-level` (mapped to PySCF `grids.level`),
+  `--out-dir`. Verbosity can be overridden via YAML (`dft.verbose`).
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
-    * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS; failure → null)
-    * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; not available or failure → null)
-    * IAO (charges: `lo.iao.fast_iao_mullikan_pop`; spins: `fast_iao_mullikan_spin_pop` implemented here; failure → null)
+    * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS; RKS → zeros; failure → null)
+    * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; RKS → zeros; not available or failure → null)
+    * IAO (charges: `lo.iao.fast_iao_mullikan_pop`; spins: `fast_iao_mullikan_spin_pop` implemented here; RKS → zeros; failure → null)
 - Energies are reported in Hartree and kcal/mol; SCF convergence metadata and timing are recorded.
+- The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
 
 Outputs (& Directory Layout)
 -----
     OUT_DIR/  (default: ./result_dft/)
     ├── result.yaml
+    │     input:
+    │       charge: <int>
+    │       multiplicity: <int>
+    │       spin (PySCF expects 2S): <int>
+    │       xc: <str>
+    │       basis: <str>
+    │       conv_tol: <float>
+    │       max_cycle: <int>
+    │       grid_level: <int>
+    │       out_dir: <str>
+    │       engine: "gpu" | "cpu" | "auto"
     │     energy:
     │       hartree: <float>
     │       kcal_per_mol: <float>
@@ -46,17 +70,20 @@ Outputs (& Directory Layout)
     │     spin_densities [index, element, mulliken, lowdin, iao]:
     │       - [0, H, <float or null>, <float or null>, <float or null>]
     │       - ...
-    └── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
+    ├── input_geometry.xyz  # geometry snapshot used for SCF (as read; unchanged)
+    └── input_geometry.gjf  # optional; written when a Gaussian template is available
 
-Notes:
+Notes
 -----
-- Charge/spin resolution: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when present and otherwise fall back
-  to `0`/`1`. Provide explicit values whenever possible to enforce the intended state (multiplicity > 1 selects UKS).
-- YAML overrides: --args-yaml points to a file with top-level key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).
+- Charge/spin resolution: `-q/--charge` and `-s/--spin` inherit values from `.gjf` templates when present
+  and otherwise fall back to `0`/`1`. Provide explicit values whenever possible to enforce the intended state
+  (multiplicity > 1 selects UKS).
+- YAML overrides: `--args-yaml` points to a file with top-level key `dft` (`conv_tol`, `max_cycle`,
+  `grid_level`, `verbose`, `out_dir`).
 - Grids: sets `grids.level` when supported.
-- Units: input coordinates are in Å. Functional/basis names are PySCF-style and case-insensitive for common sets.
+- Units: input coordinates are in Å.
 - Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.
-- If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column becomes `null`.
+- If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column is `null`.
 """
 
 from __future__ import annotations
@@ -106,7 +133,9 @@ DFT_KW: Dict[str, Any] = {
 # Utilities
 # -----------------------------------------------
 
-HARTREE_TO_KCALMOL = 627.5094740631  # Commonly used Hartree → kcal/mol conversion factor
+HARTREE_TO_KCALMOL = 627.5094740631  # Hartree → kcal/mol conversion factor
+
+
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
     Parse "FUNC/BASIS" into (xc, basis).
@@ -127,7 +156,7 @@ def _geometry_to_pyscf_atoms_string(geometry) -> Tuple[str, Sequence[Tuple[str, 
     Convert a pysisyphus Geometry to (xyz_string, PySCF atom list).
     The atom list is [(symbol, (x, y, z)), ...] in Angstrom.
     """
-    s = geometry.as_xyz()  # trusted by other tools in this package
+    s = geometry.as_xyz()
     lines = s.splitlines()
     atoms: list[Tuple[str, Tuple[float, float, float]]] = []
     for ln in lines[2:]:
@@ -225,12 +254,11 @@ yaml.SafeDumper.add_representer(FlowList, _flow_seq_representer)
 
 
 def _format_row_for_echo(row: List[Union[int, str, float, None]]) -> str:
-    """Format a row like: [0, H, 0.0, 0.0, 0.0]"""
+    """Format a row like: [0, H, 0.0, 0.0, 0.0]."""
     def _fmt(x):
         if x is None:
             return "null"
         if isinstance(x, float):
-            # keep concise; similar to YAML default float rendering
             return f"{x:.10g}"
         return str(x)
     return "[" + ", ".join(_fmt(v) for v in row) + "]"
@@ -244,7 +272,7 @@ def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
         mol : Mole or Cell object
         dm  : AO density matrix; for UKS/UHF, a (2, nao, nao) array
         iaos: 2D array of IAO orbitals (orthogonal or non-orthogonal)
-        verbose: PySCF logger level (defaults to logger.DEBUG if None)
+        verbose: PySCF logger level
 
     Returns:
         (spin_pop_ao, Ms_by_atom)
@@ -285,7 +313,6 @@ def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
     return scf_uhf.mulliken_spin_pop(pmol, [dm_a, dm_b], s_iao, verbose)
 
 
-# ---- Small helpers to remove duplication ------------------------------------
 def _get_occupied_orbitals(mf) -> np.ndarray:
     """Return occupied MO coefficients (AO→MO) for RKS or UKS/UHF."""
     mo = mf.mo_coeff
@@ -529,7 +556,6 @@ def cli(
         using_gpu = False
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
-        gpu_exc: Optional[str] = None
         if engine in ("gpu", "auto"):
             try:
                 from gpu4pyscf import dft as gdf
@@ -537,20 +563,14 @@ def cli(
                 using_gpu = True
                 engine_label = "gpu4pyscf"
             except Exception as e:
-                gpu_exc = str(e)
                 if engine == "gpu":
                     click.echo(
-                        f"[gpu] WARNING: GPU backend requested but unavailable ({gpu_exc}); falling back to CPU.",
+                        f"[gpu] WARNING: GPU backend requested but unavailable ({e}); falling back to CPU.",
                         err=True,
                     )
         if not using_gpu:
             from pyscf import dft as pdft
             mf = make_ks(pdft)
-            if engine == "gpu" and gpu_exc is None:
-                click.echo(
-                    "[gpu] WARNING: GPU backend requested but unavailable (unknown error); falling back to CPU.",
-                    err=True,
-                )
 
         mf = _configure_scf_object(mf, aux_basis_guess, dft_cfg, xc)
 
@@ -638,7 +658,7 @@ def cli(
         spins_rows_flow   = [FlowList(r) for r in spins_table]
 
         result_yaml = {
-            "input": dict(echo_cfg),  # reuse echoed configuration
+            "input": dict(echo_cfg),  # configuration snapshot
             "energy": {
                 "hartree": e_h,
                 "kcal_per_mol": e_kcal,
@@ -647,7 +667,7 @@ def cli(
                 "engine": engine_label,
                 "used_gpu": bool(using_gpu),
             },
-            # Requested table-style outputs (flow lists)
+            # Table-style outputs (flow lists)
             "charges [index, element, mulliken, lowdin, iao]": charges_rows_flow,
             "spin_densities [index, element, mulliken, lowdin, iao]": spins_rows_flow,
         }
@@ -662,7 +682,7 @@ def cli(
         click.echo(f"\nE_total (Hartree): {e_h:.12f}")
         click.echo(f"E_total (kcal/mol): {e_kcal:.6f}")
 
-        # Exit codes: 0 if converged, 3 otherwise (for compatibility with prior behavior)
+        # Exit codes: 0 if converged, 3 otherwise
         if not converged:
             click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
             sys.exit(3)
@@ -673,7 +693,6 @@ def cli(
         click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
     except click.ClickException:
-        # Re-raise click-specific errors
         raise
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

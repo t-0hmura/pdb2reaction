@@ -11,8 +11,9 @@ Usage (API)
 Examples::
     >>> result = compare_structures(geom_reactant, geom_product, device="cpu")
     >>> print(summarize_changes(geom_product, result))
-    Bond formed (1)
-      C1-O2 1.50 Å --> 1.36 Å
+    Bond formed (1):
+      - C1-O2 : 1.500 Å --> 1.360 Å
+    Bond broken: None
 
 Description
 -----
@@ -32,35 +33,37 @@ Algorithm (core logic):
 
 Public API:
 - `compare_structures(geom1, geom2, device='cuda', bond_factor=1.20, margin_fraction=0.05, delta_fraction=0.05) -> BondChangeResult`
-  Detects formed and broken covalent bonds. Returns sets of zero-based index pairs and (by default) the full distance matrices (`numpy.ndarray`) in the same units as the inputs (Bohr in pysisyphus).
+  Detects formed and broken covalent bonds. Returns sets of zero-based index pairs and the full distance matrices (`numpy.ndarray`) in the same units as the inputs (Bohr in pysisyphus).
 - `summarize_changes(geom, result, one_based: bool = True) -> str`
   Builds a human-readable report:
   - Sections: “Bond formed” and “Bond broken” (with counts).
   - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).
-  - If `result.distances_1/2` are present, prints bond lengths as `D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.
-- Helper utilities (internal):
-  - `_resolve_device(device: str) -> torch.device`: chooses the requested device; falls back to CPU with a warning if unavailable.
-  - `_element_arrays(atoms) -> (elems, cov_radii)`: normalizes element symbols and looks up covalent radii.
-  - `_upper_pairs_from_mask(mask) -> Set[Tuple[int, int]]`: returns index pairs where `mask` is True (assumes an upper-triangular mask).
-  - `_bond_str(i, j, elems, one_based=True) -> str`: formats `ElemI-ElemJ` labels.
-- Data container:
-  - `BondChangeResult`:
-    - `formed_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds formed.
-    - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.
-    - `distances_1: Optional[np.ndarray]`, `distances_2: Optional[np.ndarray]` — square distance matrices (shape N×N).
+  - If `result.distances_1/2` are present, prints bond lengths as `: D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.
 
-Outputs (& Directory Layout)
+Helper utilities (internal):
+- `_resolve_device(device: str) -> torch.device`: chooses the requested device; falls back to CPU with a warning if unavailable.
+- `_element_arrays(atoms) -> (elems, cov_radii)`: normalizes element symbols and looks up covalent radii.
+- `_upper_pairs_from_mask(mask) -> Set[Tuple[int, int]]`: returns index pairs where `mask` is True (assumes an upper-triangular mask).
+- `_bond_str(i, j, elems, one_based=True) -> str`: formats `ElemI-ElemJ` labels.
+
+Data container:
+- `BondChangeResult`:
+  - `formed_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds formed.
+  - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.
+  - `distances_1: Optional[np.ndarray]`, `distances_2: Optional[np.ndarray]` — square distance matrices (shape N×N).
+
+Outputs
 -----
 - No files or directories are created.
 - `compare_structures` returns a `BondChangeResult` as described above.
 - `summarize_changes` returns a multi-line string; typical headings:
-  - `Bond formed (k):` followed by `ElemI-ElemJ : D1 Å --> D2 Å` (if distances available).
+  - `Bond formed (k):` followed by `- ElemI-ElemJ : D1 Å --> D2 Å` (if distances available).
   - `Bond broken (m):` followed by lines in the same format.
   - If a set is empty, the section reads `None`.
 
-Notes:
+Notes
 -----
-- Units: In pysisyphus, `coords3d` are Bohr; the summary converts to Å with `BOHR2ANG`. If your inputs use different units, adjust accordingly.
+- Units: In pysisyphus, `coords3d` are in Bohr; the summary converts to Å with `BOHR2ANG`. If your inputs use different units, adjust accordingly.
 - Atom identity & ordering must be identical between structures; otherwise the comparison is invalid.
 - Only unique pairs with `i < j` are considered (upper triangle); indices in results are zero-based.
 - The three tolerances control sensitivity:
@@ -112,7 +115,6 @@ def _resolve_device(device: str) -> torch.device:
     if dev_str.startswith("cuda"):
         if torch.cuda.is_available():
             try:
-                _ = torch.device(dev_str)
                 return torch.device(dev_str)
             except Exception:
                 warnings.warn(
@@ -145,11 +147,10 @@ def compare_structures(
     margin_fraction: float = 0.05,
     delta_fraction: float = 0.05,
 ) -> BondChangeResult:
-
     assert geom1.atoms == geom2.atoms, "Atom types and ordering must be identical."
     N = len(geom1.atoms)
 
-    elems, cov_np = _element_arrays(geom1.atoms)
+    _, cov_np = _element_arrays(geom1.atoms)
     dev = _resolve_device(device)
 
     dtype = torch.float64

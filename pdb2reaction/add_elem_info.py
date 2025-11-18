@@ -2,44 +2,57 @@
 
 """
 add-elem-info — Add/repair PDB element symbols (columns 77–78) using Biopython
-====================================================================
+===============================================================================
 
-Usage (CLI)
+Usage
 -----
+As a package subcommand (Click):
     pdb2reaction add-elem-info -i input.pdb [-o fixed.pdb] [--overwrite]
+
+As a standalone script (argparse):
+    python -m pdb2reaction.add_elem_info input.pdb [-o fixed.pdb] [--overwrite]
+    # or
+    python add_elem_info.py input.pdb [-o fixed.pdb] [--overwrite]
 
 Examples::
     pdb2reaction add-elem-info -i 1abc.pdb
     pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
 
-
 Description
------
-- Parses the input PDB with Biopython (PDBParser), assigns `atom.element`, and writes via `PDBIO` to populate columns 77–78.
+-----------
+- Parses the input PDB with Biopython (`PDBParser`), assigns `atom.element`, and writes via
+  `PDBIO` to populate columns 77–78.
 - Infers elements from atom names plus residue context (proteins, nucleic acids, water, ions).
-- Ion residues: prefers residue-derived elements; polyatomic ions (e.g., NH4, H3O+) are assigned per atom (H/N/O).
-- Polymers & water: maps H/D→H; water atoms to O/H; first-letter mapping for P/N/O/S; recognizes Se; carbon labels (CA/CB/CG/…) → C.
-- Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two-letter/one-letter normalization; recognizes halogens (Cl/Br/I/F).
-- Preserves existing element fields unless `--overwrite` is given; with `--overwrite`, all atoms are re-inferred and may change.
-- If no `-o/--out` is provided, overwrites the input file; if inference fails, leaves the atom’s element unset/unchanged.
-- Supports ATOM and HETATM records; works across models/chains/residues without altering coordinates.
+- Ion residues: prefers residue-derived elements; polyatomic ions (e.g., NH4, H3O+) are assigned
+  per atom (H/N/O).
+- Polymers & water: maps H/D → H; water atoms to O/H; first-letter mapping for P/N/O/S;
+  recognizes Se; carbon labels (CA/CB/CG/…) → C.
+- Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two‑letter/one‑letter
+  normalization; recognizes halogens (Cl/Br/I/F).
+- Preserves existing element fields unless `--overwrite` is given; with `--overwrite`, all atoms
+  are re‑inferred and may change.
+- If no output path is provided, overwrites the input file. If inference fails, the atom’s element
+  is left unset/unchanged.
+- Supports ATOM and HETATM records; works across models/chains/residues without altering
+  coordinates.
 
-Outputs (& Directory Layout)
------
+Outputs
+-------
 - A PDB file with element columns (77–78) populated or corrected:
   - `-o/--out` given → writes to that path.
   - no output path → overwrites the input file.
 - Summary printed to stdout:
-  - total atoms, newly assigned, kept existing, overwritten (when `--overwrite`),
+  - total atoms, newly assigned, kept existing, overwritten (only nonzero with `--overwrite`),
     per‑element counts, and up to 50 unresolved atoms (model/chain/residue/atom/serial).
 
-Notes:
+Notes
 -----
 - Depends on Biopython (`Bio.PDB`) and Click.
 - Existing element fields are detected by scanning the original file’s ATOM/HETATM lines
   (serials 7–11, elements 77–78) to reflect the true presence and avoid parser side effects.
 - Recognizes standard water/nucleic/protein residue names; treats deuterium “D” as hydrogen “H”.
-- Does not alter coordinates, occupancies, B-factors, charges, altlocs, insertion codes, or record order.
+- Does not alter coordinates, occupancies, B-factors, charges, altlocs, insertion codes,
+  or record order.
 """
 
 from __future__ import annotations
@@ -74,7 +87,6 @@ ELEMENTS: Set[str] = {
 # Common residue classes
 PROTEIN_RES = set(AMINO_ACIDS.keys())
 NUCLEIC_RES = {
-    # DNA/RNA (minimum set)
     "DA","DT","DG","DC","DI",
     "A","U","G","C","I",
 }
@@ -102,20 +114,14 @@ def _normalize_symbol(s: str) -> Optional[str]:
     cand1 = letters[0].upper()
     if cand1 in ELEMENTS:
         return cand1
-    # Deuterium -> Hydrogen fallback
     if letters[0].upper() == "D":
         return "H"
     return None
 
 def _symbol_from_resname(resname: str) -> Optional[str]:
-    """
-    Extract an element symbol from an ion residue name (e.g., CA, FE2, Cl-, YB2, IOD).
-    """
+    """Extract an element symbol from an ion residue name (e.g., CA, FE2, Cl-, YB2)."""
     res = resname.strip()
-    sym = _normalize_symbol(res)
-    if sym is None and res.upper().startswith("IOD"):
-        sym = "I"
-    return sym
+    return _normalize_symbol(res)
 
 # -----------------------------
 # Element inference (use residue to disambiguate)
@@ -126,9 +132,8 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
     Priority:
       1) Ion residues: prefer the residue name (NH4 / H3O+ handled per-atom as H/N/O)
       2) Polymers (protein/nucleic acid) and water: follow convention (H/C/N/O/S/P/Se)
-         - e.g., CA = Carbon (Cα), HG = Hydrogen, etc.
-      3) Other ligands: use atom-name prefix; prioritize Carbon for C* (except CL) and P for P*
-      4) Fallback to 2-letter then 1-letter normalization; return None if still ambiguous
+      3) Other ligands: use atom-name prefix; then normalization
+      4) Unresolved → None
     """
     name_u = atom_name.strip().upper()
     res_u = resname.strip().upper()
@@ -146,15 +151,6 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
         sym = _symbol_from_resname(res_u)
         if sym:
             return sym
-        # If residue is atypical, allow atom-name halogens (CL/BR/I/F)
-        if name_u.startswith("CL"):
-            return "Cl"
-        if name_u.startswith("BR"):
-            return "Br"
-        if name_u.startswith("I"):
-            return "I"
-        if name_u.startswith("F"):
-            return "F"
 
     # 2) Polymers (protein/nucleic) / water
     is_protein = res_u in PROTEIN_RES
@@ -189,19 +185,17 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
         if name_u.startswith("C"):
             return "C"
 
-        # Rare halogens in polymers: final fallback to normalization
+        # Fallback to normalization (rare halogens or atypical labels)
         sym = _normalize_symbol(name_u)
         if sym:
             return sym
 
     # 3) Non-polymers (ligands / cofactors)
-    #    Carbon/Phosphorus-like labels (C*, P*) -> C/P (exclude CL)
     if name_u.startswith("C") and not name_u.startswith("CL"):
         return "C"
     if name_u.startswith("P"):
         return "P"
 
-    # Metals and halogens often appear as the atom name (FE, ZN, MG, HG, CL, BR, I, F ...)
     sym = _normalize_symbol(name_u)
     if sym:
         return sym
@@ -226,7 +220,6 @@ def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
                 if not (line.startswith("ATOM") or line.startswith("HETATM")):
                     continue
                 if len(line) < 78:
-                    # No element field present
                     continue
                 serial_str = line[6:11].strip()
                 elem_raw = line[76:78].strip()
@@ -236,19 +229,14 @@ def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
                     serial = int(serial_str)
                 except ValueError:
                     continue
-                # If non-empty, consider that the original file had an element entry
-                # (keep isotopic labels like D as-is)
                 if elem_raw:
                     serials_with_elem.add(serial)
     except Exception:
-        # If the file can't be read, return empty (treat all as unset)
         pass
     return serials_with_elem
 
 def _get_atom_serial(atom) -> Optional[int]:
-    """
-    Safely obtain the serial number from a Biopython Atom, handling version differences.
-    """
+    """Safely obtain the serial number from a Biopython Atom, handling version differences."""
     sn = getattr(atom, "serial_number", None)
     if sn is None and hasattr(atom, "get_serial_number"):
         try:
@@ -261,7 +249,6 @@ def _get_atom_serial(atom) -> Optional[int]:
 # Main processing
 # -----------------------------
 def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False) -> None:
-    # Scan the input file for the original presence of element fields
     existing_by_serial = scan_existing_elements_by_serial(in_pdb)
 
     parser = PDBParser(QUIET=True)
@@ -279,7 +266,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     for model in structure:
         for chain in model:
             for residue in chain:
-                hetflag = residue.id[0].strip()  # '' (empty) = standard; 'W' = water; 'H_' = HETATM
+                hetflag = residue.id[0].strip()  # '' (standard); 'W' = water; 'H_' = HETATM
                 is_het = (hetflag != "")
                 resname = residue.get_resname()
                 for atom in residue:
@@ -291,15 +278,13 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
                     if had_element_in_input and not overwrite:
                         kept_existing += 1
-                        continue  # Respect existing element: do not modify without --overwrite
+                        continue
 
                     sym = guess_element(name, resname, is_het)
                     if sym is None:
                         unknown.append((model.id, chain.id, residue.id, resname, name, serial))
-                        # If inference failed: keep the previous value (if any), otherwise leave unset
                         continue
 
-                    # Biopython uses atom.element to populate columns 77–78 on output
                     prev = getattr(atom, "element", None)
                     atom.element = sym
                     by_element[sym] += 1
@@ -311,7 +296,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
     io = PDBIO()
     io.set_structure(structure)
-    out_path = out_pdb if out_pdb else in_pdb  # overwrite input if not specified
+    out_path = out_pdb if out_pdb else in_pdb
     io.save(out_path)
 
     # Summary
@@ -386,13 +371,10 @@ def main():
     help="Re-infer and overwrite element fields even if present (by default, existing values are preserved).",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
-    """
-    Click wrapper to run via the `pdb2reaction add-elem-info` subcommand.
-    """
+    """Click wrapper to run via the `pdb2reaction add-elem-info` subcommand."""
     try:
         assign_elements(str(in_pdb), (str(out_pdb) if out_pdb else None), overwrite=overwrite)
     except SystemExit as e:
-        # Match argparse-like behavior: propagate SystemExit as-is
         raise e
     except Exception as e:
         click.echo(f"[ERR] Failed: {e}", err=True)
