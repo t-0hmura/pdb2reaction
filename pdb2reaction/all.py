@@ -182,6 +182,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from collections import defaultdict
 from typing import List, Sequence, Optional, Tuple, Dict, Any
 
 import sys
@@ -198,6 +199,8 @@ from Bio import PDB
 # pysisyphus helpers/constants
 from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, AU2KCALPERMOL
+
+AtomKey = Tuple[str, str, str, str, str, str]
 
 # Local imports from the package
 from .extract import extract_api
@@ -288,7 +291,7 @@ def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] =
     return cfg
 
 
-def _parse_atom_key_from_line(line: str) -> Optional[Tuple[str, str, str, str, str, str]]:
+def _parse_atom_key_from_line(line: str) -> Optional[AtomKey]:
     """
     Extract a structural identity key from a PDB ATOM/HETATM record.
 
@@ -306,11 +309,46 @@ def _parse_atom_key_from_line(line: str) -> Optional[Tuple[str, str, str, str, s
     return (chain, resname, resseq, icode, atomname, altloc)
 
 
-def _pocket_key_to_index(pocket_pdb: Path) -> Dict[Tuple[str, str, str, str, str, str], int]:
+def _key_variants(key: AtomKey) -> List[AtomKey]:
+    """Return key variants with progressively relaxed identity fields (deduplicated)."""
+    chain, resn, resseq, icode, atom, alt = key
+    raw_variants = [
+        (chain, resn, resseq, icode, atom, alt),
+        (chain, resn, resseq, icode, atom, ''),
+        (chain, resn, resseq, '',    atom, alt),
+        (chain, resn, resseq, '',    atom, ''),
+    ]
+    seen: set[AtomKey] = set()
+    variants: List[AtomKey] = []
+    for variant in raw_variants:
+        if variant in seen:
+            continue
+        seen.add(variant)
+        variants.append(variant)
+    return variants
+
+
+def _build_variant_occurrence_table(keys: Sequence[AtomKey]) -> List[Dict[AtomKey, int]]:
     """
-    Build mapping: structural atom key -> pocket index (1-based by file order).
+    Track how many times each relaxed key variant has appeared up to each atom index.
+    Returns a per-atom list of dicts: variant -> occurrence count (1-based).
     """
-    key2idx: Dict[Tuple[str, str, str, str, str, str], int] = {}
+    counts: Dict[AtomKey, int] = defaultdict(int)
+    per_atom: List[Dict[AtomKey, int]] = []
+    for key in keys:
+        current: Dict[AtomKey, int] = {}
+        for variant in _key_variants(key):
+            counts[variant] += 1
+            current[variant] = counts[variant]
+        per_atom.append(current)
+    return per_atom
+
+
+def _pocket_key_to_index(pocket_pdb: Path) -> Dict[AtomKey, List[int]]:
+    """
+    Build mapping: structural atom key -> list of pocket indices (1-based by file order).
+    """
+    key2idx: Dict[AtomKey, List[int]] = defaultdict(list)
     idx = 0
     try:
         with open(pocket_pdb, "r", encoding="utf-8", errors="ignore") as fh:
@@ -320,15 +358,16 @@ def _pocket_key_to_index(pocket_pdb: Path) -> Dict[Tuple[str, str, str, str, str
                     if key is None:
                         continue
                     idx += 1
-                    key2idx[key] = idx
+                    for variant in _key_variants(key):
+                        key2idx[variant].append(idx)
     except FileNotFoundError:
         raise click.ClickException(f"[all] Pocket PDB not found: {pocket_pdb}")
     if not key2idx:
         raise click.ClickException(f"[all] Pocket PDB {pocket_pdb} has no ATOM/HETATM records.")
-    return key2idx
+    return dict(key2idx)
 
 
-def _read_full_atom_keys_in_file_order(full_pdb: Path) -> List[Tuple[str, str, str, str, str, str]]:
+def _read_full_atom_keys_in_file_order(full_pdb: Path) -> List[AtomKey]:
     """
     Read ATOM/HETATM lines and return keys in the original file order.
     """
@@ -403,7 +442,8 @@ def _convert_scan_lists_to_pocket_indices(
     Convert user-provided atom indices (based on the full input PDB) to pocket indices.
     Returns the converted stages as lists of (i,j,target) with 1-based pocket indices.
 
-    Structural keys (chainID, resName, resSeq, iCode, atomName, altLoc) are used instead of serial numbers.
+    Structural keys (chainID, resName, resSeq, iCode, atomName, altLoc) are used instead of serial numbers,
+    with per-variant occurrence counts to distinguish atoms that otherwise share the same key.
     """
     if not scan_lists_raw:
         return []
@@ -414,28 +454,27 @@ def _convert_scan_lists_to_pocket_indices(
     # and the key→index dictionary on the pocket side
     orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
     key_to_pocket_idx  = _pocket_key_to_index(pocket_pdb)
+    variant_occ_table  = _build_variant_occurrence_table(orig_keys_in_order)
 
     n_atoms_full = len(orig_keys_in_order)
 
     def _map_full_index_to_pocket(idx_one_based: int, stage_idx: int, tuple_idx: int, side_label: str) -> int:
         """
         Convert a 1-based index from the full PDB into the pocket's 1-based index.
-        Fall back in the order: strict match → ignore altloc → ignore iCode → ignore both.
+        Fall back in the order: strict match → ignore altloc → ignore iCode → ignore both,
+        and use the atom index (occurrence count) when multiple atoms share a structural key.
         """
         key = orig_keys_in_order[idx_one_based - 1]
 
         # Try candidate keys in order of decreasing strictness
-        chain, resn, resseq, icode, atom, alt = key
-        candidates = [
-            key,
-            (chain, resn, resseq, icode, atom, ''),   # ignore altloc
-            (chain, resn, resseq, '',    atom, alt),  # ignore iCode
-            (chain, resn, resseq, '',    atom, ''),   # ignore both
-        ]
-        for k in candidates:
-            hit = key_to_pocket_idx.get(k, None)
-            if hit is not None:
-                return hit
+        variant_occ = variant_occ_table[idx_one_based - 1]
+        for variant in _key_variants(key):
+            occurrence = variant_occ.get(variant)
+            indices = key_to_pocket_idx.get(variant)
+            if occurrence is None or not indices:
+                continue
+            if occurrence <= len(indices):
+                return indices[occurrence - 1]
 
         # Not found → likely removed during extraction; emit a helpful error message
         msg_key = _format_atom_key_for_msg(key)
@@ -1748,7 +1787,9 @@ def cli(
     gave_ref_pdb = False  # optional: used below to print accurate merge info
 
     # Multi-structure: one ref per original input; single+scan: reuse the single template for all pockets.
-    if is_single and has_scan:
+    if skip_extract:
+        click.echo("[all] NOTE: skipping --ref-pdb (no --center; inputs already represent full structures).")
+    elif is_single and has_scan:
         if _is_pdb(input_paths[0]):
             for _ in pockets_for_path:
                 ps_args.extend(["--ref-pdb", str(input_paths[0])])
