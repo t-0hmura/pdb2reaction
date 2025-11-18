@@ -780,7 +780,8 @@ def _pseudo_irc_and_match(seg_idx: int,
                           q_int: int,
                           spin: int,
                           freeze_links_flag: bool,
-                          calc_cfg: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+                          calc_cfg: Optional[Dict[str, Any]],
+                          args_yaml: Optional[Path]) -> Dict[str, Any]:
     """
     [REPLACED] Run IRC via the official irc CLI (EulerPC), then map ends to (left,right).
 
@@ -805,6 +806,9 @@ def _pseudo_irc_and_match(seg_idx: int,
         "--out-dir", str(irc_dir),
         "--freeze-links", "True" if (freeze_links_flag and ref_pdb_for_seg.suffix.lower() == ".pdb") else "False",
     ]
+
+    if args_yaml is not None:
+        irc_args.extend(["--args-yaml", str(args_yaml)])
     click.echo(f"[irc] Running EulerPC IRC → out={irc_dir}")
     _saved_argv = list(sys.argv)
     try:
@@ -1511,6 +1515,7 @@ def cli(
             spin=spin,
             freeze_links_flag=freeze_links_flag,
             calc_cfg=calc_cfg_shared,
+            args_yaml=args_yaml,
         )
         gL = irc_res["left_min_geom"]
         gR = irc_res["right_min_geom"]
@@ -1871,6 +1876,7 @@ def cli(
                 spin=spin,
                 freeze_links_flag=freeze_links_flag,
                 calc_cfg=calc_cfg_shared,
+                args_yaml=args_yaml,
             )
 
             gL = irc_res["left_min_geom"]
