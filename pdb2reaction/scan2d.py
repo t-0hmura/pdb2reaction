@@ -3,7 +3,7 @@ scan2d — Two-distance 2D scan with harmonic restraints (UMA only)
 ==================================================================
 
 Usage (CLI)
------
+-----------
     pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
         [--one-based|--zero-based] \
@@ -20,46 +20,53 @@ Usage (CLI)
         [--thresh {gau_loose|gau|gau_tight|gau_vtight|baker|never}] \
         [--zmin FLOAT] [--zmax FLOAT]
 
-Examples::
+Examples
+--------
     # Minimal example (two distance ranges)
     pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]"
 
-    # LBFGS with trajectory dumping and square plots (PNG + HTML)
+    # LBFGS with trajectory dumping and PNG + HTML plots
     pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
         --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode lbfgs \
         --preopt True --baseline min
 
 Description
------
-- A 2D scan that optimizes two inter-atomic distances (d1, d2) simultaneously.
+-----------
+- A 2D grid scan driven by harmonic restraints on two inter-atomic distances (d1, d2).
 - Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
-  - Indices are 1-based by default; pass --zero-based to switch to 0-based.
-- The step schedule mirrors the 1D scan with `--max-step-size = h (Å)` as an upper bound:
+  - Indices are **1-based by default**; pass **--zero-based** to interpret them as 0-based.
+- Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
-  - Value arrays: `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` when the range is zero)
-                 `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` when the range is zero).
-- Nested scan procedure:
-  1) For each d1[i], minimize with only the d1 restraint (d1 bias only).
-  2) Snapshot that minimum, **freeze d1**, and iterate **d2** across d2[j]. Each pair (d1[i], d2[j])
-     runs a constrained minimization whose energy is evaluated **without the harmonic bias** (single UMA call)
-     and recorded on the PES grid.
+  - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
+    `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` if the span is ~0).
+- Nested scan procedure (outer d1, inner d2):
+  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only).
+  2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints** and
+     record the **unbiased** single-point energy (harmonic bias removed for evaluation).
 - Outputs:
-  - `result_scan2d/surface.csv`: columns i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged (True/False)
-  - `result_scan2d/scan2d_contour.png`: 2D contour plot (PNG)
-  - `result_scan2d/scan2d_surface.html`: 3D surface + base-plane projection (HTML)
-- Intermediate geometries and optimization artifacts are kept **only in a temporary directory** and never dumped
-  directly under `result_scan2d`.
+  - `result_scan2d/surface.csv`
+      Columns: `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`
+  - `result_scan2d/scan2d_map.png`
+      2D contour/heatmap (PNG).
+  - `result_scan2d/scan2d_landscape.html`
+      3D surface with a base-plane projection (HTML).
+  - `result_scan2d/grid/point_i###_j###.xyz`
+      Constrained, relaxed geometries for each grid point.
+  - `result_scan2d/grid/inner_path_d1_###.trj` (only when `--dump True`)
+      Per-outer-step inner trajectory (sequence of d2 snapshots) in XYZ/TRJ format.
+- Optimizer scratch/artifacts are written to a **temporary directory**; only the files listed
+  above are written under `result_scan2d/`.
 
 Notes
 -----
-- UMA only (`uma_pysis` calculator) and the same HarmonicBias implementation as the 1D scan.
-- Convergence is controlled by LBFGS or RFO depending on --opt-mode. Ångström limits are converted to Bohr for
-  the internal trust-radius caps.
+- UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D scan.
+- Convergence is controlled by LBFGS or RFO depending on `--opt-mode`.
+  Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - `--baseline min|first`:
-  - `min`  : shift PES values so that the global minimum is 0 kcal/mol (default)
-  - `first`: shift so that the first grid point (i=0, j=0) is 0 kcal/mol
+  - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
+  - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
 """
 
 from __future__ import annotations
@@ -226,16 +233,15 @@ def _make_optimizer(geom, kind: str, lbfgs_cfg: Dict[str,Any], rfo_cfg: Dict[str
 
 def _unbiased_energy_hartree(geom, base_calc) -> float:
     coords_bohr = np.asarray(geom.coords3d, dtype=float).reshape(-1, 3)
+    elems = None
     for name in ("elem", "elements", "elems"):
-        elems = getattr(geom, name, None)
-        if elems is not None:
-            try:
-                return float(base_calc.get_energy(elems, coords_bohr)["energy"])
-            except Exception:
-                pass
+        e = getattr(geom, name, None)
+        if e is not None:
+            elems = e
+            break
+    if elems is None:
+        return float("nan")
     try:
-        geom.set_calculator(base_calc)
-        elems = getattr(geom, "elem", getattr(geom, "elements", getattr(geom, "elems", None)))
         return float(base_calc.get_energy(elems, coords_bohr)["energy"])
     except Exception:
         return float("nan")
@@ -272,7 +278,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="(Lightweight) write inner scan trajectories per d1-step as TRJ.")
+              help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.")
 @click.option("--out-dir", type=str, default="./result_scan2d/", show_default=True,
               help="Base output directory.")
 @click.option(
@@ -288,7 +294,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
 )
 @click.option("--preopt", type=click.BOOL, default=True, show_default=True,
-              help="preoptimize initial structure without bias before the scan.")
+              help="Pre-optimize the initial structure without bias before the scan.")
 @click.option("--baseline", type=click.Choice(["min","first"]), default="min", show_default=True,
               help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).")
 @click.option("--zmin", type=float, default=None, show_default=False,
@@ -436,7 +442,6 @@ def cli(
         records: List[Dict[str, Any]] = []
         for i_idx, d1_target in enumerate(d1_values):
             click.echo(f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---")
-            geom_outer.set_calculator(biased)
             biased.set_pairs([(i1, j1, float(d1_target))])
             geom_outer.set_calculator(biased)
 
@@ -479,7 +484,7 @@ def cli(
 
                 E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
-                # Keep intermediate XYZ snapshots only inside the temporary directory
+                # Write per-grid XYZ snapshots under result_scan2d/grid/
                 xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
                 try:
                     s = geom_inner.as_xyz()
@@ -639,7 +644,6 @@ def cli(
         click.echo(f"[plot] Wrote '{png2d}'.")
 
         # ---- 3D surface plus base-plane projection ----
-        # Keep the surface in the upper half of the z-axis and the plane flush with the bottom
         spread = vmax - vmin if (vmax > vmin) else 1.0
         z_bottom = vmin - spread
         z_top    = vmax
@@ -717,7 +721,7 @@ def cli(
                     title="Potential Energy (kcal/mol)",
                     range=[z_bottom, z_top],
                     tickmode="array",
-                    tickvals=z_ticks,  # No ticks below vmin
+                    tickvals=z_ticks,
                     showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
                     ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
                     showgrid=True, gridcolor='rgba(0,0,0,0.1)',
