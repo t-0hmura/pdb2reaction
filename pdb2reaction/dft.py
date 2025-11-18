@@ -181,6 +181,38 @@ def _choose_auxbasis_for_orbital_basis(basis: str) -> Optional[str]:
     return None
 
 
+def _configure_scf_object(mf, aux_basis_guess: Optional[str], dft_cfg: Dict[str, Any], xc: str):
+    """Apply common SCF settings (DF, aux-basis, tolerances, grids, VV10)."""
+    try:
+        mf = mf.density_fit()
+        if aux_basis_guess:
+            try:
+                mf.with_df.auxbasis = aux_basis_guess
+            except Exception as e:
+                click.echo(f"[df] WARNING: Could not set auxbasis='{aux_basis_guess}': {e}", err=True)
+    except Exception as e:
+        click.echo(f"[df] WARNING: density_fit() failed or not available: {e}", err=True)
+
+    mf.xc = xc
+    mf.max_cycle = int(dft_cfg["max_cycle"])
+    mf.conv_tol = float(dft_cfg["conv_tol"])
+    try:
+        mf.grids.level = int(dft_cfg["grid_level"])
+    except Exception as e:
+        click.echo(f"[grids] WARNING: Could not set grids.level={dft_cfg['grid_level']}: {e}", err=True)
+
+    try:
+        mf.chkfile = None
+    except Exception:
+        pass
+
+    xcl = xc.lower()
+    if xcl.endswith("-v") or "vv10" in xcl:
+        mf.nlc = "vv10"
+
+    return mf
+
+
 # ---------------- Flow-style YAML helper (only for inner row lists) -----------
 class FlowList(list):
     """A list that will be dumped in YAML flow style: [a, b, c]."""
@@ -521,45 +553,31 @@ def cli(
                     err=True,
                 )
 
-        # ---- Enable density fitting (RI/DF) & set aux-basis if available ----
-        try:
-            mf = mf.density_fit()
-            if aux_basis_guess:
-                try:
-                    mf.with_df.auxbasis = aux_basis_guess
-                except Exception as e:
-                    click.echo(f"[df] WARNING: Could not set auxbasis='{aux_basis_guess}': {e}", err=True)
-        except Exception as e:
-            click.echo(f"[df] WARNING: density_fit() failed or not available: {e}", err=True)
-
-        # SCF settings
-        mf.xc = xc
-        mf.max_cycle = int(dft_cfg["max_cycle"])
-        mf.conv_tol = float(dft_cfg["conv_tol"])
-        try:
-            # grids.level is the standard PySCF knob; supported by GPU4PySCF
-            mf.grids.level = int(dft_cfg["grid_level"])
-        except Exception as e:
-            click.echo(f"[grids] WARNING: Could not set grids.level={dft_cfg['grid_level']}: {e}", err=True)
-
-        # Disable checkpoint file if possible
-        try:
-            mf.chkfile = None
-        except Exception:
-            pass
-
-        # Enable VV10 for "-v" functionals
-        xcl = xc.lower()
-        if xcl.endswith("-v") or "vv10" in xcl:
-            # PySCF style for VV10 nonlocal correlation
-            mf.nlc = "vv10"
+        mf = _configure_scf_object(mf, aux_basis_guess, dft_cfg, xc)
 
         # --------------------------
         # 5) Run SCF
         # --------------------------
         click.echo("\n=== DFT single-point started (GPU if available) ===\n")
         tic_scf = time.time()
-        e_tot = mf.kernel()
+        try:
+            e_tot = mf.kernel()
+        except Exception as scf_exc:
+            if using_gpu:
+                click.echo(
+                    f"[gpu] ERROR: GPU SCF failed ({scf_exc}); retrying on CPU backend...",
+                    err=True,
+                )
+                from pyscf import dft as pdft
+
+                mf = make_ks(pdft)
+                mf = _configure_scf_object(mf, aux_basis_guess, dft_cfg, xc)
+                using_gpu = False
+                engine_label = "pyscf(cpu)"
+                tic_scf = time.time()
+                e_tot = mf.kernel()
+            else:
+                raise
         toc_scf = time.time()
         click.echo("\n=== DFT single-point finished ===\n")
 
