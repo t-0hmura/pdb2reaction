@@ -10,7 +10,7 @@ Usage (CLI)
         [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
-        [--args-yaml <file>]
+        [--args-yaml <file>] [--preopt {True|False}]
 
 Examples
 --------
@@ -23,12 +23,12 @@ Examples
       --climb True --dump True --out-dir ./result_path_opt/ \
       --thresh gau_tight --args-yaml ./args.yaml
 
-
 Description
 -----------
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
 - Configuration via YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > built-in defaults.
+- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS before alignment and GSM.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image; the Lanczos-based tangent estimate is toggled to the same boolean as `--climb` (enabled iff `--climb=True`).
 - `--thresh` sets the convergence preset used by the string optimizer and by the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
@@ -72,6 +72,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError
+from pysisyphus.optimizers.LBFGS import LBFGS  # (added) for optional endpoint preoptimization
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
@@ -104,7 +105,7 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 30,
+    "max_nodes": 10,
     "perp_thresh": 5e-3,
     "reparam_check": "rms",
     "reparam_every": 1,
@@ -129,7 +130,7 @@ STOPT_KW: Dict[str, Any] = {
     "max_cycles": 100,
     "dump": False,
     "dump_restart": False,
-    "reparam_thresh": 1e-3,
+    "reparam_thresh": 0.0,
     "coord_diff_thresh": 0.0,
     "out_dir": "./result_path_opt/",
     "print_every": 5,
@@ -183,7 +184,7 @@ def _load_two_endpoints(
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=30, show_default=True,
+@click.option("--max-nodes", type=int, default=10, show_default=True,
               help="Number of internal nodes (string has max_nodes+2 images including endpoints).")
 @click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
@@ -204,6 +205,13 @@ def _load_two_endpoints(
     default=None,
     help="YAML with extra args (sections: geom, calc, gs, opt).",
 )
+@click.option(
+    "--preopt",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help="If True, preoptimize each endpoint via single-structure LBFGS before alignment and GSM.",
+)
 def cli(
     input_paths: Sequence[Path],
     charge: Optional[int],
@@ -216,6 +224,7 @@ def cli(
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
+    preopt: bool,
 ) -> None:
     input_paths = tuple(Path(p) for p in input_paths)
     prepared_inputs = [prepare_input_structure(p) for p in input_paths]
@@ -283,6 +292,7 @@ def cli(
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs",   echo_gs))
         click.echo(pretty_block("opt",  echo_opt))
+        click.echo(pretty_block("run_flags", {"preopt": bool(preopt)}))
 
         # --------------------------
         # 2) Prepare structures (load two endpoints and apply freezing)
@@ -300,6 +310,45 @@ def cli(
 
         # Shared UMA calculator (reuse the same instance for all images)
         shared_calc = uma_pysis(**calc_cfg)
+
+        # Optional endpoint pre-optimization (LBFGS) before alignment/GSM
+        if preopt:
+            click.echo("\n=== Preoptimizing endpoints via single-structure LBFGS ===\n")
+            new_geoms = []
+            for i, g in enumerate(geoms):
+                try:
+                    g.set_calculator(shared_calc)
+                    seg_dir = out_dir_path / f"preopt{i:02d}_lbfgs_opt"
+                    seg_dir.mkdir(parents=True, exist_ok=True)
+                    lbfgs_kwargs: Dict[str, Any] = {
+                        "out_dir": str(seg_dir),
+                        "dump": bool(opt_cfg.get("dump", False)),
+                        "max_cycles": int(opt_cfg.get("max_cycles", 100)),
+                    }
+                    if "thresh" in opt_cfg:
+                        lbfgs_kwargs["thresh"] = str(opt_cfg["thresh"])
+                    opt = LBFGS(g, **lbfgs_kwargs)
+                    click.echo(f"\n--- [preopt{i:02d}] LBFGS started ---\n")
+                    opt.run()
+                    click.echo(f"\n--- [preopt{i:02d}] LBFGS finished ---\n")
+                    try:
+                        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else Path(opt.final_fn)
+                        g_final = geom_loader(final_xyz, coord_type=g.coord_type)
+                        try:
+                            g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
+                        except Exception:
+                            pass
+                        g_final.set_calculator(shared_calc)
+                        new_geoms.append(g_final)
+                    except Exception:
+                        # Fall back to the possibly-updated in-memory geometry
+                        new_geoms.append(g)
+                except Exception as e:
+                    click.echo(f"[preopt] WARNING: Failed to preoptimize endpoint {i}: {e}", err=True)
+                    new_geoms.append(g)
+            geoms = new_geoms
+        else:
+            click.echo("[preopt] Skipping endpoint preoptimization (use --preopt True to enable).")
 
         # External Kabsch alignment (if freeze_atoms exist, use only them)
         align_thresh = str(opt_cfg.get("thresh", "gau"))
