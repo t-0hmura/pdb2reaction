@@ -1,75 +1,77 @@
 # `path-opt` subcommand
 
-## Purpose
-Optimizes a minimum-energy path between two endpoints using the pysisyphus Growing String method with UMA providing energies, gradients, and Hessians.
+## Overview
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM). UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections.
 
 ## Usage
 ```bash
-pdb2reaction path-opt -i REACTANT PRODUCT -q CHARGE [--mult 2S+1]
-                      [--freeze-links BOOL] [--thresh PRESET]
-                      [--max-nodes N] [--max-cycles N] [--climb BOOL]
-                      [--dump BOOL] [--out-dir DIR] [--args-yaml FILE]
+pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
+                      [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
+                      [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
+                      [--out-dir DIR] [--args-yaml FILE]
 ```
+
+## Workflow
+1. **Pre-alignment & freeze resolution**
+   - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
+   - For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
+   - `StringOptimizer.align` remains disabled because the explicit alignment/refinement already handles the superposition.
+2. **String growth and HEI export**
+   - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
+   - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available.
+
+### Key behaviours
+- **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
+- **Charge/spin**: CLI overrides `.gjf` template metadata; otherwise defaults to `0/1`. Always set them explicitly for correct states.
+- **Growing string**: `--max-nodes` controls the number of *internal* nodes (total images = `max_nodes + 2`). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
+- **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
+- **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.
+- **Exit codes**: `0` success, `3` optimizer failure, `4` trajectory write error, `5` HEI export error, `130` interrupt, `1` unexpected error.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH PATH` | Two endpoint structures (reactant, product). | Required |
-| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents. | `True` |
-| `--max-nodes INT` | Internal nodes in the string (total images = `max_nodes + 2`). | `30` |
-| `--max-cycles INT` | Maximum optimizer cycles. | `100` |
-| `--climb BOOL` | Explicit `True`/`False`. Enable climbing-image refinement. | `True` |
-| `--dump BOOL` | Explicit `True`/`False`. Dump optimizer trajectories and restarts. | `False` |
+| `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
+| `-q, --charge INT` | Total charge (`calc.charge`). | Template/`0` |
+| `-m, --mult INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
+| `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
+| `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `30` |
+| `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `100` |
+| `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
+| `--dump BOOL` | Dump GSM trajectories/restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
-| `--thresh TEXT` | Override StringOptimizer convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-
-### Shared sections
-- `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms` for PDB inputs.
-
-### Section `gs`
-Growing String controls (defaults shown in parentheses).
-
-- `max_nodes` (`30`): Internal nodes (overridden by `--max-nodes`).
-- `perp_thresh` (`5e-3`): Growth convergence threshold on perpendicular forces.
-- `reparam_check` (`"rms"`), `reparam_every` (`1`), `reparam_every_full` (`1`): Reparametrisation cadence and metric.
-- `param` (`"equi"`): Node spacing (`"equi"` or `"energy"`).
-- `max_micro_cycles` (`10`): Micro-iterations per macro step.
-- `reset_dlc` (`True`): Reset DLC coordinates when appropriate.
-- `climb` (`True`), `climb_rms` (`5e-4`), `climb_lanczos` (`True`), `climb_lanczos_rms` (`5e-4`), `climb_fixed` (`False`): Climbing image controls (overridden by `--climb`).
-- `scheduler` (`None`): Execution scheduler (normally left `None` for shared calculator use).
-
-### Section `opt`
-StringOptimizer controls (defaults in parentheses).
-
-- `type` (`"string"`): Label for bookkeeping.
-- `stop_in_when_full` (`100`): Extra cycles allowed after full growth (overridden by `--max-cycles`).
-- `align` (`False`): Internal alignment disabled (external Kabsch alignment is used).
-- `scale_step` (`"global"`): Step scaling policy.
-- `max_cycles` (`100`): Macro-iteration cap (overridden by `--max-cycles`).
-- `dump` (`False`), `dump_restart` (`False`): Trajectory/restart dumping (dump toggled by CLI).
-- `reparam_thresh` (`1e-3`), `coord_diff_thresh` (`0.0`): Reparametrisation and pruning thresholds.
-- `out_dir` (`"./result_path_opt/"`), `print_every` (`10`): Output location and logging cadence.
+| `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | YAML/default |
+| `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
 
 ## Outputs
-- `<out-dir>/final_geometries.trj` (+ `.pdb` when a PDB reference is available).
-- `<out-dir>/gsm_hei.xyz` (+ `.pdb` for PDB inputs) for the highest-energy image.
-- `<out-dir>/align_refine/` alignment diagnostics.
-- Optional optimizer dumps/restarts when `--dump` or YAML toggles them.
-- Charge/spin values default to `.gjf` template metadata when the endpoints are `.gjf`; otherwise they fall back to `0`/`1`.
-  Override them explicitly to enforce the intended electronic state.
-
-## Notes
-- Inputs are rigidly aligned via Kabsch before optimisation; if freeze atoms are present, only those atoms guide the fit.
-- UMA calculator instances are shared across all images for efficiency.
-- When the input is PDB, link-hydrogen parents are merged into `geom.freeze_atoms` before loading.
-- Exit codes: `0` success, `3` optimization failure, `4`/`5` write failures, `130` interrupt, `1` unexpected error.
+```
+out_dir/
+├─ final_geometries.trj        # XYZ path; comment line holds energies when provided
+├─ final_geometries.pdb        # Only when the first endpoint was a PDB
+├─ gsm_hei.xyz                 # Highest-energy image with its energy on the comment line
+├─ gsm_hei.pdb                 # HEI converted to PDB when the first endpoint was a PDB
+├─ gsm_hei.gjf                 # HEI written using a detected Gaussian template
+├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage
+└─ <optimizer dumps/restarts>  # Present when dumping is enabled
+```
+Console output echoes the resolved YAML blocks and prints cycle-by-cycle GSM progress with timing information.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. CLI values override YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
+CLI inputs override YAML, which override the defaults listed below.
 
+### `geom`
+- Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
+
+### `calc`
+- UMA calculator setup identical to the single-structure optimization (`model`, `device`, neighbour radii, Hessian options, etc.).
+
+### `gs`
+- Controls the Growing String representation: `max_nodes`, `perp_thresh`, reparametrisation cadence (`reparam_check`, `reparam_every`, `reparam_every_full`, `param`), `max_micro_cycles`, DLC resets, climb toggles/thresholds, and optional scheduler hooks.
+
+### `opt`
+- StringOptimizer settings: type labels, `stop_in_when_full`, `align=False` (kept off), `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
+
+### Example YAML
 ```yaml
 geom:
   coord_type: cart
@@ -113,5 +115,5 @@ opt:
   reparam_thresh: 0.001
   coord_diff_thresh: 0.0
   out_dir: ./result_path_opt/
-  print_every: 10
+  print_every: 5
 ```

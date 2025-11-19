@@ -1,7 +1,7 @@
 # `path-search` subcommand
 
-## Purpose
-Runs a recursive Growing String (GSM) search across multiple structures (reactant → intermediates → product), stitches segment paths, and optionally merges pocket trajectories back into full PDB templates.
+## Overview
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates.
 
 ## Usage
 ```bash
@@ -14,63 +14,48 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
                          [--args-yaml FILE]
 ```
 
+### Examples
+- **Pocket-only** MEP between two endpoints:
+  ```bash
+  pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+  ```
+- **Multistep** search with YAML overrides and merged full-system output:
+  ```bash
+  pdb2reaction path-search \
+      -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+      --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
+  ```
+
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). A single `-i` may be followed by multiple paths. | Required |
+| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
 | `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
-| `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes (`light|lbfgs` or `heavy|rfo`). | `lbfgs` |
-| `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories. | `False` |
+| `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light`/`lbfgs` share defaults; `heavy` maps to `rfo`. | `lbfgs` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt BOOL` | Explicit `True`/`False`. preoptimise each endpoint before the GSM search. | `True` |
+| `--preopt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before GSM (recommended). | `True` |
 | `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |
 | `--ref-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 
-### Shared sections
-- `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms` when inputs are PDB.
+## Workflow
+1. **Initial GSM per pair** – run `GrowingString` between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
+2. **Local relaxation around HEI** – optimize HEI ± 1 with the chosen single-structure optimizer (`sopt-mode`) to recover nearby minima (`End1`, `End2`).
+3. **Decide between kink vs. refinement**:
+   - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
+   - Otherwise, launch a **refinement GSM** between `End1` and `End2` to sharpen the barrier.
+4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
+5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a bridge GSM. When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
+6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-pdb` to merge pocket trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
 
-### Section `gs`
-Growing String controls for main segments. Defaults derive from `pdb2reaction.path_opt.GS_KW` with overrides:
-
-- `max_nodes` (`10`): Internal nodes per GSM segment (CLI override).
-- `reparam_every_full` (`1`), `climb_rms` (`5e-4`), `climb_fixed` (`False`): Growth/climb behaviour.
-- Additional keys match [`path_opt`](path_opt.md#section-gs).
-
-### Section `opt`
-StringOptimizer controls for GSM (defaults in parentheses).
-
-- `stop_in_when_full` (`100`) and `max_cycles` (`100`): Cycle caps (CLI overrides `--max-cycles`).
-- `dump` (`False`), `dump_restart` (`False`), `out_dir` (`"./result_path_search/"`), `print_every` (`10`), `align` (`False`).
-- Other keys mirror [`path_opt`](path_opt.md#section-opt).
-
-### Section `sopt`
-Single-structure optimization defaults for HEI±1 and kink nodes. Split into `lbfgs` and `rfo` subsections.
-
-- `sopt.lbfgs`: Same keys as [`opt`](opt.md#section-lbfgs) but with defaults adapted for path search (`out_dir: ./result_path_search/`, `dump: False`).
-- `sopt.rfo`: Same keys as [`opt`](opt.md#section-rfo) with analogous defaults.
-
-### Section `bond`
-Bond-change detection parameters (identical to [`scan`](scan.md#section-bond)).
-
-- `device` (`"cuda"`), `bond_factor` (`1.20`), `margin_fraction` (`0.05`), `delta_fraction` (`0.05`).
-
-### Section `search`
-Recursive path-building controls.
-
-- `max_depth` (`10`): Recursion depth for segment refinement.
-- `stitch_rmsd_thresh` (`1.0e-4`): Maximum RMSD to consider endpoints duplicates during stitching.
-- `bridge_rmsd_thresh` (`1.0e-4`): RMSD threshold to trigger insertion of bridge GSMs.
-- `rmsd_align` (`True`): Retained for compatibility (ignored internally).
-- `max_nodes_segment` (`10`): Max nodes per recursive segment (defaults to `--max-nodes` if unspecified).
-- `max_nodes_bridge` (`5`): Nodes for bridge GSMs.
-- `kink_max_nodes` (`3`): Linear interpolation nodes for skipped GSM at kinks.
+Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. UMA calculators are constructed once and shared across all structures for efficiency.
 
 ## Outputs
 - `<out-dir>/mep.trj` (and `.pdb` when the inputs were PDB pockets).
@@ -91,7 +76,15 @@ Recursive path-building controls.
   when you need a different electronic state.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. CLI parameters override YAML values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
+The YAML root must be a mapping. CLI parameters override YAML values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.
+
+`gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
+
+`sopt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [`opt`](opt.md#yaml-configuration-args-yaml) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
+
+`bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
+
+`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, and `kink_max_nodes`. The legacy `rmsd_align` flag is ignored but kept for compatibility.
 
 ```yaml
 geom:

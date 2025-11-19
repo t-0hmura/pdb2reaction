@@ -1,18 +1,55 @@
 # `freq` subcommand
 
-## Purpose
-Computes vibrational frequencies using UMA, performs partial Hessian vibrational analysis (PHVA) when atoms are frozen, exports animated modes, and prints a thermochemistry summary.
+## Overview
+`pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring any
+frozen atoms via partial Hessian vibrational analysis (PHVA). It exports mass-weighted
+normal modes as `.trj`/`.pdb` animations, prints a Gaussian-style thermochemistry summary
+when the optional `thermoanalysis` package is installed, and can emit a YAML summary when
+`--dump True`. Configuration values are read from YAML (`geom`, `calc`, `freq`) and then
+overridden by CLI switches, so the same template can drive both standalone runs and
+workflows launched by other subcommands.
 
 ## Usage
 ```bash
-pdb2reaction freq -i INPUT -q CHARGE [--mult 2S+1]
-                  [--freeze-links BOOL]
-                  [--max-write N] [--amplitude-ang Å] [--n-frames N]
-                  [--sort value|abs] [--out-dir DIR]
-                  [--temperature K] [--pressure atm] [--dump BOOL]
+pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
+                  [--freeze-links {True|False}] \
+                  [--max-write N] [--amplitude-ang Å] [--n-frames N] \
+                  [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \
+                  [--temperature K] [--pressure atm] [--dump {True|False}] \
                   [--hessian-calc-mode Analytical|FiniteDifference]
-                  [--args-yaml FILE]
 ```
+
+### Examples
+```bash
+# Minimal run with explicit charge and spin
+pdb2reaction freq -i a.pdb -q 0 -m 1
+
+# PHVA with YAML overrides and a custom output directory
+pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq/
+```
+
+## Workflow
+- **Geometry loading & freeze handling**: structures are read via
+  `pysisyphus.helpers.geom_loader`. For PDB inputs, `--freeze-links True` detects link
+  hydrogens and freezes their parent atoms, then merges the resulting indices with
+  `geom.freeze_atoms`; the merged list is echoed and propagated to UMA and PHVA.
+- **UMA calculator**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
+  UMA may return a partial (active) Hessian block whenever atoms are frozen.
+- **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
+  subspace with translation/rotation modes projected there. Both 3N×3N and active-block
+  Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
+- **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
+  value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
+  (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `.trj`
+  animations are produced for every input; `.pdb` animations mirror them when a PDB template
+  is available (ASE conversion is used as a fallback).
+- **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (EE, ZPE, E/H/G
+  corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
+  atm is converted internally to Pa. When `--dump True`, a `thermoanalysis.yaml` snapshot is
+  also written.
+- **Performance & exit behavior**: the implementation minimizes GPU memory usage by keeping
+  a single Hessian resident, preferring upper-triangular eigendecompositions (`UPLO="U"`).
+  Keyboard interrupts exit with code 130; other failures print a traceback and exit with code 1.
 
 ## CLI options
 | Option | Description | Default |
@@ -20,46 +57,35 @@ pdb2reaction freq -i INPUT -q CHARGE [--mult 2S+1]
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
 | `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (merged with `geom.freeze_atoms`). | `True` |
+| `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
 | `--max-write INT` | Number of modes to export. | `20` |
-| `--amplitude-ang FLOAT` | Animation amplitude (Å). | `0.8` |
+| `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |
 | `--sort CHOICE` | Mode ordering: `value` (cm⁻¹) or `abs`. | `value` |
 | `--out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
-| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-
-### Shared sections
-- `geom`, `calc`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms`, which are also forwarded to UMA for Hessian calculations.
-
-### Section `freq`
-Controls mode export.
-
-- `amplitude_ang` (`0.8`): Animation amplitude (Å).
-- `n_frames` (`20`): Frames per vibrational animation.
-- `max_write` (`20`): Number of modes to export.
-- `sort` (`"value"`): Ordering (`"value"` ascending or `"abs"` for absolute value).
-
-_The thermochemistry parameters (`temperature`, `pressure_atm`, `dump`) are currently CLI-only and not read from YAML._
+| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
+| `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
 
 ## Outputs
-- `<out-dir>/mode_XXXX_±freqcm-1.(trj|pdb)` animations for exported modes.
-- `<out-dir>/frequencies_cm-1.txt` sorted list of frequencies.
-- Optional `<out-dir>/thermoanalysis.yaml` when `--dump` is enabled.
-- Console blocks summarising resolved `geom`, `calc`, `freq`, and thermochemistry settings.
+- `<out-dir>/mode_XXXX_±freqcm-1.trj` and `.pdb` animations for each written mode.
+- `<out-dir>/frequencies_cm-1.txt` listing every computed frequency according to the sort
+  order.
+- `<out-dir>/thermoanalysis.yaml` when both `thermoanalysis` is importable and `--dump True`.
+- Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
 ## Notes
-- Imaginary modes are reported as negative frequencies; PHVA restricts the Hessian to active degrees of freedom when atoms are frozen.
-- `--hessian-calc-mode` overrides `calc.hessian_calc_mode`; Analytical mode may require more GPU memory than finite differences.
-- Mode animations use sinusoidal displacements; PDB animations employ MODEL/ENDMDL records for multi-model files.
-- Charge/spin inherit `.gjf` template metadata when the input is `.gjf`; otherwise they default to `0`/`1`. Override them
-  explicitly to enforce the correct state.
+- Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
+  and dumps details when `--dump True`.
+- `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
+- Charge/spin inherit `.gjf` metadata when available; otherwise the CLI defaults (`0`/`1`)
+  are used. Override them explicitly to ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)
-Accepts a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
+Provide a mapping; CLI values override YAML. Shared sections reuse
+[`opt`](opt.md#yaml-configuration-args-yaml).
 
 ```yaml
 geom:
