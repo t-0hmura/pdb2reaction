@@ -10,7 +10,7 @@ Usage (CLI)
         [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
-        [--args-yaml <file>] [--preopt {True|False}]
+        [--args-yaml <file>] [--preopt {True|False}] [--preopt-max-cycles <int>]
 
 Examples
 --------
@@ -28,7 +28,7 @@ Description
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
 - Configuration via YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > built-in defaults.
-- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS before alignment and GSM.
+- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS before alignment and GSM. The LBFGS iteration limit for this pre‑optimization is controlled independently by `--preopt-max-cycles` (default: 10000).
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image; the Lanczos-based tangent estimate is toggled to the same boolean as `--climb` (enabled iff `--climb=True`).
 - `--thresh` sets the convergence preset used by the string optimizer and by the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
@@ -51,6 +51,7 @@ Notes
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
+- `--preopt-max-cycles` limits only the optional endpoint LBFGS preoptimization and does not affect `--max-cycles`.
 - Exit codes: 0 (success); 3 (optimization failed); 4 (final trajectory write error); 5 (HEI dump error); 130 (keyboard interrupt); 1 (unhandled error).
 """
 
@@ -105,35 +106,35 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "max_nodes": 10,
-    "perp_thresh": 5e-3,
-    "reparam_check": "rms",
-    "reparam_every": 1,
-    "reparam_every_full": 1,
-    "param": "equi",
-    "max_micro_cycles": 10,
-    "reset_dlc": True,
-    "climb": True,
-    "climb_rms": 5e-4,
-    "climb_lanczos": True,
-    "climb_lanczos_rms": 5e-4,
-    "climb_fixed": False,
-    "scheduler": None,
+    "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
+    "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
+    "reparam_check": "norm",    # str, "rms" | "norm"; convergence check metric after reparam
+    "reparam_every": 1,         # int, reparametrize every N steps while growing
+    "reparam_every_full": 1,    # int, reparametrize every N steps after fully grown
+    "param": "equi",            # str, "equi" (even spacing) | "energy" (weight by energy)
+    "max_micro_cycles": 20,     # int, micro-optimization cycles per macro iteration
+    "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
+    "climb": True,              # bool, enable climbing image
+    "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
+    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent
+    "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
+    "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
+    "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
 }
 
 # StringOptimizer (optimization control)
 STOPT_KW: Dict[str, Any] = {
-    "type": "string",
-    "stop_in_when_full": 100,
-    "align": False,
-    "scale_step": "global",
-    "max_cycles": 100,
-    "dump": False,
-    "dump_restart": False,
-    "reparam_thresh": 0.0,
-    "coord_diff_thresh": 0.0,
-    "out_dir": "./result_path_opt/",
-    "print_every": 5,
+    "type": "string",           # str, tag for bookkeeping / output labelling
+    "stop_in_when_full": 100,   # int, allow N extra cycles after the string is fully grown
+    "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
+    "scale_step": "global",     # str, "global" | "per_image" scaling policy
+    "max_cycles": 100,          # int, maximum macro cycles for the optimizer
+    "dump": False,              # bool, write optimizer trajectory to disk
+    "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
+    "reparam_thresh": 0.0,      # float, convergence threshold for reparametrization
+    "coord_diff_thresh": 0.0,   # float, tolerance for coordinate difference before pruning
+    "out_dir": "./result_path_opt/",  # str, output directory for optimizer artifacts
+    "print_every": 1,           # int, status print frequency (cycles)
 }
 
 
@@ -212,6 +213,13 @@ def _load_two_endpoints(
     show_default=True,
     help="If True, preoptimize each endpoint via single-structure LBFGS before alignment and GSM.",
 )
+@click.option(
+    "--preopt-max-cycles",
+    type=int,
+    default=10000,
+    show_default=True,
+    help="Maximum LBFGS cycles for endpoint preoptimization (only used when --preopt True).",
+)
 def cli(
     input_paths: Sequence[Path],
     charge: Optional[int],
@@ -225,6 +233,7 @@ def cli(
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
+    preopt_max_cycles: int,
 ) -> None:
     input_paths = tuple(Path(p) for p in input_paths)
     prepared_inputs = [prepare_input_structure(p) for p in input_paths]
@@ -277,7 +286,7 @@ def cli(
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
 
-        # Use external Kabsch alignment; keep internal alignment disabled.
+        # Use external Kabsch alignment; keep internal align disabled.
         opt_cfg["align"] = False
 
         # For display: resolved configuration
@@ -292,7 +301,7 @@ def cli(
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs",   echo_gs))
         click.echo(pretty_block("opt",  echo_opt))
-        click.echo(pretty_block("run_flags", {"preopt": bool(preopt)}))
+        click.echo(pretty_block("run_flags", {"preopt": bool(preopt), "preopt_max_cycles": int(preopt_max_cycles)}))
 
         # --------------------------
         # 2) Prepare structures (load two endpoints and apply freezing)
@@ -323,7 +332,7 @@ def cli(
                     lbfgs_kwargs: Dict[str, Any] = {
                         "out_dir": str(seg_dir),
                         "dump": bool(opt_cfg.get("dump", False)),
-                        "max_cycles": int(opt_cfg.get("max_cycles", 100)),
+                        "max_cycles": int(preopt_max_cycles),
                     }
                     if "thresh" in opt_cfg:
                         lbfgs_kwargs["thresh"] = str(opt_cfg["thresh"])

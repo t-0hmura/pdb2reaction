@@ -119,7 +119,7 @@ OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
     "out_dir": "./result_scan2d/",
     "dump": False,
-    "max_cycles": 100,
+    "max_cycles": 10000,
 })
 
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)

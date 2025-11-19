@@ -203,18 +203,10 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = dict(_PATH_GS_KW)
-GS_KW.update({
-    "max_nodes": 10,
-    "reparam_every_full": 1,
-    "climb_rms": 5e-4,
-    "climb_fixed": False,
-})
 
 # StringOptimizer (GSM optimization control)
 STOPT_KW: Dict[str, Any] = dict(_PATH_STOPT_KW)
 STOPT_KW.update({
-    "stop_in_when_full": 100,
-    "max_cycles": 100,
     "out_dir": "./result_path_search/",
 })
 
