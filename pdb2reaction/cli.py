@@ -80,5 +80,5 @@ cli.add_command(dft_cmd, name="dft")
 cli.add_command(scan2d_cmd, name="scan2d")
 
 # Disable pysisyphus logging
-import logging
-logging.disable(logging.CRITICAL)
+# import logging
+# logging.disable(logging.CRITICAL)

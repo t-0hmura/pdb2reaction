@@ -108,7 +108,7 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 GS_KW: Dict[str, Any] = {
     "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
     "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
-    "reparam_check": "norm",    # str, "rms" | "norm"; convergence check metric after reparam
+    "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
     "reparam_every": 1,         # int, reparametrize every N steps while growing
     "reparam_every_full": 1,    # int, reparametrize every N steps after fully grown
     "param": "equi",            # str, "equi" (even spacing) | "energy" (weight by energy)
