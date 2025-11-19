@@ -337,7 +337,7 @@ def _snapshot_geometry(g) -> Any:
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,

@@ -180,7 +180,7 @@ def _load_two_endpoints(
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
 @click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=30, show_default=True,

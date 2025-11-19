@@ -255,7 +255,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--scan-list", "scan_list_raw",
     type=str, required=True,
