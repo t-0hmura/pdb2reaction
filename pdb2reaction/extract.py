@@ -198,7 +198,14 @@ AMINO_ACIDS: Dict[str, int] = {
 
     # --- Phosphorylated residues ---
     "SEP": -2, "TPO": -2, "PTR": -2,
+    "S1P": -1, "T1P": -1, "Y1P": -1,   # monoanionic phospho-Ser/Thr/Tyr
 
+    # --- Phosphorylated histidines (phosaa19SB) ---
+    "H1D":  0,  # ND1-phospho-His, neutral
+    "H2D": -1,  # ND1-phospho-His, anionic
+    "H1E":  0,  # NE2-phospho-His, neutral
+    "H2E": -1,  # NE2-phospho-His, anionic
+    
     # --- Cys family ---
     "CYX":  0,   # disulfide Cys
     "CSO":  0,   # Cys sulfenic acid
@@ -367,9 +374,9 @@ def parse_args() -> argparse.Namespace:
               "'GPP:-3,MMT:-1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
-        "-v", "--verbose", type=str2bool, default=False,
-        help=("Enable INFO-level logging (set true to emit INFO; false keeps WARNING-level output)."
-              " Default: false.")
+        "-v", "--verbose", type=str2bool, default=True,
+        help=("Enable INFO-level logging."
+              " Default: True.")
     )
     return p.parse_args()
 
