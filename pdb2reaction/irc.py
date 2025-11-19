@@ -103,8 +103,6 @@ from pdb2reaction.utils import (
     merge_freeze_atom_indices,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    charge_option,
-    multiplicity_option,
 )
 
 
@@ -168,12 +166,8 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@charge_option(
-    "Total charge; overrides calc.charge from YAML. Defaults to the .gjf template value when present, otherwise 0."
-)
-@multiplicity_option(
-    "Spin multiplicity (2S+1); overrides calc.spin from YAML. Defaults to the .gjf template value when present, otherwise 1."
-)
+@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
 @click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")

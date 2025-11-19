@@ -132,8 +132,6 @@ from .utils import (
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
     GjfTemplate,
-    charge_option,
-    multiplicity_option,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -455,8 +453,8 @@ def _maybe_write_final_gjf(
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@charge_option()
-@multiplicity_option()
+@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--dist-freeze",
     "dist_freeze_raw",

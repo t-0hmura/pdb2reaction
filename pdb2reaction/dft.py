@@ -90,8 +90,6 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
-    charge_option,
-    multiplicity_option,
 )
 
 
@@ -412,8 +410,8 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
-@charge_option()
-@multiplicity_option()
+@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--func-basis",
     "func_basis",

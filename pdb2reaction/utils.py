@@ -47,11 +47,6 @@ Description
     `yaml_cfg.get(...)`-style merging.
   - `load_yaml_dict(path)`: Load a YAML file whose root must be a mapping. Returns `{}` when `path` is `None`.
     Raises `ValueError` if the YAML root is not a mapping.
-  - CLI option decorators:
-    - `charge_option(help_text=None)`: Reusable Click option decorator for total charge (inherits `.gjf`
-      defaults when available).
-    - `multiplicity_option(help_text=None)`: Reusable Click option decorator for spin multiplicity (inherits `.gjf`
-      defaults when available).
 
 - **Gaussian input (.gjf) helpers**
   - `parse_gjf_template(path)`: Parse a Gaussian input template to extract charge/multiplicity and coordinate
@@ -129,52 +124,6 @@ from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
 import click
 import yaml
 from ase.data import chemical_symbols
-
-_ClickCallable = TypeVar("_ClickCallable", bound=Callable[..., Any])
-
-
-def charge_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
-    """Reusable Click option decorator for total charge (inherits `.gjf` defaults when available)."""
-
-    default_help = (
-        "Total charge. Defaults to the value parsed from a Gaussian .gjf template when available, "
-        "otherwise 0."
-    )
-
-    def decorator(func: _ClickCallable) -> _ClickCallable:
-        return click.option(
-            "-q",
-            "--charge",
-            type=int,
-            default=None,
-            show_default=False,
-            help=help_text or default_help,
-        )(func)
-
-    return decorator
-
-
-def multiplicity_option(help_text: Optional[str] = None) -> Callable[[_ClickCallable], _ClickCallable]:
-    """Reusable Click option decorator for spin multiplicity (inherits `.gjf` defaults when available)."""
-
-    default_help = (
-        "Spin multiplicity (2S+1). Defaults to the value parsed from a Gaussian .gjf template when available, "
-        "otherwise 1."
-    )
-
-    def decorator(func: _ClickCallable) -> _ClickCallable:
-        return click.option(
-            "-m",
-            "--mult",
-            type=int,
-            default=None,
-            show_default=False,
-            help=help_text or default_help,
-        )(func)
-
-    return decorator
-
-
 from ase.io import read, write
 import plotly.graph_objs as go
 

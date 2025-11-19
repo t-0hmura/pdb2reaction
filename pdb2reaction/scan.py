@@ -130,8 +130,6 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
-    charge_option,
-    multiplicity_option,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -338,8 +336,8 @@ def _snapshot_geometry(g) -> Any:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@charge_option()
-@multiplicity_option()
+@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-m", "--multiplicity", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,
