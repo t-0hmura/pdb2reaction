@@ -18,7 +18,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
                  [--max-cycles N] [--thresh PRESET] [--args-yaml FILE]
 ```
 
-### Key behaviours
+## Workflow
 - **Optimizers**: `--opt-mode light|lbfgs` → L-BFGS; `--opt-mode heavy|rfo` → rational-function optimizer with trust-region control.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If no template exists, the fallback is `0/1`. Always pass the physically correct values explicitly.

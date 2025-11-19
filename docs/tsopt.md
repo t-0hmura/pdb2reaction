@@ -1,19 +1,71 @@
 # `tsopt` subcommand
 
-## Purpose
-Optimizes transition states using either the Hessian Dimer method ("light") or RS-I-RFO ("heavy"), leveraging UMA for energies, gradients, and Hessians, and exporting the final imaginary mode.
+## Overview
+`pdb2reaction tsopt` optimizes transition states using two complementary workflows:
+
+- **light** mode (aliases: `light`, `lbfgs`, `dimer`, `simple`, `simpledimer`,
+  `hessian_dimer`): Hessian Dimer search with periodic exact-Hessian refreshes, a
+  memory-conscious flatten loop to remove surplus imaginary modes, and PHVA-aware
+  Hessian updates for the active degrees of freedom.
+- **heavy** mode (aliases: `heavy`, `rfo`, `rsirfo`, `rs-i-rfo`): RS-I-RFO optimizer with
+  configurable trust-region safeguards.
+
+Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
+settings from YAML, and always write the final imaginary mode in `.trj` and `.pdb` formats.
 
 ## Usage
 ```bash
-pdb2reaction tsopt -i INPUT -q CHARGE [--mult 2S+1]
-                    [--freeze-links BOOL] [--thresh PRESET]
-                    [--max-cycles N]
-                    [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer|
-                               heavy|rfo|rsirfo|rs-i-rfo]
-                    [--dump BOOL] [--outdir DIR]
+pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
+                    [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
+                               heavy|rfo|rsirfo|rs-i-rfo] \
+                    [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
+                    [--dump {True|False}] [--outdir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference]
-                    [--args-yaml FILE]
 ```
+
+### Examples
+```bash
+# Recommended baseline: specify charge/multiplicity and pick the light workflow
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --outdir ./result_tsopt/
+
+# Light mode with YAML overrides, finite-difference Hessian, and freeze-links handling
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --freeze-links True \
+    --opt-mode light --max-cycles 10000 --dump False \
+    --outdir ./result_tsopt/ --args-yaml ./args.yaml \
+    --hessian-calc-mode FiniteDifference
+
+# Heavy mode (RS-I-RFO) driven entirely by YAML
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
+    --args-yaml ./args.yaml --outdir ./result_tsopt/
+```
+
+## Workflow
+- **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
+  template values; otherwise they default to `0`/`1`. Override them explicitly to ensure UMA
+  runs on the intended state.
+- **Geometry loading & freeze-links**: structures are read via
+  `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links True` finds link hydrogens
+  and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
+  forwarded to UMA's `calc.freeze_atoms`.
+- **UMA Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
+  evaluations; both honor active (PHVA) subspaces. UMA may return only the active block when
+  frozen atoms are present.
+- **Light mode details**:
+  - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
+    Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
+    eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
+  - A flatten loop updates the stored active Hessian via Bofill (SR1/MS ↔ PSB blend) using
+    displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
+    once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and performs a final
+    Bofill update. Once only one imaginary mode remains, a final exact Hessian is computed for
+    frequency analysis.
+  - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
+    follow the most negative mode (`root = 0`).
+- **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
+  R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
+- **Mode export**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
+  and `.pdb`. When the input was PDB, the optimization trajectory and final geometry are also
+  converted to PDB via the input template.
 
 ## CLI options
 | Option | Description | Default |
@@ -21,63 +73,43 @@ pdb2reaction tsopt -i INPUT -q CHARGE [--mult 2S+1]
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
 | `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. For PDB inputs, freeze link-hydrogen parents (propagated to UMA). | `True` |
-| `--max-cycles INT` | Maximum macro cycles (forwarded to `opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Hessian Dimer aliases: `light`/`lbfgs`/`dimer`/`simple`/`simpledimer`/`hessian_dimer`. RS-I-RFO aliases: `heavy`/`rfo`/`rsirfo`/`rs-i-rfo`. | `light` |
-| `--dump BOOL` | Explicit `True`/`False`. Dump optimization trajectories. | `False` |
+| `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
+| `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
+| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--outdir TEXT` | Output directory. | `./result_tsopt/` |
-| `--thresh TEXT` | Override the convergence preset for both workflows (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
+| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
+| `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
 
-### Shared sections
-- `geom`, `calc`, `opt`: same keys as [`opt`](opt.md#yaml-configuration-args-yaml). `--freeze-links` augments `geom.freeze_atoms` and pushes the list into `calc.freeze_atoms`.
-
-### Section `hessian_dimer`
-Controls the light-mode TS workflow. Top-level keys:
-
-- `thresh_loose` (`"gau_loose"`): First-pass convergence preset.
-- `thresh` (`"gau"`): Main convergence preset.
-- `update_interval_hessian` (`1000`): LBFGS cycles between exact Hessian refreshes.
-- `neg_freq_thresh_cm` (`5.0`): Threshold (cm⁻¹) below which a frequency counts as imaginary.
-- `flatten_amp_ang` (`0.10` Å), `flatten_max_iter` (`20`): Flattening displacement and iteration cap.
-- `mem` (`100000`): Scratch memory forwarded to UMA during Hessian evaluations.
-- `use_lobpcg` (`True`): Attempt LOBPCG for the most negative eigenpair.
-- `device` (`"auto"`): Torch device for Hessian/mode algebra.
-- `root` (`0`): Imaginary mode index to follow.
-- `dimer`: Nested dictionary forwarded to the pysisyphus `Dimer` calculator. Key highlights (defaults in parentheses):
-  - `length` (`0.0189` Bohr), rotation controls (`rotation_max_cycles: 15`, `rotation_method: "fourier"`, `rotation_thresh: 1e-4`, etc.).
-  - Bias flags: `bias_rotation` (`False`), `bias_translation` (`False`), `bias_gaussian_dot` (`0.1`).
-  - Optional initial guesses: `bonds`, `N_hessian`.
-- `lbfgs`: Nested dictionary for the inner LBFGS pass; defaults align with [`opt`](opt.md#section-lbfgs) but tuned for TS search (e.g., `keep_last`, `max_step`, `double_damp`).
-
-### Section `rsirfo`
-Controls the heavy-mode RS-I-RFO optimizer. Defaults derive from [`opt`](opt.md#section-rfo) with TS-specific additions:
-
-- `roots` (`[0]`): Mode indices to follow uphill.
-- `hessian_ref` (`null`): Optional reference Hessian path.
-- `rx_modes`, `prim_coord`, `rx_coords`: Optional monitoring definitions.
-- `hessian_update` (`"bofill"`), `hessian_recalc_reset` (`True`), `max_micro_cycles` (`50`).
-- Step safeguards: `augment_bonds` (`False`), `min_line_search` (`True`), `max_line_search` (`True`).
-- `assert_neg_eigval` (`False`): Require a negative eigenvalue at convergence.
-- Other trust-region parameters inherit from [`opt`](opt.md#section-rfo).
-
-## Outputs
-- `<outdir>/final_geometry.xyz` (+ `.pdb` when the input was PDB).
-- `<outdir>/optimization.trj` or `optimization_all.trj` (mode-dependent) and PDB conversions when applicable.
-- `<outdir>/vib/final_imag_mode_±XXXX.Xcm-1.(trj|pdb)` for the converged imaginary mode.
-- Optional `.dimer_mode.dat` (light mode) and dump files when `--dump` is enabled.
+## Outputs (& directory layout)
+```
+outdir/ (default: ./result_tsopt/)
+  ├─ final_geometry.xyz                # Always written
+  ├─ final_geometry.pdb                # When the input was PDB
+  ├─ optimization_all.trj/.pdb         # Light-mode dump (requires --dump True)
+  ├─ optimization.trj/.pdb             # Heavy-mode trajectory
+  ├─ vib/
+  │   ├─ final_imag_mode_±XXXX.Xcm-1.trj
+  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb
+  └─ .dimer_mode.dat                   # Light-mode orientation seed
+```
 
 ## Notes
-- Charge/spin inherit `.gjf` template metadata when present; otherwise the CLI defaults to `0`/`1`. Override them explicitly to
-  ensure the UMA calculations use the intended state.
-- `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
-- In light mode, the flattened active-subspace Hessian is maintained and updated between LBFGS passes.
-- Imaginary-mode analysis uses PHVA and translation/rotation projection consistent with the frequency module.
-- The `--opt-mode` aliases shown above mirror the CLI behavior: light-side names select the Hessian Dimer workflow, while heavy-side names run RS-I-RFO.
+- `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
+  algorithm rather than adjusting YAML keys manually.
+- Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
+  `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
+  exported when multiple remain.
+- `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging, mirroring the
+  behavior of other subcommands.
+- PHVA translation/rotation projection mirrors the implementation in `freq`, reducing GPU
+  memory consumption while preserving correct eigenvectors in the active space.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
+Provide a mapping; CLI values override YAML. Shared sections reuse
+[`opt`](opt.md#yaml-configuration-args-yaml). Keep the full block below intact if it already
+matches your workflow—adjust only the values you need to change.
 
 ```yaml
 geom:

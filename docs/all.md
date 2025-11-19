@@ -1,33 +1,79 @@
 # `all` subcommand
 
-## Purpose
-Run an end-to-end enzymatic reaction workflow on pocket models: extract pockets, optionally perform a staged scan for a single structure, run the recursive GSM minimum-energy-path search, merge the pocket path back into the original full systems, and (optionally) execute TS optimisation, thermochemistry, and DFT post-processing per reactive segment. When exactly one structure is supplied without `--scan-lists`, enabling `--tsopt True` triggers a TSOPT-only pocket workflow (no path search).
+## Overview
+`pdb2reaction all` is the umbrella command that orchestrates **every pipeline stage**: pocket extraction → optional staged UMA scan → recursive GSM (`path_search`) → full-system merging → optional TS optimization + IRC (`tsopt`) → optional vibrational analysis (`freq`) → optional single-point DFT (`dft`). The command accepts multi-structure ensembles, converts single-structure scans into ordered intermediates, and can fall back to a TSOPT-only pocket workflow. All downstream tools share a single CLI surface so you can coordinate long reaction campaigns from one invocation.
+
+Key modes:
+- **End-to-end ensemble** – Supply ≥2 PDBs/GJFs/XYZ files in reaction order plus a substrate definition; the command extracts pockets, runs GSM, merges to the parent PDB(s), and optionally runs TSOPT/freq/DFT per reactive segment.
+- **Single-structure + staged scan** – Provide one PDB plus one or more `--scan-lists`; UMA scans on the extracted pocket generate intermediates that become GSM endpoints.
+- **TSOPT-only pocket refinement** – Provide one input structure, omit `--scan-lists`, and enable `--tsopt True`; the command extracts the pocket (if `-c/--center` is given) and only runs TS optimization + pseudo-IRC (with optional freq/DFT) on that single system.
 
 ## Usage
 ```bash
-# Multi-structure ensemble (reaction order)
-pdb2reaction all -i R.pdb [I.pdb ...] P.pdb -c SUBSTRATE_SPEC \
-                 [--ligand-charge MAP_OR_NUMBER] [--mult 2S+1] \
-                 [--freeze-links True|False] [--max-nodes N] [--max-cycles N] \
-                 [--climb True|False] [--sopt-mode lbfgs|rfo|light|heavy] \
-                 [--dump True|False] [--preopt True|False] \
-                 [--args-yaml FILE] [--out-dir DIR] \
-                 [--tsopt True|False] [--thermo True|False] [--dft True|False]
-
-# Single-structure + staged scan (pocket scan results become intermediates)
-pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC \
-                 --scan-lists "[(i,j,target_Å), ...]" [--scan-lists "..."] \
-                 [other options as above]
-
-# Single-structure TSOPT-only mode (no path_search)
-pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
+pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 ```
+
+### Examples
+```bash
+# Multi-structure ensemble with explicit ligand charges and post-processing
+date=$(date +%Y%m%d)
+pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
+    --ligand-charge "GPP:-3,MMT:-1" --mult 1 --freeze-links True \
+    --max-nodes 10 --max-cycles 100 --climb True --sopt-mode lbfgs \
+    --out-dir result_all_${date} --tsopt True --thermo True --dft True
+
+# Single-structure staged scan followed by GSM + TSOPT/freq/DFT
+pdb2reaction all -i single.pdb -c "308,309" \
+    --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+    --opt-mode heavy --tsopt True --thermo True --dft True
+
+# TSOPT-only workflow (no path search)
+pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
+    --ligand-charge "GPP:-3,MMT:-1" --tsopt True --thermo True --dft True
+```
+
+## Workflow
+1. **Active-site pocket extraction** (if `-c/--center` is provided)
+   - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,MMT`).
+   - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected_resn`, and `--verbose`.
+   - Per-input pocket PDBs are saved under `<out-dir>/pockets/`. When multiple structures are supplied, their pockets are unioned per residue selection.
+   - The **first pocket’s total charge** is rounded to the nearest integer and propagated to scan/GSM/TSOPT (a console note appears when rounding occurs).
+
+2. **Optional staged scan (single-input only)**
+   - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering.
+   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode` or the default derived from `--sopt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
+   - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent GSM step.
+
+3. **MEP search on pockets (recursive GSM)**
+   - Executes `path_search` using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - For multi-input PDB runs, the full-system templates are automatically passed to `path_search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
+
+4. **Merge pockets back to the full systems**
+   - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
+
+5. **Optional per-segment post-processing**
+   - `--tsopt True`: run TS optimization on each HEI pocket, follow with EulerPC pseudo-IRC, and emit segment energy diagrams.
+   - `--thermo True`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
+   - `--dft True`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo True`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
+   - Shared overrides include `--opt-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
+
+6. **TSOPT-only mode** (single input, `--tsopt True`, no `--scan-lists`)
+   - Skips the GSM/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
+
+### Charge and spin precedence
+- With extraction: pocket charge = rounded extractor charge; spin comes from `--mult` (default 1).
+- Without extraction: total system charge follows (1) numeric `--ligand-charge`, else (2) parsed from the first `.gjf`, else defaults to 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
+
+### Input expectations
+- Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
+- Extraction skipped: inputs may be **PDB/XYZ/GJF**; no staged scan is available unless the input is PDB.
+- Multi-structure runs require ≥2 structures unless TSOPT-only mode is triggered as described above.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | Two or more full PDBs in reaction order, or a single PDB when used with `--scan-lists` or `--tsopt True`. A single `-i` may be followed by multiple files. | Required |
-| `-c, --center TEXT` | Substrate specification (PDB path, residue IDs like `123,124` / `A:123,B:456`, or residue names like `GPP,MMT`). | Required |
+| `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt True`). | Required |
+| `-c, --center TEXT` | Substrate specification (PDB path, residue IDs like `123,124` / `A:123,B:456`, or residue names like `GPP,MMT`). | Required for extraction |
 | `--out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
@@ -35,29 +81,30 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--exclude-backbone BOOLEAN` | Remove backbone atoms on non-substrate amino acids. | `True` |
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
-| `--ligand-charge TEXT` | Total charge or mapping for unknown residues (recommended). | `None` |
-| `--verbose BOOLEAN` | Enable INFO-level logging in the extractor. | `True` |
-| `-m, --mult INT` | Spin multiplicity forwarded to GSM, scan, and post-processing. | `1` |
-| `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs during GSM/scan (also reused by scan/tsopt/freq). | `True` |
+| `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). | `None` |
+| `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
+| `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
+| `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
-| `--max-cycles INT` | GSM maximum optimisation cycles. | `100` |
-| `--climb BOOLEAN` | Enable transition-state climbing for the first segment in each pair. | `True` |
-| `--sopt-mode [lbfgs|rfo|light|heavy]` | Single-structure optimiser for HEI±1/kink nodes. | `lbfgs` |
-| `--opt-mode [light|lbfgs|heavy|rfo]` | UMA optimiser preset for scan/tsopt. Use `light`/`lbfgs` (LBFGS) or `heavy`/`rfo` (RFO). When omitted, scan inherits LBFGS or RFO from `--sopt-mode`, and tsopt falls back to `light`. | `None` |
-| `--dump BOOLEAN` | Dump GSM and single-structure trajectories, propagating the same setting to scan/tsopt/freq. | `False` |
+| `--max-cycles INT` | GSM maximum optimization cycles. | `100` |
+| `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
+| `--sopt-mode [lbfgs\|rfo\|light\|heavy]` | Optimizer for HEI±1/kink nodes in GSM. | `lbfgs` |
+| `--opt-mode [light\|lbfgs\|heavy\|rfo]` | UMA optimizer preset for scan/tsopt. When omitted, scan inherits the LBFGS/RFO logic from `--sopt-mode`, and tsopt falls back to `light`. | `None` |
+| `--dump BOOLEAN` | Dump GSM and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
-| `--preopt BOOLEAN` | preoptimise pocket endpoints before GSM (also used as the default for scan preoptimisation). | `True` |
-| `--hessian-calc-mode [Analytical|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ |
-| `--tsopt BOOLEAN` | Run TS optimisation + pseudo-IRC per reactive segment, or enable TSOPT-only mode (single input, no scan). | `False` |
-| `--thermo BOOLEAN` | Run vibrational analysis (freq) on R/TS/P and build UMA Gibbs diagram. | `False` |
-| `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy diagram (adds DFT//UMA when `--thermo True`). | `False` |
-| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles` for every TS refinement. | _None_ |
-| `--tsopt-out-dir PATH` | Custom tsopt subdirectory (relative paths are resolved against the default). | _None_ |
+| `--preopt BOOLEAN` | Pre-optimise pocket endpoints before GSM (also the default for scan preopt). | `True` |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ |
+| `--tsopt BOOLEAN` | Run TS optimisation + pseudo-IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
+| `--thermo BOOLEAN` | Run vibrational analysis (`freq`) on R/TS/P and build UMA Gibbs diagram. | `False` |
+| `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy + optional DFT//UMA diagrams. | `False` |
+| `--dft-engine [gpu\|cpu\|auto]` | Preferred backend for the DFT stage (`auto` tries GPU then CPU). | `gpu` |
+| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles` for each refinement. | _None_ |
+| `--tsopt-out-dir PATH` | Custom tsopt subdirectory (resolved against `<out-dir>` when relative). | _None_ |
 | `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
 | `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
 | `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
 | `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
-| `--freq-sort [value|abs]` | Override freq mode sorting behaviour. | _None_ |
+| `--freq-sort [value\|abs]` | Override freq mode sorting behaviour. | _None_ |
 | `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | _None_ |
 | `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | _None_ |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
@@ -65,29 +112,29 @@ pdb2reaction all -i SINGLE.pdb -c SUBSTRATE_SPEC --tsopt True [other toggles]
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
-| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each list element is `(i,j,target\_Å)` (values are parsed from a Python-like literal). Atom indices come from the original `all` input PDB (1-based) and are remapped internally to the pocket ordering. | _None_ |
-| `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan` by default). | _None_ |
-| `--scan-one-based BOOLEAN` | Force 1-based (`True`) or 0-based (`False`) scan indexing; `None` keeps the scan default (1-based). | _None_ |
+| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; indices come from the original input PDB (1-based) and are remapped internally. | _None_ |
+| `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan`). | _None_ |
+| `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
 | `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |
 | `--scan-relax-max-cycles INT` | Override scan relaxation max cycles per step. | _None_ |
-| `--scan-preopt BOOLEAN` | Override the scan preoptimisation toggle (otherwise `--preopt` is reused). | _None_ |
+| `--scan-preopt BOOLEAN` | Override the scan preoptimisation toggle (otherwise `--preopt` propagates). | _None_ |
 | `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimisation toggle. | _None_ |
 
 ## Outputs
-- `<out-dir>/pockets/`: Pocket PDBs for each input.
+- `<out-dir>/pockets/`: Per-input pocket PDBs when extraction runs.
 - `<out-dir>/scan/`: Present when `--scan-lists` is used; contains staged pocket scan results (`stage_XX/result.pdb`).
 - `<out-dir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, per-segment folders).
-- `<out-dir>/path_search/tsopt_seg_XX/`: Present when post-processing is enabled; includes TS optimisation, pseudo-IRC, frequency, and DFT outputs plus diagrams.
-- `<out-dir>/tsopt_single/`: Present only in TSOPT-only mode (single structure, `--tsopt True`, no scan); contains TS optimisation outputs and diagrams.
-- Console logs covering pocket charge summary, resolved configuration blocks, scan stages, and per-stage timing.
+- `<out-dir>/path_search/tsopt_seg_XX/`: Present when post-processing is enabled; includes TS optimisation, pseudo-IRC, freq, and DFT outputs plus diagrams.
+- `<out-dir>/tsopt_single/`: Present only in TSOPT-only mode; contains TS optimisation outputs, IRC endpoints, and optional freq/DFT directories.
+- Console logs summarising pocket charge resolution, YAML contents, scan stages, GSM progress, and per-stage timing.
 
 ## Notes
-- The total pocket charge from the extractor (first model) is rounded to the nearest integer and propagated to scan/GSM/TSOPT (a console note is emitted if rounding occurs).
-- Reference PDB templates for merging are taken automatically from the original inputs; the explicit `--ref-pdb` option of `path_search` is intentionally hidden in this wrapper.
-- When both `--thermo` and `--dft` are enabled, the post-processing stage also produces a DFT//UMA Gibbs diagram (DFT energy + UMA thermal correction).
-- Always provide `--ligand-charge` when formal charges are not inferable to ensure the correct total charge propagates through the pipeline.
-- Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). All boolean toggles expect an explicit `True`/`False` value.
+- Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/GSM/TSOPT/DFT.
+- Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-pdb` option of `path_search` is intentionally hidden in this wrapper.
+- Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
+- Omitting `-c/--center` skips extraction and feeds the entire input structures directly to GSM/tsopt/freq/DFT; single-structure runs still require either `--scan-lists` or `--tsopt True`.
+- `--args-yaml` lets you coordinate all calculators from a single configuration file. CLI flags always override YAML values.
 
 ## YAML configuration (`--args-yaml`)
 The same YAML file is forwarded unchanged to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
@@ -98,7 +145,7 @@ The same YAML file is forwarded unchanged to **every** invoked subcommand. Each 
 - [`freq`](freq.md#yaml-configuration-args-yaml): `geom`, `calc`, `freq`, `thermo`.
 - [`dft`](dft.md#yaml-configuration-args-yaml): `dft`.
 
-Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` will be shared across modules, while module-specific blocks (for example `freq` or `dft`) apply only where supported. CLI values always take precedence over the YAML contents.
+Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` are shared across modules, while module-specific blocks (for example `freq` or `dft`) apply only where supported. CLI values always take precedence over the YAML contents.
 
 Example snippet combining shared and module-specific sections:
 

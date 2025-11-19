@@ -3,13 +3,6 @@
 ## Overview
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM). UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections.
 
-Before optimization:
-- All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms are used in the RMSD fit and the resulting transform is applied to all atoms.
-- For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
-- `StringOptimizer.align` remains disabled because the explicit alignment/refinement already handles the superposition.
-
-After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported. The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available.
-
 ## Usage
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
@@ -17,6 +10,15 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
                       [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
                       [--out-dir DIR] [--args-yaml FILE]
 ```
+
+## Workflow
+1. **Pre-alignment & freeze resolution**
+   - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
+   - For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
+   - `StringOptimizer.align` remains disabled because the explicit alignment/refinement already handles the superposition.
+2. **String growth and HEI export**
+   - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
+   - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available.
 
 ### Key behaviours
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
@@ -54,7 +56,7 @@ out_dir/
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle GSM progress with timing information.
 
-## YAML sections (`--args-yaml`)
+## YAML configuration (`--args-yaml`)
 CLI inputs override YAML, which override the defaults listed below.
 
 ### `geom`

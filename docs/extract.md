@@ -1,7 +1,7 @@
 # `extract` subcommand
 
-## Purpose
-Extracts binding pockets from protein–substrate complexes by selecting residues within distance cutoffs, optionally pruning backbone atoms, and adding link hydrogens.
+## Overview
+Automatically carve binding pockets (active sites) from protein–substrate complexes. The tool applies chemically aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
 
 ## Usage
 ```bash
@@ -17,34 +17,94 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
                      [--verbose true|false]
 ```
 
-`--verbose true|false` mirrors the Click wrapper (`pdb2reaction cli extract`) and now behaves identically when the script is invoked directly via argparse.
+`--verbose true|false` mirrors the Click wrapper (`pdb2reaction cli extract`) so the argparse entry behaves identically when called directly.
+
+### Examples
+```bash
+# Minimal (ID-based substrate) with explicit total ligand charge
+pdb2reaction extract -i complex.pdb -c A:123 -o pocket.pdb --ligand-charge -3
+
+# Substrate provided as a PDB plus per-resname charge mapping
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb \
+                     --ligand-charge "GPP:-3,MMT:-1"
+
+# Name-based substrate selection (all matches kept; warning logged)
+pdb2reaction extract -i complex.pdb -c "GPP,MMT" -o pocket.pdb --ligand-charge -4
+
+# Multi-structure → single multi-MODEL output with hetero–hetero cutoff enabled
+pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
+                     -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
+```
+
+## Workflow
+### Residue inclusion
+- Always include the substrate residues from `-c/--center`.
+- **Standard cutoff (`--radius`, default 2.6 Å):**
+  - When `--exclude-backbone false`, any atom within the cutoff qualifies a residue.
+  - When `--exclude-backbone true`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N/H*/CA/HA*/C/O). Non-amino acids use any atom.
+- **Independent hetero–hetero cutoff (`--radius-het2het`):** adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled the protein atom must be non-backbone.
+- **Water handling:** HOH/WAT/TIP3/SOL/DOD/TIP/TIP3 are included by default (`--include-H2O true`).
+- **Forced inclusion:** `--selected-resn` accepts IDs with chains/insertion codes (e.g., `A:123A`).
+- **Neighbor safeguards:**
+  - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, auto-include the peptide-adjacent N/C neighbors (C–N ≤ 1.9 Å). Termini keep caps (N/H* or C/O/OXT).
+  - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
+  - Non-terminal PRO residues always pull in the preceding amino acid; CA is preserved even if backbone atoms are removed, and when `--exclude-backbone true`, the neighbor’s C/O/OXT remain to maintain the peptide bond.
+
+### Truncation/capping
+- Isolated residues retain only side-chain atoms; amino-acid backbone atoms (N, CA, C, O, OXT plus N/CA hydrogens) are removed except for PRO/HYP safeguards.
+- Continuous peptide stretches keep internal backbone atoms; only terminal caps (N/H* or C/O/OXT) are removed. TER awareness prevents capping across chain breaks.
+- With `--exclude-backbone true`, main-chain atoms on all **non-substrate** amino acids are stripped (subject to PRO/HYP safeguards and PRO neighbor retention).
+- Non-amino-acid residues never lose atoms named like backbone (N/CA/HA/H/H1/H2/H3).
+
+### Link hydrogens (`--add-linkH true`)
+- Adds carbon-only link hydrogens at 1.09 Å along severed bond vectors (CB–CA, CA–N, CA–C; PRO/HYP use CA–C only).
+- Inserted after a `TER` as contiguous `HETATM` records named `HL` in residue `LKH` (chain `L`). Serial numbers continue from the main block.
+- In multi-structure mode the same bonds are capped across all models; coordinates remain model specific.
+
+### Charge summary (`--ligand-charge`)
+- Amino acids and common ions draw charges from internal dictionaries; waters are zero.
+- Unknown residues default to 0 unless `--ligand-charge` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,MMT:-1`.
+- Summaries (protein/ligand/ion/total) are logged for the first input when verbose mode is enabled.
+
+### Multi-structure ensembles
+- Accepts multiple input PDBs (identical atom ordering is validated at the head/tail of each file). Each structure is processed independently and the **union** of selected residues is applied to every model so that outputs remain consistent.
+- Output policy:
+  - No `-o`, multiple inputs → per-file `pocket_<original_basename>.pdb`.
+  - One `-o` path → single multi-MODEL PDB.
+  - N outputs where N == number of inputs → N individual PDBs.
+- Diagnostics echo raw vs kept atom counts per model along with residue IDs.
+
+### Substrate specification (`-c/--center`)
+- PDB path: the coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
+- Residue IDs: `"123,124"`, `"A:123,B:456"`, `"123A"`, `"A:123A"` (insertion codes supported).
+- Residue names: comma-separated list (case insensitive). If multiple residues share a name, **all** matches are included and a warning is logged.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | One or more full protein–ligand PDB files (identical atom ordering required). | Required |
-| `-c, --center SPEC` | Substrate specification: PDB path, residue-ID list (e.g. `123,124` or `A:123,B:456`), or residue-name list (e.g. `GPP,MMT`). | Required |
-| `-o, --output PATH...` | Pocket PDB output(s). Provide one path for a single multi-MODEL file or N paths matching the number of inputs for per-structure outputs. | Auto-generated (`pocket.pdb` for single input / `pocket_<input>.pdb` per input) |
+| `-i, --input PATH...` | One or more protein–ligand PDB files (identical atom ordering required). | Required |
+| `-c, --center SPEC` | Substrate specification (PDB path, residue IDs, or residue names). | Required |
+| `-o, --output PATH...` | Pocket PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion. | `2.6` |
-| `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å) for non-C/H pairs. | `0.0` (internally treated as 0.001 Å) |
-| `--include-H2O BOOL` | Include water residues (HOH/WAT/TIP3/SOL). | `true` |
-| `--exclude-backbone BOOL` | Remove backbone atoms (N/H*/CA/HA*/C/O) on non-substrate amino acids (PRO/HYP safeguards). | `true` |
+| `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally 0.001 Å when zero) |
+| `--include-H2O BOOL` | Include HOH/WAT/TIP/SOL/DOD waters. | `true` |
+| `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `true` |
 | `--add-linkH BOOL` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `true` |
-| `--selected-resn TEXT` | Residue IDs to force-include (comma/space separated; chain/insertion codes supported). | `""` |
-| `--ligand-charge TEXT` | Either a total charge (number) or mapping like `GPP:-3,MMT:-1` to distribute across unknown residues. | `None` |
-| `-v, --verbose` | Enable INFO-level logging (set `true` to emit INFO via `click.echo`, `false` keeps WARNING-only output). | `false` |
+| `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,MMT:-1`). | `None` |
+| `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `false` |
 
 ## Outputs
 - Pocket PDB(s) containing the extracted residues, with optional link hydrogens appended after a `TER` record.
   - Single input: defaults to `pocket.pdb`.
   - Multiple inputs + no `-o`: defaults to `pocket_<original_basename>.pdb` per structure.
   - Supplying one `-o` path with multiple inputs writes a single multi-MODEL PDB.
-- Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled (Click wrapper echoes INFO lines by default; the argparse script now follows the same behaviour via `--verbose true`).
+- Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
+- Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
 
 ## Notes
-- Multi-structure mode (`-i` with multiple files) unions the selected residues across all inputs (after verifying identical atom ordering). That union is applied consistently to every structure, and the outputs can be written either as a single multi-MODEL PDB or one file per input.
-- `--radius` defines the standard cutoff around substrate atoms; `--radius-het2het` independently includes residues whose hetero atoms approach substrate hetero atoms (non-C/H) within the specified Å.
-- Waters (HOH/WAT/H2O/DOD/TIP/TIP3/SOL) are included by default. `--include-H2O false` removes them from the pocket.
-- Backbone trimming removes N/H*/CA/HA*/C/O from non-substrate amino acids when `--exclude-backbone true` (default); PRO/HYP safeguards keep the atoms needed to retain the pyrrolidine ring and neighbouring peptide bond.
-- Substrate residue lists support insertion codes (e.g. `123A`, `A:123A`). When residue-name mode yields duplicates, all matches are included and a warning is logged.
-- Link-hydrogen placement (`--add-linkH true`) adds 1.09 Å C–H vectors for severed bonds and appends them as contiguous `HL` atoms in residue `LKH` after a `TER`.
+- `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).
+- Waters can be excluded with `--include-H2O false`.
+- Backbone trimming plus capping respect chain breaks and PRO/HYP safeguards as outlined above; non-amino residues never lose backbone-like atom names.
+- Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
+- Dependencies: Python ≥ 3.10, Biopython ≥ 1.80, NumPy. INFO logs summarise residue selection, truncation counts, and charge breakdowns.

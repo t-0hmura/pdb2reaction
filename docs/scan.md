@@ -1,75 +1,112 @@
 # `scan` subcommand
 
-## Purpose
-Performs staged bond-length scans with harmonic restraints and single-structure relaxations after each step, using UMA plus pysisyphus optimizers.
+## Overview
+`scan` performs a staged, bond-length–driven scan using the UMA calculator and
+harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
+every integration step the temporary targets are updated, the restraint wells
+are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light
+or lbfgs) or RFOptimizer (`--opt-mode` heavy or rfo). After the biased walk, you
+can optionally run unbiased pre-/post-optimizations to clean up the geometries
+that get written to disk.
 
 ## Usage
 ```bash
-pdb2reaction scan -i INPUT -q CHARGE --scan-lists "[(i,j,target), ...]" [...]
-                  [--one-based/--zero-based] [--max-step-size ΔÅ] [--bias-k k]
-                  [--relax-max-cycles N] [--opt-mode light|lbfgs|heavy|rfo]
-                  [--freeze-links BOOL] [--dump BOOL] [--thresh PRESET]
-                  [--out-dir DIR] [--preopt BOOL] [--endopt BOOL]
-                  [--args-yaml FILE]
+pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
+                  --scan-lists "[(i,j,targetÅ), ...]" [options]
 ```
+
+### Examples
+```bash
+# Single-stage, minimal inputs (PDB)
+pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
+
+# Two stages, LBFGS relaxations, and trajectory dumping
+pdb2reaction scan -i input.pdb -q 0 \
+    --scan-lists "[(12,45,1.35)]" \
+    --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+    --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
+    --preopt True --endopt True
+```
+
+## Workflow
+1. Load the structure through `geom_loader`, resolving charge/spin from the CLI
+   overrides, the embedded Gaussian template (if present), or defaults.
+2. Optionally run an unbiased preoptimization (`--preopt True`) before any
+   biasing so the starting point is relaxed.
+3. For each stage literal supplied via `--scan-lists`, parse and normalize the
+   `(i, j)` indices (1-based by default). Compute the per-bond displacement
+   `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
+   `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
+4. March through all steps, updating the temporary targets, applying the
+   harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with UMA.
+   Optimizer cycles are capped by `--relax-max-cycles` (overriding YAML).
+5. After the last step of each stage, optionally run an unbiased relaxation
+   (`--endopt True`) before reporting covalent bond changes and writing the
+   `result.*` files.
+6. Repeat for every stage; optional trajectories are dumped only when `--dump`
+   is `True`.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
-| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--scan-lists TEXT` | Repeatable Python-like list literal of `(i, j, targetÅ)` triples defining each scan stage. | Required |
-| `--one-based / --zero-based` | Interpret `(i, j)` indices as 1-based (default) or 0-based. | `--one-based` |
-| `--max-step-size FLOAT` | Maximum change in any scanned bond per integration step (Å). | `0.20` |
-| `--bias-k FLOAT` | Harmonic bias strength `k` (eV·Å⁻²). Overrides `bias.k`. | `100` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles per step (overrides `opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Relaxation optimizer (`light|lbfgs` or `heavy|rfo`). | `light` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. Freeze link-hydrogen parents for PDB inputs. | `True` |
-| `--dump BOOL` | Explicit `True`/`False`. Dump stage trajectories. | `False` |
-| `--out-dir TEXT` | Output directory. | `./result_scan/` |
-| `--thresh TEXT` | Override convergence preset for pre/end optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt BOOL` | Explicit `True`/`False`. preoptimize the initial structure before scanning. | `True` |
-| `--endopt BOOL` | Explicit `True`/`False`. Unbiased relaxation after each stage. | `True` |
+| `-q, --charge INT` | Total charge (CLI > template > 0). | Required when not in template |
+| `-m, --mult INT` | Spin multiplicity 2S+1 (CLI > template > 1). | Required when not in template |
+| `--scan-lists TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. | Required |
+| `--one-based / --zero-based` | Interpret atom indices as 1- or 0-based. | `--one-based` |
+| `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
+| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
+| `--relax-max-cycles INT` | Cap on optimizer cycles during each biased step. Overrides `opt.max_cycles`. | `10000` |
+| `--opt-mode TEXT` | `light|lbfgs` → LBFGS, `heavy|rfo` → RFOptimizer. | `light` |
+| `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
+| `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
+| `--out-dir TEXT` | Output directory root. | `./result_scan/` |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | Inherit YAML |
+| `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
+| `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
+| `--endopt BOOL` | Run an unbiased optimization after each stage. | `True` |
 
-### Shared sections
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: see [`opt`](opt.md#yaml-configuration-args-yaml) for all keys and defaults. `opt.dump` is internally forced to `False`; dumping is controlled by `--dump`.
+### Shared YAML sections
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
+  [`opt`](opt.md#yaml-configuration-args-yaml). `opt.dump` is internally forced
+  to `False`; use `--dump` to control stage trajectories.
 
 ### Section `bias`
-Controls the harmonic restraint applied during each scan stage.
-
 - `k` (`100`): Harmonic strength in eV·Å⁻².
 
 ### Section `bond`
-Parameters for UMA-based bond-change detection (mirrors `path_search`).
-
-- `device` (`"cuda"`): UMA device for bond analysis.
-- `bond_factor` (`1.20`): Covalent-radius scale factor for bond cutoff.
-- `margin_fraction` (`0.05`): Fractional tolerance when comparing bond lengths.
-- `delta_fraction` (`0.05`): Minimum fractional change to classify a bond as forming/breaking.
+UMA-based bond-change detection mirrored from `path_search`:
+- `device` (`"cuda"`): UMA device for graph analysis.
+- `bond_factor` (`1.20`): Covalent-radius scaling for cutoff.
+- `margin_fraction` (`0.05`): Fractional tolerance for comparisons.
+- `delta_fraction` (`0.05`): Minimum relative change to flag formation/breaking.
 
 ## Outputs
 - `<out-dir>/preopt/` when `--preopt True`:
-  - `result.xyz` and, when the original input supplied a Gaussian template, `result.gjf`.
-  - `result.pdb` when the input file was PDB.
+  - `result.xyz`, `result.gjf` (if the input provided a Gaussian template), and
+    `result.pdb` (for PDB inputs).
 - `<out-dir>/stage_XX/` for each stage:
-  - `result.xyz` (final structure after optional `--endopt`).
-  - `result.gjf` when a Gaussian template was available from the input.
-  - `result.pdb` when the input file was PDB.
-  - `scan.trj` when `--dump True` (biased step trajectory) and `scan.pdb` in addition when the input was PDB.
-- Console summaries of resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus the final stage summary printed to the terminal (no separate YAML file).
+  - `result.xyz` and optional `result.gjf`/`result.pdb` mirrors of the final
+    structure (after `--endopt`).
+  - `scan.trj` when `--dump True` plus `scan.pdb` for PDB inputs.
+- Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and
+  optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
-- `--scan-lists` accepts multiple literals; each defines one stage, and tuple indices are normalized to 0-based internally.
-- When `--one-based` is used (default), indices follow PDB conventions; invalid indices or non-positive target distances raise `click.BadParameter`.
-- Pre- and end-of-stage optimizations share UMA calculator instances for efficiency.
-- Stage dumping writes one trajectory per stage; `--dump` also triggers `.pdb` conversion for PDB inputs.
-- Charge/spin inherit `.gjf` template metadata when available; otherwise they default to `0`/`1`. Override them explicitly for the
-  chemically correct state.
+- `--scan-lists` may be repeated; each literal becomes one stage. Tuples must
+  have positive targets. Atom indices are normalized to 0-based internally.
+- `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
+  atoms in PDB files so pockets stay rigid.
+- UMA is the only supported calculator; energies are not re-queried for every
+  biased frame to avoid redundant evaluations.
+- Charge and spin default to the Gaussian template metadata (when available) or
+  to `0/1`; override them explicitly when needed.
+- Trajectories are written only when `--dump` is `True`; this also triggers PDB
+  conversion for PDB inputs.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. CLI parameters override YAML. Shared sections reuse the definitions documented for [`opt`](opt.md#yaml-configuration-args-yaml).
+The YAML root must be a mapping. CLI parameters override YAML. Shared sections
+reuse the definitions documented for [`opt`](opt.md#yaml-configuration-args-yaml).
 
 ```yaml
 geom:
