@@ -228,15 +228,12 @@ def _make_optimizer(geom, kind: str, lbfgs_cfg: Dict[str,Any], rfo_cfg: Dict[str
 
 
 def _unbiased_energy_hartree(geom, base_calc) -> float:
-    coords_bohr = np.asarray(geom.coords3d, dtype=float).reshape(-1, 3)
-    elems = None
-    for name in ("elem", "elements", "elems"):
-        e = getattr(geom, name, None)
-        if e is not None:
-            elems = e
-            break
+    coords_bohr = np.asarray(geom.coords)
+    elems = getattr(geom, "atoms", None)
+
     if elems is None:
         return float("nan")
+
     try:
         return float(base_calc.get_energy(elems, coords_bohr)["energy"])
     except Exception:
