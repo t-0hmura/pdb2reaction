@@ -1448,7 +1448,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("--max-nodes", type=int, default=10, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
-@click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum GSM optimization cycles.")
+@click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Enable transition-state search after path growth.")
 @click.option("--sopt-mode", type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),

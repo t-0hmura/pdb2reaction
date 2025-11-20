@@ -125,10 +125,10 @@ GS_KW: Dict[str, Any] = {
 # StringOptimizer (optimization control)
 STOPT_KW: Dict[str, Any] = {
     "type": "string",           # str, tag for bookkeeping / output labelling
-    "stop_in_when_full": 100,   # int, allow N extra cycles after the string is fully grown
+    "stop_in_when_full": 300,   # int, allow N extra cycles after the string is fully grown
     "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
     "scale_step": "global",     # str, "global" | "per_image" scaling policy
-    "max_cycles": 100,          # int, maximum macro cycles for the optimizer
+    "max_cycles": 300,          # int, maximum macro cycles for the optimizer
     "dump": False,              # bool, write optimizer trajectory to disk
     "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
     "reparam_thresh": 0.0,      # float, convergence threshold for reparametrization
@@ -187,7 +187,7 @@ def _load_two_endpoints(
               help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=10, show_default=True,
               help="Number of internal nodes (string has max_nodes+2 images including endpoints).")
-@click.option("--max-cycles", type=int, default=100, show_default=True, help="Maximum optimization cycles.")
+@click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Search for a transition state (climbing image) after path growth.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
