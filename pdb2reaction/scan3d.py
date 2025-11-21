@@ -842,6 +842,17 @@ def cli(
             "#f0f921",
         ][:n_levels]
 
+        level_opacity = [
+            0.0,
+            0.0125,
+            0.025,
+            0.05,
+            0.125,
+            0.25,
+            0.5,
+            1.0,
+        ][:n_levels]
+
         isosurfaces = []
         for lvl, color in zip(level_values, level_colors):
             trace = go.Isosurface(
@@ -852,7 +863,7 @@ def cli(
                 isomin=lvl,
                 isomax=lvl,
                 surface_count=1,
-                opacity=0.15,
+                opacity=level_opacity,
                 showscale=False,
                 colorscale=[[0.0, color], [1.0, color]],
                 caps=dict(x_show=False, y_show=False, z_show=False),
