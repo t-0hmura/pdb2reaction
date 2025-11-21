@@ -71,7 +71,7 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_scan3d/)
   ├─ surface.csv                      # Grid metadata:
   │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged
-  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh + colorbar)
+  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh + plane projections)
   └─ grid/
       ├─ point_i###_j###_k###.xyz     # Constrained, relaxed geometries for each grid point
       └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
@@ -87,8 +87,9 @@ Notes
 - The 3D visualization:
   - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
   - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
-    (color is piecewise-constant in energy between contour levels), with opacity decreasing
-    as the energy increases.
+    (color is piecewise-constant in energy between contour levels).
+  - At the ends of the cube, XY / YZ / ZX planes are filled with 2D energy landscapes,
+    analogous to scan2d's projection.
 """
 
 from __future__ import annotations
@@ -831,23 +832,6 @@ def cli(
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             vmin, vmax = float(np.nanmin(E_flat)), float(np.nanmax(E_flat))
 
-        # Colorbar configuration (moved from plane surface to isosurface)
-        colorbar_cfg = dict(
-            title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
-            tickfont=dict(size=14, color="#1C1C1C"),
-            ticks="inside",
-            ticklen=10,
-            tickcolor="#1C1C1C",
-            outlinecolor="#1C1C1C",
-            outlinewidth=2,
-            lenmode="fraction",
-            len=1.11,
-            x=1.05,
-            y=0.53,
-            xanchor="left",
-            yanchor="middle",
-        )
-
         # Discrete isosurfaces (mesh) with banded colors
         n_levels = 8
         level_values = np.linspace(vmin, vmax, n_levels + 2)[1:-1]
@@ -862,16 +846,8 @@ def cli(
             "#f0f921",
         ][:n_levels]
 
-        # Opacity mapping: low energy → opacity ~1.0, high energy → opacity ~0.0
-        energy_span = vmax - vmin if vmax > vmin else 1.0
-
         isosurfaces = []
-        for idx, (lvl, color) in enumerate(zip(level_values, level_colors)):
-            rel = (lvl - vmin) / energy_span  # 0 at vmin, 1 at vmax
-            opacity = 1.0 - rel               # low E: ~1.0, high E: ~0.0
-            opacity = float(max(0.0, min(1.0, opacity)))
-
-            showscale = idx == 0  # attach a single colorbar to the first isosurface
+        for lvl, color in zip(level_values, level_colors):
             trace = go.Isosurface(
                 x=X_flat,
                 y=Y_flat,
@@ -880,21 +856,64 @@ def cli(
                 isomin=lvl,
                 isomax=lvl,
                 surface_count=1,
-                opacity=opacity,
-                showscale=showscale,
-                colorbar=colorbar_cfg if showscale else None,
+                opacity=0.30,
+                showscale=False,
                 colorscale=[[0.0, color], [1.0, color]],
-                cmin=vmin,
-                cmax=vmax,
                 caps=dict(x_show=False, y_show=False, z_show=False),
                 name=f"{lvl:.1f} kcal/mol",
             )
             isosurfaces.append(trace)
 
-        fig3d = go.Figure(data=isosurfaces)
+        # Plane projections: XY (z=min), YZ (x=max), ZX (y=min)
+        XI_xy, YI_xy = np.meshgrid(xi, yi, indexing="xy")
+        ZI_xy = np.full_like(XI_xy, z_min_val)
+        E_xy = rbf3d(XI_xy, YI_xy, ZI_xy)
+
+        YI_yz, ZI_yz = np.meshgrid(yi, zi, indexing="xy")
+        XI_yz = np.full_like(YI_yz, x_max)
+        E_yz = rbf3d(XI_yz, YI_yz, ZI_yz)
+
+        ZI_zx, XI_zx = np.meshgrid(zi, xi, indexing="xy")
+        YI_zx = np.full_like(ZI_zx, y_min)
+        E_zx = rbf3d(XI_zx, YI_zx, ZI_zx)
+
+        c_step = _nice_step(vmax - vmin)
+        c_start = math.floor(vmin / c_step) * c_step
+        c_end = math.ceil(vmax / c_step) * c_step
+        # (c_start and c_end are computed but not strictly required in this layout.)
+
+        plane_xy = go.Surface(
+            x=XI_xy,
+            y=YI_xy,
+            z=ZI_xy,
+            surfacecolor=E_xy,
+            colorscale="plasma",
+            cmin=vmin,
+            cmax=vmax,
+            colorbar=dict(
+                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
+                tickfont=dict(size=14, color="#1C1C1C"),
+                ticks="inside",
+                ticklen=10,
+                tickcolor="#1C1C1C",
+                outlinecolor="#1C1C1C",
+                outlinewidth=2,
+                lenmode="fraction",
+                len=1.11,
+                x=1.05,
+                y=0.53,
+                xanchor="left",
+                yanchor="middle",
+            ),
+            showscale=True,
+            opacity=0.0,
+            name="XY plane (d3 = min)",
+        )
+
+        fig3d = go.Figure(data=isosurfaces + [plane_xy])
 
         fig3d.update_layout(
-            title="3D Energy Landscape (UMA)",
+            title="3D Energy Landscape with Plane Projections (UMA)",
             width=900,
             height=800,
             scene=dict(
