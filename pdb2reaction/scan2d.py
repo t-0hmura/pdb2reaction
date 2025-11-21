@@ -543,6 +543,10 @@ def cli(
         d1_ref: Optional[float] = None
         d2_ref: Optional[float] = None
 
+        # Cache of previously converged geometries for nearest-start logic:
+        # each entry is (d1_A, d2_A, geometry_snapshot)
+        visited_geoms: List[Tuple[float, float, Any]] = []
+
         if preopt:
             click.echo("[preopt] Unbiased relaxation of the initial structure ...")
             geom_outer.set_calculator(base_calc)
@@ -611,6 +615,11 @@ def cli(
                         "bias_converged": True,
                     }
                 )
+                # Store preoptimized geometry as a candidate for nearest-start
+                visited_geoms.append(
+                    (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
+                )
+
                 click.echo(
                     f"[preopt] Recorded preoptimized structure at d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
                 )
@@ -668,9 +677,50 @@ def cli(
             geom_inner = _snapshot_geometry(geom_outer)
             geom_inner.set_calculator(biased)
 
+            # Store the d1-relaxed structure as a candidate for nearest-start
+            try:
+                d1_cur = _distance_A(geom_inner, i1, j1)
+                d2_cur = _distance_A(geom_inner, i2, j2)
+                visited_geoms.append(
+                    (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
+                )
+            except Exception as e:
+                click.echo(
+                    f"[nearest-start] WARNING: failed to store d1-relaxed structure for d1={d1_target:.3f} Å: {e}",
+                    err=True,
+                )
+
             trj_blocks = [] if dump else None
 
             for j_idx, d2_target in enumerate(d2_values):
+                # Choose initial structure: nearest previously converged (d1,d2) point
+                if visited_geoms:
+                    try:
+                        target_vec = np.array(
+                            [float(d1_target), float(d2_target)], dtype=float
+                        )
+                        prev_coords = np.array(
+                            [(g[0], g[1]) for g in visited_geoms],
+                            dtype=float,
+                        )
+                        dists2 = np.sum((prev_coords - target_vec) ** 2, axis=1)
+                        best_idx = int(np.argmin(dists2))
+                        _, _, best_geom = visited_geoms[best_idx]
+                        # Reset geom_inner coordinates to the best previous geometry
+                        try:
+                            geom_inner.coords[:] = np.array(
+                                best_geom.coords, copy=True
+                            )
+                        except Exception:
+                            geom_inner.coords = np.array(
+                                best_geom.coords, copy=True
+                            )
+                    except Exception as e:
+                        click.echo(
+                            f"[nearest-start] WARNING: failed to select nearest previous structure for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
+                            err=True,
+                        )
+
                 biased.set_pairs(
                     [
                         (i1, j1, float(d1_target)),
@@ -739,6 +789,19 @@ def cli(
                 except Exception as e:
                     click.echo(
                         f"[write] WARNING: failed to write {xyz_path.name}: {e}",
+                        err=True,
+                    )
+
+                # Store this converged grid point for nearest-start initialization
+                try:
+                    d1_cur = _distance_A(geom_inner, i1, j1)
+                    d2_cur = _distance_A(geom_inner, i2, j2)
+                    visited_geoms.append(
+                        (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
+                    )
+                except Exception as e:
+                    click.echo(
+                        f"[nearest-start] WARNING: failed to store geometry for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
                         err=True,
                     )
 

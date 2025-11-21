@@ -60,10 +60,12 @@ Description
     along each axis.
 
 - Nested scan procedure (outer d1, middle d2, inner d3):
-  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only).
-  2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints**.
+  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only),
+     starting from the previously scanned structure whose d1 value is closest.
+  2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints**,
+     starting from the previously scanned structure at that d1 whose d2 value is closest.
   3) Snapshot that (d1,d2) minimum, then for each `d3[k]` relax with **d1, d2, d3 restraints**
-     reusing the previous `d3[k-1]` structure as the starting guess along the d3-line.
+     starting from the previously scanned structure at that (d1,d2) whose d3 value is closest.
      The **unbiased** energy is recorded (harmonic bias removed for evaluation).
 
 - Plot-only mode:
@@ -728,15 +730,34 @@ def cli(
 
             records: List[Dict[str, Any]] = []
 
+            # Store pre-/unbiased starting geometry for reuse
+            geom_outer_initial = _snapshot_geometry(geom_outer)
+
+            # Caches for nearest-neighbor starting geometries
+            d1_geoms: Dict[int, Any] = {}
+            d2_geoms: Dict[int, Dict[int, Any]] = {}
+            d3_geoms: Dict[Tuple[int, int], Dict[int, Any]] = {}
+
             # ===== 3D nested scan: d1 (outer) → d2 (middle) → d3 (inner) =====
             for i_idx, d1_target in enumerate(d1_values):
                 click.echo(f"\n=== d1 step {i_idx + 1}/{N1} : target = {d1_target:.3f} Å ===")
 
+                # Choose initial geometry for this d1 from the previously scanned
+                # structure with the closest d1 value (or the preopt structure).
+                if not d1_geoms:
+                    geom_outer_i = _snapshot_geometry(geom_outer_initial)
+                else:
+                    nearest_i = min(
+                        d1_geoms.keys(),
+                        key=lambda p: abs(d1_values[p] - d1_target),
+                    )
+                    geom_outer_i = _snapshot_geometry(d1_geoms[nearest_i])
+
                 biased.set_pairs([(i1, j1, float(d1_target))])
-                geom_outer.set_calculator(biased)
+                geom_outer_i.set_calculator(biased)
 
                 opt1 = _make_optimizer(
-                    geom_outer,
+                    geom_outer_i,
                     kind,
                     lbfgs_cfg,
                     rfo_cfg,
@@ -753,14 +774,31 @@ def cli(
                 except OptimizationError as e:
                     click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
 
-                # Snapshot after d1 relaxation for inner loops
-                geom_mid = _snapshot_geometry(geom_outer)
+                # Snapshot after d1 relaxation for inner loops and cache
+                geom_after_d1 = _snapshot_geometry(geom_outer_i)
+                d1_geoms[i_idx] = geom_after_d1
+
+                if i_idx not in d2_geoms:
+                    d2_geoms[i_idx] = {}
 
                 for j_idx, d2_target in enumerate(d2_values):
                     click.echo(
                         f"\n--- (d1,d2) = ({i_idx + 1}/{N1}, {j_idx + 1}/{N2}) : "
                         f"targets = ({d1_target:.3f}, {d2_target:.3f}) Å ---"
                     )
+
+                    # Choose initial geometry for this (d1,d2) from the previously
+                    # scanned structure with the closest d2 value at this d1
+                    # (or the d1-relaxed structure).
+                    d2_store = d2_geoms[i_idx]
+                    if not d2_store:
+                        geom_mid = _snapshot_geometry(geom_after_d1)
+                    else:
+                        nearest_j = min(
+                            d2_store.keys(),
+                            key=lambda p: abs(d2_values[p] - d2_target),
+                        )
+                        geom_mid = _snapshot_geometry(d2_store[nearest_j])
 
                     biased.set_pairs(
                         [
@@ -788,12 +826,29 @@ def cli(
                     except OptimizationError as e:
                         click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True)
 
-                    geom_inner = _snapshot_geometry(geom_mid)
-                    geom_inner.set_calculator(biased)
+                    geom_after_d2 = _snapshot_geometry(geom_mid)
+                    d2_store[j_idx] = geom_after_d2
+
+                    key_ij = (i_idx, j_idx)
+                    if key_ij not in d3_geoms:
+                        d3_geoms[key_ij] = {}
+                    d3_store = d3_geoms[key_ij]
 
                     trj_blocks = [] if dump else None
 
                     for k_idx, d3_target in enumerate(d3_values):
+                        # Choose initial geometry for this (d1,d2,d3) from the
+                        # previously scanned structure with the closest d3 value
+                        # at this (d1,d2), or from the d1/d2-relaxed structure.
+                        if not d3_store:
+                            geom_inner = _snapshot_geometry(geom_after_d2)
+                        else:
+                            nearest_k = min(
+                                d3_store.keys(),
+                                key=lambda p: abs(d3_values[p] - d3_target),
+                            )
+                            geom_inner = _snapshot_geometry(d3_store[nearest_k])
+
                         biased.set_pairs(
                             [
                                 (i1, j1, float(d1_target)),
@@ -829,6 +884,9 @@ def cli(
                                 err=True,
                             )
                             converged = False
+
+                        # Cache final geometry for nearest-neighbor reuse
+                        d3_store[k_idx] = _snapshot_geometry(geom_inner)
 
                         E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
