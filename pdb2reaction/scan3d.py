@@ -1,3 +1,5 @@
+# pdb2reaction/scan3d.py
+
 """
 scan3d — Three-distance 3D scan with harmonic restraints (UMA only)
 ===================================================================
@@ -14,6 +16,7 @@ Usage (CLI)
         --freeze-links {True|False} \
         --dump {True|False} \
         --out-dir PATH \
+        [--csv PATH] \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
         [--baseline {first|min}] \
@@ -31,6 +34,11 @@ Examples
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
         --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode lbfgs \
         --preopt True --baseline min
+
+    # Plot only from an existing surface.csv (skip energy evaluation)
+    pdb2reaction scan3d -i input.pdb -q 0 \
+        --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
+        --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
 
 Description
 -----------
@@ -51,12 +59,19 @@ Description
      reusing the previous `d3[k-1]` structure as the starting guess along the d3-line.
      The **unbiased** energy is recorded (harmonic bias removed for evaluation).
 
+- Plot-only mode:
+  - If **--csv PATH** is provided, the 3D scan and energy evaluation are skipped.
+  - The script reads the precomputed grid from the given CSV (surface.csv format)
+    and only performs the 3D RBF interpolation and HTML plot generation.
+  - If the CSV already has an `energy_kcal` column, it is used as-is.
+    Otherwise, `energy_kcal` is reconstructed from `energy_hartree` and `--baseline`.
+
 Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_scan3d/)
   ├─ surface.csv                      # Grid metadata:
   │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged
-  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh + plane projections)
+  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh + colorbar)
   └─ grid/
       ├─ point_i###_j###_k###.xyz     # Constrained, relaxed geometries for each grid point
       └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
@@ -70,11 +85,10 @@ Notes
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the first grid point (i=0, j=0, k=0) is 0 kcal/mol
 - The 3D visualization:
-  - 3D RBF interpolation on a **200×200×200 grid** in (d1,d2,d3)-space.
+  - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
   - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
-    (color is piecewise-constant in energy between contour levels).
-  - At the ends of the cube, XY / YZ / ZX planes are filled with 2D energy landscapes,
-    analogous to scan2d's projection.
+    (color is piecewise-constant in energy between contour levels), with opacity decreasing
+    as the energy increases.
 """
 
 from __future__ import annotations
@@ -146,7 +160,7 @@ _OPT_MODE_ALIASES = (
 )
 
 HARTREE_TO_KCAL_MOL = 627.50961
-_VOLUME_GRID_N = 200  # 200×200×200 RBF interpolation grid
+_VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid
 
 
 def _ensure_dir(path: Path) -> None:
@@ -372,6 +386,16 @@ def _nice_step(span: float) -> float:
     help="Base output directory.",
 )
 @click.option(
+    "--csv",
+    "csv_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help=(
+        "If provided, skip the 3D scan and read a precomputed surface.csv from this path. "
+        "Only plotting is performed."
+    ),
+)
+@click.option(
     "--thresh",
     type=str,
     default=None,
@@ -424,6 +448,7 @@ def cli(
     freeze_links: bool,
     dump: bool,
     out_dir: str,
+    csv_path: Optional[Path],
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
@@ -516,104 +541,81 @@ def cli(
         click.echo(f"[grid] d3 steps = {N3}  values(A)={list(map(lambda x:f'{x:.3f}', d3_values))}")
         click.echo(f"[grid] total grid points = {N1 * N2 * N3}")
 
-        tmp_root = Path(tempfile.mkdtemp(prefix="scan3d_tmp_"))
-        grid_dir = out_dir_path / "grid"
-        tmp_opt_dir = tmp_root / "opt"
-        _ensure_dir(grid_dir)
-        _ensure_dir(tmp_opt_dir)
-
         final_dir = out_dir_path
 
-        coord_type = geom_cfg.get("coord_type", "cart")
-        geom_outer = geom_loader(geom_input_path, coord_type=coord_type)
-
-        freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links and input_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(input_path)
-            if detected:
-                freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                if freeze:
-                    click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
-        if freeze:
+        # Either: (1) load precomputed grid from CSV, or (2) perform full 3D scan
+        if csv_path is not None:
+            # Plot-only mode
+            csv_path = Path(csv_path).resolve()
             try:
-                import numpy as _np
-                geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
-            except Exception:
-                pass
+                df = pd.read_csv(csv_path)
+            except Exception as e:
+                click.echo(f"[read] Failed to read CSV '{csv_path}': {e}", err=True)
+                sys.exit(1)
+            click.echo(f"[read] Loaded precomputed grid from '{csv_path}'.")
+        else:
+            # Full 3D scan mode
+            tmp_root = Path(tempfile.mkdtemp(prefix="scan3d_tmp_"))
+            grid_dir = out_dir_path / "grid"
+            tmp_opt_dir = tmp_root / "opt"
+            _ensure_dir(grid_dir)
+            _ensure_dir(tmp_opt_dir)
 
-        base_calc = uma_pysis(**calc_cfg)
-        biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
+            coord_type = geom_cfg.get("coord_type", "cart")
+            geom_outer = geom_loader(geom_input_path, coord_type=coord_type)
 
-        if preopt:
-            click.echo("[preopt] Unbiased relaxation of the initial structure ...")
-            geom_outer.set_calculator(base_calc)
-            max_step_bohr_local = float(max_step_size) * ANG2BOHR
-            optimizer0 = _make_optimizer(
-                geom_outer,
-                kind,
-                lbfgs_cfg,
-                rfo_cfg,
-                opt_cfg,
-                max_step_bohr=max_step_bohr_local,
-                relax_max_cycles=relax_max_cycles,
-                out_dir=tmp_opt_dir,
-                prefix="preopt_",
-            )
-            try:
-                optimizer0.run()
-            except ZeroStepLength:
-                click.echo("[preopt] ZeroStepLength — continuing.", err=True)
-            except OptimizationError as e:
-                click.echo(f"[preopt] OptimizationError — {e}", err=True)
+            freeze = merge_freeze_atom_indices(geom_cfg)
+            if freeze_links and input_path.suffix.lower() == ".pdb":
+                detected = detect_freeze_links_safe(input_path)
+                if detected:
+                    freeze = merge_freeze_atom_indices(geom_cfg, detected)
+                    if freeze:
+                        click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+            if freeze:
+                try:
+                    import numpy as _np
+                    geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
+                except Exception:
+                    pass
 
-        max_step_bohr = float(max_step_size) * ANG2BOHR
+            base_calc = uma_pysis(**calc_cfg)
+            biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
 
-        records: List[Dict[str, Any]] = []
-
-        # ===== 3D nested scan: d1 (outer) → d2 (middle) → d3 (inner) =====
-        for i_idx, d1_target in enumerate(d1_values):
-            click.echo(f"\n=== d1 step {i_idx + 1}/{N1} : target = {d1_target:.3f} Å ===")
-
-            biased.set_pairs([(i1, j1, float(d1_target))])
-            geom_outer.set_calculator(biased)
-
-            opt1 = _make_optimizer(
-                geom_outer,
-                kind,
-                lbfgs_cfg,
-                rfo_cfg,
-                opt_cfg,
-                max_step_bohr=max_step_bohr,
-                relax_max_cycles=relax_max_cycles,
-                out_dir=tmp_opt_dir,
-                prefix=f"d1_{i_idx:03d}_",
-            )
-            try:
-                opt1.run()
-            except ZeroStepLength:
-                click.echo(f"[d1 {i_idx}] ZeroStepLength — continuing to d2/d3 scan.", err=True)
-            except OptimizationError as e:
-                click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
-
-            # Snapshot after d1 relaxation for inner loops
-            geom_mid = _snapshot_geometry(geom_outer)
-
-            for j_idx, d2_target in enumerate(d2_values):
-                click.echo(
-                    f"\n--- (d1,d2) = ({i_idx + 1}/{N1}, {j_idx + 1}/{N2}) : "
-                    f"targets = ({d1_target:.3f}, {d2_target:.3f}) Å ---"
+            if preopt:
+                click.echo("[preopt] Unbiased relaxation of the initial structure ...")
+                geom_outer.set_calculator(base_calc)
+                max_step_bohr_local = float(max_step_size) * ANG2BOHR
+                optimizer0 = _make_optimizer(
+                    geom_outer,
+                    kind,
+                    lbfgs_cfg,
+                    rfo_cfg,
+                    opt_cfg,
+                    max_step_bohr=max_step_bohr_local,
+                    relax_max_cycles=relax_max_cycles,
+                    out_dir=tmp_opt_dir,
+                    prefix="preopt_",
                 )
+                try:
+                    optimizer0.run()
+                except ZeroStepLength:
+                    click.echo("[preopt] ZeroStepLength — continuing.", err=True)
+                except OptimizationError as e:
+                    click.echo(f"[preopt] OptimizationError — {e}", err=True)
 
-                biased.set_pairs(
-                    [
-                        (i1, j1, float(d1_target)),
-                        (i2, j2, float(d2_target)),
-                    ]
-                )
-                geom_mid.set_calculator(biased)
+            max_step_bohr = float(max_step_size) * ANG2BOHR
 
-                opt2 = _make_optimizer(
-                    geom_mid,
+            records: List[Dict[str, Any]] = []
+
+            # ===== 3D nested scan: d1 (outer) → d2 (middle) → d3 (inner) =====
+            for i_idx, d1_target in enumerate(d1_values):
+                click.echo(f"\n=== d1 step {i_idx + 1}/{N1} : target = {d1_target:.3f} Å ===")
+
+                biased.set_pairs([(i1, j1, float(d1_target))])
+                geom_outer.set_calculator(biased)
+
+                opt1 = _make_optimizer(
+                    geom_outer,
                     kind,
                     lbfgs_cfg,
                     rfo_cfg,
@@ -621,32 +623,34 @@ def cli(
                     max_step_bohr=max_step_bohr,
                     relax_max_cycles=relax_max_cycles,
                     out_dir=tmp_opt_dir,
-                    prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
+                    prefix=f"d1_{i_idx:03d}_",
                 )
                 try:
-                    opt2.run()
+                    opt1.run()
                 except ZeroStepLength:
-                    click.echo(f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — continuing to d3 scan.", err=True)
+                    click.echo(f"[d1 {i_idx}] ZeroStepLength — continuing to d2/d3 scan.", err=True)
                 except OptimizationError as e:
-                    click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True)
+                    click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
 
-                geom_inner = _snapshot_geometry(geom_mid)
-                geom_inner.set_calculator(biased)
+                # Snapshot after d1 relaxation for inner loops
+                geom_mid = _snapshot_geometry(geom_outer)
 
-                trj_blocks = [] if dump else None
+                for j_idx, d2_target in enumerate(d2_values):
+                    click.echo(
+                        f"\n--- (d1,d2) = ({i_idx + 1}/{N1}, {j_idx + 1}/{N2}) : "
+                        f"targets = ({d1_target:.3f}, {d2_target:.3f}) Å ---"
+                    )
 
-                for k_idx, d3_target in enumerate(d3_values):
                     biased.set_pairs(
                         [
                             (i1, j1, float(d1_target)),
                             (i2, j2, float(d2_target)),
-                            (i3, j3, float(d3_target)),
                         ]
                     )
-                    geom_inner.set_calculator(biased)
+                    geom_mid.set_calculator(biased)
 
-                    opt3 = _make_optimizer(
-                        geom_inner,
+                    opt2 = _make_optimizer(
+                        geom_mid,
                         kind,
                         lbfgs_cfg,
                         rfo_cfg,
@@ -654,88 +658,134 @@ def cli(
                         max_step_bohr=max_step_bohr,
                         relax_max_cycles=relax_max_cycles,
                         out_dir=tmp_opt_dir,
-                        prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_d3_{k_idx:03d}_",
+                        prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
                     )
                     try:
-                        opt3.run()
-                        converged = True
+                        opt2.run()
                     except ZeroStepLength:
-                        click.echo(
-                            f"[d1 {i_idx}, d2 {j_idx}, d3 {k_idx}] ZeroStepLength — recorded anyway.",
-                            err=True,
-                        )
-                        converged = False
+                        click.echo(f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — continuing to d3 scan.", err=True)
                     except OptimizationError as e:
-                        click.echo(
-                            f"[d1 {i_idx}, d2 {j_idx}, d3 {k_idx}] OptimizationError — {e}",
-                            err=True,
+                        click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True)
+
+                    geom_inner = _snapshot_geometry(geom_mid)
+                    geom_inner.set_calculator(biased)
+
+                    trj_blocks = [] if dump else None
+
+                    for k_idx, d3_target in enumerate(d3_values):
+                        biased.set_pairs(
+                            [
+                                (i1, j1, float(d1_target)),
+                                (i2, j2, float(d2_target)),
+                                (i3, j3, float(d3_target)),
+                            ]
                         )
-                        converged = False
+                        geom_inner.set_calculator(biased)
 
-                    E_h = _unbiased_energy_hartree(geom_inner, base_calc)
+                        opt3 = _make_optimizer(
+                            geom_inner,
+                            kind,
+                            lbfgs_cfg,
+                            rfo_cfg,
+                            opt_cfg,
+                            max_step_bohr=max_step_bohr,
+                            relax_max_cycles=relax_max_cycles,
+                            out_dir=tmp_opt_dir,
+                            prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_d3_{k_idx:03d}_",
+                        )
+                        try:
+                            opt3.run()
+                            converged = True
+                        except ZeroStepLength:
+                            click.echo(
+                                f"[d1 {i_idx}, d2 {j_idx}, d3 {k_idx}] ZeroStepLength — recorded anyway.",
+                                err=True,
+                            )
+                            converged = False
+                        except OptimizationError as e:
+                            click.echo(
+                                f"[d1 {i_idx}, d2 {j_idx}, d3 {k_idx}] OptimizationError — {e}",
+                                err=True,
+                            )
+                            converged = False
 
-                    xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}_k{k_idx:03d}.xyz"
-                    try:
-                        s = geom_inner.as_xyz()
-                        if not s.endswith("\n"):
-                            s += "\n"
-                        with open(xyz_path, "w") as f:
-                            f.write(s)
-                    except Exception as e:
-                        click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
+                        E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
-                    if dump and trj_blocks is not None:
-                        sblock = geom_inner.as_xyz()
-                        if not sblock.endswith("\n"):
-                            sblock += "\n"
-                        trj_blocks.append(sblock)
+                        xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}_k{k_idx:03d}.xyz"
+                        try:
+                            s = geom_inner.as_xyz()
+                            if not s.endswith("\n"):
+                                s += "\n"
+                            with open(xyz_path, "w") as f:
+                                f.write(s)
+                        except Exception as e:
+                            click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
 
-                    records.append(
-                        {
-                            "i": int(i_idx),
-                            "j": int(j_idx),
-                            "k": int(k_idx),
-                            "d1_A": float(d1_target),
-                            "d2_A": float(d2_target),
-                            "d3_A": float(d3_target),
-                            "energy_hartree": E_h,
-                            "bias_converged": bool(converged),
-                        }
-                    )
+                        if dump and trj_blocks is not None:
+                            sblock = geom_inner.as_xyz()
+                            if not sblock.endswith("\n"):
+                                sblock += "\n"
+                            trj_blocks.append(sblock)
 
-                if dump and trj_blocks:
-                    trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.trj"
-                    try:
-                        with open(trj_path, "w") as f:
-                            f.write("".join(trj_blocks))
-                        click.echo(f"[write] Wrote '{trj_path}'.")
-                    except Exception as e:
-                        click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
+                        records.append(
+                            {
+                                "i": int(i_idx),
+                                "j": int(j_idx),
+                                "k": int(k_idx),
+                                "d1_A": float(d1_target),
+                                "d2_A": float(d2_target),
+                                "d3_A": float(d3_target),
+                                "energy_hartree": E_h,
+                                "bias_converged": bool(converged),
+                            }
+                        )
 
-        # ===== surface.csv =====
-        df = pd.DataFrame.from_records(records)
+                    if dump and trj_blocks:
+                        trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.trj"
+                        try:
+                            with open(trj_path, "w") as f:
+                                f.write("".join(trj_blocks))
+                            click.echo(f"[write] Wrote '{trj_path}'.")
+                        except Exception as e:
+                            click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
+
+            df = pd.DataFrame.from_records(records)
+
+        # ===== surface.csv handling & baseline =====
         if df.empty:
             click.echo("No grid records produced; aborting.", err=True)
             sys.exit(1)
 
-        if baseline == "first":
-            ref_mask = (df["i"] == 0) & (df["j"] == 0) & (df["k"] == 0)
-            if not ref_mask.any():
+        # If energy_kcal is already present (e.g. loaded from existing CSV), reuse it.
+        # Otherwise compute it from energy_hartree and baseline.
+        if "energy_kcal" not in df.columns:
+            if "energy_hartree" not in df.columns:
                 click.echo(
-                    "[baseline] 'first' requested but (i=0,j=0,k=0) missing; using global minimum instead.",
+                    "[baseline] energy_kcal is missing and energy_hartree is not available in CSV; aborting.",
                     err=True,
                 )
-                ref = float(df["energy_hartree"].min())
+                sys.exit(1)
+
+            if baseline == "first":
+                ref_mask = (df["i"] == 0) & (df["j"] == 0) & (df["k"] == 0)
+                if not ref_mask.any():
+                    click.echo(
+                        "[baseline] 'first' requested but (i=0,j=0,k=0) missing; using global minimum instead.",
+                        err=True,
+                    )
+                    ref = float(df["energy_hartree"].min())
+                else:
+                    ref = float(df.loc[ref_mask, "energy_hartree"].iloc[0])
             else:
-                ref = float(df.loc[ref_mask, "energy_hartree"].iloc[0])
-        else:
-            ref = float(df["energy_hartree"].min())
+                ref = float(df["energy_hartree"].min())
 
-        df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
+            df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
 
-        surface_csv = final_dir / "surface.csv"
-        df.to_csv(surface_csv, index=False)
-        click.echo(f"[write] Wrote '{surface_csv}'.")
+        # Only write surface.csv when we actually performed the scan in this run
+        if csv_path is None:
+            surface_csv = final_dir / "surface.csv"
+            df.to_csv(surface_csv, index=False)
+            click.echo(f"[write] Wrote '{surface_csv}'.")
 
         # ===== 3D RBF interpolation & visualization =====
         d1_points = df["d1_A"].to_numpy(dtype=float)
@@ -761,7 +811,7 @@ def cli(
         yi = np.linspace(y_min, y_max, _VOLUME_GRID_N)
         zi = np.linspace(z_min_val, z_max_val, _VOLUME_GRID_N)
 
-        click.echo("[plot] 3D RBF interpolation on a 200×200×200 grid (may be expensive) ...")
+        click.echo("[plot] 3D RBF interpolation on a 50×50×50 grid (may be expensive) ...")
         rbf3d = Rbf(
             d1_points[mask],
             d2_points[mask],
@@ -781,6 +831,23 @@ def cli(
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             vmin, vmax = float(np.nanmin(E_flat)), float(np.nanmax(E_flat))
 
+        # Colorbar configuration (moved from plane surface to isosurface)
+        colorbar_cfg = dict(
+            title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
+            tickfont=dict(size=14, color="#1C1C1C"),
+            ticks="inside",
+            ticklen=10,
+            tickcolor="#1C1C1C",
+            outlinecolor="#1C1C1C",
+            outlinewidth=2,
+            lenmode="fraction",
+            len=1.11,
+            x=1.05,
+            y=0.53,
+            xanchor="left",
+            yanchor="middle",
+        )
+
         # Discrete isosurfaces (mesh) with banded colors
         n_levels = 8
         level_values = np.linspace(vmin, vmax, n_levels + 2)[1:-1]
@@ -795,8 +862,16 @@ def cli(
             "#f0f921",
         ][:n_levels]
 
+        # Opacity mapping: low energy → opacity ~1.0, high energy → opacity ~0.0
+        energy_span = vmax - vmin if vmax > vmin else 1.0
+
         isosurfaces = []
-        for lvl, color in zip(level_values, level_colors):
+        for idx, (lvl, color) in enumerate(zip(level_values, level_colors)):
+            rel = (lvl - vmin) / energy_span  # 0 at vmin, 1 at vmax
+            opacity = 1.0 - rel               # low E: ~1.0, high E: ~0.0
+            opacity = float(max(0.0, min(1.0, opacity)))
+
+            showscale = idx == 0  # attach a single colorbar to the first isosurface
             trace = go.Isosurface(
                 x=X_flat,
                 y=Y_flat,
@@ -805,89 +880,21 @@ def cli(
                 isomin=lvl,
                 isomax=lvl,
                 surface_count=1,
-                opacity=0.15,
-                showscale=False,
+                opacity=opacity,
+                showscale=showscale,
+                colorbar=colorbar_cfg if showscale else None,
                 colorscale=[[0.0, color], [1.0, color]],
+                cmin=vmin,
+                cmax=vmax,
                 caps=dict(x_show=False, y_show=False, z_show=False),
                 name=f"{lvl:.1f} kcal/mol",
             )
             isosurfaces.append(trace)
 
-        # Plane projections: XY (z=min), YZ (x=max), ZX (y=min)
-        XI_xy, YI_xy = np.meshgrid(xi, yi, indexing="xy")
-        ZI_xy = np.full_like(XI_xy, z_min_val)
-        E_xy = rbf3d(XI_xy, YI_xy, ZI_xy)
-
-        YI_yz, ZI_yz = np.meshgrid(yi, zi, indexing="xy")
-        XI_yz = np.full_like(YI_yz, x_max)
-        E_yz = rbf3d(XI_yz, YI_yz, ZI_yz)
-
-        ZI_zx, XI_zx = np.meshgrid(zi, xi, indexing="xy")
-        YI_zx = np.full_like(ZI_zx, y_min)
-        E_zx = rbf3d(XI_zx, YI_zx, ZI_zx)
-
-        c_step = _nice_step(vmax - vmin)
-        c_start = math.floor(vmin / c_step) * c_step
-        c_end = math.ceil(vmax / c_step) * c_step
-
-        plane_xy = go.Surface(
-            x=XI_xy,
-            y=YI_xy,
-            z=ZI_xy,
-            surfacecolor=E_xy,
-            colorscale="plasma",
-            cmin=vmin,
-            cmax=vmax,
-            colorbar=dict(
-                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
-                tickfont=dict(size=14, color="#1C1C1C"),
-                ticks="inside",
-                ticklen=10,
-                tickcolor="#1C1C1C",
-                outlinecolor="#1C1C1C",
-                outlinewidth=2,
-                lenmode="fraction",
-                len=1.11,
-                x=1.05,
-                y=0.53,
-                xanchor="left",
-                yanchor="middle",
-            ),
-            showscale=True,
-            opacity=1.0,
-            name="XY plane (d3 = min)",
-        )
-
-        plane_yz = go.Surface(
-            x=XI_yz,
-            y=YI_yz,
-            z=ZI_yz,
-            surfacecolor=E_yz,
-            colorscale="plasma",
-            cmin=vmin,
-            cmax=vmax,
-            showscale=False,
-            opacity=0.9,
-            name="YZ plane (d1 = max)",
-        )
-
-        plane_zx = go.Surface(
-            x=XI_zx,
-            y=YI_zx,
-            z=ZI_zx,
-            surfacecolor=E_zx,
-            colorscale="plasma",
-            cmin=vmin,
-            cmax=vmax,
-            showscale=False,
-            opacity=0.9,
-            name="ZX plane (d2 = min)",
-        )
-
-        fig3d = go.Figure(data=isosurfaces + [plane_xy, plane_yz, plane_zx])
+        fig3d = go.Figure(data=isosurfaces)
 
         fig3d.update_layout(
-            title="3D Energy Landscape with Plane Projections (UMA)",
+            title="3D Energy Landscape (UMA)",
             width=900,
             height=800,
             scene=dict(

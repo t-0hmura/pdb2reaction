@@ -50,7 +50,7 @@ Key options (YAML keys → meaning; defaults)
     - `gau_vtight`: max|F| 2.0e-6, RMS(F) 1.0e-6, max|step| 6.0e-6, RMS(step) 4.0e-6.
     - `baker`: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
     - `never`: disable built-in convergence (for external stopping).
-  - `max_cycles` 10000; `print_every` 10; `min_step_norm` 1e-8 with `assert_min_step` True.
+  - `max_cycles` 10000; `print_every` 100; `min_step_norm` 1e-8 with `assert_min_step` True.
   - Convergence toggles: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
   - Extras: `converge_to_geom_rms_thresh` (RMSD target), `overachieve_factor`, `check_eigval_structure` (TS checks).
   - Line search: `line_search` True (polynomial line search).
@@ -166,7 +166,7 @@ OPT_BASE_KW = {
     # * Baker rule in this tool: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
 
     "max_cycles": 10000,         # hard cap on optimization cycles
-    "print_every": 10,          # progress print frequency in cycles
+    "print_every": 100,          # progress print frequency in cycles
 
     # Step-size safeguarding
     "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength

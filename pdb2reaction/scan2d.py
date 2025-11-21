@@ -1,3 +1,5 @@
+# pdb2reaction/scan2d.py
+
 """
 scan2d — Two-distance 2D scan with harmonic restraints (UMA only)
 ==================================================================
@@ -528,7 +530,7 @@ def cli(
         df.to_csv(surface_csv, index=False)
         click.echo(f"[write] Wrote '{surface_csv}'.")
 
-        # ===== Plots (RBF on a fixed 200×200 grid, unified layout, placed under final_dir) =====
+        # ===== Plots (RBF on a fixed 50×50 grid, unified layout, placed under final_dir) =====
         d1_points = df["d1_A"].to_numpy(dtype=float)
         d2_points = df["d2_A"].to_numpy(dtype=float)
         z_points  = df["energy_kcal"].to_numpy(dtype=float)
@@ -540,8 +542,8 @@ def cli(
         x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))
         y_min, y_max = float(np.min(d2_points[mask])), float(np.max(d2_points[mask]))
 
-        xi = np.linspace(x_min, x_max, 200)
-        yi = np.linspace(y_min, y_max, 200)
+        xi = np.linspace(x_min, x_max, 50)
+        yi = np.linspace(y_min, y_max, 50)
         XI, YI = np.meshgrid(xi, yi)
 
         rbf = Rbf(d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric")
