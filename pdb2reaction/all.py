@@ -833,7 +833,6 @@ def _optimize_endpoint_geom(
     cfg["dump"] = bool(dump)
     max_cycles = int(cfg.get("max_cycles", 300))
     cfg["max_cycles"] = max_cycles
-    cfg["stop_in_when_full"] = max_cycles
 
     geom.set_calculator(getattr(geom, "calculator", None))
 

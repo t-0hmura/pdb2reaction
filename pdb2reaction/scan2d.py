@@ -905,11 +905,16 @@ def cli(
                 return 1.0
             raw = span / 6.0
             mag = 10 ** math.floor(math.log10(raw))
-            for m in (0.5, 1, 2, 5, 10, 20):
+            candidates = (0.5, 1, 2, 5, 10, 20)
+            # start with the first candidate
+            best = candidates[0] * mag
+            best_err = abs(best - raw)
+            for m in candidates[1:]:
                 s = m * mag
-                if raw <= s:
-                    return s
-            return 10.0 * mag
+                err = abs(s - raw)
+                if err < best_err:
+                    best, best_err = s, err
+            return best
 
         c_step = _nice_step(vmax - vmin)
         c_start = math.floor(vmin / c_step) * c_step
