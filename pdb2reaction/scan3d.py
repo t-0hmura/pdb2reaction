@@ -1,5 +1,3 @@
-# pdb2reaction/scan3d.py
-
 """
 scan3d — Three-distance 3D scan with harmonic restraints (UMA only)
 ===================================================================
@@ -71,7 +69,7 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_scan3d/)
   ├─ surface.csv                      # Grid metadata:
   │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged
-  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh + plane projections)
+  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh only)
   └─ grid/
       ├─ point_i###_j###_k###.xyz     # Constrained, relaxed geometries for each grid point
       └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
@@ -88,8 +86,7 @@ Notes
   - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
   - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
     (color is piecewise-constant in energy between contour levels).
-  - At the ends of the cube, XY / YZ / ZX planes are filled with 2D energy landscapes,
-    analogous to scan2d's projection.
+  - No XY/YZ/ZX planes are drawn; the view is isosurface-only for clarity.
 """
 
 from __future__ import annotations
@@ -180,7 +177,7 @@ def _snapshot_geometry(g) -> Any:
         tmp.close()
         snap = geom_loader(Path(tmp.name), coord_type=getattr(g, "coord_type", "cart"))
         try:
-            import numpy as _np
+            import numpy as _np  # noqa: PLC0415
             snap.freeze_atoms = _np.array(getattr(g, "freeze_atoms", []), dtype=int)
         except Exception:
             pass
@@ -544,9 +541,8 @@ def cli(
 
         final_dir = out_dir_path
 
-        # Either: (1) load precomputed grid from CSV, or (2) perform full 3D scan
+        # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
-            # Plot-only mode
             csv_path = Path(csv_path).resolve()
             try:
                 df = pd.read_csv(csv_path)
@@ -555,7 +551,6 @@ def cli(
                 sys.exit(1)
             click.echo(f"[read] Loaded precomputed grid from '{csv_path}'.")
         else:
-            # Full 3D scan mode
             tmp_root = Path(tempfile.mkdtemp(prefix="scan3d_tmp_"))
             grid_dir = out_dir_path / "grid"
             tmp_opt_dir = tmp_root / "opt"
@@ -574,7 +569,7 @@ def cli(
                         click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
             if freeze:
                 try:
-                    import numpy as _np
+                    import numpy as _np  # noqa: PLC0415
                     geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
                 except Exception:
                     pass
@@ -750,6 +745,7 @@ def cli(
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
 
+            # ===== surface.csv =====
             df = pd.DataFrame.from_records(records)
 
         # ===== surface.csv handling & baseline =====
@@ -788,7 +784,7 @@ def cli(
             df.to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
-        # ===== 3D RBF interpolation & visualization =====
+        # ===== 3D RBF interpolation & visualization (isosurface only) =====
         d1_points = df["d1_A"].to_numpy(dtype=float)
         d2_points = df["d2_A"].to_numpy(dtype=float)
         d3_points = df["d3_A"].to_numpy(dtype=float)
@@ -832,7 +828,7 @@ def cli(
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             vmin, vmax = float(np.nanmin(E_flat)), float(np.nanmax(E_flat))
 
-        # Discrete isosurfaces (mesh) with banded colors
+        # Discrete isosurfaces (mesh) with banded colors (no XY/YZ/ZX planes)
         n_levels = 8
         level_values = np.linspace(vmin, vmax, n_levels + 2)[1:-1]
         level_colors = [
@@ -856,7 +852,7 @@ def cli(
                 isomin=lvl,
                 isomax=lvl,
                 surface_count=1,
-                opacity=0.30,
+                opacity=0.15,
                 showscale=False,
                 colorscale=[[0.0, color], [1.0, color]],
                 caps=dict(x_show=False, y_show=False, z_show=False),
@@ -864,56 +860,10 @@ def cli(
             )
             isosurfaces.append(trace)
 
-        # Plane projections: XY (z=min), YZ (x=max), ZX (y=min)
-        XI_xy, YI_xy = np.meshgrid(xi, yi, indexing="xy")
-        ZI_xy = np.full_like(XI_xy, z_min_val)
-        E_xy = rbf3d(XI_xy, YI_xy, ZI_xy)
-
-        YI_yz, ZI_yz = np.meshgrid(yi, zi, indexing="xy")
-        XI_yz = np.full_like(YI_yz, x_max)
-        E_yz = rbf3d(XI_yz, YI_yz, ZI_yz)
-
-        ZI_zx, XI_zx = np.meshgrid(zi, xi, indexing="xy")
-        YI_zx = np.full_like(ZI_zx, y_min)
-        E_zx = rbf3d(XI_zx, YI_zx, ZI_zx)
-
-        c_step = _nice_step(vmax - vmin)
-        c_start = math.floor(vmin / c_step) * c_step
-        c_end = math.ceil(vmax / c_step) * c_step
-        # (c_start and c_end are computed but not strictly required in this layout.)
-
-        plane_xy = go.Surface(
-            x=XI_xy,
-            y=YI_xy,
-            z=ZI_xy,
-            surfacecolor=E_xy,
-            colorscale="plasma",
-            cmin=vmin,
-            cmax=vmax,
-            colorbar=dict(
-                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
-                tickfont=dict(size=14, color="#1C1C1C"),
-                ticks="inside",
-                ticklen=10,
-                tickcolor="#1C1C1C",
-                outlinecolor="#1C1C1C",
-                outlinewidth=2,
-                lenmode="fraction",
-                len=1.11,
-                x=1.05,
-                y=0.53,
-                xanchor="left",
-                yanchor="middle",
-            ),
-            showscale=True,
-            opacity=0.0,
-            name="XY plane (d3 = min)",
-        )
-
-        fig3d = go.Figure(data=isosurfaces + [plane_xy])
+        fig3d = go.Figure(data=isosurfaces)
 
         fig3d.update_layout(
-            title="3D Energy Landscape with Plane Projections (UMA)",
+            title="3D Energy Landscape (UMA)",
             width=900,
             height=800,
             scene=dict(
