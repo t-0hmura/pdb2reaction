@@ -142,14 +142,16 @@ Outputs (& Directory Layout)
   │   └─ ...
   ├─ path_search/                        # emitted when the GSM step executes
   │   ├─ mep.trj
-  │   ├─ energy.png
+  │   ├─ energy_diagram_gsm.png
+  │   ├─ mep_plot.png
   │   ├─ mep.pdb
   │   ├─ mep_w_ref.pdb                   # only if reference full PDB templates were supplied
   │   ├─ mep_w_ref_seg_XX.pdb            # only if reference full PDB templates were supplied
   │   ├─ summary.yaml
-  │   └─ tsopt_seg_XX/                   # created when downstream post-processing runs
+  │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
   │       ├─ irc/ ...
+  │       ├─ structures/
   │       ├─ freq/ ...                   # with --thermo True
   │       ├─ dft/  ...                   # with --dft True
   │       ├─ energy_diagram_tsopt.(png)
@@ -160,9 +162,6 @@ Outputs (& Directory Layout)
       ├─ ts/ ...
       ├─ irc/ ...
       ├─ structures/
-      │   ├─ reactant.(pdb|xyz)
-      │   ├─ ts.(pdb|xyz)
-      │   └─ product.(pdb|xyz)
       ├─ freq/ ...                       # with --thermo True
       ├─ dft/  ...                       # with --dft True
       ├─ energy_diagram_tsopt.(png)
@@ -924,7 +923,7 @@ def _pseudo_irc_and_match(seg_idx: int,
     # 6) Plot only when finished_irc.trj exists
     try:
         if finished_trj.exists():
-            run_trj2fig(finished_trj, [irc_dir / f"irc_finished_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            run_trj2fig(finished_trj, [irc_dir / f"irc_plot.png"], unit="kcal", reference="init", reverse_x=False)
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
 
@@ -1865,7 +1864,7 @@ def cli(
         click.echo("[all] --ref-pdb was not provided; full-system merged trajectories are not produced.")
         click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
-    click.echo("  - energy.png / energy_diagram.*")
+    click.echo("  - energy_diagram_gsm.png / energy_diagram.*")
     click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
 
     # --------------------------
@@ -1900,7 +1899,7 @@ def cli(
         click.echo(f"\n--- [post] Segment {seg_idx:02d} ({seg_tag}) ---")
 
         seg_root = path_dir  # base
-        seg_dir = seg_root / f"tsopt_seg_{seg_idx:02d}"
+        seg_dir = seg_root / f"post_seg_{seg_idx:02d}"
         _ensure_dir(seg_dir)
 
         # HEI pocket file prepared by path_search (only for bond-change segments)
@@ -1947,9 +1946,9 @@ def cli(
             gR = irc_res["right_min_geom"]
             gT = irc_res["ts_geom"]
             # Save standardized structures (PDB if possible; otherwise XYZ)
-            pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_like")
+            pL = _save_single_geom_as_pdb_for_tools(gL, hei_pocket_path, struct_dir, "reactant_irc")
             pT = _save_single_geom_as_pdb_for_tools(gT, hei_pocket_path, struct_dir, "ts")
-            pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_like")
+            pR = _save_single_geom_as_pdb_for_tools(gR, hei_pocket_path, struct_dir, "product_irc")
             state_structs = {"R": pL, "TS": pT, "P": pR}
 
             # 4.3 Segment-level energy diagram from UMA (R,TS,P)
@@ -1995,8 +1994,8 @@ def cli(
                 continue
 
             ref_for_ts = seg_pocket_path if seg_pocket_path.suffix.lower() == ".pdb" else hei_pocket_path
-            pL = _save_single_geom_as_pdb_for_tools(gL, seg_pocket_path, struct_dir, "reactant_like")
-            pR = _save_single_geom_as_pdb_for_tools(gR, seg_pocket_path, struct_dir, "product_like")
+            pL = _save_single_geom_as_pdb_for_tools(gL, seg_pocket_path, struct_dir, "reactant_irc")
+            pR = _save_single_geom_as_pdb_for_tools(gR, seg_pocket_path, struct_dir, "product_irc")
             pT = _save_single_geom_as_pdb_for_tools(g_ts, ref_for_ts, struct_dir, "ts_from_hei")
             state_structs = {"R": pL, "TS": pT, "P": pR}
 

@@ -1,19 +1,22 @@
+# pdb2reaction/scan3d.py
+
 """
 scan3d — Three-distance 3D scan with harmonic restraints (UMA only)
 ===================================================================
 
 Usage (CLI)
 -----------
-    pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-s <spin>] \
+    pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+        [-m MULTIPLICITY] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]" \
         [--one-based|--zero-based] \
-        --max-step-size FLOAT \
-        --bias-k FLOAT \
-        --relax-max-cycles INT \
-        --opt-mode {light,lbfgs,heavy,rfo} \
-        --freeze-links {True|False} \
-        --dump {True|False} \
-        --out-dir PATH \
+        [--max-step-size FLOAT] \
+        [--bias-k FLOAT] \
+        [--relax-max-cycles INT] \
+        [--opt-mode {light,lbfgs,heavy,rfo}] \
+        [--freeze-links {True|False}] \
+        [--dump {True|False}] \
+        [--out-dir PATH] \
         [--csv PATH] \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
@@ -27,7 +30,7 @@ Examples
     pdb2reaction scan3d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]"
 
-    # LBFGS with trajectory dumping and 3D density plot
+    # LBFGS with trajectory dumping and 3D energy isosurface plot
     pdb2reaction scan3d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
         --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode lbfgs \
@@ -45,11 +48,17 @@ Description
       [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
   via **--scan-list**.
   - Indices are **1-based by default**; pass **--zero-based** to interpret them as 0-based.
+- `-q/--charge` is required. `-m/--multiplicity` specifies the spin multiplicity (2S+1) and
+  defaults to 1 if omitted.
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`, `N3 = ceil(|high3 - low3| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
     `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` if the span is ~0)
     `d3_values = linspace(low3, high3, N3 + 1)` (or `[low3]` if the span is ~0).
+  - Internally, these {d1,d2,d3} value lists are **reordered** so that the values
+    closest to the (optionally pre-optimized) starting structure are scanned first
+    along each axis.
+
 - Nested scan procedure (outer d1, middle d2, inner d3):
   1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only).
   2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints**.
@@ -68,10 +77,13 @@ Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_scan3d/)
   ├─ surface.csv                      # Grid metadata:
-  │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged
+  │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged;
+  │                                   # may also contain a pre-optimized reference row with i=j=k=-1.
   ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh only)
   └─ grid/
-      ├─ point_i###_j###_k###.xyz     # Constrained, relaxed geometries for each grid point
+      ├─ point_iXXX_jYYY_kZZZ.xyz     # Constrained, relaxed geometries for each grid point
+  │                                   # XXX,YYY,ZZZ = int(round(d(Å)*100)), e.g. d=1.25Å → "125"
+      ├─ preopt_iXXX_jYYY_kZZZ.xyz    # Pre-optimized starting structure; same naming convention
       └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
 
 Notes
@@ -81,7 +93,8 @@ Notes
   Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
-  - `first` : shift so that the first grid point (i=0, j=0, k=0) is 0 kcal/mol
+  - `first` : shift so that the grid point with `(i,j,k) = (0,0,0)` is 0 kcal/mol;
+              if that point is missing, the global minimum is used instead.
 - The 3D visualization:
   - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
   - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
@@ -131,6 +144,7 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    convert_xyz_to_pdb,
 )
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
@@ -187,6 +201,36 @@ def _snapshot_geometry(g) -> Any:
             os.unlink(tmp.name)
         except Exception:
             pass
+
+
+def _format_distance_tag(d: float) -> str:
+    """
+    Format a distance in Å as an integer tag, e.g. 1.25 → '125'.
+
+    We multiply by 100 and round to the nearest integer, then pad to at
+    least three digits, so 1.25 Å → '125', 0.95 Å → '095'.
+    """
+    val = int(round(float(d) * 100.0))
+    return f"{val:03d}"
+
+
+def _measure_distances_A(
+    geom,
+    i1: int,
+    j1: int,
+    i2: int,
+    j2: int,
+    i3: int,
+    j3: int,
+) -> Tuple[float, float, float]:
+    """Measure the three bias distances (Å) for a given geometry."""
+    coords = np.asarray(getattr(geom, "coords"), dtype=float).reshape(-1, 3)
+
+    def dist(i: int, j: int) -> float:
+        v = coords[i] - coords[j]
+        return float(np.linalg.norm(v) / ANG2BOHR)
+
+    return dist(i1, j1), dist(i2, j2), dist(i3, j3)
 
 
 def _parse_scan_list(
@@ -297,6 +341,33 @@ def _nice_step(span: float) -> float:
         if raw <= s:
             return s
     return 10.0 * mag
+
+
+def _maybe_convert_scan3d_outputs_to_pdb(
+    input_path: Path,
+    grid_dir: Path,
+) -> None:
+    """
+    If the input is a PDB, convert the grid XYZ files under grid_dir to PDB.
+
+    Each *_i###_j###_k###.xyz is converted to a corresponding .pdb using
+    the input PDB as the topology reference.
+    """
+    if input_path.suffix.lower() != ".pdb":
+        return
+
+    ref_pdb = input_path.resolve()
+
+    for xyz_path in sorted(grid_dir.glob("*_i*_j*_k*.xyz")):
+        pdb_path = xyz_path.with_suffix(".pdb")
+        try:
+            convert_xyz_to_pdb(xyz_path, ref_pdb, pdb_path)
+            click.echo(f"[convert] Wrote '{pdb_path}'.")
+        except Exception as e:
+            click.echo(
+                f"[convert] WARNING: Failed to convert '{xyz_path.name}' to PDB: {e}",
+                err=True,
+            )
 
 
 @click.command(
@@ -530,15 +601,6 @@ def cli(
             )
         )
 
-        d1_values = _values_from_bounds(low1, high1, float(max_step_size))
-        d2_values = _values_from_bounds(low2, high2, float(max_step_size))
-        d3_values = _values_from_bounds(low3, high3, float(max_step_size))
-        N1, N2, N3 = len(d1_values), len(d2_values), len(d3_values)
-        click.echo(f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x:f'{x:.3f}', d1_values))}")
-        click.echo(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}")
-        click.echo(f"[grid] d3 steps = {N3}  values(A)={list(map(lambda x:f'{x:.3f}', d3_values))}")
-        click.echo(f"[grid] total grid points = {N1 * N2 * N3}")
-
         final_dir = out_dir_path
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
@@ -577,6 +639,7 @@ def cli(
             base_calc = uma_pysis(**calc_cfg)
             biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
 
+            # Optional pre-optimization of the starting structure
             if preopt:
                 click.echo("[preopt] Unbiased relaxation of the initial structure ...")
                 geom_outer.set_calculator(base_calc)
@@ -598,6 +661,68 @@ def cli(
                     click.echo("[preopt] ZeroStepLength — continuing.", err=True)
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}", err=True)
+
+            # Measure the three bias distances on the (possibly pre-optimized) geometry
+            d1_ref, d2_ref, d3_ref = _measure_distances_A(
+                geom_outer, i1, j1, i2, j2, i3, j3
+            )
+            click.echo(
+                pretty_block(
+                    "preopt distances (Å)",
+                    {"d1_ref": d1_ref, "d2_ref": d2_ref, "d3_ref": d3_ref},
+                )
+            )
+
+            # Save the (pre-)optimized starting structure and prepare a record for plotting
+            preopt_tag_i = _format_distance_tag(d1_ref)
+            preopt_tag_j = _format_distance_tag(d2_ref)
+            preopt_tag_k = _format_distance_tag(d3_ref)
+            preopt_xyz_path = grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.xyz"
+            try:
+                s_pre = geom_outer.as_xyz()
+                if not s_pre.endswith("\n"):
+                    s_pre += "\n"
+                with open(preopt_xyz_path, "w") as f:
+                    f.write(s_pre)
+                click.echo(f"[preopt] Wrote '{preopt_xyz_path}'.")
+            except Exception as e:
+                click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
+
+            E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
+            preopt_record = {
+                "i": -1,
+                "j": -1,
+                "k": -1,
+                "d1_A": float(d1_ref),
+                "d2_A": float(d2_ref),
+                "d3_A": float(d3_ref),
+                "energy_hartree": float(E_pre_h),
+                "bias_converged": True,
+            }
+
+            # Build and reorder the grids so that we scan from values closest to the preopt distances
+            d1_values = _values_from_bounds(low1, high1, float(max_step_size))
+            d2_values = _values_from_bounds(low2, high2, float(max_step_size))
+            d3_values = _values_from_bounds(low3, high3, float(max_step_size))
+
+            d1_values = np.array(
+                sorted(d1_values, key=lambda v: abs(v - d1_ref)),
+                dtype=float,
+            )
+            d2_values = np.array(
+                sorted(d2_values, key=lambda v: abs(v - d2_ref)),
+                dtype=float,
+            )
+            d3_values = np.array(
+                sorted(d3_values, key=lambda v: abs(v - d3_ref)),
+                dtype=float,
+            )
+
+            N1, N2, N3 = len(d1_values), len(d2_values), len(d3_values)
+            click.echo(f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x: f'{x:.3f}', d1_values))}")
+            click.echo(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x: f'{x:.3f}', d2_values))}")
+            click.echo(f"[grid] d3 steps = {N3}  values(A)={list(map(lambda x: f'{x:.3f}', d3_values))}")
+            click.echo(f"[grid] total grid points = {N1 * N2 * N3}")
 
             max_step_bohr = float(max_step_size) * ANG2BOHR
 
@@ -707,7 +832,10 @@ def cli(
 
                         E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
-                        xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}_k{k_idx:03d}.xyz"
+                        tag_i = _format_distance_tag(d1_target)
+                        tag_j = _format_distance_tag(d2_target)
+                        tag_k = _format_distance_tag(d3_target)
+                        xyz_path = grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.xyz"
                         try:
                             s = geom_inner.as_xyz()
                             if not s.endswith("\n"):
@@ -744,6 +872,13 @@ def cli(
                             click.echo(f"[write] Wrote '{trj_path}'.")
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
+
+            # Add preopt structure as an extra record for plotting
+            if preopt_record is not None:
+                records.append(preopt_record)
+
+            # Convert grid XYZ snapshots to PDB when the original input is a PDB
+            _maybe_convert_scan3d_outputs_to_pdb(input_path, grid_dir)
 
             # ===== surface.csv =====
             df = pd.DataFrame.from_records(records)
@@ -843,14 +978,15 @@ def cli(
         ]
 
         level_opacity = [
-            1.0,
-            0.5,
-            0.25,
-            0.125,
-            0.05,
-            0.025,
-            0.0125,
-            0.0,
+            1.000,
+            0.667,
+            0.444,
+            0.296,
+            0.198,
+            0.132,
+            0.088,
+            0.059,
+            0.039,
         ]
 
         isosurfaces = []
@@ -871,7 +1007,48 @@ def cli(
             )
             isosurfaces.append(trace)
 
-        fig3d = go.Figure(data=isosurfaces)
+        # Add a dummy scatter trace to host a global colorbar
+        colorbar_colorscale = [
+            [idx / (len(level_colors) - 1), col]
+            for idx, col in enumerate(level_colors)
+        ]
+        cb_tickvals = [float(v) for v in level_values]
+        cb_ticktext = [f"{v:.1f}" for v in level_values]
+
+        colorbar_trace = go.Scatter3d(
+            x=[x_min],
+            y=[y_min],
+            z=[z_min_val],
+            mode="markers",
+            marker=dict(
+                size=0,
+                opacity=0.0,
+                color=[vmin, vmax],
+                colorscale=colorbar_colorscale,
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color='#1C1C1C')),
+                    tickfont=dict(size=14, color='#1C1C1C'),
+                    ticks="inside",
+                    ticklen=10,
+                    tickcolor='#1C1C1C',
+                    outlinecolor='#1C1C1C',
+                    outlinewidth=2,
+                    lenmode="fraction",
+                    len=1.11,
+                    x=1.05,
+                    y=0.53,
+                    xanchor="left",
+                    yanchor="middle",
+                    tickvals=cb_tickvals,
+                    ticktext=cb_ticktext,
+                ),
+            ),
+            hoverinfo="none",
+            showlegend=False,
+        )
+
+        fig3d = go.Figure(data=isosurfaces + [colorbar_trace])
 
         fig3d.update_layout(
             title="3D Energy Landscape (UMA)",
@@ -943,7 +1120,3 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
-
-
-if __name__ == "__main__":
-    cli()

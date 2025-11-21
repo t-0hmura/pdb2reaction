@@ -97,8 +97,7 @@ out_dir/ (default: ./result_path_search/)
   ├─ hei_seg_XX.xyz / hei_seg_XX.pdb # Highest-energy image snapshots; hei_seg_XX.gjf when a template is available
   ├─ hei_w_ref_seg_XX.pdb            # Merged HEI per bond-change segment (requires --ref-pdb)
   ├─ mep_plot.png                    # ΔE profile vs. image index (from trj2fig)
-  ├─ energy_diagram.html             # State-level energy diagram (Plotly; ΔE relative to R in kcal/mol)
-  ├─ energy_diagram.png              # PNG export of the diagram when kaleido is installed
+  ├─ energy_diagram_gsm.png          # PNG export of the diagram when kaleido is installed
   └─ segments/
       ├─ seg_000_gsm/ ...                # Initial GSM for each primary segment
       ├─ seg_000_left_<lbfgs|rfo>_opt/   # HEI-1 single-structure optimization
@@ -2050,12 +2049,9 @@ def cli(
                 baseline=True,
                 showgrid=False,
             )
-            html_path = out_dir_path / "energy_diagram.html"
-            fig.write_html(str(html_path))
-            click.echo(f"[diagram] Wrote energy diagram (HTML) → '{html_path}'")
 
             try:
-                png_path = out_dir_path / "energy_diagram.png"
+                png_path = out_dir_path / "energy_diagram_gsm.png"
                 fig.write_image(str(png_path), scale=2)
                 click.echo(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'")
             except Exception as e:

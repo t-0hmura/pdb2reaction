@@ -47,6 +47,7 @@ Description
   1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only).
   2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints** and
      record the **unbiased** single-point energy (harmonic bias removed for evaluation).
+
 Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_scan2d/)
@@ -54,8 +55,14 @@ out_dir/ (default: ./result_scan2d/)
   ├─ scan2d_map.png               # 2D contour/heatmap of the PES
   ├─ scan2d_landscape.html        # 3D surface with a base-plane projection
   └─ grid/
-      ├─ point_i###_j###.xyz      # Constrained, relaxed geometries for each grid point
-      └─ inner_path_d1_###.trj    # Written only when --dump True; captures inner d2 trajectories per outer step
+      ├─ point_i125_j324.xyz      # Constrained, relaxed geometries; i/j tags are 100×distance in Å (rounded)
+      ├─ point_i125_j324.pdb      # Same, when the input was a PDB
+      ├─ point_i125_j324.gjf      # Same, when the input provided a GJF template
+      ├─ preopt_i126_j326.xyz     # Preoptimized unbiased structure; tags from its d1/d2 distances
+      ├─ preopt_i126_j326.pdb     # Optional PDB version (for PDB input)
+      ├─ preopt_i126_j326.gjf     # Optional GJF version (for GJF input)
+      ├─ inner_path_d1_###.trj    # Written only when --dump True; captures inner d2 trajectories per outer step
+      └─ inner_path_d1_###.pdb    # PDB conversion of inner_path_d1_###.trj when the input was a PDB
 
 Optimizer scratch artifacts live in temporary directories; only the files above persist under ``out_dir``.
 
@@ -63,7 +70,7 @@ Notes
 -----
 - UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D scan.
 - Convergence is controlled by LBFGS or RFO depending on `--opt-mode`.
-  Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
+- Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
@@ -111,6 +118,8 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    convert_xyz_to_pdb,
+    maybe_convert_xyz_to_gjf,
 )
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
@@ -167,7 +176,7 @@ def _snapshot_geometry(g) -> Any:
             pass
 
 
-def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int,int,float,float], Tuple[int,int,float,float]]:
+def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float]]:
     try:
         obj = ast.literal_eval(raw)
     except Exception as e:
@@ -176,10 +185,10 @@ def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int,int,float,flo
     if not (isinstance(obj, (list, tuple)) and len(obj) == 2):
         raise click.BadParameter("--scan-list must contain exactly two quadruples: [(i1,j1,low1,high1),(i2,j2,low2,high2)]")
 
-    parsed: List[Tuple[int,int,float,float]] = []
+    parsed: List[Tuple[int, int, float, float]] = []
     for q in obj:
         if not (
-            isinstance(q, (list,tuple)) and len(q) == 4
+            isinstance(q, (list, tuple)) and len(q) == 4
             and isinstance(q[0], (int, np.integer))
             and isinstance(q[1], (int, np.integer))
             and isinstance(q[2], (int, float, np.floating))
@@ -192,9 +201,9 @@ def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int,int,float,flo
             i -= 1
             j -= 1
         if i < 0 or j < 0:
-            raise click.BadParameter(f"Negative atom index after base conversion: {(i,j)} (0-based expected).")
+            raise click.BadParameter(f"Negative atom index after base conversion: {(i, j)} (0-based expected).")
         if low <= 0.0 or high <= 0.0:
-            raise click.BadParameter(f"Distances must be positive: {(i,j,low,high)}")
+            raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
         parsed.append((i, j, low, high))
     return parsed[0], parsed[1]
 
@@ -209,23 +218,53 @@ def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
     return np.linspace(low, high, N + 1, dtype=float)
 
 
-def _make_optimizer(geom, kind: str, lbfgs_cfg: Dict[str,Any], rfo_cfg: Dict[str,Any],
-                    opt_cfg: Dict[str,Any], max_step_bohr: float, relax_max_cycles: int,
-                    out_dir: Path, prefix: str):
+def _distance_A(geom, i: int, j: int) -> float:
+    """Compute interatomic distance (Å) between atoms i and j."""
+    coords = np.asarray(geom.coords, dtype=float).reshape(-1, 3)
+    # geom.coords are in Bohr; convert to Å
+    coords_A = coords / ANG2BOHR
+    diff = coords_A[i] - coords_A[j]
+    return float(np.linalg.norm(diff))
+
+
+def _dist_tag(value_A: float) -> str:
+    """Format distance (Å) as integer tag, 2 decimal digits -> ×100, zero-padded."""
+    return f"{int(round(value_A * 100.0)):03d}"
+
+
+def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.ndarray:
+    """Sort scan values so that those closest to ref come first."""
+    if ref is None or not np.isfinite(ref):
+        return values
+    order = np.argsort(np.abs(values - ref))
+    return values[order]
+
+
+def _make_optimizer(
+    geom,
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    out_dir: Path,
+    prefix: str,
+):
     common = dict(opt_cfg)
     common["out_dir"] = str(out_dir)
     common["prefix"] = prefix
     if kind == "lbfgs":
         args = {**lbfgs_cfg, **common}
-        args["max_step"]  = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
+        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
         args["max_cycles"] = int(relax_max_cycles)
         return LBFGS(geom, **args)
     else:
         args = {**rfo_cfg, **common}
         tr = float(rfo_cfg.get("trust_radius", 0.30))
         args["trust_radius"] = min(tr, max_step_bohr)
-        args["trust_max"]    = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
-        args["max_cycles"]   = int(relax_max_cycles)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
+        args["max_cycles"] = int(relax_max_cycles)
         return RFOptimizer(geom, **args)
 
 
@@ -247,35 +286,86 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
-    "-i", "--input",
+    "-i",
+    "--input",
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
-    "--scan-list", "scan_list_raw",
-    type=str, required=True,
+    "-m",
+    "--multiplicity",
+    "spin",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Spin multiplicity (2S+1) for the ML region.",
+)
+@click.option(
+    "--scan-list",
+    "scan_list_raw",
+    type=str,
+    required=True,
     help='Python-like list with two quadruples: "[(i1,j1,low1,high1),(i2,j2,low2,high2)]".',
 )
-@click.option("--one-based/--zero-based", "one_based", default=True, show_default=True,
-              help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.")
-@click.option("--max-step-size", type=float, default=0.20, show_default=True,
-              help="Maximum step size in either distance [Å].")
-@click.option("--bias-k", type=float, default=100.0, show_default=True,
-              help="Harmonic well strength k [eV/Å^2].")
-@click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
-              help="Maximum optimizer cycles per grid relaxation.")
-@click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="Relaxation mode: light (=LBFGS) or heavy (=RFO).")
-@click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
-              help="If input is PDB, freeze parent atoms of link hydrogens.")
-@click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.")
-@click.option("--out-dir", type=str, default="./result_scan2d/", show_default=True,
-              help="Base output directory.")
+@click.option(
+    "--one-based/--zero-based",
+    "one_based",
+    default=True,
+    show_default=True,
+    help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
+)
+@click.option(
+    "--max-step-size",
+    type=float,
+    default=0.20,
+    show_default=True,
+    help="Maximum step size in either distance [Å].",
+)
+@click.option(
+    "--bias-k",
+    type=float,
+    default=100.0,
+    show_default=True,
+    help="Harmonic well strength k [eV/Å^2].",
+)
+@click.option(
+    "--relax-max-cycles",
+    type=int,
+    default=10000,
+    show_default=True,
+    help="Maximum optimizer cycles per grid relaxation.",
+)
+@click.option(
+    "--opt-mode",
+    type=str,
+    default="light",
+    show_default=True,
+    help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
+)
+@click.option(
+    "--freeze-links",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="If input is PDB, freeze parent atoms of link hydrogens.",
+)
+@click.option(
+    "--dump",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
+)
+@click.option(
+    "--out-dir",
+    type=str,
+    default="./result_scan2d/",
+    show_default=True,
+    help="Base output directory.",
+)
 @click.option(
     "--thresh",
     type=str,
@@ -288,14 +378,34 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     default=None,
     help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
 )
-@click.option("--preopt", type=click.BOOL, default=True, show_default=True,
-              help="Pre-optimize the initial structure without bias before the scan.")
-@click.option("--baseline", type=click.Choice(["min","first"]), default="min", show_default=True,
-              help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).")
-@click.option("--zmin", type=float, default=None, show_default=False,
-              help="Lower bound of color scale for plots (kcal/mol).")
-@click.option("--zmax", type=float, default=None, show_default=False,
-              help="Upper bound of color scale for plots (kcal/mol).")
+@click.option(
+    "--preopt",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="Pre-optimize the initial structure without bias before the scan.",
+)
+@click.option(
+    "--baseline",
+    type=click.Choice(["min", "first"]),
+    default="min",
+    show_default=True,
+    help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
+)
+@click.option(
+    "--zmin",
+    type=float,
+    default=None,
+    show_default=False,
+    help="Lower bound of color scale for plots (kcal/mol).",
+)
+@click.option(
+    "--zmax",
+    type=float,
+    default=None,
+    show_default=False,
+    help="Upper bound of color scale for plots (kcal/mol).",
+)
 def cli(
     input_path: Path,
     charge: Optional[int],
@@ -321,6 +431,7 @@ def cli(
 
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
+    gjf_template = getattr(prepared_input, "gjf_template", None)
 
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
 
@@ -329,29 +440,29 @@ def cli(
 
         yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg   = dict(GEOM_KW)
-        calc_cfg   = dict(CALC_KW)
-        opt_cfg    = dict(OPT_BASE_KW)
-        lbfgs_cfg  = dict(LBFGS_KW)
-        rfo_cfg    = dict(RFO_KW)
-        bias_cfg   = dict(BIAS_KW)
+        geom_cfg = dict(GEOM_KW)
+        calc_cfg = dict(CALC_KW)
+        opt_cfg = dict(OPT_BASE_KW)
+        lbfgs_cfg = dict(LBFGS_KW)
+        rfo_cfg = dict(RFO_KW)
+        bias_cfg = dict(BIAS_KW)
 
         apply_yaml_overrides(
             yaml_cfg,
             [
-                (geom_cfg,  (("geom",),)),
-                (calc_cfg,  (("calc",),)),
-                (opt_cfg,   (("opt",),)),
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg, (("opt",),)),
                 (lbfgs_cfg, (("lbfgs",),)),
-                (rfo_cfg,   (("rfo",),)),
-                (bias_cfg,  (("bias",),)),
+                (rfo_cfg, (("rfo",),)),
+                (bias_cfg, (("bias",),)),
             ],
         )
 
-        calc_cfg["charge"]  = int(charge)
-        calc_cfg["spin"]    = int(spin)
-        opt_cfg["out_dir"]  = out_dir
-        opt_cfg["dump"]     = False
+        calc_cfg["charge"] = int(charge)
+        calc_cfg["spin"] = int(spin)
+        opt_cfg["out_dir"] = out_dir
+        opt_cfg["dump"] = False
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
         if bias_k is not None:
@@ -368,29 +479,34 @@ def cli(
         _ensure_dir(out_dir_path)
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
-        echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
+        echo_opt = dict(opt_cfg)
+        echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("opt",  echo_opt))
-        click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
+        click.echo(pretty_block("opt", echo_opt))
+        click.echo(
+            pretty_block(
+                "lbfgs" if kind == "lbfgs" else "rfo",
+                (lbfgs_cfg if kind == "lbfgs" else rfo_cfg),
+            )
+        )
         click.echo(pretty_block("bias", echo_bias))
 
-        (i1, j1, low1, high1), (i2, j2, low2, high2) = _parse_scan_list(scan_list_raw, one_based=one_based)
-        click.echo(pretty_block("scan-list (0-based)",
-            {"d1": (i1, j1, low1, high1), "d2": (i2, j2, low2, high2)}
-        ))
+        (i1, j1, low1, high1), (i2, j2, low2, high2) = _parse_scan_list(
+            scan_list_raw, one_based=one_based
+        )
+        click.echo(
+            pretty_block(
+                "scan-list (0-based)",
+                {"d1": (i1, j1, low1, high1), "d2": (i2, j2, low2, high2)},
+            )
+        )
 
-        d1_values = _values_from_bounds(low1, high1, float(max_step_size))
-        d2_values = _values_from_bounds(low2, high2, float(max_step_size))
-        N1, N2 = len(d1_values), len(d2_values)
-        click.echo(f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x:f'{x:.3f}', d1_values))}")
-        click.echo(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}")
-        click.echo(f"[grid] total grid points = {N1*N2}")
-
+        # Temporary and grid directories
         tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
         grid_dir = out_dir_path / "grid"
-        tmp_opt_dir  = tmp_root / "opt"
+        tmp_opt_dir = tmp_root / "opt"
         _ensure_dir(grid_dir)
         _ensure_dir(tmp_opt_dir)
 
@@ -405,25 +521,42 @@ def cli(
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
                 if freeze:
-                    click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+                    click.echo(
+                        f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
+                    )
         if freeze:
             try:
                 import numpy as _np
+
                 geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
             except Exception:
                 pass
 
         base_calc = uma_pysis(**calc_cfg)
-        biased    = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
+        biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
+
+        # Records (including preopt) will be accumulated here
+        records: List[Dict[str, Any]] = []
+        input_suffix = input_path.suffix.lower()
+
+        # Reference distances from the (pre)optimized structure, used for scan ordering
+        d1_ref: Optional[float] = None
+        d2_ref: Optional[float] = None
 
         if preopt:
             click.echo("[preopt] Unbiased relaxation of the initial structure ...")
             geom_outer.set_calculator(base_calc)
             max_step_bohr_local = float(max_step_size) * ANG2BOHR
             optimizer0 = _make_optimizer(
-                geom_outer, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
-                max_step_bohr=max_step_bohr_local, relax_max_cycles=relax_max_cycles,
-                out_dir=tmp_opt_dir, prefix="preopt_"
+                geom_outer,
+                kind,
+                lbfgs_cfg,
+                rfo_cfg,
+                opt_cfg,
+                max_step_bohr=max_step_bohr_local,
+                relax_max_cycles=relax_max_cycles,
+                out_dir=tmp_opt_dir,
+                prefix="preopt_",
             )
             try:
                 optimizer0.run()
@@ -432,23 +565,103 @@ def cli(
             except OptimizationError as e:
                 click.echo(f"[preopt] OptimizationError — {e}", err=True)
 
+            # Measure optimized distances and record preopt structure
+            try:
+                d1_ref = _distance_A(geom_outer, i1, j1)
+                d2_ref = _distance_A(geom_outer, i2, j2)
+
+                d1_tag = _dist_tag(d1_ref)
+                d2_tag = _dist_tag(d2_ref)
+
+                preopt_xyz_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.xyz"
+                s = geom_outer.as_xyz()
+                if not s.endswith("\n"):
+                    s += "\n"
+                with open(preopt_xyz_path, "w") as f:
+                    f.write(s)
+
+                # Optional PDB/GJF conversions based on input type
+                if input_suffix == ".pdb":
+                    try:
+                        pdb_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.pdb"
+                        convert_xyz_to_pdb(preopt_xyz_path, input_path, pdb_path)
+                    except Exception as e:
+                        click.echo(
+                            f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to PDB: {e}",
+                            err=True,
+                        )
+                elif input_suffix in (".gjf", ".com") and gjf_template is not None:
+                    try:
+                        gjf_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf"
+                        maybe_convert_xyz_to_gjf(preopt_xyz_path, gjf_template, gjf_path)
+                    except Exception as e:
+                        click.echo(
+                            f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to GJF: {e}",
+                            err=True,
+                        )
+
+                E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
+                records.append(
+                    {
+                        "i": int(-1),
+                        "j": int(-1),
+                        "d1_A": float(d1_ref),
+                        "d2_A": float(d2_ref),
+                        "energy_hartree": E_pre_h,
+                        "bias_converged": True,
+                    }
+                )
+                click.echo(
+                    f"[preopt] Recorded preoptimized structure at d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
+                )
+            except Exception as e:
+                click.echo(
+                    f"[preopt] WARNING: failed to record preoptimized structure: {e}",
+                    err=True,
+                )
+
         max_step_bohr = float(max_step_size) * ANG2BOHR
 
-        records: List[Dict[str, Any]] = []
+        # Construct scan grids and reorder so that points near the preopt geometry are visited first
+        d1_values = _values_from_bounds(low1, high1, float(max_step_size))
+        d2_values = _values_from_bounds(low2, high2, float(max_step_size))
+
+        d1_values = _sort_values_by_reference(d1_values, d1_ref)
+        d2_values = _sort_values_by_reference(d2_values, d2_ref)
+
+        N1, N2 = len(d1_values), len(d2_values)
+        click.echo(
+            f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x:f'{x:.3f}', d1_values))}"
+        )
+        click.echo(
+            f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}"
+        )
+        click.echo(f"[grid] total grid points = {N1*N2}")
+
         for i_idx, d1_target in enumerate(d1_values):
-            click.echo(f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---")
+            click.echo(
+                f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---"
+            )
             biased.set_pairs([(i1, j1, float(d1_target))])
             geom_outer.set_calculator(biased)
 
             opt1 = _make_optimizer(
-                geom_outer, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
-                max_step_bohr=max_step_bohr, relax_max_cycles=relax_max_cycles,
-                out_dir=tmp_opt_dir, prefix=f"d1_{i_idx:03d}_"
+                geom_outer,
+                kind,
+                lbfgs_cfg,
+                rfo_cfg,
+                opt_cfg,
+                max_step_bohr=max_step_bohr,
+                relax_max_cycles=relax_max_cycles,
+                out_dir=tmp_opt_dir,
+                prefix=f"d1_{i_idx:03d}_",
             )
             try:
                 opt1.run()
             except ZeroStepLength:
-                click.echo(f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan.", err=True)
+                click.echo(
+                    f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan.", err=True
+                )
             except OptimizationError as e:
                 click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
 
@@ -458,37 +671,76 @@ def cli(
             trj_blocks = [] if dump else None
 
             for j_idx, d2_target in enumerate(d2_values):
-                biased.set_pairs([(i1, j1, float(d1_target)),
-                                  (i2, j2, float(d2_target))])
+                biased.set_pairs(
+                    [
+                        (i1, j1, float(d1_target)),
+                        (i2, j2, float(d2_target)),
+                    ]
+                )
                 geom_inner.set_calculator(biased)
 
                 opt2 = _make_optimizer(
-                    geom_inner, kind, lbfgs_cfg, rfo_cfg, opt_cfg,
-                    max_step_bohr=max_step_bohr, relax_max_cycles=relax_max_cycles,
-                    out_dir=tmp_opt_dir, prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_"
+                    geom_inner,
+                    kind,
+                    lbfgs_cfg,
+                    rfo_cfg,
+                    opt_cfg,
+                    max_step_bohr=max_step_bohr,
+                    relax_max_cycles=relax_max_cycles,
+                    out_dir=tmp_opt_dir,
+                    prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
                 )
                 try:
                     opt2.run()
                     converged = True
                 except ZeroStepLength:
-                    click.echo(f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — recorded anyway.", err=True)
+                    click.echo(
+                        f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — recorded anyway.",
+                        err=True,
+                    )
                     converged = False
                 except OptimizationError as e:
-                    click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True)
+                    click.echo(
+                        f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True
+                    )
                     converged = False
 
                 E_h = _unbiased_energy_hartree(geom_inner, base_calc)
 
                 # Write per-grid XYZ snapshots under result_scan2d/grid/
-                xyz_path = grid_dir / f"point_i{i_idx:03d}_j{j_idx:03d}.xyz"
+                d1_tag = _dist_tag(d1_target)
+                d2_tag = _dist_tag(d2_target)
+                xyz_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.xyz"
                 try:
                     s = geom_inner.as_xyz()
                     if not s.endswith("\n"):
                         s += "\n"
                     with open(xyz_path, "w") as f:
                         f.write(s)
+                    # Optional PDB/GJF conversions based on input type
+                    if input_suffix == ".pdb":
+                        try:
+                            pdb_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb"
+                            convert_xyz_to_pdb(xyz_path, input_path, pdb_path)
+                        except Exception as e:
+                            click.echo(
+                                f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB: {e}",
+                                err=True,
+                            )
+                    elif input_suffix in (".gjf", ".com") and gjf_template is not None:
+                        try:
+                            gjf_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf"
+                            maybe_convert_xyz_to_gjf(xyz_path, gjf_template, gjf_path)
+                        except Exception as e:
+                            click.echo(
+                                f"[convert] WARNING: failed to convert '{xyz_path.name}' to GJF: {e}",
+                                err=True,
+                            )
                 except Exception as e:
-                    click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
+                    click.echo(
+                        f"[write] WARNING: failed to write {xyz_path.name}: {e}",
+                        err=True,
+                    )
 
                 if dump and trj_blocks is not None:
                     sblock = geom_inner.as_xyz()
@@ -496,14 +748,16 @@ def cli(
                         sblock += "\n"
                     trj_blocks.append(sblock)
 
-                records.append({
-                    "i": int(i_idx),
-                    "j": int(j_idx),
-                    "d1_A": float(d1_target),
-                    "d2_A": float(d2_target),
-                    "energy_hartree": E_h,
-                    "bias_converged": bool(converged),
-                })
+                records.append(
+                    {
+                        "i": int(i_idx),
+                        "j": int(j_idx),
+                        "d1_A": float(d1_target),
+                        "d2_A": float(d2_target),
+                        "energy_hartree": E_h,
+                        "bias_converged": bool(converged),
+                    }
+                )
 
             if dump and trj_blocks:
                 trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
@@ -511,8 +765,20 @@ def cli(
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
                     click.echo(f"[write] Wrote '{trj_path}'.")
+                    if input_suffix == ".pdb":
+                        try:
+                            pdb_trj = grid_dir / f"inner_path_d1_{i_idx:03d}.pdb"
+                            convert_xyz_to_pdb(trj_path, input_path, pdb_trj)
+                            click.echo(f"[convert] Wrote '{pdb_trj}'.")
+                        except Exception as e:
+                            click.echo(
+                                f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB: {e}",
+                                err=True,
+                            )
                 except Exception as e:
-                    click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
+                    click.echo(
+                        f"[write] WARNING: failed to write '{trj_path}': {e}", err=True
+                    )
 
         # ===== surface.csv (final output directly under result_scan2d) =====
         df = pd.DataFrame.from_records(records)
@@ -521,7 +787,9 @@ def cli(
             sys.exit(1)
 
         if baseline == "first":
-            ref = float(df.loc[(df["i"]==0) & (df["j"]==0), "energy_hartree"].iloc[0])
+            ref = float(
+                df.loc[(df["i"] == 0) & (df["j"] == 0), "energy_hartree"].iloc[0]
+            )
         else:
             ref = float(df["energy_hartree"].min())
         df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
@@ -533,25 +801,39 @@ def cli(
         # ===== Plots (RBF on a fixed 50×50 grid, unified layout, placed under final_dir) =====
         d1_points = df["d1_A"].to_numpy(dtype=float)
         d2_points = df["d2_A"].to_numpy(dtype=float)
-        z_points  = df["energy_kcal"].to_numpy(dtype=float)
-        mask = np.isfinite(d1_points) & np.isfinite(d2_points) & np.isfinite(z_points)
+        z_points = df["energy_kcal"].to_numpy(dtype=float)
+        mask = (
+            np.isfinite(d1_points)
+            & np.isfinite(d2_points)
+            & np.isfinite(z_points)
+        )
         if not np.any(mask):
             click.echo("[plot] No finite data for plotting.", err=True)
             sys.exit(1)
 
-        x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))
-        y_min, y_max = float(np.min(d2_points[mask])), float(np.max(d2_points[mask]))
+        x_min, x_max = float(np.min(d1_points[mask])), float(
+            np.max(d1_points[mask])
+        )
+        y_min, y_max = float(np.min(d2_points[mask])), float(
+            np.max(d2_points[mask])
+        )
 
         xi = np.linspace(x_min, x_max, 50)
         yi = np.linspace(y_min, y_max, 50)
         XI, YI = np.meshgrid(xi, yi)
 
-        rbf = Rbf(d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric")
+        rbf = Rbf(
+            d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric"
+        )
         ZI = rbf(XI, YI)
 
         vmin = float(np.nanmin(ZI)) if zmin is None else float(zmin)
         vmax = float(np.nanmax(ZI)) if zmax is None else float(zmax)
-        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+        if (
+            not np.isfinite(vmin)
+            or not np.isfinite(vmax)
+            or vmax <= vmin
+        ):
             vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
 
         # Choose neat contour/tick steps
@@ -568,71 +850,75 @@ def cli(
 
         c_step = _nice_step(vmax - vmin)
         c_start = math.floor(vmin / c_step) * c_step
-        c_end   = math.ceil (vmax / c_step) * c_step
+        c_end = math.ceil(vmax / c_step) * c_step
 
         # ---- 2D contour plot (PNG with explicit size) ----
-        fig2d = go.Figure(data=go.Contour(
-            z=ZI,
-            x=xi,
-            y=yi,
-            contours=dict(start=c_start, end=c_end, size=c_step),
-            zmin=vmin,
-            zmax=vmax,
-            contours_coloring='heatmap',
-            colorscale='plasma',
-            colorbar=dict(
-                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color='#1C1C1C')),
-                tickfont=dict(size=14, color='#1C1C1C'),
-                ticks="inside",
-                ticklen=10,
-                tickcolor='#1C1C1C',
-                outlinecolor='#1C1C1C',
-                outlinewidth=2,
-                lenmode="fraction",
-                len=1.11,
-                x=1.05,
-                y=0.53,
-                xanchor="left",
-                yanchor="middle"
+        fig2d = go.Figure(
+            data=go.Contour(
+                z=ZI,
+                x=xi,
+                y=yi,
+                contours=dict(start=c_start, end=c_end, size=c_step),
+                zmin=vmin,
+                zmax=vmax,
+                contours_coloring="heatmap",
+                colorscale="plasma",
+                colorbar=dict(
+                    title=dict(
+                        text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
+                    ),
+                    tickfont=dict(size=14, color="#1C1C1C"),
+                    ticks="inside",
+                    ticklen=10,
+                    tickcolor="#1C1C1C",
+                    outlinecolor="#1C1C1C",
+                    outlinewidth=2,
+                    lenmode="fraction",
+                    len=1.11,
+                    x=1.05,
+                    y=0.53,
+                    xanchor="left",
+                    yanchor="middle",
+                ),
             )
-        ))
+        )
         fig2d.update_layout(
             width=640,
             height=600,
             xaxis_title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) distance (Å)",
             yaxis_title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) distance (Å)",
-            plot_bgcolor='white',
+            plot_bgcolor="white",
             xaxis=dict(
                 range=[x_min, x_max],
                 showline=True,
                 linewidth=3,
-                linecolor='#1C1C1C',
+                linecolor="#1C1C1C",
                 mirror=True,
-                tickson='boundaries',
-                ticks='inside',
+                tickson="boundaries",
+                ticks="inside",
                 tickwidth=3,
-                tickcolor='#1C1C1C',
-                title_font=dict(size=18, color='#1C1C1C'),
-                tickfont=dict(size=18, color='#1C1C1C'),
+                tickcolor="#1C1C1C",
+                title_font=dict(size=18, color="#1C1C1C"),
+                tickfont=dict(size=18, color="#1C1C1C"),
                 tickvals=list(np.linspace(x_min, x_max, 6)),
-                tickformat=".2f"
+                tickformat=".2f",
             ),
             yaxis=dict(
                 range=[y_min, y_max],
                 showline=True,
                 linewidth=3,
-                linecolor='#1C1C1C',
+                linecolor="#1C1C1C",
                 mirror=True,
-                tickson='boundaries',
-                ticks='inside',
+                tickson="boundaries",
+                ticks="inside",
                 tickwidth=3,
-                tickcolor='#1C1C1C',
-                title_font=dict(size=18, color='#1C1C1C'),
-                tickfont=dict(size=18, color='#1C1C1C'),
+                tickcolor="#1C1C1C",
+                title_font=dict(size=18, color="#1C1C1C"),
+                tickfont=dict(size=18, color="#1C1C1C"),
                 tickvals=list(np.linspace(y_min, y_max, 6)),
-                tickformat=".2f"
+                tickformat=".2f",
             ),
-            margin=dict(l=10, r=10, b=10, t=40)
+            margin=dict(l=10, r=10, b=10, t=40),
         )
         png2d = final_dir / "scan2d_map.png"
         fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
@@ -641,7 +927,7 @@ def cli(
         # ---- 3D surface plus base-plane projection ----
         spread = vmax - vmin if (vmax > vmin) else 1.0
         z_bottom = vmin - spread
-        z_top    = vmax
+        z_top = vmax
 
         # Avoid ticks below zmin (= vmin) and snap to sensible values
         z_step = _nice_step(vmax - vmin)
@@ -649,16 +935,21 @@ def cli(
         z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
 
         surface3d = go.Surface(
-            x=XI, y=YI, z=ZI,
-            colorscale='plasma',
-            cmin=vmin, cmax=vmax,
+            x=XI,
+            y=YI,
+            z=ZI,
+            colorscale="plasma",
+            cmin=vmin,
+            cmax=vmax,
             colorbar=dict(
-                title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color='#1C1C1C')),
-                tickfont=dict(size=14, color='#1C1C1C'),
+                title=dict(
+                    text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
+                ),
+                tickfont=dict(size=14, color="#1C1C1C"),
                 ticks="inside",
                 ticklen=10,
-                tickcolor='#1C1C1C',
-                outlinecolor='#1C1C1C',
+                tickcolor="#1C1C1C",
+                outlinecolor="#1C1C1C",
                 outlinewidth=2,
                 lenmode="fraction",
                 len=1.11,
@@ -677,51 +968,73 @@ def cli(
                     "project": {"z": True},
                 }
             },
-            name="3D Surface"
+            name="3D Surface",
         )
 
         plane_proj = go.Surface(
-            x=XI, y=YI, z=np.full_like(ZI, z_bottom),
+            x=XI,
+            y=YI,
+            z=np.full_like(ZI, z_bottom),
             surfacecolor=ZI,
-            colorscale='plasma',
-            cmin=vmin, cmax=vmax,
+            colorscale="plasma",
+            cmin=vmin,
+            cmax=vmax,
             showscale=False,
             opacity=1.0,
-            name="2D Contour Projection (Bottom)"
+            name="2D Contour Projection (Bottom)",
         )
 
         fig3d = go.Figure(data=[surface3d, plane_proj])
         fig3d.update_layout(
             title="Energy Landscape with 2D PES Scan",
-            width=800, height=700,
+            width=800,
+            height=700,
             scene=dict(
                 bgcolor="rgba(0,0,0,0)",
                 xaxis=dict(
                     title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) (Å)",
                     range=[x_min, x_max],
-                    showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
-                    ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
-                    gridcolor='rgba(0,0,0,0.1)', zerolinecolor='rgba(0,0,0,0.1)',
-                    showbackground=False
+                    showline=True,
+                    linewidth=4,
+                    linecolor="#1C1C1C",
+                    mirror=True,
+                    ticks="inside",
+                    tickwidth=4,
+                    tickcolor="#1C1C1C",
+                    gridcolor="rgba(0,0,0,0.1)",
+                    zerolinecolor="rgba(0,0,0,0.1)",
+                    showbackground=False,
                 ),
                 yaxis=dict(
                     title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) (Å)",
                     range=[y_min, y_max],
-                    showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
-                    ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
-                    gridcolor='rgba(0,0,0,0.1)', zerolinecolor='rgba(0,0,0,0.1)',
-                    showbackground=False
+                    showline=True,
+                    linewidth=4,
+                    linecolor="#1C1C1C",
+                    mirror=True,
+                    ticks="inside",
+                    tickwidth=4,
+                    tickcolor="#1C1C1C",
+                    gridcolor="rgba(0,0,0,0.1)",
+                    zerolinecolor="rgba(0,0,0,0.1)",
+                    showbackground=False,
                 ),
                 zaxis=dict(
                     title="Potential Energy (kcal/mol)",
                     range=[z_bottom, z_top],
                     tickmode="array",
                     tickvals=z_ticks,
-                    showline=True, linewidth=4, linecolor='#1C1C1C', mirror=True,
-                    ticks='inside', tickwidth=4, tickcolor='#1C1C1C',
-                    showgrid=True, gridcolor='rgba(0,0,0,0.1)',
-                    zerolinecolor='rgba(0,0,0,0.1)',
-                    showbackground=False
+                    showline=True,
+                    linewidth=4,
+                    linecolor="#1C1C1C",
+                    mirror=True,
+                    ticks="inside",
+                    tickwidth=4,
+                    tickcolor="#1C1C1C",
+                    showgrid=True,
+                    gridcolor="rgba(0,0,0,0.1)",
+                    zerolinecolor="rgba(0,0,0,0.1)",
+                    showbackground=False,
                 ),
             ),
             margin=dict(l=10, r=20, b=10, t=40),
@@ -740,7 +1053,11 @@ def cli(
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled exception during 2D scan:\n" + textwrap.indent(tb, "  "), err=True)
+        click.echo(
+            "Unhandled exception during 2D scan:\n"
+            + textwrap.indent(tb, "  "),
+            err=True,
+        )
         sys.exit(1)
     finally:
         prepared_input.cleanup()

@@ -82,5 +82,5 @@ cli.add_command(scan2d_cmd, name="scan2d")
 cli.add_command(scan3d_cmd, name="scan3d")
 
 # Disable pysisyphus logging
-# import logging
-# logging.disable(logging.CRITICAL)
+import logging
+logging.disable(logging.CRITICAL)
