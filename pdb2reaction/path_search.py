@@ -663,10 +663,9 @@ def _refine_between(
     ref_pdb_path: Optional[Path],
 ) -> GSMResult:
     """
-    Refine End1–End2 via GSM (force climb=True).
+    Refine End1–End2 via GSM.
     """
-    gs_refine_cfg = _gs_cfg_with_overrides(gs_cfg, climb=True, climb_lanczos=True)
-    return _run_gsm_between(gL, gR, shared_calc, gs_refine_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
+    return _run_gsm_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
 
 
 def _maybe_bridge_segments(
@@ -880,8 +879,7 @@ def _build_multistep_path(
     seg_counter[0] += 1
     tag0 = f"seg_{seg_id:03d}"
 
-    gs_seg_cfg_first = _gs_cfg_with_overrides(gs_seg_cfg, climb=True, climb_lanczos=True)
-    gsm0 = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg_first, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
+    gsm0 = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
 
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):

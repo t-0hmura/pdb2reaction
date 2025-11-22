@@ -183,7 +183,7 @@ Outputs (& Directory Layout)
   ├─ energy_diagram_G_UMA_all.png        # UMA Gibbs R–TS–P across all reactive segments
   ├─ energy_diagram_DFT_all.png          # DFT R–TS–P across all reactive segments
   ├─ energy_diagram_G_DFT_plus_UMA_all.png  # DFT//UMA Gibbs R–TS–P across all reactive segments
-  ├─ irc_plot_all.png                    # concatenation of per-segment IRC plots (horizontal)
+  ├─ irc_plot_all.png                    # concatenation of IRC data from all segments in one plot
   ├─ ts_seg_XX.pdb / ts_seg_XX.trj       # TS structure per reactive segment (format depends on inputs)
   └─ tsopt_single/                       # present only in single-structure TSOPT-only mode
       ├─ ts/ ...
@@ -644,6 +644,86 @@ def _load_segment_end_geoms(seg_pdb: Path, freeze_atoms: Sequence[int]) -> Tuple
     return gL, gR
 
 
+# === NEW: LBFGS endpoints (seg_xxx_left/right_lbfgs_opt) =====================
+
+
+def _find_segment_endpoint_file(segments_dir: Path, seg_tag: str, side: str) -> Optional[Path]:
+    """
+    Try to locate a LBFGS-optimized endpoint for a given segment tag and side ("left" / "right").
+
+    We try a few reasonably conservative patterns:
+
+      segments/seg_tag_{side}_lbfgs_opt/final_geometry.{xyz|pdb|gjf}
+      segments/seg_tag/seg_tag_{side}_lbfgs_opt/final_geometry.*
+      segments/**/seg_tag_{side}_*_opt/final_geometry.*
+
+    Returns the first existing path found or None.
+    """
+    assert side in ("left", "right")
+    candidates: List[Path] = []
+
+    base_patterns = [
+        segments_dir / f"{seg_tag}_{side}_lbfgs_opt",
+        segments_dir / f"{seg_tag}_{side}_opt",
+        segments_dir / seg_tag / f"{seg_tag}_{side}_lbfgs_opt",
+        segments_dir / seg_tag / f"{seg_tag}_{side}_opt",
+    ]
+    for base in base_patterns:
+        for ext in (".xyz", ".pdb", ".gjf"):
+            p = base / f"final_geometry{ext}"
+            candidates.append(p)
+
+    # Fallback: generic rglob search for directories matching seg_tag_*_opt
+    pattern = f"{seg_tag}_{side}_"
+    for d in segments_dir.rglob("*"):
+        if d.is_dir():
+            name = d.name
+            if pattern in name and "opt" in name:
+                for ext in (".xyz", ".pdb", ".gjf"):
+                    p = d / f"final_geometry{ext}"
+                    candidates.append(p)
+
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
+def _load_segment_lbfgs_endpoints(
+    path_dir: Path,
+    seg_tag: str,
+    freeze_atoms: Sequence[int],
+) -> Optional[Tuple[Any, Any]]:
+    """
+    Load LBFGS-optimized left/right endpoints for a segment from path_search/segments.
+
+    Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref) or None when not found.
+    """
+    segments_dir = path_dir / "segments"
+    if not segments_dir.exists():
+        return None
+
+    left_file = _find_segment_endpoint_file(segments_dir, seg_tag, "left")
+    right_file = _find_segment_endpoint_file(segments_dir, seg_tag, "right")
+    if left_file is None or right_file is None:
+        return None
+
+    gL_ref = geom_loader(left_file, coord_type="cart")
+    gR_ref = geom_loader(right_file, coord_type="cart")
+
+    try:
+        fa = np.array(freeze_atoms, dtype=int)
+        gL_ref.freeze_atoms = fa
+        gR_ref.freeze_atoms = fa
+    except Exception:
+        pass
+
+    return gL_ref, gR_ref
+
+
+# ============================================================================
+
+
 def _save_single_geom_as_pdb_for_tools(
     g: Any,
     ref_pdb: Path,
@@ -723,6 +803,50 @@ def _read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndar
     return first_elems, first_coords, last_coords
 
 
+def _read_xyz_as_blocks(trj_path: Path) -> List[List[str]]:
+    """
+    Read a multi-frame XYZ/TRJ file and return a list of frames, each as a list of lines.
+
+    Used for building a concatenated IRC trajectory without parsing coordinates/energies.
+    """
+    try:
+        lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception as e:
+        raise click.ClickException(f"[irc_all] Failed to read XYZ/TRJ: {trj_path} ({e})")
+
+    blocks: List[List[str]] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        # Skip empty lines
+        while i < n and not lines[i].strip():
+            i += 1
+        if i >= n:
+            break
+        try:
+            nat = int(lines[i].split()[0])
+        except Exception:
+            click.echo(
+                f"[irc_all] WARNING: Malformed XYZ/TRJ header at line {i + 1} in {trj_path}; stopping here.",
+                err=True,
+            )
+            break
+        start = i
+        i += 1  # comment line
+        if i < n:
+            i += 1
+        if i + nat > n:
+            click.echo(
+                f"[irc_all] WARNING: Unexpected EOF while reading frame from {trj_path}; last frame skipped.",
+                err=True,
+            )
+            break
+        end = i + nat
+        blocks.append(lines[start:end])
+        i = end
+    return blocks
+
+
 def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[Path]:
     """
     Given a base path without extension, return the first existing file among base.suffix for suffixes.
@@ -762,6 +886,32 @@ def _write_segment_energy_diagram(
         click.echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
 
 
+def _build_global_segment_labels(n_segments: int) -> List[str]:
+    """
+    Build GSM-like labels for aggregated R/TS/P diagrams over multiple segments.
+
+    Pattern:
+      - n = 1: ["R", "TS1", "P"]
+      - n ≥ 2: R, TS1, IM1_1, IM1_2, TS2, IM2_1, IM2_2, ..., TSN, P
+    """
+    if n_segments <= 0:
+        return []
+    if n_segments == 1:
+        return ["R", "TS1", "P"]
+
+    labels: List[str] = []
+    for seg_idx in range(1, n_segments + 1):
+        if seg_idx == 1:
+            labels.extend(["R", "TS1", "IM1_1"])
+        elif seg_idx == n_segments:
+            labels.extend([f"IM{seg_idx - 1}_2", f"TS{seg_idx}", "P"])
+        else:
+            labels.extend(
+                [f"IM{seg_idx - 1}_2", f"TS{seg_idx}", f"IM{seg_idx}_1"]
+            )
+    return labels
+
+
 def _concat_images_horizontally(
     image_paths: Sequence[Path],
     out_path: Path,
@@ -794,6 +944,60 @@ def _concat_images_horizontally(
     _ensure_dir(out_path.parent)
     canvas.save(str(out_path))
     click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_path}")
+
+
+def _merge_irc_trajectories_to_single_plot(
+    trj_and_flags: Sequence[Tuple[Path, bool]],
+    out_png: Path,
+) -> None:
+    """
+    Build a single IRC plot over all reactive segments using trj2fig.
+
+    Parameters
+    ----------
+    trj_and_flags : Sequence[Tuple[Path, bool]]
+        For each segment: (finished_irc.trj path, reverse_flag). When reverse_flag is True,
+        the frame order of that segment is reversed before concatenation.
+    out_png : Path
+        Output PNG path for the aggregated plot.
+    """
+    # Collect blocks from each segment
+    all_blocks: List[str] = []
+    for trj_path, reverse in trj_and_flags:
+        if not isinstance(trj_path, Path) or not trj_path.exists():
+            continue
+        try:
+            blocks = _read_xyz_as_blocks(trj_path)
+        except click.ClickException as e:
+            click.echo(str(e), err=True)
+            continue
+        if not blocks:
+            continue
+        if reverse:
+            blocks = list(reversed(blocks))
+        all_blocks.extend("\n".join(b) for b in blocks)
+
+    if not all_blocks:
+        return
+
+    tmp_trj = out_png.with_suffix(".trj")
+    _ensure_dir(tmp_trj.parent)
+    try:
+        tmp_trj.write_text("\n".join(all_blocks) + "\n", encoding="utf-8")
+    except Exception as e:
+        click.echo(f"[irc_all] WARNING: Failed to write concatenated IRC trajectory: {e}", err=True)
+        return
+
+    try:
+        run_trj2fig(tmp_trj, [out_png], unit="kcal", reference="init", reverse_x=False)
+        click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_png}")
+    except Exception as e:
+        click.echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}", err=True)
+    finally:
+        try:
+            tmp_trj.unlink()
+        except Exception:
+            pass
 
 
 def _optimize_endpoint_geom(
@@ -1134,14 +1338,21 @@ def _pseudo_irc_and_match(
     freeze_links_flag: bool,
     calc_cfg: Optional[Dict[str, Any]],
     args_yaml: Optional[Path],
+    seg_tag: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Run IRC via the irc CLI (EulerPC), then map ends to (left,right) based on GSM segment endpoints.
+    Run IRC via the irc CLI (EulerPC), then map ends to (left,right).
 
     - Run irc on the TS structure into seg_dir/irc
     - Read endpoints from finished_irc.trj
-    - Map to GSM segment endpoints via bond-change + RMSD
-    - Return geoms and tags plus path to per-segment IRC plot.
+    - Prefer mapping to GSM segment endpoints using LBFGS-optimized
+      minima under path_search/segments (seg_tag_left/right_lbfgs_opt).
+      When that fails, fall back to RMSD-based choice. For TSOPT-only
+      mode (no seg_tag), we keep the original (first,last) ordering and
+      optional mep_seg-based mapping as a very last resort.
+    - Return geoms and tags plus paths to per-segment IRC plot and the
+      finished_irc.trj, along with whether the trajectory needs to be
+      reversed when building a global IRC plot.
     """
     freeze_atoms: List[int] = []
     if freeze_links_flag and seg_pocket_pdb.suffix.lower() == ".pdb":
@@ -1181,6 +1392,7 @@ def _pseudo_irc_and_match(
     finished_trj = irc_dir / "finished_irc.trj"
     irc_plot = irc_dir / "irc_plot.png"
 
+    # Ensure we have a PDB for visualization if possible
     try:
         if finished_trj.exists() and (not finished_pdb.exists()):
             ref_for_conv: Optional[Path] = None
@@ -1204,34 +1416,107 @@ def _pseudo_irc_and_match(
 
     left_tag = "backward"
     right_tag = "forward"
-    seg_pocket_path = seg_dir.parent / f"mep_seg_{seg_idx:02d}.pdb"
-    if seg_pocket_path.exists():
-        try:
-            gL_end, gR_end = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
-            bond_cfg = dict(_path_search.BOND_KW)
+    reverse_irc = False
 
-            def _matches(x, y) -> bool:
-                try:
-                    chg, _ = _path_search._has_bond_change(x, y, bond_cfg)
-                    return not chg
-                except Exception:
-                    return _path_search._rmsd_between(x, y, align=True) < 1e-3
+    path_root = seg_dir.parent
 
-            left_cand = g_left if _matches(g_left, gL_end) else (g_right if _matches(g_right, gL_end) else None)
-            right_cand = g_left if _matches(g_left, gR_end) else (g_right if _matches(g_right, gR_end) else None)
-            if left_cand is not None and right_cand is not None and left_cand is not right_cand:
-                if left_cand is g_right:
-                    g_left, g_right = g_right, g_left
-                    left_tag, right_tag = right_tag, left_tag
-            else:
-                dL = _path_search._rmsd_between(g_left, gL_end, align=True)
-                dR = _path_search._rmsd_between(g_right, gL_end, align=True)
-                if dR < dL:
-                    g_left, g_right = g_right, g_left
-                    left_tag, right_tag = right_tag, left_tag
-        except Exception as e:
-            click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+    # --- Preferred mapping: use LBFGS-optimized endpoints from path_search/segments ---
+    if seg_tag is not None:
+        segments_dir = path_root / "segments"
+        if segments_dir.exists():
+            try:
+                endpoints = _load_segment_lbfgs_endpoints(path_root, seg_tag, freeze_atoms)
+                if endpoints is not None:
+                    gL_end, gR_end = endpoints
+                    bond_cfg = dict(_path_search.BOND_KW)
 
+                    def _matches(x, y) -> bool:
+                        try:
+                            changed, _ = _path_search._has_bond_change(x, y, bond_cfg)
+                            return not changed
+                        except Exception:
+                            return False
+
+                    L_L = _matches(g_left, gL_end)
+                    L_R = _matches(g_left, gR_end)
+                    R_L = _matches(g_right, gL_end)
+                    R_R = _matches(g_right, gR_end)
+
+                    matched_bond = False
+                    if L_L and R_R:
+                        matched_bond = True
+                        # orientation already consistent
+                    elif L_R and R_L:
+                        matched_bond = True
+                        g_left, g_right = g_right, g_left
+                        left_tag, right_tag = right_tag, left_tag
+                        reverse_irc = True
+
+                    if not matched_bond:
+                        # Fallback: minimize total RMSD between (left,right) and (L_end,R_end)
+                        try:
+                            d_LL = _path_search._rmsd_between(g_left, gL_end, align=True)
+                            d_LR = _path_search._rmsd_between(g_left, gR_end, align=True)
+                            d_RL = _path_search._rmsd_between(g_right, gL_end, align=True)
+                            d_RR = _path_search._rmsd_between(g_right, gR_end, align=True)
+                            opt1 = d_LL + d_RR  # left->L_end, right->R_end
+                            opt2 = d_LR + d_RL  # left->R_end, right->L_end
+                            if opt2 < opt1:
+                                g_left, g_right = g_right, g_left
+                                left_tag, right_tag = right_tag, left_tag
+                                reverse_irc = True
+                        except Exception as e:
+                            click.echo(
+                                f"[irc] WARNING: segment endpoint mapping via RMSD failed: {e}",
+                                err=True,
+                            )
+                else:
+                    click.echo(
+                        f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' under 'segments/'; "
+                        "using raw IRC orientation.",
+                        err=True,
+                    )
+            except Exception as e:
+                click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+        else:
+            click.echo(
+                f"[irc] WARNING: segments directory not found under '{path_root}'; using raw IRC orientation.",
+                err=True,
+            )
+    else:
+        # TSOPT-only mode: keep previous optional mapping against mep_seg_{idx:02d}.pdb,
+        # but only when such a file actually exists.
+        seg_pocket_path = path_root / f"mep_seg_{seg_idx:02d}.pdb"
+        if seg_pocket_path.exists():
+            try:
+                gL_end, gR_end = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+                bond_cfg = dict(_path_search.BOND_KW)
+
+                def _matches(x, y) -> bool:
+                    try:
+                        chg, _ = _path_search._has_bond_change(x, y, bond_cfg)
+                        return not chg
+                    except Exception:
+                        return _path_search._rmsd_between(x, y, align=True) < 1e-3
+
+                left_cand = g_left if _matches(g_left, gL_end) else (g_right if _matches(g_right, gL_end) else None)
+                right_cand = g_left if _matches(g_left, gR_end) else (g_right if _matches(g_right, gR_end) else None)
+                if left_cand is not None and right_cand is not None and left_cand is not right_cand:
+                    if left_cand is g_right:
+                        g_left, g_right = g_right, g_left
+                        left_tag, right_tag = right_tag, left_tag
+                        reverse_irc = True
+                else:
+                    dL = _path_search._rmsd_between(g_left, gL_end, align=True)
+                    dR = _path_search._rmsd_between(g_right, gL_end, align=True)
+                    if dR < dL:
+                        g_left, g_right = g_right, g_left
+                        left_tag, right_tag = right_tag, left_tag
+                        reverse_irc = True
+            except Exception as e:
+                click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+
+    # Per-segment IRC plot (kept as before)
     try:
         if finished_trj.exists():
             run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
@@ -1246,6 +1531,8 @@ def _pseudo_irc_and_match(
         "right_tag": right_tag,
         "freeze_atoms": freeze_atoms,
         "irc_plot_path": irc_plot if irc_plot.exists() else None,
+        "irc_trj_path": finished_trj if finished_trj.exists() else None,
+        "reverse_irc": reverse_irc,
     }
 
 
@@ -1934,6 +2221,9 @@ def cli(
 
     calc_cfg_shared = _build_calc_cfg(q_int, spin, yaml_cfg)
 
+    # -------------------------------------------------------------------------
+    # TSOPT-only single-structure mode
+    # -------------------------------------------------------------------------
     if single_tsopt_mode:
         click.echo("\n=== [all] TSOPT-only single-structure mode ===\n")
         tsroot = out_dir / "tsopt_single"
@@ -1964,6 +2254,7 @@ def cli(
             freeze_links_flag=freeze_links_flag,
             calc_cfg=calc_cfg_shared,
             args_yaml=args_yaml,
+            seg_tag=None,
         )
         gL = irc_res["left_min_geom"]
         gR = irc_res["right_min_geom"]
@@ -2022,6 +2313,15 @@ def cli(
                 err=True,
             )
             g_prod_opt = g_prod_irc
+
+        # Clean up endpoint_opt as a temporary working directory
+        try:
+            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+        except Exception as e:
+            click.echo(
+                f"[post] WARNING: Failed to remove temporary endpoint_opt directory in TSOPT-only mode: {e}",
+                err=True,
+            )
 
         pR = _save_single_geom_as_pdb_for_tools(
             g_react_opt, pocket_ref, struct_dir, "reactant"
@@ -2198,6 +2498,9 @@ def cli(
         click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
+    # -------------------------------------------------------------------------
+    # Stage 1b: optional staged scan (single-structure)
+    # -------------------------------------------------------------------------
     pockets_for_path: List[Path]
     if is_single and has_scan and skip_extract and input_paths[0].suffix.lower() != ".pdb":
         raise click.ClickException(
@@ -2319,6 +2622,9 @@ def cli(
         else:
             pockets_for_path = list(pocket_outputs)
 
+    # -------------------------------------------------------------------------
+    # Stage 2: MEP search (path_search)
+    # -------------------------------------------------------------------------
     click.echo(
         "\n=== [all] Stage 2/3 — MEP search on input structures (recursive GSM) ===\n"
     )
@@ -2406,6 +2712,9 @@ def cli(
             f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True
         )
 
+    # -------------------------------------------------------------------------
+    # Stage 3: merge to full systems (already done in path_search)
+    # -------------------------------------------------------------------------
     click.echo("\n=== [all] Stage 3/3 — Merge into full-system templates ===\n")
     if gave_ref_pdb:
         click.echo(
@@ -2433,6 +2742,9 @@ def cli(
         click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
+    # -------------------------------------------------------------------------
+    # Stage 4: post-processing per reactive segment
+    # -------------------------------------------------------------------------
     click.echo(
         "\n=== [all] Stage 4 — Post-processing per reactive segment ===\n"
     )
@@ -2459,15 +2771,12 @@ def cli(
         click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
-    tsopt_all_labels: List[str] = []
-    tsopt_all_energies: List[float] = []
-    g_uma_all_labels: List[str] = []
-    g_uma_all_energies: List[float] = []
-    dft_all_labels: List[str] = []
-    dft_all_energies: List[float] = []
-    g_dftuma_all_labels: List[str] = []
-    g_dftuma_all_energies: List[float] = []
-    irc_plot_paths: List[Path] = []
+    # Per-category per-segment energies
+    tsopt_seg_energies: List[Tuple[float, float, float]] = []
+    g_uma_seg_energies: List[Tuple[float, float, float]] = []
+    dft_seg_energies: List[Tuple[float, float, float]] = []
+    g_dftuma_seg_energies: List[Tuple[float, float, float]] = []
+    irc_trj_for_all: List[Tuple[Path, bool]] = []
 
     for s in reactive:
         seg_idx = int(s.get("index", 0) or 0)
@@ -2516,14 +2825,18 @@ def cli(
                 freeze_links_flag=freeze_links_flag,
                 calc_cfg=calc_cfg_shared,
                 args_yaml=args_yaml,
+                seg_tag=str(seg_tag),
             )
 
             gL = irc_res["left_min_geom"]
             gR = irc_res["right_min_geom"]
             gT = irc_res["ts_geom"]
             irc_plot_path = irc_res.get("irc_plot_path")
-            if isinstance(irc_plot_path, Path) and irc_plot_path.exists():
-                irc_plot_paths.append(irc_plot_path)
+            irc_trj_path = irc_res.get("irc_trj_path")
+            reverse_irc = bool(irc_res.get("reverse_irc", False))
+
+            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
+                irc_trj_for_all.append((irc_trj_path, reverse_irc))
 
             pL_irc = _save_single_geom_as_pdb_for_tools(
                 gL, hei_pocket_path, struct_dir, "reactant_irc"
@@ -2566,6 +2879,15 @@ def cli(
                 )
                 g_prod_opt = gR
 
+            # endpoint_opt は temp として使い終わったら消す
+            try:
+                shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+            except Exception as e:
+                click.echo(
+                    f"[post] WARNING: Failed to remove temporary endpoint_opt directory for segment {seg_idx:02d}: {e}",
+                    err=True,
+                )
+
             pL = _save_single_geom_as_pdb_for_tools(
                 g_react_opt, hei_pocket_path, struct_dir, "reactant"
             )
@@ -2585,8 +2907,7 @@ def cli(
                 title_note="(UMA, TSOPT + IRC)",
             )
 
-            tsopt_all_labels.extend([f"R{seg_idx}", f"TS{seg_idx}", f"P{seg_idx}"])
-            tsopt_all_energies.extend([eR, eT, eP])
+            tsopt_seg_energies.append((eR, eT, eP))
 
             try:
                 if pT.suffix.lower() == ".pdb":
@@ -2735,10 +3056,7 @@ def cli(
                             energies_eh=gibbs_vals,
                             title_note="(Gibbs, UMA)",
                         )
-                        g_uma_all_labels.extend(
-                            [f"R{seg_idx}", f"TS{seg_idx}", f"P{seg_idx}"]
-                        )
-                        g_uma_all_energies.extend(gibbs_vals)
+                        g_uma_seg_energies.append((GR, GT, GP))
                     else:
                         click.echo(
                             "[thermo] NOTE: Gibbs energies non-finite; diagram skipped."
@@ -2797,10 +3115,7 @@ def cli(
                             energies_eh=[eR_dft, eT_dft, eP_dft],
                             title_note=f"(DFT {dft_func_basis_use})",
                         )
-                        dft_all_labels.extend(
-                            [f"R{seg_idx}", f"TS{seg_idx}", f"P{seg_idx}"]
-                        )
-                        dft_all_energies.extend([eR_dft, eT_dft, eP_dft])
+                        dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
                     else:
                         click.echo(
                             "[dft] WARNING: some DFT energies missing; diagram skipped.",
@@ -2840,11 +3155,8 @@ def cli(
                                 energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                                 title_note="(Gibbs, DFT//UMA)",
                             )
-                            g_dftuma_all_labels.extend(
-                                [f"R{seg_idx}", f"TS{seg_idx}", f"P{seg_idx}"]
-                            )
-                            g_dftuma_all_energies.extend(
-                                [GR_dftUMA, GT_dftUMA, GP_dftUMA]
+                            g_dftuma_seg_energies.append(
+                                (GR_dftUMA, GT_dftUMA, GP_dftUMA)
                             )
                         else:
                             click.echo(
@@ -2857,45 +3169,59 @@ def cli(
                             err=True,
                         )
 
-    if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
-        _write_segment_energy_diagram(
-            out_dir / "energy_diagram_tsopt_all",
-            labels=tsopt_all_labels,
-            energies_eh=tsopt_all_energies,
-            title_note="(UMA, TSOPT + IRC; all segments)",
-        )
-    if (
-        do_thermo
-        and g_uma_all_labels
-        and len(g_uma_all_labels) == len(g_uma_all_energies)
-    ):
-        _write_segment_energy_diagram(
-            out_dir / "energy_diagram_G_UMA_all",
-            labels=g_uma_all_labels,
-            energies_eh=g_uma_all_energies,
-            title_note="(Gibbs, UMA; all segments)",
-        )
-    if do_dft and dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
-        _write_segment_energy_diagram(
-            out_dir / "energy_diagram_DFT_all",
-            labels=dft_all_labels,
-            energies_eh=dft_all_energies,
-            title_note=f"(DFT {dft_func_basis_use}; all segments)",
-        )
-    if (
-        do_dft
-        and do_thermo
-        and g_dftuma_all_labels
-        and len(g_dftuma_all_labels) == len(g_dftuma_all_energies)
-    ):
-        _write_segment_energy_diagram(
-            out_dir / "energy_diagram_G_DFT_plus_UMA_all",
-            labels=g_dftuma_all_labels,
-            energies_eh=g_dftuma_all_energies,
-            title_note="(Gibbs, DFT//UMA; all segments)",
-        )
+    # -------------------------------------------------------------------------
+    # Aggregate diagrams over all reactive segments, with GSM-style labels
+    # -------------------------------------------------------------------------
+    if tsopt_seg_energies:
+        tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
+        tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
+        if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
+            _write_segment_energy_diagram(
+                out_dir / "energy_diagram_tsopt_all",
+                labels=tsopt_all_labels,
+                energies_eh=tsopt_all_energies,
+                title_note="(UMA, TSOPT + IRC; all segments)",
+            )
 
-    if irc_plot_paths:
-        _concat_images_horizontally(irc_plot_paths, out_dir / "irc_plot_all.png")
+    if do_thermo and g_uma_seg_energies:
+        g_uma_all_energies = [e for triple in g_uma_seg_energies for e in triple]
+        g_uma_all_labels = _build_global_segment_labels(len(g_uma_seg_energies))
+        if g_uma_all_labels and len(g_uma_all_labels) == len(g_uma_all_energies):
+            _write_segment_energy_diagram(
+                out_dir / "energy_diagram_G_UMA_all",
+                labels=g_uma_all_labels,
+                energies_eh=g_uma_all_energies,
+                title_note="(Gibbs, UMA; all segments)",
+            )
+
+    if do_dft and dft_seg_energies:
+        dft_all_energies = [e for triple in dft_seg_energies for e in triple]
+        dft_all_labels = _build_global_segment_labels(len(dft_seg_energies))
+        if dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
+            _write_segment_energy_diagram(
+                out_dir / "energy_diagram_DFT_all",
+                labels=dft_all_labels,
+                energies_eh=dft_all_energies,
+                title_note=f"(DFT {dft_func_basis_use}; all segments)",
+            )
+
+    if do_dft and do_thermo and g_dftuma_seg_energies:
+        g_dftuma_all_energies = [e for triple in g_dftuma_seg_energies for e in triple]
+        g_dftuma_all_labels = _build_global_segment_labels(len(g_dftuma_seg_energies))
+        if g_dftuma_all_labels and len(g_dftuma_all_labels) == len(g_dftuma_all_energies):
+            _write_segment_energy_diagram(
+                out_dir / "energy_diagram_G_DFT_plus_UMA_all",
+                labels=g_dftuma_all_labels,
+                energies_eh=g_dftuma_all_energies,
+                title_note="(Gibbs, DFT//UMA; all segments)",
+            )
+
+    # -------------------------------------------------------------------------
+    # Aggregated IRC plot over all reactive segments (single trj + trj2fig)
+    # -------------------------------------------------------------------------
+    if irc_trj_for_all:
+        _merge_irc_trajectories_to_single_plot(
+            irc_trj_for_all, out_dir / "irc_plot_all.png"
+        )
 
     click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
