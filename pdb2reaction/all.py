@@ -66,7 +66,7 @@ Runs a one-shot pipeline centered on pocket models:
     - If **exactly one** full input PDB is provided and `--scan-lists` is given, the tool performs a
       **staged, bond-length–driven scan** on the extracted pocket PDB (or on the full input PDB when
       extraction is skipped) using the UMA calculator.
-    - For each stage, the final relaxed structure (`stage_XX/result.pdb`) is collected as an
+    - For each stage, the final relaxed structure (`stage_XX/result.(pdb|xyz|gjf)`) is collected as an
       **intermediate/product candidate**.
     - The ordered input series for the path search becomes:
       `[initial pocket or full input, stage_01/result.pdb, stage_02/result.pdb, ...]`.
@@ -97,7 +97,7 @@ Runs a one-shot pipeline centered on pocket models:
         • `energy_diagram_G_UMA_all.png` (Gibbs, UMA),
         • `energy_diagram_DFT_all.png` (DFT),
         • `energy_diagram_G_DFT_plus_UMA_all.png` (Gibbs, DFT//UMA),
-      and per-segment `irc_plot.png` images are concatenated into `<out-dir>/irc_plot_all.png`.
+      and a single aggregated IRC plot over all segments is written as `<out-dir>/irc_plot_all.png`.
     - For each reactive segment, the TS structure is also copied to `<out-dir>` as:
         • `ts_seg_XX.pdb` when PDB inputs are used,
         • `ts_seg_XX.xyz` (single-frame XYZ trajectory with energy) for XYZ/GJF inputs.
@@ -113,7 +113,8 @@ Runs a one-shot pipeline centered on pocket models:
       In this special mode only, the higher-energy IRC endpoint is treated as the reactant (R).
       The single-structure energy diagrams are also mirrored to `<out-dir>` as
       `energy_diagram_*_all.png`, and `irc/irc_plot.png` is mirrored to `<out-dir>/irc_plot_all.png`.
-      The TS structure is copied to `<out-dir>/ts_seg_01.pdb` or `.trj` according to the input format.
+      The TS structure is copied to `<out-dir>/ts_seg_01.pdb` when a PDB TS is available, or to
+      `<out-dir>/ts_seg_01.xyz` (single-frame XYZ trajectory with energy) otherwise.
 
 **Charge handling**
   - With extraction enabled, the extractor’s **first-model total pocket charge** is used (rounded to int).
@@ -672,8 +673,10 @@ def _load_segment_endpoints(
     freeze_atoms: Sequence[int],
 ) -> Optional[Tuple[Any, Any]]:
     """
-    Load left/right endpoints for a segment from "path_search/seg_XXX_refine_gsm/final_geometries.trj".
-    If it is not exitsts, load structures from "path_search/seg_XXX_gsm/final_geometries.trj".
+    Load left/right endpoints for a segment from
+    ``<path_dir>/<seg_tag>_refine_gsm/final_geometries.trj``.
+    If it does not exist, load structures from
+    ``<path_dir>/<seg_tag>_gsm/final_geometries.trj``.
 
     Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref).
     """
@@ -688,8 +691,8 @@ def _load_segment_endpoints(
         return None
 
     base = str(trj_path)
-    gL_ref = geom_loader(base + "[-1]", coord_type="cart")
-    gR_ref = geom_loader(base + "[0]", coord_type="cart")
+    gL_ref = geom_loader(base + "[0]", coord_type="cart")
+    gR_ref = geom_loader(base + "[-1]", coord_type="cart")
 
     try:
         fa = np.array(freeze_atoms, dtype=int)
@@ -1318,18 +1321,21 @@ def _pseudo_irc_and_match(
     seg_tag: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Run IRC via the irc CLI (EulerPC), then map ends to (left,right).
+    Run IRC via the irc CLI (EulerPC), then map the IRC endpoints to (left, right).
 
-    - Run irc on the TS structure into seg_dir/irc
-    - Read endpoints from finished_irc.trj
-    - Prefer mapping to GSM segment endpoints using LBFGS-optimized
-      minima under path_search/segments (seg_tag_left/right_lbfgs_opt).
-      When that fails, fall back to RMSD-based choice. For TSOPT-only
-      mode (no seg_tag), we keep the original (first,last) ordering and
-      optional mep_seg-based mapping as a very last resort.
-    - Return geoms and tags plus paths to per-segment IRC plot and the
-      finished_irc.trj, along with whether the trajectory needs to be
-      reversed when building a global IRC plot.
+    - Run irc on the TS structure into ``seg_dir/irc``.
+    - Read endpoints from ``finished_irc.trj``.
+    - When ``seg_tag`` is provided, map the two IRC endpoints to the corresponding
+      GSM segment endpoints loaded from
+      ``<path_dir>/<seg_tag>_refine_gsm/final_geometries.trj`` (or
+      ``<path_dir>/<seg_tag>_gsm/final_geometries.trj`` as a fallback). Bond-state
+      matching is attempted first; if that fails, the assignment that minimizes the
+      sum of RMSDs to the GSM endpoints is used.
+    - For TSOPT-only mode (``seg_tag`` is ``None``), the original (first, last)
+      IRC endpoints are kept as (left, right).
+    - Returns the endpoint geometries, tags, and paths to the per-segment IRC plot
+      and ``finished_irc.trj``, together with a flag indicating whether the IRC
+      trajectory should be reversed when constructing the global IRC plot.
     """
     freeze_atoms: List[int] = _get_freeze_atoms(seg_pocket_pdb, freeze_links_flag)
 
@@ -1395,7 +1401,7 @@ def _pseudo_irc_and_match(
 
     path_root = seg_dir.parent
 
-    # --- Preferred mapping: use endpoints from path_search/seg_XXX_~~~ ---
+    # Preferred mapping: use endpoints from path_search/<seg_tag>_~~~_gsm
     if seg_tag is not None:
         try:
             endpoints = _load_segment_endpoints(path_root, seg_tag, freeze_atoms)
@@ -1452,10 +1458,10 @@ def _pseudo_irc_and_match(
         except Exception as e:
             click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
     else:
-        # TSOPT-only mode: Use raw irc orientation.
+        # TSOPT-only mode: use raw IRC orientation.
         click.echo(f"[irc] TSOPT-only mode: Use raw irc orientation.")
 
-    # Per-segment IRC plot (kept as before)
+    # Per-segment IRC plot
     try:
         if finished_trj.exists():
             run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
@@ -2915,10 +2921,10 @@ def cli(
 
             ref_for_structs = seg_pocket_path if seg_pocket_path is not None else hei_pocket_path
             pL = _save_single_geom_as_pdb_for_tools(
-                gL, ref_for_structs, struct_dir, "reactant_irc"
+                gL, ref_for_structs, struct_dir, "reactant_gsm"
             )
             pR = _save_single_geom_as_pdb_for_tools(
-                gR, ref_for_structs, struct_dir, "product_irc"
+                gR, ref_for_structs, struct_dir, "product_gsm"
             )
             pT = _save_single_geom_as_pdb_for_tools(
                 g_ts, ref_for_structs, struct_dir, "ts_from_hei"
