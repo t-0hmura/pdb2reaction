@@ -2907,6 +2907,12 @@ def cli(
                 )
                 continue
 
+            calc_args = dict(calc_cfg_shared)
+            calc = uma_pysis(**calc_args)
+            gL.set_calculator(calc)
+            gR.set_calculator(calc)
+            g_ts.set_calculator(calc)
+
             ref_for_structs = seg_pocket_path if seg_pocket_path is not None else hei_pocket_path
             pL = _save_single_geom_as_pdb_for_tools(
                 gL, ref_for_structs, struct_dir, "reactant_irc"
