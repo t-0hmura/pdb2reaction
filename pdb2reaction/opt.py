@@ -198,14 +198,14 @@ LBFGS_KW = {
     **OPT_BASE_KW,
 
     # History / memory
-    "keep_last": 7,              # number of (s, y) pairs to retain
+    "keep_last": 10,              # number of (s, y) pairs to retain
 
     # Preconditioner / initial scaling
     "beta": 1.0,                 # β in -(H + βI)^{-1} g
     "gamma_mult": False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
 
     # Step-size control
-    "max_step": 0.30,            # maximum allowed component-wise step
+    "max_step": 0.20,            # maximum allowed component-wise step
     "control_step": True,        # scale step to satisfy |max component| <= max_step
 
     # Safeguards
@@ -221,10 +221,10 @@ RFO_KW = {
     **OPT_BASE_KW,
 
     # Trust-region (step-size) control
-    "trust_radius": 0.30,        # initial trust radius (in working coordinates)
+    "trust_radius": 0.20,        # initial trust radius (in working coordinates)
     "trust_update": True,        # adapt the trust radius based on step quality
     "trust_min": 0.01,           # lower bound for trust radius
-    "trust_max": 0.30,           # upper bound for trust radius
+    "trust_max": 0.20,           # upper bound for trust radius
     "max_energy_incr": None,     # abort if ΔE exceeds this after a bad step
 
     # Hessian model / refresh
