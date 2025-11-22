@@ -100,7 +100,7 @@ Runs a one-shot pipeline centered on pocket models:
       and per-segment `irc_plot.png` images are concatenated into `<out-dir>/irc_plot_all.png`.
     - For each reactive segment, the TS structure is also copied to `<out-dir>` as:
         • `ts_seg_XX.pdb` when PDB inputs are used,
-        • `ts_seg_XX.trj` (single-frame XYZ trajectory with energy) for XYZ/GJF inputs.
+        • `ts_seg_XX.xyz` (single-frame XYZ trajectory with energy) for XYZ/GJF inputs.
 
 (Alt) **Single-structure TSOPT-only mode**
     - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
@@ -164,7 +164,7 @@ Outputs (& Directory Layout)
   │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment paths
   │   ├─ hei_seg_XX.(xyz|pdb|gjf)        # HEI snapshots per reactive segment
   │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb, PDB input)
-  │   ├─ segments/ ...                   # GSM internals / recursion tree
+  │   ├─ seg_XXX_~~~/ ...                # GSM internals / recursion tree
   │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
   │       ├─ irc/ ...
@@ -184,7 +184,7 @@ Outputs (& Directory Layout)
   ├─ energy_diagram_DFT_all.png          # DFT R–TS–P across all reactive segments
   ├─ energy_diagram_G_DFT_plus_UMA_all.png  # DFT//UMA Gibbs R–TS–P across all reactive segments
   ├─ irc_plot_all.png                    # concatenation of IRC data from all segments in one plot
-  ├─ ts_seg_XX.pdb / ts_seg_XX.trj       # TS structure per reactive segment (format depends on inputs)
+  ├─ ts_seg_XX.pdb / ts_seg_XX.xyz       # TS structure per reactive segment (format depends on inputs)
   └─ tsopt_single/                       # present only in single-structure TSOPT-only mode
       ├─ ts/ ...
       ├─ irc/ ...
@@ -217,7 +217,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import List, Sequence, Optional, Tuple, Dict, Any
 
-import sys
+import sys, os
 import math
 import click
 from click.core import ParameterSource
@@ -571,6 +571,38 @@ def _pdb_needs_elem_fix(p: Path) -> bool:
         return False
 
 
+_FREEZE_ATOMS_GLOBAL: Optional[List[int]] = None
+
+
+def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List[int]:
+    """
+    Determine freeze atom indices once and reuse them globally.
+
+    The first time this is called with a PDB path and freeze_links_flag=True,
+    link-parent atoms are detected from that PDB. The resulting indices are
+    reused for subsequent calls (even if a non-PDB path is provided), under
+    the assumption that atom indexing is consistent across the trajectory.
+    """
+    global _FREEZE_ATOMS_GLOBAL
+    if not freeze_links_flag:
+        return []
+    if _FREEZE_ATOMS_GLOBAL is not None:
+        return _FREEZE_ATOMS_GLOBAL
+    if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
+        # No suitable PDB available yet to determine freeze atoms.
+        return []
+    try:
+        fa = detect_freeze_links_safe(pdb_path)
+        _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
+    except Exception as e:
+        click.echo(
+            f"[all] WARNING: detect_freeze_links_safe failed for {pdb_path}: {e}; no atoms will be frozen.",
+            err=True,
+        )
+        _FREEZE_ATOMS_GLOBAL = []
+    return _FREEZE_ATOMS_GLOBAL
+
+
 # ---------- Post-processing helpers ----------
 
 
@@ -634,82 +666,30 @@ def _geom_from_angstrom(
     )
 
 
-def _load_segment_end_geoms(seg_pdb: Path, freeze_atoms: Sequence[int]) -> Tuple[Any, Any]:
-    """
-    Load first/last model as Geometries from a per-segment pocket PDB.
-    """
-    coords_list, elems = _pdb_models_to_coords_and_elems(seg_pdb)
-    gL = _geom_from_angstrom(elems, coords_list[0], freeze_atoms)
-    gR = _geom_from_angstrom(elems, coords_list[-1], freeze_atoms)
-    return gL, gR
-
-
-# === NEW: LBFGS endpoints (seg_xxx_left/right_lbfgs_opt) =====================
-
-
-def _find_segment_endpoint_file(segments_dir: Path, seg_tag: str, side: str) -> Optional[Path]:
-    """
-    Try to locate a LBFGS-optimized endpoint for a given segment tag and side ("left" / "right").
-
-    We try a few reasonably conservative patterns:
-
-      segments/seg_tag_{side}_lbfgs_opt/final_geometry.{xyz|pdb|gjf}
-      segments/seg_tag/seg_tag_{side}_lbfgs_opt/final_geometry.*
-      segments/**/seg_tag_{side}_*_opt/final_geometry.*
-
-    Returns the first existing path found or None.
-    """
-    assert side in ("left", "right")
-    candidates: List[Path] = []
-
-    base_patterns = [
-        segments_dir / f"{seg_tag}_{side}_lbfgs_opt",
-        segments_dir / f"{seg_tag}_{side}_opt",
-        segments_dir / seg_tag / f"{seg_tag}_{side}_lbfgs_opt",
-        segments_dir / seg_tag / f"{seg_tag}_{side}_opt",
-    ]
-    for base in base_patterns:
-        for ext in (".xyz", ".pdb", ".gjf"):
-            p = base / f"final_geometry{ext}"
-            candidates.append(p)
-
-    # Fallback: generic rglob search for directories matching seg_tag_*_opt
-    pattern = f"{seg_tag}_{side}_"
-    for d in segments_dir.rglob("*"):
-        if d.is_dir():
-            name = d.name
-            if pattern in name and "opt" in name:
-                for ext in (".xyz", ".pdb", ".gjf"):
-                    p = d / f"final_geometry{ext}"
-                    candidates.append(p)
-
-    for p in candidates:
-        if p.exists():
-            return p
-    return None
-
-
-def _load_segment_lbfgs_endpoints(
+def _load_segment_endpoints(
     path_dir: Path,
     seg_tag: str,
     freeze_atoms: Sequence[int],
 ) -> Optional[Tuple[Any, Any]]:
     """
-    Load LBFGS-optimized left/right endpoints for a segment from path_search/segments.
+    Load left/right endpoints for a segment from "path_search/seg_XXX_refine_gsm/final_geometries.trj".
+    If it is not exitsts, load structures from "path_search/seg_XXX_gsm/final_geometries.trj".
 
-    Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref) or None when not found.
+    Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref).
     """
-    segments_dir = path_dir / "segments"
-    if not segments_dir.exists():
+    refine_trj = path_dir / f"{seg_tag}_refine_gsm" / "final_geometries.trj"
+    gsm_trj = path_dir / f"{seg_tag}_gsm" / "final_geometries.trj"
+
+    if refine_trj.exists():
+        trj_path = refine_trj
+    elif gsm_trj.exists():
+        trj_path = gsm_trj
+    else:
         return None
 
-    left_file = _find_segment_endpoint_file(segments_dir, seg_tag, "left")
-    right_file = _find_segment_endpoint_file(segments_dir, seg_tag, "right")
-    if left_file is None or right_file is None:
-        return None
-
-    gL_ref = geom_loader(left_file, coord_type="cart")
-    gR_ref = geom_loader(right_file, coord_type="cart")
+    base = str(trj_path)
+    gL_ref = geom_loader(base + "[-1]", coord_type="cart")
+    gR_ref = geom_loader(base + "[0]", coord_type="cart")
 
     try:
         fa = np.array(freeze_atoms, dtype=int)
@@ -719,9 +699,6 @@ def _load_segment_lbfgs_endpoints(
         pass
 
     return gL_ref, gR_ref
-
-
-# ============================================================================
 
 
 def _save_single_geom_as_pdb_for_tools(
@@ -1354,9 +1331,7 @@ def _pseudo_irc_and_match(
       finished_irc.trj, along with whether the trajectory needs to be
       reversed when building a global IRC plot.
     """
-    freeze_atoms: List[int] = []
-    if freeze_links_flag and seg_pocket_pdb.suffix.lower() == ".pdb":
-        freeze_atoms = detect_freeze_links_safe(seg_pocket_pdb)
+    freeze_atoms: List[int] = _get_freeze_atoms(seg_pocket_pdb, freeze_links_flag)
 
     irc_dir = seg_dir / "irc"
     _ensure_dir(irc_dir)
@@ -1420,101 +1395,65 @@ def _pseudo_irc_and_match(
 
     path_root = seg_dir.parent
 
-    # --- Preferred mapping: use LBFGS-optimized endpoints from path_search/segments ---
+    # --- Preferred mapping: use endpoints from path_search/seg_XXX_~~~ ---
     if seg_tag is not None:
-        segments_dir = path_root / "segments"
-        if segments_dir.exists():
-            try:
-                endpoints = _load_segment_lbfgs_endpoints(path_root, seg_tag, freeze_atoms)
-                if endpoints is not None:
-                    gL_end, gR_end = endpoints
-                    bond_cfg = dict(_path_search.BOND_KW)
-
-                    def _matches(x, y) -> bool:
-                        try:
-                            changed, _ = _path_search._has_bond_change(x, y, bond_cfg)
-                            return not changed
-                        except Exception:
-                            return False
-
-                    L_L = _matches(g_left, gL_end)
-                    L_R = _matches(g_left, gR_end)
-                    R_L = _matches(g_right, gL_end)
-                    R_R = _matches(g_right, gR_end)
-
-                    matched_bond = False
-                    if L_L and R_R:
-                        matched_bond = True
-                        # orientation already consistent
-                    elif L_R and R_L:
-                        matched_bond = True
-                        g_left, g_right = g_right, g_left
-                        left_tag, right_tag = right_tag, left_tag
-                        reverse_irc = True
-
-                    if not matched_bond:
-                        # Fallback: minimize total RMSD between (left,right) and (L_end,R_end)
-                        try:
-                            d_LL = _path_search._rmsd_between(g_left, gL_end, align=True)
-                            d_LR = _path_search._rmsd_between(g_left, gR_end, align=True)
-                            d_RL = _path_search._rmsd_between(g_right, gL_end, align=True)
-                            d_RR = _path_search._rmsd_between(g_right, gR_end, align=True)
-                            opt1 = d_LL + d_RR  # left->L_end, right->R_end
-                            opt2 = d_LR + d_RL  # left->R_end, right->L_end
-                            if opt2 < opt1:
-                                g_left, g_right = g_right, g_left
-                                left_tag, right_tag = right_tag, left_tag
-                                reverse_irc = True
-                        except Exception as e:
-                            click.echo(
-                                f"[irc] WARNING: segment endpoint mapping via RMSD failed: {e}",
-                                err=True,
-                            )
-                else:
-                    click.echo(
-                        f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' under 'segments/'; "
-                        "using raw IRC orientation.",
-                        err=True,
-                    )
-            except Exception as e:
-                click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
-        else:
-            click.echo(
-                f"[irc] WARNING: segments directory not found under '{path_root}'; using raw IRC orientation.",
-                err=True,
-            )
-    else:
-        # TSOPT-only mode: keep previous optional mapping against mep_seg_{idx:02d}.pdb,
-        # but only when such a file actually exists.
-        seg_pocket_path = path_root / f"mep_seg_{seg_idx:02d}.pdb"
-        if seg_pocket_path.exists():
-            try:
-                gL_end, gR_end = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+        try:
+            endpoints = _load_segment_endpoints(path_root, seg_tag, freeze_atoms)
+            if endpoints is not None:
+                gL_end, gR_end = endpoints
                 bond_cfg = dict(_path_search.BOND_KW)
 
                 def _matches(x, y) -> bool:
                     try:
-                        chg, _ = _path_search._has_bond_change(x, y, bond_cfg)
-                        return not chg
+                        changed, _ = _path_search._has_bond_change(x, y, bond_cfg)
+                        return not changed
                     except Exception:
-                        return _path_search._rmsd_between(x, y, align=True) < 1e-3
+                        return False
 
-                left_cand = g_left if _matches(g_left, gL_end) else (g_right if _matches(g_right, gL_end) else None)
-                right_cand = g_left if _matches(g_left, gR_end) else (g_right if _matches(g_right, gR_end) else None)
-                if left_cand is not None and right_cand is not None and left_cand is not right_cand:
-                    if left_cand is g_right:
-                        g_left, g_right = g_right, g_left
-                        left_tag, right_tag = right_tag, left_tag
-                        reverse_irc = True
-                else:
-                    dL = _path_search._rmsd_between(g_left, gL_end, align=True)
-                    dR = _path_search._rmsd_between(g_right, gL_end, align=True)
-                    if dR < dL:
-                        g_left, g_right = g_right, g_left
-                        left_tag, right_tag = right_tag, left_tag
-                        reverse_irc = True
-            except Exception as e:
-                click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+                L_L = _matches(g_left, gL_end)
+                L_R = _matches(g_left, gR_end)
+                R_L = _matches(g_right, gL_end)
+                R_R = _matches(g_right, gR_end)
+
+                matched_bond = False
+                if L_L and R_R:
+                    matched_bond = True
+                    # orientation already consistent
+                elif L_R and R_L:
+                    matched_bond = True
+                    g_left, g_right = g_right, g_left
+                    left_tag, right_tag = right_tag, left_tag
+                    reverse_irc = True
+
+                if not matched_bond:
+                    # Fallback: minimize total RMSD between (left,right) and (L_end,R_end)
+                    try:
+                        d_LL = _path_search._rmsd_between(g_left, gL_end, align=True)
+                        d_LR = _path_search._rmsd_between(g_left, gR_end, align=True)
+                        d_RL = _path_search._rmsd_between(g_right, gL_end, align=True)
+                        d_RR = _path_search._rmsd_between(g_right, gR_end, align=True)
+                        opt1 = d_LL + d_RR  # left->L_end, right->R_end
+                        opt2 = d_LR + d_RL  # left->R_end, right->L_end
+                        if opt2 < opt1:
+                            g_left, g_right = g_right, g_left
+                            left_tag, right_tag = right_tag, left_tag
+                            reverse_irc = True
+                    except Exception as e:
+                        click.echo(
+                            f"[irc] WARNING: segment endpoint mapping via RMSD failed: {e}",
+                            err=True,
+                        )
+            else:
+                click.echo(
+                    f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' under 'segments/'; "
+                    "using raw IRC orientation.",
+                    err=True,
+                )
+        except Exception as e:
+            click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+    else:
+        # TSOPT-only mode: Use raw irc orientation.
+        click.echo(f"[irc] TSOPT-only mode: Use raw irc orientation.")
 
     # Per-segment IRC plot (kept as before)
     try:
@@ -2479,7 +2418,7 @@ def cli(
                 ts_copy = out_dir / "ts_seg_01.pdb"
                 shutil.copy2(pT, ts_copy)
             else:
-                ts_copy = out_dir / "ts_seg_01.trj"
+                ts_copy = out_dir / "ts_seg_01.xyz"
                 _path_search._write_xyz_trj_with_energy(
                     [gT], [float(gT.energy)], ts_copy
                 )
@@ -2879,7 +2818,6 @@ def cli(
                 )
                 g_prod_opt = gR
 
-            # endpoint_opt は temp として使い終わったら消す
             try:
                 shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
             except Exception as e:
@@ -2914,7 +2852,7 @@ def cli(
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
                     shutil.copy2(pT, ts_copy)
                 else:
-                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.trj"
+                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
                     _path_search._write_xyz_trj_with_energy(
                         [gT], [float(gT.energy)], ts_copy
                     )
@@ -2931,28 +2869,37 @@ def cli(
             seg_pocket_path = _find_with_suffixes(
                 seg_root / f"mep_seg_{seg_idx:02d}", [".pdb"]
             )
-            if seg_pocket_path is None:
-                click.echo(
-                    f"[post] WARNING: mep_seg_{seg_idx:02d}.pdb not found; cannot run thermo/DFT without --tsopt. Skipping segment.",
-                    err=True,
-                )
-                continue
 
-            freeze_atoms: List[int] = []
-            if freeze_links_flag and seg_pocket_path.suffix.lower() == ".pdb":
-                freeze_atoms = detect_freeze_links_safe(seg_pocket_path)
+            # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
+            freeze_ref: Optional[Path] = None
+            if seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
+                freeze_ref = seg_pocket_path
+            elif hei_pocket_path.suffix.lower() == ".pdb":
+                freeze_ref = hei_pocket_path
+
+            freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)
 
             try:
-                gL, gR = _load_segment_end_geoms(seg_pocket_path, freeze_atoms)
+                endpoints = _load_segment_endpoints(seg_root, str(seg_tag), freeze_atoms)
+                if endpoints is None:
+                    click.echo(
+                        f"[post] WARNING: final_geometries.trj not found for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
+                        err=True,
+                    )
+                    continue
+                gL, gR = endpoints
             except Exception as e:
                 click.echo(
-                    f"[post] WARNING: failed to load segment endpoints from {seg_pocket_path.name}: {e}. Skipping segment.",
+                    f"[post] WARNING: failed to load segment endpoints from final_geometries.trj for segment {seg_idx:02d}: {e}. Skipping segment.",
                     err=True,
                 )
                 continue
 
             try:
                 g_ts = geom_loader(hei_pocket_path, coord_type="cart")
+                if freeze_atoms:
+                    fa = np.array(freeze_atoms, dtype=int)
+                    g_ts.freeze_atoms = fa
             except Exception as e:
                 click.echo(
                     f"[post] WARNING: failed to load HEI geometry for segment {seg_idx:02d}: {e}. Skipping segment.",
@@ -2960,19 +2907,15 @@ def cli(
                 )
                 continue
 
-            ref_for_ts = (
-                seg_pocket_path
-                if seg_pocket_path.suffix.lower() == ".pdb"
-                else hei_pocket_path
-            )
+            ref_for_structs = seg_pocket_path if seg_pocket_path is not None else hei_pocket_path
             pL = _save_single_geom_as_pdb_for_tools(
-                gL, seg_pocket_path, struct_dir, "reactant_irc"
+                gL, ref_for_structs, struct_dir, "reactant_irc"
             )
             pR = _save_single_geom_as_pdb_for_tools(
-                gR, seg_pocket_path, struct_dir, "product_irc"
+                gR, ref_for_structs, struct_dir, "product_irc"
             )
             pT = _save_single_geom_as_pdb_for_tools(
-                g_ts, ref_for_ts, struct_dir, "ts_from_hei"
+                g_ts, ref_for_structs, struct_dir, "ts_from_hei"
             )
             state_structs = {"R": pL, "TS": pT, "P": pR}
 
