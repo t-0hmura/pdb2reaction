@@ -106,17 +106,19 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
+    "fix_first": False,
+    "fix_last": False,
     "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
     "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
     "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
     "reparam_every": 1,         # int, reparametrize every N steps while growing
     "reparam_every_full": 1,    # int, reparametrize every N steps after fully grown
     "param": "equi",            # str, "equi" (even spacing) | "energy" (weight by energy)
-    "max_micro_cycles": 20,     # int, micro-optimization cycles per macro iteration
+    "max_micro_cycles": 10,     # int, micro-optimization cycles per macro iteration
     "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
     "climb": True,              # bool, enable climbing image
     "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent
+    "climb_lanczos": False,     # bool, use Lanczos to estimate the HEI tangent
     "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
     "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
     "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
@@ -220,6 +222,8 @@ def _load_two_endpoints(
     show_default=True,
     help="Maximum LBFGS cycles for endpoint preoptimization (only used when --preopt True).",
 )
+@click.option("--fix-ends", type=click.BOOL, default=False, show_default=True,
+              help="Fix structures of input endpoints during GSM.")
 def cli(
     input_paths: Sequence[Path],
     charge: Optional[int],
@@ -234,6 +238,7 @@ def cli(
     args_yaml: Optional[Path],
     preopt: bool,
     preopt_max_cycles: int,
+    fix_ends: bool,
 ) -> None:
     input_paths = tuple(Path(p) for p in input_paths)
     prepared_inputs = [prepare_input_structure(p) for p in input_paths]
@@ -278,8 +283,11 @@ def cli(
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
-        # Lanczos tangent estimation follows the --climb toggle.
-        gs_cfg["climb_lanczos"] = bool(climb)
+        gs_cfg["fix_first"] = bool(fix_ends)
+        gs_cfg["fix_last"]  = bool(fix_ends)
+
+        # (Currently Disabled) Lanczos tangent estimation follows the --climb toggle.
+        # gs_cfg["climb_lanczos"] = bool(climb)
 
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir

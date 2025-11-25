@@ -1307,7 +1307,7 @@ def _run_tsopt_on_hei(
     return ts_geom_path, g_ts
 
 
-def _pseudo_irc_and_match(
+def _irc_and_match(
     seg_idx: int,
     seg_dir: Path,
     ref_pdb_for_seg: Path,
@@ -2188,7 +2188,7 @@ def cli(
             overrides=tsopt_overrides,
         )
 
-        irc_res = _pseudo_irc_and_match(
+        irc_res = _irc_and_match(
             seg_idx=1,
             seg_dir=tsroot,
             ref_pdb_for_seg=ts_pdb,
@@ -2759,7 +2759,7 @@ def cli(
                 overrides=tsopt_overrides,
             )
 
-            irc_res = _pseudo_irc_and_match(
+            irc_res = _irc_and_match(
                 seg_idx=seg_idx,
                 seg_dir=seg_dir,
                 ref_pdb_for_seg=ts_pdb,
