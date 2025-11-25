@@ -1814,7 +1814,7 @@ def cli(
                     _write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
                     click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
                     if ref_pdb_for_segments is not None:
-                        _maybe_convert_to_pdb(seg_trj, ref_pdb_for_segments, out_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb")
+                        _maybe_convert_to_pdb(seg_trj, ref_pdb_for_segments, out_dir_path / f"mep_seg_{seg_idx:02d}.pdb")
 
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     energies_seg = [combined_all.energies[j] for j in idxs]
@@ -1826,8 +1826,8 @@ def cli(
                     _write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
                     click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
                     if ref_pdb_for_segments is not None:
-                        _maybe_convert_to_pdb(hei_trj, ref_pdb_for_segments, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb")
-                    _maybe_convert_to_gjf(hei_trj, _PRIMARY_GJF_TEMPLATE, out_path=out_dir_path / f"hei_seg_{seg_idx:02d}.gjf")
+                        _maybe_convert_to_pdb(hei_trj, ref_pdb_for_segments, out_dir_path / f"hei_seg_{seg_idx:02d}.pdb")
+                    _maybe_convert_to_gjf(hei_trj, _PRIMARY_GJF_TEMPLATE, out_dir_path / f"hei_seg_{seg_idx:02d}.gjf")
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
 

@@ -174,7 +174,7 @@ def _load_two_endpoints(
 
 
 def _maybe_convert_to_pdb(
-    src_path: Path, ref_pdb_path: Optional[Path], dst_path: Optional[Path] = None
+    src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
 ) -> Optional[Path]:
     """
     Convert an XYZ/TRJ path to PDB using a reference topology when available.
@@ -190,10 +190,10 @@ def _maybe_convert_to_pdb(
         if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
             return None
 
-        dst_path = dst_path if dst_path is not None else src_path.with_suffix(".pdb")
-        convert_xyz_to_pdb(src_path, ref_pdb_path, dst_path)
-        click.echo(f"[convert] Wrote '{dst_path}'.")
-        return dst_path
+        out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
+        convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)
+        click.echo(f"[convert] Wrote '{out_path}'.")
+        return out_path
     except Exception as e:
         click.echo(f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}", err=True)
         return None
