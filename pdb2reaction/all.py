@@ -243,6 +243,7 @@ AtomKey = Tuple[str, str, str, str, str, str]
 # Local imports from the package
 from .extract import extract_api
 from . import path_search as _path_search
+from . import path_opt as _path_opt
 from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
@@ -1664,6 +1665,17 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "--refine-path",
+    "refine_path",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help=(
+        "If True, run recursive path_search on the full ordered series; if False, run a single-pass "
+        "path-opt GSM between each adjacent pair and concatenate the segments (no path_search)."
+    ),
+)
+@click.option(
     "--thresh",
     type=str,
     default=None,
@@ -1901,6 +1913,7 @@ def cli(
     climb: bool,
     opt_mode: str,
     dump: bool,
+    refine_path: bool,
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
@@ -1938,6 +1951,10 @@ def cli(
     With single input:
       - with --scan-lists: run staged scan and use stage results as inputs for path_search,
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
+
+    With ``--refine-path True``, the recursive ``path_search`` workflow is used. When ``False`` (default),
+    a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
+    concatenated into the final MEP without invoking ``path_search``.
     """
     time_start = time.perf_counter()
 
@@ -2020,6 +2037,7 @@ def cli(
     pockets_dir = out_dir / "pockets"
     path_dir = out_dir / "path_search"
     scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)
+    stage_total = 3 if refine_path else 2
     _ensure_dir(out_dir)
     _ensure_dir(pockets_dir)
     if not single_tsopt_mode:
@@ -2067,7 +2085,7 @@ def cli(
 
     if not skip_extract:
         click.echo(
-            "\n=== [all] Stage 1/3 — Active-site pocket extraction (multi-structure union when applicable) ===\n"
+            f"\n=== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) ===\n"
         )
         try:
             ex_res = extract_api(
@@ -2105,7 +2123,7 @@ def cli(
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
         click.echo(
-            "\n=== [all] Stage 1 — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n"
+            f"\n=== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n"
         )
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
@@ -2567,10 +2585,109 @@ def cli(
             pockets_for_path = list(pocket_outputs)
 
     # -------------------------------------------------------------------------
-    # Stage 2: MEP search (path_search)
+    # Stage 2: MEP search
     # -------------------------------------------------------------------------
+    if not refine_path:
+        click.echo(
+            f"\n=== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) ===\n"
+        )
+
+        if len(pockets_for_path) < 2:
+            raise click.ClickException("[all] Need at least two structures for path-opt MEP concatenation.")
+
+        combined_blocks: List[str] = []
+        for idx, (pL, pR) in enumerate(zip(pockets_for_path, pockets_for_path[1:]), start=1):
+            seg_dir = (path_dir / f"path_opt_seg_{idx:02d}").resolve()
+            po_args: List[str] = [
+                "-i",
+                str(pL),
+                str(pR),
+                "-q",
+                str(q_int),
+                "-m",
+                str(int(spin)),
+                "--freeze-links",
+                "True" if freeze_links_flag else "False",
+                "--max-nodes",
+                str(int(max_nodes)),
+                "--max-cycles",
+                str(int(max_cycles)),
+                "--climb",
+                "True" if climb else "False",
+                "--dump",
+                "True" if dump else "False",
+                "--out-dir",
+                str(seg_dir),
+                "--preopt",
+                "True" if preopt else "False",
+            ]
+            if thresh is not None:
+                po_args.extend(["--thresh", str(thresh)])
+            if args_yaml is not None:
+                po_args.extend(["--args-yaml", str(args_yaml)])
+
+            click.echo(f"[all] Invoking path-opt for segment {idx}:")
+            click.echo("  " + " ".join(po_args))
+
+            _saved_argv = list(sys.argv)
+            try:
+                sys.argv = ["pdb2reaction", "path-opt"] + po_args
+                _path_opt.cli.main(args=po_args, standalone_mode=False)
+            except SystemExit as e:
+                code = getattr(e, "code", 1)
+                if code not in (None, 0):
+                    raise click.ClickException(
+                        f"[all] path-opt terminated with exit code {code} (segment {idx})."
+                    )
+            except Exception as e:
+                raise click.ClickException(f"[all] path-opt failed for segment {idx}: {e}")
+            finally:
+                sys.argv = _saved_argv
+
+            seg_trj = seg_dir / "final_geometries.trj"
+            if not seg_trj.exists():
+                raise click.ClickException(
+                    f"[all] path-opt segment {idx} did not produce final_geometries.trj"
+                )
+            blocks = ["\n".join(b) + "\n" for b in _read_xyz_as_blocks(seg_trj)]
+            if not blocks:
+                raise click.ClickException(
+                    f"[all] No frames read from path-opt segment {idx} trajectory: {seg_trj}"
+                )
+            if idx > 1:
+                blocks = blocks[1:]
+            combined_blocks.extend(blocks)
+
+        final_trj = path_dir / "mep.trj"
+        try:
+            final_trj.write_text("".join(combined_blocks), encoding="utf-8")
+            click.echo(f"[all] Wrote concatenated MEP trajectory: {final_trj}")
+        except Exception as e:
+            raise click.ClickException(f"[all] Failed to write concatenated MEP: {e}")
+
+        try:
+            if pockets_for_path[0].suffix.lower() == ".pdb":
+                mep_pdb = _path_search._maybe_convert_to_pdb(
+                    final_trj, ref_pdb_path=pockets_for_path[0], out_path=path_dir / "mep.pdb"
+                )
+                if mep_pdb and mep_pdb.exists():
+                    dst = out_dir / mep_pdb.name
+                    shutil.copy2(mep_pdb, dst)
+                    click.echo(f"[all] Copied concatenated MEP PDB → {dst}")
+        except Exception as e:
+            click.echo(
+                f"[all] WARNING: Failed to convert/copy concatenated MEP to PDB: {e}", err=True
+            )
+
+        click.echo(
+            "[all] NOTE: path_search recursion is skipped because --refine-path=False; full-system merged outputs "
+            "and post-processing are unavailable in this mode."
+        )
+        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        return
+    # --- recursive GSM path_search branch ---
     click.echo(
-        "\n=== [all] Stage 2/3 — MEP search on input structures (recursive GSM) ===\n"
+        f"\n=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) ===\n"
     )
 
     ps_args: List[str] = []
@@ -2661,7 +2778,7 @@ def cli(
     # -------------------------------------------------------------------------
     # Stage 3: merge to full systems (already done in path_search)
     # -------------------------------------------------------------------------
-    click.echo("\n=== [all] Stage 3/3 — Merge into full-system templates ===\n")
+    click.echo(f"\n=== [all] Stage 3/{stage_total} — Merge into full-system templates ===\n")
     if gave_ref_pdb:
         click.echo(
             "[all] Merging was carried out by path_search using the original inputs as templates."
