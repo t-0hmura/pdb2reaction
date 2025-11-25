@@ -29,7 +29,7 @@ Description
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
 - Configuration via YAML with sections {geom, calc, gs, opt, sopt}. Precedence: CLI > YAML > built-in defaults.
-- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS ("light") or RFO ("heavy") before alignment and GSM. The iteration limit for this pre‑optimization is controlled independently by `--preopt-max-cycles` (default: 10000).
+- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS ("light") or RFO ("heavy") before alignment and GSM. The iteration limit for this pre‑optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image; the Lanczos-based tangent estimate is toggled to the same boolean as `--climb` (enabled iff `--climb=True`).
 - `--thresh` sets the convergence preset used by the string optimizer and by the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
@@ -52,7 +52,7 @@ Notes
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
-- `--preopt-max-cycles` limits only the optional endpoint LBFGS preoptimization and does not affect `--max-cycles`.
+- `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO) and does not affect `--max-cycles`.
 - Exit codes: 0 (success); 3 (optimization failed); 4 (final trajectory write error); 5 (HEI dump error); 130 (keyboard interrupt); 1 (unhandled error).
 """
 
@@ -173,21 +173,30 @@ def _load_two_endpoints(
     return geoms
 
 
-def _maybe_convert_to_pdb(src_path: Path, ref_pdb_path: Optional[Path], dst_path: Optional[Path] = None) -> None:
+def _maybe_convert_to_pdb(
+    src_path: Path, ref_pdb_path: Optional[Path], dst_path: Optional[Path] = None
+) -> Optional[Path]:
     """
-    Convert an XYZ path to PDB using a reference topology when available.
+    Convert an XYZ/TRJ path to PDB using a reference topology when available.
+
+    Returns the written path on success; otherwise None. Conversion is skipped when
+    the source does not exist, lacks an XYZ/TRJ suffix, or no reference PDB is
+    provided.
     """
-    if ref_pdb_path is None:
-        return
-
-    src_path = Path(src_path)
-    dst_path = dst_path if dst_path is not None else src_path.with_suffix(".pdb")
-
     try:
+        if ref_pdb_path is None:
+            return None
+        src_path = Path(src_path)
+        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
+            return None
+
+        dst_path = dst_path if dst_path is not None else src_path.with_suffix(".pdb")
         convert_xyz_to_pdb(src_path, ref_pdb_path, dst_path)
         click.echo(f"[convert] Wrote '{dst_path}'.")
+        return dst_path
     except Exception as e:
         click.echo(f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}", err=True)
+        return None
 
 
 def _optimize_single(
@@ -200,7 +209,7 @@ def _optimize_single(
     ref_pdb_path: Optional[Path],
 ):
     """
-    Single-structure optimization (LBFGS or RFO) mirroring path_search preoptimization.
+    Single-structure optimization (LBFGS or RFO) shared by path_opt and path_search.
     """
     g.set_calculator(shared_calc)
 
@@ -285,14 +294,14 @@ def _optimize_single(
     type=click.BOOL,
     default=False,
     show_default=True,
-    help="If True, preoptimize each endpoint via single-structure LBFGS before alignment and GSM.",
+    help="If True, preoptimize each endpoint via the selected single-structure optimizer (LBFGS/RFO) before alignment and GSM.",
 )
 @click.option(
     "--preopt-max-cycles",
     type=int,
     default=10000,
     show_default=True,
-    help="Maximum LBFGS cycles for endpoint preoptimization (only used when --preopt True).",
+    help="Maximum cycles for endpoint preoptimization (applies to the chosen optimizer; only used when --preopt True).",
 )
 @click.option("--fix-ends", type=click.BOOL, default=False, show_default=True,
               help="Fix structures of input endpoints during GSM.")
@@ -426,7 +435,7 @@ def cli(
         # Shared UMA calculator (reuse the same instance for all images)
         shared_calc = uma_pysis(**calc_cfg)
 
-        # Optional endpoint pre-optimization (LBFGS) before alignment/GSM
+        # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
             click.echo("\n=== Preoptimizing endpoints via single-structure optimizer ===\n")
             ref_pdb_for_preopt: Optional[Path] = None
