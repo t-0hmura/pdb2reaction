@@ -320,16 +320,15 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
     # ---- 2 anchors ----
     if len(idx) == 2:
-        before = _rmsd(P, Q)  # all-atom RMSD
         i0, i1 = idx[0], idx[1]
-        p0, p1, q0, q1 = P[i0].copy(), P[i1].copy(), Q[i0].copy(), Q[i1].copy()
-        pm, qm = 0.5 * (p0 + p1), 0.5 * (q0 + q1)
+        p0, p1 = P[i0].copy(), P[i1].copy()
+        q0, q1 = Q[i0].copy(), Q[i1].copy()
         vP, vQ = p1 - p0, q1 - q0
 
-        if np.linalg.norm(vP) < 1e-16 or np.linalg.norm(vQ) < 1e-16:
-            # Fallback: Kabsch
-            pass
-        else:
+        # Only use the special two-anchor treatment when the axis is well-defined.
+        if np.linalg.norm(vP) > 1e-16 and np.linalg.norm(vQ) > 1e-16:
+            before = _rmsd(P, Q)  # all-atom RMSD
+            pm, qm = 0.5 * (p0 + p1), 0.5 * (q0 + q1)
             Q0 = Q + (pm - qm)                      # match midpoints
             R_align = _rotation_align_vectors(vQ, vP)
             Q0 = ((Q0 - pm) @ R_align.T) + pm       # align axis direction (right-multiply → .T)
@@ -352,6 +351,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             if verbose:
                 print(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))")
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
+        # If the axis is degenerate, fall through to the generic Kabsch case.
 
     # ---- Default: Kabsch (selected freeze atoms or all atoms) ----
     if len(idx) > 0:
@@ -434,7 +434,6 @@ def scan_freeze_atoms_toward_target_inplace(
                 print("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
             return {"max_remaining_A": 0.0, "n_steps": 0, "converged": True}
 
-        # Attach a calculator if needed
         _attach_calc_if_needed(g_mob, shared_calc, charge=charge, spin=spin, model=model, device=device)
 
         out_dir = Path(out_dir)
@@ -461,7 +460,6 @@ def scan_freeze_atoms_toward_target_inplace(
                 Q_new[idx] = P[idx]
                 _set_all_coords_disabling_freeze(g_mob, Q_new)
                 try:
-                    # Finishing relaxation
                     g_mob.freeze_atoms = np.array(idx, int)
                     LBFGS(
                         g_mob,
@@ -486,7 +484,6 @@ def scan_freeze_atoms_toward_target_inplace(
             Q_next = Q.copy()
             Q_next[idx] = Q[idx] + move
 
-            # Update coordinates → short relaxation with frozen atoms fixed
             _set_all_coords_disabling_freeze(g_mob, Q_next)
             try:
                 g_mob.freeze_atoms = np.array(idx, int)
@@ -513,7 +510,6 @@ def scan_freeze_atoms_toward_target_inplace(
                 "n_steps": int(n_steps_done),
                 "converged": bool(converged)}
     finally:
-        # Always restore the original freeze_atoms state
         g_mob.freeze_atoms = original_freeze
 
 
@@ -552,9 +548,7 @@ def align_and_refine_pair_inplace(
           "scan":  {max_remaining_A, n_steps, converged}
         }
     """
-    # Rigid alignment
     align_res = align_second_to_first_kabsch_inplace(g_ref, g_mob, verbose=verbose)
-    # Scan + relaxation
     scan_res = scan_freeze_atoms_toward_target_inplace(
         g_ref, g_mob,
         step_A=step_A,

@@ -6,7 +6,7 @@ scan2d — Two-distance 2D scan with harmonic restraints (UMA only)
 
 Usage (CLI)
 -----------
-    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-s <spin>] \
+    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} -q <charge> [-m <multiplicity>] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
         [--one-based|--zero-based] \
         --max-step-size FLOAT \
@@ -43,10 +43,14 @@ Description
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
     `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` if the span is ~0).
+- Optional pre-optimization:
+  - If `--preopt True` (default), the initial structure is first relaxed with the unbiased UMA calculator.
+    The resulting geometry is written as `preopt_i***_j***.*` in `grid/` and its energy is recorded.
 - Nested scan procedure (outer d1, inner d2):
-  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only).
-  2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints** and
-     record the **unbiased** single-point energy (harmonic bias removed for evaluation).
+  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only) and store this minimum.
+  2) Each grid point `(d1[i], d2[j])` is then relaxed with **both d1 and d2 restraints active**, starting
+     from the previously converged structure whose `(d1, d2)` distances are closest to the current targets.
+     The **unbiased** single-point energy (harmonic bias removed for evaluation) is recorded for the surface.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -69,8 +73,9 @@ Optimizer scratch artifacts live in temporary directories; only the files above 
 Notes
 -----
 - UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D scan.
-- Convergence is controlled by LBFGS or RFO depending on `--opt-mode`.
+- Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO).
 - Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
+- The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
@@ -906,7 +911,6 @@ def cli(
             raw = span / 6.0
             mag = 10 ** math.floor(math.log10(raw))
             candidates = (0.5, 1, 2, 5, 10, 20)
-            # start with the first candidate
             best = candidates[0] * mag
             best_err = abs(best - raw)
             for m in candidates[1:]:

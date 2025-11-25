@@ -30,13 +30,13 @@ Examples
     pdb2reaction scan3d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]"
 
-    # LBFGS with trajectory dumping and 3D energy isosurface plot
+    # LBFGS with inner-path trajectory dumping and 3D energy isosurface plot
     pdb2reaction scan3d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
         --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
         --preopt True --baseline min
 
-    # Plot only from an existing surface.csv (skip energy evaluation)
+    # Plot only from an existing surface.csv (skip new energy evaluation)
     pdb2reaction scan3d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
         --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
@@ -74,18 +74,23 @@ Description
     and only performs the 3D RBF interpolation and HTML plot generation.
   - If the CSV already has an `energy_kcal` column, it is used as-is.
     Otherwise, `energy_kcal` is reconstructed from `energy_hartree` and `--baseline`.
+  - In this mode, the existing CSV is not overwritten and no new geometries are written;
+    only the HTML visualization is generated under `--out-dir`.
 
 Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_scan3d/)
   ├─ surface.csv                      # Grid metadata:
   │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged;
-  │                                   # may also contain a pre-optimized reference row with i=j=k=-1.
+  │                                   # may also contain a reference row for the starting structure
+  │                                   # with i=j=k=-1 (pre-optimized when --preopt True).
   ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh only)
   └─ grid/
       ├─ point_iXXX_jYYY_kZZZ.xyz     # Constrained, relaxed geometries for each grid point
   │                                   # XXX,YYY,ZZZ = int(round(d(Å)*100)), e.g. d=1.25Å → "125"
-      ├─ preopt_iXXX_jYYY_kZZZ.xyz    # Pre-optimized starting structure; same naming convention
+      ├─ preopt_iXXX_jYYY_kZZZ.xyz    # Starting structure used for the scan:
+  │                                   # pre-optimized when --preopt True, otherwise the input structure;
+  │                                   # same naming convention as above.
       └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
 
 Notes
@@ -240,10 +245,18 @@ def _parse_scan_list(
     one_based: bool,
 ) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float], Tuple[int, int, float, float]]:
     """
-    Parse --scan-list into three quadruples with 0-based indices.
+    Parse --scan-list into three quadruples and return them with 0-based indices.
 
     Expected format:
         [(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]
+
+    Parameters
+    ----------
+    raw
+        String passed to --scan-list.
+    one_based
+        If True, the indices in `raw` are interpreted as 1-based and converted
+        to 0-based. If False, they are assumed to be 0-based already.
     """
     try:
         obj = ast.literal_eval(raw)
@@ -332,19 +345,6 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
         return float("nan")
 
 
-def _nice_step(span: float) -> float:
-    """Nice step for colorbar / contour ticks."""
-    if span <= 0:
-        return 1.0
-    raw = span / 6.0
-    mag = 10 ** math.floor(math.log10(raw))
-    for m in (0.5, 1, 2, 5, 10, 20):
-        s = m * mag
-        if raw <= s:
-            return s
-    return 10.0 * mag
-
-
 def _maybe_convert_scan3d_outputs_to_pdb(
     input_path: Path,
     grid_dir: Path,
@@ -397,7 +397,7 @@ def _maybe_convert_scan3d_outputs_to_pdb(
     required=True,
     help=(
         'Python-like list with three quadruples: '
-        '"[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]".'
+        '"[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3]".'
     ),
 )
 @click.option(
@@ -664,7 +664,8 @@ def cli(
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}", err=True)
 
-            # Measure the three bias distances on the (possibly pre-optimized) geometry
+            # Measure the three bias distances on the starting structure
+            # (pre-optimized when --preopt True, otherwise the input geometry)
             d1_ref, d2_ref, d3_ref = _measure_distances_A(
                 geom_outer, i1, j1, i2, j2, i3, j3
             )
@@ -675,7 +676,7 @@ def cli(
                 )
             )
 
-            # Save the (pre-)optimized starting structure and prepare a record for plotting
+            # Save the starting structure (pre-optimized when requested) and prepare a record for plotting
             preopt_tag_i = _format_distance_tag(d1_ref)
             preopt_tag_j = _format_distance_tag(d2_ref)
             preopt_tag_k = _format_distance_tag(d3_ref)
@@ -702,7 +703,7 @@ def cli(
                 "bias_converged": True,
             }
 
-            # Build and reorder the grids so that we scan from values closest to the preopt distances
+            # Build and reorder the grids so that we scan from values closest to the reference distances
             d1_values = _values_from_bounds(low1, high1, float(max_step_size))
             d2_values = _values_from_bounds(low2, high2, float(max_step_size))
             d3_values = _values_from_bounds(low3, high3, float(max_step_size))
@@ -730,7 +731,7 @@ def cli(
 
             records: List[Dict[str, Any]] = []
 
-            # Store pre-/unbiased starting geometry for reuse
+            # Store starting geometry snapshot for reuse
             geom_outer_initial = _snapshot_geometry(geom_outer)
 
             # Caches for nearest-neighbor starting geometries
@@ -743,7 +744,7 @@ def cli(
                 click.echo(f"\n=== d1 step {i_idx + 1}/{N1} : target = {d1_target:.3f} Å ===")
 
                 # Choose initial geometry for this d1 from the previously scanned
-                # structure with the closest d1 value (or the preopt structure).
+                # structure with the closest d1 value (or the reference structure).
                 if not d1_geoms:
                     geom_outer_i = _snapshot_geometry(geom_outer_initial)
                 else:
@@ -931,9 +932,8 @@ def cli(
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
 
-            # Add preopt structure as an extra record for plotting
-            if preopt_record is not None:
-                records.append(preopt_record)
+            # Add starting structure as an extra record for plotting
+            records.append(preopt_record)
 
             # Convert grid XYZ snapshots to PDB when the original input is a PDB
             _maybe_convert_scan3d_outputs_to_pdb(input_path, grid_dir)
@@ -1035,6 +1035,7 @@ def cli(
             "#f0f921",
         ]
 
+        # One opacity per isosurface level (outermost surfaces more transparent)
         level_opacity = [
             1.000,
             0.667,
@@ -1044,7 +1045,6 @@ def cli(
             0.132,
             0.088,
             0.059,
-            0.039,
         ]
 
         isosurfaces = []
@@ -1085,12 +1085,12 @@ def cli(
                 colorscale=colorbar_colorscale,
                 showscale=True,
                 colorbar=dict(
-                    title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color='#1C1C1C')),
-                    tickfont=dict(size=14, color='#1C1C1C'),
+                    title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
+                    tickfont=dict(size=14, color="#1C1C1C"),
                     ticks="inside",
                     ticklen=10,
-                    tickcolor='#1C1C1C',
-                    outlinecolor='#1C1C1C',
+                    tickcolor="#1C1C1C",
+                    outlinecolor="#1C1C1C",
                     outlinewidth=2,
                     lenmode="fraction",
                     len=1.11,

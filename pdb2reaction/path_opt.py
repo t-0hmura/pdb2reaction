@@ -7,11 +7,11 @@ path_opt — Minimum-energy path (MEP) optimization via the Growing String metho
 Usage (CLI)
 -----------
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
-        [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
+        -q <charge> [-m <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--opt-mode {light|heavy}] [--dump {True|False}] [--out-dir <dir>] \
         [--thresh <preset>] [--args-yaml <file>] [--preopt {True|False}] \
-        [--preopt-max-cycles <int>]
+        [--preopt-max-cycles <int>] [--fix-ends {True|False}]
 
 Examples
 --------
@@ -28,11 +28,12 @@ Description
 -----------
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
-- Configuration via YAML with sections {geom, calc, gs, opt, sopt}. Precedence: CLI > YAML > built-in defaults.
-- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS ("light") or RFO ("heavy") before alignment and GSM. The iteration limit for this pre‑optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
+- Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: CLI > YAML > built-in defaults.
+- Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light") or RFO ("heavy") before alignment and GSM. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
-- With `--climb=True` (default), a climbing-image step refines the highest-energy image; the Lanczos-based tangent estimate is toggled to the same boolean as `--climb` (enabled iff `--climb=True`).
-- `--thresh` sets the convergence preset used by the string optimizer and by the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
+- With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is available via YAML but is disabled by default; the CLI does not toggle it.
+- `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
+- `--fix-ends=True` fixes both endpoint geometries during GSM (`fix_first=True`, `fix_last=True`).
 - After optimization, the highest-energy image (HEI) is identified as the highest-energy internal local maximum (preferring internal nodes). If none exist, the maximum among internal nodes is used; if there are no internal nodes, the global maximum is used. The selected HEI is exported.
 
 Outputs (& Directory Layout)
@@ -44,15 +45,15 @@ out_dir/ (default: ./result_path_opt/)
   ├─ gsm_hei.pdb                 # HEI converted to PDB when the *first* endpoint is a PDB
   ├─ gsm_hei.gjf                 # HEI written using a detected .gjf template, when available
   ├─ align_refine/               # Files from external alignment/refinement
-  └─ <optimizer dumps / restarts>  # Emitted when --dump=True (from pysisyphus)
+  └─ <optimizer dumps / restarts>  # Emitted when dumping is enabled (e.g., via `--dump` and/or YAML `dump_restart` settings)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` and `-m/--mult` inherit `.gjf` template values when provided and otherwise fall back to `0`/`1`. Override explicitly to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` (required) and `-m/--multiplicity` are reconciled with any `.gjf` template values: explicit CLI options win; otherwise template values are used, and if both are missing, they fall back to `0`/`1`. Override explicitly to avoid unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
-- `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO) and does not affect `--max-cycles`.
+- `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO, selected via `--opt-mode`) and does not affect `--max-cycles`.
 - Exit codes: 0 (success); 3 (optimization failed); 4 (final trajectory write error); 5 (HEI dump error); 130 (keyboard interrupt); 1 (unhandled error).
 """
 
@@ -64,17 +65,16 @@ from typing import Any, Dict, Optional, Sequence
 import sys
 import traceback
 import textwrap
+import time
 
 import click
 import numpy as np
-import yaml
-import time
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError
-from pysisyphus.optimizers.LBFGS import LBFGS  # (added) for optional endpoint preoptimization
+from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
@@ -124,7 +124,7 @@ GS_KW: Dict[str, Any] = {
     "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
     "climb": True,              # bool, enable climbing image
     "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": False,     # bool, use Lanczos to estimate the HEI tangent
+    "climb_lanczos": False,     # bool, use Lanczos to estimate the HEI tangent (disabled by default)
     "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
     "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
     "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
@@ -142,7 +142,7 @@ STOPT_KW: Dict[str, Any] = {
     "reparam_thresh": 0.0,      # float, convergence threshold for reparametrization
     "coord_diff_thresh": 0.0,   # float, tolerance for coordinate difference before pruning
     "out_dir": "./result_path_opt/",  # str, output directory for optimizer artifacts
-    "print_every": 10,           # int, status print frequency (cycles)
+    "print_every": 10,          # int, status print frequency (cycles)
 }
 
 
@@ -165,7 +165,10 @@ def _load_two_endpoints(
             detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+                click.echo(
+                    f"[freeze-links] {src_path.name}: Freeze atoms (0-based): "
+                    f"{','.join(map(str, freeze))}"
+                )
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g.freeze_atoms = np.array(freeze, dtype=int)
@@ -228,7 +231,7 @@ def _optimize_single(
     click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} finished ===\n")
 
     try:
-        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else Path(opt.final_fn)
+        final_xyz = Path(opt.final_fn)
         _maybe_convert_to_pdb(final_xyz, ref_pdb_path)
         g_final = geom_loader(final_xyz, coord_type=g.coord_type)
         try:
@@ -258,14 +261,44 @@ def _optimize_single(
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
 @click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
-@click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
-              help="If a PDB is provided, freeze the parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=10, show_default=True,
-              help="Number of internal nodes (string has max_nodes+2 images including endpoints).")
-@click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum optimization cycles.")
-@click.option("--climb", type=click.BOOL, default=True, show_default=True,
-              help="Search for a transition state (climbing image) after path growth.")
+@click.option(
+    "-m",
+    "--multiplicity",
+    "spin",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Spin multiplicity (2S+1) for the ML region.",
+)
+@click.option(
+    "--freeze-links",
+    "freeze_links_flag",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="If a PDB is provided, freeze the parent atoms of link hydrogens.",
+)
+@click.option(
+    "--max-nodes",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Number of internal nodes (string has max_nodes+2 images including endpoints).",
+)
+@click.option(
+    "--max-cycles",
+    type=int,
+    default=300,
+    show_default=True,
+    help="Maximum optimization cycles.",
+)
+@click.option(
+    "--climb",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="Search for a transition state (climbing image) after path growth.",
+)
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
@@ -273,21 +306,32 @@ def _optimize_single(
     show_default=True,
     help="Single-structure optimizer for endpoint preoptimization: light (=LBFGS) or heavy (=RFO).",
 )
-@click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump optimizer trajectory/restarts during the run.")
-@click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True,
-              help="Output directory.")
+@click.option(
+    "--dump",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help="Dump optimizer trajectory/restarts during the run.",
+)
+@click.option(
+    "--out-dir",
+    "out_dir",
+    type=str,
+    default="./result_path_opt/",
+    show_default=True,
+    help="Output directory.",
+)
 @click.option(
     "--thresh",
     type=str,
     default=None,
-    help="Convergence preset for the string optimizer and pre-alignment (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help="Convergence preset for the string optimizer, pre-alignment refinement, and endpoint preoptimization (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, gs, opt).",
+    help="YAML with extra args (sections: geom, calc, gs, opt, sopt.lbfgs, sopt.rfo).",
 )
 @click.option(
     "--preopt",
@@ -303,8 +347,13 @@ def _optimize_single(
     show_default=True,
     help="Maximum cycles for endpoint preoptimization (applies to the chosen optimizer; only used when --preopt True).",
 )
-@click.option("--fix-ends", type=click.BOOL, default=False, show_default=True,
-              help="Fix structures of input endpoints during GSM.")
+@click.option(
+    "--fix-ends",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help="Fix structures of input endpoints during GSM.",
+)
 def cli(
     input_paths: Sequence[Path],
     charge: Optional[int],
@@ -334,18 +383,18 @@ def cli(
 
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
-        gs_cfg   = dict(GS_KW)
-        opt_cfg  = dict(STOPT_KW)
+        gs_cfg = dict(GS_KW)
+        opt_cfg = dict(STOPT_KW)
         lbfgs_cfg = dict(_LBFGS_KW)
-        rfo_cfg   = dict(_RFO_KW)
+        rfo_cfg = dict(_RFO_KW)
 
         apply_yaml_overrides(
             yaml_cfg,
             [
                 (geom_cfg, (("geom",),)),
                 (calc_cfg, (("calc",),)),
-                (gs_cfg,   (("gs",),)),
-                (opt_cfg,  (("opt",),)),
+                (gs_cfg, (("gs",),)),
+                (opt_cfg, (("opt",),)),
                 (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
                 (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
             ],
@@ -370,13 +419,12 @@ def cli(
         opt_cfg["stop_in_when_full"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
         gs_cfg["fix_first"] = bool(fix_ends)
-        gs_cfg["fix_last"]  = bool(fix_ends)
+        gs_cfg["fix_last"] = bool(fix_ends)
 
-        # (Currently Disabled) Lanczos tangent estimation follows the --climb toggle.
-        # gs_cfg["climb_lanczos"] = bool(climb)
-
-        opt_cfg["dump"]       = bool(dump)
-        opt_cfg["out_dir"]    = out_dir
+        # Lanczos tangent estimation can be enabled via YAML (`gs.climb_lanczos`);
+        # the CLI does not modify this setting.
+        opt_cfg["dump"] = bool(dump)
+        opt_cfg["out_dir"] = out_dir
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
             lbfgs_cfg["thresh"] = str(thresh)
@@ -407,16 +455,21 @@ def cli(
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = dict(calc_cfg)
-        echo_gs   = dict(gs_cfg)
-        echo_opt  = dict(opt_cfg)
+        echo_gs = dict(gs_cfg)
+        echo_opt = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
 
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("gs",   echo_gs))
-        click.echo(pretty_block("opt",  echo_opt))
-        click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
-        click.echo(pretty_block("run_flags", {"preopt": bool(preopt), "preopt_max_cycles": int(preopt_max_cycles)}))
+        click.echo(pretty_block("gs", echo_gs))
+        click.echo(pretty_block("opt", echo_opt))
+        click.echo(pretty_block("sopt." + sopt_kind, sopt_cfg))
+        click.echo(
+            pretty_block(
+                "run_flags",
+                {"preopt": bool(preopt), "preopt_max_cycles": int(preopt_max_cycles)},
+            )
+        )
 
         # --------------------------
         # 2) Prepare structures (load two endpoints and apply freezing)
@@ -437,7 +490,9 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
-            click.echo("\n=== Preoptimizing endpoints via single-structure optimizer ===\n")
+            click.echo(
+                "\n=== Preoptimizing endpoints via single-structure optimizer ===\n"
+            )
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
                 if p.suffix.lower() == ".pdb":
@@ -448,19 +503,35 @@ def cli(
             for i, g in enumerate(geoms):
                 tag = f"preopt{i:02d}"
                 try:
-                    g_opt = _optimize_single(g, shared_calc, sopt_kind, sopt_cfg, out_dir_path, tag=tag, ref_pdb_path=ref_pdb_for_preopt)
+                    g_opt = _optimize_single(
+                        g,
+                        shared_calc,
+                        sopt_kind,
+                        sopt_cfg,
+                        out_dir_path,
+                        tag=tag,
+                        ref_pdb_path=ref_pdb_for_preopt,
+                    )
                     new_geoms.append(g_opt)
                 except Exception as e:
-                    click.echo(f"[preopt] WARNING: Failed to preoptimize endpoint {i}: {e}", err=True)
+                    click.echo(
+                        f"[preopt] WARNING: Failed to preoptimize endpoint {i}: {e}",
+                        err=True,
+                    )
                     new_geoms.append(g)
             geoms = new_geoms
         else:
-            click.echo("[preopt] Skipping endpoint preoptimization (use --preopt True to enable).")
+            click.echo(
+                "[preopt] Skipping endpoint preoptimization (use --preopt True to enable)."
+            )
 
         # External Kabsch alignment (if freeze_atoms exist, use only them)
         align_thresh = str(opt_cfg.get("thresh", "gau"))
         try:
-            click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
+            click.echo(
+                "\n=== Aligning all inputs to the first structure "
+                "(freeze-guided scan + relaxation) ===\n"
+            )
             _ = align_and_refine_sequence_inplace(
                 geoms,
                 thresh=align_thresh,
@@ -493,7 +564,7 @@ def cli(
 
         optimizer = StringOptimizer(
             geometry=gs,
-            **{k: v for k, v in opt_args.items() if k != "type"}
+            **{k: v for k, v in opt_args.items() if k != "type"},
         )
 
         # --------------------------
@@ -537,21 +608,28 @@ def cli(
                     convert_xyz_to_pdb(final_trj, ref_pdb, out_pdb)
                     click.echo(f"[convert] Wrote '{out_pdb}'.")
                 except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert MEP path trajectory to PDB: {e}", err=True)
+                    click.echo(
+                        f"[convert] WARNING: Failed to convert MEP path trajectory to PDB: {e}",
+                        err=True,
+                    )
 
         except Exception as e:
             click.echo(f"[write] ERROR: Failed to write final trajectory: {e}", err=True)
             sys.exit(4)
 
+        # --------------------------
+        # 6) Identify and write HEI (gsm_hei.xyz[/pdb/.gjf])
+        # --------------------------
         try:
             energies = np.array(gs.energy, dtype=float)
-            # HEI identification: prefer internal local maxima; otherwise pick the
-            # highest-energy internal node; if no internal nodes exist, pick the global maximum.
             nE = int(len(energies))
             hei_idx = None
             if nE >= 3:
-                candidates = [i for i in range(1, nE - 1)
-                              if energies[i] > energies[i - 1] and energies[i] > energies[i + 1]]
+                candidates = [
+                    i
+                    for i in range(1, nE - 1)
+                    if energies[i] > energies[i - 1] and energies[i] > energies[i + 1]
+                ]
                 if candidates:
                     cand_es = energies[candidates]
                     rel = int(np.argmax(cand_es))
@@ -583,16 +661,23 @@ def cli(
                 convert_xyz_to_pdb(hei_xyz, ref_pdb, hei_pdb)
                 click.echo(f"[convert] Wrote '{hei_pdb}'.")
             else:
-                click.echo("[convert] Skipped 'gsm_hei.pdb' (no PDB reference among inputs).")
+                click.echo(
+                    "[convert] Skipped 'gsm_hei.pdb' (no PDB reference among inputs)."
+                )
 
-            template = next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None)
+            template = next(
+                (prep.gjf_template for prep in prepared_inputs if prep.gjf_template),
+                None,
+            )
             if template is not None:
                 try:
                     hei_gjf = out_dir_path / "gsm_hei.gjf"
                     maybe_convert_xyz_to_gjf(hei_xyz, template, hei_gjf)
                     click.echo(f"[convert] Wrote '{hei_gjf}'.")
                 except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert HEI to GJF: {e}", err=True)
+                    click.echo(
+                        f"[convert] WARNING: Failed to convert HEI to GJF: {e}", err=True
+                    )
 
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
@@ -608,7 +693,11 @@ def cli(
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during path optimization:\n" + textwrap.indent(tb, "  "), err=True)
+        click.echo(
+            "Unhandled error during path optimization:\n"
+            + textwrap.indent(tb, "  "),
+            err=True,
+        )
         sys.exit(1)
     finally:
         for prepared in prepared_inputs:

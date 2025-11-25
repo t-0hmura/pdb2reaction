@@ -11,26 +11,27 @@ Usage (CLI)
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--preopt {True|False}] [--align/--no-align] [--thresh <preset>] \
         [--ref-pdb <path> ...] [--out-dir <dir>] [--args-yaml <file>] \
-        [--freeze-links {True|False}] [--dump {True|False}] \
-        [--hessian-calc-mode {Analytical|FiniteDifference}]
+        [--freeze-links {True|False}] [--dump {True|False}]
 
 Core inputs (strongly recommended):
     -i/--input
         Two or more structures in reaction order (repeatable or space‑separated after a single -i).
     -q/--charge
-        Total system charge (defaults to a .gjf template value or 0 when omitted).
+        Total system charge for the ML region (defaults to a .gjf template value when available,
+        otherwise 0 when omitted).
 
 Recommended/common:
     -m/--mult
-        Spin multiplicity (2S+1); defaults to a .gjf template value or 1 when omitted.
+        Spin multiplicity (2S+1); defaults to a .gjf template value when available,
+        otherwise 1 when omitted.
     --opt-mode
         Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default light.
     --max-nodes
         Internal nodes for segment GSM; default 10.
     --max-cycles
-        Max optimization cycles; default 100.
+        Max optimization cycles; default 300.
     --climb {True|False}
-        Enable TS search for the first segment; default True.
+        Enable TS search (GSM climbing) for all GSM segments; default True.
     --preopt {True|False}
         Preoptimize endpoints; default True.
     --align/--no-align
@@ -586,7 +587,6 @@ def _run_gsm_between(
             f.write(s_out)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
         _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
-        # Optional GJF conversion can be added by passing a template into this function.
         if gjf_template is not None:
             _maybe_convert_to_gjf(hei_xyz, gjf_template, seg_dir / "gsm_hei.gjf")
     except Exception as e:
@@ -1211,7 +1211,7 @@ def _merge_final_and_write(final_images: List[Any],
     if len(ref_pdbs) != len(pocket_inputs):
         raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
 
-    structs, aligned_coords, atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
+    structs, aligned_coords, _atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
     seg_lookup: Dict[int, SegmentReport] = {int(s.seg_index): s for s in segments if int(s.seg_index) > 0}
 
@@ -1381,8 +1381,23 @@ def _merge_final_and_write(final_images: List[Any],
           "Either repeat '-i' (e.g., '-i A -i B -i C') or use a single '-i' "
           "followed by multiple space-separated paths (e.g., '-i A B C').")
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Charge of the ML region (defaults from a .gjf template when available, otherwise 0).",
+)
+@click.option(
+    "-m",
+    "--multiplicity",
+    "spin",
+    type=int,
+    default=None,
+    show_default=False,
+    help="Spin multiplicity (2S+1) for the ML region (defaults from a .gjf template when available, otherwise 1).",
+)
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
               help="For PDB input, freeze parent atoms of link hydrogens.")
 @click.option("--max-nodes", type=int, default=10, show_default=True,
@@ -1537,8 +1552,8 @@ def cli(
         calc_cfg = dict(CALC_KW)
         gs_cfg   = dict(GS_KW)
         opt_cfg  = dict(STOPT_KW)
-        lbfgs_cfg = dict(LBFGS_KW)
-        rfo_cfg   = dict(RFO_KW)
+        lbfgs_cfg = dict(_LBFGS_KW)
+        rfo_cfg   = dict(_RFO_KW)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
 
