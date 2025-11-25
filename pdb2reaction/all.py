@@ -2817,7 +2817,7 @@ def cli(
                     path_dir / "energy_diagram_gsm",
                     labels=labels,
                     energies_eh=energies_chain,
-                    title_note="(path-opt concatenated)",
+                    title_note="(GSM)",
                 )
         except Exception as e:
             click.echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
