@@ -2,9 +2,9 @@
 
 """
 all — SINGLE command to execute an end-to-end enzymatic reaction workflow:
-Extract pockets → (optional) staged scan on a single structure → MEP (recursive GSM) → merge to full systems
-(when PDB templates are available), with optional TS optimization, IRC (EulerPC), thermochemistry,
-DFT, and DFT//UMA diagrams
+Extract pockets → (optional) staged scan on a single structure → MEP (path-opt by default; recursive
+GSM with ``--refine-path True``) → merge to full systems (when PDB templates are available), with
+optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and DFT//UMA diagrams
 ================================================================================================================
 
 Usage (CLI)
@@ -12,7 +12,7 @@ Usage (CLI)
     pdb2reaction all -i INPUT1 [INPUT2 ...] [-c <substrate-spec>] \
         [--ligand-charge <number|"RES:Q,...">] [--mult <2S+1>] \
         [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
-        [--climb {True|False}] [--opt-mode {light|heavy}] \
+        [--climb {True|False}] [--opt-mode {light|heavy}] [--refine-path {True|False}] \
         [--dump {True|False}] [--thresh <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
@@ -68,20 +68,23 @@ Runs a one-shot pipeline centered on pocket models:
       extraction is skipped) using the UMA calculator.
     - For each stage, the final relaxed structure (`stage_XX/result.(pdb|xyz|gjf)`) is collected as an
       **intermediate/product candidate**.
-    - The ordered input series for the path search becomes:
+    - The ordered input series for the MEP step becomes:
       `[initial pocket or full input, stage_01/result.pdb, stage_02/result.pdb, ...]`.
 
-(2) **MEP search (recursive GSM) on pocket inputs**
-    - Runs `path_search` with options forwarded from this command.
+(2) **MEP search on pocket inputs**
+    - By default runs **single-pass** `path-opt` GSM per adjacent pair and concatenates the segments.
+      With ``--refine-path True``, uses recursive `path_search` instead (options forwarded from this command).
     - For multi-input runs, the original **full** PDBs are supplied as **merge references** automatically
       **only when the original inputs are PDB files**. In the single-structure scan series, if the original
       full input is a PDB, the same template is reused for all pocket (or full-input) structures.
 
 (3) **Merge to full systems**
-    - When reference full-system PDB templates have been supplied (see (2)), the pocket MEP is merged back
-      into the original full-system template(s) within `<out-dir>/path_search/`.
+    - With ``--refine-path True`` **and** reference full-system PDB templates (see (2)), the pocket MEP is
+      merged back into the original full-system template(s) within `<out-dir>/path_search/`.
+    - When ``--refine-path False``, only pocket-level outputs are produced and no merged `mep_w_ref*.pdb`
+      files are written.
     - If references are not supplied (e.g., inputs are not PDB or extraction is skipped), only pocket-level
-      outputs are produced and no merged `mep_w_ref*.pdb` files are written.
+      outputs are produced in either mode.
 
 (4) **Optional per-segment post-processing** (for segments with covalent changes)
     - `--tsopt True`: Optimize TS on the HEI pocket; perform an **IRC (EulerPC)**; assign forward/backward
@@ -117,7 +120,8 @@ Runs a one-shot pipeline centered on pocket models:
       `<out-dir>/ts_seg_01.xyz` (single-frame XYZ trajectory with energy) otherwise.
 
 **Charge handling**
-  - `-q/--charge` **forces** the total system charge, overriding extractor/GJF/`--ligand-charge` logic.
+  - `-q/--charge` **forces** the total system charge with a console **WARNING**, overriding
+    extractor/GJF/`--ligand-charge` logic.
   - With extraction enabled, the extractor’s **first-model total pocket charge** is used (rounded to int) when
     no `-q/--charge` override is provided.
   - With extraction **skipped** (`-c/--center` omitted), the **total system charge** is set as:
@@ -162,7 +166,7 @@ Outputs (& Directory Layout)
   │   ├─ stage_01/result.(pdb|xyz|gjf)
   │   ├─ stage_02/result.(pdb|xyz|gjf)
   │   └─ ...
-  ├─ path_search/                        # internal GSM outputs (pocket-level + merged)
+  ├─ path_search/                        # with --refine-path True (recursive GSM)
   │   ├─ mep.trj                         # final pocket MEP as XYZ
   │   ├─ summary.yaml
   │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment paths
@@ -179,9 +183,12 @@ Outputs (& Directory Layout)
   │       ├─ energy_diagram_G_UMA.(png)
   │       ├─ energy_diagram_DFT.(png)
   │       └─ energy_diagram_G_DFT_plus_UMA.(png)
-  ├─ mep_plot.png                        # copied from path_search/ (GSM energy profile)
-  ├─ energy_diagram_gsm.png              # copied from path_search/ (compressed GSM diagram)
-  ├─ mep.pdb                             # copied from path_search/ when PDB pockets are used
+  ├─ path_opt/                           # with --refine-path False (single-pass GSM per pair)
+  │   ├─ mep.trj, summary.yaml, mep_seg_XX.* , hei_seg_XX.*
+  │   └─ post_seg_XX/ ...                # identical layout to path_search/ when post-processing runs
+  ├─ mep_plot.png                        # copied from path_* / (GSM energy profile)
+  ├─ energy_diagram_gsm.png              # copied from path_* / (compressed GSM diagram)
+  ├─ mep.pdb                             # copied from path_* / when PDB pockets are used
   ├─ mep_w_ref.pdb                       # copied from path_search/ when full-system merge is available
   ├─ energy_diagram_tsopt_all.png        # UMA R–TS–P energies across all reactive segments
   ├─ energy_diagram_G_UMA_all.png        # UMA Gibbs R–TS–P across all reactive segments
@@ -211,7 +218,7 @@ Notes
 - Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
   The total charge defaults to 0; providing `--ligand-charge <number>` sets that value as the **overall system charge**
   (rounded). If the first input is a GJF, its charge/spin are used when `--ligand-charge` (numeric) and `--mult`
-  are not explicitly provided. `-q/--charge` overrides all of the above.
+  are not explicitly provided. `-q/--charge` overrides all of the above with a console warning when used.
 """
 
 from __future__ import annotations
@@ -560,15 +567,13 @@ def _round_charge_with_note(q: float) -> int:
 
 def _pdb_needs_elem_fix(p: Path) -> bool:
     """
-    Return True if the PDB has at least one ATOM/HETATM record whose element field (cols 77–78) is empty.
+    Return True if the file contains ATOM/HETATM records and at least one has an empty element field (cols 77–78).
     This is a light-weight check to decide whether to run add_elem_info.
     """
     try:
         with p.open("r", encoding="utf-8", errors="ignore") as fh:
-            saw_atom = False
             for line in fh:
                 if line.startswith("ATOM") or line.startswith("HETATM"):
-                    saw_atom = True
                     if len(line) < 78 or not line[76:78].strip():
                         return True
         return False
@@ -849,7 +854,7 @@ def _write_segment_energy_diagram(
     title_note: str,
 ) -> None:
     """
-    Write energy diagram (PNG) using utils.build_energy_diagram.
+    Write energy diagram (PNG) using utils.build_energy_diagram, optionally annotating the title.
     """
     if not energies_eh:
         return
@@ -862,6 +867,8 @@ def _write_segment_energy_diagram(
         baseline=True,
         showgrid=False,
     )
+    if title_note:
+        fig.update_layout(title=title_note)
     png = prefix.with_suffix(".png")
     try:
         fig.write_image(str(png), scale=2)
@@ -1186,8 +1193,6 @@ def _run_dft_sequence(
     """Run DFT on a sequence of states."""
     results: Dict[str, Dict[str, Any]] = {}
     for label, pdb_path, out_dir in state_jobs:
-        if pdb_path is None:
-            continue
         res = _run_dft_for_state(
             pdb_path,
             q_int,
@@ -1206,7 +1211,7 @@ def _run_tsopt_on_hei(
     hei_pdb: Path,
     charge: int,
     spin: int,
-    calc_cfg: Optional[Dict[str, Any]],
+    calc_cfg: Dict[str, Any],
     args_yaml: Optional[Path],
     out_dir: Path,
     freeze_links: bool,
@@ -1304,7 +1309,7 @@ def _run_tsopt_on_hei(
         except Exception as e:
             click.echo(f"[tsopt] WARNING: Failed to convert TS geometry to GJF: {e}", err=True)
 
-    calc_args = dict(calc_cfg) if calc_cfg is not None else _build_calc_cfg(charge, spin)
+    calc_args = dict(calc_cfg)
     calc = uma_pysis(**calc_args)
     g_ts.set_calculator(calc)
 
@@ -1321,7 +1326,7 @@ def _irc_and_match(
     q_int: int,
     spin: int,
     freeze_links_flag: bool,
-    calc_cfg: Optional[Dict[str, Any]],
+    calc_cfg: Dict[str, Any],
     args_yaml: Optional[Path],
     seg_tag: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -1393,7 +1398,7 @@ def _irc_and_match(
 
     elems, c_first, c_last = _read_xyz_first_last(finished_trj)
 
-    calc_args = dict(calc_cfg) if calc_cfg is not None else _build_calc_cfg(q_int, spin)
+    calc_args = dict(calc_cfg)
     shared_calc = uma_pysis(**calc_args)
     g_left = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last, freeze_atoms)
@@ -1607,7 +1612,7 @@ def _irc_and_match(
     type=int,
     default=None,
     help=(
-        "Force the total system charge (overrides extractor/GJF/--ligand-charge-derived values)."
+        "Force the total system charge (overrides extractor/GJF/--ligand-charge-derived values; emits a warning when used)."
     ),
 )
 @click.option(
@@ -1854,7 +1859,7 @@ def _irc_and_match(
         "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable. "
         'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
-        "auto-mapped to the pocket after extraction. Stage results feed into path_search."
+        "auto-mapped to the pocket after extraction. Stage results feed into the MEP step (path_search or path_opt)."
     ),
 )
 @click.option(
@@ -1870,7 +1875,9 @@ def _irc_and_match(
     "--scan-one-based",
     type=click.BOOL,
     default=None,
-    help="Override scan indexing interpretation (True = 1-based, False = 0-based).",
+    help=(
+        "Override the scan subcommand indexing interpretation (True = 1-based, False = 0-based)."
+    ),
 )
 @click.option(
     "--scan-max-step-size",
@@ -1959,8 +1966,9 @@ def cli(
     dft_engine: str,
 ) -> None:
     """
-    The **all** command composes `extract` → (optional `scan` on pocket or full input) → `path_search`
-    and hides ref-template bookkeeping. It also accepts the sloppy `-i A B C` style like `path_search` does.
+    The **all** command composes `extract` → (optional `scan` on pocket or full input) → MEP search
+    (`path_search` with ``--refine-path True`` or concatenated `path-opt` otherwise) and hides ref-template
+    bookkeeping. It also accepts the sloppy `-i A B C` style like `path_search` does.
     With single input:
       - with --scan-lists: run staged scan and use stage results as inputs for path_search,
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
@@ -2012,7 +2020,6 @@ def cli(
         tsopt_overrides["out_dir"] = tsopt_out_dir
     if hessian_calc_mode is not None:
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
-    tsopt_overrides["opt_mode"] = tsopt_opt_mode_default
     if thresh is not None:
         tsopt_overrides["thresh"] = str(thresh)
 
@@ -2204,9 +2211,12 @@ def cli(
 
     if charge_override is not None:
         q_int = int(charge_override)
-        click.echo(
-            f"[all] Using -q/--charge override as TOTAL system charge: {q_int:+d}"
+        override_msg = (
+            f"[all] WARNING: -q/--charge override supplied; forcing TOTAL system charge to {q_int:+d}"
         )
+        if q_from_flow is not None:
+            override_msg += f" (would otherwise use {int(q_from_flow):+d} from workflow)"
+        click.echo(override_msg, err=True)
     else:
         q_int = int(q_from_flow) if q_from_flow is not None else 0
 
@@ -2306,13 +2316,7 @@ def cli(
             g_prod_opt = g_prod_irc
 
         # Clean up endpoint_opt as a temporary working directory
-        try:
-            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-        except Exception as e:
-            click.echo(
-                f"[post] WARNING: Failed to remove temporary endpoint_opt directory in TSOPT-only mode: {e}",
-                err=True,
-            )
+        shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
 
         pR = _save_single_geom_as_pdb_for_tools(
             g_react_opt, pocket_ref, struct_dir, "reactant"
@@ -2951,7 +2955,7 @@ def cli(
             )
 
     # -------------------------------------------------------------------------
-    # Stage 3: merge to full systems (already done in path_search)
+    # Stage 3: merge to full systems (performed by path_search when enabled)
     # -------------------------------------------------------------------------
     click.echo(f"\n=== [all] Stage 3/{stage_total} — Merge into full-system templates ===\n")
     if refine_path and gave_ref_pdb:
@@ -2972,7 +2976,7 @@ def cli(
         click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
     else:
         click.echo(
-            "[all] path-opt mode produced pocket-level outputs; full-system merge will reuse these references when available."
+            "[all] path-opt mode produces pocket-level outputs only; full-system merge is not performed."
         )
         click.echo(f"[all] Aggregated products are under: {path_dir}")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
@@ -3122,13 +3126,7 @@ def cli(
                 )
                 g_prod_opt = gR
 
-            try:
-                shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-            except Exception as e:
-                click.echo(
-                    f"[post] WARNING: Failed to remove temporary endpoint_opt directory for segment {seg_idx:02d}: {e}",
-                    err=True,
-                )
+            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
 
             pL = _save_single_geom_as_pdb_for_tools(
                 g_react_opt, hei_pocket_path, struct_dir, "reactant"
