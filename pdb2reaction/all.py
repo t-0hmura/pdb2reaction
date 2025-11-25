@@ -13,7 +13,7 @@ Usage (CLI)
         [--ligand-charge <number|"RES:Q,...">] [--mult <2S+1>] \
         [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--sopt-mode {lbfgs|rfo|light|heavy}] \
-        [--opt-mode {light|lbfgs|heavy|rfo}] [--dump {True|False}] \
+        [--opt-mode {light|lbfgs|heavy|rfo}] [--dump {True|False}] [--thresh <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
@@ -131,7 +131,8 @@ Runs a one-shot pipeline centered on pocket models:
 
 **Forwarded / relevant options**
   - Path search: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
-    `--dump`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as shared flags.)
+    `--dump`, `--thresh`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as
+    shared flags.)
   - Scan (single-structure, pocket or full-input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
     `--args-yaml`, `--preopt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based`
     (omit to keep scan's default 1‑based indexing), `--scan-max-step-size`, `--scan-bias-k`,
@@ -1244,6 +1245,7 @@ def _run_tsopt_on_hei(
 
     _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
     _append_cli_arg(ts_args, "--dump", overrides.get("dump"))
+    _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
 
     hess_mode = overrides.get("hessian_calc_mode")
     if hess_mode:
@@ -1668,6 +1670,12 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "--thresh",
+    type=str,
+    default=None,
+    help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -1900,6 +1908,7 @@ def cli(
     sopt_mode: str,
     opt_mode: Optional[str],
     dump: bool,
+    thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
     hessian_calc_mode: Optional[str],
@@ -1982,6 +1991,8 @@ def cli(
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
     if opt_mode is not None:
         tsopt_overrides["opt_mode"] = tsopt_opt_mode_default
+    if thresh is not None:
+        tsopt_overrides["thresh"] = str(thresh)
 
     freq_overrides: Dict[str, Any] = {}
     if freq_max_write is not None:
@@ -2588,6 +2599,8 @@ def cli(
     ps_args.extend(["--climb", "True" if climb else "False"])
     ps_args.extend(["--sopt-mode", str(sopt_mode)])
     ps_args.extend(["--dump", "True" if dump else "False"])
+    if thresh is not None:
+        ps_args.extend(["--thresh", str(thresh)])
     ps_args.extend(["--out-dir", str(path_dir)])
     ps_args.extend(["--preopt", "True" if preopt else "False"])
     if args_yaml is not None:
