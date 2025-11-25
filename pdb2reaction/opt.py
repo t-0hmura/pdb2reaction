@@ -7,7 +7,7 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 Usage (CLI)
 -----------
     pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
-        [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] \
+        [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>]
@@ -18,14 +18,14 @@ Examples
     pdb2reaction opt -i input.pdb -q 0 -m 1
 
     # RFO with trajectory dumps and YAML overrides
-    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode rfo --dump True \
+    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode heavy --dump True \
         --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----------
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
-- Optimizers: LBFGS ("light") or RFOptimizer ("heavy"); aliases: light|lbfgs|heavy|rfo.
+- Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** CLI > YAML > built-in defaults.
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
 - Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those (0‑based indices), merged with any `geom.freeze_atoms`.
@@ -257,8 +257,8 @@ RFO_KW = {
 
 # Normalization helpers
 _OPT_MODE_ALIASES = (
-    (("light", "lbfgs"), "lbfgs"),
-    (("heavy", "rfo"), "rfo"),
+    (("light",), "lbfgs"),
+    (("heavy",), "rfo"),
 )
 
 
@@ -481,8 +481,13 @@ def _maybe_write_final_gjf(
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze the parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Maximum number of optimization cycles.")
-@click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO). Aliases: light|lbfgs|heavy|rfo.")
+@click.option(
+    "--opt-mode",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
+    show_default=True,
+    help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO).",
+)
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Write optimization trajectory to 'optimization.trj'.")
 @click.option("--out-dir", type=str, default="./result_opt/", show_default=True, help="Output directory.")
@@ -573,7 +578,7 @@ def cli(
             opt_mode,
             param="--opt-mode",
             alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|lbfgs|heavy|rfo",
+            allowed_hint="light|heavy",
         )
 
         # Pretty-print the resolved configuration

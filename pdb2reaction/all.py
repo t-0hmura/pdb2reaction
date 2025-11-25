@@ -12,8 +12,8 @@ Usage (CLI)
     pdb2reaction all -i INPUT1 [INPUT2 ...] [-c <substrate-spec>] \
         [--ligand-charge <number|"RES:Q,...">] [--mult <2S+1>] \
         [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
-        [--climb {True|False}] [--sopt-mode {lbfgs|rfo|light|heavy}] \
-        [--opt-mode {light|lbfgs|heavy|rfo}] [--dump {True|False}] [--thresh <preset>] \
+        [--climb {True|False}] [--opt-mode {light|heavy}] \
+        [--dump {True|False}] [--thresh <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
@@ -36,7 +36,7 @@ Examples
     # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
     pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
         --mult 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
-        --sopt-mode lbfgs --dump False --args-yaml params.yaml --preopt True \
+        --opt-mode light --dump False --args-yaml params.yaml --preopt True \
         --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure + scan to build an ordered series before path_search + post-processing
@@ -130,7 +130,7 @@ Runs a one-shot pipeline centered on pocket models:
     inputs must be **PDB**. For **single-structure + scan**, the input must be a **PDB**.
 
 **Forwarded / relevant options**
-  - Path search: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`,
+  - Path search: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`,
     `--dump`, `--thresh`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as
     shared flags.)
   - Scan (single-structure, pocket or full-input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
@@ -138,8 +138,8 @@ Runs a one-shot pipeline centered on pocket models:
     (omit to keep scan's default 1‑based indexing), `--scan-max-step-size`, `--scan-bias-k`,
     `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`). Indices given to `--scan-lists`
     refer to the original full input PDB; when extraction is used they are remapped to the pocket.
-  - Shared knobs: `--opt-mode light|lbfgs|heavy|rfo` applies to both scan and tsopt; when omitted, scan defaults to
-    LBFGS or RFO based on `--sopt-mode`, and tsopt falls back to `light`.
+  - Shared knobs: `--opt-mode light|heavy` applies to both scan and tsopt; light maps to LBFGS/Dimer and heavy to
+    RFO/RSIRFO across the workflow.
     `--hessian-calc-mode` applies to tsopt and freq.
   - TS optimization / IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt/irc.
   - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
@@ -1001,8 +1001,8 @@ def _optimize_endpoint_geom(
     Returns:
         (optimized_geometry, final_xyz_path)
     """
-    mode = (opt_mode_default or "lbfgs").lower()
-    if mode in ("lbfgs", "light"):
+    mode = (opt_mode_default or "light").lower()
+    if mode == "light":
         sopt_kind = "lbfgs"
         base_cfg = dict(_path_search.LBFGS_KW)
         OptClass = LBFGS
@@ -1644,19 +1644,13 @@ def _irc_and_match(
     help="Enable transition-state climbing after growth for the **first** segment in each pair.",
 )
 @click.option(
-    "--sopt-mode",
-    type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),
-    default="lbfgs",
-    show_default=True,
-    help="Single-structure optimizer kind for HEI±1 and kink nodes.",
-)
-@click.option(
     "--opt-mode",
-    type=str,
-    default=None,
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
+    show_default=True,
     help=(
-        "Common optimizer mode forwarded to scan/tsopt (--opt-mode). "
-        "When unset, tools use their defaults."
+        "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "
+        "light (=LBFGS/Dimer) or heavy (=RFO/RSIRFO)."
     ),
 )
 @click.option(
@@ -1905,8 +1899,7 @@ def cli(
     max_nodes: int,
     max_cycles: int,
     climb: bool,
-    sopt_mode: str,
-    opt_mode: Optional[str],
+    opt_mode: str,
     dump: bool,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -1979,7 +1972,7 @@ def cli(
             "or use a single structure with --scan-lists, or a single structure with --tsopt True."
         )
 
-    tsopt_opt_mode_default = opt_mode.lower() if opt_mode else "light"
+    tsopt_opt_mode_default = opt_mode.lower()
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)
@@ -1989,8 +1982,7 @@ def cli(
         tsopt_overrides["out_dir"] = tsopt_out_dir
     if hessian_calc_mode is not None:
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
-    if opt_mode is not None:
-        tsopt_overrides["opt_mode"] = tsopt_opt_mode_default
+    tsopt_overrides["opt_mode"] = tsopt_opt_mode_default
     if thresh is not None:
         tsopt_overrides["thresh"] = str(thresh)
 
@@ -2498,11 +2490,7 @@ def cli(
         scan_endopt_use = True if scan_endopt_override is None else bool(
             scan_endopt_override
         )
-        scan_opt_mode_use = (
-            opt_mode.lower()
-            if opt_mode
-            else ("lbfgs" if sopt_mode.lower() in ("lbfgs", "light") else "rfo")
-        )
+        scan_opt_mode_use = opt_mode.lower()
 
         scan_args: List[str] = [
             "-i",
@@ -2597,7 +2585,7 @@ def cli(
     ps_args.extend(["--max-nodes", str(int(max_nodes))])
     ps_args.extend(["--max-cycles", str(int(max_cycles))])
     ps_args.extend(["--climb", "True" if climb else "False"])
-    ps_args.extend(["--sopt-mode", str(sopt_mode)])
+    ps_args.extend(["--opt-mode", str(opt_mode.lower())])
     ps_args.extend(["--dump", "True" if dump else "False"])
     if thresh is not None:
         ps_args.extend(["--thresh", str(thresh)])

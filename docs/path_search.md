@@ -8,7 +8,7 @@ Construct a continuous minimum-energy path (MEP) across **two or more** structur
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
                          [--freeze-links BOOL] [--thresh PRESET]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
-                         [--sopt-mode lbfgs|rfo|light|heavy] [--dump BOOL]
+                         [--opt-mode light|heavy] [--dump BOOL]
                          [--out-dir DIR] [--preopt BOOL]
                          [--align/--no-align] [--ref-pdb FILE ...]
                          [--args-yaml FILE]
@@ -36,7 +36,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
-| `--sopt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light`/`lbfgs` share defaults; `heavy` maps to `rfo`. | `lbfgs` |
+| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
@@ -47,7 +47,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
 
 ## Workflow
 1. **Initial GSM per pair** – run `GrowingString` between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
-2. **Local relaxation around HEI** – optimize HEI ± 1 with the chosen single-structure optimizer (`sopt-mode`) to recover nearby minima (`End1`, `End2`).
+2. **Local relaxation around HEI** – optimize HEI ± 1 with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
 3. **Decide between kink vs. refinement**:
    - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
    - Otherwise, launch a **refinement GSM** between `End1` and `End2` to sharpen the barrier.

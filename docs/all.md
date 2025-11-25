@@ -19,7 +19,7 @@ pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 date=$(date +%Y%m%d)
 pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
     --ligand-charge "GPP:-3,MMT:-1" --mult 1 --freeze-links True \
-    --max-nodes 10 --max-cycles 100 --climb True --sopt-mode lbfgs \
+    --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
     --out-dir result_all_${date} --tsopt True --thermo True --dft True
 
 # Single-structure staged scan followed by GSM + TSOPT/freq/DFT
@@ -41,11 +41,11 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 
 2. **Optional staged scan (single-input only)**
    - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering.
-   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode` or the default derived from `--sopt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
+   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent GSM step.
 
 3. **MEP search on pockets (recursive GSM)**
-   - Executes `path_search` using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--sopt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - Executes `path_search` using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
    - For multi-input PDB runs, the full-system templates are automatically passed to `path_search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
 4. **Merge pockets back to the full systems**
@@ -88,8 +88,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
 | `--max-cycles INT` | GSM maximum optimization cycles. | `100` |
 | `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
-| `--sopt-mode [lbfgs\|rfo\|light\|heavy]` | Optimizer for HEI±1/kink nodes in GSM. | `lbfgs` |
-| `--opt-mode [light\|lbfgs\|heavy\|rfo]` | UMA optimizer preset for scan/tsopt. When omitted, scan inherits the LBFGS/RFO logic from `--sopt-mode`, and tsopt falls back to `light`. | `None` |
+| `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--dump BOOLEAN` | Dump GSM and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
 | `--preopt BOOLEAN` | Pre-optimise pocket endpoints before GSM (also the default for scan preopt). | `True` |

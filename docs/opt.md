@@ -12,14 +12,14 @@ A Gaussian `.gjf` template, when detected, seeds the charge/spin defaults and en
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
-                 [--opt-mode light|lbfgs|heavy|rfo] [--freeze-links BOOL] \
+                 [--opt-mode light|heavy] [--freeze-links BOOL] \
                  [--dist-freeze "[(i,j,target_A), ...]"] [--one-based|--zero-based] \
                  [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
                  [--max-cycles N] [--thresh PRESET] [--args-yaml FILE]
 ```
 
 ## Workflow
-- **Optimizers**: `--opt-mode light|lbfgs` → L-BFGS; `--opt-mode heavy|rfo` → rational-function optimizer with trust-region control.
+- **Optimizers**: `--opt-mode light` → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If no template exists, the fallback is `0/1`. Always pass the physically correct values explicitly.
 - **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).

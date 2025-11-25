@@ -7,8 +7,7 @@ tsopt — Transition-state optimization CLI
 Usage (CLI)
 -----------
     pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
-        [--opt-mode {light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
-                     heavy|rfo|rsirfo|rs-i-rfo}] \
+        [--opt-mode {light|heavy}] \
         [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
         [--out-dir <dir>] [--args-yaml <file>] \
         [--hessian-calc-mode {Analytical|FiniteDifference}]
@@ -44,9 +43,8 @@ Transition-state optimization with two modes:
 
 - **heavy**: RS-I-RFO Hessian-based TS optimizer.
 
-The CLI `--opt-mode` accepts the aliases shown above:
-`light/lbfgs/dimer/simple/simpledimer/hessian_dimer` map to the Hessian Dimer workflow, and
-`heavy/rfo/rsirfo/rs-i-rfo` select RS-I-RFO.
+The CLI `--opt-mode` accepts two modes:
+`light` maps to the Hessian Dimer workflow, and `heavy` selects RS-I-RFO.
 
 Configuration is driven by YAML overrides for sections: `geom`, `calc`, `opt`, `hessian_dimer`,
 and `rsirfo`. The `hessian_dimer` section accepts nested `dimer` and `lbfgs` dictionaries
@@ -179,8 +177,8 @@ from .freq import (
 
 # Normalization helper
 _OPT_MODE_ALIASES = (
-    (("light", "lbfgs", "dimer", "simple", "simpledimer", "hessian_dimer"), "light"),
-    (("heavy", "rfo", "rsirfo", "rs-i-rfo"), "heavy"),
+    (("light",), "light"),
+    (("heavy",), "heavy"),
 )
 
 
@@ -1241,8 +1239,13 @@ RSIRFO_KW.update({
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
-@click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="light (=Dimer) or heavy (=RSIRFO)")
+@click.option(
+    "--opt-mode",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
+    show_default=True,
+    help="light (=Dimer) or heavy (=RSIRFO)",
+)
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump optimization trajectory")
 @click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory")
