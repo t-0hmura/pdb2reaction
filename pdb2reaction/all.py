@@ -852,6 +852,7 @@ def _write_segment_energy_diagram(
     labels: List[str],
     energies_eh: List[float],
     title_note: str,
+    ylabel: str = "ΔE (kcal/mol)",
 ) -> None:
     """
     Write energy diagram (PNG) using utils.build_energy_diagram, optionally annotating the title.
@@ -863,7 +864,7 @@ def _write_segment_energy_diagram(
     fig = build_energy_diagram(
         energies=energies_kcal,
         labels=labels,
-        ylabel="ΔE (kcal/mol)",
+        ylabel=ylabel,
         baseline=True,
         showgrid=False,
     )
@@ -2364,6 +2365,7 @@ def cli(
                     labels=["R", "TS", "P"],
                     energies_eh=[GR, GT, GP],
                     title_note="(Gibbs, UMA)",
+                    ylabel="ΔG (kcal/mol)",
                 )
             except Exception as e:
                 click.echo(
@@ -2433,6 +2435,7 @@ def cli(
                         labels=["R", "TS", "P"],
                         energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                         title_note="(Gibbs, DFT//UMA)",
+                        ylabel="ΔG (kcal/mol)",
                     )
                 except Exception as e:
                     click.echo(
@@ -2813,11 +2816,12 @@ def cli(
                 energies_chain.append(float(np.nanmax(Es)))
                 energies_chain.append(Es[-1])
             if labels and energies_chain and len(labels) == len(energies_chain):
+                title_note = "(GSM; all segments)" if len(path_opt_segments) > 1 else "(GSM)"
                 _write_segment_energy_diagram(
                     path_dir / "energy_diagram_gsm",
                     labels=labels,
                     energies_eh=energies_chain,
-                    title_note="(GSM)",
+                    title_note=title_note,
                 )
         except Exception as e:
             click.echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
@@ -3306,6 +3310,7 @@ def cli(
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_eh=gibbs_vals,
                             title_note="(Gibbs, UMA)",
+                            ylabel="ΔG (kcal/mol)",
                         )
                         g_uma_seg_energies.append((GR, GT, GP))
                     else:
@@ -3405,6 +3410,7 @@ def cli(
                                 labels=["R", f"TS{seg_idx}", "P"],
                                 energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                                 title_note="(Gibbs, DFT//UMA)",
+                                ylabel="ΔG (kcal/mol)",
                             )
                             g_dftuma_seg_energies.append(
                                 (GR_dftUMA, GT_dftUMA, GP_dftUMA)
@@ -3443,6 +3449,7 @@ def cli(
                 labels=g_uma_all_labels,
                 energies_eh=g_uma_all_energies,
                 title_note="(Gibbs, UMA; all segments)",
+                ylabel="ΔG (kcal/mol)",
             )
 
     if do_dft and dft_seg_energies:
@@ -3465,6 +3472,7 @@ def cli(
                 labels=g_dftuma_all_labels,
                 energies_eh=g_dftuma_all_energies,
                 title_note="(Gibbs, DFT//UMA; all segments)",
+                ylabel="ΔG (kcal/mol)",
             )
 
     # -------------------------------------------------------------------------
