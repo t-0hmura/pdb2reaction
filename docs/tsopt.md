@@ -3,12 +3,10 @@
 ## Overview
 `pdb2reaction tsopt` optimizes transition states using two complementary workflows:
 
-- **light** mode (aliases: `light`, `lbfgs`, `dimer`, `simple`, `simpledimer`,
-  `hessian_dimer`): Hessian Dimer search with periodic exact-Hessian refreshes, a
+- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, a
   memory-conscious flatten loop to remove surplus imaginary modes, and PHVA-aware
   Hessian updates for the active degrees of freedom.
-- **heavy** mode (aliases: `heavy`, `rfo`, `rsirfo`, `rs-i-rfo`): RS-I-RFO optimizer with
-  configurable trust-region safeguards.
+- **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards.
 
 Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
 settings from YAML, and always write the final imaginary mode in `.trj` and `.pdb` formats.
@@ -16,8 +14,7 @@ settings from YAML, and always write the final imaginary mode in `.trj` and `.pd
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
-                    [--opt-mode light|lbfgs|dimer|simple|simpledimer|hessian_dimer| \
-                               heavy|rfo|rsirfo|rs-i-rfo] \
+                    [--opt-mode light|heavy] \
                     [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
                     [--dump {True|False}] [--outdir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference]

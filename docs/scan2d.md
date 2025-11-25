@@ -58,7 +58,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light|lbfgs` → LBFGS, `heavy|rfo` → RFOptimizer. | `light` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |

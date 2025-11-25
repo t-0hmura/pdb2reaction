@@ -12,7 +12,7 @@ Usage (CLI)
         --max-step-size FLOAT \
         --bias-k FLOAT \
         --relax-max-cycles INT \
-        --opt-mode {light,lbfgs,heavy,rfo} \
+        --opt-mode {light,heavy} \
         --freeze-links {True|False} \
         --dump {True|False} \
         --out-dir PATH \
@@ -31,7 +31,7 @@ Examples
     # LBFGS with trajectory dumping and PNG + HTML plots
     pdb2reaction scan2d -i input.pdb -q 0 \
         --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
-        --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode lbfgs \
+        --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
         --preopt True --baseline min
 
 Description
@@ -142,8 +142,8 @@ RFO_KW.update({"out_dir": "./result_scan2d/"})
 BIAS_KW: Dict[str, Any] = {"k": 100.0}  # eV/Å^2
 
 _OPT_MODE_ALIASES = (
-    (("light", "lbfgs"), "lbfgs"),
-    (("heavy", "rfo"),   "rfo"),
+    (("light",), "lbfgs"),
+    (("heavy",), "rfo"),
 )
 
 HARTREE_TO_KCAL_MOL = 627.50961
@@ -340,7 +340,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 )
 @click.option(
     "--opt-mode",
-    type=str,
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
     default="light",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
@@ -472,7 +472,7 @@ def cli(
             opt_mode,
             param="--opt-mode",
             alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|lbfgs|heavy|rfo",
+            allowed_hint="light|heavy",
         )
 
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()

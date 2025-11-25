@@ -7,7 +7,7 @@ path_search — Recursive GSM segmentation to build a continuous multistep MEP
 Usage (CLI)
 -----------
     pdb2reaction path-search -i STRUCT1 STRUCT2 [STRUCT3 ...] [-q <charge>] \
-        [-m <multiplicity>] [--sopt-mode {lbfgs|rfo|light|heavy}] \
+        [-m <multiplicity>] [--opt-mode {light|heavy}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--preopt {True|False}] [--align/--no-align] [--thresh <preset>] \
         [--ref-pdb <path> ...] [--out-dir <dir>] [--args-yaml <file>] \
@@ -23,9 +23,8 @@ Core inputs (strongly recommended):
 Recommended/common:
     -m/--mult
         Spin multiplicity (2S+1); defaults to a .gjf template value or 1 when omitted.
-    --sopt-mode
-        Single-structure optimizer: lbfgs|rfo|light|heavy; default lbfgs
-        (aliases: light → lbfgs, heavy → rfo).
+    --opt-mode
+        Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default light.
     --max-nodes
         Internal nodes for segment GSM; default 10.
     --max-cycles
@@ -1448,9 +1447,13 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Enable transition-state search after path growth.")
-@click.option("--sopt-mode", type=click.Choice(["lbfgs", "rfo", "light", "heavy"], case_sensitive=False),
-              default="lbfgs", show_default=True,
-              help="Single-structure optimizer: lbfgs(light) or rfo(heavy).")
+@click.option(
+    "--opt-mode",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
+    show_default=True,
+    help="Single-structure optimizer: light (=LBFGS) or heavy (=RFO).",
+)
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump GSM/single-optimization trajectories during the run.")
 @click.option("--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
@@ -1503,7 +1506,7 @@ def cli(
     max_nodes: int,
     max_cycles: int,
     climb: bool,
-    sopt_mode: str,
+    opt_mode: str,
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
@@ -1602,8 +1605,8 @@ def cli(
                 (calc_cfg, (("calc",),)),
                 (gs_cfg, (("gs",),)),
                 (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("rfo",))),
+                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
+                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
                 (bond_cfg, (("bond",),)),
                 (search_cfg, (("search",),)),
             ],
@@ -1640,15 +1643,15 @@ def cli(
         lbfgs_cfg["out_dir"] = out_dir
         rfo_cfg["out_dir"]   = out_dir
 
-        sopt_kind = sopt_mode.strip().lower()
-        if sopt_kind in ("light", "lbfgs"):
+        opt_kind = opt_mode.strip().lower()
+        if opt_kind == "light":
             sopt_kind = "lbfgs"
             sopt_cfg = lbfgs_cfg
-        elif sopt_kind in ("heavy", "rfo"):
+        elif opt_kind == "heavy":
             sopt_kind = "rfo"
             sopt_cfg = rfo_cfg
         else:
-            raise click.BadParameter(f"Unknown --sopt-mode '{sopt_mode}'.")
+            raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
 
         if "max_nodes_segment" not in yaml_cfg.get("search", {}):
             search_cfg["max_nodes_segment"] = int(max_nodes)

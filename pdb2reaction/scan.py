@@ -10,7 +10,7 @@ Usage (CLI)
         [--scan-lists "[(I,J,TARGET_ANG), ...]" ...] [-s <spin>] \
         [--one-based|--zero-based] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \
-        [--opt-mode {light|lbfgs|heavy|rfo}] [--freeze-links {True|False}] \
+        [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
         [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] [--endopt {True|False}]
 
@@ -72,7 +72,7 @@ out_dir/ (default: ./result_scan/)
 Notes
 -----
 - UMA only: `uma_pysis` is the sole supported calculator.
-- Optimizers: `--opt-mode light|lbfgs` selects LBFGS; `--opt-mode heavy|rfo` selects RFOptimizer.
+- Optimizers: `--opt-mode light` selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
 - Indexing: (i, j) are 1‑based by default; use `--zero-based` if your tuples are 0‑based.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
@@ -178,8 +178,8 @@ BOND_KW: Dict[str, Any] = {
 
 # Normalization helper
 _OPT_MODE_ALIASES = (
-    (("light", "lbfgs"), "lbfgs"),
-    (("heavy", "rfo"), "rfo"),
+    (("light",), "lbfgs"),
+    (("heavy",), "rfo"),
 )
 
 
@@ -352,8 +352,13 @@ def _snapshot_geometry(g) -> Any:
               help="Harmonic well strength k [eV/Å^2].")
 @click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
               help="Maximum optimizer cycles per relaxation (preopt, per-step, and end-of-stage).")
-@click.option("--opt-mode", type=str, default="light", show_default=True,
-              help="Relaxation mode: light (=LBFGS) or heavy (=RFO).")
+@click.option(
+    "--opt-mode",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
+    show_default=True,
+    help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
@@ -438,7 +443,7 @@ def cli(
             opt_mode,
             param="--opt-mode",
             alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|lbfgs|heavy|rfo",
+            allowed_hint="light|heavy",
         )
 
         # Bias strength override
