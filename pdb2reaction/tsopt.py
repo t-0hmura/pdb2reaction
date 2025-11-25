@@ -112,8 +112,8 @@ out_dir/ (default: ./result_tsopt/)
 Notes
 -----
 - **Charge/spin**: `-q/--charge` and `-m/--mult` inherit `.gjf` template values when the input
-  is `.gjf`; otherwise they default to `0` and `1`. Override explicitly to avoid unphysical
-  conditions.
+  is `.gjf`; otherwise `-q/--charge` is required and the CLI aborts if omitted (multiplicity
+  still defaults to 1). Override explicitly to avoid unphysical conditions.
 
 - `--opt-mode light` runs Hessian Dimer with periodic Hessian-based direction refresh;
   `--opt-mode heavy` runs RS-I-RFO.
@@ -1344,7 +1344,7 @@ RSIRFO_KW.update({
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")

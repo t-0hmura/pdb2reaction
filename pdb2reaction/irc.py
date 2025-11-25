@@ -30,13 +30,14 @@ Description
 - Configuration model: Only the CLI options listed above are accepted. All other parameters
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
   Final configuration precedence: built-in defaults → YAML → CLI.
-- Charge/spin defaults: `-q/--charge` and `-m/--mult` inherit values from `.gjf` templates when provided and otherwise fall back
-  to `0`/`1`. Set them explicitly to avoid running under unintended conditions.
+- Charge/spin defaults: `-q/--charge` and `-m/--mult` inherit values from `.gjf` templates when provided. For non-`.gjf`
+  inputs, `-q/--charge` is mandatory and the CLI aborts if omitted; multiplicity still defaults to 1 when unspecified.
 
 CLI options
 -----------
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
-  - `-q/--charge INT`: Total charge; overrides `calc.charge` from YAML and defaults to a `.gjf` template value or `0` when omitted.
+  - `-q/--charge INT`: Total charge; overrides `calc.charge` from YAML. Required for non-`.gjf` inputs; `.gjf` templates
+    supply defaults when available.
   - `-m/--mult INT` (default 1): Spin multiplicity (2S+1); overrides `calc.spin` and defaults to the template multiplicity or `1`.
   - `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
   - `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
@@ -166,7 +167,7 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")

@@ -6,7 +6,7 @@ scan2d — Two-distance 2D scan with harmonic restraints (UMA only)
 
 Usage (CLI)
 -----------
-    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} -q <charge> [-m <multiplicity>] \
+    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-m <multiplicity>] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
         [--one-based|--zero-based] \
         --max-step-size FLOAT \
@@ -76,6 +76,7 @@ Notes
 - Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO).
 - Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
+- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available.
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
@@ -298,7 +299,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
     "-m",
     "--multiplicity",

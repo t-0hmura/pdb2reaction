@@ -55,6 +55,10 @@ Optional optimizations
     `--endopt True`).
   - By default, both `--preopt` and `--endopt` are enabled.
 
+Charge/spin resolution
+  - `-q/--charge` is required unless the input is a `.gjf` template; otherwise the CLI aborts.
+    Multiplicity defaults to 1 when omitted.
+
 Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_scan/)
@@ -336,7 +340,7 @@ def _snapshot_geometry(g) -> Any:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--scan-lists", "scan_lists_raw",

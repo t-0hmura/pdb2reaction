@@ -29,6 +29,8 @@ Description
 - Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); CLI values override YAML.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
+- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available and allow omitting
+  `-q/--charge`.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -495,7 +497,7 @@ THERMO_KW = {
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")

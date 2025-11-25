@@ -17,8 +17,8 @@ Core inputs (strongly recommended):
     -i/--input
         Two or more structures in reaction order (repeatable or space‑separated after a single -i).
     -q/--charge
-        Total system charge for the ML region (defaults to a .gjf template value when available,
-        otherwise 0 when omitted).
+        Total system charge for the ML region (required for non-`.gjf` inputs; `.gjf` templates supply
+        defaults when available).
 
 Recommended/common:
     -m/--mult
@@ -1387,7 +1387,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=None,
     show_default=False,
-    help="Charge of the ML region (defaults from a .gjf template when available, otherwise 0).",
+    help="Charge of the ML region.",
 )
 @click.option(
     "-m",
@@ -1540,6 +1540,7 @@ def cli(
 
         p_list = [Path(p) for p in input_paths]
         prepared_inputs = [prepare_input_structure(p) for p in p_list]
+        any_non_gjf = any(not prep.is_gjf for prep in prepared_inputs)
         if _PRIMARY_GJF_TEMPLATE is None:
             _PRIMARY_GJF_TEMPLATE = next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None)
 
@@ -1578,6 +1579,12 @@ def cli(
                 resolved_charge, resolved_spin, prepared.gjf_template
             )
         if resolved_charge is None:
+            if any_non_gjf:
+                for prepared in prepared_inputs:
+                    prepared.cleanup()
+                raise click.ClickException(
+                    "-q/--charge is required unless all inputs are .gjf templates with charge metadata."
+                )
             resolved_charge = 0
         if resolved_spin is None:
             resolved_spin = 1

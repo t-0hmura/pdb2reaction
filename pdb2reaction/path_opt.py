@@ -7,7 +7,7 @@ path_opt — Minimum-energy path (MEP) optimization via the Growing String metho
 Usage (CLI)
 -----------
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
-        -q <charge> [-m <multiplicity>] [--freeze-links {True|False}] \
+        [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
         [--opt-mode {light|heavy}] [--dump {True|False}] [--out-dir <dir>] \
         [--thresh <preset>] [--args-yaml <file>] [--preopt {True|False}] \
@@ -49,7 +49,7 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` (required) and `-m/--multiplicity` are reconciled with any `.gjf` template values: explicit CLI options win; otherwise template values are used, and if both are missing, they fall back to `0`/`1`. Override explicitly to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` (required for non-`.gjf` inputs) and `-m/--multiplicity` are reconciled with any `.gjf` template values: explicit CLI options win; otherwise template values are used, and omitting `-q/--charge` for non-`.gjf` inputs causes the CLI to abort. Override explicitly to avoid unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
@@ -260,7 +260,7 @@ def _optimize_single(
     required=True,
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
     "-m",
     "--multiplicity",

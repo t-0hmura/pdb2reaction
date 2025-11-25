@@ -6,7 +6,7 @@ opt — Single-structure geometry optimization (LBFGS or RFO)
 
 Usage (CLI)
 -----------
-    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q <charge> [-m <multiplicity>] \
+    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
@@ -40,8 +40,8 @@ Key options (YAML keys → meaning; defaults)
   - `freeze_atoms`: list[int], 0‑based indices to freeze (default: []).
 
 - Calculator (`calc`, UMA via `uma_pysis`):
-  - `charge` / `spin`: taken from `-q/--charge` (required) and `-m/--multiplicity` (default `1`) and reconciled with any
-    `.gjf` template via `resolve_charge_spin_or_raise`.
+  - `charge` / `spin`: taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity` (default `1`)
+    and reconciled with any `.gjf` template via `resolve_charge_spin_or_raise`.
   - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
   - `device`: "auto" (GPU if available) | "cuda" | "cpu".
   - `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
@@ -94,9 +94,9 @@ Console output echoes the resolved geom/calc/opt/(lbfgs|rfo) blocks, per-print p
 
 Notes
 -----
-- **Charge/spin handling:** The CLI requires `-q/--charge` and takes `-m/--multiplicity` (default `1`). Internally,
-  `resolve_charge_spin_or_raise` reconciles these with any `.gjf` template (when available) and may fall back to
-  template or to `0`/`1` in non-CLI usages. In normal CLI use, always provide physically correct values.
+- **Charge/spin handling:** The CLI requires `-q/--charge` for non-`.gjf` inputs and takes `-m/--multiplicity` (default
+  `1`). `resolve_charge_spin_or_raise` reconciles these with any `.gjf` template (when available) and otherwise raises a
+  user-facing error when `-q/--charge` is omitted for non-`.gjf` inputs. Always provide physically correct values.
 - **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type="dlc"` can
   improve stability for small molecules.
 - **Freeze links (PDB only):** With `--freeze-links` (default), parent atoms of link hydrogens are detected and frozen;
@@ -468,7 +468,7 @@ def _maybe_write_final_gjf(
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
     "-m",
     "--multiplicity",
