@@ -10,7 +10,7 @@ optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and DFT//UMA diag
 Usage (CLI)
 -----------
     pdb2reaction all -i INPUT1 [INPUT2 ...] [-c <substrate-spec>] \
-        [--ligand-charge <number|"RES:Q,...">] [--mult <2S+1>] \
+        [--ligand-charge <number|"RES:Q,...">] [-q/--charge <forced_net_charge>] [-m/--mult <2S+1>] \
         [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--opt-mode {light|heavy}] [--refine-path {True|False}] \
         [--dump {True|False}] [--thresh <preset>] \
