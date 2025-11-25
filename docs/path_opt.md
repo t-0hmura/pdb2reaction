@@ -51,7 +51,7 @@ out_dir/
 ├─ gsm_hei.xyz                 # Highest-energy image with its energy on the comment line
 ├─ gsm_hei.pdb                 # HEI converted to PDB when the first endpoint was a PDB
 ├─ gsm_hei.gjf                 # HEI written using a detected Gaussian template
-├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage
+├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created only when scan output exists)
 └─ <optimizer dumps/restarts>  # Present when dumping is enabled
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle GSM progress with timing information.
