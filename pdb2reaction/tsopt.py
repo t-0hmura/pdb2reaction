@@ -36,8 +36,17 @@ Transition-state optimization with two modes:
 - **light**: Hessian Dimer TS search with periodic Hessian-based direction refresh and a
   memory-efficient flatten loop to eliminate excess imaginary modes. After the initial dimer
   stage, one exact Hessian is evaluated and its active (PHVA) block is kept and updated by
-  Bofill (SR1/MS and PSB blend) between geometry updates. Once only one imaginary mode remains,
-  a final exact Hessian is computed for frequency analysis.
+  Bofill (SR1/MS and PSB blend) between geometry updates in the flatten loop. Each
+  flatten iteration:
+    * estimate approximate imaginary modes using the current active Hessian (mass-weighted,
+      TR-projected),
+    * select only **spatially separated** extra imaginary modes (using representative atoms
+      and a distance cutoff) and perform a mass-scaled flatten step in those modes,
+    * apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
+    * refresh the dimer direction from the updated active Hessian,
+    * run a dimer–LBFGS segment (consuming the global cycle budget),
+    * recompute an exact Hessian at the end of the dimer segment for the next iteration.
+  Once only one imaginary mode remains, a final exact Hessian is computed for frequency analysis.
   *If `root != 0`, the specified root is used only to seed the initial dimer direction; the
   algorithm then follows the most negative mode (`root = 0`) on subsequent updates.*
 
@@ -71,12 +80,17 @@ Key behaviors and algorithmic notes
   rotation (TR) projection reduces GPU memory use. This respects `freeze_atoms`. A heavy
   clone-based TR self-check is disabled to conserve VRAM.
 
-- **Flatten loop (light mode)**: one exact active-subspace Hessian is evaluated and then updated
-  in-place by Bofill using displacements Δx and gradient differences Δg. Each iteration:
-  estimate imaginary modes from the updated active Hessian (mass-weighted, TR-projected),
-  perform a flatten step, update the Hessian via Bofill, refresh the dimer direction, run a
-  dimer–LBFGS segment, and apply a final Bofill update. Continue until only one imaginary mode
-  remains, then compute a final exact Hessian for frequency analysis.
+- **Flatten loop (light mode)**: one exact active-subspace Hessian is evaluated at the start of
+  the flatten loop. Each iteration:
+    * estimate approximate imaginary modes using the current active Hessian,
+    * select only **spatially separated** extra imaginary modes (using representative atoms
+      and a distance cutoff) and perform a mass-scaled flatten step in those modes,
+    * apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
+    * refresh the dimer direction from the updated active Hessian,
+    * run a dimer–LBFGS segment,
+    * recompute an exact Hessian at the end of the dimer segment for the next iteration.
+  Continue until only one imaginary mode remains, then compute a final exact Hessian for
+  frequency analysis.
 
 - **UMA integration**: `freeze_atoms` are propagated to UMA. Finite-difference Hessians honor
   the active subspace. UMA defaults to returning a partial (active) Hessian when applicable.
@@ -585,7 +599,7 @@ def _modes_from_Hact_embedded(H_act: torch.Tensor,
         Vsub = Vsub[:, sel]  # (3N_act, nsel)
 
         # Embed to full 3N (mass-weighted eigenvectors)
-        modes_full = torch.zeros((Vsub.shape[1], 3 * N), dtype=Hmw.dtype, device=device)
+        modes_full = torch.zeros((Vsub.shape[1], 3 * N), dtype=Hmw.dtype, device=Hmw.device)
         mask_dof = _active_mask_dof(N, list(set(range(N)) - set(active_idx)))
         mask_t = torch.as_tensor(mask_dof, dtype=torch.bool, device=device)
         modes_full[:, mask_t] = Vsub.T
@@ -698,7 +712,7 @@ def _bofill_update_active(H_act: torch.Tensor,
 
     # coefficients for rank updates
     alpha = (1.0 - phi) / denom_ms                      # for xi xi^T
-    beta  = - phi * (d_dot_xi / denom_psb_d4)           # for d d^T
+    beta = -phi * (d_dot_xi / denom_psb_d4)             # for d d^T
     gamma = phi / denom_psb_d2                          # for d xi^T + xi d^T
 
     n = H_act.shape[0]
@@ -709,18 +723,21 @@ def _bofill_update_active(H_act: torch.Tensor,
     # Diagonal contributions (i == j): alpha*xi_i^2 + beta*d_i^2 + 2*gamma*d_i*xi_i
     if is_diag.any():
         idx = iu0[is_diag]
-        H_act[idx, idx].add_(alpha * xi[idx] * xi[idx]
-                             + beta * d[idx] * d[idx]
-                             + 2.0 * gamma * d[idx] * xi[idx])
+        diag_inc = (alpha * xi[idx] * xi[idx]
+                    + beta * d[idx] * d[idx]
+                    + 2.0 * gamma * d[idx] * xi[idx])
+        # NOTE: use assignment so that advanced indexing actually updates H_act
+        H_act[idx, idx] = H_act[idx, idx] + diag_inc
 
     # Off-diagonal (i < j): symmetric update
     if off.any():
-        i = iu0[off]; j = iu1[off]
+        i = iu0[off]
+        j = iu1[off]
         inc = (alpha * xi[i] * xi[j]
                + beta * d[i] * d[j]
                + gamma * (d[i] * xi[j] + xi[i] * d[j]))
-        H_act[i, j].add_(inc)
-        H_act[j, i].add_(inc)
+        H_act[i, j] = H_act[i, j] + inc
+        H_act[j, i] = H_act[j, i] + inc
 
     return H_act
 
@@ -739,9 +756,12 @@ class HessianDimer:
       - Hard cap on total LBFGS steps across segments: `max_total_cycles`.
       - PHVA (active DOF subspace) + TR projection for mode picking,
         respecting `freeze_atoms`. For `root == 0` the implementation prefers LOBPCG.
-      - The flatten loop uses a Bofill-updated active Hessian block, so the
-        expensive exact Hessian is evaluated only once before the flatten loop and
-        once at the end for the final frequency analysis.
+      - The flatten loop uses a Bofill-updated active Hessian block in the active DOF
+        subspace, but Bofill is applied *only* for the flatten displacements; after
+        each dimer segment in the flatten loop, a fresh exact Hessian is recomputed.
+      - Only **spatially separated** extra imaginary modes (based on representative
+        atoms and a distance cutoff) are used for flattening to avoid overly large
+        displacements when clustered imaginary modes are present.
       - UMA calculator kwargs accept `freeze_atoms` and `hessian_calc_mode` and
         default to returning a partial (active) Hessian when applicable.
 
@@ -768,6 +788,10 @@ class HessianDimer:
                  lbfgs_kwargs: Optional[Dict[str, Any]] = None,
                  max_total_cycles: int = 10000,
                  #
+                 # Multi-mode flatten control
+                 flatten_sep_cutoff: float = 2.0,
+                 flatten_k: int = 10,
+                 #
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in light mode.
                  geom_kwargs: Optional[Dict[str, Any]] = None,
@@ -789,6 +813,10 @@ class HessianDimer:
         self.dimer_kwargs = dict(dimer_kwargs or {})
         self.lbfgs_kwargs = dict(lbfgs_kwargs or {})
         self.max_total_cycles = int(max_total_cycles)
+
+        # multi-mode flatten controls
+        self.flatten_sep_cutoff = float(flatten_sep_cutoff)
+        self.flatten_k = int(flatten_k)
 
         # Track total cycles globally across all loops/segments
         self._cycles_spent = 0
@@ -902,46 +930,132 @@ class HessianDimer:
                 torch.cuda.empty_cache()
         return steps_in_this_call
 
+    # ----- helpers for flatten selection -----
+    def _representative_atoms_for_mode(self, mode_vec: torch.Tensor) -> np.ndarray:
+        """
+        Return indices of atoms with the largest displacements for a given mode.
+        """
+        vec = mode_vec.view(-1, 3)
+        norms = torch.linalg.norm(vec, dim=1)
+        k = min(self.flatten_k, vec.shape[0])
+        if k <= 0:
+            return np.zeros(0, dtype=int)
+        topk = torch.topk(norms, k=k, largest=True)
+        return topk.indices.detach().cpu().numpy()
+
+    def _select_flatten_targets(self,
+                                freqs_cm: np.ndarray,
+                                modes: torch.Tensor) -> List[int]:
+        """
+        Select a subset of imaginary modes to flatten:
+          * exclude the primary (TS) mode selected by `root`,
+          * from the remaining imaginary modes, greedily pick modes whose
+            representative atoms are separated by at least `flatten_sep_cutoff`
+            (Å) from previously selected modes.
+        """
+        neg_idx_all = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
+        if len(neg_idx_all) <= 1:
+            return []
+
+        # sort imaginary modes (most negative first)
+        order = np.argsort(freqs_cm[neg_idx_all])
+        sorted_neg = neg_idx_all[order]
+
+        # primary mode index in freqs_cm (TS mode to keep)
+        root_clamped = max(0, min(self.root, len(order) - 1))
+        primary_idx = sorted_neg[root_clamped]
+
+        # candidates = all other imaginary modes
+        candidates = [int(i) for i in sorted_neg if int(i) != int(primary_idx)]
+        if not candidates:
+            return []
+
+        # atomic coordinates in Å
+        coords_ang = torch.as_tensor(
+            self.geom.coords.reshape(-1, 3) * BOHR2ANG,
+            dtype=modes.dtype,
+            device=modes.device,
+        )
+
+        targets: List[int] = []
+        reps_list: List[np.ndarray] = []
+
+        for idx in candidates:
+            rep = self._representative_atoms_for_mode(modes[idx])
+            if rep.size == 0:
+                continue
+            rep_coords = coords_ang[rep]  # (k, 3)
+            if not reps_list:
+                targets.append(idx)
+                reps_list.append(rep)
+                continue
+
+            # check distance to all previously selected representative sets
+            accept = True
+            for prev_rep in reps_list:
+                prev_coords = coords_ang[prev_rep]  # (k, 3)
+                dmat = torch.cdist(rep_coords, prev_coords)
+                min_dist = float(torch.min(dmat).item())
+                if min_dist < self.flatten_sep_cutoff:
+                    accept = False
+                    break
+            if accept:
+                targets.append(idx)
+                reps_list.append(rep)
+
+        return targets
+
     def _flatten_once_with_modes(self, freqs_cm: np.ndarray, modes: torch.Tensor) -> bool:
         """
         Flatten using precomputed (approximate) modes (mass-weighted, embedded).
+
+        Only spatially separated extra imaginary modes are used, following a
+        greedy selection similar to the PartialHessianDimer implementation.
+        Modes are applied sequentially from the current geometry, so that each
+        mode's displacement is decided from a 1D energy scan along that mode.
         """
         neg_idx_all = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
         if len(neg_idx_all) <= 1:
             return False
 
-        order = np.argsort(freqs_cm[neg_idx_all])
-        root_clamped = max(0, min(self.root, len(order) - 1))
-        primary_idx = neg_idx_all[order[root_clamped]]
-        targets = [i for i in neg_idx_all if i != primary_idx]
+        # choose targets based on spatial separation
+        targets = self._select_flatten_targets(freqs_cm, modes)
         if not targets:
             return False
 
-        ref = self.geom.coords.reshape(-1, 3).copy()
-        _ = _calc_energy(self.geom, self.uma_kwargs)
-
+        # mass scaling (C moves exactly flatten_amp_ang Å)
         mass_scale = np.sqrt(12.011 / self.masses_amu)[:, None]
         amp_bohr = self.flatten_amp_ang / BOHR2ANG
 
-        disp_total = np.zeros_like(ref)
+        # ensure energy reference is set up
+        _ = _calc_energy(self.geom, self.uma_kwargs)
+
+        # work in Bohr coordinates
         for idx in targets:
+            # mode is currently mass-weighted & embedded to 3N
             v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)
+            # convert to Cartesian (Å-scale amplitude, but coords are Bohr)
             m3 = np.repeat(self.masses_amu, 3).reshape(-1, 3)
             v_cart = v_mw / np.sqrt(m3)
             v_cart /= np.linalg.norm(v_cart)
-            disp0 = amp_bohr * mass_scale * v_cart
 
-            self.geom.coords = (ref + disp0).reshape(-1)
+            disp = amp_bohr * mass_scale * v_cart  # Bohr
+            ref = self.geom.coords.reshape(-1, 3)
+
+            plus = ref + disp
+            minus = ref - disp
+
+            self.geom.coords = plus.reshape(-1)
             E_plus = _calc_energy(self.geom, self.uma_kwargs)
-            self.geom.coords = (ref - disp0).reshape(-1)
-            E_minus = _calc_energy(self.geom, self.uma_kwargs)
-            self.geom.coords = ref.reshape(-1)
 
-            disp_total += (disp0 if E_plus <= E_minus else -disp0)
+            self.geom.coords = minus.reshape(-1)
+            E_minus = _calc_energy(self.geom, self.uma_kwargs)
+
+            # keep lower-energy side and continue from there
+            self.geom.coords = (plus if E_plus <= E_minus else minus).reshape(-1)
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        self.geom.coords = (ref + disp_total).reshape(-1)
         return True
 
     # ----- Run full procedure -----
@@ -1010,8 +1124,8 @@ class HessianDimer:
         print("Normal dimer loop...")
         self._dimer_loop(self.thresh)
 
-        # (4) Flatten loop — reduced exact Hessian calls via Bofill updates (active DOF only)
-        print("Flatten loop with Bofill-updated active Hessian...")
+        # (4) Flatten loop — exact Hessian each iteration & Bofill only for flatten
+        print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
 
         # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
         H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
@@ -1025,65 +1139,59 @@ class HessianDimer:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # Gradient & coordinates snapshot for quasi-Newton updates
-        x_prev = self.geom.coords.copy().reshape(-1)
-        g_prev = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
-
         # Flatten iterations with approximate Hessian updates
         for it in range(self.flatten_max_iter):
             if (self.max_total_cycles - self._cycles_spent) <= 0:
                 break
 
-            # (a) Estimate current imaginary modes using the active Hessian
-            freqs_est = _frequencies_from_Hact(H_act, self.geom.atomic_numbers,
-                                               self.geom.coords.reshape(-1, 3), active_idx, self.device)
-            n_imag = int(np.sum(freqs_est < -abs(self.neg_freq_thresh_cm)))
-            print(f"[IMAG~] n≈{n_imag}  (approx imag: {[float(x) for x in freqs_est if x < -abs(self.neg_freq_thresh_cm)]})")
+            # (a) Approximate frequencies & modes from the active Hessian
+            freqs_cm_approx, modes_embedded = _modes_from_Hact_embedded(
+                H_act, self.geom.atomic_numbers,
+                self.geom.coords.reshape(-1, 3), active_idx, self.device
+            )
+            n_imag = int(np.sum(freqs_cm_approx < -abs(self.neg_freq_thresh_cm)))
+            approx_ims = [float(x) for x in freqs_cm_approx if x < -abs(self.neg_freq_thresh_cm)]
+            print(f"[IMAG~] n≈{n_imag}  (approx imag: {approx_ims})")
             if n_imag <= 1:
                 break
 
-            # (b) Get approximate modes for flattening (embedded, mass-weighted)
-            freqs_cm_approx, modes_embedded = _modes_from_Hact_embedded(
-                H_act, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3), active_idx, self.device
-            )
-
-            # (c) Flatten using the approximate modes
+            # (b) Flatten using the approximate modes
             x_before_flat = self.geom.coords.copy().reshape(-1)
+            g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
+
             did_flatten = self._flatten_once_with_modes(freqs_cm_approx, modes_embedded)
             if not did_flatten:
                 break
-            x_after_flat = self.geom.coords.copy().reshape(-1)
 
-            # (d) Bofill update using UMA gradients across the flatten displacement
+            x_after_flat = self.geom.coords.copy().reshape(-1)
             g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
+
+            # (c) Bofill update using UMA gradients across the flatten displacement
             delta_flat_full = x_after_flat - x_before_flat
             delta_flat_act = delta_flat_full[mask_dof]
-            g_old_act = g_prev[mask_dof]
+            g_old_act = g_before_flat[mask_dof]
             g_new_act = g_after_flat[mask_dof]
             H_act = _bofill_update_active(H_act, delta_flat_act, g_new_act, g_old_act)
 
-            # (e) Refresh dimer direction from updated active Hessian
+            # (d) Refresh dimer direction from updated active Hessian
             mode_xyz = _mode_direction_by_root_from_Hact(
                 H_act, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
 
-            # (f) Re-optimize with Dimer (consumes global cycle budget)
+            # (e) Re-optimize with Dimer (consumes global cycle budget)
             self._dimer_loop(self.thresh)
 
-            # (g) Bofill update again across the optimization displacement
-            x_after_opt = self.geom.coords.copy().reshape(-1)
-            g_after_opt = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
-            delta_opt_full = x_after_opt - x_after_flat
-            delta_opt_act = delta_opt_full[mask_dof]
-            g_old_act2 = g_after_flat[mask_dof]
-            g_new_act2 = g_after_opt[mask_dof]
-            H_act = _bofill_update_active(H_act, delta_opt_act, g_new_act2, g_old_act2)
-
-            # (h) Prepare for next iteration
-            x_prev = x_after_opt
-            g_prev = g_after_opt
+            # (f) After dimer optimization, recompute an exact Hessian for the next iteration
+            H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+            if H_any.size(0) == 3 * N:
+                H_act = _extract_active_block(H_any, mask_dof)
+            else:
+                H_act = H_any
+            del H_any
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         # (5) Final outputs
         final_xyz = self.out_dir / "final_geometry.xyz"
@@ -1123,7 +1231,7 @@ class HessianDimer:
             out_pdb = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb"
             _write_mode_trj_and_pdb(self.geom, v_cart, out_trj, out_pdb,
                                     amplitude_ang=0.8, n_frames=20,
-                                    comment=f"imag {freqs_cm[primary_idx]:+.2f} cm^-1")
+                                    comment=f"imag {freqs_cm[primary_idx]:+.2f} cm-1")
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1193,6 +1301,8 @@ hessian_dimer_KW = {
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
     "flatten_max_iter": 20,           # max flattening iterations
+    "flatten_sep_cutoff": 2.0,        # minimum distance between representative atoms (Å)
+    "flatten_k": 10,                  # number of representative atoms per mode
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
     "use_lobpcg": True,               # deprecated (ignored)
     "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
@@ -1302,7 +1412,7 @@ def cli(
         [
             (geom_cfg, (("geom",),)),
             (calc_cfg, (("calc",),)),
-            (opt_cfg, (("opt",),)),
+            (opt_cfg,  (("opt",),)),
             (simple_cfg, (("hessian_dimer",),)),
             (rsirfo_cfg, (("rsirfo",),)),
         ],
@@ -1389,6 +1499,8 @@ def cli(
                 dimer_kwargs=dict(simple_cfg.get("dimer", {})),
                 lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
                 max_total_cycles=int(opt_cfg["max_cycles"]),
+                flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
+                flatten_k=int(simple_cfg.get("flatten_k", 10)),
                 # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                 geom_kwargs=dict(geom_cfg),
             )
@@ -1514,7 +1626,9 @@ def cli(
                     H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), act_idx, device
                 )
 
-            neg_idx = np.where(freqs_cm < -5.0)[0]  # same threshold default as HessianDimer
+            # Use configurable neg_freq_thresh_cm (same default as light mode)
+            neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
+            neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
             if len(neg_idx) == 0:
                 click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
             else:
