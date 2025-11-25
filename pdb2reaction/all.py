@@ -2364,7 +2364,7 @@ def cli(
                     tsroot / "energy_diagram_G_UMA",
                     labels=["R", "TS", "P"],
                     energies_eh=[GR, GT, GP],
-                    title_note="(Gibbs, UMA)",
+                    title_note="(UMA + Thermal Correction)",
                     ylabel="ΔG (kcal/mol)",
                 )
             except Exception as e:
@@ -2405,7 +2405,7 @@ def cli(
                     tsroot / "energy_diagram_DFT",
                     labels=["R", "TS", "P"],
                     energies_eh=[eR_dft, eT_dft, eP_dft],
-                    title_note=f"(DFT {dft_func_basis_use})",
+                    title_note=f"({dft_func_basis_use} // UMA)",
                 )
             except Exception as e:
                 click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
@@ -2434,7 +2434,7 @@ def cli(
                         tsroot / "energy_diagram_G_DFT_plus_UMA",
                         labels=["R", "TS", "P"],
                         energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                        title_note="(Gibbs, DFT//UMA)",
+                        title_note=f"({dft_func_basis_use} // UMA + Thermal Correction)",
                         ylabel="ΔG (kcal/mol)",
                     )
                 except Exception as e:
@@ -3309,7 +3309,7 @@ def cli(
                             seg_dir / "energy_diagram_G_UMA",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_eh=gibbs_vals,
-                            title_note="(Gibbs, UMA)",
+                            title_note="(UMA + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
                         g_uma_seg_energies.append((GR, GT, GP))
@@ -3369,7 +3369,7 @@ def cli(
                             seg_dir / "energy_diagram_DFT",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_eh=[eR_dft, eT_dft, eP_dft],
-                            title_note=f"(DFT {dft_func_basis_use})",
+                            title_note=f"({dft_func_basis_use})",
                         )
                         dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
                     else:
@@ -3409,7 +3409,7 @@ def cli(
                                 seg_dir / "energy_diagram_G_DFT_plus_UMA",
                                 labels=["R", f"TS{seg_idx}", "P"],
                                 energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                                title_note="(Gibbs, DFT//UMA)",
+                                title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction)",
                                 ylabel="ΔG (kcal/mol)",
                             )
                             g_dftuma_seg_energies.append(
@@ -3448,7 +3448,7 @@ def cli(
                 out_dir / "energy_diagram_G_UMA_all",
                 labels=g_uma_all_labels,
                 energies_eh=g_uma_all_energies,
-                title_note="(Gibbs, UMA; all segments)",
+                title_note="(UMA + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
 
@@ -3460,7 +3460,7 @@ def cli(
                 out_dir / "energy_diagram_DFT_all",
                 labels=dft_all_labels,
                 energies_eh=dft_all_energies,
-                title_note=f"(DFT {dft_func_basis_use}; all segments)",
+                title_note=f"({dft_func_basis_use}; all segments)",
             )
 
     if do_dft and do_thermo and g_dftuma_seg_energies:
@@ -3471,7 +3471,7 @@ def cli(
                 out_dir / "energy_diagram_G_DFT_plus_UMA_all",
                 labels=g_dftuma_all_labels,
                 energies_eh=g_dftuma_all_energies,
-                title_note="(Gibbs, DFT//UMA; all segments)",
+                title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
 
