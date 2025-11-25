@@ -6,7 +6,7 @@ scan3d — Three-distance 3D scan with harmonic restraints (UMA only)
 
 Usage (CLI)
 -----------
-    pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} -q CHARGE \
+    pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} [-q CHARGE] \
         [-m MULTIPLICITY] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]" \
         [--one-based|--zero-based] \
@@ -48,8 +48,8 @@ Description
       [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
   via **--scan-list**.
   - Indices are **1-based by default**; pass **--zero-based** to interpret them as 0-based.
-- `-q/--charge` is required. `-m/--multiplicity` specifies the spin multiplicity (2S+1) and
-  defaults to 1 if omitted.
+- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available.
+  `-m/--multiplicity` specifies the spin multiplicity (2S+1) and defaults to 1 if omitted.
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`, `N3 = ceil(|high3 - low3| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
@@ -383,7 +383,7 @@ def _maybe_convert_scan3d_outputs_to_pdb(
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
     "-m", "--multiplicity", "spin",
     type=int,

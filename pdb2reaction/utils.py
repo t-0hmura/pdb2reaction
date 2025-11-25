@@ -57,7 +57,8 @@ Description
   - `fill_charge_spin_from_gjf(charge, spin, template)`: Fill `charge`/`spin` from a template when unspecified.
   - `resolve_charge_spin_or_raise(prepared, charge, spin, spin_default=1, charge_default=0)`: Resolve charge
     and multiplicity using a template when present, otherwise fall back to the provided defaults; returns
-    integers `(charge, spin)`.
+    integers `(charge, spin)`. Raises a user-facing error when *prepared* is **not** a `.gjf` template and
+    no `charge` was supplied on the CLI.
   - `convert_xyz_to_gjf(xyz_path, template, out_path)`: Render new coordinates into the given `.gjf` template
     while preserving formatting.
   - `maybe_convert_xyz_to_gjf(xyz_path, template, out_path=None)`: Convenience wrapper that returns the output
@@ -755,7 +756,13 @@ def resolve_charge_spin_or_raise(
 ) -> Tuple[int, int]:
     charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
     if charge is None:
-        charge = charge_default
+        if prepared.is_gjf:
+            charge = charge_default
+        else:
+            prepared.cleanup()
+            raise click.ClickException(
+                "-q/--charge is required unless the input is a .gjf template with charge metadata."
+            )
     if spin is None:
         spin = spin_default
     return int(charge), int(spin)

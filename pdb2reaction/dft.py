@@ -38,6 +38,8 @@ Description
 - SCF controls: `--conv-tol` (Eh), `--max-cycle`, `--grid-level` (mapped to PySCF `grids.level`),
   `--out-dir`. Verbosity can be overridden via YAML (`dft.verbose`).
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
+- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available and allow omitting
+  the CLI flag.
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
     * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS; RKS → zeros; failure → null)
     * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; RKS → zeros; not available or failure → null)
@@ -410,7 +412,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
-@click.option("-q", "--charge", type=int, required=True, help="Charge of the ML region.")
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--func-basis",
