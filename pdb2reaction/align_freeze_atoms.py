@@ -64,11 +64,13 @@ Provided functionality (concise):
 
 Outputs (& Directory Layout)
 ----------------------------
+When the scan stage runs (i.e., union(`freeze_atoms`) is non-empty):
+
 out_dir/ (default: ./result_align_refine/)
   ├─ <pair>/                         # Pair API writes stepwise and final LBFGS artifacts directly under out_dir
   └─ pair_00/, pair_01/, ...         # Sequence API creates one subdirectory per adjacent pair
 
-Directories are created even when optimizer dumping is disabled; LBFGS always runs with ``dump=False``.
+Directories are only created when scan/relaxation artifacts are produced (``dump=False`` is still used for LBFGS).
 
 Notes
 -----
@@ -596,14 +598,12 @@ def align_and_refine_sequence_inplace(
         return []
 
     out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     results: List[Dict[str, Any]] = []
     for i in range(len(geoms) - 1):
         g_ref = geoms[i]
         g_mob = geoms[i + 1]
         pair_out = out_dir / f"pair_{i:02d}"
-        pair_out.mkdir(parents=True, exist_ok=True)
 
         if verbose:
             print(f"\n[align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
