@@ -117,7 +117,9 @@ Runs a one-shot pipeline centered on pocket models:
       `<out-dir>/ts_seg_01.xyz` (single-frame XYZ trajectory with energy) otherwise.
 
 **Charge handling**
-  - With extraction enabled, the extractor’s **first-model total pocket charge** is used (rounded to int).
+  - `-q/--charge` **forces** the total system charge, overriding extractor/GJF/`--ligand-charge` logic.
+  - With extraction enabled, the extractor’s **first-model total pocket charge** is used (rounded to int) when
+    no `-q/--charge` override is provided.
   - With extraction **skipped** (`-c/--center` omitted), the **total system charge** is set as:
       1) a numeric `--ligand-charge` value (if provided), otherwise
       2) parsed from the **first input GJF** (if the first input is `.gjf`), otherwise
@@ -209,7 +211,7 @@ Notes
 - Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
   The total charge defaults to 0; providing `--ligand-charge <number>` sets that value as the **overall system charge**
   (rounded). If the first input is a GJF, its charge/spin are used when `--ligand-charge` (numeric) and `--mult`
-  are not explicitly provided.
+  are not explicitly provided. `-q/--charge` overrides all of the above.
 """
 
 from __future__ import annotations
@@ -1599,6 +1601,16 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "-q",
+    "--charge",
+    "charge_override",
+    type=int,
+    default=None,
+    help=(
+        "Force the total system charge (overrides extractor/GJF/--ligand-charge-derived values)."
+    ),
+)
+@click.option(
     "--verbose",
     type=click.BOOL,
     default=True,
@@ -1905,6 +1917,7 @@ def cli(
     add_linkh: bool,
     selected_resn: str,
     ligand_charge: Optional[str],
+    charge_override: Optional[int],
     verbose: bool,
     spin: int,
     freeze_links_flag: bool,
@@ -2033,13 +2046,16 @@ def cli(
 
     yaml_cfg = load_yaml_dict(args_yaml)
 
+    skip_extract = center_spec is None or str(center_spec).strip() == ""
+
     out_dir = out_dir.resolve()
     pockets_dir = out_dir / "pockets"
     path_dir = out_dir / "path_search"
     scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)
     stage_total = 3
     _ensure_dir(out_dir)
-    _ensure_dir(pockets_dir)
+    if not skip_extract:
+        _ensure_dir(pockets_dir)
     if not single_tsopt_mode:
         _ensure_dir(path_dir)
 
@@ -2077,11 +2093,12 @@ def cli(
 
     extract_inputs = tuple(inputs_for_extract)
 
-    skip_extract = center_spec is None or str(center_spec).strip() == ""
-
     pocket_outputs: List[Path] = []
-    for p in extract_inputs:
-        pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
+    if not skip_extract:
+        for p in extract_inputs:
+            pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
+
+    q_from_flow: Optional[int] = None
 
     if not skip_extract:
         click.echo(
@@ -2118,7 +2135,7 @@ def cli(
             click.echo(
                 f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}"
             )
-            q_int = _round_charge_with_note(q_total)
+            q_from_flow = _round_charge_with_note(q_total)
         except Exception as e:
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
@@ -2179,11 +2196,19 @@ def cli(
                     "[all] NOTE: No total charge provided; defaulting to 0. "
                     "Supply '--ligand-charge <number>' to override."
                 )
-        q_int = _round_charge_with_note(q_total_fallback)
+        q_from_flow = _round_charge_with_note(q_total_fallback)
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
             click.echo(f"[all] Spin multiplicity set from GJF: {spin}")
+
+    if charge_override is not None:
+        q_int = int(charge_override)
+        click.echo(
+            f"[all] Using -q/--charge override as TOTAL system charge: {q_int:+d}"
+        )
+    else:
+        q_int = int(q_from_flow) if q_from_flow is not None else 0
 
     calc_cfg_shared = _build_calc_cfg(q_int, spin, yaml_cfg)
 
