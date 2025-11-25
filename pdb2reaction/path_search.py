@@ -153,8 +153,6 @@ import yaml
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
-from pysisyphus.optimizers.LBFGS import LBFGS
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import AU2KCALPERMOL, BOHR2ANG
 
@@ -163,7 +161,12 @@ from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
-from .path_opt import GS_KW as _PATH_GS_KW, STOPT_KW as _PATH_STOPT_KW
+from .path_opt import (
+    _maybe_convert_to_pdb,
+    _optimize_single,
+    GS_KW as _PATH_GS_KW,
+    STOPT_KW as _PATH_STOPT_KW,
+)
 from .opt import (
     OPT_BASE_KW as _OPT_BASE_KW,
     LBFGS_KW as _LBFGS_KW,
@@ -310,23 +313,6 @@ def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path
         blocks.append(s_mod)
     with open(path, "w") as f:
         f.write("".join(blocks))
-
-
-def _maybe_convert_to_pdb(in_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None) -> Optional[Path]:
-    """
-    If any input is PDB, convert the given `.xyz/.trj` to PDB using `ref_pdb_path`.
-    Return the output path on success, else None.
-    """
-    try:
-        if ref_pdb_path is None or (not in_path.exists()) or in_path.suffix.lower() not in (".xyz", ".trj"):
-            return None
-        out_pdb = out_path if out_path is not None else in_path.with_suffix(".pdb")
-        convert_xyz_to_pdb(in_path, ref_pdb_path, out_pdb)
-        click.echo(f"[convert] Wrote '{out_pdb}'.")
-        return out_pdb
-    except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert '{in_path.name}' to PDB: {e}", err=True)
-        return None
 
 
 def _maybe_convert_to_gjf(
@@ -607,48 +593,6 @@ def _run_gsm_between(
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
     return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
-
-
-def _optimize_single(
-    g,
-    shared_calc,
-    sopt_kind: str,
-    sopt_cfg: Dict[str, Any],
-    out_dir: Path,
-    tag: str,
-    ref_pdb_path: Optional[Path],
-):
-    """
-    Run single‑structure optimization (LBFGS/RFO) and return the final Geometry.
-    """
-    g.set_calculator(shared_calc)
-
-    seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
-    seg_dir.mkdir(parents=True, exist_ok=True)
-    args = dict(sopt_cfg)
-    args["out_dir"] = str(seg_dir)
-
-    if sopt_kind == "lbfgs":
-        opt = LBFGS(g, **args)
-    else:
-        opt = RFOptimizer(g, **args)
-
-    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} started ===\n")
-    opt.run()
-    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} finished ===\n")
-
-    try:
-        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else Path(opt.final_fn)
-        _maybe_convert_to_pdb(final_xyz, ref_pdb_path)
-        g_final = geom_loader(final_xyz, coord_type=g.coord_type)
-        try:
-            g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
-        except Exception:
-            pass
-        g_final.set_calculator(shared_calc)
-        return g_final
-    except Exception:
-        return g
 
 
 def _refine_between(

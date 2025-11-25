@@ -2037,7 +2037,7 @@ def cli(
     pockets_dir = out_dir / "pockets"
     path_dir = out_dir / "path_search"
     scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)
-    stage_total = 3 if refine_path else 2
+    stage_total = 3
     _ensure_dir(out_dir)
     _ensure_dir(pockets_dir)
     if not single_tsopt_mode:
@@ -2584,6 +2584,31 @@ def cli(
         else:
             pockets_for_path = list(pocket_outputs)
 
+    # Determine availability of full-system templates for downstream merge/copies
+    def _is_pdb(path: Path) -> bool:
+        return path.suffix.lower() == ".pdb"
+
+    gave_ref_pdb = False
+
+    if skip_extract:
+        click.echo(
+            "[all] NOTE: skipping --ref-pdb (no --center; inputs already represent full structures)."
+        )
+    elif is_single and has_scan:
+        if _is_pdb(input_paths[0]):
+            gave_ref_pdb = True
+        else:
+            click.echo(
+                "[all] NOTE: skipping --ref-pdb (single+scan: original input is not a PDB)."
+            )
+    else:
+        if all(_is_pdb(p) for p in input_paths):
+            gave_ref_pdb = True
+        else:
+            click.echo(
+                "[all] NOTE: skipping --ref-pdb (one or more original inputs are not PDB)."
+            )
+
     # -------------------------------------------------------------------------
     # Stage 2: MEP search
     # -------------------------------------------------------------------------
@@ -2596,8 +2621,10 @@ def cli(
             raise click.ClickException("[all] Need at least two structures for path-opt MEP concatenation.")
 
         combined_blocks: List[str] = []
+        path_opt_segments: List[Dict[str, Any]] = []
         for idx, (pL, pR) in enumerate(zip(pockets_for_path, pockets_for_path[1:]), start=1):
             seg_dir = (path_dir / f"path_opt_seg_{idx:02d}").resolve()
+            seg_tag = f"seg_{idx:03d}"
             po_args: List[str] = [
                 "-i",
                 str(pL),
@@ -2649,6 +2676,47 @@ def cli(
                 raise click.ClickException(
                     f"[all] path-opt segment {idx} did not produce final_geometries.trj"
                 )
+
+            try:
+                _ensure_dir(path_dir / f"{seg_tag}_gsm")
+                shutil.copy2(seg_trj, path_dir / f"{seg_tag}_gsm" / "final_geometries.trj")
+            except Exception as e:
+                click.echo(
+                    f"[all] WARNING: failed to mirror path-opt trajectory for segment {idx:02d}: {e}",
+                    err=True,
+                )
+
+            try:
+                seg_mep_trj = path_dir / f"mep_seg_{idx:02d}.trj"
+                shutil.copy2(seg_trj, seg_mep_trj)
+                if pockets_for_path[0].suffix.lower() == ".pdb":
+                    _path_search._maybe_convert_to_pdb(
+                        seg_mep_trj,
+                        ref_pdb_path=pockets_for_path[0],
+                        out_path=path_dir / f"mep_seg_{idx:02d}.pdb",
+                    )
+            except Exception as e:
+                click.echo(
+                    f"[all] WARNING: failed to emit per-segment trajectory copies for segment {idx:02d}: {e}",
+                    err=True,
+                )
+
+            hei_src = seg_dir / "gsm_hei.xyz"
+            if hei_src.exists():
+                try:
+                    shutil.copy2(hei_src, path_dir / f"hei_seg_{idx:02d}.xyz")
+                    hei_pdb_src = seg_dir / "gsm_hei.pdb"
+                    if hei_pdb_src.exists():
+                        shutil.copy2(hei_pdb_src, path_dir / f"hei_seg_{idx:02d}.pdb")
+                    hei_gjf_src = seg_dir / "gsm_hei.gjf"
+                    if hei_gjf_src.exists():
+                        shutil.copy2(hei_gjf_src, path_dir / f"hei_seg_{idx:02d}.gjf")
+                except Exception as e:
+                    click.echo(
+                        f"[all] WARNING: failed to prepare HEI artifacts for segment {idx:02d}: {e}",
+                        err=True,
+                    )
+
             blocks = ["\n".join(b) + "\n" for b in _read_xyz_as_blocks(seg_trj)]
             if not blocks:
                 raise click.ClickException(
@@ -2658,12 +2726,37 @@ def cli(
                 blocks = blocks[1:]
             combined_blocks.extend(blocks)
 
+            energies_seg: List[float] = []
+            for blk in _read_xyz_as_blocks(seg_trj):
+                E = np.nan
+                if len(blk) >= 2:
+                    try:
+                        E = float(blk[1].split()[0])
+                    except Exception:
+                        E = np.nan
+                energies_seg.append(E)
+
+            path_opt_segments.append(
+                {
+                    "tag": seg_tag,
+                    "energies": energies_seg,
+                    "traj": seg_trj,
+                    "inputs": (pL, pR),
+                }
+            )
+
         final_trj = path_dir / "mep.trj"
         try:
             final_trj.write_text("".join(combined_blocks), encoding="utf-8")
             click.echo(f"[all] Wrote concatenated MEP trajectory: {final_trj}")
         except Exception as e:
             raise click.ClickException(f"[all] Failed to write concatenated MEP: {e}")
+
+        try:
+            run_trj2fig(final_trj, [path_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            click.echo(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
+        except Exception as e:
+            click.echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
         try:
             if pockets_for_path[0].suffix.lower() == ".pdb":
@@ -2679,107 +2772,164 @@ def cli(
                 f"[all] WARNING: Failed to convert/copy concatenated MEP to PDB: {e}", err=True
             )
 
-        click.echo(
-            "[all] NOTE: path_search recursion is skipped because --refine-path=False; full-system merged outputs "
-            "and post-processing are unavailable in this mode."
-        )
-        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
-        return
-    # --- recursive GSM path_search branch ---
-    click.echo(
-        f"\n=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) ===\n"
-    )
+        try:
+            labels = _build_global_segment_labels(len(path_opt_segments))
+            energies_chain: List[float] = []
+            for si, seg_info in enumerate(path_opt_segments):
+                Es = [float(x) for x in seg_info.get("energies", [])]
+                if not Es:
+                    continue
+                if si == 0:
+                    energies_chain.append(Es[0])
+                energies_chain.append(float(np.nanmax(Es)))
+                energies_chain.append(Es[-1])
+            if labels and energies_chain and len(labels) == len(energies_chain):
+                _write_segment_energy_diagram(
+                    path_dir / "energy_diagram_gsm",
+                    labels=labels,
+                    energies_eh=energies_chain,
+                    title_note="(path-opt concatenated)",
+                )
+        except Exception as e:
+            click.echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
 
-    ps_args: List[str] = []
+        segments_summary: List[Dict[str, Any]] = []
+        bond_cfg = dict(_path_search.BOND_KW)
+        for seg_idx, info in enumerate(path_opt_segments, start=1):
+            Es = [float(x) for x in info.get("energies", []) if np.isfinite(x)]
+            if not Es:
+                continue
+            barrier = (max(Es) - Es[0]) * AU2KCALPERMOL
+            delta = (Es[-1] - Es[0]) * AU2KCALPERMOL
+            bond_summary = ""
+            try:
+                elems, c_first, c_last = _read_xyz_first_last(Path(info["traj"]))
+                freeze_atoms = _get_freeze_atoms(info["inputs"][0], freeze_links_flag)
+                gL = _geom_from_angstrom(elems, c_first, freeze_atoms)
+                gR = _geom_from_angstrom(elems, c_last, freeze_atoms)
+                changed, bond_summary = _path_search._has_bond_change(gL, gR, bond_cfg)
+                if not changed:
+                    bond_summary = "(no covalent changes detected)"
+            except Exception as e:
+                click.echo(
+                    f"[all] WARNING: Failed to detect bond changes for segment {seg_idx:02d}: {e}",
+                    err=True,
+                )
+                bond_summary = "(no covalent changes detected)"
 
-    for p in pockets_for_path:
-        ps_args.extend(["-i", str(p)])
-
-    ps_args.extend(["-q", str(q_int)])
-    ps_args.extend(["-m", str(int(spin))])
-
-    ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
-    ps_args.extend(["--max-nodes", str(int(max_nodes))])
-    ps_args.extend(["--max-cycles", str(int(max_cycles))])
-    ps_args.extend(["--climb", "True" if climb else "False"])
-    ps_args.extend(["--opt-mode", str(opt_mode.lower())])
-    ps_args.extend(["--dump", "True" if dump else "False"])
-    if thresh is not None:
-        ps_args.extend(["--thresh", str(thresh)])
-    ps_args.extend(["--out-dir", str(path_dir)])
-    ps_args.extend(["--preopt", "True" if preopt else "False"])
-    if args_yaml is not None:
-        ps_args.extend(["--args-yaml", str(args_yaml)])
-
-    def _is_pdb(path: Path) -> bool:
-        return path.suffix.lower() == ".pdb"
-
-    gave_ref_pdb = False
-
-    if skip_extract:
-        click.echo(
-            "[all] NOTE: skipping --ref-pdb (no --center; inputs already represent full structures)."
-        )
-    elif is_single and has_scan:
-        if _is_pdb(input_paths[0]):
-            for _ in pockets_for_path:
-                ps_args.extend(["--ref-pdb", str(input_paths[0])])
-            gave_ref_pdb = True
-        else:
-            click.echo(
-                "[all] NOTE: skipping --ref-pdb (single+scan: original input is not a PDB)."
+            segments_summary.append(
+                {
+                    "index": seg_idx,
+                    "tag": info.get("tag", f"seg_{seg_idx:03d}"),
+                    "kind": "seg",
+                    "barrier_kcal": float(barrier),
+                    "delta_kcal": float(delta),
+                    "bond_changes": bond_summary,
+                }
             )
-    else:
-        if all(_is_pdb(p) for p in input_paths):
-            for p in input_paths:
+
+        summary = {
+            "out_dir": str(path_dir),
+            "n_images": len(_read_xyz_as_blocks(final_trj)),
+            "n_segments": len(segments_summary),
+            "segments": segments_summary,
+        }
+        try:
+            with open(path_dir / "summary.yaml", "w") as f:
+                yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
+            click.echo(f"[write] Wrote '{path_dir / 'summary.yaml'}'.")
+        except Exception as e:
+            click.echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
+
+        try:
+            for name in ("mep_plot.png", "energy_diagram_gsm.png", "mep.pdb", "mep_w_ref.pdb"):
+                src = path_dir / name
+                if src.exists():
+                    dst = out_dir / name
+                    try:
+                        shutil.copy2(src, dst)
+                        click.echo(f"[all] Copied {name} → {dst}")
+                    except Exception as e:
+                        click.echo(
+                            f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
+                            err=True,
+                        )
+        except Exception as e:
+            click.echo(
+                f"[all] WARNING: Failed to relocate path-opt summary files: {e}", err=True
+            )
+    if refine_path:
+        # --- recursive GSM path_search branch ---
+        click.echo(
+            f"\n=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) ===\n"
+        )
+
+        ps_args: List[str] = []
+
+        for p in pockets_for_path:
+            ps_args.extend(["-i", str(p)])
+
+        ps_args.extend(["-q", str(q_int)])
+        ps_args.extend(["-m", str(int(spin))])
+
+        ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
+        ps_args.extend(["--max-nodes", str(int(max_nodes))])
+        ps_args.extend(["--max-cycles", str(int(max_cycles))])
+        ps_args.extend(["--climb", "True" if climb else "False"])
+        ps_args.extend(["--opt-mode", str(opt_mode.lower())])
+        ps_args.extend(["--dump", "True" if dump else "False"])
+        if thresh is not None:
+            ps_args.extend(["--thresh", str(thresh)])
+        ps_args.extend(["--out-dir", str(path_dir)])
+        ps_args.extend(["--preopt", "True" if preopt else "False"])
+        if args_yaml is not None:
+            ps_args.extend(["--args-yaml", str(args_yaml)])
+
+        if gave_ref_pdb:
+            for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):
                 ps_args.extend(["--ref-pdb", str(p)])
-            gave_ref_pdb = True
-        else:
+
+        click.echo("[all] Invoking path_search with arguments:")
+        click.echo("  " + " ".join(ps_args))
+
+        _saved_argv = list(sys.argv)
+        try:
+            sys.argv = ["pdb2reaction", "path_search"] + ps_args
+            _path_search.cli.main(args=ps_args, standalone_mode=False)
+        except SystemExit as e:
+            code = getattr(e, "code", 1)
+            if code not in (None, 0):
+                raise click.ClickException(
+                    f"[all] path_search terminated with exit code {code}."
+                )
+        except Exception as e:
+            raise click.ClickException(f"[all] path_search failed: {e}")
+        finally:
+            sys.argv = _saved_argv
+
+        try:
+            for name in ("mep_plot.png", "energy_diagram_gsm.png", "mep.pdb", "mep_w_ref.pdb"):
+                src = path_dir / name
+                if src.exists():
+                    dst = out_dir / name
+                    try:
+                        shutil.copy2(src, dst)
+                        click.echo(f"[all] Copied {name} → {dst}")
+                    except Exception as e:
+                        click.echo(
+                            f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
+                            err=True,
+                        )
+        except Exception as e:
             click.echo(
-                "[all] NOTE: skipping --ref-pdb (one or more original inputs are not PDB)."
+                f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True
             )
-
-    click.echo("[all] Invoking path_search with arguments:")
-    click.echo("  " + " ".join(ps_args))
-
-    _saved_argv = list(sys.argv)
-    try:
-        sys.argv = ["pdb2reaction", "path_search"] + ps_args
-        _path_search.cli.main(args=ps_args, standalone_mode=False)
-    except SystemExit as e:
-        code = getattr(e, "code", 1)
-        if code not in (None, 0):
-            raise click.ClickException(
-                f"[all] path_search terminated with exit code {code}."
-            )
-    except Exception as e:
-        raise click.ClickException(f"[all] path_search failed: {e}")
-    finally:
-        sys.argv = _saved_argv
-
-    try:
-        for name in ("mep_plot.png", "energy_diagram_gsm.png", "mep.pdb", "mep_w_ref.pdb"):
-            src = path_dir / name
-            if src.exists():
-                dst = out_dir / name
-                try:
-                    shutil.copy2(src, dst)
-                    click.echo(f"[all] Copied {name} → {dst}")
-                except Exception as e:
-                    click.echo(
-                        f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
-                        err=True,
-                    )
-    except Exception as e:
-        click.echo(
-            f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True
-        )
 
     # -------------------------------------------------------------------------
     # Stage 3: merge to full systems (already done in path_search)
     # -------------------------------------------------------------------------
     click.echo(f"\n=== [all] Stage 3/{stage_total} — Merge into full-system templates ===\n")
-    if gave_ref_pdb:
+    if refine_path and gave_ref_pdb:
         click.echo(
             "[all] Merging was carried out by path_search using the original inputs as templates."
         )
@@ -2790,11 +2940,16 @@ def cli(
         click.echo(
             "  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)"
         )
-    else:
+    elif refine_path:
         click.echo(
             "[all] --ref-pdb was not provided; full-system merged trajectories are not produced."
         )
         click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
+    else:
+        click.echo(
+            "[all] path-opt mode produced pocket-level outputs; full-system merge will reuse these references when available."
+        )
+        click.echo(f"[all] Aggregated products are under: {path_dir}")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
     click.echo(
         "  - energy_diagram_gsm.png / energy_diagram.* (copied summary at <out-dir>/)"
