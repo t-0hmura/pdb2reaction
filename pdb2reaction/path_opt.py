@@ -9,8 +9,9 @@ Usage (CLI)
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
         [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
         [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
-        [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
-        [--args-yaml <file>] [--preopt {True|False}] [--preopt-max-cycles <int>]
+        [--opt-mode {light|heavy}] [--dump {True|False}] [--out-dir <dir>] \
+        [--thresh <preset>] [--args-yaml <file>] [--preopt {True|False}] \
+        [--preopt-max-cycles <int>]
 
 Examples
 --------
@@ -27,8 +28,8 @@ Description
 -----------
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
-- Configuration via YAML with sections {geom, calc, gs, opt}. Precedence: CLI > YAML > built-in defaults.
-- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS before alignment and GSM. The LBFGS iteration limit for this pre‑optimization is controlled independently by `--preopt-max-cycles` (default: 10000).
+- Configuration via YAML with sections {geom, calc, gs, opt, sopt}. Precedence: CLI > YAML > built-in defaults.
+- Optional endpoint pre‑optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single‑structure LBFGS ("light") or RFO ("heavy") before alignment and GSM. The iteration limit for this pre‑optimization is controlled independently by `--preopt-max-cycles` (default: 10000).
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image; the Lanczos-based tangent estimate is toggled to the same boolean as `--climb` (enabled iff `--climb=True`).
 - `--thresh` sets the convergence preset used by the string optimizer and by the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
@@ -74,6 +75,7 @@ from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError
 from pysisyphus.optimizers.LBFGS import LBFGS  # (added) for optional endpoint preoptimization
+from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
@@ -90,6 +92,10 @@ from .utils import (
     fill_charge_spin_from_gjf,
     maybe_convert_xyz_to_gjf,
     PreparedInputStructure,
+)
+from .opt import (
+    LBFGS_KW as _LBFGS_KW,
+    RFO_KW as _RFO_KW,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 
@@ -167,6 +173,65 @@ def _load_two_endpoints(
     return geoms
 
 
+def _maybe_convert_to_pdb(src_path: Path, ref_pdb_path: Optional[Path], dst_path: Optional[Path] = None) -> None:
+    """
+    Convert an XYZ path to PDB using a reference topology when available.
+    """
+    if ref_pdb_path is None:
+        return
+
+    src_path = Path(src_path)
+    dst_path = dst_path if dst_path is not None else src_path.with_suffix(".pdb")
+
+    try:
+        convert_xyz_to_pdb(src_path, ref_pdb_path, dst_path)
+        click.echo(f"[convert] Wrote '{dst_path}'.")
+    except Exception as e:
+        click.echo(f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}", err=True)
+
+
+def _optimize_single(
+    g,
+    shared_calc,
+    sopt_kind: str,
+    sopt_cfg: Dict[str, Any],
+    out_dir: Path,
+    tag: str,
+    ref_pdb_path: Optional[Path],
+):
+    """
+    Single-structure optimization (LBFGS or RFO) mirroring path_search preoptimization.
+    """
+    g.set_calculator(shared_calc)
+
+    seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
+    seg_dir.mkdir(parents=True, exist_ok=True)
+    args = dict(sopt_cfg)
+    args["out_dir"] = str(seg_dir)
+
+    if sopt_kind == "lbfgs":
+        opt = LBFGS(g, **args)
+    else:
+        opt = RFOptimizer(g, **args)
+
+    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} started ===\n")
+    opt.run()
+    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} finished ===\n")
+
+    try:
+        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else Path(opt.final_fn)
+        _maybe_convert_to_pdb(final_xyz, ref_pdb_path)
+        g_final = geom_loader(final_xyz, coord_type=g.coord_type)
+        try:
+            g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
+        except Exception:
+            pass
+        g_final.set_calculator(shared_calc)
+        return g_final
+    except Exception:
+        return g
+
+
 # -----------------------------------------------
 # CLI
 # -----------------------------------------------
@@ -192,6 +257,13 @@ def _load_two_endpoints(
 @click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
               help="Search for a transition state (climbing image) after path growth.")
+@click.option(
+    "--opt-mode",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
+    show_default=True,
+    help="Single-structure optimizer for endpoint preoptimization: light (=LBFGS) or heavy (=RFO).",
+)
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump optimizer trajectory/restarts during the run.")
 @click.option("--out-dir", "out_dir", type=str, default="./result_path_opt/", show_default=True,
@@ -232,6 +304,7 @@ def cli(
     max_nodes: int,
     max_cycles: int,
     climb: bool,
+    opt_mode: str,
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
@@ -254,6 +327,8 @@ def cli(
         calc_cfg = dict(CALC_KW)
         gs_cfg   = dict(GS_KW)
         opt_cfg  = dict(STOPT_KW)
+        lbfgs_cfg = dict(_LBFGS_KW)
+        rfo_cfg   = dict(_RFO_KW)
 
         apply_yaml_overrides(
             yaml_cfg,
@@ -262,6 +337,8 @@ def cli(
                 (calc_cfg, (("calc",),)),
                 (gs_cfg,   (("gs",),)),
                 (opt_cfg,  (("opt",),)),
+                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
+                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
             ],
         )
 
@@ -293,9 +370,29 @@ def cli(
         opt_cfg["out_dir"]    = out_dir
         if thresh is not None:
             opt_cfg["thresh"] = str(thresh)
+            lbfgs_cfg["thresh"] = str(thresh)
+            rfo_cfg["thresh"] = str(thresh)
 
         # Use external Kabsch alignment; keep internal align disabled.
         opt_cfg["align"] = False
+
+        lbfgs_cfg["dump"] = bool(dump)
+        rfo_cfg["dump"] = bool(dump)
+        lbfgs_cfg["out_dir"] = out_dir
+        rfo_cfg["out_dir"] = out_dir
+
+        opt_kind = opt_mode.strip().lower()
+        if opt_kind == "light":
+            sopt_kind = "lbfgs"
+            sopt_cfg = lbfgs_cfg
+        elif opt_kind == "heavy":
+            sopt_kind = "rfo"
+            sopt_cfg = rfo_cfg
+        else:
+            raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
+
+        sopt_cfg = dict(sopt_cfg)
+        sopt_cfg["max_cycles"] = int(preopt_max_cycles)
 
         # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
@@ -309,6 +406,7 @@ def cli(
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs",   echo_gs))
         click.echo(pretty_block("opt",  echo_opt))
+        click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(pretty_block("run_flags", {"preopt": bool(preopt), "preopt_max_cycles": int(preopt_max_cycles)}))
 
         # --------------------------
@@ -330,36 +428,19 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS) before alignment/GSM
         if preopt:
-            click.echo("\n=== Preoptimizing endpoints via single-structure LBFGS ===\n")
+            click.echo("\n=== Preoptimizing endpoints via single-structure optimizer ===\n")
+            ref_pdb_for_preopt: Optional[Path] = None
+            for p in source_paths:
+                if p.suffix.lower() == ".pdb":
+                    ref_pdb_for_preopt = p.resolve()
+                    break
+
             new_geoms = []
             for i, g in enumerate(geoms):
+                tag = f"preopt{i:02d}"
                 try:
-                    g.set_calculator(shared_calc)
-                    seg_dir = out_dir_path / f"preopt{i:02d}_lbfgs_opt"
-                    seg_dir.mkdir(parents=True, exist_ok=True)
-                    lbfgs_kwargs: Dict[str, Any] = {
-                        "out_dir": str(seg_dir),
-                        "dump": bool(opt_cfg.get("dump", False)),
-                        "max_cycles": int(preopt_max_cycles),
-                    }
-                    if "thresh" in opt_cfg:
-                        lbfgs_kwargs["thresh"] = str(opt_cfg["thresh"])
-                    opt = LBFGS(g, **lbfgs_kwargs)
-                    click.echo(f"\n--- [preopt{i:02d}] LBFGS started ---\n")
-                    opt.run()
-                    click.echo(f"\n--- [preopt{i:02d}] LBFGS finished ---\n")
-                    try:
-                        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else Path(opt.final_fn)
-                        g_final = geom_loader(final_xyz, coord_type=g.coord_type)
-                        try:
-                            g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
-                        except Exception:
-                            pass
-                        g_final.set_calculator(shared_calc)
-                        new_geoms.append(g_final)
-                    except Exception:
-                        # Fall back to the possibly-updated in-memory geometry
-                        new_geoms.append(g)
+                    g_opt = _optimize_single(g, shared_calc, sopt_kind, sopt_cfg, out_dir_path, tag=tag, ref_pdb_path=ref_pdb_for_preopt)
+                    new_geoms.append(g_opt)
                 except Exception as e:
                     click.echo(f"[preopt] WARNING: Failed to preoptimize endpoint {i}: {e}", err=True)
                     new_geoms.append(g)
