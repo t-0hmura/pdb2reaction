@@ -2035,7 +2035,7 @@ def cli(
 
     out_dir = out_dir.resolve()
     pockets_dir = out_dir / "pockets"
-    path_dir = out_dir / "path_search"
+    path_dir = out_dir / ("path_search" if refine_path else "path_opt")
     scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)
     stage_total = 3
     _ensure_dir(out_dir)
@@ -2623,7 +2623,7 @@ def cli(
         combined_blocks: List[str] = []
         path_opt_segments: List[Dict[str, Any]] = []
         for idx, (pL, pR) in enumerate(zip(pockets_for_path, pockets_for_path[1:]), start=1):
-            seg_dir = (path_dir / f"path_opt_seg_{idx:02d}").resolve()
+            seg_dir = (path_dir / f"seg_{idx:03d}_gsm").resolve()
             seg_tag = f"seg_{idx:03d}"
             po_args: List[str] = [
                 "-i",
