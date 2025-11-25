@@ -2009,6 +2009,7 @@ def cli(
             click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
             click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
 
+            title_note = "(GSM; all segments)" if len(ts_groups) > 1 else "(GSM)"
             fig = build_energy_diagram(
                 energies=energies_kcal,
                 labels=labels,
@@ -2016,6 +2017,7 @@ def cli(
                 baseline=True,
                 showgrid=False,
             )
+            fig.update_layout(title=title_note)
 
             try:
                 png_path = out_dir_path / "energy_diagram_gsm.png"
