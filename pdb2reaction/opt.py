@@ -205,7 +205,7 @@ LBFGS_KW = {
     "gamma_mult": False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
 
     # Step-size control
-    "max_step": 0.30,            # maximum allowed component-wise step
+    "max_step": 0.10,            # maximum allowed component-wise step
     "control_step": True,        # scale step to satisfy |max component| <= max_step
 
     # Safeguards
@@ -221,16 +221,16 @@ RFO_KW = {
     **OPT_BASE_KW,
 
     # Trust-region (step-size) control
-    "trust_radius": 0.30,        # initial trust radius (in working coordinates)
+    "trust_radius": 0.10,        # initial trust radius (in working coordinates)
     "trust_update": True,        # adapt the trust radius based on step quality
     "trust_min": 0.01,           # lower bound for trust radius
-    "trust_max": 0.30,           # upper bound for trust radius
+    "trust_max": 0.10,           # upper bound for trust radius
     "max_energy_incr": None,     # abort if ΔE exceeds this after a bad step
 
     # Hessian model / refresh
     "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
     "hessian_init": "calc",      # initial Hessian calculation
-    "hessian_recalc": 100,       # recompute exact Hessian every N cycles
+    "hessian_recalc": 200,       # recompute exact Hessian every N cycles
     "hessian_recalc_adapt": 2.0, # heuristic: trigger exact Hessian recompute based on force norm
 
     # Numerical hygiene & mode filtering
