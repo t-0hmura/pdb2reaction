@@ -4,10 +4,10 @@
 `scan` performs a staged, bond-length–driven scan using the UMA calculator and
 harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
 every integration step the temporary targets are updated, the restraint wells
-are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light
-or lbfgs) or RFOptimizer (`--opt-mode` heavy or rfo). After the biased walk, you
-can optionally run unbiased pre-/post-optimizations to clean up the geometries
-that get written to disk.
+are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light)
+or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
+run unbiased pre-/post-optimizations to clean up the geometries that get written
+to disk.
 
 ## Usage
 ```bash
@@ -24,7 +24,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
 pdb2reaction scan -i input.pdb -q 0 \
     --scan-lists "[(12,45,1.35)]" \
     --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-    --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
+    --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode light \
     --preopt True --endopt True
 ```
 

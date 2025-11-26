@@ -7,7 +7,8 @@ quadruples `(i, j, lowÅ, highÅ)`; the tool constructs linear grids for both
 ranges using `--max-step-size`, nests the loops (outer d₁, inner d₂), and writes
 both the PES samples and a ready-to-plot CSV/figure bundle. Energies reported in
 `surface.csv` are always evaluated **without bias** so you can compare grid
-points directly.
+points directly. Optimizations use LBFGS when `--opt-mode light` (default) or
+RFO when `--opt-mode heavy`.
 
 ## Usage
 ```bash
@@ -24,7 +25,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
     --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
-    --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode lbfgs \
+    --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
     --preopt True --baseline min
 ```
 
