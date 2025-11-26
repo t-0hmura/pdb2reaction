@@ -53,7 +53,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template > 0). | Required when not in template |
-| `-m, --mult INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
 | `--scan-list TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. | Required |
 | `--one-based / --zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `--one-based` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |

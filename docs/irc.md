@@ -35,7 +35,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | --- | --- | --- |
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge; overrides `calc.charge`. Required unless the input is a `.gjf` template with charge metadata. | Required when not in template |
-| `-m, --mult INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | _None_ (use YAML/default `125`) |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | _None_ (default `0.10`) |
 | `--root INT` | Imaginary-mode index for the initial displacement; overrides `irc.root`. | _None_ (default `0`) |
