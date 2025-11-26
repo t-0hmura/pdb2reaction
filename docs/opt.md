@@ -37,7 +37,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
 | `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `light`/`lbfgs` or `heavy`/`rfo`. | `light` |
+| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
 | `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | YAML/default |
