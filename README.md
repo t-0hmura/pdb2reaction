@@ -3,7 +3,7 @@
 `pdb2reaction` is a Python toolkit for building enzymatic reaction models directly from protein databank (PDB) structures and
 running an automated pipeline of pocket extraction, reaction-path exploration, transition-state refinement, vibrational
 analysis, and DFT single-point post-processing. The command line interface (CLI) wraps a set of UMA-based geometry optimisers
-and graph string methods so that multi-step enzymatic reaction mechanisms can be generated with minimal manual intervention.
+and growing string methods so that multi-step enzymatic reaction mechanisms can be generated with minimal manual intervention.
 
 ## Installation
 
@@ -111,7 +111,6 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 | --- | --- | --- |
 | `all` | End-to-end workflow orchestrator that chains pocket extraction, GSM search (`path-opt` by default or recursive `path_search` with `--refine-path True`), TS/freq/DFT post-processing, and staged scans. | [`docs/all.md`](docs/all.md) |
 | `scan` | Perform staged biased scans on pocket models to create additional intermediates. | [`docs/scan.md`](docs/scan.md) |
-| `scan3d` | Three-distance 3D grid scan with harmonic restraints (UMA) that can also plot existing `surface.csv` data. | [`pdb2reaction/scan3d.py`](pdb2reaction/scan3d.py) |
 | `opt` | Optimise a single structure with UMA (LBFGS/RFO presets). | [`docs/opt.md`](docs/opt.md) |
 | `path-opt` | Run UMA optimisation on a specific path segment or snapshot. | [`docs/path_opt.md`](docs/path_opt.md) |
 | `path-search` | Launch the recursive GSM-based reaction path search and pocket/full-system merging. | [`docs/path_search.md`](docs/path_search.md) |
@@ -122,7 +121,8 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 | `trj2fig` | Convert trajectory data to interactive diagrams (Plotly/Kaleido). | [`docs/trj2fig.md`](docs/trj2fig.md) |
 | `add-elem-info` | Augment PDB files with missing element metadata. | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
 | `dft` | Run single-point DFT calculations on UMA geometries using PySCF/gpu4pyscf. | [`docs/dft.md`](docs/dft.md) |
-| `2d-scan` | Explore two harmonic distance restraints simultaneously and build 2D PES grids with UMA relaxations. | [`docs/scan2d.md`](docs/scan2d.md) |
+| `scan2d` | Explore two harmonic distance restraints simultaneously and build 2D PES grids with UMA relaxations. | [`docs/scan2d.md`](docs/scan2d.md) |
+| `scan3d` | Three-distance 3D grid scan with harmonic restraints (UMA) that can also plot existing `surface.csv` data. | [`pdb2reaction/scan3d.py`](pdb2reaction/scan3d.py) |
 
 Each subcommand accepts `-h/--help` for inline usage hints and can also consume `--args-yaml` files that match the schemas
 documented above.
