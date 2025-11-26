@@ -124,7 +124,7 @@ GS_KW: Dict[str, Any] = {
     "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
     "climb": True,              # bool, enable climbing image
     "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": False,     # bool, use Lanczos to estimate the HEI tangent (disabled by default)
+    "climb_lanczos": True,     # bool, use Lanczos to estimate the HEI tangent (disabled by default)
     "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
     "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
     "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
@@ -418,6 +418,7 @@ def cli(
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
+        gs_cfg["climb_lanczos"] = bool(climb)
         gs_cfg["fix_first"] = bool(fix_ends)
         gs_cfg["fix_last"] = bool(fix_ends)
 
