@@ -32,16 +32,19 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
-| `-q, --charge INT` | Total charge (`calc.charge`). | Template/`0` |
+| `-q, --charge INT` | Total charge (`calc.charge`). Required unless the input is a `.gjf` template that already encodes charge. | Required when not in template |
 | `-m, --mult INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
-| `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `30` |
-| `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `100` |
+| `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
+| `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
 | `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump BOOL` | Dump GSM trajectories/restarts. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | YAML/default |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
+| `--preopt BOOL` | Pre-optimise each endpoint with the selected single-structure optimizer before alignment/GSM. | `False` |
+| `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
+| `--fix-ends BOOL` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
 
 ## Outputs
 ```

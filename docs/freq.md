@@ -55,7 +55,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. | Required when not in template |
 | `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
 | `--max-write INT` | Number of modes to export. | `20` |
@@ -80,8 +80,8 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 - Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
   and dumps details when `--dump True`.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
-- Charge/spin inherit `.gjf` metadata when available; otherwise the CLI defaults (`0`/`1`)
-  are used. Override them explicitly to ensure the intended state.
+- Charge/spin inherit `.gjf` metadata when available; otherwise `-q/--charge` is required
+  and multiplicity defaults to `1`. Override them explicitly to ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; CLI values override YAML. Shared sections reuse

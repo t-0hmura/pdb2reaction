@@ -99,8 +99,8 @@ UMA-based bond-change detection mirrored from `path_search`:
   atoms in PDB files so pockets stay rigid.
 - UMA is the only supported calculator; energies are not re-queried for every
   biased frame to avoid redundant evaluations.
-- Charge and spin default to the Gaussian template metadata (when available) or
-  to `0/1`; override them explicitly when needed.
+- Charge and spin inherit Gaussian template metadata when available; otherwise
+  `-q/--charge` is required and spin defaults to `1`.
 - Trajectories are written only when `--dump` is `True`; this also triggers PDB
   conversion for PDB inputs.
 
