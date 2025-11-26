@@ -84,3 +84,13 @@ cli.add_command(scan3d_cmd, name="scan3d")
 # Disable pysisyphus logging
 import logging
 logging.disable(logging.CRITICAL)
+
+# Disable UMA warnings when using the analytical Hessian
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=r"var\(\): degrees of freedom is <= 0\. Correction should be strictly less than the reduction factor.*",
+    module=r"fairchem\.core\.models\.uma\.escn_moe"
+)
