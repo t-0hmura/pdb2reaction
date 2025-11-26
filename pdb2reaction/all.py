@@ -2200,7 +2200,7 @@ def cli(
                     err=True,
                 )
             else:
-                if charge_override is None
+                if charge_override is None:
                     click.echo(
                         "[all] NOTE: No total charge provided; defaulting to 0. "
                         "Supply '--ligand-charge <number>' to override."
