@@ -2711,8 +2711,12 @@ def cli(
                 )
 
             try:
-                _ensure_dir(path_dir / f"{seg_tag}_gsm")
-                shutil.copy2(seg_trj, path_dir / f"{seg_tag}_gsm" / "final_geometries.trj")
+                mirror_dir = path_dir / f"{seg_tag}_gsm"
+                mirror_trj = mirror_dir / "final_geometries.trj"
+
+                _ensure_dir(mirror_dir)
+                if seg_trj.resolve() != mirror_trj.resolve():
+                    shutil.copy2(seg_trj, mirror_trj)
             except Exception as e:
                 click.echo(
                     f"[all] WARNING: failed to mirror path-opt trajectory for segment {idx:02d}: {e}",
