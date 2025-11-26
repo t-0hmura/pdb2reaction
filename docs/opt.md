@@ -31,7 +31,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 | --- | --- | --- |
 | `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template that already encodes charge. | Required when not in template |
-| `-m, --mult INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
 | `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_A)` tuples for harmonic restraints. | _None_ |
 | `--one-based / --zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `--one-based` |
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |

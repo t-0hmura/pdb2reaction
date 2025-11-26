@@ -18,7 +18,7 @@ pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 # Multi-structure ensemble with explicit ligand charges and post-processing
 date=$(date +%Y%m%d)
 pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
-    --ligand-charge "GPP:-3,MMT:-1" --mult 1 --freeze-links True \
+    --ligand-charge "GPP:-3,MMT:-1" --multiplicity 1 --freeze-links True \
     --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
     --out-dir result_all_${date} --tsopt True --thermo True --dft True
 
@@ -45,7 +45,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent GSM step.
 
 3. **MEP search on pockets (recursive GSM)**
-   - Executes `path_search` using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - Executes `path_search` using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--multiplicity`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
    - For multi-input PDB runs, the full-system templates are automatically passed to `path_search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
 4. **Merge pockets back to the full systems**
@@ -61,8 +61,8 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
    - Skips the GSM/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
-- With extraction: pocket charge = rounded extractor charge; spin comes from `--mult` (default 1).
-- Without extraction: total system charge follows (1) numeric `--ligand-charge`, else (2) parsed from the first `.gjf`, else defaults to 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
+- With extraction: pocket charge = rounded extractor charge; spin comes from `--multiplicity` (default 1).
+- Without extraction: total system charge follows (1) numeric `--ligand-charge`, else (2) parsed from the first `.gjf`, else defaults to 0. Spin precedence becomes explicit `--multiplicity`, else `.gjf`, else 1.
 
 ### Input expectations
 - Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
@@ -83,7 +83,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). | `None` |
 | `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
-| `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
+| `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
 | `--max-cycles INT` | GSM maximum optimization cycles. | `300` |

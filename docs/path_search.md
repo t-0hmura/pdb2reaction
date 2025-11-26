@@ -5,7 +5,7 @@ Construct a continuous minimum-energy path (MEP) across **two or more** structur
 
 ## Usage
 ```bash
-pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
+pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S+1]
                          [--freeze-links BOOL] [--thresh PRESET]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--opt-mode light|heavy] [--dump BOOL]
@@ -31,7 +31,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
 | `-q, --charge INT` | Total charge. Required unless the first input is a `.gjf` template that already stores charge. | Required when not in template |
-| `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `300` |

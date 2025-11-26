@@ -51,7 +51,7 @@ pdb2reaction scan -i input.pdb -q 0 \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template > 0). | Required when not in template |
-| `-m, --mult INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
 | `--scan-lists TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. | Required |
 | `--one-based / --zero-based` | Interpret atom indices as 1- or 0-based. | `--one-based` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
