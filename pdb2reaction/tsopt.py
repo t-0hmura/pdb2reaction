@@ -1558,6 +1558,7 @@ def cli(
             rs_args = dict(rsirfo_cfg)
             opt_base = dict(opt_cfg)
             opt_base["out_dir"] = str(out_dir_path)
+            rs_args["out_dir"] = str(out_dir_path)
 
             # Normalize roots/root
             roots = rs_args.get("roots", None)
