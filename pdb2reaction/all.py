@@ -2319,6 +2319,10 @@ def cli(
 
         # Clean up endpoint_opt as a temporary working directory
         shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+        click.echo(
+            f"[endpoint-opt] Clean endpoint-opt working dir.",
+            err=True,
+        ) 
 
         pR = _save_single_geom_as_pdb_for_tools(
             g_react_opt, pocket_ref, struct_dir, "reactant"
