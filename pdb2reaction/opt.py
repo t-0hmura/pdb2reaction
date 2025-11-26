@@ -181,7 +181,7 @@ OPT_BASE_KW = {
     # * Baker rule in this tool: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
 
     "max_cycles": 10000,         # hard cap on optimization cycles
-    "print_every": 1,          # progress print frequency in cycles
+    "print_every": 100,          # progress print frequency in cycles
 
     # Step-size safeguarding
     "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength
@@ -220,7 +220,7 @@ LBFGS_KW = {
     "gamma_mult": False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
 
     # Step-size control
-    "max_step": 0.10,            # maximum allowed component-wise step
+    "max_step": 0.30,            # maximum allowed component-wise step
     "control_step": True,        # scale step to satisfy |max component| <= max_step
 
     # Safeguards
@@ -238,7 +238,7 @@ RFO_KW = {
     # Trust-region (step-size) control
     "trust_radius": 0.10,        # initial trust radius (in working coordinates)
     "trust_update": True,        # adapt the trust radius based on step quality
-    "trust_min": 0.01,           # lower bound for trust radius
+    "trust_min": 0.00,           # lower bound for trust radius
     "trust_max": 0.10,           # upper bound for trust radius
     "max_energy_incr": None,     # abort if ΔE exceeds this after a bad step
 

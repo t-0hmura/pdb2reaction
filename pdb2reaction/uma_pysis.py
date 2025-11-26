@@ -131,7 +131,7 @@ CALC_KW: Dict[str, Any] = {
     "return_partial_hessian": True,           # receive only the active-DOF Hessian block
 
     # Precision
-    "double_precision": False,                # if True use float64 for energy/forces/Hessian
+    "double_precision": True,                # if True use float64 for energy/forces/Hessian
 }
 
 # ===================================================================
