@@ -1572,6 +1572,13 @@ def cli(
 
             rsirfo_kwargs = {**opt_base, **rs_args}
 
+            # Compatibility: pysisyphus' RSIRFOptimizer does not accept DIIS-related
+            # keyword arguments that are used by the internal RFO implementation of
+            # pdb2reaction. Strip them here to avoid forwarding unsupported kwargs
+            # such as `gediis` that would otherwise raise a TypeError.
+            for diis_kw in ("gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction"):
+                rsirfo_kwargs.pop(diis_kw, None)
+
             optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
 
             click.echo("\n=== TS optimization (RS-I-RFO) started ===\n")
