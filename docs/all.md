@@ -86,7 +86,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
-| `--max-cycles INT` | GSM maximum optimization cycles. | `100` |
+| `--max-cycles INT` | GSM maximum optimization cycles. | `300` |
 | `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--dump BOOLEAN` | Dump GSM and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
