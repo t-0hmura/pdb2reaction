@@ -82,6 +82,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). | `None` |
+| `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
 | `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |
