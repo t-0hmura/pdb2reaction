@@ -1595,7 +1595,7 @@ def cli(
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
-        gs_cfg["climb_lanczos"] = bool(climb)
+        # gs_cfg["climb_lanczos"] = bool(climb)
 
         opt_cfg["dump"]       = bool(dump)
         opt_cfg["out_dir"]    = out_dir
