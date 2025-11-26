@@ -21,8 +21,10 @@ to each project's installation guide when configuring GPUs or HPC nodes.
 
 The CLI is exposed via the `pdb2reaction` entry point declared in `pyproject.toml`. The Click group in
 [`pdb2reaction/cli.py`](pdb2reaction/cli.py) sets `all` as its default subcommand, so running `pdb2reaction ...` or
-`pdb2reaction all ...` is equivalent. All workflows require `-i/--input` (full PDBs in reaction order) and `-c/--center`
-(substrate definition for pocket extraction).
+`pdb2reaction all ...` is equivalent. The `all` command drives the end-to-end workflow and **defaults to a single-pass
+`path-opt` MEP search**; set `--refine-path True` to switch to the recursive `path_search` refiner and enable merged full-system
+PDB output when PDB templates are available. All workflows require `-i/--input` (full PDBs in reaction order) and `-c/--center`
+(substrate definition for pocket extraction) unless extraction is intentionally skipped.
 
 ### Workflow modes
 
@@ -40,9 +42,10 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb \
              --tsopt True --thermo True --dft True
 ```
 
-Multiple full systems are processed in reaction order. The command extracts pockets, runs the recursive GSM-based
-`path_search`, merges the pocket minimum-energy path back into the full structures, and (optionally) executes TS
-optimisation, vibrational analysis, and DFT single points for each reactive segment.
+Multiple full systems are processed in reaction order. The command extracts pockets, runs a single-pass GSM via `path-opt`
+by default (set `--refine-path True` to invoke recursive `path_search`), merges pocket minimum-energy paths back into the
+full structures when PDB templates are available, and (optionally) executes TS optimisation, vibrational analysis, and
+DFT single points for each reactive segment.
 
 #### Single-structure + staged scan (feeds GSM)
 
@@ -59,8 +62,9 @@ pdb2reaction -i SINGLE.pdb \
 ```
 
 Providing exactly one input PDB alongside `--scan-lists` performs a staged distance scan **on the extracted pocket** using
-UMA. Each `stage_XX/result.pdb` becomes an ordered intermediate/product candidate that feeds the subsequent `path_search`
-run before the results are merged back into the full system.
+UMA. Each `stage_XX/result.pdb` becomes an ordered intermediate/product candidate. The default `all` mode concatenates the
+segments via `path-opt`; set `--refine-path True` to instead run the recursive `path_search` refiner and write merged
+`mep_w_ref*.pdb` files when PDB templates are available.
 
 #### Single-structure TSOPT-only mode
 
@@ -78,20 +82,25 @@ pdb2reaction -i TS_CANDIDATE.pdb \
 
 Supplying a single input **without** `--scan-lists` while setting `--tsopt True` skips the path search entirely. The tool
 optimises the pocket TS, performs a pseudo-IRC to minimise both ends, and can run `freq`/`dft` on the resulting R/TS/P trio
-to build UMA, Gibbs, DFT, and DFT//UMA diagrams.
+to build UMA, Gibbs, DFT, and DFT//UMA diagrams. This TSOPT-only pocket mode still mirrors the `energy_diagram_*_all.png` and
+`irc_plot_all.png` outputs under the top-level `--outdir`.
 
 ### Important flags and behaviours
 
 - `-i/--input PATH...`: Two or more full PDBs for GSM mode, or one PDB when paired with `--scan-lists` **or** `--tsopt True`.
-  A single `-i` may be followed by multiple filenames.
+  A single `-i` may be followed by multiple filenames. When extraction is skipped, XYZ/GJF inputs are also accepted.
 - `-c/--center TEXT`: Substrate definition for pocket extraction. Accepts PDB paths, residue IDs (e.g., `A:123,B:456`), or
   residue names (`GPP,MMT`).
 - `--ligand-charge TEXT`: Total charge or mapping (e.g., `GPP:-3,MMT:-1`). The first pocket’s total charge is rounded to an
   integer and reused for scan/GSM/TS optimisation.
+- `-q/--charge INT`: Force the total system charge with a warning, bypassing extractor rounding, `.gjf` metadata, and
+  `--ligand-charge` resolution. Use when you need to override automated charge inference.
 - `--scan-lists TEXT...`: One or more Python-style lists describing staged scans for single-input runs. Each `(i, j, target_Å)`
   tuple uses indices from the original full PDB (1-based) and is auto-remapped onto the extracted pocket.
 - `--tsopt/--thermo/--dft BOOLEAN`: Enable TS optimisation + pseudo-IRC, vibrational analysis (UMA Gibbs diagram), and DFT
   single-point post-processing (adds a DFT//UMA Gibbs diagram when combined with `--thermo True`).
+- `--refine-path BOOLEAN`: Toggle recursive `path_search` refinement in `all` (off by default). When enabled and PDB templates
+  are available, merged full-system `mep_w_ref*.pdb` outputs are written under `<outdir>/path_search/`.
 
 Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). Refer to
 [`docs/all.md`](docs/all.md) for a full option matrix, YAML schemas, and output details.
@@ -100,11 +109,12 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 
 | Subcommand | Summary | Documentation |
 | --- | --- | --- |
-| `all` | End-to-end workflow orchestrator that chains pocket extraction, GSM search, TS/freq/DFT post-processing, and staged scans. | [`docs/all.md`](docs/all.md) |
+| `all` | End-to-end workflow orchestrator that chains pocket extraction, GSM search (`path-opt` by default or recursive `path_search` with `--refine-path True`), TS/freq/DFT post-processing, and staged scans. | [`docs/all.md`](docs/all.md) |
 | `scan` | Perform staged biased scans on pocket models to create additional intermediates. | [`docs/scan.md`](docs/scan.md) |
+| `scan3d` | Three-distance 3D grid scan with harmonic restraints (UMA) that can also plot existing `surface.csv` data. | [`pdb2reaction/scan3d.py`](pdb2reaction/scan3d.py) |
 | `opt` | Optimise a single structure with UMA (LBFGS/RFO presets). | [`docs/opt.md`](docs/opt.md) |
 | `path-opt` | Run UMA optimisation on a specific path segment or snapshot. | [`docs/path_opt.md`](docs/path_opt.md) |
-| `path-search` | Launch the GSM-based reaction path search and pocket/full-system merging. | [`docs/path_search.md`](docs/path_search.md) |
+| `path-search` | Launch the recursive GSM-based reaction path search and pocket/full-system merging. | [`docs/path_search.md`](docs/path_search.md) |
 | `tsopt` | Refine transition states (with optional pseudo-IRC propagation). | [`docs/tsopt.md`](docs/tsopt.md) |
 | `freq` | Compute vibrational modes, thermochemistry, and UMA energy diagrams. | [`docs/freq.md`](docs/freq.md) |
 | `irc` | Follow an intrinsic reaction coordinate starting from a TS structure. | [`docs/irc.md`](docs/irc.md) |
