@@ -181,7 +181,7 @@ OPT_BASE_KW = {
     # * Baker rule in this tool: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
 
     "max_cycles": 10000,         # hard cap on optimization cycles
-    "print_every": 100,          # progress print frequency in cycles
+    "print_every": 1,          # progress print frequency in cycles
 
     # Step-size safeguarding
     "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength
@@ -245,7 +245,7 @@ RFO_KW = {
     # Hessian model / refresh
     "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
     "hessian_init": "calc",      # initial Hessian calculation
-    "hessian_recalc": 200,       # recompute exact Hessian every N cycles
+    "hessian_recalc": 100,       # recompute exact Hessian every N cycles
     "hessian_recalc_adapt": 2.0, # heuristic: trigger exact Hessian recompute based on force norm
 
     # Numerical hygiene & mode filtering
@@ -253,7 +253,7 @@ RFO_KW = {
 
     # RFO/RS micro-iterations
     "alpha0": 1.0,               # initial α for restricted-step RFO
-    "max_micro_cycles": 25,      # max inner iterations to hit the trust radius
+    "max_micro_cycles": 50,      # max inner iterations to hit the trust radius
     "rfo_overlaps": False,       # mode following via eigenvector overlap across cycles
 
     # Inter/Extrapolation helpers
@@ -267,7 +267,7 @@ RFO_KW = {
     "gdiis_test_direction": True,# compare DIIS step direction to the RFO step
 
     # Choice of step model
-    "adapt_step_func": False,    # switch to shifted-Newton on trust when PD & gradient is small
+    "adapt_step_func": True,     # switch to shifted-Newton on trust when PD & gradient is small
 }
 
 # Normalization helpers
