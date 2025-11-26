@@ -96,7 +96,7 @@ Runs a one-shot pipeline centered on pocket models:
     - `--dft True`: Do DFT single-point on (R, TS, P) and add a DFT diagram.
       With `--thermo True`, also generate a **DFT//UMA** Gibbs diagram.
     - Additionally, across all reactive segments, combined diagrams are written at `<out-dir>`:
-        • `energy_diagram_tsopt_all.png` (UMA),
+        • `energy_diagram_UMA_all.png` (UMA),
         • `energy_diagram_G_UMA_all.png` (Gibbs, UMA),
         • `energy_diagram_DFT_all.png` (DFT),
         • `energy_diagram_G_DFT_plus_UMA_all.png` (Gibbs, DFT//UMA),
@@ -179,7 +179,7 @@ Outputs (& Directory Layout)
   │       ├─ structures/
   │       ├─ freq/ ...                   # with --thermo True
   │       ├─ dft/  ...                   # with --dft True
-  │       ├─ energy_diagram_tsopt.(png)
+  │       ├─ energy_diagram_UMA.(png)
   │       ├─ energy_diagram_G_UMA.(png)
   │       ├─ energy_diagram_DFT.(png)
   │       └─ energy_diagram_G_DFT_plus_UMA.(png)
@@ -187,10 +187,10 @@ Outputs (& Directory Layout)
   │   ├─ mep.trj, summary.yaml, mep_seg_XX.* , hei_seg_XX.*
   │   └─ post_seg_XX/ ...                # identical layout to path_search/ when post-processing runs
   ├─ mep_plot.png                        # copied from path_* / (GSM energy profile)
-  ├─ energy_diagram_gsm.png              # copied from path_* / (compressed GSM diagram)
+  ├─ energy_diagram_GSM.png              # copied from path_* / (compressed GSM diagram)
   ├─ mep.pdb                             # copied from path_* / when PDB pockets are used
   ├─ mep_w_ref.pdb                       # copied from path_search/ when full-system merge is available
-  ├─ energy_diagram_tsopt_all.png        # UMA R–TS–P energies across all reactive segments
+  ├─ energy_diagram_UMA_all.png        # UMA R–TS–P energies across all reactive segments
   ├─ energy_diagram_G_UMA_all.png        # UMA Gibbs R–TS–P across all reactive segments
   ├─ energy_diagram_DFT_all.png          # DFT R–TS–P across all reactive segments
   ├─ energy_diagram_G_DFT_plus_UMA_all.png  # DFT//UMA Gibbs R–TS–P across all reactive segments
@@ -202,7 +202,7 @@ Outputs (& Directory Layout)
       ├─ structures/
       ├─ freq/ ...                       # with --thermo True
       ├─ dft/  ...                       # with --dft True
-      ├─ energy_diagram_tsopt.(png)
+      ├─ energy_diagram_UMA.(png)
       ├─ energy_diagram_G_UMA.(png)
       ├─ energy_diagram_DFT.(png)
       ├─ energy_diagram_G_DFT_plus_UMA.(png)
@@ -2331,7 +2331,7 @@ def cli(
         e_prod = float(g_prod_opt.energy)
 
         _write_segment_energy_diagram(
-            tsroot / "energy_diagram_tsopt",
+            tsroot / "energy_diagram_UMA",
             labels=["R", "TS", "P"],
             energies_eh=[e_react, eT, e_prod],
             title_note="(UMA, TSOPT + IRC)",
@@ -2446,7 +2446,7 @@ def cli(
 
         try:
             for stem in (
-                "energy_diagram_tsopt",
+                "energy_diagram_UMA",
                 "energy_diagram_G_UMA",
                 "energy_diagram_DFT",
                 "energy_diagram_G_DFT_plus_UMA",
@@ -2823,7 +2823,7 @@ def cli(
             if labels and energies_chain and len(labels) == len(energies_chain):
                 title_note = "(GSM; all segments)" if len(path_opt_segments) > 1 else "(GSM)"
                 _write_segment_energy_diagram(
-                    path_dir / "energy_diagram_gsm",
+                    path_dir / "energy_diagram_GSM",
                     labels=labels,
                     energies_eh=energies_chain,
                     title_note=title_note,
@@ -2880,7 +2880,7 @@ def cli(
             click.echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
 
         try:
-            for name in ("mep_plot.png", "energy_diagram_gsm.png", "mep.pdb", "mep_w_ref.pdb"):
+            for name in ("mep_plot.png", "energy_diagram_GSM.png", "mep.pdb", "mep_w_ref.pdb"):
                 src = path_dir / name
                 if src.exists():
                     dst = out_dir / name
@@ -2946,7 +2946,7 @@ def cli(
             sys.argv = _saved_argv
 
         try:
-            for name in ("mep_plot.png", "energy_diagram_gsm.png", "mep.pdb", "mep_w_ref.pdb"):
+            for name in ("mep_plot.png", "energy_diagram_GSM.png", "mep.pdb", "mep_w_ref.pdb"):
                 src = path_dir / name
                 if src.exists():
                     dst = out_dir / name
@@ -2990,7 +2990,7 @@ def cli(
         click.echo(f"[all] Aggregated products are under: {path_dir}")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
     click.echo(
-        "  - energy_diagram_gsm.png / energy_diagram.* (copied summary at <out-dir>/)"
+        "  - energy_diagram_GSM.png / energy_diagram.* (copied summary at <out-dir>/)"
     )
     click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
 
@@ -3150,7 +3150,7 @@ def cli(
             eP = float(g_prod_opt.energy)
             uma_ref_energies = {"R": eR, "TS": eT, "P": eP}
             _write_segment_energy_diagram(
-                seg_dir / "energy_diagram_tsopt",
+                seg_dir / "energy_diagram_UMA",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_eh=[eR, eT, eP],
                 title_note="(UMA, TSOPT + IRC)",
@@ -3439,7 +3439,7 @@ def cli(
         tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
             _write_segment_energy_diagram(
-                out_dir / "energy_diagram_tsopt_all",
+                out_dir / "energy_diagram_UMA_all",
                 labels=tsopt_all_labels,
                 energies_eh=tsopt_all_energies,
                 title_note="(UMA, TSOPT + IRC; all segments)",
