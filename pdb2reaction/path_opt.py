@@ -216,7 +216,9 @@ def _optimize_single(
     """
     g.set_calculator(shared_calc)
 
-    seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
+    kind_slug = "lbfgs" if str(sopt_kind).lower() == "lbfgs" else "rfo"
+
+    seg_dir = out_dir / f"{tag}_{kind_slug}_opt"
     seg_dir.mkdir(parents=True, exist_ok=True)
     args = dict(sopt_cfg)
     args["out_dir"] = str(seg_dir)
