@@ -2200,10 +2200,11 @@ def cli(
                     err=True,
                 )
             else:
-                click.echo(
-                    "[all] NOTE: No total charge provided; defaulting to 0. "
-                    "Supply '--ligand-charge <number>' to override."
-                )
+                if charge_override is None
+                    click.echo(
+                        "[all] NOTE: No total charge provided; defaulting to 0. "
+                        "Supply '--ligand-charge <number>' to override."
+                    )
         q_from_flow = _round_charge_with_note(q_total_fallback)
 
         if (not user_provided_spin) and (gjf_spin is not None):

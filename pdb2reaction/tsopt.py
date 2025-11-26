@@ -1570,7 +1570,9 @@ def cli(
             if "root" in rs_args:
                 rs_args.pop("root")
 
-            optimizer = RSIRFOptimizer(geometry, **rs_args, **opt_base)
+            rsirfo_kwargs = {**opt_base, **rs_args}
+
+            optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
 
             click.echo("\n=== TS optimization (RS-I-RFO) started ===\n")
             optimizer.run()
