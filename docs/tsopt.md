@@ -16,30 +16,30 @@ settings from YAML, and always write the final imaginary mode in `.trj` and `.pd
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
                     [--opt-mode light|heavy] \
                     [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
-                    [--dump {True|False}] [--outdir DIR] [--args-yaml FILE] \
+                    [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference]
 ```
 
 ### Examples
 ```bash
 # Recommended baseline: specify charge/multiplicity and pick the light workflow
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --outdir ./result_tsopt/
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --out-dir ./result_tsopt/
 
 # Light mode with YAML overrides, finite-difference Hessian, and freeze-links handling
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --freeze-links True \
     --opt-mode light --max-cycles 10000 --dump False \
-    --outdir ./result_tsopt/ --args-yaml ./args.yaml \
+    --out-dir ./result_tsopt/ --args-yaml ./args.yaml \
     --hessian-calc-mode FiniteDifference
 
 # Heavy mode (RS-I-RFO) driven entirely by YAML
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
-    --args-yaml ./args.yaml --outdir ./result_tsopt/
+    --args-yaml ./args.yaml --out-dir ./result_tsopt/
 ```
 
 ## Workflow
 - **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
-  template values; otherwise they default to `0`/`1`. Override them explicitly to ensure UMA
-  runs on the intended state.
+  template values; otherwise `-q/--charge` is required and multiplicity defaults to `1`.
+  Override them explicitly to ensure UMA runs on the intended state.
 - **Geometry loading & freeze-links**: structures are read via
   `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links True` finds link hydrogens
   and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
@@ -68,20 +68,20 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. | Required when not in template |
 | `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
-| `--outdir TEXT` | Output directory. | `./result_tsopt/` |
+| `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
 
 ## Outputs (& directory layout)
 ```
-outdir/ (default: ./result_tsopt/)
+out-dir/ (default: ./result_tsopt/)
   ├─ final_geometry.xyz                # Always written
   ├─ final_geometry.pdb                # When the input was PDB
   ├─ optimization_all.trj/.pdb         # Light-mode dump (requires --dump True)
@@ -142,7 +142,7 @@ opt:
   dump: false
   dump_restart: false
   prefix: ""
-  outdir: ./result_tsopt/
+  out_dir: ./result_tsopt/
 hessian_dimer:
   thresh_loose: gau_loose
   thresh: gau
@@ -191,7 +191,7 @@ hessian_dimer:
     dump: false
     dump_restart: false
     prefix: ""
-    outdir: ./result_opt/
+    out_dir: ./result_opt/
     keep_last: 7
     beta: 1.0
     gamma_mult: false
@@ -217,7 +217,7 @@ rsirfo:
   dump: false
   dump_restart: false
   prefix: ""
-  outdir: ./result_opt/
+  out_dir: ./result_opt/
   roots: [0]
   hessian_ref: null
   rx_modes: null

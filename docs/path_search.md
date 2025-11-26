@@ -30,11 +30,11 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--mult 2S+1]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
-| `-q, --charge INT` | Total charge. | `.gjf` template value or `0` |
+| `-q, --charge INT` | Total charge. Required unless the first input is a `.gjf` template that already stores charge. | Required when not in template |
 | `-m, --mult INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
-| `--max-cycles INT` | Maximum GSM optimization cycles. | `100` |
+| `--max-cycles INT` | Maximum GSM optimization cycles. | `300` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
@@ -72,8 +72,8 @@ Bond-change detection relies on `bond_changes.compare_structures` with threshold
 - `--ref-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, GSM and single-structure optimizations emit trajectories and restart YAML files.
-- Charge/spin inherit `.gjf` template metadata when available; otherwise the CLI defaults to `0`/`1`. Override them explicitly
-  when you need a different electronic state.
+- Charge/spin inherit `.gjf` template metadata when available; otherwise `-q/--charge` is required and multiplicity defaults to
+  `1`. Override them explicitly when you need a different electronic state.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. CLI parameters override YAML values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.

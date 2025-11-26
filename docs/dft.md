@@ -23,7 +23,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`, and when the source was a Gaussian template a matching `.gjf` snapshot is written for reference.
-2. **Configuration merge** – Defaults → YAML (`dft` block) → CLI. Charge/multiplicity inherit `.gjf` metadata when present, otherwise default to `0`/`1`. Always set them explicitly so the correct RKS/UKS solver is selected.
+2. **Configuration merge** – Defaults → YAML (`dft` block) → CLI. Charge/multiplicity inherit `.gjf` metadata when present; otherwise `-q/--charge` is required and multiplicity defaults to `1`. Always set them explicitly so the correct RKS/UKS solver is selected.
 3. **SCF build** – `--func-basis` is parsed into XC functional and orbital basis. Density fitting is enabled automatically and a practical JKFIT auxiliary basis is guessed from the orbital basis (def2, cc-pVXZ, Pople families). `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal VV10 is activated for functionals whose names end in `-v` or contain `vv10`.
 4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarising energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
@@ -31,7 +31,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). | `.gjf` template value or `0` |
+| `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). Required unless the input is a `.gjf` template that already stores charge. | Required when not in template |
 | `-m, --mult INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
 | `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/6-31g**` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
@@ -66,7 +66,7 @@ Accepts a mapping with top-level key `dft`. CLI overrides YAML values.
 - `verbose` (`4`): PySCF verbosity (0–9).
 - `out_dir` (`"./result_dft/"`): Output directory root.
 
-_Functional/basis selection must be supplied on the CLI. Charge/spin inherit `.gjf` template metadata when present and otherwise default to `0`/`1`; set them explicitly for non-default states._
+_Functional/basis selection must be supplied on the CLI. Charge/spin inherit `.gjf` template metadata when present; otherwise `-q/--charge` is required and spin defaults to `1`. Set them explicitly for non-default states._
 
 ```yaml
 dft:

@@ -26,7 +26,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## Workflow
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. If the source is `.pdb`, EulerPC trajectories are automatically converted to PDB using the original topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens.
-2. **Configuration merge** – Defaults → YAML (`geom`, `calc`, `irc`) → CLI overrides. Charge/multiplicity inherit `.gjf` template metadata when available; otherwise they default to `0`/`1`. Always set them explicitly to remain on the intended PES.
+2. **Configuration merge** – Defaults → YAML (`geom`, `calc`, `irc`) → CLI overrides. Charge/multiplicity inherit `.gjf` template metadata when available; otherwise `-q/--charge` is required and multiplicity defaults to `1`. Always set them explicitly to remain on the intended PES.
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
 4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, for PDB inputs, mirrored to `.pdb`. Optional HDF5 dumps capture per-step frames when `dump_every` > 0.
 
@@ -34,7 +34,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge; overrides `calc.charge`. | `.gjf` template value or `0` |
+| `-q, --charge INT` | Total charge; overrides `calc.charge`. Required unless the input is a `.gjf` template with charge metadata. | Required when not in template |
 | `-m, --mult INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | _None_ (use YAML/default `125`) |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | _None_ (default `0.10`) |
