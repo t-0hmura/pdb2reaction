@@ -686,6 +686,7 @@ def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None
     from ase.io import write as ase_write
 
     buf = StringIO()
+    buf.name = "ase_atoms.xyz"
     ase_write(buf, atoms, format="xyz")
     buf.seek(0)
     g = geom_loader(buf, coord_type=coord_type)
