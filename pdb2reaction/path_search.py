@@ -983,6 +983,7 @@ def _build_multistep_path(
     source_paths: Sequence[Path],
     out_dir: Path,
     ref_pdb_path: Optional[Path],
+    prepared_input: Optional[PreparedInputStructure],
     depth: int,
     seg_counter: List[int],
     branch_tag: str,
@@ -1018,6 +1019,7 @@ def _build_multistep_path(
                 out_dir,
                 tag=f"seg_{seg_counter[0]:03d}_maxdepth",
                 ref_pdb_path=ref_pdb_path,
+                prepared_input=prepared_input,
             )
         )
         seg_counter[0] += 1
@@ -1041,7 +1043,17 @@ def _build_multistep_path(
             shared_calc=shared_calc,
         )
         if mep_mode_kind == "dmf"
-        else _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
+        else _run_gsm_between(
+            gA,
+            gB,
+            shared_calc,
+            gs_seg_cfg,
+            opt_cfg,
+            out_dir,
+            tag=tag0,
+            ref_pdb_path=ref_pdb_path,
+            prepared_input=prepared_input,
+        )
     )
 
     hei = int(gsm0.hei_idx)
@@ -1053,8 +1065,24 @@ def _build_multistep_path(
     left_img = gsm0.images[hei - 1]
     right_img = gsm0.images[hei + 1]
 
-    left_end = _optimize_single(left_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_left", ref_pdb_path=ref_pdb_path)
-    right_end = _optimize_single(right_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_right", ref_pdb_path=ref_pdb_path)
+    left_end = _optimize_single(
+        left_img,
+        shared_calc,
+        sopt_kind,
+        sopt_cfg,
+        out_dir,
+        tag=f"{tag0}_left",
+        prepared_input=prepared_input,
+    )
+    right_end = _optimize_single(
+        right_img,
+        shared_calc,
+        sopt_kind,
+        sopt_cfg,
+        out_dir,
+        tag=f"{tag0}_right",
+        prepared_input=prepared_input,
+    )
 
     try:
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
@@ -1071,7 +1099,15 @@ def _build_multistep_path(
         opt_inters: List[Any] = []
         for i, g_int in enumerate(inter_geoms, 1):
             g_int.set_calculator(shared_calc)
-            g_opt = _optimize_single(g_int, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_kink_int{i}", ref_pdb_path=ref_pdb_path)
+            g_opt = _optimize_single(
+                g_int,
+                shared_calc,
+                sopt_kind,
+                sopt_cfg,
+                out_dir,
+                tag=f"{tag0}_kink_int{i}",
+                prepared_input=prepared_input,
+            )
             opt_inters.append(g_opt)
         step_imgs = [left_end] + opt_inters + [right_end]
         step_E = [float(img.energy) for img in step_imgs]
@@ -1135,7 +1171,7 @@ def _build_multistep_path(
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
-            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
+            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
         _tag_images(subL.images, pair_index=pair_index)
@@ -1149,7 +1185,7 @@ def _build_multistep_path(
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
-            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
+            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index
         )
         _tag_images(subR.images, pair_index=pair_index)
@@ -1168,6 +1204,7 @@ def _build_multistep_path(
             bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
+            prepared_input=prepared_input,
             depth=depth + 1,
             seg_counter=seg_counter,
             branch_tag=f"{branch_tag}B",
@@ -1913,6 +1950,8 @@ def cli(
             auto_freeze_links=bool(freeze_links_flag),
         )
 
+        main_prepared = prepared_inputs[0] if prepared_inputs else None
+
         shared_calc = uma_pysis(**calc_cfg)
         for g in geoms:
             g.set_calculator(shared_calc)
@@ -1928,7 +1967,15 @@ def cli(
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
                 tag = f"init{i:02d}"
-                g_opt = _optimize_single(g, shared_calc, sopt_kind, sopt_cfg, out_dir_path, tag=tag, ref_pdb_path=ref_pdb_for_segments)
+                g_opt = _optimize_single(
+                    g,
+                    shared_calc,
+                    sopt_kind,
+                    sopt_cfg,
+                    out_dir_path,
+                    tag=tag,
+                    prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else main_prepared,
+                )
                 new_geoms.append(g_opt)
             geoms = new_geoms
         else:
@@ -1974,6 +2021,7 @@ def cli(
                 bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
+                prepared_input=main_prepared,
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag="B",
@@ -1993,6 +2041,7 @@ def cli(
                 bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
+                prepared_input=main_prepared,
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag=pair_tag,
