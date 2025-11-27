@@ -310,7 +310,7 @@ def _run_dmf_mep(
     )
 
     initial_trj = out_dir_path / "dmf_initial.trj"
-    ase_write(initial_trj, mxflx_fbenm.images)
+    ase_write(initial_trj, mxflx_fbenm.images, format="xyz")
     if primary_prepared is not None and (needs_pdb or needs_gjf):
         convert_xyz_like_outputs(
             initial_trj,
