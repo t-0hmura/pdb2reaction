@@ -187,6 +187,7 @@ from .freq import (
     _mass_weighted_hessian,
     _calc_full_hessian_torch,
     _calc_energy,
+    _write_mode_trj_and_pdb,
 )
 
 
@@ -434,47 +435,6 @@ def _frequencies_cm_only(H_t: torch.Tensor,
         if torch.cuda.is_available() and H_t.is_cuda:
             torch.cuda.empty_cache()
         return freqs_cm
-
-
-def _write_mode_trj_and_pdb(geom,
-                            mode_vec_3N: np.ndarray,
-                            out_trj: Path,
-                            out_pdb: Path,
-                            amplitude_ang: float = 0.25,
-                            n_frames: int = 20,
-                            comment: str = "imag mode") -> None:
-    """
-    Write a single imaginary mode animation both as .trj (XYZ-like) and .pdb.
-    """
-    ref_ang = geom.coords.reshape(-1, 3) * BOHR2ANG
-    mode = mode_vec_3N.reshape(-1, 3).copy()
-    mode /= np.linalg.norm(mode)
-
-    # .trj (XYZ-like concatenation)
-    try:
-        from pysisyphus.xyzloader import make_trj_str  # type: ignore
-        amp_ang = amplitude_ang
-        steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
-        traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
-        comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
-        trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
-        out_trj.write_text(trj_str, encoding="utf-8")
-    except Exception:
-        with out_trj.open("w", encoding="utf-8") as f:
-            for i in range(n_frames):
-                phase = np.sin(2.0 * np.pi * i / n_frames)
-                coords = ref_ang + phase * amplitude_ang * mode
-                f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
-                for sym, (x, y, z) in zip(geom.atoms, coords):
-                    f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
-
-    # .pdb (MODEL/ENDMDL)
-    atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
-    for i in range(n_frames):
-        phase = np.sin(2.0 * np.pi * i / n_frames)
-        ai = atoms0.copy()
-        ai.set_positions(ref_ang + phase * amplitude_ang * mode)
-        write(out_pdb, ai, append=(i != 0))
 
 
 # ===================================================================
