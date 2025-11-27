@@ -1192,11 +1192,15 @@ class HessianDimer:
             out_trj = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.trj"
             out_pdb = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb"
             _write_mode_trj_and_pdb(
-                self.geom, v_cart, out_trj, out_pdb,
-                amplitude_ang=0.8, n_frames=20,
+                self.geom,
+                v_cart,
+                out_trj,
+                amplitude_ang=0.8,
+                n_frames=20,
                 comment=f"imag {freqs_cm[primary_idx]:+.2f} cm-1",
                 ref_pdb=self.ref_pdb,
                 write_pdb=self.ref_pdb is not None,
+                out_pdb=out_pdb,
             )
 
         if torch.cuda.is_available():
@@ -1638,11 +1642,15 @@ def cli(
                 gproxy = _GProxy(atoms=geometry.atoms, coords=geometry.coords.copy())
                 ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
                 _write_mode_trj_and_pdb(
-                    gproxy, v_cart, out_trj, out_pdb,
-                    amplitude_ang=0.8, n_frames=20,
+                    gproxy,
+                    v_cart,
+                    out_trj,
+                    amplitude_ang=0.8,
+                    n_frames=20,
                     comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1",
                     ref_pdb=ref_pdb,
                     write_pdb=ref_pdb is not None,
+                    out_pdb=out_pdb,
                 )
 
             if torch.cuda.is_available():
