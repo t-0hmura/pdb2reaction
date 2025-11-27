@@ -100,14 +100,14 @@ out_dir/ (default: ./result_path_search/)
   ├─ hei_seg_XX.xyz / hei_seg_XX.pdb # Highest-energy image snapshots; hei_seg_XX.gjf when a template is available
   ├─ hei_w_ref_seg_XX.pdb            # Merged HEI per bond-change segment (requires --ref-pdb)
   ├─ mep_plot.png                    # ΔE profile vs. image index (from trj2fig)
-  ├─ energy_diagram_GSM.png          # PNG export of the diagram when kaleido is installed
+  ├─ energy_diagram_MEP.png          # PNG export of the diagram when kaleido is installed
   └─ segments/
-      ├─ seg_000_gsm/ ...                # Initial GSM for each primary segment
+      ├─ seg_000_mep/ ...                # Initial GSM for each primary segment
       ├─ seg_000_left_<lbfgs|rfo>_opt/   # HEI-1 single-structure optimization
       ├─ seg_000_right_<lbfgs|rfo>_opt/  # HEI+1 single-structure optimization
-      ├─ seg_000_refine_gsm/ ...         # Refinement GSM (bond-change segments)
+      ├─ seg_000_refine_mep/ ...         # Refinement GSM (bond-change segments)
       ├─ seg_000_kink_...                # Kink interpolation optimizations (when applicable)
-      ├─ seg_000_seg_002_bridge_gsm/ ... # Bridge GSMs; path indicates bridged segments
+      ├─ seg_000_seg_002_bridge_mep/ ... # Bridge GSMs; path indicates bridged segments
       ├─ seg_001_...                     # Left-side recursive substeps (if any)
       └─ seg_002_...                     # Right-side recursive substeps (if any)
 
@@ -525,7 +525,7 @@ class SegmentReport:
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
 
 
-def _run_gsm_between(
+def _run_mep_between(
     gA,
     gB,
     shared_calc,
@@ -557,7 +557,7 @@ def _run_gsm_between(
         **gs_cfg,
     )
 
-    seg_dir = out_dir / f"{tag}_gsm"
+    seg_dir = out_dir / f"{tag}_mep"
     seg_dir.mkdir(parents=True, exist_ok=True)
     _opt_args = dict(opt_cfg)
     _opt_args["out_dir"] = str(seg_dir)
@@ -769,7 +769,7 @@ def _refine_between(
             shared_calc=shared_calc,
         )
 
-    return _run_gsm_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
+    return _run_mep_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
 
 
 def _maybe_bridge_segments(
@@ -809,7 +809,7 @@ def _maybe_bridge_segments(
             shared_calc=shared_calc,
         )
 
-    return _run_gsm_between(tail_g, head_g, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_bridge", ref_pdb_path=ref_pdb_path)
+    return _run_mep_between(tail_g, head_g, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_bridge", ref_pdb_path=ref_pdb_path)
 
 
 def _stitch_paths(
@@ -1016,7 +1016,7 @@ def _build_multistep_path(
             shared_calc=shared_calc,
         )
         if mep_mode_kind == "dmf"
-        else _run_gsm_between(
+        else _run_mep_between(
             gA,
                 gB,
                 shared_calc,
@@ -1049,7 +1049,7 @@ def _build_multistep_path(
             shared_calc=shared_calc,
         )
         if mep_mode_kind == "dmf"
-        else _run_gsm_between(
+        else _run_mep_between(
             gA,
             gB,
             shared_calc,
@@ -2352,7 +2352,7 @@ def cli(
             energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
 
             diagram_payload = {
-                "name": "energy_diagram_GSM",
+                "name": "energy_diagram_mep",
                 "labels": labels,
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
@@ -2375,7 +2375,7 @@ def cli(
             fig.update_layout(title=title_note)
 
             try:
-                png_path = out_dir_path / "energy_diagram_GSM.png"
+                png_path = out_dir_path / "energy_diagram_MEP.png"
                 fig.write_image(str(png_path), scale=2)
                 click.echo(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'")
             except Exception as e:
