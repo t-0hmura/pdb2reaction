@@ -4,8 +4,8 @@
 `scan` performs a staged, bond-length–driven scan using the UMA calculator and
 harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
 every integration step the temporary targets are updated, the restraint wells
-are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light)
-or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
+are applied, and the entire structure is relaxed with RFOptimizer (`--opt-mode` heavy, default)
+or LBFGS (`--opt-mode` light). After the biased walk, you can optionally
 run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
 
@@ -13,6 +13,7 @@ to disk.
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
                   --scan-lists "[(i,j,targetÅ), ...]" [options]
+                  [--convert-files/--no-convert-files]
 ```
 
 ### Examples
@@ -57,9 +58,10 @@ pdb2reaction scan -i input.pdb -q 0 \
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during each biased step. Overrides `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `heavy` |
 | `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | Inherit YAML |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
@@ -83,12 +85,13 @@ UMA-based bond-change detection mirrored from `path_search`:
 
 ## Outputs
 - `<out-dir>/preopt/` when `--preopt True`:
-  - `result.xyz`, `result.gjf` (if the input provided a Gaussian template), and
-    `result.pdb` (for PDB inputs).
+  - `result.xyz`, `result.gjf` (if the input provided a Gaussian template and conversion is enabled), and
+    `result.pdb` (for PDB inputs when conversion is enabled).
 - `<out-dir>/stage_XX/` for each stage:
   - `result.xyz` and optional `result.gjf`/`result.pdb` mirrors of the final
-    structure (after `--endopt`).
-  - `scan.trj` when `--dump True` plus `scan.pdb` for PDB inputs.
+    structure (after `--endopt`, conversion enabled).
+  - `scan.trj` when `--dump True` plus `scan.pdb`/`scan.gjf` companions for
+    PDB/Gaussian inputs when conversion is enabled.
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and
   optimizer blocks plus per-stage bond-change reports.
 
@@ -102,7 +105,7 @@ UMA-based bond-change detection mirrored from `path_search`:
 - Charge and spin inherit Gaussian template metadata when available; otherwise
   `-q/--charge` is required and spin defaults to `1`.
 - Trajectories are written only when `--dump` is `True`; this also triggers PDB
-  conversion for PDB inputs.
+  or Gaussian conversion when `--convert-files` is enabled.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. CLI parameters override YAML. Shared sections

@@ -1,14 +1,15 @@
 # `path-opt` subcommand
 
 ## Overview
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections.
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. DMF is the default path generator, and single-structure optimizations default to the `heavy` (RFO) preset.
 
 ## Usage
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
                       [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                       [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
-                      [--out-dir DIR] [--args-yaml FILE]
+                      [--out-dir DIR] [--args-yaml FILE] \
+                      [--convert-files/--no-convert-files]
 ```
 
 ## Workflow
@@ -18,7 +19,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
    - `StringOptimizer.align` remains disabled because the explicit alignment/refinement already handles the superposition.
 2. **String growth and HEI export**
    - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
-   - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available.
+   - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
 
 ### Key behaviours
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
@@ -36,9 +37,12 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
 | `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
+| `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `dmf` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
 | `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump BOOL` | Dump GSM trajectories/restarts. | `False` |
+| `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `heavy` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | YAML/default |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
@@ -50,10 +54,10 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 ```
 out_dir/
 ├─ final_geometries.trj        # XYZ path; comment line holds energies when provided
-├─ final_geometries.pdb        # Only when the first endpoint was a PDB
+├─ final_geometries.pdb        # Only when the first endpoint was a PDB (conversion enabled)
 ├─ hei.xyz                     # Highest-energy image with its energy on the comment line
-├─ hei.pdb                     # HEI converted to PDB when the first endpoint was a PDB
-├─ hei.gjf                     # HEI written using a detected Gaussian template
+├─ hei.pdb                     # HEI converted to PDB when the first endpoint was a PDB (conversion enabled)
+├─ hei.gjf                     # HEI written using a detected Gaussian template (conversion enabled)
 ├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created only when scan output exists)
 └─ <optimizer dumps/restarts>  # Present when dumping is enabled
 ```

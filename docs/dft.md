@@ -8,7 +8,8 @@ Run single-point DFT calculations with a GPU-first policy (GPU4PySCF when availa
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m 2S+1] \
                  --func-basis "FUNC/BASIS" \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--engine gpu|cpu|auto] [--args-yaml FILE]
+                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+                 [--args-yaml FILE]
 ```
 
 ### Examples
@@ -39,10 +40,11 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu|cpu|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
+| `--convert-files/--no-convert-files` | Toggle XYZ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
-- `<out-dir>/input_geometry.xyz`: Geometry snapshot passed to PySCF (identical coordinates to the input file). `.gjf` is emitted when the input had Gaussian metadata.
+- `<out-dir>/input_geometry.xyz`: Geometry snapshot passed to PySCF (identical coordinates to the input file). `.gjf` is emitted when the input had Gaussian metadata and conversion is enabled.
 - `<out-dir>/result.yaml`:
   - `energy` block with Hartree/kcal·mol⁻¹ values, convergence flag, wall time, and engine metadata (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
   - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (IAO may be `null` if unavailable).

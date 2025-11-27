@@ -14,7 +14,7 @@ Usage (CLI)
 
 Examples
 --------
-    # Minimal geometry optimization with default LBFGS settings
+    # Minimal geometry optimization with default RFO (heavy) settings
     pdb2reaction opt -i input.pdb -q 0 -m 1
 
     # RFO with trajectory dumps and YAML overrides
@@ -25,7 +25,7 @@ Description
 -----------
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
-- Optimizers: LBFGS ("light") or RFOptimizer ("heavy").
+- Optimizers: LBFGS ("light") or RFOptimizer ("heavy", default).
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** CLI > YAML > built-in defaults.
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
@@ -145,8 +145,8 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    maybe_convert_xyz_to_gjf,
-    GjfTemplate,
+    set_convert_file_enabled,
+    convert_xyz_like_outputs,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -404,53 +404,51 @@ def _resolve_dist_freeze_targets(
     return resolved
 
 
-def _maybe_convert_outputs_to_pdb(
-    input_path: Path,
+def _maybe_convert_outputs(
+    prepared_input: "PreparedInputStructure",
     out_dir: Path,
     dump: bool,
     get_trj_fn,
     final_xyz_path: Path,
 ) -> None:
-    """If the input is a PDB, convert outputs (final_geometry.xyz and, if dump, optimization.trj) to PDB."""
-    if input_path.suffix.lower() != ".pdb":
+    """Convert outputs (final geometry and trajectory) to PDB/GJF when requested by the input type."""
+    needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
+    needs_gjf = prepared_input.is_gjf
+    if not (needs_pdb or needs_gjf):
         return
 
-    ref_pdb = input_path.resolve()
-    # final_geometry.xyz → final_geometry.pdb
-    final_pdb = out_dir / "final_geometry.pdb"
-    try:
-        convert_xyz_to_pdb(final_xyz_path, ref_pdb, final_pdb)
-        click.echo(f"[convert] Wrote '{final_pdb}'.")
-    except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert final geometry to PDB: {e}", err=True)
+    ref_pdb = prepared_input.source_path.resolve() if needs_pdb else None
 
-    # optimization.trj → optimization.pdb (if dump)
+    # final_geometry.xyz → final_geometry.{pdb|gjf}
+    try:
+        convert_xyz_like_outputs(
+            final_xyz_path,
+            prepared_input,
+            ref_pdb_path=ref_pdb,
+            out_pdb_path=out_dir / "final_geometry.pdb" if needs_pdb else None,
+            out_gjf_path=out_dir / "final_geometry.gjf" if needs_gjf else None,
+        )
+        click.echo("[convert] Wrote 'final_geometry' outputs.")
+    except Exception as e:
+        click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
+
+    # optimization.trj → optimization.{pdb|gjf} (if dump)
     if dump:
         try:
             trj_path = get_trj_fn("optimization.trj")
             if trj_path.exists():
-                opt_pdb = out_dir / "optimization.pdb"
-                convert_xyz_to_pdb(trj_path, ref_pdb, opt_pdb)
-                click.echo(f"[convert] Wrote '{opt_pdb}'.")
+                convert_xyz_like_outputs(
+                    trj_path,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=out_dir / "optimization.pdb" if needs_pdb else None,
+                    out_gjf_path=out_dir / "optimization.gjf" if needs_gjf else None,
+                )
+                click.echo("[convert] Wrote 'optimization' outputs.")
             else:
-                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping PDB conversion.", err=True)
+                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
         except Exception as e:
-            click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
-
-
-def _maybe_write_final_gjf(
-    template: Optional[GjfTemplate],
-    final_xyz_path: Path,
-    out_dir: Path,
-) -> None:
-    if template is None:
-        return
-    final_gjf = out_dir / "final_geometry.gjf"
-    try:
-        maybe_convert_xyz_to_gjf(final_xyz_path, template, final_gjf)
-        click.echo(f"[convert] Wrote '{final_gjf}'.")
-    except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert final geometry to GJF: {e}", err=True)
+            click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
 
 
 # -----------------------------------------------
@@ -509,6 +507,13 @@ def _maybe_write_final_gjf(
     help="Freeze the parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
+@click.option(
     "--max-cycles",
     type=int,
     default=10000,
@@ -518,7 +523,7 @@ def _maybe_write_final_gjf(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO).",
 )
@@ -556,6 +561,7 @@ def cli(
     one_based: bool,
     bias_k: float,
     freeze_links: bool,
+    convert_files: bool,
     max_cycles: int,
     opt_mode: str,
     dump: bool,
@@ -564,6 +570,7 @@ def cli(
     args_yaml: Optional[Path],
 ) -> None:
     time_start = time.perf_counter()
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
@@ -719,14 +726,13 @@ def cli(
         # --------------------------
         # Final geometry location (Optimizer sets final_fn during run)
         final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
-        _maybe_convert_outputs_to_pdb(
-            input_path=input_path,
+        _maybe_convert_outputs(
+            prepared_input=prepared_input,
             out_dir=out_dir_path,
             dump=bool(opt_cfg["dump"]),
             get_trj_fn=optimizer.get_path_for_fn,
             final_xyz_path=final_xyz_path,
         )
-        _maybe_write_final_gjf(prepared_input.gjf_template, final_xyz_path, out_dir_path)
 
         click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
 

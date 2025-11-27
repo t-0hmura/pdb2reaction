@@ -1,13 +1,13 @@
 # `opt` subcommand
 
 ## Overview
-`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. The command applies settings in the priority order **CLI > `--args-yaml` > built-in defaults**, making it easy to keep lightweight defaults while selectively overriding options.
+`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. The command applies settings in the priority order **CLI > `--args-yaml` > built-in defaults**, making it easy to keep heavyweight defaults while selectively overriding options. The optimizer preset now defaults to the RFO-based **`heavy`** mode.
 
-When the starting structure is a PDB, two PDB-specific conveniences are available:
+When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors outputs into `.pdb` or multi-geometry `.gjf` companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
 - Output conversion produces `final_geometry.pdb` (and `optimization.pdb` when dumping trajectories) using the input PDB as the topology reference.
 
-A Gaussian `.gjf` template, when detected, seeds the charge/spin defaults and enables automatic export of the optimized structure as `final_geometry.gjf`.
+A Gaussian `.gjf` template seeds the charge/spin defaults and enables automatic export of the optimized structure and trajectories as `.gjf` when conversion is enabled.
 
 ## Usage
 ```bash
@@ -15,15 +15,16 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
                  [--opt-mode light|heavy] [--freeze-links BOOL] \
                  [--dist-freeze "[(i,j,target_A), ...]"] [--one-based|--zero-based] \
                  [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
-                 [--max-cycles N] [--thresh PRESET] [--args-yaml FILE]
+                 [--max-cycles N] [--thresh PRESET] [--args-yaml FILE] \
+                 [--convert-files/--no-convert-files]
 ```
 
 ## Workflow
-- **Optimizers**: `--opt-mode light` → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control.
+- **Optimizers**: `--opt-mode light` → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control (default).
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If no template exists, the fallback is `0/1`. Always pass the physically correct values explicitly.
 - **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
-- **Dumping**: `--dump True` mirrors `opt.dump=True` and writes `optimization.trj` (+ `.pdb` for PDB inputs). `opt.dump_restart` can emit restart YAML snapshots.
+- **Dumping & conversion**: `--dump True` mirrors `opt.dump=True` and writes `optimization.trj`; when conversion is enabled, trajectories are mirrored to `.pdb` (PDB inputs) or `.gjf` (Gaussian templates). `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
 
 ## CLI options
@@ -37,8 +38,9 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
 | `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
+| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `heavy` |
 | `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
+| `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB/GJF companions for inputs with PDB/Gaussian templates. | `--convert-files` |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | YAML/default |
 | `--args-yaml FILE` | Supply YAML overrides (sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`). | _None_ |
@@ -47,10 +49,11 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 ```
 out_dir/
 ├─ final_geometry.xyz          # Always written
-├─ final_geometry.pdb          # Only when the input was a PDB
-├─ final_geometry.gjf          # When a Gaussian template was detected
+├─ final_geometry.pdb          # Only when the input was a PDB and conversion is enabled
+├─ final_geometry.gjf          # When a Gaussian template was detected and conversion is enabled
 ├─ optimization.trj            # Only if dumping is enabled
-├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs)
+├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs, conversion enabled)
+├─ optimization.gjf            # Multi-geometry Gaussian dump (Gaussian templates, conversion enabled)
 └─ restart*.yml                # Optional restarts when opt.dump_restart is set
 ```
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
