@@ -1,12 +1,12 @@
 # `path-opt` subcommand
 
 ## Overview
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM). UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections.
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections.
 
 ## Usage
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
-                      [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
+                      [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                       [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
                       [--out-dir DIR] [--args-yaml FILE]
 ```
@@ -51,9 +51,9 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 out_dir/
 ├─ final_geometries.trj        # XYZ path; comment line holds energies when provided
 ├─ final_geometries.pdb        # Only when the first endpoint was a PDB
-├─ gsm_hei.xyz                 # Highest-energy image with its energy on the comment line
-├─ gsm_hei.pdb                 # HEI converted to PDB when the first endpoint was a PDB
-├─ gsm_hei.gjf                 # HEI written using a detected Gaussian template
+├─ hei.xyz                     # Highest-energy image with its energy on the comment line
+├─ hei.pdb                     # HEI converted to PDB when the first endpoint was a PDB
+├─ hei.gjf                     # HEI written using a detected Gaussian template
 ├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created only when scan output exists)
 └─ <optimizer dumps/restarts>  # Present when dumping is enabled
 ```

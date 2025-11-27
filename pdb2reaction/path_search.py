@@ -165,6 +165,8 @@ from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .path_opt import (
     _maybe_convert_to_pdb,
     _optimize_single,
+    _run_dmf_mep,
+    _write_ase_trj_with_energy,
     GS_KW as _PATH_GS_KW,
     STOPT_KW as _PATH_STOPT_KW,
 )
@@ -575,7 +577,7 @@ def _run_gsm_between(
     try:
         hei_geom = images[hei_idx]
         hei_E = float(E[hei_idx])
-        hei_xyz = seg_dir / "gsm_hei.xyz"
+        hei_xyz = seg_dir / "hei.xyz"
         s = hei_geom.as_xyz()
         lines = s.splitlines()
         if len(lines) >= 2 and lines[0].strip().isdigit():
@@ -586,13 +588,69 @@ def _run_gsm_between(
         with open(hei_xyz, "w") as f:
             f.write(s_out)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
-        _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "gsm_hei.pdb")
+        _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "hei.pdb")
         if gjf_template is not None:
-            _maybe_convert_to_gjf(hei_xyz, gjf_template, seg_dir / "gsm_hei.gjf")
+            _maybe_convert_to_gjf(hei_xyz, gjf_template, seg_dir / "hei.gjf")
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
     return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
+
+
+def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None):
+    """
+    Convert ASE Atoms → pysisyphus Geometry, preserving freeze_atoms when present.
+    """
+
+    from io import StringIO
+    from ase.io import write as ase_write
+
+    buf = StringIO()
+    ase_write(buf, atoms, format="xyz")
+    buf.seek(0)
+    g = geom_loader(buf, coord_type=coord_type)
+    try:
+        g.freeze_atoms = np.array(getattr(template_g, "freeze_atoms", []), dtype=int)
+    except Exception:
+        pass
+    if shared_calc is not None:
+        g.set_calculator(shared_calc)
+    return g
+
+
+def _run_dmf_between(
+    gA,
+    gB,
+    calc_cfg: Dict[str, Any],
+    out_dir: Path,
+    tag: str,
+    ref_pdb_path: Optional[Path],
+    max_nodes: int,
+    source_paths: Sequence[Path],
+    shared_calc,
+) -> GSMResult:
+    """
+    Run DMF for a segment and convert outputs to pysisyphus Geometries.
+    """
+
+    seg_dir = out_dir / f"{tag}_dmf"
+    seg_dir.mkdir(parents=True, exist_ok=True)
+
+    dmf_res = _run_dmf_mep([gA, gB], calc_cfg, seg_dir, source_paths, max_nodes, gjf_template=_PRIMARY_GJF_TEMPLATE)
+
+    energies = list(map(float, dmf_res.energies))
+
+    final_trj = seg_dir / "final_geometries.trj"
+    _write_ase_trj_with_energy(dmf_res.images, energies, final_trj)
+    _maybe_convert_to_pdb(final_trj, ref_pdb_path)
+
+    imgs: List[Any] = []
+    for atoms in dmf_res.images:
+        imgs.append(
+            _ase_atoms_to_geom(atoms, coord_type=gA.coord_type, template_g=gA, shared_calc=shared_calc)
+        )
+
+    return GSMResult(images=imgs, energies=energies, hei_idx=int(dmf_res.hei_idx))
 
 
 def _refine_between(
@@ -604,10 +662,28 @@ def _refine_between(
     out_dir: Path,
     tag: str,
     ref_pdb_path: Optional[Path],
+    mep_mode_kind: str,
+    calc_cfg: Dict[str, Any],
+    max_nodes: int,
+    source_paths: Sequence[Path],
 ) -> GSMResult:
     """
-    Refine End1–End2 via GSM.
+    Refine End1–End2 via GSM or DMF depending on the selected mode.
     """
+
+    if mep_mode_kind == "dmf":
+        return _run_dmf_between(
+            gL,
+            gR,
+            calc_cfg,
+            out_dir,
+            tag=f"{tag}_refine",
+            ref_pdb_path=ref_pdb_path,
+            max_nodes=max_nodes,
+            source_paths=source_paths,
+            shared_calc=shared_calc,
+        )
+
     return _run_gsm_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
 
 
@@ -621,6 +697,10 @@ def _maybe_bridge_segments(
     tag: str,
     rmsd_thresh: float,
     ref_pdb_path: Optional[Path],
+    mep_mode_kind: str,
+    calc_cfg: Dict[str, Any],
+    max_nodes: int,
+    source_paths: Sequence[Path],
 ) -> Optional[GSMResult]:
     """
     Run a bridge GSM if two segment endpoints are farther than the threshold.
@@ -628,7 +708,22 @@ def _maybe_bridge_segments(
     rmsd = _rmsd_between(tail_g, head_g, align=False)
     if rmsd <= rmsd_thresh:
         return None
-    click.echo(f"[{tag}] Gap detected between segments (RMSD={rmsd:.4e} Å) — bridging via GSM.")
+    click.echo(
+        f"[{tag}] Gap detected between segments (RMSD={rmsd:.4e} Å) — bridging via {mep_mode_kind.upper()}."
+    )
+    if mep_mode_kind == "dmf":
+        return _run_dmf_between(
+            tail_g,
+            head_g,
+            calc_cfg,
+            out_dir,
+            tag=f"{tag}_bridge",
+            ref_pdb_path=ref_pdb_path,
+            max_nodes=max_nodes,
+            source_paths=source_paths,
+            shared_calc=shared_calc,
+        )
+
     return _run_gsm_between(tail_g, head_g, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_bridge", ref_pdb_path=ref_pdb_path)
 
 
@@ -646,6 +741,10 @@ def _stitch_paths(
     segment_builder: Optional[Callable[[Any, Any, str], "CombinedPath"]] = None,
     segments_out: Optional[List["SegmentReport"]] = None,
     bridge_pair_index: Optional[int] = None,
+    mep_mode_kind: str = "gsm",
+    calc_cfg: Optional[Dict[str, Any]] = None,
+    max_nodes: int = 10,
+    source_paths: Optional[Sequence[Path]] = None,
 ) -> Tuple[List[Any], List[float]]:
     """
     Concatenate path parts (images, energies). Insert bridge GSMs when needed.
@@ -721,7 +820,9 @@ def _stitch_paths(
 
             br = _maybe_bridge_segments(
                 tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
-                rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path
+                rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path,
+                mep_mode_kind=mep_mode_kind, calc_cfg=calc_cfg or {}, max_nodes=max_nodes,
+                source_paths=source_paths or [],
             )
             if br is not None:
                 _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
@@ -798,6 +899,9 @@ def _build_multistep_path(
     sopt_cfg: Dict[str, Any],
     bond_cfg: Dict[str, Any],
     search_cfg: Dict[str, Any],
+    mep_mode_kind: str,
+    calc_cfg: Dict[str, Any],
+    source_paths: Sequence[Path],
     out_dir: Path,
     ref_pdb_path: Optional[Path],
     depth: int,
@@ -813,7 +917,30 @@ def _build_multistep_path(
 
     if depth > int(search_cfg.get("max_depth", 10)):
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
-        gsm = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=f"seg_{seg_counter[0]:03d}_maxdepth", ref_pdb_path=ref_pdb_path)
+        gsm = (
+            _run_dmf_between(
+                gA,
+                gB,
+                calc_cfg,
+                out_dir,
+                tag=f"seg_{seg_counter[0]:03d}_maxdepth",
+                ref_pdb_path=ref_pdb_path,
+                max_nodes=seg_max_nodes,
+                source_paths=source_paths,
+                shared_calc=shared_calc,
+            )
+            if mep_mode_kind == "dmf"
+            else _run_gsm_between(
+                gA,
+                gB,
+                shared_calc,
+                gs_seg_cfg,
+                opt_cfg,
+                out_dir,
+                tag=f"seg_{seg_counter[0]:03d}_maxdepth",
+                ref_pdb_path=ref_pdb_path,
+            )
+        )
         seg_counter[0] += 1
         _tag_images(gsm.images, pair_index=pair_index)
         return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[])
@@ -822,7 +949,21 @@ def _build_multistep_path(
     seg_counter[0] += 1
     tag0 = f"seg_{seg_id:03d}"
 
-    gsm0 = _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
+    gsm0 = (
+        _run_dmf_between(
+            gA,
+            gB,
+            calc_cfg,
+            out_dir,
+            tag=tag0,
+            ref_pdb_path=ref_pdb_path,
+            max_nodes=seg_max_nodes,
+            source_paths=source_paths,
+            shared_calc=shared_calc,
+        )
+        if mep_mode_kind == "dmf"
+        else _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
+    )
 
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
@@ -861,7 +1002,20 @@ def _build_multistep_path(
         click.echo(f"[{tag0}] Kink not detected (covalent changes present between End1 and End2).")
         if lr_summary:
             click.echo(textwrap.indent(lr_summary, prefix="  "))
-        ref1 = _refine_between(left_end, right_end, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
+        ref1 = _refine_between(
+            left_end,
+            right_end,
+            shared_calc,
+            gs_seg_cfg,
+            opt_cfg,
+            out_dir,
+            tag=tag0,
+            ref_pdb_path=ref_pdb_path,
+            mep_mode_kind=mep_mode_kind,
+            calc_cfg=calc_cfg,
+            max_nodes=seg_max_nodes,
+            source_paths=source_paths,
+        )
         step_tag_for_report = f"{tag0}_refine"
 
     step_imgs, step_E = ref1.images, ref1.energies
@@ -901,7 +1055,7 @@ def _build_multistep_path(
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
             out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
@@ -915,7 +1069,7 @@ def _build_multistep_path(
     if right_changed:
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
             out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index
         )
@@ -932,7 +1086,7 @@ def _build_multistep_path(
             shared_calc,
             geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg,
-            bond_cfg, search_cfg,
+            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
             depth=depth + 1,
@@ -957,6 +1111,10 @@ def _build_multistep_path(
         segment_builder=_segment_builder,
         segments_out=seg_reports,
         bridge_pair_index=pair_index,
+        mep_mode_kind=mep_mode_kind,
+        calc_cfg=calc_cfg,
+        max_nodes=bridge_max_nodes,
+        source_paths=source_paths,
     )
 
     _tag_images(stitched_imgs, pair_index=pair_index)
@@ -1382,6 +1540,13 @@ def _merge_final_and_write(final_images: List[Any],
           "followed by multiple space-separated paths (e.g., '-i A B C').")
 )
 @click.option(
+    "--mep-mode",
+    type=click.Choice(["gsm", "dmf"], case_sensitive=False),
+    default="gsm",
+    show_default=True,
+    help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
+)
+@click.option(
     "-q",
     "--charge",
     type=int,
@@ -1459,6 +1624,7 @@ def _merge_final_and_write(final_images: List[Any],
 def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
+    mep_mode: str,
     charge: Optional[int],
     spin: Optional[int],
     freeze_links_flag: bool,
@@ -1527,7 +1693,11 @@ def cli(
         # 0) Input validation (multi‑structure)
         # --------------------------
         if len(input_paths) < 2:
-            raise click.BadParameter("Provide at least two structures for --input in reaction order (reactant [intermediates ...] product).")
+            raise click.BadParameter(
+                "Provide at least two structures for --input in reaction order (reactant [intermediates ...] product)."
+            )
+
+        mep_mode_kind = mep_mode.strip().lower()
 
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
         if do_merge:
@@ -1636,7 +1806,12 @@ def cli(
         click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
-        click.echo(pretty_block("run_flags", {"preopt": bool(preopt), "align": bool(align)}))
+        click.echo(
+            pretty_block(
+                "run_flags",
+                {"preopt": bool(preopt), "align": bool(align), "mep_mode": mep_mode_kind},
+            )
+        )
 
         # --------------------------
         # 2) Prepare inputs
@@ -1708,7 +1883,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg,
+                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 depth=0,
@@ -1727,7 +1902,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg,
+                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 depth=0,
@@ -1756,6 +1931,10 @@ def cli(
                     segment_builder=_segment_builder_for_pairs,
                     segments_out=seg_reports_all,
                     bridge_pair_index=i,
+                    mep_mode_kind=mep_mode_kind,
+                    calc_cfg=calc_cfg,
+                    max_nodes=bridge_max_nodes,
+                    source_paths=p_list,
                 )
                 seg_reports_all.extend(pair_path.segments)
 

@@ -41,9 +41,9 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_path_opt/)
   ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line carries per-image energy when available
   ├─ final_geometries.pdb        # Converted from .trj when the *first* endpoint is a PDB
-  ├─ gsm_hei.xyz                 # Highest-energy image with energy on the comment line
-  ├─ gsm_hei.pdb                 # HEI converted to PDB when the *first* endpoint is a PDB
-  ├─ gsm_hei.gjf                 # HEI written using a detected .gjf template, when available
+    ├─ hei.xyz                     # Highest-energy image with energy on the comment line
+    ├─ hei.pdb                     # HEI converted to PDB when the *first* endpoint is a PDB
+    ├─ hei.gjf                     # HEI written using a detected .gjf template, when available
   ├─ align_refine/               # Files from external alignment/refinement
   └─ <optimizer dumps / restarts>  # Emitted when dumping is enabled (e.g., via `--dump` and/or YAML `dump_restart` settings)
 
@@ -59,8 +59,9 @@ Notes
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import sys
 import traceback
@@ -202,6 +203,148 @@ def _maybe_convert_to_pdb(
         return None
 
 
+def _select_hei_index(energies: Sequence[float]) -> int:
+    """Pick an HEI index preferring internal local maxima."""
+
+    E = np.array(energies, dtype=float)
+    nE = int(len(E))
+    hei_idx = None
+    if nE >= 3:
+        candidates = [i for i in range(1, nE - 1) if (E[i] > E[i - 1] and E[i] > E[i + 1])]
+        if candidates:
+            hei_idx = int(max(candidates, key=lambda i: E[i]))
+        else:
+            hei_idx = 1 + int(np.argmax(E[1:-1]))
+    if hei_idx is None:
+        hei_idx = int(np.argmax(E))
+    return hei_idx
+
+
+def _write_ase_trj_with_energy(images: Sequence[Any], energies: Sequence[float], path: Path) -> None:
+    """Write an XYZ `.trj` from ASE Atoms with the energy on line 2."""
+
+    blocks = []
+    for atoms, e in zip(images, np.array(energies, dtype=float)):
+        symbols = atoms.get_chemical_symbols()
+        coords = atoms.get_positions()
+        lines = [str(len(symbols)), f"{e:.12f}"]
+        lines.extend(
+            f"{sym} {x:.15f} {y:.15f} {z:.15f}" for sym, (x, y, z) in zip(symbols, coords)
+        )
+        blocks.append("\n".join(lines) + "\n")
+
+    with open(path, "w") as f:
+        f.write("".join(blocks))
+
+
+@dataclass
+class DMFMepResult:
+    images: List[Any]
+    energies: List[float]
+    hei_idx: int
+
+
+def _run_dmf_mep(
+    geoms: Sequence[Any],
+    calc_cfg: Dict[str, Any],
+    out_dir_path: Path,
+    source_paths: Sequence[Path],
+    max_nodes: int,
+    gjf_template: Optional[Any] = None,
+) -> DMFMepResult:
+    """Run Direct Max Flux (DMF) MEP optimization between two endpoints."""
+
+    try:
+        import torch
+        from ase.io import read as ase_read
+        from ase.io import write as ase_write
+        from fairchem.core import pretrained_mlip, FAIRChemCalculator
+        from torch_dmf import DirectMaxFlux, interpolate_fbenm
+    except Exception as e:
+        raise RuntimeError(
+            "DMF mode requires torch, ase, fairchem, and torch_dmf to be installed."
+        ) from e
+
+    def _geom_to_ase(g: Any):
+        from io import StringIO
+
+        return ase_read(StringIO(g.as_xyz()), format="xyz")
+
+    device = str(calc_cfg.get("device", "auto"))
+    if device == "auto":
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    ref_images = [_geom_to_ase(g) for g in geoms]
+    charge = int(calc_cfg.get("charge", 0))
+    spin = int(calc_cfg.get("spin", 1))
+    for img in ref_images:
+        img.info["charge"] = charge
+        img.info["spin"] = spin
+
+    ref_pdb = (
+        source_paths[0].resolve()
+        if source_paths and source_paths[0].suffix.lower() == ".pdb"
+        else None
+    )
+
+    predictor = pretrained_mlip.get_predict_unit(
+        calc_cfg.get("model", "uma-s-1p1"),
+        device=device,
+    )
+
+    calc_uma = FAIRChemCalculator(
+        predictor,
+        task_name=str(calc_cfg.get("task_name", "omol")),
+    )
+
+    mxflx_fbenm = interpolate_fbenm(
+        ref_images,
+        fbenm_only_endpoints=False,
+        correlated=True,
+        output_file=str(out_dir_path / "dmf_fbenm_ipopt.out"),
+        device=device,
+        dtype="float64",
+    )
+
+    initial_trj = out_dir_path / "dmf_initial.trj"
+    ase_write(initial_trj, mxflx_fbenm.images)
+    _maybe_convert_to_pdb(initial_trj, ref_pdb)
+    coefs = mxflx_fbenm.coefs.copy()
+
+    mxflx = DirectMaxFlux(
+        ref_images,
+        coefs=coefs,
+        nmove=max(1, int(max_nodes)),
+        update_teval=True,
+        device=device,
+        dtype="float64",
+    )
+
+    for image in mxflx.images:
+        if "charge" not in image.info:
+            image.info["charge"] = charge
+        if "spin" not in image.info:
+            image.info["spin"] = spin
+        image.calc = calc_uma
+
+    mxflx.add_ipopt_options({"output_file": str(out_dir_path / "dmf_ipopt.out")})
+    mxflx.solve(tol="tight")
+
+    energies = [float(img.get_potential_energy()) for img in mxflx.images]
+    hei_idx = _select_hei_index(energies)
+
+    final_trj = out_dir_path / "final_geometries.trj"
+    _write_ase_trj_with_energy(mxflx.images, energies, final_trj)
+
+    _maybe_convert_to_pdb(final_trj, ref_pdb)
+    if gjf_template is not None:
+        hei_tmp = out_dir_path / "hei.xyz"
+        _write_ase_trj_with_energy([mxflx.images[hei_idx]], [energies[hei_idx]], hei_tmp)
+        maybe_convert_xyz_to_gjf(hei_tmp, gjf_template, out_dir_path / "hei.gjf")
+
+    return DMFMepResult(images=list(mxflx.images), energies=list(energies), hei_idx=int(hei_idx))
+
+
 def _optimize_single(
     g,
     shared_calc,
@@ -259,6 +402,13 @@ def _optimize_single(
     nargs=2,
     required=True,
     help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
+)
+@click.option(
+    "--mep-mode",
+    type=click.Choice(["gsm", "dmf"], case_sensitive=False),
+    default="gsm",
+    show_default=True,
+    help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
@@ -356,6 +506,7 @@ def _optimize_single(
 )
 def cli(
     input_paths: Sequence[Path],
+    mep_mode: str,
     charge: Optional[int],
     spin: Optional[int],
     freeze_links_flag: bool,
@@ -440,6 +591,7 @@ def cli(
         rfo_cfg["out_dir"] = out_dir
 
         opt_kind = opt_mode.strip().lower()
+        mep_mode_kind = mep_mode.strip().lower()
         if opt_kind == "light":
             sopt_kind = "lbfgs"
             sopt_cfg = lbfgs_cfg
@@ -468,7 +620,11 @@ def cli(
         click.echo(
             pretty_block(
                 "run_flags",
-                {"preopt": bool(preopt), "preopt_max_cycles": int(preopt_max_cycles)},
+                {
+                    "preopt": bool(preopt),
+                    "preopt_max_cycles": int(preopt_max_cycles),
+                    "mep_mode": mep_mode_kind,
+                },
             )
         )
 
@@ -543,6 +699,54 @@ def cli(
             click.echo("[align] Completed input alignment.")
         except Exception as e:
             click.echo(f"[align] WARNING: alignment skipped: {e}", err=True)
+
+        if mep_mode_kind == "dmf":
+            try:
+                dmf_res = _run_dmf_mep(
+                    geoms,
+                    calc_cfg,
+                    out_dir_path,
+                    source_paths,
+                    max_nodes,
+                    next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None),
+                )
+            except Exception as e:
+                click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
+                sys.exit(3)
+
+            try:
+                hei_idx = int(dmf_res.hei_idx)
+                hei_xyz = out_dir_path / "hei.xyz"
+                _write_ase_trj_with_energy(
+                    [dmf_res.images[hei_idx]], [dmf_res.energies[hei_idx]], hei_xyz
+                )
+                click.echo(f"[write] Wrote '{hei_xyz}'.")
+
+                ref_pdb = (
+                    source_paths[0].resolve()
+                    if source_paths and source_paths[0].suffix.lower() == ".pdb"
+                    else None
+                )
+                _maybe_convert_to_pdb(hei_xyz, ref_pdb, out_dir_path / "hei.pdb")
+
+                template = next(
+                    (prep.gjf_template for prep in prepared_inputs if prep.gjf_template),
+                    None,
+                )
+                if template is not None:
+                    try:
+                        maybe_convert_xyz_to_gjf(hei_xyz, template, out_dir_path / "hei.gjf")
+                        click.echo(f"[convert] Wrote '{out_dir_path / 'hei.gjf'}'.")
+                    except Exception as e:
+                        click.echo(
+                            f"[convert] WARNING: Failed to convert HEI to GJF: {e}", err=True
+                        )
+            except Exception as e:
+                click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
+                sys.exit(5)
+
+            click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
+            return
 
         for g in geoms:
             g.set_calculator(shared_calc)
@@ -619,32 +823,16 @@ def cli(
             sys.exit(4)
 
         # --------------------------
-        # 6) Identify and write HEI (gsm_hei.xyz[/pdb/.gjf])
+        # 6) Identify and write HEI (hei.xyz[/pdb/.gjf])
         # --------------------------
         try:
             energies = np.array(gs.energy, dtype=float)
-            nE = int(len(energies))
-            hei_idx = None
-            if nE >= 3:
-                candidates = [
-                    i
-                    for i in range(1, nE - 1)
-                    if energies[i] > energies[i - 1] and energies[i] > energies[i + 1]
-                ]
-                if candidates:
-                    cand_es = energies[candidates]
-                    rel = int(np.argmax(cand_es))
-                    hei_idx = int(candidates[rel])
-                else:
-                    rel = int(np.argmax(energies[1:-1]))
-                    hei_idx = 1 + rel
-            if hei_idx is None:
-                hei_idx = int(np.argmax(energies))
+            hei_idx = _select_hei_index(energies)
 
-            hei_geom = gs.images[hei_idx]
-            hei_E = float(energies[hei_idx])
+            hei_geom = gs.images[int(hei_idx)]
+            hei_E = float(energies[int(hei_idx)])
 
-            hei_xyz = out_dir_path / "gsm_hei.xyz"
+            hei_xyz = out_dir_path / "hei.xyz"
             s = hei_geom.as_xyz()
             lines = s.splitlines()
             if len(lines) >= 2 and lines[0].strip().isdigit():
@@ -658,12 +846,12 @@ def cli(
             if source_paths[0].suffix.lower() == ".pdb":
                 ref_pdb = source_paths[0].resolve()
             if ref_pdb is not None:
-                hei_pdb = out_dir_path / "gsm_hei.pdb"
+                hei_pdb = out_dir_path / "hei.pdb"
                 convert_xyz_to_pdb(hei_xyz, ref_pdb, hei_pdb)
                 click.echo(f"[convert] Wrote '{hei_pdb}'.")
             else:
                 click.echo(
-                    "[convert] Skipped 'gsm_hei.pdb' (no PDB reference among inputs)."
+                    "[convert] Skipped 'hei.pdb' (no PDB reference among inputs)."
                 )
 
             template = next(
@@ -672,7 +860,7 @@ def cli(
             )
             if template is not None:
                 try:
-                    hei_gjf = out_dir_path / "gsm_hei.gjf"
+                    hei_gjf = out_dir_path / "hei.gjf"
                     maybe_convert_xyz_to_gjf(hei_xyz, template, hei_gjf)
                     click.echo(f"[convert] Wrote '{hei_gjf}'.")
                 except Exception as e:
