@@ -704,6 +704,14 @@ def cli(
                     ref_pdb_for_preopt = p.resolve()
                     break
 
+            preopt_out_dir = out_dir_path
+            if (
+                out_dir_path.name.startswith("seg_")
+                and out_dir_path.parent.name == "path_opt"
+            ):
+                preopt_out_dir = out_dir_path.parent
+                preopt_out_dir.mkdir(parents=True, exist_ok=True)
+
             new_geoms = []
             for i, g in enumerate(geoms):
                 tag = f"init{i:02d}"
@@ -713,7 +721,7 @@ def cli(
                         shared_calc,
                         sopt_kind,
                         sopt_cfg,
-                        out_dir_path,
+                        preopt_out_dir,
                         tag=tag,
                         prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else None,
                     )
