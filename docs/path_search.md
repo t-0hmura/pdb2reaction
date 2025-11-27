@@ -1,12 +1,12 @@
 # `path-search` subcommand
 
 ## Overview
-Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates.
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. With `--mep-mode dmf`, the same recursive workflow runs using DMF-generated segments instead of GSM.
 
 ## Usage
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S+1]
-                         [--freeze-links BOOL] [--thresh PRESET]
+                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--opt-mode light|heavy] [--dump BOOL]
                          [--out-dir DIR] [--preopt BOOL]

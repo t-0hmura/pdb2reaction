@@ -1642,6 +1642,13 @@ def _irc_and_match(
     help="For pocket PDB input, freeze parent atoms of link hydrogens.",
 )
 @click.option(
+    "--mep-mode",
+    type=click.Choice(["gsm", "dmf"], case_sensitive=False),
+    default="gsm",
+    show_default=True,
+    help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
+)
+@click.option(
     "--max-nodes",
     type=int,
     default=10,
@@ -1929,6 +1936,7 @@ def cli(
     verbose: bool,
     spin: int,
     freeze_links_flag: bool,
+    mep_mode: str,
     max_nodes: int,
     max_cycles: int,
     climb: bool,
@@ -2624,6 +2632,8 @@ def cli(
 
     gave_ref_pdb = False
 
+    mep_mode_kind = mep_mode.strip().lower()
+
     if skip_extract:
         click.echo(
             "[all] NOTE: skipping --ref-pdb (no --center; inputs already represent full structures)."
@@ -2669,6 +2679,8 @@ def cli(
                 str(int(spin)),
                 "--freeze-links",
                 "True" if freeze_links_flag else "False",
+                "--mep-mode",
+                mep_mode_kind,
                 "--max-nodes",
                 str(int(max_nodes)),
                 "--max-cycles",
@@ -2739,14 +2751,14 @@ def cli(
                     err=True,
                 )
 
-            hei_src = seg_dir / "gsm_hei.xyz"
+            hei_src = seg_dir / "hei.xyz"
             if hei_src.exists():
                 try:
                     shutil.copy2(hei_src, path_dir / f"hei_seg_{idx:02d}.xyz")
-                    hei_pdb_src = seg_dir / "gsm_hei.pdb"
+                    hei_pdb_src = seg_dir / "hei.pdb"
                     if hei_pdb_src.exists():
                         shutil.copy2(hei_pdb_src, path_dir / f"hei_seg_{idx:02d}.pdb")
-                    hei_gjf_src = seg_dir / "gsm_hei.gjf"
+                    hei_gjf_src = seg_dir / "hei.gjf"
                     if hei_gjf_src.exists():
                         shutil.copy2(hei_gjf_src, path_dir / f"hei_seg_{idx:02d}.gjf")
                 except Exception as e:
@@ -2912,6 +2924,7 @@ def cli(
         ps_args.extend(["-m", str(int(spin))])
 
         ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
+        ps_args.extend(["--mep-mode", mep_mode_kind])
         ps_args.extend(["--max-nodes", str(int(max_nodes))])
         ps_args.extend(["--max-cycles", str(int(max_cycles))])
         ps_args.extend(["--climb", "True" if climb else "False"])
