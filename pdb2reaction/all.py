@@ -691,8 +691,9 @@ def _load_segment_endpoints(
 
     Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref).
     """
-    refine_trj = path_dir / f"{seg_tag}_refine_mep" / "final_geometries.trj"
-    gsm_trj = path_dir / f"{seg_tag}_mep" / "final_geometries.trj"
+    base_tag = _path_search._segment_base_id(seg_tag)
+    refine_trj = path_dir / f"{base_tag}_refine_mep" / "final_geometries.trj"
+    gsm_trj = path_dir / f"{base_tag}_mep" / "final_geometries.trj"
 
     if refine_trj.exists():
         trj_path = refine_trj
