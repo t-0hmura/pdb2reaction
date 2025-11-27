@@ -6,12 +6,10 @@ path_opt — Minimum-energy path (MEP) optimization via the Growing String metho
 
 Usage (CLI)
 -----------
-    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} \
-        [-q <charge>] [-m <multiplicity>] [--freeze-links {True|False}] \
-        [--max-nodes <int>] [--max-cycles <int>] [--climb {True|False}] \
-        [--opt-mode {light|heavy}] [--dump {True|False}] [--out-dir <dir>] \
-        [--thresh <preset>] [--args-yaml <file>] [--preopt {True|False}] \
-        [--preopt-max-cycles <int>] [--fix-ends {True|False}]
+    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
+                        [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
+                        [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
+                        [--out-dir DIR] [--args-yaml FILE]
 
 Examples
 --------
