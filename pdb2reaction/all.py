@@ -2875,7 +2875,7 @@ def cli(
                     "kind": "seg",
                     "barrier_kcal": float(barrier),
                     "delta_kcal": float(delta),
-                    "bond_changes": bond_summary,
+                    "bond_changes": _path_search._bond_changes_block(bond_summary),
                 }
             )
 
