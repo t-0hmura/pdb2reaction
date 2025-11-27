@@ -196,6 +196,31 @@ from .trj2fig import run_trj2fig
 from .bond_changes import compare_structures, summarize_changes
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 
+# YAML helper to preserve multiline blocks for bond-change summaries in summary.yaml
+class _LiteralStr(str):
+    """String marker to force literal block style when dumping YAML."""
+
+
+def _literal_str_representer(dumper, data):
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+
+
+yaml.add_representer(_LiteralStr, _literal_str_representer)
+
+
+def _bond_changes_block(text: Optional[str]) -> str:
+    """
+    Prepare bond-change summaries for YAML output, keeping multiline text readable.
+    """
+
+    if text is None:
+        return ""
+    cleaned = str(text).rstrip()
+    if "\n" in cleaned:
+        return _LiteralStr(cleaned)
+    return cleaned
+
+
 # -----------------------------------------------
 # Configuration defaults
 # -----------------------------------------------
@@ -2064,7 +2089,9 @@ def cli(
                     "kind": s.kind,
                     "barrier_kcal": float(s.barrier_kcal),
                     "delta_kcal": float(s.delta_kcal),
-                    "bond_changes": (s.summary if (s.kind != "bridge") else "")
+                    "bond_changes": (
+                        _bond_changes_block(s.summary) if (s.kind != "bridge") else ""
+                    ),
                 } for s in combined_all.segments
             ],
         }
