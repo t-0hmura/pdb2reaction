@@ -122,7 +122,7 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 | `add-elem-info` | Augment PDB files with missing element metadata. | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
 | `dft` | Run single-point DFT calculations on UMA geometries using PySCF/gpu4pyscf. | [`docs/dft.md`](docs/dft.md) |
 | `scan2d` | Explore two harmonic distance restraints simultaneously and build 2D PES grids with UMA relaxations. | [`docs/scan2d.md`](docs/scan2d.md) |
-| `scan3d` | Three-distance 3D grid scan with harmonic restraints (UMA) that can also plot existing `surface.csv` data. | [`pdb2reaction/scan3d.py`](pdb2reaction/scan3d.py) |
+| `scan3d` | Three-distance 3D grid scan with harmonic restraints (UMA) that can also plot existing `surface.csv` data. | [`docs/scan3d.md`](docs/scan3d.md) |
 
 Each subcommand accepts `-h/--help` for inline usage hints and can also consume `--args-yaml` files that match the schemas
 documented above.
