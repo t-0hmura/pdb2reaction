@@ -1577,20 +1577,21 @@ def cli(
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-            trj_path = out_dir_path / "optimization.trj"
-            if trj_path.exists() and needs_pdb:
-                try:
-                    convert_xyz_like_outputs(
-                        trj_path,
-                        prepared_input,
-                        ref_pdb_path=ref_pdb,
-                        out_pdb_path=out_dir_path / "optimization.pdb" if needs_pdb else None,
-                    )
-                    click.echo("[convert] Wrote 'optimization' outputs.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
-            elif needs_pdb:
-                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+            if bool(opt_cfg.get("dump", False)) and needs_pdb:
+                trj_path = out_dir_path / "optimization.trj"
+                if trj_path.exists():
+                    try:
+                        convert_xyz_like_outputs(
+                            trj_path,
+                            prepared_input,
+                            ref_pdb_path=ref_pdb,
+                            out_pdb_path=out_dir_path / "optimization.pdb" if needs_pdb else None,
+                        )
+                        click.echo("[convert] Wrote 'optimization' outputs.")
+                    except Exception as e:
+                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+                else:
+                    click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
 
             # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
             geometry.set_calculator(None)
