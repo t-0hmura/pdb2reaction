@@ -94,7 +94,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from pdb2reaction.utils import (
-    convert_xyz_to_pdb,
+    convert_xyz_like_outputs,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -104,6 +104,7 @@ from pdb2reaction.utils import (
     merge_freeze_atom_indices,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    set_convert_file_enabled,
 )
 
 
@@ -143,13 +144,32 @@ IRC_KW_DEFAULT: Dict[str, Any] = {
 }
 
 
-def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: Path) -> None:
+def _echo_convert_trj_if_exists(
+    trj_path: Path,
+    prepared_input: "PreparedInputStructure",
+    *,
+    out_pdb: Optional[Path] = None,
+    out_gjf: Optional[Path] = None,
+) -> None:
     if trj_path.exists():
         try:
-            convert_xyz_to_pdb(trj_path, ref_pdb, out_path)
-            click.echo(f"[convert] Wrote '{out_path}'.")
+            ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == ".pdb" else None
+            convert_xyz_like_outputs(
+                trj_path,
+                prepared_input,
+                ref_pdb_path=ref_pdb,
+                out_pdb_path=out_pdb,
+                out_gjf_path=out_gjf,
+            )
+            targets = [p for p in (out_pdb, out_gjf) if p is not None and p.exists()]
+            if targets:
+                written = ", ".join(f"'{p.name}'" for p in targets)
+                click.echo(f"[convert] Wrote {written}.")
         except Exception as e:
-            click.echo(f"[convert] WARNING: Failed to convert '{trj_path.name}' to PDB: {e}", err=True)
+            click.echo(
+                f"[convert] WARNING: Failed to convert '{trj_path.name}' outputs: {e}",
+                err=True,
+            )
 
 
 # --------------------------
@@ -182,6 +202,13 @@ def _echo_convert_trj_to_pdb_if_exists(trj_path: Path, ref_pdb: Path, out_path: 
     show_default=True,
     help="Freeze parent atoms of link hydrogens when the input is PDB.",
 )
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
 @click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
     "--hessian-calc-mode",
@@ -205,10 +232,12 @@ def cli(
     forward: Optional[bool],
     backward: Optional[bool],
     freeze_links_flag: bool,
+    convert_files: bool,
     out_dir: str,
     hessian_calc_mode: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
@@ -308,28 +337,27 @@ def cli(
         click.echo("\n=== IRC (EulerPC) finished ===\n")
 
         # --------------------------
-        # 4) Convert trajectories to PDB when the input was PDB
+        # 4) Convert trajectories to PDB/GJF based on input type
         # --------------------------
-        if input_path.suffix.lower() == ".pdb":
-            ref_pdb = input_path.resolve()
-
-            # Whole IRC trajectory
-            _echo_convert_trj_to_pdb_if_exists(
-                out_dir_path / f"{irc_cfg.get('prefix','')}{'finished_irc.trj'}",
-                ref_pdb,
-                out_dir_path / f"{irc_cfg.get('prefix','')}{'finished_irc.pdb'}",
-            )
-            # Forward/backward trajectories
-            _echo_convert_trj_to_pdb_if_exists(
-                out_dir_path / f"{irc_cfg.get('prefix','')}{'forward_irc.trj'}",
-                ref_pdb,
-                out_dir_path / f"{irc_cfg.get('prefix','')}{'forward_irc.pdb'}",
-            )
-            _echo_convert_trj_to_pdb_if_exists(
-                out_dir_path / f"{irc_cfg.get('prefix','')}{'backward_irc.trj'}",
-                ref_pdb,
-                out_dir_path / f"{irc_cfg.get('prefix','')}{'backward_irc.pdb'}",
-            )
+        suffix_prefix = irc_cfg.get("prefix", "")
+        _echo_convert_trj_if_exists(
+            out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
+            prepared_input,
+            out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
+            out_gjf=out_dir_path / f"{suffix_prefix}{'finished_irc.gjf'}" if prepared_input.is_gjf else None,
+        )
+        _echo_convert_trj_if_exists(
+            out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
+            prepared_input,
+            out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
+            out_gjf=out_dir_path / f"{suffix_prefix}{'forward_irc.gjf'}" if prepared_input.is_gjf else None,
+        )
+        _echo_convert_trj_if_exists(
+            out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
+            prepared_input,
+            out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
+            out_gjf=out_dir_path / f"{suffix_prefix}{'backward_irc.gjf'}" if prepared_input.is_gjf else None,
+        )
 
         click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 

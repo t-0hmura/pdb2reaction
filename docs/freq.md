@@ -16,7 +16,8 @@ pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
                   [--max-write N] [--amplitude-ang Å] [--n-frames N] \
                   [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \
                   [--temperature K] [--pressure atm] [--dump {True|False}] \
-                  [--hessian-calc-mode Analytical|FiniteDifference]
+                  [--hessian-calc-mode Analytical|FiniteDifference] \
+                  [--convert-files/--no-convert-files]
 ```
 
 ### Examples
@@ -67,10 +68,11 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
 
 ## Outputs
-- `<out-dir>/mode_XXXX_±freqcm-1.trj` and `.pdb` animations for each written mode.
+- `<out-dir>/mode_XXXX_±freqcm-1.trj` and `.pdb`/`.gjf` animations for each written mode (mirroring follows `--convert-files`).
 - `<out-dir>/frequencies_cm-1.txt` listing every computed frequency according to the sort
   order.
 - `<out-dir>/thermoanalysis.yaml` when both `thermoanalysis` is importable and `--dump True`.

@@ -1,7 +1,7 @@
 # `path-search` subcommand
 
 ## Overview
-Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. With `--mep-mode dmf`, the same recursive workflow runs using DMF-generated segments instead of GSM.
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. With `--mep-mode dmf`, the same recursive workflow runs using DMF-generated segments instead of GSM, and **DMF is now the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist.
 
 ## Usage
 ```bash
@@ -11,6 +11,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
                          [--opt-mode light|heavy] [--dump BOOL]
                          [--out-dir DIR] [--preopt BOOL]
                          [--align/--no-align] [--ref-pdb FILE ...]
+                         [--convert-files/--no-convert-files]
                          [--args-yaml FILE]
 ```
 
@@ -36,8 +37,10 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `300` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
-| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
+| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `heavy` |
+| `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `dmf` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
@@ -58,8 +61,8 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. UMA calculators are constructed once and shared across all structures for efficiency.
 
 ## Outputs
-- `<out-dir>/mep.trj` (and `.pdb` when the inputs were PDB pockets).
-- `<out-dir>/mep_w_ref.pdb` merged full-system MEP (requires `--ref-pdb` or auto-provided templates).
+- `<out-dir>/mep.trj` (and `.pdb`/`.gjf` companions when the inputs were PDB/Gaussian templates and conversion is enabled).
+- `<out-dir>/mep_w_ref.pdb` merged full-system MEP (requires `--ref-pdb` or auto-provided templates; obeys conversion flag for generated companions).
 - `<out-dir>/mep_w_ref_seg_XX.pdb` merged per-segment paths for segments with covalent changes (requires `--ref-pdb`).
 - `<out-dir>/summary.yaml` summarising barriers and classification for every recursive segment.
 - `<out-dir>/mep_plot.png` ΔE profile generated via `trj2fig` (`kcal/mol`, reference = reactant).

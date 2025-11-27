@@ -92,13 +92,14 @@ from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
     detect_freeze_links,
-    convert_xyz_to_pdb as _convert_xyz_to_pdb,
+    convert_xyz_like_outputs,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
+    set_convert_file_enabled,
 )
 
 
@@ -394,12 +395,14 @@ def _calc_energy(geom, uma_kwargs: dict) -> float:
 def _write_mode_trj_and_pdb(geom,
                             mode_vec_3N: np.ndarray,
                             out_trj: Path,
-                            out_pdb: Path,
                             amplitude_ang: float = 0.8,
                             n_frames: int = 20,
                             comment: str = "mode",
                             ref_pdb: Optional[Path] = None,
-                            write_pdb: bool = True) -> None:
+                            write_pdb: bool = True,
+                            prepared_input: Optional["PreparedInputStructure"] = None,
+                            out_pdb: Optional[Path] = None,
+                            out_gjf: Optional[Path] = None) -> None:
     """
     Write a single mode animation as .trj (XYZ-like) and optionally .pdb.
 
@@ -411,6 +414,8 @@ def _write_mode_trj_and_pdb(geom,
     mode = mode_vec_3N.reshape(-1, 3).copy()
     mode /= np.linalg.norm(mode)
 
+    trj_written = False
+
     # .trj (concatenated XYZ-like trajectory)
     if write_pdb and ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb":
         with out_trj.open("w", encoding="utf-8") as f:
@@ -420,43 +425,51 @@ def _write_mode_trj_and_pdb(geom,
                 f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
                 for sym, (x, y, z) in zip(geom.atoms, coords):
                     f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
+        trj_written = True
+
+    if not trj_written:
+        # If no ref_pdb is given, write TRJ using pysisyphus.make_trj_str when available
         try:
-            _convert_xyz_to_pdb(out_trj, ref_pdb, out_pdb)
+            from pysisyphus.xyzloader import make_trj_str  # type: ignore
+            amp_ang = amplitude_ang
+            steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
+            traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
+            comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
+            trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
+            out_trj.write_text(trj_str, encoding="utf-8")
+            trj_written = True
         except Exception:
+            with out_trj.open("w", encoding="utf-8") as f:
+                for i in range(n_frames):
+                    phase = np.sin(2.0 * np.pi * i / n_frames)
+                    coords = ref_ang + phase * amplitude_ang * mode
+                    f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
+                    for sym, (x, y, z) in zip(geom.atoms, coords):
+                        f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
+
+    needs_pdb = write_pdb and out_pdb is not None
+    needs_gjf = out_gjf is not None and prepared_input is not None and prepared_input.is_gjf
+
+    if not (needs_pdb or needs_gjf):
+        return
+
+    ref_for_conv = ref_pdb if (ref_pdb and ref_pdb.suffix.lower() == ".pdb") else None
+    try:
+        convert_xyz_like_outputs(
+            out_trj,
+            prepared_input,  # type: ignore[arg-type]
+            ref_pdb_path=ref_for_conv,
+            out_pdb_path=out_pdb if needs_pdb else None,
+            out_gjf_path=out_gjf if needs_gjf else None,
+        )
+    except Exception:
+        if needs_pdb and ref_ang is not None and ref_pdb is not None:
             atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
                 ai = atoms0.copy()
                 ai.set_positions(ref_ang + phase * amplitude_ang * mode)
                 write(out_pdb, ai, append=(i != 0))
-        return
-
-    # If no ref_pdb is given, write TRJ using pysisyphus.make_trj_str when available
-    try:
-        from pysisyphus.xyzloader import make_trj_str  # type: ignore
-        amp_ang = amplitude_ang
-        steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
-        traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
-        comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
-        trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
-        out_trj.write_text(trj_str, encoding="utf-8")
-    except Exception:
-        with out_trj.open("w", encoding="utf-8") as f:
-            for i in range(n_frames):
-                phase = np.sin(2.0 * np.pi * i / n_frames)
-                coords = ref_ang + phase * amplitude_ang * mode
-                f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
-                for sym, (x, y, z) in zip(geom.atoms, coords):
-                    f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
-
-    # .pdb (MODEL/ENDMDL via ASE)
-    if write_pdb:
-        atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
-        for i in range(n_frames):
-            phase = np.sin(2.0 * np.pi * i / n_frames)
-            ai = atoms0.copy()
-            ai.set_positions(ref_ang + phase * amplitude_ang * mode)
-            write(out_pdb, ai, append=(i != 0))
 
 
 # ===================================================================
@@ -504,6 +517,13 @@ THERMO_KW = {
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
 @click.option("--max-write", type=int, default=10, show_default=True,
               help="How many modes to export (after sorting per --sort).")
 @click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
@@ -537,6 +557,7 @@ def cli(
     charge: Optional[int],
     spin: Optional[int],
     freeze_links: bool,
+    convert_files: bool,
     max_write: int,
     amplitude_ang: float,
     n_frames: int,
@@ -551,6 +572,7 @@ def cli(
     hessian_calc_mode: Optional[str],
 ) -> None:
     time_start = time.perf_counter()
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
@@ -674,12 +696,14 @@ def cli(
                 geometry,
                 mode_cart_3N,
                 out_trj,
-                out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb",
                 amplitude_ang=freq_cfg["amplitude_ang"],
                 n_frames=freq_cfg["n_frames"],
                 comment=f"mode {k}  {freq:+.2f} cm-1",
                 ref_pdb=ref_pdb,
                 write_pdb=write_pdb,
+                prepared_input=prepared_input,
+                out_pdb=out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb" if write_pdb else None,
+                out_gjf=out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.gjf" if prepared_input.is_gjf else None,
             )
         (out_dir_path / "frequencies_cm-1.txt").write_text(
             "\n".join(f"{i+1:4d}  {float(freqs_cm[j]):+12.4f}" for i, j in enumerate(order)),

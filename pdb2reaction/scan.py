@@ -122,7 +122,7 @@ from .opt import (
     HarmonicBiasCalculator,
 )
 from .utils import (
-    convert_xyz_to_pdb,
+    convert_xyz_like_outputs,
     detect_freeze_links_safe,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -133,7 +133,7 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -359,7 +359,7 @@ def _snapshot_geometry(g) -> Any:
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
 )
@@ -367,6 +367,13 @@ def _snapshot_geometry(g) -> Any:
               help="If input is PDB, freeze parent atoms of link hydrogens.")
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).")
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
 @click.option("--out-dir", type=str, default="./result_scan/", show_default=True,
               help="Base output directory.")
 @click.option(
@@ -397,15 +404,20 @@ def cli(
     opt_mode: str,
     freeze_links: bool,
     dump: bool,
+    convert_files: bool,
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
     endopt: bool,
 ) -> None:
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    needs_pdb = input_path.suffix.lower() == ".pdb"
+    needs_gjf = prepared_input.is_gjf
+    ref_pdb = input_path.resolve() if needs_pdb else None
     try:
         time_start = time.perf_counter()
 
@@ -522,9 +534,6 @@ def cli(
         # Build UMA calculator (only uma_pysis is supported)
         base_calc = uma_pysis(**calc_cfg)
 
-        # Input type flag (used for optional PDB conversion)
-        is_pdb_input = (input_path.suffix.lower() == ".pdb")
-
         # ------------------------------------------------------------------
         # Optional preoptimization WITHOUT bias
         # ------------------------------------------------------------------
@@ -546,15 +555,23 @@ def cli(
             with open(pre_xyz, "w") as f:
                 f.write(_coords3d_to_xyz_string(geom))
             click.echo(f"[write] Wrote '{pre_xyz}'.")
-            gjf_written = maybe_convert_xyz_to_gjf(pre_xyz, prepared_input.gjf_template, pre_dir / "result.gjf")
-            if gjf_written:
-                click.echo(f"[convert] Wrote '{gjf_written}'.")
-            if is_pdb_input:
-                try:
-                    convert_xyz_to_pdb(pre_xyz, input_path.resolve(), pre_dir / "result.pdb")
-                    click.echo(f"[convert] Wrote '{pre_dir / 'result.pdb'}'.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert preopt result to PDB: {e}", err=True)
+            try:
+                convert_xyz_like_outputs(
+                    pre_xyz,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=pre_dir / "result.pdb" if needs_pdb else None,
+                    out_gjf_path=pre_dir / "result.gjf" if needs_gjf else None,
+                )
+                if needs_pdb or needs_gjf:
+                    written = []
+                    if needs_pdb:
+                        written.append("'result.pdb'")
+                    if needs_gjf:
+                        written.append("'result.gjf'")
+                    click.echo(f"[convert] Wrote {', '.join(written)}.")
+            except Exception as e:
+                click.echo(f"[convert] WARNING: Failed to convert preopt result: {e}", err=True)
 
         # Wrap with bias calculator for the scan
         biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
@@ -628,15 +645,23 @@ def cli(
                 with open(final_xyz, "w") as f:
                     f.write(_coords3d_to_xyz_string(geom))
                 click.echo(f"[write] Wrote '{final_xyz}'.")
-                gjf_written = maybe_convert_xyz_to_gjf(final_xyz, prepared_input.gjf_template, stage_dir / "result.gjf")
-                if gjf_written:
-                    click.echo(f"[convert] Wrote '{gjf_written}'.")
-                if is_pdb_input:
-                    try:
-                        convert_xyz_to_pdb(final_xyz, input_path.resolve(), stage_dir / "result.pdb")
-                        click.echo(f"[convert] Wrote '{stage_dir / 'result.pdb'}'.")
-                    except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert stage result to PDB: {e}", err=True)
+                try:
+                    convert_xyz_like_outputs(
+                        final_xyz,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
+                        out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
+                    )
+                    if needs_pdb or needs_gjf:
+                        written = []
+                        if needs_pdb:
+                            written.append("'result.pdb'")
+                        if needs_gjf:
+                            written.append("'result.gjf'")
+                        click.echo(f"[convert] Wrote {', '.join(written)}.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert stage result: {e}", err=True)
                 continue
 
             # Run N step(s) with bias
@@ -695,27 +720,45 @@ def cli(
                 with open(trj_path, "w") as f:
                     f.write("".join(trj_blocks))
                 click.echo(f"[write] Wrote '{trj_path}'.")
-                if is_pdb_input:
-                    try:
-                        convert_xyz_to_pdb(trj_path, input_path.resolve(), stage_dir / "scan.pdb")
-                        click.echo(f"[convert] Wrote '{stage_dir / 'scan.pdb'}'.")
-                    except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert stage trajectory to PDB: {e}", err=True)
+                try:
+                    convert_xyz_like_outputs(
+                        trj_path,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=stage_dir / "scan.pdb" if needs_pdb else None,
+                        out_gjf_path=stage_dir / "scan.gjf" if needs_gjf else None,
+                    )
+                    if needs_pdb or needs_gjf:
+                        written = []
+                        if needs_pdb:
+                            written.append("'scan.pdb'")
+                        if needs_gjf:
+                            written.append("'scan.gjf'")
+                        click.echo(f"[convert] Wrote {', '.join(written)}.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert stage trajectory: {e}", err=True)
 
             final_xyz = stage_dir / "result.xyz"
             with open(final_xyz, "w") as f:
                 f.write(_coords3d_to_xyz_string(geom))
             click.echo(f"[write] Wrote '{final_xyz}'.")
-            gjf_written = maybe_convert_xyz_to_gjf(final_xyz, prepared_input.gjf_template, stage_dir / "result.gjf")
-            if gjf_written:
-                click.echo(f"[convert] Wrote '{gjf_written}'.")
-
-            if is_pdb_input:
-                try:
-                    convert_xyz_to_pdb(final_xyz, input_path.resolve(), stage_dir / "result.pdb")
-                    click.echo(f"[convert] Wrote '{stage_dir / 'result.pdb'}'.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert stage result to PDB: {e}", err=True)
+            try:
+                convert_xyz_like_outputs(
+                    final_xyz,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
+                    out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
+                )
+                if needs_pdb or needs_gjf:
+                    written = []
+                    if needs_pdb:
+                        written.append("'result.pdb'")
+                    if needs_gjf:
+                        written.append("'result.gjf'")
+                    click.echo(f"[convert] Wrote {', '.join(written)}.")
+            except Exception as e:
+                click.echo(f"[convert] WARNING: Failed to convert stage result: {e}", err=True)
 
         # ------------------------------------------------------------------
         # 5) Final summary echo (human‑friendly)

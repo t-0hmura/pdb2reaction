@@ -7,13 +7,14 @@ quadruples `(i, j, lowÅ, highÅ)`; the tool constructs linear grids for both
 ranges using `--max-step-size`, nests the loops (outer d₁, inner d₂), and writes
 both the PES samples and a ready-to-plot CSV/figure bundle. Energies reported in
 `surface.csv` are always evaluated **without bias** so you can compare grid
-points directly. Optimizations use LBFGS when `--opt-mode light` (default) or
-RFO when `--opt-mode heavy`.
+points directly. Optimizations use RFOptimizer when `--opt-mode heavy` (default)
+or LBFGS when `--opt-mode light`.
 
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
                     --scan-list "[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]" [options]
+                    [--convert-files/--no-convert-files]
 ```
 
 ### Examples
@@ -59,9 +60,10 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `heavy` |
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | Inherit YAML |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
@@ -82,8 +84,8 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 - `surface.csv` — structured grid table.
 - `plots/scan2d_map.png` (or `.html` fallback) and `plots/scan2d_landscape.html`
   — 2D contour and 3D surface visualizations.
-- `grid/point_i###_j###.xyz` — relaxed geometries for every `(i, j)` pair.
-- `grid/inner_path_d1_###.trj` — written only when `--dump True`.
+- `grid/point_i###_j###.xyz` — relaxed geometries for every `(i, j)` pair (with `.pdb`/`.gjf` companions when conversion is enabled and templates exist).
+- `grid/inner_path_d1_###.trj` — written only when `--dump True` (mirrored to `.pdb`/`.gjf` when conversion is enabled for PDB/Gaussian inputs).
 
 ## Notes
 - UMA via `uma_pysis` is the only calculator backend and reuses the same

@@ -26,7 +26,9 @@ Recommended/common:
         Spin multiplicity (2S+1); defaults to a .gjf template value when available,
         otherwise 1 when omitted.
     --opt-mode
-        Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default light.
+        Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default heavy.
+    --mep-mode
+        Segment generator: GSM (string) or DMF (direct max flux); default dmf.
     --max-nodes
         Internal nodes for segment GSM; default 10.
     --max-cycles
@@ -177,7 +179,6 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
-    convert_xyz_to_pdb,
     detect_freeze_links_safe,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -189,6 +190,8 @@ from .utils import (
     prepare_input_structure,
     fill_charge_spin_from_gjf,
     maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
+    convert_xyz_like_outputs,
     PreparedInputStructure,
     GjfTemplate,
 )
@@ -532,10 +535,16 @@ def _run_gsm_between(
     tag: str,
     ref_pdb_path: Optional[Path],
     gjf_template: Optional[GjfTemplate] = None,
+    prepared_input: Optional[PreparedInputStructure] = None,
 ) -> GSMResult:
     """
     Run GSM between `gA`–`gB`, save segment outputs, and return images/energies/HEI index.
     """
+    if gjf_template is None:
+        try:
+            gjf_template = _PRIMARY_GJF_TEMPLATE  # type: ignore[name-defined]
+        except NameError:
+            pass
     for g in (gA, gB):
         g.set_calculator(shared_calc)
 
@@ -596,8 +605,40 @@ def _run_gsm_between(
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
 
-    # If PDB input exists, convert intermediate .trj to PDB
-    _maybe_convert_to_pdb(final_trj, ref_pdb_path, seg_dir / "final_geometries.pdb")
+    # Convert trajectory and HEI outputs based on the input template
+    prepared_for_outputs = prepared_input
+    ref_for_conv = ref_pdb_path
+    if prepared_for_outputs is None and gjf_template is not None:
+        prepared_for_outputs = PreparedInputStructure(
+            source_path=gjf_template.path,
+            geom_path=gjf_template.path,
+            gjf_template=gjf_template,
+        )
+    if prepared_for_outputs is None and ref_for_conv is not None:
+        prepared_for_outputs = PreparedInputStructure(
+            source_path=ref_for_conv,
+            geom_path=ref_for_conv,
+        )
+    if prepared_for_outputs is not None and ref_for_conv is None:
+        if prepared_for_outputs.source_path.suffix.lower() == ".pdb":
+            ref_for_conv = prepared_for_outputs.source_path.resolve()
+
+    needs_pdb = ref_for_conv is not None
+    needs_gjf = bool(prepared_for_outputs and prepared_for_outputs.is_gjf)
+
+    if prepared_for_outputs is not None and (needs_pdb or needs_gjf):
+        try:
+            convert_xyz_like_outputs(
+                final_trj,
+                prepared_for_outputs,
+                ref_pdb_path=ref_for_conv,
+                out_pdb_path=seg_dir / "final_geometries.pdb" if needs_pdb else None,
+                out_gjf_path=seg_dir / "final_geometries.gjf" if needs_gjf else None,
+            )
+        except Exception as e:
+            click.echo(
+                f"[{tag}] WARNING: Failed to convert segment trajectory: {e}", err=True
+            )
 
     # Write HEI structure
     try:
@@ -614,9 +655,21 @@ def _run_gsm_between(
         with open(hei_xyz, "w") as f:
             f.write(s_out)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
-        _maybe_convert_to_pdb(hei_xyz, ref_pdb_path, seg_dir / "hei.pdb")
-        if gjf_template is not None:
-            _maybe_convert_to_gjf(hei_xyz, gjf_template, seg_dir / "hei.gjf")
+
+        if prepared_for_outputs is not None and (needs_pdb or needs_gjf):
+            try:
+                convert_xyz_like_outputs(
+                    hei_xyz,
+                    prepared_for_outputs,
+                    ref_pdb_path=ref_for_conv,
+                    out_pdb_path=seg_dir / "hei.pdb" if needs_pdb else None,
+                    out_gjf_path=seg_dir / "hei.gjf" if needs_gjf else None,
+                )
+            except Exception as e:
+                click.echo(
+                    f"[{tag}] WARNING: Failed to convert HEI structure: {e}",
+                    err=True,
+                )
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
@@ -652,7 +705,7 @@ def _run_dmf_between(
     tag: str,
     ref_pdb_path: Optional[Path],
     max_nodes: int,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
     shared_calc,
 ) -> GSMResult:
     """
@@ -662,7 +715,13 @@ def _run_dmf_between(
     seg_dir = out_dir / f"{tag}_dmf"
     seg_dir.mkdir(parents=True, exist_ok=True)
 
-    dmf_res = _run_dmf_mep([gA, gB], calc_cfg, seg_dir, source_paths, max_nodes, gjf_template=_PRIMARY_GJF_TEMPLATE)
+    dmf_res = _run_dmf_mep(
+        geoms=[gA, gB],
+        calc_cfg=calc_cfg,
+        out_dir_path=seg_dir,
+        prepared_inputs=prepared_inputs,
+        max_nodes=max_nodes,
+    )
 
     energies = list(map(float, dmf_res.energies))
 
@@ -691,7 +750,7 @@ def _refine_between(
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
     max_nodes: int,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
 ) -> GSMResult:
     """
     Refine End1–End2 via GSM or DMF depending on the selected mode.
@@ -706,7 +765,7 @@ def _refine_between(
             tag=f"{tag}_refine",
             ref_pdb_path=ref_pdb_path,
             max_nodes=max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
             shared_calc=shared_calc,
         )
 
@@ -726,7 +785,7 @@ def _maybe_bridge_segments(
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
     max_nodes: int,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
 ) -> Optional[GSMResult]:
     """
     Run a bridge GSM if two segment endpoints are farther than the threshold.
@@ -746,7 +805,7 @@ def _maybe_bridge_segments(
             tag=f"{tag}_bridge",
             ref_pdb_path=ref_pdb_path,
             max_nodes=max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
             shared_calc=shared_calc,
         )
 
@@ -770,7 +829,7 @@ def _stitch_paths(
     mep_mode_kind: str = "gsm",
     calc_cfg: Optional[Dict[str, Any]] = None,
     max_nodes: int = 10,
-    source_paths: Optional[Sequence[Path]] = None,
+    prepared_inputs: Optional[Sequence[PreparedInputStructure]] = None,
 ) -> Tuple[List[Any], List[float]]:
     """
     Concatenate path parts (images, energies). Insert bridge GSMs when needed.
@@ -848,7 +907,7 @@ def _stitch_paths(
                 tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
                 rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path,
                 mep_mode_kind=mep_mode_kind, calc_cfg=calc_cfg or {}, max_nodes=max_nodes,
-                source_paths=source_paths or [],
+                prepared_inputs=prepared_inputs or [],
             )
             if br is not None:
                 _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
@@ -927,9 +986,10 @@ def _build_multistep_path(
     search_cfg: Dict[str, Any],
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
     out_dir: Path,
     ref_pdb_path: Optional[Path],
+    prepared_input: Optional[PreparedInputStructure],
     depth: int,
     seg_counter: List[int],
     branch_tag: str,
@@ -945,19 +1005,19 @@ def _build_multistep_path(
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
         gsm = (
             _run_dmf_between(
-                gA,
-                gB,
-                calc_cfg,
-                out_dir,
-                tag=f"seg_{seg_counter[0]:03d}_maxdepth",
-                ref_pdb_path=ref_pdb_path,
-                max_nodes=seg_max_nodes,
-                source_paths=source_paths,
-                shared_calc=shared_calc,
-            )
-            if mep_mode_kind == "dmf"
-            else _run_gsm_between(
-                gA,
+            gA,
+            gB,
+            calc_cfg,
+            out_dir,
+            tag=f"seg_{seg_counter[0]:03d}_maxdepth",
+            ref_pdb_path=ref_pdb_path,
+            max_nodes=seg_max_nodes,
+            prepared_inputs=prepared_inputs,
+            shared_calc=shared_calc,
+        )
+        if mep_mode_kind == "dmf"
+        else _run_gsm_between(
+            gA,
                 gB,
                 shared_calc,
                 gs_seg_cfg,
@@ -965,6 +1025,7 @@ def _build_multistep_path(
                 out_dir,
                 tag=f"seg_{seg_counter[0]:03d}_maxdepth",
                 ref_pdb_path=ref_pdb_path,
+                prepared_input=prepared_input,
             )
         )
         seg_counter[0] += 1
@@ -984,11 +1045,21 @@ def _build_multistep_path(
             tag=tag0,
             ref_pdb_path=ref_pdb_path,
             max_nodes=seg_max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
             shared_calc=shared_calc,
         )
         if mep_mode_kind == "dmf"
-        else _run_gsm_between(gA, gB, shared_calc, gs_seg_cfg, opt_cfg, out_dir, tag=tag0, ref_pdb_path=ref_pdb_path)
+        else _run_gsm_between(
+            gA,
+            gB,
+            shared_calc,
+            gs_seg_cfg,
+            opt_cfg,
+            out_dir,
+            tag=tag0,
+            ref_pdb_path=ref_pdb_path,
+            prepared_input=prepared_input,
+        )
     )
 
     hei = int(gsm0.hei_idx)
@@ -1000,8 +1071,24 @@ def _build_multistep_path(
     left_img = gsm0.images[hei - 1]
     right_img = gsm0.images[hei + 1]
 
-    left_end = _optimize_single(left_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_left", ref_pdb_path=ref_pdb_path)
-    right_end = _optimize_single(right_img, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_right", ref_pdb_path=ref_pdb_path)
+    left_end = _optimize_single(
+        left_img,
+        shared_calc,
+        sopt_kind,
+        sopt_cfg,
+        out_dir,
+        tag=f"{tag0}_left",
+        prepared_input=prepared_input,
+    )
+    right_end = _optimize_single(
+        right_img,
+        shared_calc,
+        sopt_kind,
+        sopt_cfg,
+        out_dir,
+        tag=f"{tag0}_right",
+        prepared_input=prepared_input,
+    )
 
     try:
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
@@ -1018,7 +1105,15 @@ def _build_multistep_path(
         opt_inters: List[Any] = []
         for i, g_int in enumerate(inter_geoms, 1):
             g_int.set_calculator(shared_calc)
-            g_opt = _optimize_single(g_int, shared_calc, sopt_kind, sopt_cfg, out_dir, tag=f"{tag0}_kink_int{i}", ref_pdb_path=ref_pdb_path)
+            g_opt = _optimize_single(
+                g_int,
+                shared_calc,
+                sopt_kind,
+                sopt_cfg,
+                out_dir,
+                tag=f"{tag0}_kink_int{i}",
+                prepared_input=prepared_input,
+            )
             opt_inters.append(g_opt)
         step_imgs = [left_end] + opt_inters + [right_end]
         step_E = [float(img.energy) for img in step_imgs]
@@ -1040,7 +1135,7 @@ def _build_multistep_path(
             mep_mode_kind=mep_mode_kind,
             calc_cfg=calc_cfg,
             max_nodes=seg_max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
         )
         step_tag_for_report = f"{tag0}_refine"
 
@@ -1081,8 +1176,8 @@ def _build_multistep_path(
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
-            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
         _tag_images(subL.images, pair_index=pair_index)
@@ -1095,8 +1190,8 @@ def _build_multistep_path(
     if right_changed:
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
-            out_dir, ref_pdb_path, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index
         )
         _tag_images(subR.images, pair_index=pair_index)
@@ -1112,9 +1207,10 @@ def _build_multistep_path(
             shared_calc,
             geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg,
-            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
+            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
+            prepared_input=prepared_input,
             depth=depth + 1,
             seg_counter=seg_counter,
             branch_tag=f"{branch_tag}B",
@@ -1140,7 +1236,7 @@ def _build_multistep_path(
         mep_mode_kind=mep_mode_kind,
         calc_cfg=calc_cfg,
         max_nodes=bridge_max_nodes,
-        source_paths=source_paths,
+        prepared_inputs=prepared_inputs,
     )
 
     _tag_images(stitched_imgs, pair_index=pair_index)
@@ -1568,7 +1664,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="gsm",
+    default="dmf",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -1600,12 +1696,19 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="Single-structure optimizer: light (=LBFGS) or heavy (=RFO).",
 )
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump GSM/single-optimization trajectories during the run.")
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
 @click.option("--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
@@ -1659,6 +1762,7 @@ def cli(
     climb: bool,
     opt_mode: str,
     dump: bool,
+    convert_files: bool,
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -1666,6 +1770,7 @@ def cli(
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
+    set_convert_file_enabled(convert_files)
     prepared_inputs: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
@@ -1851,6 +1956,8 @@ def cli(
             auto_freeze_links=bool(freeze_links_flag),
         )
 
+        main_prepared = prepared_inputs[0] if prepared_inputs else None
+
         shared_calc = uma_pysis(**calc_cfg)
         for g in geoms:
             g.set_calculator(shared_calc)
@@ -1866,7 +1973,15 @@ def cli(
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
                 tag = f"init{i:02d}"
-                g_opt = _optimize_single(g, shared_calc, sopt_kind, sopt_cfg, out_dir_path, tag=tag, ref_pdb_path=ref_pdb_for_segments)
+                g_opt = _optimize_single(
+                    g,
+                    shared_calc,
+                    sopt_kind,
+                    sopt_cfg,
+                    out_dir_path,
+                    tag=tag,
+                    prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else main_prepared,
+                )
                 new_geoms.append(g_opt)
             geoms = new_geoms
         else:
@@ -1909,9 +2024,10 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
+                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
+                prepared_input=main_prepared,
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag="B",
@@ -1928,9 +2044,10 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
+                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
+                prepared_input=main_prepared,
                 depth=0,
                 seg_counter=seg_counter,
                 branch_tag=pair_tag,
@@ -1960,7 +2077,7 @@ def cli(
                     mep_mode_kind=mep_mode_kind,
                     calc_cfg=calc_cfg,
                     max_nodes=bridge_max_nodes,
-                    source_paths=p_list,
+                    prepared_inputs=prepared_inputs,
                 )
                 seg_reports_all.extend(pair_path.segments)
 
@@ -1985,9 +2102,11 @@ def cli(
         # Final MEP output rule:
         # - If inputs are XYZ → write 'mep.trj'
         # - If inputs are PDB → write **only** 'mep.pdb' (no 'mep.trj' kept)
-        pdb_input = ref_pdb_for_segments is not None
+        main_prepared = prepared_inputs[0]
+        needs_pdb = ref_pdb_for_segments is not None
+        needs_gjf = main_prepared.is_gjf
 
-        if not pdb_input:
+        if not needs_pdb:
             final_trj = out_dir_path / "mep.trj"
             _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
             click.echo(f"[write] Wrote '{final_trj}'.")
@@ -1996,6 +2115,19 @@ def cli(
                 click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
             except Exception as e:
                 click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+
+            if needs_gjf:
+                try:
+                    convert_xyz_like_outputs(
+                        final_trj,
+                        main_prepared,
+                        ref_pdb_path=None,
+                        out_gjf_path=out_dir_path / "mep.gjf",
+                        out_pdb_path=None,
+                    )
+                    click.echo("[convert] Wrote 'mep.gjf'.")
+                except Exception as e:
+                    click.echo(f"[convert] WARNING: Failed to convert final MEP to GJF: {e}", err=True)
         else:
             tmp_trj = tempfile.NamedTemporaryFile("w+", suffix=".trj", delete=False)
             tmp_trj_path = Path(tmp_trj.name)
@@ -2008,11 +2140,16 @@ def cli(
                 except Exception as e:
                     click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
                 try:
-                    final_pdb = out_dir_path / "mep.pdb"
-                    convert_xyz_to_pdb(tmp_trj_path, ref_pdb_for_segments, final_pdb)
-                    click.echo(f"[convert] Wrote '{final_pdb}'.")
+                    convert_xyz_like_outputs(
+                        tmp_trj_path,
+                        main_prepared,
+                        ref_pdb_path=ref_pdb_for_segments,
+                        out_pdb_path=out_dir_path / "mep.pdb",
+                        out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
+                    )
+                    click.echo("[convert] Wrote final MEP outputs.")
                 except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final MEP to PDB: {e}", err=True)
+                    click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
             finally:
                 try:
                     os.unlink(tmp_trj_path)
@@ -2040,8 +2177,20 @@ def cli(
                     seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}.trj"
                     _write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
                     click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
-                    if ref_pdb_for_segments is not None:
-                        _maybe_convert_to_pdb(seg_trj, ref_pdb_for_segments, out_dir_path / f"mep_seg_{seg_idx:02d}.pdb")
+                    if needs_pdb or needs_gjf:
+                        try:
+                            convert_xyz_like_outputs(
+                                seg_trj,
+                                main_prepared,
+                                ref_pdb_path=ref_pdb_for_segments,
+                                out_pdb_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb" if needs_pdb else None,
+                                out_gjf_path=out_dir_path / f"mep_seg_{seg_idx:02d}.gjf" if needs_gjf else None,
+                            )
+                        except Exception as e:
+                            click.echo(
+                                f"[convert] WARNING: Failed to convert per-segment trajectory {seg_idx:02d}: {e}",
+                                err=True,
+                            )
 
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     energies_seg = [combined_all.energies[j] for j in idxs]
@@ -2052,9 +2201,20 @@ def cli(
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
                     _write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
                     click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
-                    if ref_pdb_for_segments is not None:
-                        _maybe_convert_to_pdb(hei_trj, ref_pdb_for_segments, out_dir_path / f"hei_seg_{seg_idx:02d}.pdb")
-                    _maybe_convert_to_gjf(hei_trj, _PRIMARY_GJF_TEMPLATE, out_dir_path / f"hei_seg_{seg_idx:02d}.gjf")
+                    if needs_pdb or needs_gjf:
+                        try:
+                            convert_xyz_like_outputs(
+                                hei_trj,
+                                main_prepared,
+                                ref_pdb_path=ref_pdb_for_segments,
+                                out_pdb_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb" if needs_pdb else None,
+                                out_gjf_path=out_dir_path / f"hei_seg_{seg_idx:02d}.gjf" if needs_gjf else None,
+                            )
+                        except Exception as e:
+                            click.echo(
+                                f"[convert] WARNING: Failed to convert HEI for segment {seg_idx:02d}: {e}",
+                                err=True,
+                            )
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
 
@@ -2077,27 +2237,6 @@ def cli(
                 out_dir=out_dir_path
             )
             click.echo("\n=== Full-system merge finished ===\n")
-
-        summary = {
-            "out_dir": str(out_dir_path),
-            "n_images": len(combined_all.images),
-            "n_segments": len(combined_all.segments),
-            "segments": [
-                {
-                    "index": int(s.seg_index),
-                    "tag": s.tag,
-                    "kind": s.kind,
-                    "barrier_kcal": float(s.barrier_kcal),
-                    "delta_kcal": float(s.delta_kcal),
-                    "bond_changes": (
-                        _bond_changes_block(s.summary) if (s.kind != "bridge") else ""
-                    ),
-                } for s in combined_all.segments
-            ],
-        }
-        with open(out_dir_path / "summary.yaml", "w") as f:
-            yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        click.echo(f"[write] Wrote '{out_dir_path / 'summary.yaml'}'.")
 
         # --------------------------
         # 5) Console summary
@@ -2128,6 +2267,7 @@ def cli(
         # --------------------------
         # 6) Energy diagram (compressed state sequence)
         # --------------------------
+        diagram_payload: Optional[Dict[str, Any]] = None
         try:
             frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
             seg_to_frames: Dict[int, List[int]] = {}
@@ -2211,6 +2351,14 @@ def cli(
             e0 = energies_eh[0]
             energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
 
+            diagram_payload = {
+                "name": "energy_diagram_GSM",
+                "labels": labels,
+                "energies_kcal": energies_kcal,
+                "ylabel": "ΔE (kcal/mol)",
+                "state_sequence": chain_tokens,
+            }
+
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
             energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
             click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
@@ -2240,7 +2388,34 @@ def cli(
             click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
 
         # --------------------------
-        # 7) Elapsed time
+        # 7) Summary (YAML)
+        # --------------------------
+        summary = {
+            "out_dir": str(out_dir_path),
+            "n_images": len(combined_all.images),
+            "n_segments": len(combined_all.segments),
+            "segments": [
+                {
+                    "index": int(s.seg_index),
+                    "tag": s.tag,
+                    "kind": s.kind,
+                    "barrier_kcal": float(s.barrier_kcal),
+                    "delta_kcal": float(s.delta_kcal),
+                    "bond_changes": (
+                        _bond_changes_block(s.summary) if (s.kind != "bridge") else ""
+                    ),
+                } for s in combined_all.segments
+            ],
+        }
+        if diagram_payload is not None:
+            summary["energy_diagrams"] = [diagram_payload]
+
+        with open(out_dir_path / "summary.yaml", "w") as f:
+            yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
+        click.echo(f"[write] Wrote '{out_dir_path / 'summary.yaml'}'.")
+
+        # --------------------------
+        # 8) Elapsed time
         # --------------------------
         click.echo(format_elapsed("[time] Elapsed for Path Search", time_start))
 
