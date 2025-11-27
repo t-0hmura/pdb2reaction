@@ -245,8 +245,8 @@ RFO_KW = {
     # Hessian model / refresh
     "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
     "hessian_init": "calc",      # initial Hessian calculation
-    "hessian_recalc": 100,       # recompute exact Hessian every N cycles
-    "hessian_recalc_adapt": 2.0, # heuristic: trigger exact Hessian recompute based on force norm
+    "hessian_recalc": 200,       # recompute exact Hessian every N cycles
+    "hessian_recalc_adapt": None,# heuristic: trigger exact Hessian recompute based on force norm
 
     # Numerical hygiene & mode filtering
     "small_eigval_thresh": 1e-8, # treat |λ| < threshold as zero / remove corresponding modes

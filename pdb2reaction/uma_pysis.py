@@ -1,5 +1,3 @@
-# pdb2reaction/uma_pysis.py
-
 """
 uma_pysis — UMA calculator wrapper for PySisyphus
 ====================================================================
@@ -31,11 +29,18 @@ Description
   - **FiniteDifference**: central differences of forces, assembled on the selected
     device. Columns for frozen DOF are skipped; optionally return only the
     active‑DOF block. Default step: ε = 1.0e‑3 Å.
-- Device handling: `device="auto"` selects CUDA if available, else CPU; tensors use
-  `torch.float32` by default.
-- **Precision option**: set `double_precision=True` to run energy/forces/Hessian in
-  float64 (double) end‑to‑end. By default (`False`), float32 (single) is used. This
-  toggles both model/graph tensors and working arrays.
+- Device handling: `device="auto"` selects CUDA if available, else CPU.
+- **Precision / dtype**:
+    * UMA models run in their native precision (currently float32). We no longer
+      upcast the full model and graph to float64.
+    * Energies and forces returned by the PySisyphus API are always float64
+      (Hartree / Hartree·Bohr⁻¹).
+    * The Hessian dtype is controlled by `hessian_double`:
+        - `hessian_double=True` (default): assemble and return the Hessian in
+          float64 (double precision) on the host/device, without changing the
+          internal model precision.
+        - `hessian_double=False`: assemble and return the Hessian in the model
+          dtype (typically float32).
 - Neighborhood/graph: optional overrides for `max_neigh`, `radius`, `r_edges`.
   On‑the‑fly graphs are built (`otf_graph=True`), and `task_name` is attached to
   the batch; charge/spin are stored in `Atoms.info`.
@@ -64,7 +69,7 @@ Notes
   or (for full size) columns for frozen DOF are zeroed.
 - `return_partial_hessian`: if True, return only the Active‑DOF submatrix in both modes.
 - UMA loader: `pretrained_mlip.get_predict_unit(model)`. The predictor is moved to
-  the selected device, set to eval, and all `nn.Dropout` layers are disabled (`p=0`).
+  the selected device and set to eval; all `nn.Dropout` layers are disabled (`p=0`).
 - During analytical Hessian evaluation, model parameters have `requires_grad=False`;
   the model is briefly set to `train()` to enable autograd and then restored to `eval()`.
   CUDA caches are cleared if needed.
@@ -95,12 +100,7 @@ EV2AU          = 1.0 / AU2EV                     # eV → Hartree
 F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr⁻¹
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
-# Unified host/GPU dtypes for this implementation
-# Overridden to float64 when `double_precision=True` in uma_pysis.__init__
-_ndtype = np.float32
-_tdtype = torch.float32
-
-# Default for potential geometry loader integrations
+# Default for potential geometry loader integrations (kept for completeness)
 GEOM_KW_DEFAULT: Dict[str, Any] = {
     "coord_type": "cart",       # coordinate representation (Cartesian recommended)
     "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
@@ -130,26 +130,9 @@ CALC_KW: Dict[str, Any] = {
     "hessian_calc_mode": "Analytical",        # "Analytical" (default) | "FiniteDifference"
     "return_partial_hessian": True,           # receive only the active-DOF Hessian block
 
-    # Precision
-    "double_precision": True,                # if True use float64 for energy/forces/Hessian
+    # Hessian precision (energy/forces are always returned as float64)
+    "hessian_double": True,                   # if True, assemble/return Hessian in float64
 }
-
-# ===================================================================
-#                         helpers
-# ===================================================================
-def _cast_atomicdata_floats_(obj: AtomicData, dtype: torch.dtype, device: torch.device) -> AtomicData:
-    """
-    Cast ONLY floating-point tensors contained in an AtomicData to the given dtype/device.
-    Keeps integer tensors (e.g., indices) as-is to avoid breaking collaters and validators.
-    Ensures pos/cell/cell_offsets have identical dtype as required by AtomicData.validate().
-    """
-    for k, v in vars(obj).items():
-        if torch.is_tensor(v):
-            if v.is_floating_point():
-                setattr(obj, k, v.to(device=device, dtype=dtype))
-            else:
-                setattr(obj, k, v.to(device=device))
-    return obj
 
 # ===================================================================
 #                         UMA core wrapper
@@ -181,12 +164,10 @@ class UMAcore:
         self._AtomicData = AtomicData
         self._collater   = data_list_collater
 
-        # Load predictor and place it on target device & dtype --------
+        # Load predictor and place it on target device ----------------
         self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
-        # precision-aware (uses module-level _tdtype configured by uma_pysis)
-        self.predict.model.to(self.device, dtype=_tdtype)
         self.predict.model.eval()
-        # Hard-disable dropout
+
         for m in self.predict.model.modules():
             if isinstance(m, nn.Dropout):
                 m.p = 0.0
@@ -229,13 +210,8 @@ class UMAcore:
             radius   =radius,
             r_edges  =r_edges,
         ).to(self.device)
-        # Ensure float fields (pos/cell/cell_offsets/...) share dtype _tdtype
-        data = _cast_atomicdata_floats_(data, _tdtype, self.device)
-
         data.dataset = self.task_name
         batch = self._collater([data], otf_graph=True).to(self.device)
-        # Collation may re-create tensors; enforce float dtype consistency again
-        batch = _cast_atomicdata_floats_(batch, _tdtype, self.device)
         return batch
 
     # ----------------------------------------------------------------
@@ -268,8 +244,7 @@ class UMAcore:
         batch = self._ase_to_batch(atoms)
 
         need_grad = bool(forces or hessian)
-        # precision-aware position dtype
-        pos = batch.pos.detach().clone().to(self.device, dtype=_tdtype)
+        pos = batch.pos.detach().clone()
         pos.requires_grad_(need_grad)
         batch.pos = pos
 
@@ -281,7 +256,7 @@ class UMAcore:
 
         energy = float(res["energy"].squeeze().detach().item())
         forces_np = (
-            res["forces"].detach().cpu().numpy().astype(_ndtype, copy=False)
+            res["forces"].detach().cpu().numpy()
             if (forces or hessian)
             else None
         )
@@ -296,10 +271,11 @@ class UMAcore:
             try:
                 def e_fn(flat):
                     batch.pos = flat.view(-1, 3)
-                    out = self.predict.predict(batch)["energy"].squeeze()
-                    return out
+                    return self.predict.predict(batch)["energy"].squeeze()
 
-                H = torch.autograd.functional.hessian(e_fn, batch.pos.view(-1), vectorize=False)
+                H = torch.autograd.functional.hessian(
+                    e_fn, batch.pos.view(-1), vectorize=False
+                )
                 H = H.view(len(atoms), 3, len(atoms), 3).detach()
             finally:
                 self.predict.model.eval()
@@ -338,7 +314,7 @@ class uma_pysis(Calculator):
         freeze_atoms: Optional[Sequence[int]] = CALC_KW["freeze_atoms"],
         hessian_calc_mode: str = CALC_KW["hessian_calc_mode"],
         return_partial_hessian: bool = CALC_KW["return_partial_hessian"],
-        double_precision: bool = CALC_KW["double_precision"],
+        hessian_double: bool = CALC_KW["hessian_double"],
         # -------------------------------------------------------------------
         **kwargs,
     ):
@@ -356,18 +332,10 @@ class uma_pysis(Calculator):
         return_partial_hessian : bool, default True
             If True, return only the Active-DOF Hessian (submatrix for non-frozen atoms).
             If False, return a full (3N×3N) matrix where frozen-DOF columns are 0.
-        double_precision : bool, default False
-            If True, run energy/forces/Hessian in float64 end-to-end (model, graph tensors,
-            working arrays). If False (default), use float32 for performance.
+        hessian_double : bool, default True
+            If True, assemble/return the Hessian in float64 (double precision).
+            Energy and forces are always returned as float64 regardless of this flag.
         """
-        global _ndtype, _tdtype
-        if bool(double_precision):
-            _ndtype = np.float64
-            _tdtype = torch.float64
-        else:
-            _ndtype = np.float32
-            _tdtype = torch.float32
-
         super().__init__(charge=charge, mult=spin, **kwargs)
         self._core: Optional[UMAcore] = None
         self._core_kw = dict(
@@ -384,7 +352,7 @@ class uma_pysis(Calculator):
         self.hessian_calc_mode = hessian_calc_mode
         self.freeze_atoms: List[int] = sorted(set(int(i) for i in (freeze_atoms or [])))
         self.return_partial_hessian = bool(return_partial_hessian)
-        self.double_precision = bool(double_precision)
+        self.hessian_double = bool(hessian_double)
 
     # ---------- helpers ---------------------------------------------
     def _ensure_core(self, elem: Sequence[str]):
@@ -397,7 +365,8 @@ class uma_pysis(Calculator):
 
     @staticmethod
     def _au_forces(F: np.ndarray) -> np.ndarray:
-        return (F * F_EVAA_2_AU).reshape(-1)
+        F64 = np.asarray(F, dtype=np.float64)
+        return (F64 * F_EVAA_2_AU).reshape(-1)
 
     def _au_hessian(self, H: torch.Tensor):
         """
@@ -413,12 +382,28 @@ class uma_pysis(Calculator):
         numpy.ndarray or torch.Tensor
             If `out_hess_torch` is False, returns a NumPy array on CPU.
             Otherwise returns a torch.Tensor on the current device.
+
+        Notes
+        -----
+        The dtype of the returned Hessian is controlled solely by
+        `self.hessian_double`:
+
+        - If True, the result is float64 (double precision).
+        - If False, the result stays in the model/native dtype.
         """
         n = H.size(0)
         H = H.view(n * 3, n * 3)
-        scale = torch.tensor(H_EVAA_2_AU, device=H.device, dtype=H.dtype)
-        H = H * scale
-        return H.detach().cpu().numpy() if not self.out_hess_torch else H.detach()
+
+        # Unit conversion
+        H = H * H_EVAA_2_AU
+
+        if self.hessian_double:
+            H = H.to(dtype=torch.float64)
+
+        if self.out_hess_torch:
+            return H.detach()
+        else:
+            return H.detach().cpu().numpy()
 
     # ---- Common utilities for freeze/active DOF ----------------
     def _active_and_frozen_dof_idx(self, n_atoms: int):
@@ -447,19 +432,19 @@ class uma_pysis(Calculator):
         if len(self.freeze_atoms) == 0:
             return H
 
-        active_atoms, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
-        H2d = H.view(n_atoms * 3, n_atoms * 3)
+        _, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
+        H = H.view(n_atoms * 3, n_atoms * 3)
 
         if self.return_partial_hessian:
             idx = torch.tensor(active_dof_idx, device=H.device, dtype=torch.long)
-            H_sub = H2d.index_select(0, idx).index_select(1, idx)
-            n_act = len(active_atoms)
+            H_sub = H.index_select(0, idx).index_select(1, idx)
+            n_act = len(active_dof_idx) // 3
             return H_sub.view(n_act, 3, n_act, 3)
         else:
             if frozen_dof_idx:
                 cols = torch.tensor(frozen_dof_idx, device=H.device, dtype=torch.long)
-                H2d.index_fill_(1, cols, 0.0)  # zero columns of frozen DOF
-            return H2d.view(n_atoms, 3, n_atoms, 3)
+                H.index_fill_(1, cols, 0.0)  # zero columns of frozen DOF
+            return H.view(n_atoms, 3, n_atoms, 3)
 
     # ---------- Finite-Difference Hessian (GPU/CPU assembly) -------------
     def _build_fd_hessian_gpu(
@@ -487,8 +472,11 @@ class uma_pysis(Calculator):
           - "forces"  : np.ndarray, shape (N, 3), eV/Å
           - "hessian" : torch.Tensor, shape (N_out,3,N_out,3), eV/Å² on device
         """
-        dev = self._core.device
-        dtype = _tdtype
+        self._ensure_core(elem)
+        core = self._core
+        assert core is not None
+
+        dev = core.device
 
         n_atoms = len(elem)
         dof = n_atoms * 3
@@ -499,12 +487,17 @@ class uma_pysis(Calculator):
         active_dof_idx = [3 * i + j for i in active_atoms for j in range(3)]
 
         # Base point evaluation
-        res0 = self._core.compute(coord_ang, forces=True, hessian=False)
+        res0 = core.compute(
+            coord_ang, forces=True, hessian=False
+        )
         energy0_eV = res0["energy"]
-        F0 = res0["forces"].astype(_ndtype, copy=False)  # (N,3) eV/Å
+        F0 = res0["forces"]  # (N,3) eV/Å, native numpy dtype
+
+        # Assemble Hessian in the same dtype as the model forces.
+        force_dtype = torch.from_numpy(F0).dtype
 
         # Device-side Hessian storage (2D for easy column insertion)
-        H = torch.zeros((dof, dof), device=dev, dtype=dtype)
+        H = torch.zeros((dof, dof), device=dev, dtype=force_dtype)
 
         # Host-side work arrays for coordinate perturbations
         coord_plus = coord_ang.copy()
@@ -517,17 +510,21 @@ class uma_pysis(Calculator):
 
             # x + h
             coord_plus[a, c] = coord_ang[a, c] + eps_ang
-            res_p = self._core.compute(coord_plus, forces=True, hessian=False)
-            Fp = res_p["forces"].reshape(-1).astype(_ndtype, copy=False)
+            res_p = core.compute(
+                coord_plus, forces=True, hessian=False
+            )
+            Fp = res_p["forces"].reshape(-1)  # (3N,) eV/Å
 
             # x - h
             coord_minus[a, c] = coord_ang[a, c] - eps_ang
-            res_m = self._core.compute(coord_minus, forces=True, hessian=False)
-            Fm = res_m["forces"].reshape(-1).astype(_ndtype, copy=False)
+            res_m = core.compute(
+                coord_minus, forces=True, hessian=False
+            )
+            Fm = res_m["forces"].reshape(-1)  # (3N,) eV/Å
 
             # Column on device
-            Fp_t = torch.from_numpy(Fp).to(dev, dtype=dtype)
-            Fm_t = torch.from_numpy(Fm).to(dev, dtype=dtype)
+            Fp_t = torch.from_numpy(Fp).to(dev, dtype=force_dtype)
+            Fm_t = torch.from_numpy(Fm).to(dev, dtype=force_dtype)
             col = -(Fp_t - Fm_t) / (2.0 * eps_ang)  # (3N,) eV/Å²
 
             H[:, k] = col
@@ -550,14 +547,18 @@ class uma_pysis(Calculator):
     # ---------- PySisyphus API --------------------------------------
     def get_energy(self, elem, coords):
         self._ensure_core(elem)
-        coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
-        res = self._core.compute(coord_ang, forces=False, hessian=False)
+        coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
+        res = self._core.compute(
+            coord_ang, forces=False, hessian=False
+        )
         return {"energy": self._au_energy(res["energy"])}
 
     def get_forces(self, elem, coords):
         self._ensure_core(elem)
-        coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
-        res = self._core.compute(coord_ang, forces=True, hessian=False)
+        coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
+        res = self._core.compute(
+            coord_ang, forces=True, hessian=False
+        )
 
         # Zero forces on frozen atoms (in eV/Å before conversion)
         F_ev = self._zero_frozen_forces_ev(res["forces"])
@@ -585,12 +586,16 @@ class uma_pysis(Calculator):
         If `hessian_calc_mode` is falsy or unrecognized, FiniteDifference is used.
         """
         self._ensure_core(elem)
-        coord_ang = np.asarray(coords, dtype=_ndtype).reshape(-1, 3) * BOHR2ANG
+        coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
 
         mode = (self.hessian_calc_mode or "FiniteDifference").strip().lower()
         if mode in ("analytical", "analytic"):
             try:
-                res = self._core.compute(coord_ang, forces=True, hessian=True)
+                res = self._core.compute(
+                    coord_ang,
+                    forces=True,
+                    hessian=True,
+                )
             except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
                 msg = str(e).lower()
                 if "out of memory" in msg and "cuda" in msg:
@@ -605,7 +610,7 @@ class uma_pysis(Calculator):
             # Zero forces for frozen atoms (eV/Å)
             res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
 
-            # Apply Active‑DOF trimming/column‑zeroing for Analytical
+            # Apply Active‑DOF trimming/column-zeroing for Analytical
             H = self._apply_analytical_active_trim(res["hessian"])
 
             return {
