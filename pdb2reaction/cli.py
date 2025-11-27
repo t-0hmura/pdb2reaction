@@ -94,3 +94,9 @@ warnings.filterwarnings(
     message=r"var\(\): degrees of freedom is <= 0\. Correction should be strictly less than the reduction factor.*",
     module=r"fairchem\.core\.models\.uma\.escn_moe"
 )
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=r"Sparse CSR tensor support is in beta state.*",
+    module=r"torch_dmf"
+)
