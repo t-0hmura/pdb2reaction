@@ -67,7 +67,7 @@ an active-subspace (partial) Hessian block when `freeze_atoms` are present; fini
 Hessians honor the active subspace. `--hessian-calc-mode` selects Analytical or FiniteDifference.
 
 For PDB inputs, optimization trajectories and the final geometry are also converted to PDB.
-The final imaginary mode is always written as both `.trj` and `.pdb`.
+The final imaginary mode is written as `.pdb` only when the input is PDB (the `.trj` is always written).
 
 Key behaviors and algorithmic notes
 -----------------------------------
@@ -106,7 +106,7 @@ out_dir/ (default: ./result_tsopt/)
   ├─ optimization.pdb                # PDB conversion of the heavy-mode trajectory (PDB input)
   ├─ vib/
   │   ├─ final_imag_mode_±XXXX.Xcm-1.trj  # Final imaginary mode animation (.trj)
-  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb  # PDB animation of the same mode
+  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb  # PDB animation (only when the input is PDB)
   └─ .dimer_mode.dat                 # Internal dimer orientation seed (light mode)
 
 Notes
@@ -800,6 +800,7 @@ class HessianDimer:
         self.fn = fn
         self.out_dir = Path(out_dir); self.out_dir.mkdir(parents=True, exist_ok=True)
         self.vib_dir = self.out_dir / "vib"; self.vib_dir.mkdir(parents=True, exist_ok=True)
+        self.ref_pdb: Optional[Path] = Path(fn) if Path(fn).suffix.lower() == ".pdb" else None
 
         self.thresh_loose = thresh_loose
         self.thresh = thresh
@@ -1229,9 +1230,13 @@ class HessianDimer:
             del modes, masses_amu_t, m3
             out_trj = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.trj"
             out_pdb = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb"
-            _write_mode_trj_and_pdb(self.geom, v_cart, out_trj, out_pdb,
-                                    amplitude_ang=0.8, n_frames=20,
-                                    comment=f"imag {freqs_cm[primary_idx]:+.2f} cm-1")
+            _write_mode_trj_and_pdb(
+                self.geom, v_cart, out_trj, out_pdb,
+                amplitude_ang=0.8, n_frames=20,
+                comment=f"imag {freqs_cm[primary_idx]:+.2f} cm-1",
+                ref_pdb=self.ref_pdb,
+                write_pdb=self.ref_pdb is not None,
+            )
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1659,9 +1664,14 @@ def cli(
                     atoms: List[str]
                     coords: np.ndarray
                 gproxy = _GProxy(atoms=geometry.atoms, coords=geometry.coords.copy())
-                _write_mode_trj_and_pdb(gproxy, v_cart, out_trj, out_pdb,
-                                        amplitude_ang=0.8, n_frames=20,
-                                        comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1")
+                ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
+                _write_mode_trj_and_pdb(
+                    gproxy, v_cart, out_trj, out_pdb,
+                    amplitude_ang=0.8, n_frames=20,
+                    comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1",
+                    ref_pdb=ref_pdb,
+                    write_pdb=ref_pdb is not None,
+                )
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
