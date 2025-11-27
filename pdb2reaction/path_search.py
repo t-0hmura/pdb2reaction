@@ -705,7 +705,7 @@ def _run_dmf_between(
     tag: str,
     ref_pdb_path: Optional[Path],
     max_nodes: int,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
     shared_calc,
 ) -> GSMResult:
     """
@@ -715,7 +715,13 @@ def _run_dmf_between(
     seg_dir = out_dir / f"{tag}_dmf"
     seg_dir.mkdir(parents=True, exist_ok=True)
 
-    dmf_res = _run_dmf_mep([gA, gB], calc_cfg, seg_dir, source_paths, max_nodes, gjf_template=_PRIMARY_GJF_TEMPLATE)
+    dmf_res = _run_dmf_mep(
+        geoms=[gA, gB],
+        calc_cfg=calc_cfg,
+        out_dir_path=seg_dir,
+        prepared_inputs=prepared_inputs,
+        max_nodes=max_nodes,
+    )
 
     energies = list(map(float, dmf_res.energies))
 
@@ -744,7 +750,7 @@ def _refine_between(
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
     max_nodes: int,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
 ) -> GSMResult:
     """
     Refine End1–End2 via GSM or DMF depending on the selected mode.
@@ -759,7 +765,7 @@ def _refine_between(
             tag=f"{tag}_refine",
             ref_pdb_path=ref_pdb_path,
             max_nodes=max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
             shared_calc=shared_calc,
         )
 
@@ -779,7 +785,7 @@ def _maybe_bridge_segments(
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
     max_nodes: int,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
 ) -> Optional[GSMResult]:
     """
     Run a bridge GSM if two segment endpoints are farther than the threshold.
@@ -799,7 +805,7 @@ def _maybe_bridge_segments(
             tag=f"{tag}_bridge",
             ref_pdb_path=ref_pdb_path,
             max_nodes=max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
             shared_calc=shared_calc,
         )
 
@@ -823,7 +829,7 @@ def _stitch_paths(
     mep_mode_kind: str = "gsm",
     calc_cfg: Optional[Dict[str, Any]] = None,
     max_nodes: int = 10,
-    source_paths: Optional[Sequence[Path]] = None,
+    prepared_inputs: Optional[Sequence[PreparedInputStructure]] = None,
 ) -> Tuple[List[Any], List[float]]:
     """
     Concatenate path parts (images, energies). Insert bridge GSMs when needed.
@@ -901,7 +907,7 @@ def _stitch_paths(
                 tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
                 rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path,
                 mep_mode_kind=mep_mode_kind, calc_cfg=calc_cfg or {}, max_nodes=max_nodes,
-                source_paths=source_paths or [],
+                prepared_inputs=prepared_inputs or [],
             )
             if br is not None:
                 _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
@@ -980,7 +986,7 @@ def _build_multistep_path(
     search_cfg: Dict[str, Any],
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
     out_dir: Path,
     ref_pdb_path: Optional[Path],
     prepared_input: Optional[PreparedInputStructure],
@@ -999,19 +1005,19 @@ def _build_multistep_path(
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
         gsm = (
             _run_dmf_between(
-                gA,
-                gB,
-                calc_cfg,
-                out_dir,
-                tag=f"seg_{seg_counter[0]:03d}_maxdepth",
-                ref_pdb_path=ref_pdb_path,
-                max_nodes=seg_max_nodes,
-                source_paths=source_paths,
-                shared_calc=shared_calc,
-            )
-            if mep_mode_kind == "dmf"
-            else _run_gsm_between(
-                gA,
+            gA,
+            gB,
+            calc_cfg,
+            out_dir,
+            tag=f"seg_{seg_counter[0]:03d}_maxdepth",
+            ref_pdb_path=ref_pdb_path,
+            max_nodes=seg_max_nodes,
+            prepared_inputs=prepared_inputs,
+            shared_calc=shared_calc,
+        )
+        if mep_mode_kind == "dmf"
+        else _run_gsm_between(
+            gA,
                 gB,
                 shared_calc,
                 gs_seg_cfg,
@@ -1039,7 +1045,7 @@ def _build_multistep_path(
             tag=tag0,
             ref_pdb_path=ref_pdb_path,
             max_nodes=seg_max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
             shared_calc=shared_calc,
         )
         if mep_mode_kind == "dmf"
@@ -1129,7 +1135,7 @@ def _build_multistep_path(
             mep_mode_kind=mep_mode_kind,
             calc_cfg=calc_cfg,
             max_nodes=seg_max_nodes,
-            source_paths=source_paths,
+            prepared_inputs=prepared_inputs,
         )
         step_tag_for_report = f"{tag0}_refine"
 
@@ -1170,7 +1176,7 @@ def _build_multistep_path(
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
@@ -1184,7 +1190,7 @@ def _build_multistep_path(
     if right_changed:
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index
         )
@@ -1201,7 +1207,7 @@ def _build_multistep_path(
             shared_calc,
             geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg,
-            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, source_paths,
+            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
             prepared_input=prepared_input,
@@ -1230,7 +1236,7 @@ def _build_multistep_path(
         mep_mode_kind=mep_mode_kind,
         calc_cfg=calc_cfg,
         max_nodes=bridge_max_nodes,
-        source_paths=source_paths,
+        prepared_inputs=prepared_inputs,
     )
 
     _tag_images(stitched_imgs, pair_index=pair_index)
@@ -2018,7 +2024,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
+                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 prepared_input=main_prepared,
@@ -2038,7 +2044,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, p_list,
+                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 prepared_input=main_prepared,
@@ -2071,7 +2077,7 @@ def cli(
                     mep_mode_kind=mep_mode_kind,
                     calc_cfg=calc_cfg,
                     max_nodes=bridge_max_nodes,
-                    source_paths=p_list,
+                    prepared_inputs=prepared_inputs,
                 )
                 seg_reports_all.extend(pair_path.segments)
 
