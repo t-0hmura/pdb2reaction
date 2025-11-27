@@ -682,21 +682,26 @@ def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None
     Convert ASE Atoms → pysisyphus Geometry, preserving freeze_atoms when present.
     """
 
-    from io import StringIO
     from ase.io import write as ase_write
 
-    buf = StringIO()
-    buf.name = "ase_atoms.xyz"
-    ase_write(buf, atoms, format="xyz")
-    buf.seek(0)
-    g = geom_loader(buf, coord_type=coord_type)
+    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
     try:
-        g.freeze_atoms = np.array(getattr(template_g, "freeze_atoms", []), dtype=int)
-    except Exception:
-        pass
-    if shared_calc is not None:
-        g.set_calculator(shared_calc)
-    return g
+        ase_write(tmp, atoms, format="xyz")
+        tmp.flush()
+        tmp.close()
+        g = geom_loader(Path(tmp.name), coord_type=coord_type)
+        try:
+            g.freeze_atoms = np.array(getattr(template_g, "freeze_atoms", []), dtype=int)
+        except Exception:
+            pass
+        if shared_calc is not None:
+            g.set_calculator(shared_calc)
+        return g
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
 
 
 def _run_dmf_between(
