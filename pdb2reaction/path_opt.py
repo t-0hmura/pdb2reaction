@@ -312,13 +312,12 @@ def _run_dmf_mep(
 
     initial_trj = out_dir_path / "dmf_initial.trj"
     ase_write(initial_trj, mxflx_fbenm.images, format="xyz")
-    if primary_prepared is not None and (needs_pdb or needs_gjf):
+    if primary_prepared is not None and needs_pdb:
         convert_xyz_like_outputs(
             initial_trj,
             primary_prepared,
             ref_pdb_path=ref_pdb,
             out_pdb_path=initial_trj.with_suffix(".pdb") if needs_pdb else None,
-            out_gjf_path=initial_trj.with_suffix(".gjf") if needs_gjf else None,
         )
     coefs = mxflx_fbenm.coefs.copy()
 
@@ -346,13 +345,12 @@ def _run_dmf_mep(
 
     final_trj = out_dir_path / "final_geometries.trj"
     _write_ase_trj_with_energy(mxflx.images, energies, final_trj)
-    if primary_prepared is not None and (needs_pdb or needs_gjf):
+    if primary_prepared is not None and needs_pdb:
         convert_xyz_like_outputs(
             final_trj,
             primary_prepared,
             ref_pdb_path=ref_pdb,
             out_pdb_path=final_trj.with_suffix(".pdb") if needs_pdb else None,
-            out_gjf_path=final_trj.with_suffix(".gjf") if needs_gjf else None,
         )
     if primary_prepared is not None and (needs_pdb or needs_gjf):
         hei_tmp = out_dir_path / "hei.xyz"

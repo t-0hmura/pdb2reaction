@@ -432,8 +432,8 @@ def _maybe_convert_outputs(
     except Exception as e:
         click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-    # optimization.trj → optimization.{pdb|gjf} (if dump)
-    if dump:
+    # optimization.trj → optimization.pdb (if dump)
+    if dump and needs_pdb:
         try:
             trj_path = get_trj_fn("optimization.trj")
             if trj_path.exists():
@@ -442,7 +442,6 @@ def _maybe_convert_outputs(
                     prepared_input,
                     ref_pdb_path=ref_pdb,
                     out_pdb_path=out_dir / "optimization.pdb" if needs_pdb else None,
-                    out_gjf_path=out_dir / "optimization.gjf" if needs_gjf else None,
                 )
                 click.echo("[convert] Wrote 'optimization' outputs.")
             else:

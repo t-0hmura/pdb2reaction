@@ -149,7 +149,6 @@ def _echo_convert_trj_if_exists(
     prepared_input: "PreparedInputStructure",
     *,
     out_pdb: Optional[Path] = None,
-    out_gjf: Optional[Path] = None,
 ) -> None:
     if trj_path.exists():
         try:
@@ -159,9 +158,8 @@ def _echo_convert_trj_if_exists(
                 prepared_input,
                 ref_pdb_path=ref_pdb,
                 out_pdb_path=out_pdb,
-                out_gjf_path=out_gjf,
             )
-            targets = [p for p in (out_pdb, out_gjf) if p is not None and p.exists()]
+            targets = [p for p in (out_pdb,) if p is not None and p.exists()]
             if targets:
                 written = ", ".join(f"'{p.name}'" for p in targets)
                 click.echo(f"[convert] Wrote {written}.")
@@ -337,26 +335,23 @@ def cli(
         click.echo("\n=== IRC (EulerPC) finished ===\n")
 
         # --------------------------
-        # 4) Convert trajectories to PDB/GJF based on input type
+        # 4) Convert trajectories to PDB based on input type
         # --------------------------
         suffix_prefix = irc_cfg.get("prefix", "")
         _echo_convert_trj_if_exists(
             out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
             prepared_input,
             out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-            out_gjf=out_dir_path / f"{suffix_prefix}{'finished_irc.gjf'}" if prepared_input.is_gjf else None,
         )
         _echo_convert_trj_if_exists(
             out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
             prepared_input,
             out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-            out_gjf=out_dir_path / f"{suffix_prefix}{'forward_irc.gjf'}" if prepared_input.is_gjf else None,
         )
         _echo_convert_trj_if_exists(
             out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
             prepared_input,
             out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-            out_gjf=out_dir_path / f"{suffix_prefix}{'backward_irc.gjf'}" if prepared_input.is_gjf else None,
         )
 
         click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))

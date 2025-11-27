@@ -85,7 +85,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 - `plots/scan2d_map.png` (or `.html` fallback) and `plots/scan2d_landscape.html`
   — 2D contour and 3D surface visualizations.
 - `grid/point_i###_j###.xyz` — relaxed geometries for every `(i, j)` pair (with `.pdb`/`.gjf` companions when conversion is enabled and templates exist).
-- `grid/inner_path_d1_###.trj` — written only when `--dump True` (mirrored to `.pdb`/`.gjf` when conversion is enabled for PDB/Gaussian inputs).
+- `grid/inner_path_d1_###.trj` — written only when `--dump True` (mirrored to `.pdb` when conversion is enabled for PDB inputs).
 
 ## Notes
 - UMA via `uma_pysis` is the only calculator backend and reuses the same

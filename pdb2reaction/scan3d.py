@@ -951,11 +951,10 @@ def cli(
                                     prepared_input,
                                     ref_pdb_path=ref_pdb_path,
                                     out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.pdb",
-                                    out_gjf_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.gjf",
                                 )
                             except Exception as e:
                                 click.echo(
-                                    f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB/GJF: {e}",
+                                    f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB: {e}",
                                     err=True,
                                 )
 

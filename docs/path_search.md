@@ -61,7 +61,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. UMA calculators are constructed once and shared across all structures for efficiency.
 
 ## Outputs
-- `<out-dir>/mep.trj` (and `.pdb`/`.gjf` companions when the inputs were PDB/Gaussian templates and conversion is enabled).
+- `<out-dir>/mep.trj` (and `.pdb` companions when the inputs were PDB templates and conversion is enabled).
 - `<out-dir>/mep_w_ref.pdb` merged full-system MEP (requires `--ref-pdb` or auto-provided templates; obeys conversion flag for generated companions).
 - `<out-dir>/mep_w_ref_seg_XX.pdb` merged per-segment paths for segments with covalent changes (requires `--ref-pdb`).
 - `<out-dir>/summary.yaml` summarising barriers and classification for every recursive segment.

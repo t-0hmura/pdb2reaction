@@ -837,7 +837,7 @@ def convert_xyz_like_outputs(
     out_pdb_path: Optional[Path] = None,
     out_gjf_path: Optional[Path] = None,
 ) -> None:
-    """Convert an XYZ/TRJ file to PDB/GJF outputs based on the original input type.
+    """Convert an XYZ/TRJ file to PDB outputs (and XYZ to GJF) based on the original input type.
 
     Parameters
     ----------
@@ -858,7 +858,12 @@ def convert_xyz_like_outputs(
 
     source_suffix = prepared_input.source_path.suffix.lower()
     needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
-    needs_gjf = prepared_input.is_gjf and prepared_input.gjf_template is not None and out_gjf_path is not None
+    needs_gjf = (
+        xyz_path.suffix.lower() == ".xyz"
+        and prepared_input.is_gjf
+        and prepared_input.gjf_template is not None
+        and out_gjf_path is not None
+    )
 
     if needs_pdb:
         convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
