@@ -470,7 +470,7 @@ CALC_KW = dict(_UMA_CALC_KW)
 FREQ_KW = {
     "amplitude_ang": 0.8,     # animation amplitude (Å) applied to both .trj and .pdb outputs
     "n_frames": 20,           # number of frames per vibrational mode
-    "max_write": 20,          # maximum number of modes to export
+    "max_write": 10,          # maximum number of modes to export
     "sort": "value",          # "value" (ascending by cm^-1) | "abs" (ascending by absolute value)
 }
 
@@ -501,7 +501,7 @@ THERMO_KW = {
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
-@click.option("--max-write", type=int, default=20, show_default=True,
+@click.option("--max-write", type=int, default=10, show_default=True,
               help="How many modes to export (after sorting per --sort).")
 @click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
               help="Animation amplitude (Å) used for both .trj and .pdb.")
