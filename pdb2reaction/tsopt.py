@@ -442,24 +442,26 @@ def _write_mode_trj_and_pdb(geom,
                             out_pdb: Path,
                             amplitude_ang: float = 0.25,
                             n_frames: int = 20,
-                            comment: str = "imag mode") -> None:
+                            comment: str = "imag mode",
+                            ref_pdb: Optional[Path] = None,
+                            write_pdb: bool = True,
+                            prepared_input: Optional["PreparedInputStructure"] = None,
+                            out_gjf: Optional[Path] = None) -> None:
     """
-    Write a single imaginary mode animation both as .trj (XYZ-like) and .pdb.
+    Write a single imaginary mode animation as .trj (XYZ-like) and optionally .pdb.
+
+    If ``ref_pdb`` is provided and points to a ``.pdb`` file, the PDB output is generated
+    via :func:`convert_xyz_like_outputs` using the reference as a template; when conversion
+    fails, an ASE fallback is used. Set ``write_pdb=False`` to skip PDB generation entirely.
     """
     ref_ang = geom.coords.reshape(-1, 3) * BOHR2ANG
     mode = mode_vec_3N.reshape(-1, 3).copy()
     mode /= np.linalg.norm(mode)
 
+    trj_written = False
+
     # .trj (XYZ-like concatenation)
-    try:
-        from pysisyphus.xyzloader import make_trj_str  # type: ignore
-        amp_ang = amplitude_ang
-        steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
-        traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
-        comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
-        trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
-        out_trj.write_text(trj_str, encoding="utf-8")
-    except Exception:
+    if write_pdb and ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb":
         with out_trj.open("w", encoding="utf-8") as f:
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
@@ -467,14 +469,50 @@ def _write_mode_trj_and_pdb(geom,
                 f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
                 for sym, (x, y, z) in zip(geom.atoms, coords):
                     f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
+        trj_written = True
 
-    # .pdb (MODEL/ENDMDL)
-    atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
-    for i in range(n_frames):
-        phase = np.sin(2.0 * np.pi * i / n_frames)
-        ai = atoms0.copy()
-        ai.set_positions(ref_ang + phase * amplitude_ang * mode)
-        write(out_pdb, ai, append=(i != 0))
+    if not trj_written:
+        try:
+            from pysisyphus.xyzloader import make_trj_str  # type: ignore
+            amp_ang = amplitude_ang
+            steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
+            traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
+            comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
+            trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
+            out_trj.write_text(trj_str, encoding="utf-8")
+            trj_written = True
+        except Exception:
+            with out_trj.open("w", encoding="utf-8") as f:
+                for i in range(n_frames):
+                    phase = np.sin(2.0 * np.pi * i / n_frames)
+                    coords = ref_ang + phase * amplitude_ang * mode
+                    f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
+                    for sym, (x, y, z) in zip(geom.atoms, coords):
+                        f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
+
+    needs_pdb = write_pdb and out_pdb is not None
+    needs_gjf = out_gjf is not None and prepared_input is not None and prepared_input.is_gjf
+
+    if not (needs_pdb or needs_gjf):
+        return
+
+    ref_for_conv = ref_pdb if (ref_pdb and ref_pdb.suffix.lower() == ".pdb") else None
+    try:
+        convert_xyz_like_outputs(
+            out_trj,
+            prepared_input,  # type: ignore[arg-type]
+            ref_pdb_path=ref_for_conv,
+            out_pdb_path=out_pdb if needs_pdb else None,
+            out_gjf_path=out_gjf if needs_gjf else None,
+        )
+    except Exception:
+        if needs_pdb and ref_ang is not None and ref_pdb is not None:
+            atoms0 = Atoms(geom.atoms, positions=ref_ang, pbc=False)
+            for i in range(n_frames):
+                phase = np.sin(2.0 * np.pi * i / n_frames)
+                ai = atoms0.copy()
+                ai.set_positions(ref_ang + phase * amplitude_ang * mode)
+                write(out_pdb, ai, append=(i != 0))
 
 
 # ===================================================================
