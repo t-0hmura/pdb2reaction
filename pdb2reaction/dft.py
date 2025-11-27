@@ -92,6 +92,7 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
 )
 
 
@@ -415,6 +416,13 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
+@click.option(
     "--func-basis",
     "func_basis",
     type=str,
@@ -443,6 +451,7 @@ def cli(
     input_path: Path,
     charge: Optional[int],
     spin: Optional[int],
+    convert_files: bool,
     func_basis: str,
     max_cycle: int,
     conv_tol: float,
@@ -451,6 +460,7 @@ def cli(
     engine: str,
     args_yaml: Optional[Path],
 ) -> None:
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)

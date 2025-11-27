@@ -27,7 +27,8 @@ Description
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
 - Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: CLI > YAML > built-in defaults.
-- Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light") or RFO ("heavy") before alignment and GSM. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
+- Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light") or RFO ("heavy", default) before alignment and GSM. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
+- Path generator: `--mep-mode` accepts GSM or DMF, with DMF enabled by default to match the CLI default.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is available via YAML but is disabled by default; the CLI does not toggle it.
 - `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
@@ -90,6 +91,8 @@ from .utils import (
     prepare_input_structure,
     fill_charge_spin_from_gjf,
     maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
+    convert_xyz_like_outputs,
     PreparedInputStructure,
 )
 from .opt import (
@@ -246,9 +249,8 @@ def _run_dmf_mep(
     geoms: Sequence[Any],
     calc_cfg: Dict[str, Any],
     out_dir_path: Path,
-    source_paths: Sequence[Path],
+    prepared_inputs: Sequence[PreparedInputStructure],
     max_nodes: int,
-    gjf_template: Optional[Any] = None,
 ) -> DMFMepResult:
     """Run Direct Max Flux (DMF) MEP optimization between two endpoints."""
 
@@ -273,17 +275,20 @@ def _run_dmf_mep(
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
     ref_images = [_geom_to_ase(g) for g in geoms]
+    primary_prepared = prepared_inputs[0] if prepared_inputs else None
+    ref_pdb = (
+        primary_prepared.source_path.resolve()
+        if primary_prepared and primary_prepared.source_path.suffix.lower() == ".pdb"
+        else None
+    )
+    needs_pdb = ref_pdb is not None
+    needs_gjf = bool(primary_prepared and primary_prepared.is_gjf)
+
     charge = int(calc_cfg.get("charge", 0))
     spin = int(calc_cfg.get("spin", 1))
     for img in ref_images:
         img.info["charge"] = charge
         img.info["spin"] = spin
-
-    ref_pdb = (
-        source_paths[0].resolve()
-        if source_paths and source_paths[0].suffix.lower() == ".pdb"
-        else None
-    )
 
     predictor = pretrained_mlip.get_predict_unit(
         calc_cfg.get("model", "uma-s-1p1"),
@@ -306,7 +311,14 @@ def _run_dmf_mep(
 
     initial_trj = out_dir_path / "dmf_initial.trj"
     ase_write(initial_trj, mxflx_fbenm.images)
-    _maybe_convert_to_pdb(initial_trj, ref_pdb)
+    if primary_prepared is not None and (needs_pdb or needs_gjf):
+        convert_xyz_like_outputs(
+            initial_trj,
+            primary_prepared,
+            ref_pdb_path=ref_pdb,
+            out_pdb_path=initial_trj.with_suffix(".pdb") if needs_pdb else None,
+            out_gjf_path=initial_trj.with_suffix(".gjf") if needs_gjf else None,
+        )
     coefs = mxflx_fbenm.coefs.copy()
 
     mxflx = DirectMaxFlux(
@@ -333,12 +345,24 @@ def _run_dmf_mep(
 
     final_trj = out_dir_path / "final_geometries.trj"
     _write_ase_trj_with_energy(mxflx.images, energies, final_trj)
-
-    _maybe_convert_to_pdb(final_trj, ref_pdb)
-    if gjf_template is not None:
+    if primary_prepared is not None and (needs_pdb or needs_gjf):
+        convert_xyz_like_outputs(
+            final_trj,
+            primary_prepared,
+            ref_pdb_path=ref_pdb,
+            out_pdb_path=final_trj.with_suffix(".pdb") if needs_pdb else None,
+            out_gjf_path=final_trj.with_suffix(".gjf") if needs_gjf else None,
+        )
+    if primary_prepared is not None and (needs_pdb or needs_gjf):
         hei_tmp = out_dir_path / "hei.xyz"
         _write_ase_trj_with_energy([mxflx.images[hei_idx]], [energies[hei_idx]], hei_tmp)
-        maybe_convert_xyz_to_gjf(hei_tmp, gjf_template, out_dir_path / "hei.gjf")
+        convert_xyz_like_outputs(
+            hei_tmp,
+            primary_prepared,
+            ref_pdb_path=ref_pdb,
+            out_pdb_path=out_dir_path / "hei.pdb" if needs_pdb else None,
+            out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
+        )
 
     return DMFMepResult(images=list(mxflx.images), energies=list(energies), hei_idx=int(hei_idx))
 
@@ -350,7 +374,7 @@ def _optimize_single(
     sopt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
-    ref_pdb_path: Optional[Path],
+    prepared_input: Optional[PreparedInputStructure],
 ):
     """
     Single-structure optimization (LBFGS or RFO) shared by path_opt and path_search.
@@ -373,7 +397,22 @@ def _optimize_single(
 
     try:
         final_xyz = Path(opt.final_fn)
-        _maybe_convert_to_pdb(final_xyz, ref_pdb_path)
+        if prepared_input is not None:
+            ref_pdb = (
+                prepared_input.source_path.resolve()
+                if prepared_input.source_path.suffix.lower() == ".pdb"
+                else None
+            )
+            needs_pdb = ref_pdb is not None
+            needs_gjf = prepared_input.is_gjf
+            if needs_pdb or needs_gjf:
+                convert_xyz_like_outputs(
+                    final_xyz,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=final_xyz.with_suffix(".pdb") if needs_pdb else None,
+                    out_gjf_path=final_xyz.with_suffix(".gjf") if needs_gjf else None,
+                )
         g_final = geom_loader(final_xyz, coord_type=g.coord_type)
         try:
             g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
@@ -404,7 +443,7 @@ def _optimize_single(
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="gsm",
+    default="dmf",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -450,7 +489,7 @@ def _optimize_single(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="Single-structure optimizer for endpoint preoptimization: light (=LBFGS) or heavy (=RFO).",
 )
@@ -460,6 +499,13 @@ def _optimize_single(
     default=False,
     show_default=True,
     help="Dump optimizer trajectory/restarts during the run.",
+)
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
     "--out-dir",
@@ -513,6 +559,7 @@ def cli(
     climb: bool,
     opt_mode: str,
     dump: bool,
+    convert_files: bool,
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -521,6 +568,7 @@ def cli(
     fix_ends: bool,
 ) -> None:
     input_paths = tuple(Path(p) for p in input_paths)
+    set_convert_file_enabled(convert_files)
     prepared_inputs = [prepare_input_structure(p) for p in input_paths]
     try:
         time_start = time.perf_counter()
@@ -665,7 +713,7 @@ def cli(
                         sopt_cfg,
                         out_dir_path,
                         tag=tag,
-                        ref_pdb_path=ref_pdb_for_preopt,
+                        prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else None,
                     )
                     new_geoms.append(g_opt)
                 except Exception as e:
@@ -704,9 +752,8 @@ def cli(
                     geoms,
                     calc_cfg,
                     out_dir_path,
-                    source_paths,
+                    prepared_inputs,
                     max_nodes,
-                    next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None),
                 )
             except Exception as e:
                 click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
@@ -719,26 +766,30 @@ def cli(
                     [dmf_res.images[hei_idx]], [dmf_res.energies[hei_idx]], hei_xyz
                 )
                 click.echo(f"[write] Wrote '{hei_xyz}'.")
-
-                ref_pdb = (
-                    source_paths[0].resolve()
-                    if source_paths and source_paths[0].suffix.lower() == ".pdb"
-                    else None
-                )
-                _maybe_convert_to_pdb(hei_xyz, ref_pdb, out_dir_path / "hei.pdb")
-
-                template = next(
-                    (prep.gjf_template for prep in prepared_inputs if prep.gjf_template),
-                    None,
-                )
-                if template is not None:
-                    try:
-                        maybe_convert_xyz_to_gjf(hei_xyz, template, out_dir_path / "hei.gjf")
-                        click.echo(f"[convert] Wrote '{out_dir_path / 'hei.gjf'}'.")
-                    except Exception as e:
-                        click.echo(
-                            f"[convert] WARNING: Failed to convert HEI to GJF: {e}", err=True
-                        )
+                main_prepared = prepared_inputs[0] if prepared_inputs else None
+                if main_prepared is not None:
+                    ref_pdb = (
+                        main_prepared.source_path.resolve()
+                        if main_prepared.source_path.suffix.lower() == ".pdb"
+                        else None
+                    )
+                    needs_pdb = ref_pdb is not None
+                    needs_gjf = main_prepared.is_gjf
+                    if needs_pdb or needs_gjf:
+                        try:
+                            convert_xyz_like_outputs(
+                                hei_xyz,
+                                main_prepared,
+                                ref_pdb_path=ref_pdb,
+                                out_pdb_path=out_dir_path / "hei.pdb" if needs_pdb else None,
+                                out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
+                            )
+                            click.echo("[convert] Wrote 'hei' outputs.")
+                        except Exception as e:
+                            click.echo(
+                                f"[convert] WARNING: Failed to convert HEI to requested formats: {e}",
+                                err=True,
+                            )
             except Exception as e:
                 click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
                 sys.exit(5)
@@ -803,16 +854,23 @@ def cli(
                     f.write(gs.as_xyz())
                 click.echo(f"[write] Wrote '{final_trj}'.")
 
-            if input_paths[0].suffix.lower() == ".pdb":
-                ref_pdb = input_paths[0].resolve()
-
+            main_prepared = prepared_inputs[0]
+            needs_pdb = main_prepared.source_path.suffix.lower() == ".pdb"
+            needs_gjf = main_prepared.is_gjf
+            ref_pdb = main_prepared.source_path.resolve() if needs_pdb else None
+            if needs_pdb or needs_gjf:
                 try:
-                    out_pdb = out_dir_path / "final_geometries.pdb"
-                    convert_xyz_to_pdb(final_trj, ref_pdb, out_pdb)
-                    click.echo(f"[convert] Wrote '{out_pdb}'.")
+                    convert_xyz_like_outputs(
+                        final_trj,
+                        main_prepared,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=out_dir_path / "final_geometries.pdb" if needs_pdb else None,
+                        out_gjf_path=out_dir_path / "final_geometries.gjf" if needs_gjf else None,
+                    )
+                    click.echo("[convert] Wrote 'final_geometries' outputs.")
                 except Exception as e:
                     click.echo(
-                        f"[convert] WARNING: Failed to convert MEP path trajectory to PDB: {e}",
+                        f"[convert] WARNING: Failed to convert MEP path trajectory: {e}",
                         err=True,
                     )
 
@@ -840,31 +898,27 @@ def cli(
                 f.write(s)
             click.echo(f"[write] Wrote '{hei_xyz}'.")
 
-            ref_pdb = None
-            if source_paths[0].suffix.lower() == ".pdb":
-                ref_pdb = source_paths[0].resolve()
-            if ref_pdb is not None:
-                hei_pdb = out_dir_path / "hei.pdb"
-                convert_xyz_to_pdb(hei_xyz, ref_pdb, hei_pdb)
-                click.echo(f"[convert] Wrote '{hei_pdb}'.")
-            else:
-                click.echo(
-                    "[convert] Skipped 'hei.pdb' (no PDB reference among inputs)."
-                )
-
-            template = next(
-                (prep.gjf_template for prep in prepared_inputs if prep.gjf_template),
-                None,
-            )
-            if template is not None:
+            main_prepared = prepared_inputs[0]
+            needs_pdb = main_prepared.source_path.suffix.lower() == ".pdb"
+            needs_gjf = main_prepared.is_gjf
+            ref_pdb = main_prepared.source_path.resolve() if needs_pdb else None
+            if needs_pdb or needs_gjf:
                 try:
-                    hei_gjf = out_dir_path / "hei.gjf"
-                    maybe_convert_xyz_to_gjf(hei_xyz, template, hei_gjf)
-                    click.echo(f"[convert] Wrote '{hei_gjf}'.")
+                    convert_xyz_like_outputs(
+                        hei_xyz,
+                        main_prepared,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=out_dir_path / "hei.pdb" if needs_pdb else None,
+                        out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
+                    )
+                    click.echo("[convert] Wrote 'hei' outputs.")
                 except Exception as e:
                     click.echo(
-                        f"[convert] WARNING: Failed to convert HEI to GJF: {e}", err=True
+                        f"[convert] WARNING: Failed to convert HEI structure: {e}",
+                        err=True,
                     )
+            else:
+                click.echo("[convert] Skipped HEI conversion (no PDB/GJF template).")
 
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)

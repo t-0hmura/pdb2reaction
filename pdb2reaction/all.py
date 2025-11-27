@@ -260,10 +260,12 @@ from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
 from .trj2fig import run_trj2fig
 from .utils import (
     build_energy_diagram,
+    convert_xyz_like_outputs,
     detect_freeze_links_safe,
     format_elapsed,
     prepare_input_structure,
     maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
     resolve_charge_spin_or_raise,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -853,12 +855,12 @@ def _write_segment_energy_diagram(
     energies_eh: List[float],
     title_note: str,
     ylabel: str = "ΔE (kcal/mol)",
-) -> None:
+) -> Optional[Dict[str, Any]]:
     """
     Write energy diagram (PNG) using utils.build_energy_diagram, optionally annotating the title.
     """
     if not energies_eh:
-        return
+        return None
     e0 = energies_eh[0]
     energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
     fig = build_energy_diagram(
@@ -876,6 +878,16 @@ def _write_segment_energy_diagram(
         click.echo(f"[diagram] Wrote energy diagram → {png.name}")
     except Exception as e:
         click.echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
+
+    payload: Dict[str, Any] = {
+        "name": prefix.stem,
+        "labels": labels,
+        "energies_kcal": energies_kcal,
+        "ylabel": ylabel,
+    }
+    if title_note:
+        payload["title"] = title_note
+    return payload
 
 
 def _build_global_segment_labels(n_segments: int) -> List[str]:
@@ -1226,7 +1238,9 @@ def _run_tsopt_on_hei(
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
-    template = prepared_input.gjf_template
+    needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
+    needs_gjf = prepared_input.is_gjf
+    ref_pdb = prepared_input.source_path if needs_pdb else None
     ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
     _ensure_dir(ts_dir)
 
@@ -1281,34 +1295,32 @@ def _run_tsopt_on_hei(
 
     ts_geom_path: Optional[Path] = None
 
-    if ts_pdb.exists():
+    if ts_xyz.exists():
+        try:
+            convert_xyz_like_outputs(
+                ts_xyz,
+                prepared_input,
+                ref_pdb_path=ref_pdb,
+                out_pdb_path=ts_pdb if needs_pdb else None,
+                out_gjf_path=ts_gjf if needs_gjf else None,
+            )
+        except Exception as e:
+            click.echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
+
+    if needs_pdb and ts_pdb.exists():
         ts_geom_path = ts_pdb
-    elif ts_xyz.exists():
-        if hei_pdb.suffix.lower() == ".pdb":
-            try:
-                _path_search._maybe_convert_to_pdb(ts_xyz, hei_pdb, ts_pdb)
-                if ts_pdb.exists():
-                    ts_geom_path = ts_pdb
-                else:
-                    ts_geom_path = ts_xyz
-            except Exception:
-                ts_geom_path = ts_xyz
-        else:
-            ts_geom_path = ts_xyz
+    elif needs_gjf and ts_gjf.exists():
+        ts_geom_path = ts_gjf
+    elif ts_pdb.exists():
+        ts_geom_path = ts_pdb
     elif ts_gjf.exists():
         ts_geom_path = ts_gjf
+    elif ts_xyz.exists():
+        ts_geom_path = ts_xyz
     else:
         raise click.ClickException("[tsopt] TS outputs not found.")
 
     g_ts = geom_loader(ts_geom_path, coord_type="cart")
-
-    if (template is not None) and ts_xyz.exists():
-        try:
-            final_gjf = ts_dir / "final_geometry.gjf"
-            maybe_convert_xyz_to_gjf(ts_xyz, template, final_gjf)
-            click.echo(f"[tsopt] Wrote '{final_gjf}'.")
-        except Exception as e:
-            click.echo(f"[tsopt] WARNING: Failed to convert TS geometry to GJF: {e}", err=True)
 
     calc_args = dict(calc_cfg)
     calc = uma_pysis(**calc_args)
@@ -1644,7 +1656,7 @@ def _irc_and_match(
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="gsm",
+    default="dmf",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -1672,7 +1684,7 @@ def _irc_and_match(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help=(
         "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "
@@ -1688,6 +1700,13 @@ def _irc_and_match(
         "Dump GSM / single-structure trajectories during the run, forwarding the same flag "
         "to scan/tsopt/freq."
     ),
+)
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
     "--refine-path",
@@ -1942,6 +1961,7 @@ def cli(
     climb: bool,
     opt_mode: str,
     dump: bool,
+    convert_files: bool,
     refine_path: bool,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -1986,7 +2006,9 @@ def cli(
     a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
+    set_convert_file_enabled(convert_files)
     time_start = time.perf_counter()
+    energy_diagrams: List[Dict[str, Any]] = []
 
     dump_override_requested = False
     try:
@@ -2339,12 +2361,14 @@ def cli(
         e_react = float(g_react_opt.energy)
         e_prod = float(g_prod_opt.energy)
 
-        _write_segment_energy_diagram(
+        diag_payload = _write_segment_energy_diagram(
             tsroot / "energy_diagram_UMA",
             labels=["R", "TS", "P"],
             energies_eh=[e_react, eT, e_prod],
             title_note="(UMA, TSOPT + IRC)",
         )
+        if diag_payload:
+            energy_diagrams.append(diag_payload)
 
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
         freq_root = _resolve_override_dir(tsroot / "freq", freq_out_dir)
@@ -2370,13 +2394,15 @@ def cli(
                 GP = float(
                     tP.get("sum_EE_and_thermal_free_energy_ha", e_prod)
                 )
-                _write_segment_energy_diagram(
+                diag_payload = _write_segment_energy_diagram(
                     tsroot / "energy_diagram_G_UMA",
                     labels=["R", "TS", "P"],
                     energies_eh=[GR, GT, GP],
                     title_note="(UMA + Thermal Correction)",
                     ylabel="ΔG (kcal/mol)",
                 )
+                if diag_payload:
+                    energy_diagrams.append(diag_payload)
             except Exception as e:
                 click.echo(
                     f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True
@@ -2411,12 +2437,14 @@ def cli(
                 eP_dft = float(
                     ((dP or {}).get("energy", {}) or {}).get("hartree", e_prod)
                 )
-                _write_segment_energy_diagram(
+                diag_payload = _write_segment_energy_diagram(
                     tsroot / "energy_diagram_DFT",
                     labels=["R", "TS", "P"],
                     energies_eh=[eR_dft, eT_dft, eP_dft],
                     title_note=f"({dft_func_basis_use} // UMA)",
                 )
+                if diag_payload:
+                    energy_diagrams.append(diag_payload)
             except Exception as e:
                 click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
 
@@ -2440,13 +2468,15 @@ def cli(
                     GR_dftUMA = eR_dft + dG_R
                     GT_dftUMA = eT_dft + dG_T
                     GP_dftUMA = eP_dft + dG_P
-                    _write_segment_energy_diagram(
+                    diag_payload = _write_segment_energy_diagram(
                         tsroot / "energy_diagram_G_DFT_plus_UMA",
                         labels=["R", "TS", "P"],
                         energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                         title_note=f"({dft_func_basis_use} // UMA + Thermal Correction)",
                         ylabel="ΔG (kcal/mol)",
                     )
+                    if diag_payload:
+                        energy_diagrams.append(diag_payload)
                 except Exception as e:
                     click.echo(
                         f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}",
@@ -2835,12 +2865,14 @@ def cli(
                 energies_chain.append(Es[-1])
             if labels and energies_chain and len(labels) == len(energies_chain):
                 title_note = "(GSM; all segments)" if len(path_opt_segments) > 1 else "(GSM)"
-                _write_segment_energy_diagram(
+                diag_payload = _write_segment_energy_diagram(
                     path_dir / "energy_diagram_GSM",
                     labels=labels,
                     energies_eh=energies_chain,
                     title_note=title_note,
                 )
+                if diag_payload:
+                    energy_diagrams.append(diag_payload)
         except Exception as e:
             click.echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
 
@@ -2885,6 +2917,8 @@ def cli(
             "n_segments": len(segments_summary),
             "segments": segments_summary,
         }
+        if energy_diagrams:
+            summary["energy_diagrams"] = list(energy_diagrams)
         try:
             with open(path_dir / "summary.yaml", "w") as f:
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
@@ -2893,7 +2927,13 @@ def cli(
             click.echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
 
         try:
-            for name in ("mep_plot.png", "energy_diagram_GSM.png", "mep.pdb", "mep_w_ref.pdb"):
+            for name in (
+                "mep_plot.png",
+                "energy_diagram_GSM.png",
+                "mep.pdb",
+                "mep_w_ref.pdb",
+                "summary.yaml",
+            ):
                 src = path_dir / name
                 if src.exists():
                     dst = out_dir / name
@@ -2905,6 +2945,20 @@ def cli(
                             f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
                             err=True,
                         )
+
+            for stem in ("mep", "mep_w_ref"):
+                for ext in (".trj", ".xyz"):
+                    src = path_dir / f"{stem}{ext}"
+                    if src.exists():
+                        dst = out_dir / src.name
+                        try:
+                            shutil.copy2(src, dst)
+                            click.echo(f"[all] Copied {src.name} → {dst}")
+                        except Exception as e:
+                            click.echo(
+                                f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
+                                err=True,
+                            )
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to relocate path-opt summary files: {e}", err=True
@@ -2960,7 +3014,13 @@ def cli(
             sys.argv = _saved_argv
 
         try:
-            for name in ("mep_plot.png", "energy_diagram_GSM.png", "mep.pdb", "mep_w_ref.pdb"):
+            for name in (
+                "mep_plot.png",
+                "energy_diagram_GSM.png",
+                "mep.pdb",
+                "mep_w_ref.pdb",
+                "summary.yaml",
+            ):
                 src = path_dir / name
                 if src.exists():
                     dst = out_dir / name
@@ -2972,6 +3032,20 @@ def cli(
                             f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
                             err=True,
                         )
+
+            for stem in ("mep", "mep_w_ref"):
+                for ext in (".trj", ".xyz"):
+                    src = path_dir / f"{stem}{ext}"
+                    if src.exists():
+                        dst = out_dir / src.name
+                        try:
+                            shutil.copy2(src, dst)
+                            click.echo(f"[all] Copied {src.name} → {dst}")
+                        except Exception as e:
+                            click.echo(
+                                f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
+                                err=True,
+                            )
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True
@@ -3021,6 +3095,12 @@ def cli(
 
     summary_yaml = path_dir / "summary.yaml"
     segments = _read_summary(summary_yaml)
+    summary_loaded = load_yaml_dict(summary_yaml) if summary_yaml.exists() else {}
+    summary: Dict[str, Any] = summary_loaded if isinstance(summary_loaded, dict) else {}
+    if not energy_diagrams:
+        existing_diagrams = summary.get("energy_diagrams", [])
+        if isinstance(existing_diagrams, list):
+            energy_diagrams.extend(existing_diagrams)
     if not segments:
         click.echo("[post] No segments found in summary; nothing to do.")
         click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
@@ -3164,12 +3244,14 @@ def cli(
             eT = float(gT.energy)
             eP = float(g_prod_opt.energy)
             uma_ref_energies = {"R": eR, "TS": eT, "P": eP}
-            _write_segment_energy_diagram(
+            diag_payload = _write_segment_energy_diagram(
                 seg_dir / "energy_diagram_UMA",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_eh=[eR, eT, eP],
                 title_note="(UMA, TSOPT + IRC)",
             )
+            if diag_payload:
+                energy_diagrams.append(diag_payload)
 
             tsopt_seg_energies.append((eR, eT, eP))
 
@@ -3325,13 +3407,15 @@ def cli(
                     )
                     gibbs_vals = [GR, GT, GP]
                     if all(np.isfinite(gibbs_vals)):
-                        _write_segment_energy_diagram(
+                        diag_payload = _write_segment_energy_diagram(
                             seg_dir / "energy_diagram_G_UMA",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_eh=gibbs_vals,
                             title_note="(UMA + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
+                        if diag_payload:
+                            energy_diagrams.append(diag_payload)
                         g_uma_seg_energies.append((GR, GT, GP))
                     else:
                         click.echo(
@@ -3385,12 +3469,14 @@ def cli(
                         )
                     )
                     if all(map(np.isfinite, [eR_dft, eT_dft, eP_dft])):
-                        _write_segment_energy_diagram(
+                        diag_payload = _write_segment_energy_diagram(
                             seg_dir / "energy_diagram_DFT",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_eh=[eR_dft, eT_dft, eP_dft],
                             title_note=f"({dft_func_basis_use})",
                         )
+                        if diag_payload:
+                            energy_diagrams.append(diag_payload)
                         dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
                     else:
                         click.echo(
@@ -3425,13 +3511,15 @@ def cli(
                         if all(
                             np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])
                         ):
-                            _write_segment_energy_diagram(
+                            diag_payload = _write_segment_energy_diagram(
                                 seg_dir / "energy_diagram_G_DFT_plus_UMA",
                                 labels=["R", f"TS{seg_idx}", "P"],
                                 energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                                 title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction)",
                                 ylabel="ΔG (kcal/mol)",
                             )
+                            if diag_payload:
+                                energy_diagrams.append(diag_payload)
                             g_dftuma_seg_energies.append(
                                 (GR_dftUMA, GT_dftUMA, GP_dftUMA)
                             )
@@ -3453,47 +3541,55 @@ def cli(
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
         tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
-            _write_segment_energy_diagram(
+            diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_UMA_all",
                 labels=tsopt_all_labels,
                 energies_eh=tsopt_all_energies,
                 title_note="(UMA, TSOPT + IRC; all segments)",
             )
+            if diag_payload:
+                energy_diagrams.append(diag_payload)
 
     if do_thermo and g_uma_seg_energies:
         g_uma_all_energies = [e for triple in g_uma_seg_energies for e in triple]
         g_uma_all_labels = _build_global_segment_labels(len(g_uma_seg_energies))
         if g_uma_all_labels and len(g_uma_all_labels) == len(g_uma_all_energies):
-            _write_segment_energy_diagram(
+            diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_G_UMA_all",
                 labels=g_uma_all_labels,
                 energies_eh=g_uma_all_energies,
                 title_note="(UMA + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
+            if diag_payload:
+                energy_diagrams.append(diag_payload)
 
     if do_dft and dft_seg_energies:
         dft_all_energies = [e for triple in dft_seg_energies for e in triple]
         dft_all_labels = _build_global_segment_labels(len(dft_seg_energies))
         if dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
-            _write_segment_energy_diagram(
+            diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_DFT_all",
                 labels=dft_all_labels,
                 energies_eh=dft_all_energies,
                 title_note=f"({dft_func_basis_use}; all segments)",
             )
+            if diag_payload:
+                energy_diagrams.append(diag_payload)
 
     if do_dft and do_thermo and g_dftuma_seg_energies:
         g_dftuma_all_energies = [e for triple in g_dftuma_seg_energies for e in triple]
         g_dftuma_all_labels = _build_global_segment_labels(len(g_dftuma_seg_energies))
         if g_dftuma_all_labels and len(g_dftuma_all_labels) == len(g_dftuma_all_energies):
-            _write_segment_energy_diagram(
+            diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_G_DFT_plus_UMA_all",
                 labels=g_dftuma_all_labels,
                 energies_eh=g_dftuma_all_energies,
                 title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
+            if diag_payload:
+                energy_diagrams.append(diag_payload)
 
     # -------------------------------------------------------------------------
     # Aggregated IRC plot over all reactive segments (single trj + trj2fig)
@@ -3501,6 +3597,27 @@ def cli(
     if irc_trj_for_all:
         _merge_irc_trajectories_to_single_plot(
             irc_trj_for_all, out_dir / "irc_plot_all.png"
+        )
+
+    # Refresh summary.yaml with final energy diagram metadata (including aggregated diagrams)
+    try:
+        summary["energy_diagrams"] = list(energy_diagrams)
+        with open(path_dir / "summary.yaml", "w") as f:
+            yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
+        click.echo(f"[write] Updated '{path_dir / 'summary.yaml'}' with energy diagrams.")
+        try:
+            dst_summary = out_dir / "summary.yaml"
+            shutil.copy2(path_dir / "summary.yaml", dst_summary)
+            click.echo(f"[all] Copied summary.yaml → {dst_summary}")
+        except Exception as e:
+            click.echo(
+                f"[all] WARNING: Failed to mirror summary.yaml to {out_dir}: {e}",
+                err=True,
+            )
+    except Exception as e:
+        click.echo(
+            f"[write] WARNING: Failed to refresh summary.yaml with energy diagram metadata: {e}",
+            err=True,
         )
 
     click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))

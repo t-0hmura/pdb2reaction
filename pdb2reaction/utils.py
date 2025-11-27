@@ -486,6 +486,8 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         ref_pdb_path: Path to a reference PDB providing atom ordering/topology.
         out_pdb_path: Destination PDB file to write.
     """
+    if not _CONVERT_FILES_ENABLED:
+        return
     ref_atoms = read(ref_pdb_path)  # Reference topology/ordering (single frame)
     traj = read(xyz_path, index=":", format="xyz")  # Load all frames from the XYZ
     if not traj:
@@ -768,17 +770,46 @@ def resolve_charge_spin_or_raise(
     return int(charge), int(spin)
 
 
+_CONVERT_FILES_ENABLED: bool = True
+
+
+def set_convert_file_enabled(enabled: bool) -> None:
+    """Globally enable or disable XYZ/TRJ conversions to PDB/GJF outputs.
+
+    The toggle mirrors the ``--convert-files/--no-convert-files`` CLI flag used
+    by every workflow. When disabled, format-aware conversions are skipped even
+    if reference templates are available.
+    """
+
+    global _CONVERT_FILES_ENABLED
+    _CONVERT_FILES_ENABLED = bool(enabled)
+
+
 def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) -> None:
-    atoms = read(xyz_path, index=0, format="xyz")
-    if len(atoms) != template.natoms:
-        raise ValueError(
-            f"Atom count mismatch for '{xyz_path}': xyz has {len(atoms)} atoms, "
-            f"but template has {template.natoms}."
-        )
-    coords = atoms.get_positions()
-    new_lines = list(template.prefix_lines)
-    for idx, coord_line in enumerate(template.coord_lines):
-        new_lines.append(coord_line.render(tuple(map(float, coords[idx]))))
+    """Render single- or multi-frame XYZ/TRJ coordinates into a Gaussian template.
+
+    Respects the global conversion toggle (see :func:`set_convert_file_enabled`).
+    Multi-frame trajectories are emitted as blank-separated geometries suitable
+    for QST-style Gaussian inputs.
+    """
+
+    if not _CONVERT_FILES_ENABLED:
+        return
+    traj = read(xyz_path, index=":", format="xyz")
+    if not traj:
+        raise ValueError(f"No frames found in {xyz_path}.")
+    new_lines: List[str] = list(template.prefix_lines)
+    for frame_idx, atoms in enumerate(traj):
+        if len(atoms) != template.natoms:
+            raise ValueError(
+                f"Atom count mismatch for '{xyz_path}': xyz has {len(atoms)} atoms, "
+                f"but template has {template.natoms}."
+            )
+        coords = atoms.get_positions()
+        if frame_idx > 0:
+            new_lines.append("")  # Blank line between multiple geometries (QST-style)
+        for idx, coord_line in enumerate(template.coord_lines):
+            new_lines.append(coord_line.render(tuple(map(float, coords[idx]))))
     new_lines.extend(template.suffix_lines)
     text = "\n".join(new_lines)
     if not text.endswith("\n"):
@@ -791,11 +822,48 @@ def maybe_convert_xyz_to_gjf(
     template: Optional[GjfTemplate],
     out_path: Optional[Path] = None,
 ) -> Optional[Path]:
-    if template is None or not xyz_path.exists():
+    if not _CONVERT_FILES_ENABLED or template is None or not xyz_path.exists():
         return None
     target = out_path or xyz_path.with_suffix(".gjf")
     convert_xyz_to_gjf(xyz_path, template, target)
     return target
+
+
+def convert_xyz_like_outputs(
+    xyz_path: Path,
+    prepared_input: PreparedInputStructure,
+    *,
+    ref_pdb_path: Optional[Path],
+    out_pdb_path: Optional[Path] = None,
+    out_gjf_path: Optional[Path] = None,
+) -> None:
+    """Convert an XYZ/TRJ file to PDB/GJF outputs based on the original input type.
+
+    Parameters
+    ----------
+    xyz_path:
+        Source XYZ-like file (single or multi-frame).
+    prepared_input:
+        Prepared input structure returned by :func:`prepare_input_structure`.
+    ref_pdb_path:
+        Reference PDB topology (required for PDB conversions).
+    out_pdb_path / out_gjf_path:
+        Targets for the converted files. Conversions are skipped when the
+        corresponding output path is ``None`` or when the input type does not
+        request that format.
+    """
+
+    if not _CONVERT_FILES_ENABLED:
+        return
+
+    source_suffix = prepared_input.source_path.suffix.lower()
+    needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
+    needs_gjf = prepared_input.is_gjf and prepared_input.gjf_template is not None and out_gjf_path is not None
+
+    if needs_pdb:
+        convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
+    if needs_gjf:
+        convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
 
 
 # =============================================================================

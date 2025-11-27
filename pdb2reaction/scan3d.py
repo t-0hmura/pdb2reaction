@@ -151,7 +151,8 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    convert_xyz_to_pdb,
+    set_convert_file_enabled,
+    convert_xyz_like_outputs,
 )
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
@@ -345,33 +346,6 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
         return float("nan")
 
 
-def _maybe_convert_scan3d_outputs_to_pdb(
-    input_path: Path,
-    grid_dir: Path,
-) -> None:
-    """
-    If the input is a PDB, convert the grid XYZ files under grid_dir to PDB.
-
-    Each *_i###_j###_k###.xyz is converted to a corresponding .pdb using
-    the input PDB as the topology reference.
-    """
-    if input_path.suffix.lower() != ".pdb":
-        return
-
-    ref_pdb = input_path.resolve()
-
-    for xyz_path in sorted(grid_dir.glob("*_i*_j*_k*.xyz")):
-        pdb_path = xyz_path.with_suffix(".pdb")
-        try:
-            convert_xyz_to_pdb(xyz_path, ref_pdb, pdb_path)
-            click.echo(f"[convert] Wrote '{pdb_path}'.")
-        except Exception as e:
-            click.echo(
-                f"[convert] WARNING: Failed to convert '{xyz_path.name}' to PDB: {e}",
-                err=True,
-            )
-
-
 @click.command(
     help="3D distance scan with harmonic restraints (UMA only).",
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -431,7 +405,7 @@ def _maybe_convert_scan3d_outputs_to_pdb(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
 )
@@ -448,6 +422,13 @@ def _maybe_convert_scan3d_outputs_to_pdb(
     default=False,
     show_default=True,
     help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
+)
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
     "--out-dir",
@@ -518,6 +499,7 @@ def cli(
     opt_mode: str,
     freeze_links: bool,
     dump: bool,
+    convert_files: bool,
     out_dir: str,
     csv_path: Optional[Path],
     thresh: Optional[str],
@@ -529,6 +511,7 @@ def cli(
 ) -> None:
     from .utils import load_yaml_dict, apply_yaml_overrides
 
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
 
@@ -604,6 +587,8 @@ def cli(
         )
 
         final_dir = out_dir_path
+
+        ref_pdb_path = input_path if input_path.suffix.lower() == ".pdb" else None
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
@@ -690,6 +675,20 @@ def cli(
                 click.echo(f"[preopt] Wrote '{preopt_xyz_path}'.")
             except Exception as e:
                 click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
+
+            try:
+                convert_xyz_like_outputs(
+                    preopt_xyz_path,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb_path,
+                    out_pdb_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.pdb",
+                    out_gjf_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.gjf",
+                )
+            except Exception as e:
+                click.echo(
+                    f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to PDB/GJF: {e}",
+                    err=True,
+                )
 
             E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
             preopt_record = {
@@ -903,6 +902,20 @@ def cli(
                                 f.write(s)
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
+                        else:
+                            try:
+                                convert_xyz_like_outputs(
+                                    xyz_path,
+                                    prepared_input,
+                                    ref_pdb_path=ref_pdb_path,
+                                    out_pdb_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.pdb",
+                                    out_gjf_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.gjf",
+                                )
+                            except Exception as e:
+                                click.echo(
+                                    f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB/GJF: {e}",
+                                    err=True,
+                                )
 
                         if dump and trj_blocks is not None:
                             sblock = geom_inner.as_xyz()
@@ -931,12 +944,23 @@ def cli(
                             click.echo(f"[write] Wrote '{trj_path}'.")
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
+                        else:
+                            try:
+                                convert_xyz_like_outputs(
+                                    trj_path,
+                                    prepared_input,
+                                    ref_pdb_path=ref_pdb_path,
+                                    out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.pdb",
+                                    out_gjf_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.gjf",
+                                )
+                            except Exception as e:
+                                click.echo(
+                                    f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB/GJF: {e}",
+                                    err=True,
+                                )
 
             # Add starting structure as an extra record for plotting
             records.append(preopt_record)
-
-            # Convert grid XYZ snapshots to PDB when the original input is a PDB
-            _maybe_convert_scan3d_outputs_to_pdb(input_path, grid_dir)
 
             # ===== surface.csv =====
             df = pd.DataFrame.from_records(records)

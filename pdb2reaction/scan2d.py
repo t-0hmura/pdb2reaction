@@ -124,8 +124,8 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    convert_xyz_to_pdb,
-    maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
+    convert_xyz_like_outputs,
 )
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
@@ -347,7 +347,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
 )
@@ -364,6 +364,13 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     default=False,
     show_default=True,
     help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
+)
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
     "--out-dir",
@@ -424,6 +431,7 @@ def cli(
     opt_mode: str,
     freeze_links: bool,
     dump: bool,
+    convert_files: bool,
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -435,10 +443,9 @@ def cli(
 
     from .utils import load_yaml_dict, apply_yaml_overrides
 
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    gjf_template = getattr(prepared_input, "gjf_template", None)
-
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
 
     try:
@@ -543,7 +550,7 @@ def cli(
 
         # Records (including preopt) will be accumulated here
         records: List[Dict[str, Any]] = []
-        input_suffix = input_path.suffix.lower()
+        ref_pdb_path = input_path if input_path.suffix.lower() == ".pdb" else None
 
         # Reference distances from the (pre)optimized structure, used for scan ordering
         d1_ref: Optional[float] = None
@@ -590,25 +597,19 @@ def cli(
                 with open(preopt_xyz_path, "w") as f:
                     f.write(s)
 
-                # Optional PDB/GJF conversions based on input type
-                if input_suffix == ".pdb":
-                    try:
-                        pdb_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.pdb"
-                        convert_xyz_to_pdb(preopt_xyz_path, input_path, pdb_path)
-                    except Exception as e:
-                        click.echo(
-                            f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to PDB: {e}",
-                            err=True,
-                        )
-                elif input_suffix in (".gjf", ".com") and gjf_template is not None:
-                    try:
-                        gjf_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf"
-                        maybe_convert_xyz_to_gjf(preopt_xyz_path, gjf_template, gjf_path)
-                    except Exception as e:
-                        click.echo(
-                            f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to GJF: {e}",
-                            err=True,
-                        )
+                try:
+                    convert_xyz_like_outputs(
+                        preopt_xyz_path,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb_path,
+                        out_pdb_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.pdb",
+                        out_gjf_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf",
+                    )
+                except Exception as e:
+                    click.echo(
+                        f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to PDB/GJF: {e}",
+                        err=True,
+                    )
 
                 E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
                 records.append(
@@ -773,25 +774,19 @@ def cli(
                         s += "\n"
                     with open(xyz_path, "w") as f:
                         f.write(s)
-                    # Optional PDB/GJF conversions based on input type
-                    if input_suffix == ".pdb":
-                        try:
-                            pdb_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb"
-                            convert_xyz_to_pdb(xyz_path, input_path, pdb_path)
-                        except Exception as e:
-                            click.echo(
-                                f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB: {e}",
-                                err=True,
-                            )
-                    elif input_suffix in (".gjf", ".com") and gjf_template is not None:
-                        try:
-                            gjf_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf"
-                            maybe_convert_xyz_to_gjf(xyz_path, gjf_template, gjf_path)
-                        except Exception as e:
-                            click.echo(
-                                f"[convert] WARNING: failed to convert '{xyz_path.name}' to GJF: {e}",
-                                err=True,
-                            )
+                    try:
+                        convert_xyz_like_outputs(
+                            xyz_path,
+                            prepared_input,
+                            ref_pdb_path=ref_pdb_path,
+                            out_pdb_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb",
+                            out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
+                        )
+                    except Exception as e:
+                        click.echo(
+                            f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB/GJF: {e}",
+                            err=True,
+                        )
                 except Exception as e:
                     click.echo(
                         f"[write] WARNING: failed to write {xyz_path.name}: {e}",
@@ -834,16 +829,19 @@ def cli(
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
                     click.echo(f"[write] Wrote '{trj_path}'.")
-                    if input_suffix == ".pdb":
-                        try:
-                            pdb_trj = grid_dir / f"inner_path_d1_{i_idx:03d}.pdb"
-                            convert_xyz_to_pdb(trj_path, input_path, pdb_trj)
-                            click.echo(f"[convert] Wrote '{pdb_trj}'.")
-                        except Exception as e:
-                            click.echo(
-                                f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB: {e}",
-                                err=True,
-                            )
+                    try:
+                        convert_xyz_like_outputs(
+                            trj_path,
+                            prepared_input,
+                            ref_pdb_path=ref_pdb_path,
+                            out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}.pdb",
+                            out_gjf_path=grid_dir / f"inner_path_d1_{i_idx:03d}.gjf",
+                        )
+                    except Exception as e:
+                        click.echo(
+                            f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB/GJF: {e}",
+                            err=True,
+                        )
                 except Exception as e:
                     click.echo(
                         f"[write] WARNING: failed to write '{trj_path}': {e}", err=True
