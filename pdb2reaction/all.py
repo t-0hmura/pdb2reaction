@@ -187,7 +187,7 @@ Outputs (& Directory Layout)
   │   ├─ mep.trj, summary.yaml, mep_seg_XX.* , hei_seg_XX.*
   │   └─ post_seg_XX/ ...                # identical layout to path_search/ when post-processing runs
   ├─ mep_plot.png                        # copied from path_* / (GSM energy profile)
-  ├─ energy_diagram_GSM.png              # copied from path_* / (compressed GSM diagram)
+  ├─ energy_diagram_MEP.png              # copied from path_* / (compressed GSM diagram)
   ├─ mep.pdb                             # copied from path_* / when PDB pockets are used
   ├─ mep_w_ref.pdb                       # copied from path_search/ when full-system merge is available
   ├─ energy_diagram_UMA_all.png        # UMA R–TS–P energies across all reactive segments
@@ -685,14 +685,14 @@ def _load_segment_endpoints(
 ) -> Optional[Tuple[Any, Any]]:
     """
     Load left/right endpoints for a segment from
-    ``<path_dir>/<seg_tag>_refine_gsm/final_geometries.trj``.
+    ``<path_dir>/<seg_tag>_refine_mep/final_geometries.trj``.
     If it does not exist, load structures from
-    ``<path_dir>/<seg_tag>_gsm/final_geometries.trj``.
+    ``<path_dir>/<seg_tag>_mep/final_geometries.trj``.
 
     Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref).
     """
-    refine_trj = path_dir / f"{seg_tag}_refine_gsm" / "final_geometries.trj"
-    gsm_trj = path_dir / f"{seg_tag}_gsm" / "final_geometries.trj"
+    refine_trj = path_dir / f"{seg_tag}_refine_mep" / "final_geometries.trj"
+    gsm_trj = path_dir / f"{seg_tag}_mep" / "final_geometries.trj"
 
     if refine_trj.exists():
         trj_path = refine_trj
@@ -1350,8 +1350,8 @@ def _irc_and_match(
     - Read endpoints from ``finished_irc.trj``.
     - When ``seg_tag`` is provided, map the two IRC endpoints to the corresponding
       GSM segment endpoints loaded from
-      ``<path_dir>/<seg_tag>_refine_gsm/final_geometries.trj`` (or
-      ``<path_dir>/<seg_tag>_gsm/final_geometries.trj`` as a fallback). Bond-state
+      ``<path_dir>/<seg_tag>_refine_mep/final_geometries.trj`` (or
+      ``<path_dir>/<seg_tag>_mep/final_geometries.trj`` as a fallback). Bond-state
       matching is attempted first; if that fails, the assignment that minimizes the
       sum of RMSDs to the GSM endpoints is used.
     - For TSOPT-only mode (``seg_tag`` is ``None``), the original (first, last)
@@ -1424,7 +1424,7 @@ def _irc_and_match(
 
     path_root = seg_dir.parent
 
-    # Preferred mapping: use endpoints from path_search/<seg_tag>_~~~_gsm
+    # Preferred mapping: use endpoints from path_search/<seg_tag>_~~~_mep
     if seg_tag is not None:
         try:
             endpoints = _load_segment_endpoints(path_root, seg_tag, freeze_atoms)
@@ -2697,7 +2697,7 @@ def cli(
         combined_blocks: List[str] = []
         path_opt_segments: List[Dict[str, Any]] = []
         for idx, (pL, pR) in enumerate(zip(pockets_for_path, pockets_for_path[1:]), start=1):
-            seg_dir = (path_dir / f"seg_{idx:03d}_gsm").resolve()
+            seg_dir = (path_dir / f"seg_{idx:03d}_mep").resolve()
             seg_tag = f"seg_{idx:03d}"
             po_args: List[str] = [
                 "-i",
@@ -2754,7 +2754,7 @@ def cli(
                 )
 
             try:
-                mirror_dir = path_dir / f"{seg_tag}_gsm"
+                mirror_dir = path_dir / f"{seg_tag}_mep"
                 mirror_trj = mirror_dir / "final_geometries.trj"
 
                 _ensure_dir(mirror_dir)
@@ -2866,7 +2866,7 @@ def cli(
             if labels and energies_chain and len(labels) == len(energies_chain):
                 title_note = "(GSM; all segments)" if len(path_opt_segments) > 1 else "(GSM)"
                 diag_payload = _write_segment_energy_diagram(
-                    path_dir / "energy_diagram_GSM",
+                    path_dir / "energy_diagram_mep",
                     labels=labels,
                     energies_eh=energies_chain,
                     title_note=title_note,
@@ -2929,7 +2929,7 @@ def cli(
         try:
             for name in (
                 "mep_plot.png",
-                "energy_diagram_GSM.png",
+                "energy_diagram_MEP.png",
                 "mep.pdb",
                 "mep_w_ref.pdb",
                 "summary.yaml",
@@ -3016,7 +3016,7 @@ def cli(
         try:
             for name in (
                 "mep_plot.png",
-                "energy_diagram_GSM.png",
+                "energy_diagram_MEP.png",
                 "mep.pdb",
                 "mep_w_ref.pdb",
                 "summary.yaml",
@@ -3078,7 +3078,7 @@ def cli(
         click.echo(f"[all] Aggregated products are under: {path_dir}")
     click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
     click.echo(
-        "  - energy_diagram_GSM.png / energy_diagram.* (copied summary at <out-dir>/)"
+        "  - energy_diagram_MEP.png / energy_diagram.* (copied summary at <out-dir>/)"
     )
     click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
 
@@ -3323,10 +3323,10 @@ def cli(
 
             ref_for_structs = seg_pocket_path if seg_pocket_path is not None else hei_pocket_path
             pL = _save_single_geom_as_pdb_for_tools(
-                gL, ref_for_structs, struct_dir, "reactant_gsm"
+                gL, ref_for_structs, struct_dir, "reactant_mep"
             )
             pR = _save_single_geom_as_pdb_for_tools(
-                gR, ref_for_structs, struct_dir, "product_gsm"
+                gR, ref_for_structs, struct_dir, "product_mep"
             )
             pT = _save_single_geom_as_pdb_for_tools(
                 g_ts, ref_for_structs, struct_dir, "ts_from_hei"
