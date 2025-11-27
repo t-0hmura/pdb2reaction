@@ -2123,18 +2123,6 @@ def cli(
             except Exception as e:
                 click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
-            if needs_gjf:
-                try:
-                    convert_xyz_like_outputs(
-                        final_trj,
-                        main_prepared,
-                        ref_pdb_path=None,
-                        out_gjf_path=out_dir_path / "mep.gjf",
-                        out_pdb_path=None,
-                    )
-                    click.echo("[convert] Wrote 'mep.gjf'.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final MEP to GJF: {e}", err=True)
         else:
             tmp_trj = tempfile.NamedTemporaryFile("w+", suffix=".trj", delete=False)
             tmp_trj_path = Path(tmp_trj.name)
@@ -2152,7 +2140,6 @@ def cli(
                         main_prepared,
                         ref_pdb_path=ref_pdb_for_segments,
                         out_pdb_path=out_dir_path / "mep.pdb",
-                        out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
                     )
                     click.echo("[convert] Wrote final MEP outputs.")
                 except Exception as e:

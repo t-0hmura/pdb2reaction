@@ -29,7 +29,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. If the source is `.pdb`, EulerPC trajectories are automatically converted to PDB using the original topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens.
 2. **Configuration merge** – Defaults → YAML (`geom`, `calc`, `irc`) → CLI overrides. Charge/multiplicity inherit `.gjf` template metadata when available; otherwise `-q/--charge` is required and multiplicity defaults to `1`. Always set them explicitly to remain on the intended PES.
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
-4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, for PDB inputs, mirrored to `.pdb`; Gaussian templates also receive multi-geometry `.gjf` when `--convert-files` is enabled. Optional HDF5 dumps capture per-step frames when `dump_every` > 0.
+4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, for PDB inputs, mirrored to `.pdb`. Optional HDF5 dumps capture per-step frames when `dump_every` > 0.
 
 ## CLI options
 | Option | Description | Default |

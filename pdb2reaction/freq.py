@@ -401,8 +401,7 @@ def _write_mode_trj_and_pdb(geom,
                             ref_pdb: Optional[Path] = None,
                             write_pdb: bool = True,
                             prepared_input: Optional["PreparedInputStructure"] = None,
-                            out_pdb: Optional[Path] = None,
-                            out_gjf: Optional[Path] = None) -> None:
+                            out_pdb: Optional[Path] = None) -> None:
     """
     Write a single mode animation as .trj (XYZ-like) and optionally .pdb.
 
@@ -448,9 +447,8 @@ def _write_mode_trj_and_pdb(geom,
                         f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
 
     needs_pdb = write_pdb and out_pdb is not None
-    needs_gjf = out_gjf is not None and prepared_input is not None and prepared_input.is_gjf
 
-    if not (needs_pdb or needs_gjf):
+    if not needs_pdb:
         return
 
     ref_for_conv = ref_pdb if (ref_pdb and ref_pdb.suffix.lower() == ".pdb") else None
@@ -460,7 +458,6 @@ def _write_mode_trj_and_pdb(geom,
             prepared_input,  # type: ignore[arg-type]
             ref_pdb_path=ref_for_conv,
             out_pdb_path=out_pdb if needs_pdb else None,
-            out_gjf_path=out_gjf if needs_gjf else None,
         )
     except Exception:
         if needs_pdb and ref_ang is not None and ref_pdb is not None:
@@ -703,7 +700,6 @@ def cli(
                 write_pdb=write_pdb,
                 prepared_input=prepared_input,
                 out_pdb=out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb" if write_pdb else None,
-                out_gjf=out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.gjf" if prepared_input.is_gjf else None,
             )
         (out_dir_path / "frequencies_cm-1.txt").write_text(
             "\n".join(f"{i+1:4d}  {float(freqs_cm[j]):+12.4f}" for i, j in enumerate(order)),

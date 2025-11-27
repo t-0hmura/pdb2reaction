@@ -90,8 +90,8 @@ UMA-based bond-change detection mirrored from `path_search`:
 - `<out-dir>/stage_XX/` for each stage:
   - `result.xyz` and optional `result.gjf`/`result.pdb` mirrors of the final
     structure (after `--endopt`, conversion enabled).
-  - `scan.trj` when `--dump True` plus `scan.pdb`/`scan.gjf` companions for
-    PDB/Gaussian inputs when conversion is enabled.
+  - `scan.trj` when `--dump True` plus `scan.pdb` companions for
+    PDB inputs when conversion is enabled.
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and
   optimizer blocks plus per-stage bond-change reports.
 
