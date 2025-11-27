@@ -703,7 +703,7 @@ def cli(
 
             new_geoms = []
             for i, g in enumerate(geoms):
-                tag = f"preopt{i:02d}"
+                tag = f"init{i:02d}"
                 try:
                     g_opt = _optimize_single(
                         g,
