@@ -1,0 +1,114 @@
+# `scan3d` subcommand
+
+## Overview
+`scan3d` performs a three-distance grid scan with harmonic restraints using the
+UMA calculator. You provide exactly one `--scan-list` literal containing three
+quadruples `(i, j, lowÅ, highÅ)`. The tool builds linear grids for each distance
+with `--max-step-size`, reorders the values so that those nearest to the
+(pre‑optimized) starting structure are visited first, and then nests the loops
+(outer d₁, middle d₂, inner d₃). Each grid point is relaxed with the
+appropriate restraints active; unbiased energies are recorded so you can compare
+points directly. A precomputed `surface.csv` can also be visualized without
+rerunning the scan.
+
+## Usage
+```bash
+pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
+                    --scan-list "[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]" [options] \
+                    [--convert-files/--no-convert-files]
+```
+
+### Examples
+```bash
+# Minimal three-distance scan
+pdb2reaction scan3d -i input.pdb -q 0 \
+    --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]"
+
+# LBFGS relaxations, dumped inner trajectories, and HTML isosurface plot
+pdb2reaction scan3d -i input.pdb -q 0 \
+    --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
+    --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
+    --preopt True --baseline min
+
+# Plot only from an existing surface.csv (skip new energy evaluation)
+pdb2reaction scan3d -i input.pdb -q 0 \
+    --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
+    --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
+```
+
+## Workflow
+1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
+   embedded Gaussian templates, and optionally run an unbiased preoptimization
+   when `--preopt True`.
+2. Parse the single `--scan-list` literal (default 1-based indices unless
+   `--zero-based` is passed) into three quadruples. Build each linear grid using
+   `h = --max-step-size` and reorder the values so the ones closest to the
+   starting distances are visited first.
+3. Outer loop over `d1[i]`: relax with only the d₁ restraint active, starting
+   from the previously scanned geometry whose d₁ value is closest. Snapshot that
+   structure.
+4. Middle loop over `d2[j]`: relax with d₁ and d₂ restraints, starting from the
+   closest (d₁, d₂) geometry. Snapshot that result.
+5. Inner loop over `d3[k]`: relax with all three restraints, measure the
+   unbiased energy (bias removed for evaluation), and write the constrained
+   geometry and convergence flag.
+6. After the scan completes, assemble `surface.csv`, apply the kcal/mol
+   baseline shift (`--baseline {min|first}`), and generate a 3D RBF-interpolated
+   isosurface plot (`scan3d_density.html`) honoring `--zmin/--zmax`. When
+   `--csv` is provided, only this plotting step runs.
+
+## CLI options
+| Option | Description | Default |
+| --- | --- | --- |
+| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
+| `-q, --charge INT` | Total charge (CLI > template > 0). | Required when not in template |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
+| `--scan-list TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. | Required |
+| `--one-based / --zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `--one-based` |
+| `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
+| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `heavy` |
+| `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
+| `--dump BOOL` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
+| `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
+| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). | _None_ |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | Inherit YAML |
+| `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
+| `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
+| `--baseline {min,first}` | Shift kcal/mol energies so the global min or `(i,j,k)=(0,0,0)` is zero. | `min` |
+| `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the isosurface color bands (kcal/mol). | Autoscaled |
+
+### Shared YAML sections
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
+  [`opt`](opt.md#yaml-configuration-args-yaml). `opt.dump` is forced to `False`
+  so trajectory control stays on the CLI.
+
+### Section `bias`
+- `k` (`100`): Harmonic strength in eV·Å⁻². Overridden by `--bias-k`.
+
+## Outputs
+`<out-dir>/` (default `./result_scan3d/`):
+- `surface.csv` — grid metadata: `i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged`; may include a reference row
+  with `i=j=k=-1` for the starting structure (preoptimized when `--preopt True`).
+- `scan3d_density.html` — 3D energy isosurface visualization.
+- `grid/point_i###_j###_k###.xyz` — relaxed geometries for every grid point
+  (with `.pdb`/`.gjf` companions when conversion is enabled and templates exist);
+  tags are integer Å×100, e.g., 1.25 Å → `125`.
+- `grid/preopt_i###_j###_k###.xyz` — starting structure saved before scanning
+  (preoptimized when `--preopt True`).
+- `grid/inner_path_d1_###_d2_###.trj` — written only when `--dump True` (mirrored
+  to `.pdb`/`.gjf` when conversion is enabled for PDB/Gaussian inputs).
+
+## Notes
+- UMA via `uma_pysis` is the only calculator backend and reuses the same
+  `HarmonicBiasCalculator` as the 1D/2D scans.
+- Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
+  trust radii; optimizer scratch files live under temporary directories.
+- `--baseline` defaults to the global minimum; `--baseline first` anchors the
+  `(i,j,k)=(0,0,0)` grid point when present.
+- 3D visualization uses RBF interpolation on a 50×50×50 grid with
+  semi-transparent step-colored isosurfaces (no cross-sectional planes).
+- `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
+  PDB inputs, keeping extracted pockets rigid.
