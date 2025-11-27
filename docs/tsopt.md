@@ -9,7 +9,9 @@
 - **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards.
 
 Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
-settings from YAML, and always write the final imaginary mode in `.trj` and `.pdb` formats.
+settings from YAML, and always write the final imaginary mode in `.trj`. When
+`--convert-files` is enabled (default), PDB inputs mirror trajectories into `.pdb`
+companions and Gaussian templates receive multi-geometry `.gjf` exports.
 
 ## Usage
 ```bash
@@ -17,7 +19,8 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
                     [--opt-mode light|heavy] \
                     [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
                     [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
-                    [--hessian-calc-mode Analytical|FiniteDifference]
+                    [--hessian-calc-mode Analytical|FiniteDifference] \
+                    [--convert-files/--no-convert-files]
 ```
 
 ### Examples
@@ -60,9 +63,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
     follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
   R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
-- **Mode export**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
-  and `.pdb`. When the input was PDB, the optimization trajectory and final geometry are also
-  converted to PDB via the input template.
+- **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
+  and mirrored to `.pdb`/`.gjf` when conversion is enabled. When the input was PDB, the optimization
+  trajectory and final geometry are also converted to PDB via the input template; Gaussian templates
+  receive multi-geometry `.gjf` companions.
 
 ## CLI options
 | Option | Description | Default |
@@ -72,29 +76,31 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
+| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
 
 ## Outputs (& directory layout)
 ```
 out-dir/ (default: ./result_tsopt/)
   ├─ final_geometry.xyz                # Always written
-  ├─ final_geometry.pdb                # When the input was PDB
+  ├─ final_geometry.pdb                # When the input was PDB (conversion enabled)
+  ├─ final_geometry.gjf                # When the input was Gaussian (conversion enabled)
   ├─ optimization_all.trj/.pdb         # Light-mode dump (requires --dump True)
   ├─ optimization.trj/.pdb             # Heavy-mode trajectory
   ├─ vib/
   │   ├─ final_imag_mode_±XXXX.Xcm-1.trj
-  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb
+  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb/.gjf
   └─ .dimer_mode.dat                   # Light-mode orientation seed
 ```
 
 ## Notes
 - `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
-  algorithm rather than adjusting YAML keys manually.
+  algorithm rather than adjusting YAML keys manually (default: `heavy`).
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
   `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
   exported when multiple remain.

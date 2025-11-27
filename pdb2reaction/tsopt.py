@@ -177,7 +177,8 @@ from .utils import (
     normalize_choice,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    maybe_convert_xyz_to_gjf,
+    set_convert_file_enabled,
+    convert_xyz_like_outputs,
 )
 from .freq import (
     _torch_device,
@@ -1353,11 +1354,18 @@ RSIRFO_KW.update({
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="light (=Dimer) or heavy (=RSIRFO)",
 )
@@ -1387,6 +1395,7 @@ def cli(
     charge: Optional[int],
     spin: Optional[int],
     freeze_links: bool,
+    convert_files: bool,
     max_cycles: int,
     opt_mode: str,
     dump: bool,
@@ -1395,6 +1404,7 @@ def cli(
     args_yaml: Optional[Path],
     hessian_calc_mode: Optional[str],
 ) -> None:
+    set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     source_path = prepared_input.source_path
@@ -1514,36 +1524,37 @@ def cli(
             runner.run()
             click.echo("\n=== TS optimization (Hessian Dimer) finished ===\n")
 
-            # Convert outputs if input is PDB
-            if source_path.suffix.lower() == ".pdb":
-                ref_pdb = source_path.resolve()
-                # final_geometry.xyz → final_geometry.pdb
-                final_xyz = out_dir_path / "final_geometry.xyz"
-                final_pdb = out_dir_path / "final_geometry.pdb"
-                try:
-                    convert_xyz_to_pdb(final_xyz, ref_pdb, final_pdb)
-                    click.echo(f"[convert] Wrote '{final_pdb}'.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final geometry to PDB: {e}", err=True)
-                # optimization_all.trj → optimization_all.pdb
-                all_trj = out_dir_path / "optimization_all.trj"
-                if all_trj.exists():
-                    try:
-                        opt_pdb = out_dir_path / "optimization_all.pdb"
-                        convert_xyz_to_pdb(all_trj, ref_pdb, opt_pdb)
-                        click.echo(f"[convert] Wrote '{opt_pdb}'.")
-                    except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
-            else:
-                final_xyz = out_dir_path / "final_geometry.xyz"
+            needs_pdb = source_path.suffix.lower() == ".pdb"
+            needs_gjf = prepared_input.is_gjf
+            ref_pdb = source_path.resolve() if needs_pdb else None
+            final_xyz = out_dir_path / "final_geometry.xyz"
+            try:
+                convert_xyz_like_outputs(
+                    final_xyz,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
+                    out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
+                )
+                click.echo("[convert] Wrote 'final_geometry' outputs.")
+            except Exception as e:
+                click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-            if prepared_input.gjf_template is not None:
+            all_trj = out_dir_path / "optimization_all.trj"
+            if all_trj.exists() and (needs_pdb or needs_gjf):
                 try:
-                    final_gjf = out_dir_path / "final_geometry.gjf"
-                    maybe_convert_xyz_to_gjf(final_xyz, prepared_input.gjf_template, final_gjf)
-                    click.echo(f"[convert] Wrote '{final_gjf}'.")
+                    convert_xyz_like_outputs(
+                        all_trj,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=out_dir_path / "optimization_all.pdb" if needs_pdb else None,
+                        out_gjf_path=out_dir_path / "optimization_all.gjf" if needs_gjf else None,
+                    )
+                    click.echo("[convert] Wrote 'optimization_all' outputs.")
                 except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final geometry to GJF: {e}", err=True)
+                    click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+            elif needs_pdb or needs_gjf:
+                click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
 
         else:
             # RS-I-RFO (heavy)
@@ -1587,36 +1598,37 @@ def cli(
             optimizer.run()
             click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
 
-            # Convert outputs if input is PDB
-            if source_path.suffix.lower() == ".pdb":
-                ref_pdb = source_path.resolve()
-                # final_geometry.xyz (from optimizer.final_fn) → final_geometry.pdb
-                final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
-                final_pdb = out_dir_path / "final_geometry.pdb"
-                try:
-                    convert_xyz_to_pdb(final_xyz_path, ref_pdb, final_pdb)
-                    click.echo(f"[convert] Wrote '{final_pdb}'.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final geometry to PDB: {e}", err=True)
-                # optimization.trj → optimization.pdb
-                trj_path = out_dir_path / "optimization.trj"
-                if trj_path.exists():
-                    try:
-                        opt_pdb = out_dir_path / "optimization.pdb"
-                        convert_xyz_to_pdb(trj_path, ref_pdb, opt_pdb)
-                        click.echo(f"[convert] Wrote '{opt_pdb}'.")
-                    except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory to PDB: {e}", err=True)
-            else:
-                final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
+            needs_pdb = source_path.suffix.lower() == ".pdb"
+            needs_gjf = prepared_input.is_gjf
+            ref_pdb = source_path.resolve() if needs_pdb else None
+            final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
+            try:
+                convert_xyz_like_outputs(
+                    final_xyz_path,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
+                    out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
+                )
+                click.echo("[convert] Wrote 'final_geometry' outputs.")
+            except Exception as e:
+                click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-            if prepared_input.gjf_template is not None:
+            trj_path = out_dir_path / "optimization.trj"
+            if trj_path.exists() and (needs_pdb or needs_gjf):
                 try:
-                    final_gjf = out_dir_path / "final_geometry.gjf"
-                    maybe_convert_xyz_to_gjf(final_xyz_path, prepared_input.gjf_template, final_gjf)
-                    click.echo(f"[convert] Wrote '{final_gjf}'.")
+                    convert_xyz_like_outputs(
+                        trj_path,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=out_dir_path / "optimization.pdb" if needs_pdb else None,
+                        out_gjf_path=out_dir_path / "optimization.gjf" if needs_gjf else None,
+                    )
+                    click.echo("[convert] Wrote 'optimization' outputs.")
                 except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final geometry to GJF: {e}", err=True)
+                    click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+            elif needs_pdb or needs_gjf:
+                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
 
             # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
             geometry.set_calculator(None)
