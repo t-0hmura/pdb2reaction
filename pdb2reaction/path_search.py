@@ -209,6 +209,7 @@ def _literal_str_representer(dumper, data):
 
 
 yaml.add_representer(_LiteralStr, _literal_str_representer)
+yaml.add_representer(_LiteralStr, _literal_str_representer, Dumper=yaml.SafeDumper)
 
 
 def _bond_changes_block(text: Optional[str]) -> str:

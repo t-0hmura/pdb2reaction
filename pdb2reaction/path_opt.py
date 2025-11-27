@@ -302,6 +302,7 @@ def _run_dmf_mep(
 
     mxflx_fbenm = interpolate_fbenm(
         ref_images,
+        nmove=max(1, int(max_nodes)),
         fbenm_only_endpoints=False,
         correlated=True,
         output_file=str(out_dir_path / "dmf_fbenm_ipopt.out"),
