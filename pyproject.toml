@@ -24,8 +24,9 @@ dependencies = [
     "click",
     "plotly",
     "kaleido",
-    "gpu4pyscf-cuda12x",
     "pyscf",
+    "gpu4pyscf-cuda12x",
+    "cutensor-cu12"
 ]
 
 [project.scripts]
