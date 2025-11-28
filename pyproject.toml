@@ -15,8 +15,8 @@ dependencies = [
     "pysisyphus @ git+https://github.com/t-0hmura/torch_pysis.git", 
     "thermoanalysis @ git+https://github.com/t-0hmura/thermoanalysis.git",
     "torch>=2.6.0",
-    "torch_geometric",
-    "torch_scatter",
+    "torch_geometric>=2.7.0",
+    "torch_scatter>=2.1.2",
     "numpy",
     "biopython",
     "ase>=3.25.0",
@@ -24,9 +24,10 @@ dependencies = [
     "click",
     "plotly",
     "kaleido",
-    "pyscf",
-    "gpu4pyscf-cuda12x",
-    "cutensor-cu12"
+    "pyscf==2.11.0",
+    "gpu4pyscf-cuda12x==1.5.0",
+    "cupy-cuda12x==13.4.1",
+    "cutensor-cu12==2.2.0"
 ]
 
 [project.scripts]

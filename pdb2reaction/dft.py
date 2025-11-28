@@ -104,7 +104,7 @@ DFT_KW: Dict[str, Any] = {
     "conv_tol": 1e-9,          # SCF convergence tolerance (Eh)
     "max_cycle": 100,          # Maximum number of SCF iterations
     "grid_level": 3,           # Numerical integration grid level (PySCF grids.level)
-    "verbose": 1,              # PySCF verbosity (0..9)
+    "verbose": 3,              # PySCF verbosity (0..9)
     "out_dir": "./result_dft/",# Output directory
 }
 
