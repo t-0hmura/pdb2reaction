@@ -521,7 +521,8 @@ def cli(
                     err=True,
                 )
                 using_gpu = False
-                engine_label = "pyscf"
+                engine_label = "pyscf(cpu)"
+                engine = "cpu"
 
         if not using_gpu:
             from pyscf import dft as pdft
