@@ -2336,10 +2336,26 @@ def cli(
                         "tail_im_energy": first_im_e,
                         "has_extra": False,
                         "index": ts_count,
+                        "bridge_peaks": [],
                     }
                     ts_groups.append(current)
                 else:
                     if current is not None:
+                        if s.kind == "bridge":
+                            barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
+                            if np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
+                                seg_energies = [float(combined_all.energies[j]) for j in idxs]
+                                peak_e = float(max(seg_energies)) if seg_energies else None
+                                if peak_e is not None:
+                                    peaks = current.setdefault("bridge_peaks", [])
+                                    suffix = "" if len(peaks) == 0 else f"_{len(peaks) + 1}"
+                                    peak_label = f"IM{current['index']}_TS{suffix}"
+                                    peaks.append({"label": peak_label, "energy": peak_e})
+                                    click.echo(
+                                        "    [bridge] Recorded diagram-only TS peak "
+                                        f"{peak_label} at {peak_e:.6f} Eh (bridge segments skip tsopt/thermo/DFT)."
+                                    )
+
                         current["tail_im_energy"] = float(combined_all.energies[idxs[-1]])
                         current["has_extra"] = True
 
@@ -2377,6 +2393,11 @@ def cli(
                 labels.append(f"IM{i}_1")
                 energies_eh.append(g["first_im_energy"])
                 chain_tokens.extend(["-->", f"IM{i}_1"])
+
+                for bp in g.get("bridge_peaks", []):
+                    labels.append(bp["label"])
+                    energies_eh.append(bp["energy"])
+                    chain_tokens.extend(["-->", bp["label"]])
 
                 if g["has_extra"]:
                     labels.append(f"IM{i}_2")
