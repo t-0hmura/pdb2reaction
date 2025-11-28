@@ -2484,6 +2484,69 @@ def cli(
                         err=True,
                     )
 
+        # Build summary.yaml for TSOPT-only runs, mirroring path_search/path_opt outputs
+        bond_cfg = dict(_path_search.BOND_KW)
+        bond_summary = ""
+        try:
+            changed, bond_summary = _path_search._has_bond_change(
+                g_react_opt, g_prod_opt, bond_cfg
+            )
+            if not changed:
+                bond_summary = "(no covalent changes detected)"
+        except Exception as e:
+            click.echo(
+                f"[post] WARNING: Failed to detect bond changes for TSOPT-only endpoints: {e}",
+                err=True,
+            )
+            bond_summary = "(no covalent changes detected)"
+
+        barrier = (eT - e_react) * AU2KCALPERMOL
+        delta = (e_prod - e_react) * AU2KCALPERMOL
+
+        n_images = 0
+        try:
+            irc_trj_path = irc_res.get("irc_trj_path")
+            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
+                n_images = len(_read_xyz_as_blocks(irc_trj_path))
+        except Exception:
+            n_images = 0
+
+        summary = {
+            "out_dir": str(tsroot),
+            "n_images": n_images,
+            "n_segments": 1,
+            "segments": [
+                {
+                    "index": 1,
+                    "tag": "seg_01",
+                    "kind": "tsopt",
+                    "barrier_kcal": float(barrier),
+                    "delta_kcal": float(delta),
+                    "bond_changes": _path_search._bond_changes_block(bond_summary),
+                }
+            ],
+        }
+        if energy_diagrams:
+            summary["energy_diagrams"] = list(energy_diagrams)
+        try:
+            with open(tsroot / "summary.yaml", "w") as f:
+                yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
+            click.echo(f"[write] Wrote '{tsroot / 'summary.yaml'}'.")
+            try:
+                dst_summary = out_dir / "summary.yaml"
+                shutil.copy2(tsroot / "summary.yaml", dst_summary)
+                click.echo(f"[all] Copied summary.yaml → {dst_summary}")
+            except Exception as e:
+                click.echo(
+                    f"[all] WARNING: Failed to mirror summary.yaml in TSOPT-only mode: {e}",
+                    err=True,
+                )
+        except Exception as e:
+            click.echo(
+                f"[write] WARNING: Failed to write summary.yaml for TSOPT-only run: {e}",
+                err=True,
+            )
+
         try:
             for stem in (
                 "energy_diagram_UMA",
