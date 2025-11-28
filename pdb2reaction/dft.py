@@ -153,28 +153,12 @@ def _AU2KCALPERMOL(Eh: float) -> float:
 
 def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
     """Apply common SCF settings (DF, tolerances, grids, VV10)."""
-    try:
-        # Let PySCF choose an appropriate auxiliary basis for DF
-        mf = mf.density_fit()
-    except Exception as e:
-        click.echo(f"[df] WARNING: density_fit() failed or not available: {e}", err=True)
-
     mf.xc = xc
     mf.max_cycle = int(dft_cfg["max_cycle"])
     mf.conv_tol = float(dft_cfg["conv_tol"])
-    try:
-        mf.grids.level = int(dft_cfg["grid_level"])
-    except Exception as e:
-        click.echo(f"[grids] WARNING: Could not set grids.level={dft_cfg['grid_level']}: {e}", err=True)
-
-    try:
-        mf.chkfile = None
-    except Exception:
-        pass
-
-    xcl = xc.lower()
-    if xcl.endswith("-v") or "vv10" in xcl:
-        mf.nlc = "vv10"
+    mf.grids.level = int(dft_cfg["grid_level"])
+    mf.chkfile = None
+    mf = mf.density_fit()
 
     return mf
 
@@ -513,7 +497,9 @@ def cli(
                 using_gpu = True
                 engine_label = "gpu4pyscf"
                 mf = _configure_scf_object(mf, dft_cfg, xc)
+                click.echo("0")
                 e_tot = mf.kernel()
+                click.echo("1")
 
             except Exception as e:
                 click.echo(
