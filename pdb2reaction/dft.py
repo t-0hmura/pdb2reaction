@@ -204,6 +204,7 @@ def _format_row_for_echo(row: List[Union[int, str, float, None]]) -> str:
     return "[" + ", ".join(_fmt(v) for v in row) + "]"
 
 
+# This function is based on https://pyscf.org/_modules/pyscf/lo/iao.html
 def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
     """
     IAO-basis Mulliken spin population analysis.
@@ -250,6 +251,9 @@ def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
     # Unrestricted: transform alpha/beta DM to IAO basis
     dm_a = reduce(numpy.dot, (iao_inv, dm[0], iao_inv.conj().T))
     dm_b = reduce(numpy.dot, (iao_inv, dm[1], iao_inv.conj().T))
+
+    # return scf_uhf.mulliken_pop(pmol, [dm_a, dm_b], s_iao, verbose)
+    # -->
     return scf_uhf.mulliken_spin_pop(pmol, [dm_a, dm_b], s_iao, verbose)
 
 
@@ -526,14 +530,41 @@ def cli(
         # --------------------------
         click.echo("\n=== DFT single-point started (GPU if available) ===\n")
         tic_scf = time.time()
+        scf_exception: Optional[BaseException] = None
         try:
             e_tot = mf.kernel()
-        except Exception as scf_exc:
-            if using_gpu:
+        except Exception as exc:
+            scf_exception = exc
+
+        # GPU backend: fallback to CPU if SCF failed (exception, non-convergence, or invalid energy)
+        if using_gpu:
+            need_cpu_fallback = False
+
+            if scf_exception is not None:
+                need_cpu_fallback = True
                 click.echo(
-                    f"[gpu] ERROR: GPU SCF failed ({scf_exc}); retrying on CPU backend...",
+                    f"[gpu] ERROR: GPU SCF failed ({scf_exception}); retrying on CPU backend...",
                     err=True,
                 )
+            else:
+                gpu_converged = bool(getattr(mf, "converged", False))
+                e_tot_invalid = (e_tot is None) or (
+                    isinstance(e_tot, (float, np.floating)) and np.isnan(e_tot)
+                )
+                if (not gpu_converged) or e_tot_invalid:
+                    need_cpu_fallback = True
+                    reason_parts: List[str] = []
+                    if not gpu_converged:
+                        reason_parts.append("SCF not converged")
+                    if e_tot_invalid:
+                        reason_parts.append("invalid energy (None/NaN)")
+                    reason_str = "; ".join(reason_parts) if reason_parts else "unknown reason"
+                    click.echo(
+                        f"[gpu] WARNING: GPU SCF did not converge or returned invalid energy ({reason_str}); retrying on CPU backend...",
+                        err=True,
+                    )
+
+            if need_cpu_fallback:
                 from pyscf import dft as pdft
 
                 mf = make_ks(pdft)
@@ -541,9 +572,14 @@ def cli(
                 using_gpu = False
                 engine_label = "pyscf(cpu)"
                 tic_scf = time.time()
+                # If CPU SCF raises, let it propagate (no further fallback)
                 e_tot = mf.kernel()
-            else:
-                raise
+                scf_exception = None
+        else:
+            # CPU backend from the start; propagate any SCF exception
+            if scf_exception is not None:
+                raise scf_exception
+
         toc_scf = time.time()
         click.echo("\n=== DFT single-point finished ===\n")
 
