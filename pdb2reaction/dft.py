@@ -509,35 +509,30 @@ def cli(
         if engine in ("gpu", "auto"):
             try:
                 from gpu4pyscf import dft as gdf
-            except Exception as e:
-                if engine == "gpu":
-                    click.echo(
-                        f"[gpu] ERROR: GPU backend requested but unavailable: {e}",
-                        err=True,
-                    )
-                    raise
-                else:
-                    click.echo(
-                        f"[gpu] WARNING: GPU backend unavailable ({e}); falling back to CPU for engine='auto'.",
-                        err=True,
-                    )
-            else:
                 mf = make_ks(gdf)
                 using_gpu = True
                 engine_label = "gpu4pyscf"
+                mf = _configure_scf_object(mf, dft_cfg, xc)
+                e_tot = mf.kernel()
+
+            except Exception as e:
+                click.echo(
+                    f"[gpu] WARNING: GPU backend unavailable ({e}); falling back to CPU.",
+                    err=True,
+                )
+                using_gpu = False
+                engine_label = "pyscf"
 
         if not using_gpu:
             from pyscf import dft as pdft
             mf = make_ks(pdft)
-
-        mf = _configure_scf_object(mf, dft_cfg, xc)
+            mf = _configure_scf_object(mf, dft_cfg, xc)
+            e_tot = mf.kernel()
 
         # --------------------------
         # 5) Run SCF
         # --------------------------
-        tic_scf = time.time()
-        e_tot = mf.kernel()
-        toc_scf = time.time()
+        
 
         converged = bool(getattr(mf, "converged", False))
         if e_tot is None:
@@ -601,7 +596,6 @@ def cli(
                 "hartree": e_h,
                 "kcal_per_mol": e_kcal,
                 "converged": converged,
-                "scf_time_sec": round(toc_scf - tic_scf, 3),
                 "engine": engine_label,
                 "used_gpu": bool(using_gpu),
             },
