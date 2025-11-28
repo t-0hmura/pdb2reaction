@@ -2350,7 +2350,6 @@ def cli(
                 "labels": labels,
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
-                "state_sequence": chain_tokens,
             }
 
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
@@ -2358,7 +2357,7 @@ def cli(
             click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
             click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
 
-            title_note = "(GSM; all segments)" if len(ts_groups) > 1 else "(GSM)"
+            title_note = "(MEP; all segments)"
             fig = build_energy_diagram(
                 energies=energies_kcal,
                 labels=labels,
