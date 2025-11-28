@@ -2346,7 +2346,7 @@ def cli(
             energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
 
             diagram_payload = {
-                "name": "energy_diagram_mep",
+                "name": "energy_diagram_MEP",
                 "labels": labels,
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
