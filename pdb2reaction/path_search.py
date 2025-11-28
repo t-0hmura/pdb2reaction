@@ -212,14 +212,53 @@ yaml.add_representer(_LiteralStr, _literal_str_representer)
 yaml.add_representer(_LiteralStr, _literal_str_representer, Dumper=yaml.SafeDumper)
 
 
-def _bond_changes_block(text: Optional[str]) -> str:
+def _bond_changes_block(text: Optional[str]):
     """
-    Prepare bond-change summaries for YAML output, keeping multiline text readable.
+    Prepare bond-change summaries for YAML output, emitting structured lists instead
+    of escaped ``\n`` strings when possible.
     """
 
     if text is None:
         return ""
-    cleaned = str(text).rstrip()
+
+    cleaned = str(text).strip()
+    if not cleaned:
+        return ""
+
+    # Convert the ``summarize_changes`` output
+    #   Bond formed (1):
+    #     - C1-C2 : 3.0 Å --> 1.5 Å
+    #   Bond broken: None
+    # into a YAML-friendly nested list to avoid embedded newlines.
+    lines = cleaned.splitlines()
+    sections = []
+    title: Optional[str] = None
+    entries: List[str] = []
+
+    def _flush() -> None:
+        nonlocal title, entries
+        if title is None:
+            return
+        payload = entries if entries else ["None"]
+        sections.append({title: payload})
+        title, entries = None, []
+
+    for ln in lines:
+        stripped = ln.strip()
+        if stripped.startswith("Bond "):
+            _flush()
+            if stripped.endswith(": None"):
+                sections.append({stripped[:-len(": None")]: ["None"]})
+            else:
+                title = stripped.rstrip(":")
+        elif stripped.startswith("- "):
+            entries.append(stripped[2:])
+
+    _flush()
+
+    # Fallback to literal block if the format is unexpected
+    if sections:
+        return sections
     if "\n" in cleaned:
         return _LiteralStr(cleaned)
     return cleaned
@@ -2350,7 +2389,6 @@ def cli(
                 "labels": labels,
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
-                "state_sequence": chain_tokens,
             }
 
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
@@ -2358,7 +2396,7 @@ def cli(
             click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
             click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
 
-            title_note = "(GSM; all segments)" if len(ts_groups) > 1 else "(GSM)"
+            title_note = "(MEP; all segments)"
             fig = build_energy_diagram(
                 energies=energies_kcal,
                 labels=labels,

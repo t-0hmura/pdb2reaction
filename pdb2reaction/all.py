@@ -1310,14 +1310,14 @@ def _run_tsopt_on_hei(
 
     if needs_pdb and ts_pdb.exists():
         ts_geom_path = ts_pdb
-    elif needs_gjf and ts_gjf.exists():
-        ts_geom_path = ts_gjf
-    elif ts_pdb.exists():
-        ts_geom_path = ts_pdb
-    elif ts_gjf.exists():
-        ts_geom_path = ts_gjf
     elif ts_xyz.exists():
         ts_geom_path = ts_xyz
+    elif ts_pdb.exists():
+        ts_geom_path = ts_pdb
+    elif needs_gjf and ts_gjf.exists():
+        ts_geom_path = ts_gjf
+    elif ts_gjf.exists():
+        ts_geom_path = ts_gjf
     else:
         raise click.ClickException("[tsopt] TS outputs not found.")
 
