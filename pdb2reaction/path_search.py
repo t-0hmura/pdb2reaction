@@ -775,6 +775,12 @@ def _run_dmf_between(
     _write_ase_trj_with_energy(dmf_res.images, energies, final_trj)
     _maybe_convert_to_pdb(final_trj, ref_pdb_path)
 
+    try:
+        run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+        click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
+    except Exception as e:
+        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
+
     imgs: List[Any] = []
     for atoms in dmf_res.images:
         imgs.append(
