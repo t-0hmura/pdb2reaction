@@ -490,6 +490,28 @@ def cli(
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
 
+
+        # --- Detect Blackwell GPU and force CPU backend ---
+        is_blackwell_gpu = False
+        try:
+            import cupy as cp
+            dev_id = cp.cuda.runtime.getDevice()
+            props = cp.cuda.runtime.getDeviceProperties(dev_id)
+            name = props["name"]
+            if isinstance(name, bytes):
+                name = name.decode()
+            click.echo(name)
+            if ("rtx 50" in name.lower()) or ("nvidia b" in name.lower()):
+                is_blackwell_gpu = True
+        except Exception:
+            is_blackwell_gpu = False
+
+        if is_blackwell_gpu:
+            click.echo("[gpu] WARNING: GPU4PySCF does not support the Blackwell architecture; forcing CPU engine as requested.", err=True)
+            engine = "cpu"
+        # --------------------------------------------------
+
+
         if engine in ("gpu", "auto"):
             try:
                 from gpu4pyscf import dft as gdf
@@ -497,9 +519,7 @@ def cli(
                 using_gpu = True
                 engine_label = "gpu4pyscf"
                 mf = _configure_scf_object(mf, dft_cfg, xc)
-                click.echo("0")
                 e_tot = mf.kernel()
-                click.echo("1")
 
             except Exception as e:
                 click.echo(
