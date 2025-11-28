@@ -1,7 +1,7 @@
 # pdb2reaction/dft.py
 
 """
-dft — Single-point DFT (GPU4PySCF with CPU PySCF fallback)
+dft — Single-point DFT
 ====================================================================
 
 Usage (CLI)
@@ -22,11 +22,12 @@ Examples
 
 Description
 -----------
-- Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and CPU PySCF fallback.
+- Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and a CPU PySCF backend.
   The backend policy is controlled by --engine:
-  * gpu  (default): try GPU4PySCF; on failure, fall back to CPU.
-  * cpu            : use CPU PySCF only.
-  * auto           : try GPU4PySCF, otherwise CPU.
+  * gpu  (default): use GPU4PySCF only. If the GPU backend is unavailable or the SCF fails,the run stops.
+  * cpu           : use CPU PySCF only.
+  * auto          : try GPU4PySCF; if the GPU backend is not available at import time,
+                    fall back to CPU PySCF before starting SCF. No CPU fallback during/after SCF.
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
   The geometry is written back unchanged as input_geometry.xyz. If a Gaussian .gjf template
@@ -367,7 +368,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 # -----------------------------------------------
 
 @click.command(
-    help="Single-point DFT using GPU4PySCF (CPU PySCF fallback).",
+    help="Single-point DFT using GPU4PySCF (CPU PySCF backend).",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -403,7 +404,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     type=click.Choice(["gpu", "cpu", "auto"], case_sensitive=False),
     default="gpu",
     show_default=True,
-    help="Preferred SCF backend: GPU (GPU4PySCF when available), CPU, or auto (try GPU then CPU).",
+    help="Preferred SCF backend: GPU (GPU4PySCF), CPU, or auto (try GPU then CPU if GPU is unavailable).",
 )
 @click.option(
     "--args-yaml",
@@ -510,15 +511,23 @@ def cli(
         if engine in ("gpu", "auto"):
             try:
                 from gpu4pyscf import dft as gdf
-                mf = make_ks(gdf)
-                using_gpu = True
-                engine_label = "gpu4pyscf"
             except Exception as e:
                 if engine == "gpu":
                     click.echo(
-                        f"[gpu] WARNING: GPU backend requested but unavailable ({e}); falling back to CPU.",
+                        f"[gpu] ERROR: GPU backend requested but unavailable: {e}",
                         err=True,
                     )
+                    raise
+                else:
+                    click.echo(
+                        f"[gpu] WARNING: GPU backend unavailable ({e}); falling back to CPU for engine='auto'.",
+                        err=True,
+                    )
+            else:
+                mf = make_ks(gdf)
+                using_gpu = True
+                engine_label = "gpu4pyscf"
+
         if not using_gpu:
             from pyscf import dft as pdft
             mf = make_ks(pdft)
@@ -526,60 +535,12 @@ def cli(
         mf = _configure_scf_object(mf, dft_cfg, xc)
 
         # --------------------------
-        # 5) Run SCF
+        # 5) Run SCF (no CPU fallback from GPU)
         # --------------------------
-        click.echo("\n=== DFT single-point started (GPU if available) ===\n")
+        click.echo(f"\n=== DFT single-point started ({engine_label}) ===\n")
         tic_scf = time.time()
-        scf_exception: Optional[BaseException] = None
-        try:
-            e_tot = mf.kernel()
-        except Exception as exc:
-            scf_exception = exc
 
-        # GPU backend: fallback to CPU if SCF failed (exception, non-convergence, or invalid energy)
-        if using_gpu:
-            need_cpu_fallback = False
-
-            if scf_exception is not None:
-                need_cpu_fallback = True
-                click.echo(
-                    f"[gpu] ERROR: GPU SCF failed ({scf_exception}); retrying on CPU backend...",
-                    err=True,
-                )
-            else:
-                gpu_converged = bool(getattr(mf, "converged", False))
-                e_tot_invalid = (e_tot is None) or (
-                    isinstance(e_tot, (float, np.floating)) and np.isnan(e_tot)
-                )
-                if (not gpu_converged) or e_tot_invalid:
-                    need_cpu_fallback = True
-                    reason_parts: List[str] = []
-                    if not gpu_converged:
-                        reason_parts.append("SCF not converged")
-                    if e_tot_invalid:
-                        reason_parts.append("invalid energy (None/NaN)")
-                    reason_str = "; ".join(reason_parts) if reason_parts else "unknown reason"
-                    click.echo(
-                        f"[gpu] WARNING: GPU SCF did not converge or returned invalid energy ({reason_str}); retrying on CPU backend...",
-                        err=True,
-                    )
-
-            if need_cpu_fallback:
-                from pyscf import dft as pdft
-
-                mf = make_ks(pdft)
-                mf = _configure_scf_object(mf, dft_cfg, xc)
-                using_gpu = False
-                engine_label = "pyscf(cpu)"
-                tic_scf = time.time()
-                # If CPU SCF raises, let it propagate (no further fallback)
-                e_tot = mf.kernel()
-                scf_exception = None
-        else:
-            # CPU backend from the start; propagate any SCF exception
-            if scf_exception is not None:
-                raise scf_exception
-
+        e_tot = mf.kernel()
         toc_scf = time.time()
         click.echo("\n=== DFT single-point finished ===\n")
 
