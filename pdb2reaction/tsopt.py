@@ -1504,20 +1504,21 @@ def cli(
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-            all_trj = out_dir_path / "optimization_all.trj"
-            if all_trj.exists() and needs_pdb:
-                try:
-                    convert_xyz_like_outputs(
-                        all_trj,
-                        prepared_input,
-                        ref_pdb_path=ref_pdb,
-                        out_pdb_path=out_dir_path / "optimization_all.pdb" if needs_pdb else None,
-                    )
-                    click.echo("[convert] Wrote 'optimization_all' outputs.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
-            elif needs_pdb:
-                click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
+            if bool(opt_cfg.get("dump", False)) and needs_pdb:
+                all_trj = out_dir_path / "optimization_all.trj"
+                if all_trj.exists():
+                    try:
+                        convert_xyz_like_outputs(
+                            all_trj,
+                            prepared_input,
+                            ref_pdb_path=ref_pdb,
+                            out_pdb_path=out_dir_path / "optimization_all.pdb" if needs_pdb else None,
+                        )
+                        click.echo("[convert] Wrote 'optimization_all' outputs.")
+                    except Exception as e:
+                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+                else:
+                    click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
 
         else:
             # RS-I-RFO (heavy)
