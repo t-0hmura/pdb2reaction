@@ -23,27 +23,27 @@ Examples
 Description
 -----------
 - Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and CPU PySCF fallback.
-  The backend policy is controlled by `--engine`:
-  * `gpu`  (default): try GPU4PySCF; on failure, fall back to CPU.
-  * `cpu`            : use CPU PySCF only.
-  * `auto`           : try GPU4PySCF, otherwise CPU.
+  The backend policy is controlled by --engine:
+  * gpu  (default): try GPU4PySCF; on failure, fall back to CPU.
+  * cpu            : use CPU PySCF only.
+  * auto           : try GPU4PySCF, otherwise CPU.
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
-- Inputs: any structure format supported by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, …).
-  The geometry is written back unchanged as `input_geometry.xyz`. If a Gaussian `.gjf` template
-  is present, a convenience `input_geometry.gjf` is also written.
-- Functional/basis specified as "FUNC/BASIS" via `--func-basis` (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").
+- Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
+  The geometry is written back unchanged as input_geometry.xyz. If a Gaussian .gjf template
+  is present, a convenience input_geometry.gjf is also written.
+- Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").
   Names are case-insensitive in PySCF.
-- Density fitting (DF) is enabled when possible. A practical JKFIT auxiliary basis is guessed
-  from the chosen orbital basis (def2/cc-pVXZ/Pople families).
-- SCF controls: `--conv-tol` (Eh), `--max-cycle`, `--grid-level` (mapped to PySCF `grids.level`),
-  `--out-dir`. Verbosity can be overridden via YAML (`dft.verbose`).
+- Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
+  PySCF's default selection.
+- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF grids.level),
+  --out-dir. Verbosity can be overridden via YAML (dft.verbose).
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
-- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available and allow omitting
+- -q/--charge is required for non-.gjf inputs; .gjf templates supply charge/spin when available and allow omitting
   the CLI flag.
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
-    * Mulliken (charges: `scf.hf.mulliken_pop`; spins: `scf.uhf.mulliken_spin_pop` for UKS; RKS → zeros; failure → null)
-    * meta‑Löwdin (charges: `scf.hf.mulliken_pop_meta_lowdin_ao`; spins: `scf.uhf.mulliken_spin_pop_meta_lowdin_ao` for UKS; RKS → zeros; not available or failure → null)
-    * IAO (charges: `lo.iao.fast_iao_mullikan_pop`; spins: `fast_iao_mullikan_spin_pop` implemented here; RKS → zeros; failure → null)
+    * Mulliken (charges: scf.hf.mulliken_pop; spins: scf.uhf.mulliken_spin_pop for UKS; RKS → zeros; failure → null)
+    * meta‑Löwdin (charges: scf.hf.mulliken_pop_meta_lowdin_ao; spins: scf.uhf.mulliken_spin_pop_meta_lowdin_ao for UKS; RKS → zeros; not available or failure → null)
+    * IAO (charges: lo.iao.fast_iao_mullikan_pop; spins: fast_iao_mullikan_spin_pop implemented here; RKS → zeros; failure → null)
 - Energies are reported in Hartree and kcal/mol; SCF convergence metadata and timing are recorded.
 - The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
 
@@ -56,15 +56,15 @@ out_dir/ (default: ./result_dft/)
 
 Notes
 -----
-- Charge/spin resolution: `-q/--charge` and `-m/--mult` inherit values from `.gjf` templates when present
-  and otherwise fall back to `0`/`1`. Provide explicit values whenever possible to enforce the intended state
+- Charge/spin resolution: -q/--charge and -m/--mult inherit values from .gjf templates when present
+  and otherwise fall back to 0/1. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
-- YAML overrides: `--args-yaml` points to a file with top-level key `dft` (`conv_tol`, `max_cycle`,
-  `grid_level`, `verbose`, `out_dir`).
-- Grids: sets `grids.level` when supported.
+- YAML overrides: --args-yaml points to a file with top-level key dft (conv_tol, max_cycle,
+  grid_level, verbose, out_dir).
+- Grids: sets grids.level when supported.
 - Units: input coordinates are in Å.
 - Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.
-- If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column is `null`.
+- If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column is null.
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ DFT_KW: Dict[str, Any] = {
     "conv_tol": 1e-9,          # SCF convergence tolerance (Eh)
     "max_cycle": 100,          # Maximum number of SCF iterations
     "grid_level": 3,           # Numerical integration grid level (PySCF grids.level)
-    "verbose": 4,              # PySCF verbosity (0..9)
+    "verbose": 1,              # PySCF verbosity (0..9)
     "out_dir": "./result_dft/",# Output directory
 }
 
@@ -152,53 +152,11 @@ def _hartree_to_kcalmol(Eh: float) -> float:
     return float(Eh * HARTREE_TO_KCALMOL)
 
 
-# ---- Aux-basis chooser for DF (JKFIT) ----
-def _choose_auxbasis_for_orbital_basis(basis: str) -> Optional[str]:
-    """
-    Pick a practical JKFIT auxiliary basis for density fitting from the orbital basis name.
-    Policy:
-      - def2 family:
-          * SVP  → def2-SVP-JKFIT
-          * TZ*  → def2-TZVPP-JKFIT
-          * QZ*  → def2-QZVPP-JKFIT
-          * otherwise → def2-universal-jkfit
-      - (aug-)cc-pVXZ family: use cc-pVXZ-JKFIT
-      - Pople (6-31G**, 6-311G** ...): use "weigend"
-      - Unknown → None (delegate to PySCF default)
-    """
-    if not basis:
-        return None
-    b = basis.strip().lower()
-    # def2 family
-    if "def2" in b:
-        if "svp" in b and "tz" not in b and "qz" not in b:
-            return "def2-svp-jkfit"
-        if "tz" in b:
-            return "def2-tzvpp-jkfit"
-        if "qz" in b:
-            return "def2-qzvpp-jkfit"
-        return "def2-universal-jkfit"
-    # (aug-)cc-pVXZ family
-    if "cc-pv" in b:  # matches both cc-pv and aug-cc-pv
-        if "dz" in b: return "cc-pvdz-jkfit"
-        if "tz" in b: return "cc-pvtz-jkfit"
-        if "qz" in b: return "cc-pvqz-jkfit"
-        if "5z" in b: return "cc-pv5z-jkfit"
-    # Pople family
-    if "6-31" in b or "6-311" in b:
-        return "weigend"
-    return None
-
-
-def _configure_scf_object(mf, aux_basis_guess: Optional[str], dft_cfg: Dict[str, Any], xc: str):
-    """Apply common SCF settings (DF, aux-basis, tolerances, grids, VV10)."""
+def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
+    """Apply common SCF settings (DF, tolerances, grids, VV10)."""
     try:
+        # Let PySCF choose an appropriate auxiliary basis for DF
         mf = mf.density_fit()
-        if aux_basis_guess:
-            try:
-                mf.with_df.auxbasis = aux_basis_guess
-            except Exception as e:
-                click.echo(f"[df] WARNING: Could not set auxbasis='{aux_basis_guess}': {e}", err=True)
     except Exception as e:
         click.echo(f"[df] WARNING: density_fit() failed or not available: {e}", err=True)
 
@@ -227,8 +185,10 @@ class FlowList(list):
     """A list that will be dumped in YAML flow style: [a, b, c]."""
     pass
 
+
 def _flow_seq_representer(dumper, data):
     return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
+
 
 yaml.SafeDumper.add_representer(FlowList, _flow_seq_representer)
 
@@ -485,9 +445,6 @@ def cli(
             raise click.BadParameter("Multiplicity (spin) must be >= 1.")
         spin2s = multiplicity - 1  # PySCF expects 2S
 
-        # ---- choose aux-basis for DF from orbital basis ----
-        aux_basis_guess = _choose_auxbasis_for_orbital_basis(basis)
-
         # Echo resolved config
         out_dir_path = Path(dft_cfg["out_dir"]).resolve()
         echo_cfg = {
@@ -562,7 +519,7 @@ def cli(
             from pyscf import dft as pdft
             mf = make_ks(pdft)
 
-        mf = _configure_scf_object(mf, aux_basis_guess, dft_cfg, xc)
+        mf = _configure_scf_object(mf, dft_cfg, xc)
 
         # --------------------------
         # 5) Run SCF
@@ -580,7 +537,7 @@ def cli(
                 from pyscf import dft as pdft
 
                 mf = make_ks(pdft)
-                mf = _configure_scf_object(mf, aux_basis_guess, dft_cfg, xc)
+                mf = _configure_scf_object(mf, dft_cfg, xc)
                 using_gpu = False
                 engine_label = "pyscf(cpu)"
                 tic_scf = time.time()
