@@ -52,7 +52,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 - Console pretty block summarising charge, multiplicity, spin (2S), functional, basis, convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the CLI docstring behaviour (GPU attempt, then CPU).
+- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the CLI docstring behaviour (GPU attempt, then CPU). GPU runs that fail will automatically retry on the CPU backend.
 - Density fitting is always attempted; auxiliary bases are auto-selected for def2/cc-pVXZ/Pople families and silently skipped when unsupported.
 - The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
 - Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).

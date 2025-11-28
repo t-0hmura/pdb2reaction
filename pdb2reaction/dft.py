@@ -545,6 +545,7 @@ def cli(
         using_gpu = False
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
+
         if engine in ("gpu", "auto"):
             try:
                 from gpu4pyscf import dft as gdf
