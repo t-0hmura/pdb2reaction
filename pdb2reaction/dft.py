@@ -506,7 +506,7 @@ def cli(
             is_blackwell_gpu = False
 
         if is_blackwell_gpu:
-            click.echo("[gpu] WARNING: GPU4PySCF does not support the Blackwell architecture; forcing CPU engine as requested.", err=True)
+            click.echo("[gpu] WARNING: GPU4PySCF does not support the Blackwell architecture; forcing CPU engine as requested.")
             engine = "cpu"
         # --------------------------------------------------
 
@@ -523,7 +523,6 @@ def cli(
             except Exception as e:
                 click.echo(
                     f"[gpu] WARNING: GPU backend unavailable ({e}); falling back to CPU.",
-                    err=True,
                 )
                 using_gpu = False
                 engine_label = "pyscf(cpu)"
