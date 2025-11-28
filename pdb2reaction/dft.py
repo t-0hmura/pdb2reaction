@@ -546,25 +546,6 @@ def cli(
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
 
-        # Guard against GPU4PySCF meta-GGA support gaps (e.g., "work_mgga" symbol errors)
-        is_meta_gga = False
-        try:
-            from pyscf.dft import libxc as pyscf_libxc
-
-            is_meta_gga = bool(pyscf_libxc.is_meta_gga(xc))
-        except Exception as xc_exc:
-            click.echo(
-                f"[gpu] WARNING: Could not classify functional '{xc}' for GPU compatibility ({xc_exc}); proceeding.",
-                err=True,
-            )
-
-        if is_meta_gga and engine in ("gpu", "auto"):
-            click.echo(
-                f"[gpu] INFO: meta-GGA functional '{xc}' detected; forcing CPU backend to avoid unsupported GPU kernels.",
-                err=True,
-            )
-            engine = "cpu"
-
         if engine in ("gpu", "auto"):
             try:
                 from gpu4pyscf import dft as gdf
