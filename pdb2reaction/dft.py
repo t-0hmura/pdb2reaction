@@ -84,6 +84,7 @@ import yaml
 import numpy as np
 
 from pysisyphus.helpers import geom_loader
+from pysisyphus.constants import AU2KCALPERMOL
 
 from .utils import (
     load_yaml_dict,
@@ -105,7 +106,7 @@ DFT_KW: Dict[str, Any] = {
     "conv_tol": 1e-9,          # SCF convergence tolerance (Eh)
     "max_cycle": 100,          # Maximum number of SCF iterations
     "grid_level": 3,           # Numerical integration grid level (PySCF grids.level)
-    "verbose": 3,              # PySCF verbosity (0..9)
+    "verbose": 0,              # PySCF verbosity (0..9)
     "out_dir": "./result_dft/",# Output directory
 }
 
@@ -113,9 +114,6 @@ DFT_KW: Dict[str, Any] = {
 # -----------------------------------------------
 # Utilities
 # -----------------------------------------------
-
-HARTREE_TO_KCALMOL = 627.5094740631  # Hartree → kcal/mol conversion factor
-
 
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
@@ -149,8 +147,8 @@ def _geometry_to_pyscf_atoms_string(geometry) -> Tuple[str, Sequence[Tuple[str, 
     return s, atoms
 
 
-def _hartree_to_kcalmol(Eh: float) -> float:
-    return float(Eh * HARTREE_TO_KCALMOL)
+def _AU2KCALPERMOL(Eh: float) -> float:
+    return float(Eh * AU2KCALPERMOL)
 
 
 def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
@@ -535,22 +533,18 @@ def cli(
         mf = _configure_scf_object(mf, dft_cfg, xc)
 
         # --------------------------
-        # 5) Run SCF (no CPU fallback from GPU)
+        # 5) Run SCF
         # --------------------------
-        click.echo(f"\n=== DFT single-point started ({engine_label}) ===\n")
         tic_scf = time.time()
-
         e_tot = mf.kernel()
         toc_scf = time.time()
-        click.echo("\n=== DFT single-point finished ===\n")
 
         converged = bool(getattr(mf, "converged", False))
         if e_tot is None:
-            # Some PySCF versions return None on non-convergence
             e_tot = float(getattr(mf, "e_tot", np.nan))
 
         e_h = float(e_tot)
-        e_kcal = _hartree_to_kcalmol(e_h)
+        e_kcal = _AU2KCALPERMOL(e_h)
 
         # --------------------------
         # 6) Charges (Mulliken / meta-Löwdin-AO / IAO) & Spin densities
