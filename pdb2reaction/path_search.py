@@ -719,7 +719,7 @@ def _run_dmf_between(
     Run DMF for a segment and convert outputs to pysisyphus Geometries.
     """
 
-    seg_dir = out_dir / f"{tag}_dmf"
+    seg_dir = out_dir / f"{tag}_mep"
     seg_dir.mkdir(parents=True, exist_ok=True)
 
     dmf_res = _run_dmf_mep(
