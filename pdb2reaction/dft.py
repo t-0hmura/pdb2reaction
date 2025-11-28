@@ -500,7 +500,6 @@ def cli(
             name = props["name"]
             if isinstance(name, bytes):
                 name = name.decode()
-            click.echo(name)
             if ("rtx 50" in name.lower()) or ("nvidia b" in name.lower()):
                 is_blackwell_gpu = True
         except Exception:
