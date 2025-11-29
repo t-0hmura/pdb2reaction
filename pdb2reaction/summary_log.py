@@ -378,7 +378,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             return "gibbs_dft_uma"
         if "dft" in name:
             return "dft"
-        if "g_uma" in name or ("uma" in name and "g" in name) or "gibbs" in ylabel_txt:
+        if "g_uma" in name or "gibbs" in name or "gibbs" in ylabel_txt:
             return "gibbs_uma"
         if "uma" in name:
             return "uma"
@@ -433,15 +433,10 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         lines.append("  Energy diagram overview table")
 
         table_rows: List[tuple[str, str]] = [
-            ("MEP ΔE‡ [kcal/mol]", "mep"),
             ("MEP ΔE  [kcal/mol]", "mep"),
-            ("UMA ΔE‡ [kcal/mol]", "uma"),
             ("UMA ΔE  [kcal/mol]", "uma"),
-            ("UMA ΔG‡ [kcal/mol]", "gibbs_uma"),
             ("UMA ΔG  [kcal/mol]", "gibbs_uma"),
-            ("DFT//UMA ΔE‡ [kcal/mol]", "dft"),
             ("DFT//UMA ΔE  [kcal/mol]", "dft"),
-            ("DFT//UMA ΔG‡ [kcal/mol]", "gibbs_dft_uma"),
             ("DFT//UMA ΔG  [kcal/mol]", "gibbs_dft_uma"),
         ]
 
