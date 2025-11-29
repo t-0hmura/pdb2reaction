@@ -246,8 +246,20 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         lines.append("  (no segment reports)")
 
     post_segments: Iterable[Dict[str, Any]] = payload.get("post_segments", []) or []
-    segment_summaries: List[Dict[str, Any]] = []
-    overview_rows: List[Dict[str, Any]] = []
+    segment_entries: Dict[int, Dict[str, Any]] = {}
+    for seg in segments:
+        idx = int(seg.get("index", 0) or 0)
+        tag = seg.get("tag", f"seg_{idx:03d}")
+        kind = seg.get("kind", "seg")
+        entry = segment_entries.setdefault(
+            idx, {"index": idx, "tag": tag, "kind": kind}
+        )
+        entry.setdefault("tag", tag)
+        entry.setdefault("kind", kind)
+        if seg.get("barrier_kcal") is not None:
+            entry["mep_barrier"] = seg.get("barrier_kcal")
+        if seg.get("delta_kcal") is not None:
+            entry["mep_delta"] = seg.get("delta_kcal")
     lines.append("")
     lines.append("[3] Per-segment post-processing (TSOPT / Thermo / DFT)")
     if post_segments:
@@ -279,93 +291,118 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 lines, "DFT//UMA Gibbs", seg.get("gibbs_dft_uma"), root_out_path
             )
 
-            segment_summaries.append(
-                {
-                    "index": idx,
-                    "tag": tag,
-                    "kind": kind,
-                    "mep_barrier": seg.get("mep_barrier_kcal"),
-                    "uma_barrier": (seg.get("uma") or {}).get("barrier_kcal"),
-                    "gibbs_uma_barrier": (seg.get("gibbs_uma") or {}).get(
-                        "barrier_kcal"
-                    ),
-                    "mep_delta": seg.get("mep_delta_kcal"),
-                    "uma_delta": (seg.get("uma") or {}).get("delta_kcal"),
-                    "gibbs_uma_delta": (seg.get("gibbs_uma") or {}).get(
-                        "delta_kcal"
-                    ),
-                }
+            entry = segment_entries.setdefault(
+                idx, {"index": idx, "tag": tag, "kind": kind}
             )
-
-            overview_rows.extend(
-                [
-                    {
-                        "index": idx,
-                        "tag": tag,
-                        "kind": kind,
-                        "method": "MEP (string)",
-                        "barrier": seg.get("mep_barrier_kcal"),
-                        "delta": seg.get("mep_delta_kcal"),
-                    },
-                    {
-                        "index": idx,
-                        "tag": tag,
-                        "kind": kind,
-                        "method": "UMA (TSOPT)",
-                        "barrier": (seg.get("uma") or {}).get("barrier_kcal"),
-                        "delta": (seg.get("uma") or {}).get("delta_kcal"),
-                    },
-                    {
-                        "index": idx,
-                        "tag": tag,
-                        "kind": kind,
-                        "method": "G_UMA",
-                        "barrier": (seg.get("gibbs_uma") or {}).get("barrier_kcal"),
-                        "delta": (seg.get("gibbs_uma") or {}).get("delta_kcal"),
-                    },
-                ]
-            )
+            entry.setdefault("tag", tag)
+            entry.setdefault("kind", kind)
+            if seg.get("mep_barrier_kcal") is not None:
+                entry["mep_barrier"] = seg.get("mep_barrier_kcal")
+            if seg.get("mep_delta_kcal") is not None:
+                entry["mep_delta"] = seg.get("mep_delta_kcal")
+            if seg.get("uma"):
+                uma_payload = seg.get("uma") or {}
+                if uma_payload.get("barrier_kcal") is not None:
+                    entry["uma_barrier"] = uma_payload.get("barrier_kcal")
+                if uma_payload.get("delta_kcal") is not None:
+                    entry["uma_delta"] = uma_payload.get("delta_kcal")
+            if seg.get("gibbs_uma"):
+                g_payload = seg.get("gibbs_uma") or {}
+                if g_payload.get("barrier_kcal") is not None:
+                    entry["gibbs_uma_barrier"] = g_payload.get("barrier_kcal")
+                if g_payload.get("delta_kcal") is not None:
+                    entry["gibbs_uma_delta"] = g_payload.get("delta_kcal")
+            if seg.get("dft"):
+                dft_payload = seg.get("dft") or {}
+                if dft_payload.get("barrier_kcal") is not None:
+                    entry["dft_barrier"] = dft_payload.get("barrier_kcal")
+                if dft_payload.get("delta_kcal") is not None:
+                    entry["dft_delta"] = dft_payload.get("delta_kcal")
+            if seg.get("gibbs_dft_uma"):
+                gd_payload = seg.get("gibbs_dft_uma") or {}
+                if gd_payload.get("barrier_kcal") is not None:
+                    entry["gibbs_dft_uma_barrier"] = gd_payload.get("barrier_kcal")
+                if gd_payload.get("delta_kcal") is not None:
+                    entry["gibbs_dft_uma_delta"] = gd_payload.get("delta_kcal")
     else:
         lines.append("  (no post-processing results)")
 
-    if segment_summaries:
-        lines.append("")
-        lines.append("  Segment summaries")
-        for entry in sorted(segment_summaries, key=lambda s: s.get("index", 0)):
-            lines.append(f"    === Segment {int(entry.get('index', 0)):02d} summary ===")
-            label_vals = [
-                ("Barrier (MEP diagram)", entry.get("mep_barrier")),
-                ("Barrier (TSOPT+IRC, UMA)", entry.get("uma_barrier")),
-                ("Barrier (TSOPT+IRC, G_UMA)", entry.get("gibbs_uma_barrier")),
-            ]
-            for label, val in label_vals:
-                val_txt = f"{val:7.2f} kcal/mol" if val is not None else "n/a"
-                lines.append(f"      {label:<28}: {val_txt}")
+    if segment_entries:
+        table_rows = [
+            ("MEP ΔE‡ [kcal/mol]", "mep_barrier"),
+            ("MEP ΔE  [kcal/mol]", "mep_delta"),
+            ("UMA ΔE‡ [kcal/mol]", "uma_barrier"),
+            ("UMA ΔE  [kcal/mol]", "uma_delta"),
+            ("UMA ΔG‡ [kcal/mol]", "gibbs_uma_barrier"),
+            ("UMA ΔG  [kcal/mol]", "gibbs_uma_delta"),
+            ("DFT//UMA ΔE‡ [kcal/mol]", "dft_barrier"),
+            ("DFT//UMA ΔE  [kcal/mol]", "dft_delta"),
+            ("DFT//UMA ΔG‡ [kcal/mol]", "gibbs_dft_uma_barrier"),
+            ("DFT//UMA ΔG  [kcal/mol]", "gibbs_dft_uma_delta"),
+        ]
+        sorted_entries = [segment_entries[k] for k in sorted(segment_entries.keys())]
+        headers = [f"{int(e.get('index', 0)):d}({e.get('tag', '-')})" for e in sorted_entries]
+        label_width = max(len(label) for label, _ in table_rows) + 2
+        col_width = max(max(len(h) for h in headers), 8)
 
-    filtered_rows = [
-        row
-        for row in overview_rows
-        if (row.get("barrier") is not None or row.get("delta") is not None)
-    ]
-    if filtered_rows:
+        def _fmt_value(entry: Dict[str, Any], key: str) -> str:
+            if entry.get("kind") == "bridge" and not key.startswith("mep_"):
+                return "---".rjust(col_width)
+            val = entry.get(key)
+            if val is None:
+                return "---".rjust(col_width)
+            return f"{val:>{col_width}.2f}"
+
         lines.append("")
         lines.append("  Segment overview table")
         lines.append(
-            "    Seg  tag             Method        ΔE‡ [kcal/mol]   ΔE [kcal/mol]"
+            "    "
+            + f"{'Seg':<{label_width}} "
+            + " ".join(f"{h:>{col_width}}" for h in headers)
         )
-        for row in sorted(filtered_rows, key=lambda r: (int(r.get("index", 0)), r.get("method", ""))):
-            barrier = row.get("barrier")
-            delta = row.get("delta")
-            barrier_txt = f"{barrier:8.2f}" if barrier is not None else "    n/a"
-            delta_txt = f"{delta:8.2f}" if delta is not None else "    n/a"
-            lines.append(
-                f"    {int(row.get('index', 0)):3d}  {row.get('tag', '-'):14}  {row.get('method', '-'):12}"
-                f"  {barrier_txt:>12}      {delta_txt:>10}"
-            )
+        for label, key in table_rows:
+            values = " ".join(_fmt_value(entry, key) for entry in sorted_entries)
+            lines.append(f"    {label:<{label_width}} {values}")
 
     lines.append("")
     lines.append("[4] Energy diagrams (overview)")
     diagrams: Iterable[Dict[str, Any]] = payload.get("energy_diagrams", []) or []
+    diag_by_method: Dict[str, Dict[str, Any]] = {}
+    state_order: List[str] = []
+
+    def _classify_method(diag: Dict[str, Any]) -> str:
+        name = str(diag.get("name", "")).lower()
+        ylabel_txt = str(diag.get("ylabel", "")).lower()
+
+        if "g_dft" in name or "gibbs_dft" in name or ("dft" in name and "g" in name):
+            return "gibbs_dft_uma"
+        if "dft" in name:
+            return "dft"
+        if "g_uma" in name or ("uma" in name and "g" in name) or "gibbs" in ylabel_txt:
+            return "gibbs_uma"
+        if "uma" in name:
+            return "uma"
+        return "mep"
+
+    def _format_diag_row(
+        diag: Optional[Dict[str, Any]],
+        label: str,
+        col_width: int,
+        states: Sequence[str],
+    ) -> str:
+        if not diag:
+            values = " ".join("---".rjust(col_width) for _ in states)
+            return f"    {label:<{label_width}} {values}"
+
+        labels_map = {lab: i for i, lab in enumerate(diag.get("labels", []) or [])}
+        energies = list(diag.get("energies_kcal", []) or [])
+        row_vals: List[str] = []
+        for st in states:
+            idx = labels_map.get(st)
+            val = energies[idx] if idx is not None and idx < len(energies) else None
+            row_vals.append(f"{val:>{col_width}.2f}" if val is not None else "---".rjust(col_width))
+        return f"    {label:<{label_width}} {' '.join(row_vals)}"
+
     if diagrams:
         for diag_payload in diagrams:
             name = diag_payload.get("name", "diagram")
@@ -373,7 +410,8 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             lines.append(f"  {name}  (ylabel: {ylabel})")
             labels = diag_payload.get("labels", [])
             energies = diag_payload.get("energies_kcal", [])
-            lines.append("    State   ΔE [kcal/mol]")
+            energy_label = "ΔG [kcal/mol]" if "ΔG" in str(ylabel) else "ΔE [kcal/mol]"
+            lines.append(f"    State   {energy_label}")
             for i, lab in enumerate(labels):
                 rel = energies[i] if i < len(energies) else None
                 rel_txt = f"{rel:7.3f}" if rel is not None else "   n/a"
@@ -382,8 +420,43 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 lines.append(
                     f"    Image : {_shorten_path(diag_payload.get('image'), root_out_path)}"
                 )
+
+            method_key = _classify_method(diag_payload)
+            diag_by_method.setdefault(method_key, diag_payload)
+            if not state_order and labels:
+                state_order = list(labels)
     else:
         lines.append("  (no energy diagrams recorded)")
+
+    if state_order and diag_by_method:
+        lines.append("")
+        lines.append("  Energy diagram overview table")
+
+        table_rows: List[tuple[str, str]] = [
+            ("MEP ΔE‡ [kcal/mol]", "mep"),
+            ("MEP ΔE  [kcal/mol]", "mep"),
+            ("UMA ΔE‡ [kcal/mol]", "uma"),
+            ("UMA ΔE  [kcal/mol]", "uma"),
+            ("UMA ΔG‡ [kcal/mol]", "gibbs_uma"),
+            ("UMA ΔG  [kcal/mol]", "gibbs_uma"),
+            ("DFT//UMA ΔE‡ [kcal/mol]", "dft"),
+            ("DFT//UMA ΔE  [kcal/mol]", "dft"),
+            ("DFT//UMA ΔG‡ [kcal/mol]", "gibbs_dft_uma"),
+            ("DFT//UMA ΔG  [kcal/mol]", "gibbs_dft_uma"),
+        ]
+
+        label_width = max(len(label) for label, _ in table_rows) + 2
+        col_width = max(max(len(st) for st in state_order), 7)
+
+        lines.append(
+            "    "
+            + f"{'State':<{label_width}} "
+            + " ".join(f"{st:>{col_width}}" for st in state_order)
+        )
+
+        for label, method in table_rows:
+            diag_payload = diag_by_method.get(method)
+            lines.append(_format_diag_row(diag_payload, label, col_width, state_order))
 
     lines.append("")
     lines.append("[5] Output directories / key files (cheat sheet)")
