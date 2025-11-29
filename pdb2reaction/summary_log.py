@@ -24,19 +24,6 @@ def _fmt_bool(val: Optional[Any]) -> str:
     return "True" if bool(val) else "False"
 
 
-def _detect_git_revision(dest: Path) -> Optional[str]:
-    try:
-        return (
-            subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"],
-                cwd=dest.resolve().parent,
-                text=True,
-            )
-            .strip()
-        )
-    except Exception:
-        return None
-
 
 def _shorten_path(path: Optional[Path], root_out: Optional[Path]) -> str:
     """Return a human-friendly path string relative to ``root_out`` when possible."""
@@ -201,13 +188,10 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"MEP mode           : {payload.get('mep_mode') or '-'}")
 
     version_base = payload.get("code_version") or __version__
-    git_rev = payload.get("git_commit") or _detect_git_revision(dest)
     version_txt = f"pdb2reaction {version_base}"
-    if git_rev:
-        version_txt += f" (git {git_rev})"
-    lines.append(f"Code version      : {version_txt}")
+    lines.append(f"Code version       : {version_txt}")
     uma_model = payload.get("uma_model") or CALC_KW.get("model") or "-"
-    lines.append(f"UMA model         : {uma_model}")
+    lines.append(f"UMA model          : {uma_model}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
     lines.append("")
