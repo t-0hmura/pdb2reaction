@@ -21,22 +21,23 @@ def _as_path_str(path: Optional[Path]) -> str:
 
 def _format_energy_rows(
     labels: Sequence[str],
-    energies_eh: Optional[Sequence[Optional[float]]],
+    energies_au: Optional[Sequence[Optional[float]]],
     energies_kcal: Optional[Sequence[Optional[float]]],
 ) -> List[str]:
     rows: List[str] = []
-    energies_eh = list(energies_eh or [])
+    energies_au = list(energies_au or [])
     energies_kcal = list(energies_kcal or [])
-    base_e = energies_eh[0] if energies_eh else None
+    base_e = energies_au[0] if energies_au else None
 
     for i, lab in enumerate(labels):
-        abs_e = energies_eh[i] if i < len(energies_eh) else None
+        abs_e = energies_au[i] if i < len(energies_au) else None
         rel_e = energies_kcal[i] if i < len(energies_kcal) else None
         if rel_e is None and abs_e is not None and base_e is not None:
             rel_e = (abs_e - base_e) * AU2KCALPERMOL
 
+        # Abs in Eh, and Rel column width tuned to match sample layout
         abs_txt = f"{abs_e:.6f} Eh" if abs_e is not None else "n/a"
-        rel_txt = f"{rel_e:9.4f}" if rel_e is not None else "   n/a"
+        rel_txt = f"{rel_e:14.4f}" if rel_e is not None else "   n/a"
         rows.append(f"        {lab:<8}{rel_txt}    ({abs_txt})")
     return rows
 
@@ -56,19 +57,13 @@ def _emit_energy_block(
     if not payload:
         return
     labels: Sequence[str] = payload.get("labels") or ["R", "TS", "P"]
-    energies_eh = payload.get("energies_eh")
+    energies_au = payload.get("energies_au")
     energies_kcal = payload.get("energies_kcal")
     lines.append(f"    -- {title} --")
-    lines.append("       State   Abs [Eh]        Rel [kcal/mol]")
-    lines.extend(_format_energy_rows(labels, energies_eh, energies_kcal))
-    barrier = payload.get("barrier_kcal")
-    delta = payload.get("delta_kcal")
-    if barrier is not None or delta is not None:
-        lines.append("       Barrier / reaction:")
-        b_txt = f"{barrier:8.2f}" if barrier is not None else "   n/a"
-        d_txt = f"{delta:8.2f}" if delta is not None else "   n/a"
-        lines.append(f"         ΔE‡ = {b_txt} kcal/mol")
-        lines.append(f"         ΔE  = {d_txt} kcal/mol")
+    # Header uses Eh to match abs_txt
+    lines.append("       State    Rel [kcal/mol]            Abs [Eh]")
+    lines.extend(_format_energy_rows(labels, energies_au, energies_kcal))
+
     diagram = payload.get("diagram") or payload.get("image")
     if diagram:
         lines.append(f"       Diagram  : {diagram}")
@@ -203,4 +198,3 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
-

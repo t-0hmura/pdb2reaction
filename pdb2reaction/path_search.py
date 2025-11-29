@@ -1661,8 +1661,8 @@ def _merge_final_and_write(final_images: List[Any],
         # Per‑segment HEI merged to reference (only for bond‑change segments)
         if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
             try:
-                energies_eh = [float(getattr(im, "energy")) for im in seg_frames]
-                imax = int(np.argmax(np.array(energies_eh, dtype=float)))
+                energies_au = [float(getattr(im, "energy")) for im in seg_frames]
+                imax = int(np.argmax(np.array(energies_au, dtype=float)))
                 hei_frame = seg_frames[imax]
                 blocks_hei, _ = _merge_pair_to_full(
                     pair_images=[hei_frame],
@@ -2355,7 +2355,7 @@ def cli(
                                     peaks.append({"label": peak_label, "energy": peak_e})
                                     click.echo(
                                         "    [bridge] Recorded diagram-only TS peak "
-                                        f"{peak_label} at {peak_e:.6f} Eh (bridge segments skip tsopt/thermo/DFT)."
+                                        f"{peak_label} at {peak_e:.6f} au (bridge segments skip tsopt/thermo/DFT)."
                                     )
 
                         current["tail_im_energy"] = float(combined_all.energies[idxs[-1]])
@@ -2379,46 +2379,46 @@ def cli(
                     end_idx_for_diag = int(idxs_last_bc[-1])
 
             labels: List[str] = ["R"]
-            energies_eh: List[float] = [float(combined_all.energies[start_idx_for_diag])]
+            energies_au: List[float] = [float(combined_all.energies[start_idx_for_diag])]
             chain_tokens: List[str] = ["R"]
 
             for i, g in enumerate(ts_groups, start=1):
                 last_group = (i == len(ts_groups))
 
                 labels.append(g["ts_label"])
-                energies_eh.append(g["ts_energy"])
+                energies_au.append(g["ts_energy"])
                 chain_tokens.extend(["-->", g["ts_label"]])
 
                 if last_group:
                     continue
 
                 labels.append(f"IM{i}_1")
-                energies_eh.append(g["first_im_energy"])
+                energies_au.append(g["first_im_energy"])
                 chain_tokens.extend(["-->", f"IM{i}_1"])
 
                 for bp in g.get("bridge_peaks", []):
                     labels.append(bp["label"])
-                    energies_eh.append(bp["energy"])
+                    energies_au.append(bp["energy"])
                     chain_tokens.extend(["-->", bp["label"]])
 
                 if g["has_extra"]:
                     labels.append(f"IM{i}_2")
-                    energies_eh.append(g["tail_im_energy"])
+                    energies_au.append(g["tail_im_energy"])
                     chain_tokens.extend(["-|-->", f"IM{i}_2"])
 
             labels.append("P")
-            energies_eh.append(float(combined_all.energies[end_idx_for_diag]))
+            energies_au.append(float(combined_all.energies[end_idx_for_diag]))
             chain_tokens.extend(["-->", "P"])
 
-            e0 = energies_eh[0]
-            energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
+            e0 = energies_au[0]
+            energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_au]
 
             diagram_payload = {
                 "name": "energy_diagram_MEP",
                 "labels": labels,
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
-                "energies_eh": energies_eh,
+                "energies_au": energies_au,
                 "image": str(out_dir_path / "energy_diagram_MEP.png"),
             }
 

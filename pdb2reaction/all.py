@@ -288,7 +288,7 @@ def _ensure_dir(p: Path) -> None:
 def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
     """
     Robustly collect values following a flag that may appear **once** followed by multiple space-separated values,
-    e.g., "-i A B C". This mirrors the behavior implemented in `path_search.cli`.
+    e.g., "-i A B C". This mirrors the bauavior implemented in `path_search.cli`.
     """
     vals: List[str] = []
     i = 0
@@ -854,17 +854,17 @@ def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[
 def _write_segment_energy_diagram(
     prefix: Path,
     labels: List[str],
-    energies_eh: List[float],
+    energies_au: List[float],
     title_note: str,
     ylabel: str = "ΔE (kcal/mol)",
 ) -> Optional[Dict[str, Any]]:
     """
     Write energy diagram (PNG) using utils.build_energy_diagram, optionally annotating the title.
     """
-    if not energies_eh:
+    if not energies_au:
         return None
-    e0 = energies_eh[0]
-    energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_eh]
+    e0 = energies_au[0]
+    energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_au]
     fig = build_energy_diagram(
         energies=energies_kcal,
         labels=labels,
@@ -889,7 +889,7 @@ def _write_segment_energy_diagram(
     }
     if title_note:
         payload["title"] = title_note
-    payload["energies_eh"] = list(energies_eh)
+    payload["energies_au"] = list(energies_au)
     payload["image"] = str(png)
     return payload
 
@@ -1149,7 +1149,7 @@ def _read_imaginary_frequency(freq_dir: Path) -> Optional[float]:
         vals: List[float] = []
         for line in freq_file.read_text(encoding="utf-8").splitlines():
             try:
-                tok = line.strip().split()[0]
+                tok = line.strip().split()[1]
                 vals.append(float(tok))
             except Exception:
                 continue
@@ -2391,7 +2391,7 @@ def cli(
         diag_payload = _write_segment_energy_diagram(
             tsroot / "energy_diagram_UMA",
             labels=["R", "TS", "P"],
-            energies_eh=[e_react, eT, e_prod],
+            energies_au=[e_react, eT, e_prod],
             title_note="(UMA, TSOPT + IRC)",
         )
         if diag_payload:
@@ -2424,7 +2424,7 @@ def cli(
                 diag_payload = _write_segment_energy_diagram(
                     tsroot / "energy_diagram_G_UMA",
                     labels=["R", "TS", "P"],
-                    energies_eh=[GR, GT, GP],
+                    energies_au=[GR, GT, GP],
                     title_note="(UMA + Thermal Correction)",
                     ylabel="ΔG (kcal/mol)",
                 )
@@ -2467,7 +2467,7 @@ def cli(
                 diag_payload = _write_segment_energy_diagram(
                     tsroot / "energy_diagram_DFT",
                     labels=["R", "TS", "P"],
-                    energies_eh=[eR_dft, eT_dft, eP_dft],
+                    energies_au=[eR_dft, eT_dft, eP_dft],
                     title_note=f"({dft_func_basis_use} // UMA)",
                 )
                 if diag_payload:
@@ -2498,7 +2498,7 @@ def cli(
                     diag_payload = _write_segment_energy_diagram(
                         tsroot / "energy_diagram_G_DFT_plus_UMA",
                         labels=["R", "TS", "P"],
-                        energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                        energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                         title_note=f"({dft_func_basis_use} // UMA + Thermal Correction)",
                         ylabel="ΔG (kcal/mol)",
                     )
@@ -2584,7 +2584,7 @@ def cli(
                     segment_log["ts_imag_freq_cm"] = ts_freq
                 segment_log["uma"] = {
                     "labels": ["R", "TS", "P"],
-                    "energies_eh": [e_react, eT, e_prod],
+                    "energies_au": [e_react, eT, e_prod],
                     "energies_kcal": [0.0, (eT - e_react) * AU2KCALPERMOL, (e_prod - e_react) * AU2KCALPERMOL],
                     "diagram": str(tsroot / "energy_diagram_UMA.png"),
                     "structures": {"R": pR, "TS": pT, "P": pP},
@@ -2597,7 +2597,7 @@ def cli(
                     GP = float(thermo_payloads.get("P", {}).get("sum_EE_and_thermal_free_energy_ha", e_prod))
                     segment_log["gibbs_uma"] = {
                         "labels": ["R", "TS", "P"],
-                        "energies_eh": [GR, GT, GP],
+                        "energies_au": [GR, GT, GP],
                         "energies_kcal": [
                             0.0,
                             (GT - GR) * AU2KCALPERMOL,
@@ -2611,7 +2611,7 @@ def cli(
                 if do_dft:
                     segment_log["dft"] = {
                         "labels": ["R", "TS", "P"],
-                        "energies_eh": [eR_dft, eT_dft, eP_dft],
+                        "energies_au": [eR_dft, eT_dft, eP_dft],
                         "energies_kcal": [
                             0.0,
                             (eT_dft - eR_dft) * AU2KCALPERMOL,
@@ -2625,7 +2625,7 @@ def cli(
                     if do_thermo:
                         segment_log["gibbs_dft_uma"] = {
                             "labels": ["R", "TS", "P"],
-                            "energies_eh": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                            "energies_au": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
                             "energies_kcal": [
                                 0.0,
                                 (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
@@ -3053,7 +3053,7 @@ def cli(
                 diag_payload = _write_segment_energy_diagram(
                     path_dir / "energy_diagram_mep",
                     labels=labels,
-                    energies_eh=energies_chain,
+                    energies_au=energies_chain,
                     title_note=title_note,
                 )
                 if diag_payload:
@@ -3491,7 +3491,7 @@ def cli(
             diag_payload = _write_segment_energy_diagram(
                 seg_dir / "energy_diagram_UMA",
                 labels=["R", f"TS{seg_idx}", "P"],
-                energies_eh=[eR, eT, eP],
+                energies_au=[eR, eT, eP],
                 title_note="(UMA, TSOPT + IRC)",
             )
             if diag_payload:
@@ -3501,7 +3501,7 @@ def cli(
 
             segment_log["uma"] = {
                 "labels": ["R", f"TS{seg_idx}", "P"],
-                "energies_eh": [eR, eT, eP],
+                "energies_au": [eR, eT, eP],
                 "energies_kcal": [0.0, (eT - eR) * AU2KCALPERMOL, (eP - eR) * AU2KCALPERMOL],
                 "diagram": str(seg_dir / "energy_diagram_UMA.png"),
                 "structures": state_structs,
@@ -3667,7 +3667,7 @@ def cli(
                         diag_payload = _write_segment_energy_diagram(
                             seg_dir / "energy_diagram_G_UMA",
                             labels=["R", f"TS{seg_idx}", "P"],
-                            energies_eh=gibbs_vals,
+                            energies_au=gibbs_vals,
                             title_note="(UMA + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
@@ -3676,7 +3676,7 @@ def cli(
                         g_uma_seg_energies.append((GR, GT, GP))
                         segment_log["gibbs_uma"] = {
                             "labels": ["R", f"TS{seg_idx}", "P"],
-                            "energies_eh": gibbs_vals,
+                            "energies_au": gibbs_vals,
                             "energies_kcal": [
                                 (GR - GR) * AU2KCALPERMOL,
                                 (GT - GR) * AU2KCALPERMOL,
@@ -3742,7 +3742,7 @@ def cli(
                         diag_payload = _write_segment_energy_diagram(
                             seg_dir / "energy_diagram_DFT",
                             labels=["R", f"TS{seg_idx}", "P"],
-                            energies_eh=[eR_dft, eT_dft, eP_dft],
+                            energies_au=[eR_dft, eT_dft, eP_dft],
                             title_note=f"({dft_func_basis_use})",
                         )
                         if diag_payload:
@@ -3750,7 +3750,7 @@ def cli(
                         dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
                         segment_log["dft"] = {
                             "labels": ["R", f"TS{seg_idx}", "P"],
-                            "energies_eh": [eR_dft, eT_dft, eP_dft],
+                            "energies_au": [eR_dft, eT_dft, eP_dft],
                             "energies_kcal": [
                                 0.0,
                                 (eT_dft - eR_dft) * AU2KCALPERMOL,
@@ -3797,7 +3797,7 @@ def cli(
                             diag_payload = _write_segment_energy_diagram(
                                 seg_dir / "energy_diagram_G_DFT_plus_UMA",
                                 labels=["R", f"TS{seg_idx}", "P"],
-                                energies_eh=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                                 title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction)",
                                 ylabel="ΔG (kcal/mol)",
                             )
@@ -3808,7 +3808,7 @@ def cli(
                             )
                             segment_log["gibbs_dft_uma"] = {
                                 "labels": ["R", f"TS{seg_idx}", "P"],
-                                "energies_eh": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                "energies_au": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
                                 "energies_kcal": [
                                     (GR_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
                                     (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
@@ -3840,7 +3840,7 @@ def cli(
             diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_UMA_all",
                 labels=tsopt_all_labels,
-                energies_eh=tsopt_all_energies,
+                energies_au=tsopt_all_energies,
                 title_note="(UMA, TSOPT + IRC; all segments)",
             )
             if diag_payload:
@@ -3853,7 +3853,7 @@ def cli(
             diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_G_UMA_all",
                 labels=g_uma_all_labels,
-                energies_eh=g_uma_all_energies,
+                energies_au=g_uma_all_energies,
                 title_note="(UMA + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
@@ -3867,7 +3867,7 @@ def cli(
             diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_DFT_all",
                 labels=dft_all_labels,
-                energies_eh=dft_all_energies,
+                energies_au=dft_all_energies,
                 title_note=f"({dft_func_basis_use}; all segments)",
             )
             if diag_payload:
@@ -3880,7 +3880,7 @@ def cli(
             diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_G_DFT_plus_UMA_all",
                 labels=g_dftuma_all_labels,
-                energies_eh=g_dftuma_all_energies,
+                energies_au=g_dftuma_all_energies,
                 title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
