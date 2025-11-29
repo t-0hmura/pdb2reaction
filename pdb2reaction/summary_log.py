@@ -9,10 +9,33 @@ barriers, post-processing energies, and key output paths in a single place.
 from __future__ import annotations
 
 import textwrap
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from pysisyphus.constants import AU2KCALPERMOL
+from . import __version__
+from .uma_pysis import CALC_KW
+
+
+def _fmt_bool(val: Optional[Any]) -> str:
+    if val is None:
+        return "-"
+    return "True" if bool(val) else "False"
+
+
+def _detect_git_revision(dest: Path) -> Optional[str]:
+    try:
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=dest.resolve().parent,
+                text=True,
+            )
+            .strip()
+        )
+    except Exception:
+        return None
 
 
 def _shorten_path(path: Optional[Path], root_out: Optional[Path]) -> str:
@@ -49,10 +72,9 @@ def _format_energy_rows(
         if rel_e is None and abs_e is not None and base_e is not None:
             rel_e = (abs_e - base_e) * AU2KCALPERMOL
 
-        # Abs in au, and Rel column width tuned to match sample layout
-        abs_txt = f"{abs_e:.6f} au" if abs_e is not None else "n/a"
-        rel_txt = f"{rel_e:14.4f}" if rel_e is not None else "   n/a"
-        rows.append(f"        {lab:<8}{rel_txt}    ({abs_txt})")
+        abs_txt = f"{abs_e:14.6f}" if abs_e is not None else f"{'n/a':>14}"
+        rel_txt = f"{rel_e:14.4f}" if rel_e is not None else f"{'n/a':>14}"
+        rows.append(f"        {lab:<8}{abs_txt}    {rel_txt}")
     return rows
 
 
@@ -61,6 +83,60 @@ def _format_bond_changes(text: str, indent: int = 6) -> List[str]:
         return ["".rjust(indent) + "(no covalent changes detected)"]
     blocks = [ln.rstrip() for ln in textwrap.dedent(text).splitlines() if ln.strip()]
     return ["".rjust(indent) + ln for ln in blocks]
+
+
+def _format_ts_imag_info(ts_info: Any) -> List[str]:
+    if ts_info is None:
+        return []
+
+    lines: List[str] = ["    TS imaginary freq:"]
+    n_imag: Optional[int] = None
+    nu_imag: Optional[float] = None
+    min_abs: Optional[float] = None
+
+    if isinstance(ts_info, dict):
+        n_imag = ts_info.get("n_imag")
+        nu_imag = ts_info.get("nu_imag_max_cm") or ts_info.get("nu_imag_cm")
+        min_abs = ts_info.get("min_abs_imag_cm")
+        if nu_imag is None and ts_info.get("ts_imag_freq_cm"):
+            nu_imag = ts_info.get("ts_imag_freq_cm")
+    else:
+        try:
+            nu_imag = float(ts_info)
+            n_imag = 1 if nu_imag is not None else None
+        except Exception:
+            nu_imag = None
+
+    n_imag_txt = str(n_imag) if n_imag is not None else "-"
+    lines.append(f"      n_imag       : {n_imag_txt}")
+
+    if nu_imag is not None:
+        lines.append(f"      ν_imag (max) : {nu_imag:.1f} cm^-1")
+    else:
+        lines.append("      ν_imag (max) : -")
+
+    magnitude = min_abs if min_abs is not None else (abs(nu_imag) if nu_imag is not None else None)
+    note: Optional[str] = None
+    if n_imag is not None:
+        if n_imag == 1:
+            if magnitude is not None and magnitude < 100.0:
+                note = "WARNING      : Imaginary frequency magnitude is small; TS may be poorly optimized."
+            else:
+                note = "NOTE         : OK (single imaginary mode)"
+        elif n_imag == 0:
+            note = "WARNING      : No imaginary frequency; structure may not be a TS."
+        else:
+            note = "WARNING      : Multiple imaginary frequencies; TS may be poorly optimized."
+    elif nu_imag is not None:
+        if magnitude is not None and magnitude < 100.0:
+            note = "WARNING      : Imaginary frequency magnitude is small; TS may be poorly optimized."
+        else:
+            note = "NOTE         : Single imaginary frequency (count unavailable)"
+
+    if note:
+        lines.append(f"      {note}")
+
+    return lines
 
 
 def _emit_energy_block(
@@ -75,8 +151,7 @@ def _emit_energy_block(
     energies_au = payload.get("energies_au")
     energies_kcal = payload.get("energies_kcal")
     lines.append(f"    -- {title} --")
-    # Header uses au to match abs_txt
-    lines.append("       State    Rel [kcal/mol]            Abs [au]")
+    lines.append("       State   Abs [Eh]          Rel [kcal/mol]")
     lines.extend(_format_energy_rows(labels, energies_au, energies_kcal))
 
     diagram = payload.get("diagram") or payload.get("image")
@@ -106,7 +181,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append("pdb2reaction summary.log")
     lines.append("========================================================================")
     if command:
-        lines.append(f"Input            : {command}")
+        lines.append(f"Input              : {command}")
     lines.append(f"Root out_dir       : {root_out}")
     path_module_disp = (
         _shorten_path(path_module, root_out_path)
@@ -115,6 +190,24 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     )
     lines.append(f"Path module dir    : {path_module_disp}")
     lines.append(f"Pipeline mode      : {pipeline_mode}")
+    lines.append(f"refine-path        : {_fmt_bool(payload.get('refine_path'))}")
+    lines.append(f"TSOPT/IRC          : {_fmt_bool(payload.get('tsopt'))}")
+    lines.append(f"Thermochemistry    : {_fmt_bool(payload.get('thermo'))}")
+    lines.append(f"DFT single-point   : {_fmt_bool(payload.get('dft'))}")
+    opt_mode_disp = payload.get("opt_mode") or "-"
+    lines.append(
+        f"Opt mode           : {opt_mode_disp}  (light: LBFGS/Dimer; heavy: RFO/RSIRFO)"
+    )
+    lines.append(f"MEP mode           : {payload.get('mep_mode') or '-'}")
+
+    version_base = payload.get("code_version") or __version__
+    git_rev = payload.get("git_commit") or _detect_git_revision(dest)
+    version_txt = f"pdb2reaction {version_base}"
+    if git_rev:
+        version_txt += f" (git {git_rev})"
+    lines.append(f"Code version      : {version_txt}")
+    uma_model = payload.get("uma_model") or CALC_KW.get("model") or "-"
+    lines.append(f"UMA model         : {uma_model}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
     lines.append("")
@@ -169,6 +262,8 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         lines.append("  (no segment reports)")
 
     post_segments: Iterable[Dict[str, Any]] = payload.get("post_segments", []) or []
+    segment_summaries: List[Dict[str, Any]] = []
+    overview_rows: List[Dict[str, Any]] = []
     lines.append("")
     lines.append("[3] Per-segment post-processing (TSOPT / Thermo / DFT)")
     if post_segments:
@@ -181,8 +276,8 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 lines.append(
                     f"    Post-process dir : {_shorten_path(seg.get('post_dir'), root_out_path)}"
                 )
-            if seg.get("ts_imag_freq_cm") is not None:
-                lines.append(f"    TS imaginary freq: {seg.get('ts_imag_freq_cm'):.1f} cm^-1")
+            ts_imag = seg.get("ts_imag") or seg.get("ts_imag_freq_cm")
+            lines.extend(_format_ts_imag_info(ts_imag))
             if seg.get("irc_plot"):
                 lines.append(
                     f"    IRC plot         : {_shorten_path(seg.get('irc_plot'), root_out_path)}"
@@ -199,8 +294,90 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             _emit_energy_block(
                 lines, "DFT//UMA Gibbs", seg.get("gibbs_dft_uma"), root_out_path
             )
+
+            segment_summaries.append(
+                {
+                    "index": idx,
+                    "tag": tag,
+                    "kind": kind,
+                    "mep_barrier": seg.get("mep_barrier_kcal"),
+                    "uma_barrier": (seg.get("uma") or {}).get("barrier_kcal"),
+                    "gibbs_uma_barrier": (seg.get("gibbs_uma") or {}).get(
+                        "barrier_kcal"
+                    ),
+                    "mep_delta": seg.get("mep_delta_kcal"),
+                    "uma_delta": (seg.get("uma") or {}).get("delta_kcal"),
+                    "gibbs_uma_delta": (seg.get("gibbs_uma") or {}).get(
+                        "delta_kcal"
+                    ),
+                }
+            )
+
+            overview_rows.extend(
+                [
+                    {
+                        "index": idx,
+                        "tag": tag,
+                        "kind": kind,
+                        "method": "MEP (string)",
+                        "barrier": seg.get("mep_barrier_kcal"),
+                        "delta": seg.get("mep_delta_kcal"),
+                    },
+                    {
+                        "index": idx,
+                        "tag": tag,
+                        "kind": kind,
+                        "method": "UMA (TSOPT)",
+                        "barrier": (seg.get("uma") or {}).get("barrier_kcal"),
+                        "delta": (seg.get("uma") or {}).get("delta_kcal"),
+                    },
+                    {
+                        "index": idx,
+                        "tag": tag,
+                        "kind": kind,
+                        "method": "G_UMA",
+                        "barrier": (seg.get("gibbs_uma") or {}).get("barrier_kcal"),
+                        "delta": (seg.get("gibbs_uma") or {}).get("delta_kcal"),
+                    },
+                ]
+            )
     else:
         lines.append("  (no post-processing results)")
+
+    if segment_summaries:
+        lines.append("")
+        lines.append("  Segment summaries")
+        for entry in sorted(segment_summaries, key=lambda s: s.get("index", 0)):
+            lines.append(f"    === Segment {int(entry.get('index', 0)):02d} summary ===")
+            label_vals = [
+                ("Barrier (MEP diagram)", entry.get("mep_barrier")),
+                ("Barrier (TSOPT+IRC, UMA)", entry.get("uma_barrier")),
+                ("Barrier (TSOPT+IRC, G_UMA)", entry.get("gibbs_uma_barrier")),
+            ]
+            for label, val in label_vals:
+                val_txt = f"{val:7.2f} kcal/mol" if val is not None else "n/a"
+                lines.append(f"      {label:<28}: {val_txt}")
+
+    filtered_rows = [
+        row
+        for row in overview_rows
+        if (row.get("barrier") is not None or row.get("delta") is not None)
+    ]
+    if filtered_rows:
+        lines.append("")
+        lines.append("  Segment overview table")
+        lines.append(
+            "    Seg  tag             Method        ΔE‡ [kcal/mol]   ΔE [kcal/mol]"
+        )
+        for row in sorted(filtered_rows, key=lambda r: (int(r.get("index", 0)), r.get("method", ""))):
+            barrier = row.get("barrier")
+            delta = row.get("delta")
+            barrier_txt = f"{barrier:8.2f}" if barrier is not None else "    n/a"
+            delta_txt = f"{delta:8.2f}" if delta is not None else "    n/a"
+            lines.append(
+                f"    {int(row.get('index', 0)):3d}  {row.get('tag', '-'):14}  {row.get('method', '-'):12}"
+                f"  {barrier_txt:>12}      {delta_txt:>10}"
+            )
 
     lines.append("")
     lines.append("[4] Energy diagrams (overview)")
