@@ -35,8 +35,8 @@ def _format_energy_rows(
         if rel_e is None and abs_e is not None and base_e is not None:
             rel_e = (abs_e - base_e) * AU2KCALPERMOL
 
-        # Abs in Eh, and Rel column width tuned to match sample layout
-        abs_txt = f"{abs_e:.6f} Eh" if abs_e is not None else "n/a"
+        # Abs in au, and Rel column width tuned to match sample layout
+        abs_txt = f"{abs_e:.6f} au" if abs_e is not None else "n/a"
         rel_txt = f"{rel_e:14.4f}" if rel_e is not None else "   n/a"
         rows.append(f"        {lab:<8}{rel_txt}    ({abs_txt})")
     return rows
@@ -60,8 +60,8 @@ def _emit_energy_block(
     energies_au = payload.get("energies_au")
     energies_kcal = payload.get("energies_kcal")
     lines.append(f"    -- {title} --")
-    # Header uses Eh to match abs_txt
-    lines.append("       State    Rel [kcal/mol]            Abs [Eh]")
+    # Header uses au to match abs_txt
+    lines.append("       State    Rel [kcal/mol]            Abs [au]")
     lines.extend(_format_energy_rows(labels, energies_au, energies_kcal))
 
     diagram = payload.get("diagram") or payload.get("image")
