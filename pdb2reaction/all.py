@@ -258,6 +258,7 @@ from . import freq as _freq_cli
 from . import dft as _dft_cli
 from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
 from .trj2fig import run_trj2fig
+from .summary_log import write_summary_log
 from .utils import (
     build_energy_diagram,
     convert_xyz_like_outputs,
@@ -888,6 +889,8 @@ def _write_segment_energy_diagram(
     }
     if title_note:
         payload["title"] = title_note
+    payload["energies_eh"] = list(energies_eh)
+    payload["image"] = str(png)
     return payload
 
 
@@ -1134,6 +1137,28 @@ def _run_freq_for_state(
         except Exception:
             return {}
     return {}
+
+
+def _read_imaginary_frequency(freq_dir: Path) -> Optional[float]:
+    """Return the most negative (imaginary) frequency from frequencies_cm-1.txt if present."""
+
+    freq_file = freq_dir / "frequencies_cm-1.txt"
+    if not freq_file.exists():
+        return None
+    try:
+        vals: List[float] = []
+        for line in freq_file.read_text(encoding="utf-8").splitlines():
+            try:
+                tok = line.strip().split()[0]
+                vals.append(float(tok))
+            except Exception:
+                continue
+        if not vals:
+            return None
+        negatives = [v for v in vals if v < 0.0]
+        return min(negatives) if negatives else min(vals)
+    except Exception:
+        return None
 
 
 def _run_dft_for_state(
@@ -2008,6 +2033,7 @@ def cli(
     concatenated into the final MEP without invoking ``path_search``.
     """
     set_convert_file_enabled(convert_files)
+    command_str = " ".join(sys.argv)
     time_start = time.perf_counter()
     energy_diagrams: List[Dict[str, Any]] = []
 
@@ -2541,6 +2567,101 @@ def cli(
                     f"[all] WARNING: Failed to mirror summary.yaml in TSOPT-only mode: {e}",
                     err=True,
                 )
+            try:
+                ts_freq = _read_imaginary_frequency(freq_root / "TS") if do_thermo else None
+                segment_log = {
+                    "index": 1,
+                    "tag": "seg_01",
+                    "kind": "tsopt",
+                    "bond_changes": summary["segments"][0].get("bond_changes"),
+                    "mep_barrier_kcal": barrier,
+                    "mep_delta_kcal": delta,
+                    "post_dir": str(tsroot),
+                    "irc_plot": str(irc_plot_path) if isinstance(irc_plot_path, Path) else None,
+                    "irc_traj": str(irc_trj_path) if isinstance(irc_trj_path, Path) else None,
+                }
+                if ts_freq is not None:
+                    segment_log["ts_imag_freq_cm"] = ts_freq
+                segment_log["uma"] = {
+                    "labels": ["R", "TS", "P"],
+                    "energies_eh": [e_react, eT, e_prod],
+                    "energies_kcal": [0.0, (eT - e_react) * AU2KCALPERMOL, (e_prod - e_react) * AU2KCALPERMOL],
+                    "diagram": str(tsroot / "energy_diagram_UMA.png"),
+                    "structures": {"R": pR, "TS": pT, "P": pP},
+                    "barrier_kcal": barrier,
+                    "delta_kcal": delta,
+                }
+                if do_thermo and thermo_payloads:
+                    GR = float(thermo_payloads.get("R", {}).get("sum_EE_and_thermal_free_energy_ha", e_react))
+                    GT = float(thermo_payloads.get("TS", {}).get("sum_EE_and_thermal_free_energy_ha", eT))
+                    GP = float(thermo_payloads.get("P", {}).get("sum_EE_and_thermal_free_energy_ha", e_prod))
+                    segment_log["gibbs_uma"] = {
+                        "labels": ["R", "TS", "P"],
+                        "energies_eh": [GR, GT, GP],
+                        "energies_kcal": [
+                            0.0,
+                            (GT - GR) * AU2KCALPERMOL,
+                            (GP - GR) * AU2KCALPERMOL,
+                        ],
+                        "diagram": str(tsroot / "energy_diagram_G_UMA.png"),
+                        "structures": {"R": pR, "TS": pT, "P": pP},
+                        "barrier_kcal": (GT - GR) * AU2KCALPERMOL,
+                        "delta_kcal": (GP - GR) * AU2KCALPERMOL,
+                    }
+                if do_dft:
+                    segment_log["dft"] = {
+                        "labels": ["R", "TS", "P"],
+                        "energies_eh": [eR_dft, eT_dft, eP_dft],
+                        "energies_kcal": [
+                            0.0,
+                            (eT_dft - eR_dft) * AU2KCALPERMOL,
+                            (eP_dft - eR_dft) * AU2KCALPERMOL,
+                        ],
+                        "diagram": str(tsroot / "energy_diagram_DFT.png"),
+                        "structures": {"R": pR, "TS": pT, "P": pP},
+                        "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
+                        "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
+                    }
+                    if do_thermo:
+                        segment_log["gibbs_dft_uma"] = {
+                            "labels": ["R", "TS", "P"],
+                            "energies_eh": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                            "energies_kcal": [
+                                0.0,
+                                (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                            ],
+                            "diagram": str(tsroot / "energy_diagram_G_DFT_plus_UMA.png"),
+                            "structures": {"R": pR, "TS": pT, "P": pP},
+                            "barrier_kcal": (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                            "delta_kcal": (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                        }
+
+                summary_payload = {
+                    "root_out_dir": str(out_dir),
+                    "path_dir": str(tsroot),
+                    "path_module_dir": "tsopt_single",
+                    "pipeline_mode": "tsopt-only",
+                    "command": command_str,
+                    "charge": q_int,
+                    "spin": spin,
+                    "mep": {"n_images": n_images, "n_segments": 1},
+                    "segments": summary.get("segments", []),
+                    "energy_diagrams": summary.get("energy_diagrams", []),
+                    "post_segments": [segment_log],
+                    "key_files": {
+                        "summary.yaml": "Machine-readable summary (YAML)",
+                        "summary.log": "This human-readable summary",
+                        "energy_diagram_UMA_all.png": "UMA R–TS–P energies",
+                    },
+                }
+                write_summary_log(tsroot / "summary.log", summary_payload)
+                try:
+                    shutil.copy2(tsroot / "summary.log", out_dir / "summary.log")
+                except Exception:
+                    pass
+            except Exception as e:
+                click.echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
         except Exception as e:
             click.echo(
                 f"[write] WARNING: Failed to write summary.yaml for TSOPT-only run: {e}",
@@ -3027,6 +3148,48 @@ def cli(
             click.echo(
                 f"[all] WARNING: Failed to relocate path-opt summary files: {e}", err=True
             )
+        try:
+            diag_for_log: Dict[str, Any] = {}
+            for diag in summary.get("energy_diagrams", []) or []:
+                if isinstance(diag, dict) and str(diag.get("name", "")).lower().endswith("mep"):
+                    diag_for_log = diag
+                    break
+            mep_info = {
+                "n_images": summary.get("n_images"),
+                "n_segments": summary.get("n_segments"),
+                "traj_pdb": str(path_dir / "mep.pdb") if (path_dir / "mep.pdb").exists() else None,
+                "mep_plot": str(path_dir / "mep_plot.png") if (path_dir / "mep_plot.png").exists() else None,
+                "diagram": diag_for_log,
+            }
+            summary_payload = {
+                "root_out_dir": str(out_dir),
+                "path_dir": str(path_dir),
+                "path_module_dir": path_dir.name,
+                "pipeline_mode": "path-opt",
+                "command": command_str,
+                "charge": q_int,
+                "spin": spin,
+                "mep": mep_info,
+                "segments": summary.get("segments", []),
+                "energy_diagrams": summary.get("energy_diagrams", []),
+                "key_files": {
+                    "summary.yaml": "Machine-readable summary (YAML)",
+                    "summary.log": "This human-readable summary",
+                    "mep_plot.png": "UMA MEP energy vs image index",
+                    "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P",
+                },
+            }
+            write_summary_log(path_dir / "summary.log", summary_payload)
+            try:
+                shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
+                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
+            except Exception:
+                pass
+        except Exception as e:
+            click.echo(
+                f"[write] WARNING: Failed to write summary.log for path-opt branch: {e}",
+                err=True,
+            )
     if refine_path:
         # --- recursive GSM path_search branch ---
         click.echo(
@@ -3191,6 +3354,7 @@ def cli(
     dft_seg_energies: List[Tuple[float, float, float]] = []
     g_dftuma_seg_energies: List[Tuple[float, float, float]] = []
     irc_trj_for_all: List[Tuple[Path, bool]] = []
+    post_segment_logs: List[Dict[str, Any]] = []
 
     for s in reactive:
         seg_idx = int(s.get("index", 0) or 0)
@@ -3200,6 +3364,17 @@ def cli(
         seg_root = path_dir
         seg_dir = seg_root / f"post_seg_{seg_idx:02d}"
         _ensure_dir(seg_dir)
+
+        segment_log = {
+            "index": seg_idx,
+            "tag": seg_tag,
+            "kind": s.get("kind", "seg"),
+            "bond_changes": s.get("bond_changes", ""),
+            "mep_barrier_kcal": s.get("barrier_kcal"),
+            "mep_delta_kcal": s.get("delta_kcal"),
+            "post_dir": str(seg_dir),
+        }
+        post_segment_logs.append(segment_log)
 
         hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
         hei_pocket_path = _find_with_suffixes(hei_base, [".pdb", ".xyz", ".gjf"])
@@ -3248,6 +3423,11 @@ def cli(
             irc_plot_path = irc_res.get("irc_plot_path")
             irc_trj_path = irc_res.get("irc_trj_path")
             reverse_irc = bool(irc_res.get("reverse_irc", False))
+
+            if isinstance(irc_plot_path, Path) and irc_plot_path.exists():
+                segment_log["irc_plot"] = str(irc_plot_path)
+            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
+                segment_log["irc_traj"] = str(irc_trj_path)
 
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
@@ -3318,6 +3498,16 @@ def cli(
                 energy_diagrams.append(diag_payload)
 
             tsopt_seg_energies.append((eR, eT, eP))
+
+            segment_log["uma"] = {
+                "labels": ["R", f"TS{seg_idx}", "P"],
+                "energies_eh": [eR, eT, eP],
+                "energies_kcal": [0.0, (eT - eR) * AU2KCALPERMOL, (eP - eR) * AU2KCALPERMOL],
+                "diagram": str(seg_dir / "energy_diagram_UMA.png"),
+                "structures": state_structs,
+                "barrier_kcal": (eT - eR) * AU2KCALPERMOL,
+                "delta_kcal": (eP - eR) * AU2KCALPERMOL,
+            }
 
             try:
                 if pT.suffix.lower() == ".pdb":
@@ -3450,6 +3640,9 @@ def cli(
                     overrides=freq_overrides,
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
+                ts_freq = _read_imaginary_frequency(freq_seg_root / "TS")
+                if ts_freq is not None:
+                    segment_log["ts_imag_freq_cm"] = ts_freq
                 try:
                     GR = float(
                         tR.get(
@@ -3481,6 +3674,19 @@ def cli(
                         if diag_payload:
                             energy_diagrams.append(diag_payload)
                         g_uma_seg_energies.append((GR, GT, GP))
+                        segment_log["gibbs_uma"] = {
+                            "labels": ["R", f"TS{seg_idx}", "P"],
+                            "energies_eh": gibbs_vals,
+                            "energies_kcal": [
+                                (GR - GR) * AU2KCALPERMOL,
+                                (GT - GR) * AU2KCALPERMOL,
+                                (GP - GR) * AU2KCALPERMOL,
+                            ],
+                            "diagram": str(seg_dir / "energy_diagram_G_UMA.png"),
+                            "structures": state_structs,
+                            "barrier_kcal": (GT - GR) * AU2KCALPERMOL,
+                            "delta_kcal": (GP - GR) * AU2KCALPERMOL,
+                        }
                     else:
                         click.echo(
                             "[thermo] NOTE: Gibbs energies non-finite; diagram skipped."
@@ -3542,6 +3748,19 @@ def cli(
                         if diag_payload:
                             energy_diagrams.append(diag_payload)
                         dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
+                        segment_log["dft"] = {
+                            "labels": ["R", f"TS{seg_idx}", "P"],
+                            "energies_eh": [eR_dft, eT_dft, eP_dft],
+                            "energies_kcal": [
+                                0.0,
+                                (eT_dft - eR_dft) * AU2KCALPERMOL,
+                                (eP_dft - eR_dft) * AU2KCALPERMOL,
+                            ],
+                            "diagram": str(seg_dir / "energy_diagram_DFT.png"),
+                            "structures": state_structs,
+                            "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
+                            "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
+                        }
                     else:
                         click.echo(
                             "[dft] WARNING: some DFT energies missing; diagram skipped.",
@@ -3587,6 +3806,19 @@ def cli(
                             g_dftuma_seg_energies.append(
                                 (GR_dftUMA, GT_dftUMA, GP_dftUMA)
                             )
+                            segment_log["gibbs_dft_uma"] = {
+                                "labels": ["R", f"TS{seg_idx}", "P"],
+                                "energies_eh": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                "energies_kcal": [
+                                    (GR_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                    (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                    (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                ],
+                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_UMA.png"),
+                                "structures": state_structs,
+                                "barrier_kcal": (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                "delta_kcal": (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                            }
                         else:
                             click.echo(
                                 "[dft//uma] WARNING: DFT//UMA Gibbs energies non-finite; diagram skipped.",
@@ -3678,6 +3910,46 @@ def cli(
                 f"[all] WARNING: Failed to mirror summary.yaml to {out_dir}: {e}",
                 err=True,
             )
+        try:
+            diag_for_log: Dict[str, Any] = {}
+            for diag in summary.get("energy_diagrams", []) or []:
+                if isinstance(diag, dict) and str(diag.get("name", "")).lower().endswith("mep"):
+                    diag_for_log = diag
+                    break
+            mep_info = {
+                "n_images": summary.get("n_images"),
+                "n_segments": summary.get("n_segments"),
+                "traj_pdb": str(path_dir / "mep.pdb") if (path_dir / "mep.pdb").exists() else None,
+                "mep_plot": str(path_dir / "mep_plot.png") if (path_dir / "mep_plot.png").exists() else None,
+                "diagram": diag_for_log,
+            }
+            summary_payload = {
+                "root_out_dir": str(out_dir),
+                "path_dir": str(path_dir),
+                "path_module_dir": path_dir.name,
+                "pipeline_mode": "path-search" if refine_path else "path-opt",
+                "command": command_str,
+                "charge": q_int,
+                "spin": spin,
+                "mep": mep_info,
+                "segments": summary.get("segments", []),
+                "energy_diagrams": summary.get("energy_diagrams", []),
+                "post_segments": post_segment_logs,
+                "key_files": {
+                    "summary.yaml": "Machine-readable summary (YAML)",
+                    "summary.log": "This human-readable summary",
+                    "mep_plot.png": "UMA MEP energy vs image index (copied from path_*/)",
+                    "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P (copied from path_*/)",
+                },
+            }
+            write_summary_log(path_dir / "summary.log", summary_payload)
+            try:
+                shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
+                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
+            except Exception:
+                pass
+        except Exception as e:
+            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
     except Exception as e:
         click.echo(
             f"[write] WARNING: Failed to refresh summary.yaml with energy diagram metadata: {e}",

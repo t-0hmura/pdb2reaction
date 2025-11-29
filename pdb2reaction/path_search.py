@@ -195,6 +195,7 @@ from .utils import (
     PreparedInputStructure,
     GjfTemplate,
 )
+from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
 from .bond_changes import compare_structures, summarize_changes
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
@@ -1826,6 +1827,7 @@ def cli(
     prepared_inputs: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
+    command_str = " ".join(sys.argv)
 
     # Robustly accept both styles for -i/--input and --ref-pdb
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
@@ -2416,6 +2418,8 @@ def cli(
                 "labels": labels,
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
+                "energies_eh": energies_eh,
+                "image": str(out_dir_path / "energy_diagram_MEP.png"),
             }
 
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
@@ -2472,6 +2476,40 @@ def cli(
         with open(out_dir_path / "summary.yaml", "w") as f:
             yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
         click.echo(f"[write] Wrote '{out_dir_path / 'summary.yaml'}'.")
+
+        try:
+            diag_for_log: Dict[str, Any] = {}
+            if diagram_payload is not None:
+                diag_for_log = dict(diagram_payload)
+            mep_info = {
+                "n_images": len(combined_all.images),
+                "n_segments": len(combined_all.segments),
+                "traj_pdb": str(out_dir_path / "mep.pdb") if (out_dir_path / "mep.pdb").exists() else None,
+                "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
+                "diagram": diag_for_log,
+            }
+            summary_payload = {
+                "root_out_dir": str(out_dir_path),
+                "path_dir": str(out_dir_path),
+                "path_module_dir": "path_search",
+                "pipeline_mode": mep_mode,
+                "command": command_str,
+                "charge": calc_cfg.get("charge"),
+                "spin": calc_cfg.get("spin"),
+                "mep": mep_info,
+                "segments": summary.get("segments", []),
+                "energy_diagrams": summary.get("energy_diagrams", []),
+                "key_files": {
+                    "summary.yaml": "Machine-readable summary (YAML)",
+                    "summary.log": "This human-readable summary",
+                    "mep_plot.png": "UMA MEP energy vs image index",
+                    "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P",
+                },
+            }
+            write_summary_log(out_dir_path / "summary.log", summary_payload)
+            click.echo(f"[write] Wrote '{out_dir_path / 'summary.log'}'.")
+        except Exception as e:
+            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
 
         # --------------------------
         # 8) Elapsed time
