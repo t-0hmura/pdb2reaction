@@ -100,7 +100,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
     mep = payload.get("mep", {}) or {}
     diag = mep.get("diagram") or {}
-    lines.append("[1] Global MEP / GSM overview")
+    lines.append("[1] Global MEP overview")
     lines.append(f"  Number of MEP images : {mep.get('n_images', '-')}")
     lines.append(f"  Number of segments   : {mep.get('n_segments', '-')}")
     if mep.get("traj_pdb"):
