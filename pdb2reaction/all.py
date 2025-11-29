@@ -3145,6 +3145,7 @@ def cli(
                 "mep.pdb",
                 "mep_w_ref.pdb",
                 "summary.yaml",
+                "summary.log",
             ):
                 src = path_dir / name
                 if src.exists():
@@ -3281,6 +3282,7 @@ def cli(
                 "mep.pdb",
                 "mep_w_ref.pdb",
                 "summary.yaml",
+                "summary.log",
             ):
                 src = path_dir / name
                 if src.exists():
