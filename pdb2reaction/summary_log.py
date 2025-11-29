@@ -374,7 +374,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         name = str(diag.get("name", "")).lower()
         ylabel_txt = str(diag.get("ylabel", "")).lower()
 
-        if "g_dft" in name or "gibbs_dft" in name or ("dft" in name and "g" in name):
+        if "g_dft" in name or "gibbs_dft" in name or ("gibbs" in ylabel_txt and "dft" in name):
             return "gibbs_dft_uma"
         if "dft" in name:
             return "dft"
@@ -405,6 +405,10 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
     if diagrams:
         for diag_payload in diagrams:
+            image_path = diag_payload.get("image") or diag_payload.get("diagram")
+            if image_path and "post_seg" in str(image_path):
+                continue
+
             name = diag_payload.get("name", "diagram")
             ylabel = diag_payload.get("ylabel", "ΔE (kcal/mol)")
             lines.append(f"  {name}  (ylabel: {ylabel})")
