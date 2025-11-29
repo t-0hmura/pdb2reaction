@@ -105,6 +105,13 @@ to build UMA, Gibbs, DFT, and DFT//UMA diagrams. This TSOPT-only pocket mode sti
 Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). Refer to
 [`docs/all.md`](docs/all.md) for a full option matrix, YAML schemas, and output details.
 
+### Run summaries (`summary.log`)
+
+Every `pdb2reaction all` run writes a human-readable `summary.log` to the top-level `--outdir` (and to each `path_search`
+segment directory). The log mirrors the machine-friendly `summary.yaml` but is formatted for quick inspection: it records the
+invoked CLI, global MEP statistics, per-segment barriers and bond changes, post-processing energies (UMA/thermo/DFT), and a
+cheat sheet of key output files.
+
 ### CLI subcommands
 
 | Subcommand | Summary | Documentation |
