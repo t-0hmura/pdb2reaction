@@ -1139,8 +1139,8 @@ def _run_freq_for_state(
     return {}
 
 
-def _read_imaginary_frequency(freq_dir: Path) -> Optional[float]:
-    """Return the most negative (imaginary) frequency from frequencies_cm-1.txt if present."""
+def _read_imaginary_frequency_info(freq_dir: Path) -> Optional[Dict[str, Any]]:
+    """Return diagnostic info about imaginary frequencies if present."""
 
     freq_file = freq_dir / "frequencies_cm-1.txt"
     if not freq_file.exists():
@@ -1156,9 +1156,25 @@ def _read_imaginary_frequency(freq_dir: Path) -> Optional[float]:
         if not vals:
             return None
         negatives = [v for v in vals if v < 0.0]
-        return min(negatives) if negatives else min(vals)
+        nu_imag = min(negatives) if negatives else None
+        min_abs_imag = min((abs(v) for v in negatives), default=None)
+        return {
+            "n_imag": len(negatives),
+            "nu_imag_max_cm": nu_imag,
+            "min_abs_imag_cm": min_abs_imag,
+            "min_freq_cm": min(vals),
+        }
     except Exception:
         return None
+
+
+def _read_imaginary_frequency(freq_dir: Path) -> Optional[float]:
+    """Return the most negative (imaginary) frequency from frequencies_cm-1.txt if present."""
+
+    diag = _read_imaginary_frequency_info(freq_dir)
+    if not diag:
+        return None
+    return diag.get("nu_imag_max_cm") or diag.get("min_freq_cm")
 
 
 def _run_dft_for_state(
@@ -2568,7 +2584,9 @@ def cli(
                     err=True,
                 )
             try:
-                ts_freq = _read_imaginary_frequency(freq_root / "TS") if do_thermo else None
+                ts_freq_info = (
+                    _read_imaginary_frequency_info(freq_root / "TS") if do_thermo else None
+                )
                 segment_log = {
                     "index": 1,
                     "tag": "seg_01",
@@ -2580,8 +2598,10 @@ def cli(
                     "irc_plot": str(irc_plot_path) if isinstance(irc_plot_path, Path) else None,
                     "irc_traj": str(irc_trj_path) if isinstance(irc_trj_path, Path) else None,
                 }
-                if ts_freq is not None:
-                    segment_log["ts_imag_freq_cm"] = ts_freq
+                if ts_freq_info is not None:
+                    segment_log["ts_imag"] = ts_freq_info
+                    if ts_freq_info.get("nu_imag_max_cm") is not None:
+                        segment_log["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
                 segment_log["uma"] = {
                     "labels": ["R", "TS", "P"],
                     "energies_au": [e_react, eT, e_prod],
@@ -2642,6 +2662,13 @@ def cli(
                     "path_dir": str(tsroot),
                     "path_module_dir": "tsopt_single",
                     "pipeline_mode": "tsopt-only",
+                    "refine_path": refine_path,
+                    "tsopt": do_tsopt,
+                    "thermo": do_thermo,
+                    "dft": do_dft,
+                    "opt_mode": tsopt_opt_mode_default,
+                    "mep_mode": mep_mode_kind,
+                    "uma_model": calc_cfg_shared.get("model"),
                     "command": command_str,
                     "charge": q_int,
                     "spin": spin,
@@ -3166,6 +3193,13 @@ def cli(
                 "path_dir": str(path_dir),
                 "path_module_dir": path_dir.name,
                 "pipeline_mode": "path-opt",
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": opt_mode.lower() if opt_mode else None,
+                "mep_mode": mep_mode_kind,
+                "uma_model": calc_cfg_shared.get("model"),
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
@@ -3640,9 +3674,11 @@ def cli(
                     overrides=freq_overrides,
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-                ts_freq = _read_imaginary_frequency(freq_seg_root / "TS")
-                if ts_freq is not None:
-                    segment_log["ts_imag_freq_cm"] = ts_freq
+                ts_freq_info = _read_imaginary_frequency_info(freq_seg_root / "TS")
+                if ts_freq_info is not None:
+                    segment_log["ts_imag"] = ts_freq_info
+                    if ts_freq_info.get("nu_imag_max_cm") is not None:
+                        segment_log["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
                 try:
                     GR = float(
                         tR.get(
@@ -3928,6 +3964,13 @@ def cli(
                 "path_dir": str(path_dir),
                 "path_module_dir": path_dir.name,
                 "pipeline_mode": "path-search" if refine_path else "path-opt",
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": opt_mode.lower() if opt_mode else None,
+                "mep_mode": mep_mode_kind,
+                "uma_model": calc_cfg_shared.get("model"),
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
