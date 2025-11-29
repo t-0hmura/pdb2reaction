@@ -180,6 +180,16 @@ def _format_directory_tree(
         note = annotations.get(rel)
         return f"  # {note}" if note else ""
 
+    def _leaf_files(dir_path: Path) -> Optional[List[str]]:
+        try:
+            inner_children = sorted(dir_path.iterdir(), key=lambda p: p.name.lower())
+        except Exception:
+            return None
+
+        if any(p.is_dir() for p in inner_children):
+            return None
+        return [p.name for p in inner_children if p.is_file()]
+
     def _walk(dir_path: Path, prefix: str, depth: int) -> bool:
         nonlocal entries_seen
         try:
@@ -192,8 +202,23 @@ def _format_directory_tree(
 
         for idx, child in enumerate(children):
             connector = "└─" if idx == len(children) - 1 else "├─"
-            name = child.name + ("/" if child.is_dir() else "")
             rel = _rel_path(child)
+            if child.is_dir():
+                leaf_names = _leaf_files(child) if depth < max_depth else None
+                if leaf_names is not None:
+                    grouped = ",".join(leaf_names)
+                    lines.append(
+                        f"{prefix}{connector} {child.name}/{{{grouped}}}{_annotate(rel)}"
+                    )
+                    entries_seen += 1
+                    if entries_seen >= max_entries:
+                        lines.append(
+                            f"{prefix}   ... (truncated after {max_entries} entries)"
+                        )
+                        return True
+                    continue
+
+            name = child.name + ("/" if child.is_dir() else "")
             lines.append(f"{prefix}{connector} {name}{_annotate(rel)}")
             entries_seen += 1
             if entries_seen >= max_entries:
