@@ -15,8 +15,22 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 from pysisyphus.constants import AU2KCALPERMOL
 
 
-def _as_path_str(path: Optional[Path]) -> str:
-    return str(path) if path else "(not available)"
+def _shorten_path(path: Optional[Path], root_out: Optional[Path]) -> str:
+    """Return a human-friendly path string relative to ``root_out`` when possible."""
+
+    if not path:
+        return "(not available)"
+
+    path_obj = Path(path)
+
+    if root_out:
+        for base in (root_out, root_out.parent):
+            try:
+                return str(path_obj.relative_to(base))
+            except ValueError:
+                continue
+
+    return str(path_obj)
 
 
 def _format_energy_rows(
@@ -53,6 +67,7 @@ def _emit_energy_block(
     lines: List[str],
     title: str,
     payload: Optional[Dict[str, Any]],
+    root_out: Optional[Path],
 ) -> None:
     if not payload:
         return
@@ -66,19 +81,20 @@ def _emit_energy_block(
 
     diagram = payload.get("diagram") or payload.get("image")
     if diagram:
-        lines.append(f"       Diagram  : {diagram}")
+        lines.append(f"       Diagram  : {_shorten_path(diagram, root_out)}")
     structs: Dict[str, Any] = payload.get("structures", {})
     if structs:
         lines.append("       Structures:")
         for key in ("R", "TS", "P"):
             if key in structs:
-                lines.append(f"         {key}: {_as_path_str(structs.get(key))}")
+                lines.append(f"         {key}: {_shorten_path(structs.get(key), root_out)}")
 
 
 def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     """Write a human-friendly summary.log at ``dest`` from a pre-collected payload."""
 
     root_out = payload.get("root_out_dir") or "-"
+    root_out_path = Path(root_out) if root_out not in (None, "-") else None
     path_module = payload.get("path_module_dir") or "-"
     pipeline_mode = payload.get("pipeline_mode") or "-"
     charge = payload.get("charge")
@@ -92,7 +108,12 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     if command:
         lines.append(f"Input            : {command}")
     lines.append(f"Root out_dir       : {root_out}")
-    lines.append(f"Path module dir    : {path_module}")
+    path_module_disp = (
+        _shorten_path(path_module, root_out_path)
+        if path_module not in (None, "-")
+        else path_module
+    )
+    lines.append(f"Path module dir    : {path_module_disp}")
     lines.append(f"Pipeline mode      : {pipeline_mode}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
@@ -104,14 +125,20 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"  Number of MEP images : {mep.get('n_images', '-')}")
     lines.append(f"  Number of segments   : {mep.get('n_segments', '-')}")
     if mep.get("traj_pdb"):
-        lines.append(f"  MEP trajectory (PDB) : {mep.get('traj_pdb')}")
+        lines.append(
+            f"  MEP trajectory (PDB) : {_shorten_path(mep.get('traj_pdb'), root_out_path)}"
+        )
     if mep.get("mep_plot"):
-        lines.append(f"  MEP energy plot      : {mep.get('mep_plot')}")
+        lines.append(
+            f"  MEP energy plot      : {_shorten_path(mep.get('mep_plot'), root_out_path)}"
+        )
     lines.append("")
     lines.append("  MEP energy diagram (ΔE, kcal/mol)")
     if diag:
         if diag.get("image"):
-            lines.append(f"    Image : {diag.get('image')}")
+            lines.append(
+                f"    Image : {_shorten_path(diag.get('image'), root_out_path)}"
+            )
         lines.append("    State    ΔE [kcal/mol]")
         labels = diag.get("labels", [])
         energies = diag.get("energies_kcal", [])
@@ -151,17 +178,27 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             kind = seg.get("kind", "seg")
             lines.append(f"  === Segment {idx:02d} ({kind}) tag={tag} ===")
             if seg.get("post_dir"):
-                lines.append(f"    Post-process dir : {seg.get('post_dir')}")
+                lines.append(
+                    f"    Post-process dir : {_shorten_path(seg.get('post_dir'), root_out_path)}"
+                )
             if seg.get("ts_imag_freq_cm") is not None:
                 lines.append(f"    TS imaginary freq: {seg.get('ts_imag_freq_cm'):.1f} cm^-1")
             if seg.get("irc_plot"):
-                lines.append(f"    IRC plot         : {seg.get('irc_plot')}")
+                lines.append(
+                    f"    IRC plot         : {_shorten_path(seg.get('irc_plot'), root_out_path)}"
+                )
             if seg.get("irc_traj"):
-                lines.append(f"    IRC trajectory   : {seg.get('irc_traj')}")
-            _emit_energy_block(lines, "UMA energies (TSOPT+IRC)", seg.get("uma"))
-            _emit_energy_block(lines, "UMA Gibbs (thermo)", seg.get("gibbs_uma"))
-            _emit_energy_block(lines, "DFT single-point", seg.get("dft"))
-            _emit_energy_block(lines, "DFT//UMA Gibbs", seg.get("gibbs_dft_uma"))
+                lines.append(
+                    f"    IRC trajectory   : {_shorten_path(seg.get('irc_traj'), root_out_path)}"
+                )
+            _emit_energy_block(
+                lines, "UMA energies (TSOPT+IRC)", seg.get("uma"), root_out_path
+            )
+            _emit_energy_block(lines, "UMA Gibbs (thermo)", seg.get("gibbs_uma"), root_out_path)
+            _emit_energy_block(lines, "DFT single-point", seg.get("dft"), root_out_path)
+            _emit_energy_block(
+                lines, "DFT//UMA Gibbs", seg.get("gibbs_dft_uma"), root_out_path
+            )
     else:
         lines.append("  (no post-processing results)")
 
@@ -181,7 +218,9 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 rel_txt = f"{rel:7.3f}" if rel is not None else "   n/a"
                 lines.append(f"        {lab:<8}{rel_txt}")
             if diag_payload.get("image"):
-                lines.append(f"    Image : {diag_payload.get('image')}")
+                lines.append(
+                    f"    Image : {_shorten_path(diag_payload.get('image'), root_out_path)}"
+                )
     else:
         lines.append("  (no energy diagrams recorded)")
 
@@ -189,12 +228,19 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append("[5] Output directories / key files (cheat sheet)")
     lines.append(f"  Root out_dir : {root_out}")
     if payload.get("path_dir"):
-        lines.append(f"  Path outputs : {payload.get('path_dir')}")
+        lines.append(
+            f"  Path outputs : {_shorten_path(payload.get('path_dir'), root_out_path)}"
+        )
     key_files: Dict[str, Any] = payload.get("key_files", {}) or {}
     if key_files:
         lines.append("  Key files (root):")
         for name, desc in key_files.items():
-            lines.append(f"    {name:<18}: {desc}")
+            value = (
+                _shorten_path(desc, root_out_path)
+                if isinstance(desc, (str, Path))
+                else desc
+            )
+            lines.append(f"    {name:<18}: {value}")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
