@@ -123,6 +123,8 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimisation toggle. | _None_ |
 
 ## Outputs
+- `<out-dir>/summary.log`: Human-readable run digest (CLI invocation, MEP/segment stats, post-processing energies, key files);
+  also stored per GSM/TSOPT branch in `<out-dir>/path_search/*/summary.log`.
 - `<out-dir>/pockets/`: Per-input pocket PDBs when extraction runs.
 - `<out-dir>/scan/`: Present when `--scan-lists` is used; contains staged pocket scan results (`stage_XX/result.pdb`).
 - `<out-dir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, per-segment folders).
