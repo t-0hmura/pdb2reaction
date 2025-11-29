@@ -457,23 +457,5 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             diag_payload = diag_by_method.get(method)
             lines.append(_format_diag_row(diag_payload, label, col_width, state_order))
 
-    lines.append("")
-    lines.append("[5] Output directories / key files (cheat sheet)")
-    lines.append(f"  Root out_dir : {root_out}")
-    if payload.get("path_dir"):
-        lines.append(
-            f"  Path outputs : {_shorten_path(payload.get('path_dir'), root_out_path)}"
-        )
-    key_files: Dict[str, Any] = payload.get("key_files", {}) or {}
-    if key_files:
-        lines.append("  Key files (root):")
-        for name, desc in key_files.items():
-            value = (
-                _shorten_path(desc, root_out_path)
-                if isinstance(desc, (str, Path))
-                else desc
-            )
-            lines.append(f"    {name:<18}: {value}")
-
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")

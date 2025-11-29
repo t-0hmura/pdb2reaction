@@ -109,8 +109,7 @@ Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--
 
 Every `pdb2reaction all` run writes a human-readable `summary.log` to the top-level `--outdir` (and to each `path_search`
 segment directory). The log mirrors the machine-friendly `summary.yaml` but is formatted for quick inspection: it records the
-invoked CLI, global MEP statistics, per-segment barriers and bond changes, post-processing energies (UMA/thermo/DFT), and a
-cheat sheet of key output files.
+invoked CLI, global MEP statistics, per-segment barriers and bond changes, and post-processing energies (UMA/thermo/DFT).
 
 ### CLI subcommands
 
