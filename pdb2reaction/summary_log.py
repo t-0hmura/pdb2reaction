@@ -206,14 +206,21 @@ def _format_directory_tree(
             if child.is_dir():
                 leaf_names = _leaf_files(child) if depth < max_depth else None
                 if leaf_names is not None:
-                    grouped = ",".join(leaf_names)
-                    lines.append(
-                        f"{prefix}{connector} {child.name}/{{{grouped}}}{_annotate(rel)}"
-                    )
+                    lines.append(f"{prefix}{connector} {child.name}/{_annotate(rel)}")
                     entries_seen += 1
                     if entries_seen >= max_entries:
                         lines.append(
                             f"{prefix}   ... (truncated after {max_entries} entries)"
+                        )
+                        return True
+
+                    next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
+                    grouped = ",".join(leaf_names)
+                    lines.append(f"{next_prefix}└─ {{{grouped}}}")
+                    entries_seen += 1
+                    if entries_seen >= max_entries:
+                        lines.append(
+                            f"{next_prefix}   ... (truncated after {max_entries} entries)"
                         )
                         return True
                     continue
