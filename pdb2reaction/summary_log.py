@@ -152,6 +152,89 @@ def _emit_energy_block(
                 lines.append(f"         {key}: {_shorten_path(structs.get(key), root_out)}")
 
 
+def _format_directory_tree(
+    root: Path,
+    annotations: Dict[str, str],
+    max_depth: int = 4,
+    max_entries: int = 200,
+) -> List[str]:
+    """Render a compact directory tree rooted at ``root``.
+
+    The output mirrors the style of the ``all`` docstring layout while
+    reflecting the *actual* files/directories on disk. Entries in
+    ``annotations`` (relative POSIX paths → short note) are suffixed to
+    the corresponding line. Traversal stops once ``max_depth`` or
+    ``max_entries`` are exceeded, with an explicit truncation note.
+    """
+
+    lines: List[str] = []
+    entries_seen = 0
+
+    def _rel_path(p: Path) -> str:
+        try:
+            return p.relative_to(root).as_posix()
+        except ValueError:
+            return p.name
+
+    def _annotate(rel: str) -> str:
+        note = annotations.get(rel)
+        return f"  # {note}" if note else ""
+
+    def _leaf_files(dir_path: Path) -> Optional[List[str]]:
+        try:
+            inner_children = sorted(dir_path.iterdir(), key=lambda p: p.name.lower())
+        except Exception:
+            return None
+
+        if any(p.is_dir() for p in inner_children):
+            return None
+        return [p.name for p in inner_children if p.is_file()]
+
+    def _walk(dir_path: Path, prefix: str, depth: int) -> bool:
+        nonlocal entries_seen
+        try:
+            children = sorted(
+                dir_path.iterdir(),
+                key=lambda p: (p.is_file(), p.name.lower()),
+            )
+        except Exception:
+            return False
+
+        for idx, child in enumerate(children):
+            connector = "└─" if idx == len(children) - 1 else "├─"
+            rel = _rel_path(child)
+            if child.is_dir():
+                leaf_names = _leaf_files(child) if depth < max_depth else None
+                if leaf_names is not None:
+                    grouped = ",".join(leaf_names)
+                    lines.append(
+                        f"{prefix}{connector} {child.name}/{{{grouped}}}{_annotate(rel)}"
+                    )
+                    entries_seen += 1
+                    if entries_seen >= max_entries:
+                        lines.append(
+                            f"{prefix}   ... (truncated after {max_entries} entries)"
+                        )
+                        return True
+                    continue
+
+            name = child.name + ("/" if child.is_dir() else "")
+            lines.append(f"{prefix}{connector} {name}{_annotate(rel)}")
+            entries_seen += 1
+            if entries_seen >= max_entries:
+                lines.append(f"{prefix}   ... (truncated after {max_entries} entries)")
+                return True
+            if child.is_dir() and depth < max_depth:
+                next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
+                if _walk(child, next_prefix, depth + 1):
+                    return True
+        return False
+
+    lines.append(f"  {root.name}/" + _annotate("."))
+    _walk(root, "  ", 1)
+    return lines
+
+
 def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     """Write a human-friendly summary.log at ``dest`` from a pre-collected payload."""
 
@@ -456,6 +539,47 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         for label, method in table_rows:
             diag_payload = diag_by_method.get(method)
             lines.append(_format_diag_row(diag_payload, label, col_width, state_order))
+
+    lines.append("")
+    lines.append("[5] Output directory structure (actual)")
+
+    key_files = payload.get("key_files") or {}
+    annotations: Dict[str, str] = {Path(k).as_posix(): v for k, v in key_files.items()}
+
+    default_notes = {
+        "pockets": "Extracted pocket PDBs",
+        "scan": "Staged scan outputs",
+        "path_search": "Recursive GSM outputs",
+        "path_opt": "Single-pass GSM outputs",
+        "tsopt_single": "Single-structure TSOPT-only outputs",
+        "mep_plot.png": "UMA MEP energy plot",
+        "energy_diagram_MEP.png": "Compressed MEP diagram",
+        "energy_diagram_UMA_all.png": "UMA R–TS–P energies (all segments)",
+        "energy_diagram_G_UMA_all.png": "UMA Gibbs R–TS–P (all segments)",
+        "energy_diagram_DFT_all.png": "DFT R–TS–P (all segments)",
+        "energy_diagram_G_DFT_plus_UMA_all.png": "DFT//UMA Gibbs R–TS–P (all segments)",
+        "irc_plot_all.png": "Aggregated IRC plot",
+    }
+
+    if root_out_path:
+        path_dir = payload.get("path_dir")
+        if path_dir:
+            try:
+                rel = Path(path_dir).relative_to(root_out_path).as_posix()
+                annotations.setdefault(rel, "Primary path module outputs")
+            except ValueError:
+                pass
+
+        for rel, desc in default_notes.items():
+            if (root_out_path / rel).exists():
+                annotations.setdefault(rel, desc)
+
+        if root_out_path.exists():
+            lines.extend(_format_directory_tree(root_out_path, annotations))
+        else:
+            lines.append("  (root output directory not found on disk)")
+    else:
+        lines.append("  (root output directory unknown)")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
