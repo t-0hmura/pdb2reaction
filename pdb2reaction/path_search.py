@@ -2507,8 +2507,8 @@ def cli(
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
                 "key_files": {
-                    "summary.yaml": "Machine-readable summary (YAML)",
-                    "summary.log": "This human-readable summary",
+                    "summary.yaml": "YAML-format summary",
+                    "summary.log": "This summary",
                     "mep_plot.png": "UMA MEP energy vs image index",
                     "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P",
                 },

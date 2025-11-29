@@ -2677,8 +2677,8 @@ def cli(
                     "energy_diagrams": summary.get("energy_diagrams", []),
                     "post_segments": [segment_log],
                     "key_files": {
-                        "summary.yaml": "Machine-readable summary (YAML)",
-                        "summary.log": "This human-readable summary",
+                        "summary.yaml": "YAML-format summary",
+                        "summary.log": "This summary",
                         "energy_diagram_UMA_all.png": "UMA R–TS–P energies",
                     },
                 }
@@ -3207,8 +3207,8 @@ def cli(
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
                 "key_files": {
-                    "summary.yaml": "Machine-readable summary (YAML)",
-                    "summary.log": "This human-readable summary",
+                    "summary.yaml": "YAML-format summary",
+                    "summary.log": "This summary",
                     "mep_plot.png": "UMA MEP energy vs image index",
                     "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P",
                 },
@@ -3979,8 +3979,8 @@ def cli(
                 "energy_diagrams": summary.get("energy_diagrams", []),
                 "post_segments": post_segment_logs,
                 "key_files": {
-                    "summary.yaml": "Machine-readable summary (YAML)",
-                    "summary.log": "This human-readable summary",
+                    "summary.yaml": "YAML-format summary",
+                    "summary.log": "This summary",
                     "mep_plot.png": "UMA MEP energy vs image index (copied from path_*/)",
                     "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P (copied from path_*/)",
                 },

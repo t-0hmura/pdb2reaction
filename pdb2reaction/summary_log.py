@@ -1,9 +1,9 @@
 """
-Human-friendly summary log writer used by ``path_search`` and ``all``.
+User-friendly summary log writer used by ``path_search`` and ``all``.
 
 The goal is to provide a compact, readable ``summary.log`` alongside the
-machine-readable ``summary.yaml``. The log aggregates MEP details, segment
-barriers, post-processing energies, and key output paths in a single place.
+``summary.yaml``. The log aggregates MEP details, segment barriers, 
+post-processing energies, and key output paths in a single place.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ def _fmt_bool(val: Optional[Any]) -> str:
 
 
 def _shorten_path(path: Optional[Path], root_out: Optional[Path]) -> str:
-    """Return a human-friendly path string relative to ``root_out`` when possible."""
+    """Return a User-friendly path string relative to ``root_out`` when possible."""
 
     if not path:
         return "(not available)"
@@ -243,7 +243,7 @@ def _format_directory_tree(
 
 
 def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
-    """Write a human-friendly summary.log at ``dest`` from a pre-collected payload."""
+    """Write a User-friendly summary.log at ``dest`` from a pre-collected payload."""
 
     root_out = payload.get("root_out_dir") or "-"
     root_out_path = Path(root_out) if root_out not in (None, "-") else None
@@ -548,7 +548,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             lines.append(_format_diag_row(diag_payload, label, col_width, state_order))
 
     lines.append("")
-    lines.append("[5] Output directory structure (actual)")
+    lines.append("[5] Output directory structure")
 
     key_files = payload.get("key_files") or {}
     annotations: Dict[str, str] = {Path(k).as_posix(): v for k, v in key_files.items()}
