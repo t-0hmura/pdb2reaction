@@ -117,8 +117,8 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "fix_first": False,
-    "fix_last": False,
+    "fix_first": True,
+    "fix_last": True,
     "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
     "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
     "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
