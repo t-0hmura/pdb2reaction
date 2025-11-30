@@ -2493,7 +2493,7 @@ def cli(
                 "path_dir": str(out_dir_path),
                 "path_module_dir": "path_search",
                 "pipeline_mode": mep_mode,
-                "refine_path": None,
+                "refine_path": True,
                 "tsopt": False,
                 "thermo": False,
                 "dft": False,

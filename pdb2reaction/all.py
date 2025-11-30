@@ -3345,7 +3345,68 @@ def cli(
     )
     click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
 
+    summary_yaml = path_dir / "summary.yaml"
+    summary_loaded = load_yaml_dict(summary_yaml) if summary_yaml.exists() else {}
+    summary: Dict[str, Any] = summary_loaded if isinstance(summary_loaded, dict) else {}
+    segments = _read_summary(summary_yaml)
+    if not energy_diagrams:
+        existing_diagrams = summary.get("energy_diagrams", [])
+        if isinstance(existing_diagrams, list):
+            energy_diagrams.extend(existing_diagrams)
+
+    def _write_pipeline_summary_log(post_segment_logs: Sequence[Dict[str, Any]]) -> None:
+        try:
+            diag_for_log: Dict[str, Any] = {}
+            for diag in summary.get("energy_diagrams", []) or []:
+                if isinstance(diag, dict) and str(diag.get("name", "")).lower().endswith("mep"):
+                    diag_for_log = diag
+                    break
+            mep_info = {
+                "n_images": summary.get("n_images"),
+                "n_segments": summary.get("n_segments"),
+                "traj_pdb": str(path_dir / "mep.pdb") if (path_dir / "mep.pdb").exists() else None,
+                "mep_plot": str(path_dir / "mep_plot.png") if (path_dir / "mep_plot.png").exists() else None,
+                "diagram": diag_for_log,
+            }
+            summary_payload = {
+                "root_out_dir": str(out_dir),
+                "path_dir": str(path_dir),
+                "path_module_dir": path_dir.name,
+                "pipeline_mode": "path-search" if refine_path else "path-opt",
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": opt_mode.lower() if opt_mode else None,
+                "mep_mode": mep_mode_kind,
+                "uma_model": calc_cfg_shared.get("model"),
+                "command": command_str,
+                "charge": q_int,
+                "spin": spin,
+                "mep": mep_info,
+                "segments": summary.get("segments", []),
+                "energy_diagrams": summary.get("energy_diagrams", []),
+                "post_segments": list(post_segment_logs),
+                "key_files": {
+                    "summary.yaml": "YAML-format summary",
+                    "summary.log": "This summary",
+                    "mep_plot.png": "UMA MEP energy vs image index (copied from path_*/)",
+                    "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P (copied from path_*/)",
+                },
+            }
+            write_summary_log(path_dir / "summary.log", summary_payload)
+            try:
+                shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
+                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
+            except Exception:
+                pass
+        except Exception as e:
+            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+
     if not (do_tsopt or do_thermo or do_dft):
+        if energy_diagrams:
+            summary["energy_diagrams"] = list(energy_diagrams)
+        _write_pipeline_summary_log([])
         click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -3356,14 +3417,6 @@ def cli(
         "\n=== [all] Stage 4 — Post-processing per reactive segment ===\n"
     )
 
-    summary_yaml = path_dir / "summary.yaml"
-    segments = _read_summary(summary_yaml)
-    summary_loaded = load_yaml_dict(summary_yaml) if summary_yaml.exists() else {}
-    summary: Dict[str, Any] = summary_loaded if isinstance(summary_loaded, dict) else {}
-    if not energy_diagrams:
-        existing_diagrams = summary.get("energy_diagrams", [])
-        if isinstance(existing_diagrams, list):
-            energy_diagrams.extend(existing_diagrams)
     if not segments:
         click.echo("[post] No segments found in summary; nothing to do.")
         click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
@@ -3948,53 +4001,7 @@ def cli(
                 f"[all] WARNING: Failed to mirror summary.yaml to {out_dir}: {e}",
                 err=True,
             )
-        try:
-            diag_for_log: Dict[str, Any] = {}
-            for diag in summary.get("energy_diagrams", []) or []:
-                if isinstance(diag, dict) and str(diag.get("name", "")).lower().endswith("mep"):
-                    diag_for_log = diag
-                    break
-            mep_info = {
-                "n_images": summary.get("n_images"),
-                "n_segments": summary.get("n_segments"),
-                "traj_pdb": str(path_dir / "mep.pdb") if (path_dir / "mep.pdb").exists() else None,
-                "mep_plot": str(path_dir / "mep_plot.png") if (path_dir / "mep_plot.png").exists() else None,
-                "diagram": diag_for_log,
-            }
-            summary_payload = {
-                "root_out_dir": str(out_dir),
-                "path_dir": str(path_dir),
-                "path_module_dir": path_dir.name,
-                "pipeline_mode": "path-search" if refine_path else "path-opt",
-                "refine_path": refine_path,
-                "tsopt": do_tsopt,
-                "thermo": do_thermo,
-                "dft": do_dft,
-                "opt_mode": opt_mode.lower() if opt_mode else None,
-                "mep_mode": mep_mode_kind,
-                "uma_model": calc_cfg_shared.get("model"),
-                "command": command_str,
-                "charge": q_int,
-                "spin": spin,
-                "mep": mep_info,
-                "segments": summary.get("segments", []),
-                "energy_diagrams": summary.get("energy_diagrams", []),
-                "post_segments": post_segment_logs,
-                "key_files": {
-                    "summary.yaml": "YAML-format summary",
-                    "summary.log": "This summary",
-                    "mep_plot.png": "UMA MEP energy vs image index (copied from path_*/)",
-                    "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P (copied from path_*/)",
-                },
-            }
-            write_summary_log(path_dir / "summary.log", summary_payload)
-            try:
-                shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
-                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
-            except Exception:
-                pass
-        except Exception as e:
-            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+        _write_pipeline_summary_log(post_segment_logs)
     except Exception as e:
         click.echo(
             f"[write] WARNING: Failed to refresh summary.yaml with energy diagram metadata: {e}",
