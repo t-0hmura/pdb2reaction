@@ -87,6 +87,7 @@ from .utils import (
     detect_freeze_links_safe,
     load_yaml_dict,
     apply_yaml_overrides,
+    deep_update,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
@@ -114,6 +115,49 @@ GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
 # UMA calculator settings
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
+
+# DMF (Direct Max Flux + (C)FB-ENM)
+DMF_KW: Dict[str, Any] = {
+    # Top-level interpolate_fbenm options
+    "correlated": True,             # Add CFB_ENM for correlated paths
+    "sequential": True,             # Enable staged barrier construction during optimization
+    "fbenm_only_endpoints": False,  # If False, use all images (not just endpoints) for ENM references
+
+    # FB_ENM_Bonds options (fbenm_options)
+    "fbenm_options": {
+        "delta_scale": 0.2,         # Scale for the distance penalty width
+        "bond_scale": 1.25,         # Bond test: d_ij < bond_scale * (r_cov_i + r_cov_j)
+        "fix_planes": True,         # Add plane constraints to preserve planarity
+        "two_hop_mode": "sparse",   # Two-hop neighbor construction ("sparse" | "dense")
+    },
+
+    # CFB_ENM options (cfbenm_options)
+    "cfbenm_options": {
+        "bond_scale": 1.25,
+        "corr0_scale": 1.10,        # d_corr0 ~ corr0_scale * d_bond
+        "corr1_scale": 1.50,
+        "corr2_scale": 1.60,
+        "eps": 0.05,                # sqrt(pp^2 + eps^2) term's epsilon
+        "pivotal": True,
+        "single": True,
+        "remove_fourmembered": True,
+        "two_hop_mode": "dense",    # Two-hop construction on the CFB_ENM side
+    },
+
+    # DirectMaxFlux core options (forwarded via dmf_options)
+    "dmf_options": {
+        "remove_rotation_and_translation": False,  # Do not explicitly constrain rigid-body motions
+        "mass_weighted": False,                    # Whether to use mass-weighted velocity norms
+        "parallel": False,
+        "eps_vel": 0.01,
+        "eps_rot": 0.01,
+        "beta": 10.0,                              # "Beta" for the geometric action
+        "update_teval": False,                     # Control node relocation from interpolate_fbenm
+    },
+
+    # Strength of fix_atoms harmonic restraints
+    "k_fix": 100.0,                                # [eV/Å^2]
+}
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
@@ -255,6 +299,7 @@ def _run_dmf_mep(
     prepared_inputs: Sequence[PreparedInputStructure],
     max_nodes: int,
     fix_atoms: Sequence[int],
+    dmf_cfg: Optional[Dict[str, Any]] = None,
 ) -> DMFMepResult:
     """Run Direct Max Flux (DMF) MEP optimization between two endpoints."""
 
@@ -306,16 +351,26 @@ def _run_dmf_mep(
         task_name=str(calc_cfg.get("task_name", "omol")),
     )
 
+    dmf_cfg = deep_update(dict(DMF_KW), dmf_cfg)
+    fbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("fbenm_options", {}))
+    cfbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("cfbenm_options", {}))
+    dmf_opts: Dict[str, Any] = dict(dmf_cfg.get("dmf_options", {}))
+    k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
+
     mxflx_fbenm = interpolate_fbenm(
         ref_images,
         nmove=max(1, int(max_nodes)),
-        fbenm_only_endpoints=False,
-        correlated=True,
+        fbenm_only_endpoints=bool(dmf_cfg.get("fbenm_only_endpoints", False)),
+        correlated=bool(dmf_cfg.get("correlated", False)),
+        sequential=bool(dmf_cfg.get("sequential", False)),
         output_file=str(out_dir_path / "dmf_fbenm_ipopt.out"),
         device=device,
         dtype="float64",
         fix_atoms=fix_atoms,
-        dmf_options={"remove_rotation_and_translation": False},
+        fbenm_options=fbenm_opts,
+        cfbenm_options=cfbenm_opts,
+        dmf_options=dmf_opts,
+        k_fix=k_fix,
     )
 
     initial_trj = out_dir_path / "dmf_initial.trj"
@@ -333,11 +388,19 @@ def _run_dmf_mep(
         ref_images,
         coefs=coefs,
         nmove=max(1, int(max_nodes)),
-        update_teval=True,
+        update_teval=bool(dmf_opts.get("update_teval", True)),
         device=device,
         dtype="float64",
         fix_atoms=fix_atoms,
-        remove_rotation_and_translation=False,
+        remove_rotation_and_translation=bool(
+            dmf_opts.get("remove_rotation_and_translation", False)
+        ),
+        mass_weighted=bool(dmf_opts.get("mass_weighted", False)),
+        parallel=bool(dmf_opts.get("parallel", False)),
+        eps_vel=float(dmf_opts.get("eps_vel", 0.01)),
+        eps_rot=float(dmf_opts.get("eps_rot", 0.01)),
+        beta=float(dmf_opts.get("beta", 10.0)),
+        k_fix=k_fix,
     )
 
     for image in mxflx.images:
@@ -452,7 +515,7 @@ def _optimize_single(
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="gsm",
+    default="dmf",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -589,6 +652,7 @@ def cli(
 
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
+        dmf_cfg = dict(DMF_KW)
         gs_cfg = dict(GS_KW)
         opt_cfg = dict(STOPT_KW)
         lbfgs_cfg = dict(_LBFGS_KW)
@@ -638,6 +702,7 @@ def cli(
             [
                 (geom_cfg, (("geom",),)),
                 (calc_cfg, (("calc",),)),
+                (dmf_cfg, (("dmf",),)),
                 (gs_cfg, (("gs",),)),
                 (opt_cfg, (("opt",),)),
                 (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
@@ -671,6 +736,8 @@ def cli(
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs", echo_gs))
         click.echo(pretty_block("opt", echo_opt))
+        if mep_mode_kind == "dmf":
+            click.echo(pretty_block("dmf", dmf_cfg))
         click.echo(pretty_block("sopt." + sopt_kind, sopt_cfg))
         click.echo(
             pretty_block(
@@ -780,6 +847,7 @@ def cli(
                     prepared_inputs,
                     max_nodes,
                     fix_atoms,
+                    dmf_cfg=dmf_cfg,
                 )
             except Exception as e:
                 click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
