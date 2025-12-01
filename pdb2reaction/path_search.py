@@ -793,7 +793,7 @@ def _run_dmf_between(
         out_dir_path=seg_dir,
         prepared_inputs=prepared_inputs,
         max_nodes=max_nodes,
-        fix_atoms,
+        fix_atoms=fix_atoms,
     )
 
     energies = list(map(float, dmf_res.energies))
