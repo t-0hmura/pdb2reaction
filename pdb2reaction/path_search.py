@@ -329,6 +329,7 @@ SEARCH_KW: Dict[str, Any] = {
     "max_nodes_segment": 10,
     "max_nodes_bridge": 5,
     "kink_max_nodes": 3,
+    "refine_mode": "minima",
 }
 
 
@@ -580,6 +581,39 @@ class SegmentReport:
     summary: str  # summarize_changes string (empty for bridges)
     kind: str = "seg"          # "seg" or "bridge"
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
+
+
+def _is_local_minimum(energies: Sequence[float], idx: int) -> bool:
+    """Return True when `idx` is a local minimum using the endpoint-aware rule."""
+
+    n = len(energies)
+    if n == 0:
+        return False
+    if not (0 <= idx < n):
+        return False
+
+    e = energies[idx]
+    if idx == 0:
+        return n == 1 or energies[1] > e
+    if idx == n - 1:
+        return energies[n - 2] > e
+    return energies[idx - 1] > e and energies[idx + 1] > e
+
+
+def _find_nearest_local_minimum_index(energies: Sequence[float], start_idx: int, direction: int) -> int:
+    """Search from `start_idx` in `direction` (±1) and return the first local minimum index."""
+
+    if direction == 0:
+        raise ValueError("direction must be non-zero")
+
+    n = len(energies)
+    idx = start_idx
+    while 0 <= idx < n:
+        if _is_local_minimum(energies, idx):
+            return idx
+        idx += int(np.sign(direction)) or 1
+
+    return 0 if direction < 0 else max(n - 1, 0)
 
 
 def _run_mep_between(
@@ -1055,6 +1089,7 @@ def _build_multistep_path(
     sopt_cfg: Dict[str, Any],
     bond_cfg: Dict[str, Any],
     search_cfg: Dict[str, Any],
+    refine_mode: str,
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
     prepared_inputs: Sequence[PreparedInputStructure],
@@ -1133,14 +1168,24 @@ def _build_multistep_path(
         )
     )
 
+    refine_mode_kind = refine_mode.lower()
+
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
         click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.")
         _tag_images(gsm0.images, pair_index=pair_index)
         return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
 
-    left_img = gsm0.images[hei - 1]
-    right_img = gsm0.images[hei + 1]
+    energies_arr = list(map(float, gsm0.energies))
+    if refine_mode_kind == "minima":
+        left_idx = _find_nearest_local_minimum_index(energies_arr, hei - 1, -1)
+        right_idx = _find_nearest_local_minimum_index(energies_arr, hei + 1, +1)
+    else:
+        left_idx = hei - 1
+        right_idx = hei + 1
+
+    left_img = gsm0.images[left_idx]
+    right_img = gsm0.images[right_idx]
 
     left_end = _optimize_single(
         left_img,
@@ -1247,7 +1292,7 @@ def _build_multistep_path(
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
@@ -1261,7 +1306,7 @@ def _build_multistep_path(
     if right_changed:
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index
         )
@@ -1278,7 +1323,7 @@ def _build_multistep_path(
             shared_calc,
             geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg,
-            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+            bond_cfg, search_cfg, refine_mode, mep_mode_kind, calc_cfg, prepared_inputs,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
             prepared_input=prepared_input,
@@ -1740,6 +1785,16 @@ def _merge_final_and_write(final_images: List[Any],
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
 @click.option(
+    "--refine-mode",
+    type=click.Choice(["minima", "peak"], case_sensitive=False),
+    default="minima",
+    show_default=True,
+    help=(
+        "How to choose refinement endpoints around the HEI: "
+        "'minima' picks the nearest local minima on each side, while 'peak' uses HEI±1."
+    ),
+)
+@click.option(
     "-q",
     "--charge",
     type=int,
@@ -1825,6 +1880,7 @@ def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
     mep_mode: str,
+    refine_mode: str,
     charge: Optional[int],
     spin: Optional[int],
     freeze_links_flag: bool,
@@ -1901,6 +1957,7 @@ def cli(
             )
 
         mep_mode_kind = mep_mode.strip().lower()
+        refine_mode_kind = refine_mode.strip().lower()
 
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
         if do_merge:
@@ -1944,6 +2001,8 @@ def cli(
                 (search_cfg, (("search",),)),
             ],
         )
+
+        search_cfg["refine_mode"] = refine_mode_kind
 
         resolved_charge = charge
         resolved_spin = spin
@@ -2096,7 +2155,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+                bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 prepared_input=main_prepared,
@@ -2116,7 +2175,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, prepared_inputs,
+                bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 prepared_input=main_prepared,
