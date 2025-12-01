@@ -90,37 +90,8 @@ The YAML root must be a mapping. YAML parameters override the CLI values. Shared
 `search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, and `kink_max_nodes`. The legacy `rmsd_align` flag is ignored but kept for compatibility.
 
 `dmf` bundles Direct Max Flux + (C)FB-ENM controls applied whenever `--mep-mode dmf` is selected. The defaults mirror the shared `DMF_KW` dictionary and can be overridden per run:
-```yaml
-dmf:
-  correlated: true
-  sequential: true
-  fbenm_only_endpoints: false
-  fbenm_options:
-    delta_scale: 0.2
-    bond_scale: 1.25
-    fix_planes: true
-    two_hop_mode: sparse
-  cfbenm_options:
-    bond_scale: 1.25
-    corr0_scale: 1.10
-    corr1_scale: 1.50
-    corr2_scale: 1.60
-    eps: 0.05
-    pivotal: true
-    single: true
-    remove_fourmembered: true
-    two_hop_mode: dense
-  dmf_options:
-    remove_rotation_and_translation: false
-    mass_weighted: false
-    parallel: false
-    eps_vel: 0.01
-    eps_rot: 0.01
-    beta: 10.0
-    update_teval: false
-  k_fix: 100.0
-```
 
+### Example YAML (default value)
 ```yaml
 geom:
   coord_type: cart

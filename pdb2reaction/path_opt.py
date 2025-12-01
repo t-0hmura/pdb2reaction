@@ -388,7 +388,7 @@ def _run_dmf_mep(
         ref_images,
         coefs=coefs,
         nmove=max(1, int(max_nodes)),
-        update_teval=bool(dmf_opts.get("update_teval", True)),
+        update_teval=bool(dmf_opts.get("update_teval", False)),
         device=device,
         dtype="float64",
         fix_atoms=fix_atoms,

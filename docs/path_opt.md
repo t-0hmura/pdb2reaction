@@ -74,36 +74,6 @@ YAML inputs override CLI, which override the defaults listed below.
 
 ### `dmf`
 - Direct Max Flux + (C)FB-ENM interpolation controls. Keys mirror the CLI-accessible `dmf` block:
-```yaml
-dmf:
-  correlated: true              # Add correlated CFB_ENM corrections
-  sequential: true              # Stage barrier construction
-  fbenm_only_endpoints: false   # Use all images (not only endpoints) for ENM references
-  fbenm_options:
-    delta_scale: 0.2            # Distance penalty width scaling
-    bond_scale: 1.25            # Bond cutoff multiplier
-    fix_planes: true            # Preserve planarity with plane restraints
-    two_hop_mode: sparse        # 2-hop neighbor construction for FB_ENM
-  cfbenm_options:
-    bond_scale: 1.25
-    corr0_scale: 1.10
-    corr1_scale: 1.50
-    corr2_scale: 1.60
-    eps: 0.05
-    pivotal: true
-    single: true
-    remove_fourmembered: true
-    two_hop_mode: dense         # 2-hop neighbor construction for CFB_ENM
-  dmf_options:
-    remove_rotation_and_translation: false
-    mass_weighted: false
-    parallel: false
-    eps_vel: 0.01
-    eps_rot: 0.01
-    beta: 10.0                  # Geometric-action beta
-    update_teval: false         # Leave node updates to interpolate_fbenm
-  k_fix: 100.0                  # Harmonic restraint strength on fixed atoms [eV/Å^2]
-```
 
 ### `gs`
 - Controls the Growing String representation: `max_nodes`, `perp_thresh`, reparametrisation cadence (`reparam_check`, `reparam_every`, `reparam_every_full`, `param`), `max_micro_cycles`, DLC resets, climb toggles/thresholds, and optional scheduler hooks.
@@ -111,7 +81,7 @@ dmf:
 ### `opt`
 - StringOptimizer settings: type labels, `stop_in_when_full`, `align=False` (kept off), `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
 
-### Example YAML
+### Example YAML (default value)
 ```yaml
 geom:
   coord_type: cart
