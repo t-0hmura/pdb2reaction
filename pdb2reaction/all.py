@@ -2946,6 +2946,8 @@ def cli(
                 str(int(max_cycles)),
                 "--climb",
                 "True" if climb else "False",
+                "--opt-mode",
+                str(opt_mode),
                 "--dump",
                 "True" if dump else "False",
                 "--out-dir",
