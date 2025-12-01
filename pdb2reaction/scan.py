@@ -23,7 +23,7 @@ Examples
     pdb2reaction scan -i input.pdb -q 0 \
         --scan-lists "[(12,45,1.35)]" \
         --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-        --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode lbfgs \
+        --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode light \
         --preopt True --endopt True
 
 
