@@ -100,3 +100,9 @@ warnings.filterwarnings(
     message=r"Sparse CSR tensor support is in beta state.*",
     module=r"torch_dmf"
 )
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=r"t_eval update skipped due to insufficient candidates",
+    module=r"torch_dmf"
+)
