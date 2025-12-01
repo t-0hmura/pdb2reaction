@@ -10,7 +10,8 @@ Usage (CLI)
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
-        [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>]
+        [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
+        [--convert-files | --no-convert-files]
 
 Examples
 --------
@@ -26,9 +27,11 @@ Description
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy", default).
-- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** YAML > CLI > built-in defaults.
+- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest).
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
+- Format mirroring can be toggled with `--convert-files/--no-convert-files` (default: enabled); when a Gaussian template
+  is present, `.gjf` companions are emitted alongside `.xyz` and `.pdb` outputs.
 - Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those
   (0‑based indices), merged with any `geom.freeze_atoms`.
 - Harmonic restraints: `--dist-freeze` accepts (i, j, target Å) tuples to apply harmonic wells during optimization.
@@ -65,20 +68,20 @@ Key options (YAML keys → meaning; defaults)
 - LBFGS-specific (`lbfgs`, used when `--opt-mode light|lbfgs`):
   - Memory: `keep_last` 7.
   - Scaling: `beta` 1.0; `gamma_mult` False.
-  - Step control: `max_step` 0.10; `control_step` True.
+  - Step control: `max_step` 0.30; `control_step` True.
   - Safeguards: `double_damp` True.
   - Regularized L‑BFGS: `mu_reg`; `max_mu_reg_adaptions` 10.
 
 - RFO-specific (`rfo`, used when `--opt-mode heavy|rfo`):
-  - Trust region: `trust_radius` 0.10; `trust_update` True; bounds: `trust_min` 0.01, `trust_max` 0.10;
+  - Trust region: `trust_radius` 0.10; `trust_update` True; bounds: `trust_min` 0.00, `trust_max` 0.10;
     `max_energy_incr` Optional[float].
   - Hessian: `hessian_update` "bfgs" | "bofill"; `hessian_init` "calc"; `hessian_recalc` 200;
-    `hessian_recalc_adapt` 2.0.
+    `hessian_recalc_adapt` None.
   - Numerics: `small_eigval_thresh` 1e-8.
-  - RFO/RS micro-iterations: `alpha0` 1.0; `max_micro_cycles` 25; `rfo_overlaps` False.
+  - RFO/RS micro-iterations: `alpha0` 1.0; `max_micro_cycles` 50; `rfo_overlaps` False.
   - DIIS helpers: `gdiis` True; `gediis` False; `gdiis_thresh` 2.5e-3 (vs RMS(step)); `gediis_thresh` 1.0e-2
     (vs RMS(force)); `gdiis_test_direction` True.
-  - Step model: `adapt_step_func` False.
+  - Step model: `adapt_step_func` True.
 
 Outputs (& Directory Layout)
 ----------------------------
