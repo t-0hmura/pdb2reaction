@@ -141,7 +141,7 @@ DMF_KW: Dict[str, Any] = {
         "pivotal": True,
         "single": True,
         "remove_fourmembered": True,
-        "two_hop_mode": "dense",    # Two-hop construction on the CFB_ENM side
+        "two_hop_mode": "sparse",   # Two-hop construction on the CFB_ENM side
     },
 
     # DirectMaxFlux core options (forwarded via dmf_options)
