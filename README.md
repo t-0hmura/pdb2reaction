@@ -6,13 +6,53 @@ analysis, and DFT single-point post-processing. The command line interface (CLI)
 and growing string methods so that multi-step enzymatic reaction mechanisms can be generated with minimal manual intervention.
 
 ## Installation
+### QUICK Installation (using conda environment and on HPC environment)
+```bash
+module load cuda/12.8
+conda create -n pdb2reaction python=3.11 -y
+conda activate pdb2reaction
 
+conda install -c conda-forge cyipopt -y
+
+pip3 install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+pip3 install git+https://github.com/t-0hmura/pdb2reaction.git
+
+plotly_get_chrome -y
+
+hf auth login --token "<Your Access Token>" --add-to-git-credential
+```
+
+### Step by Step Instruction
+If you use HPC environment module, load CUDA like:
+```bash
+module load cuda/12.8
+```
+
+If you want to use DMF method in MEP search, We recommend using conda to install cyipopt on Linux, Mac, and Windows:
+```bash
+conda create -n pdb2reaction python=3.11 -y
+conda activate pdb2reaction
+
+conda install -c conda-forge cyipopt -y
+```
+
+then, Install appropriate-version pytorch like:
 ```bash
 pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+```
+
+afterthat, Install pdb2reaction itself (and get chrome for visuallization):
+```bash
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
+```
+
+Meta's UMA model is on Hugging Face Hub. You need to log in once:
+```bash
 huggingface-cli login
 ```
+> See https://github.com/facebookresearch/fairchem, https://huggingface.co/facebook/UMA, https://huggingface.co/docs/hub/security-tokens
+
 
 > **Note**: Several dependencies (e.g., `torch`, `fairchem-core`, `gpu4pyscf-cuda12x`) expect a CUDA-capable environment. Refer
 to each project's installation guide when configuring GPUs or HPC nodes.
