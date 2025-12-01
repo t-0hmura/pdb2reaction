@@ -254,6 +254,7 @@ def _run_dmf_mep(
     out_dir_path: Path,
     prepared_inputs: Sequence[PreparedInputStructure],
     max_nodes: int,
+    fix_atoms: Sequence[int],
 ) -> DMFMepResult:
     """Run Direct Max Flux (DMF) MEP optimization between two endpoints."""
 
@@ -276,6 +277,8 @@ def _run_dmf_mep(
     device = str(calc_cfg.get("device", "auto"))
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    fix_atoms = list(sorted(set(map(int, fix_atoms))))
 
     ref_images = [_geom_to_ase(g) for g in geoms]
     primary_prepared = prepared_inputs[0] if prepared_inputs else None
@@ -760,6 +763,14 @@ def cli(
         except Exception as e:
             click.echo(f"[align] WARNING: alignment skipped: {e}", err=True)
 
+        fix_atoms: List[int] = []
+        try:
+            fix_atoms = sorted(
+                {int(i) for g in geoms for i in getattr(g, "freeze_atoms", [])}
+            )
+        except Exception:
+            pass
+
         if mep_mode_kind == "dmf":
             try:
                 dmf_res = _run_dmf_mep(
@@ -768,6 +779,7 @@ def cli(
                     out_dir_path,
                     prepared_inputs,
                     max_nodes,
+                    fix_atoms,
                 )
             except Exception as e:
                 click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
