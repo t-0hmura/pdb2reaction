@@ -40,9 +40,9 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_path_opt/)
   ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line carries per-image energy when available
   ├─ final_geometries.pdb        # Converted from .trj when the *first* endpoint is a PDB
-    ├─ hei.xyz                     # Highest-energy image with energy on the comment line
-    ├─ hei.pdb                     # HEI converted to PDB when the *first* endpoint is a PDB
-    ├─ hei.gjf                     # HEI written using a detected .gjf template, when available
+  ├─ hei.xyz                     # Highest-energy image with energy on the comment line
+  ├─ hei.pdb                     # HEI converted to PDB when the *first* endpoint is a PDB
+  ├─ hei.gjf                     # HEI written using a detected .gjf template, when available
   ├─ align_refine/               # Files from external alignment/refinement
   └─ <optimizer dumps / restarts>  # Emitted when dumping is enabled (e.g., via `--dump` and/or YAML `dump_restart` settings)
 
@@ -445,7 +445,7 @@ def _optimize_single(
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="dmf",
+    default="gsm",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
