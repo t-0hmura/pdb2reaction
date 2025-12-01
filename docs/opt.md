@@ -1,7 +1,7 @@
 # `opt` subcommand
 
 ## Overview
-`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. The command applies settings in the priority order **CLI > `--args-yaml` > built-in defaults**, making it easy to keep heavyweight defaults while selectively overriding options. The optimizer preset now defaults to the RFO-based **`heavy`** mode.
+`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep heavyweight defaults while selectively overriding options. The optimizer preset now defaults to the RFO-based **`heavy`** mode.
 
 When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors outputs into `.pdb` or multi-geometry `.gjf` companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
@@ -72,7 +72,7 @@ YAML values override CLI, which override the defaults below.
 ### `opt`
 Shared optimizer controls used by both LBFGS and RFO:
 - `thresh` presets (Gaussian-like or Baker rule). Presets translate to the force/step thresholds documented in `pdb2reaction/opt.py`.
-- `max_cycles`, `print_every` (`10`), `min_step_norm` (`1e-8`), `assert_min_step`, convergence toggles (`rms_force`, etc.), RMSD-based `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
+- `max_cycles`, `print_every` (`100`), `min_step_norm` (`1e-8`), `assert_min_step`, convergence toggles (`rms_force`, etc.), RMSD-based `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
 - Dumping/bookkeeping fields (`dump`, `dump_restart`, `prefix`, `out_dir`).
 
 ### `lbfgs`
@@ -102,7 +102,7 @@ calc:
 opt:
   thresh: gau
   max_cycles: 10000
-  print_every: 10
+  print_every: 100
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
@@ -120,7 +120,7 @@ opt:
 lbfgs:
   thresh: gau
   max_cycles: 10000
-  print_every: 10
+  print_every: 100
   min_step_norm: 1.0e-08
   assert_min_step: true
   rms_force: null
@@ -161,23 +161,23 @@ rfo:
   dump_restart: false
   prefix: ""
   out_dir: ./result_opt/
-  trust_radius: 0.3
+  trust_radius: 0.1
   trust_update: true
-  trust_min: 0.01
-  trust_max: 0.3
+  trust_min: 0.0
+  trust_max: 0.1
   max_energy_incr: null
   hessian_update: bfgs
   hessian_init: calc
-  hessian_recalc: 100
-  hessian_recalc_adapt: 2.0
+  hessian_recalc: 200
+  hessian_recalc_adapt: null
   small_eigval_thresh: 1.0e-08
   alpha0: 1.0
-  max_micro_cycles: 25
+  max_micro_cycles: 50
   rfo_overlaps: false
   gediis: false
   gdiis: true
   gdiis_thresh: 0.0025
   gediis_thresh: 0.01
   gdiis_test_direction: true
-  adapt_step_func: false
+  adapt_step_func: true
 ```
