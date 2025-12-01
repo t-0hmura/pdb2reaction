@@ -371,7 +371,6 @@ def _run_dmf_mep(
         fbenm_options=fbenm_opts,
         cfbenm_options=cfbenm_opts,
         dmf_options=dmf_opts,
-        update_teval=update_teval,
         k_fix=k_fix,
     )
 
