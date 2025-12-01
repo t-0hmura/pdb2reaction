@@ -2508,6 +2508,18 @@ def cli(
                 "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
                 "diagram": diag_for_log,
             }
+            freeze_for_log: List[int] = []
+            try:
+                freeze_for_log = sorted(
+                    {
+                        int(idx)
+                        for g in geoms
+                        for idx in getattr(g, "freeze_atoms", []) or []
+                    }
+                )
+            except Exception:
+                freeze_for_log = []
+
             summary_payload = {
                 "root_out_dir": str(out_dir_path),
                 "path_dir": str(out_dir_path),
@@ -2523,6 +2535,7 @@ def cli(
                 "command": command_str,
                 "charge": calc_cfg.get("charge"),
                 "spin": calc_cfg.get("spin"),
+                "freeze_atoms": freeze_for_log,
                 "mep": mep_info,
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
