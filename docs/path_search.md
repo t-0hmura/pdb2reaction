@@ -87,7 +87,7 @@ The YAML root must be a mapping. CLI parameters override YAML values. Shared sec
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
-`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, and `max_seq_kink` (max consecutive kink segments before aborting). The legacy `rmsd_align` flag is ignored but kept for compatibility.
+`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, and `kink_max_nodes`. The legacy `rmsd_align` flag is ignored but kept for compatibility.
 
 ```yaml
 geom:
@@ -210,5 +210,4 @@ search:
   max_nodes_segment: 10
   max_nodes_bridge: 5
   kink_max_nodes: 3
-  max_seq_kink: 2
 ```
