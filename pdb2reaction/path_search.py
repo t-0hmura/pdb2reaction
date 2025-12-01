@@ -200,6 +200,22 @@ from .trj2fig import run_trj2fig
 from .bond_changes import compare_structures, summarize_changes
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+
+def _close_matplotlib_figures() -> None:
+    """Best-effort cleanup for matplotlib figures to avoid open-figure warnings."""
+
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+
+        plt.close("all")
+    except Exception:
+        pass
+
+
 # YAML helper to preserve multiline blocks for bond-change summaries in summary.yaml
 class _LiteralStr(str):
     """String marker to force literal block style when dumping YAML."""
@@ -641,6 +657,7 @@ def _run_mep_between(
     try:
         if wrote_with_energy:
             run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            _close_matplotlib_figures()
             click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
         else:
             click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
@@ -779,6 +796,7 @@ def _run_dmf_between(
 
     try:
         run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+        _close_matplotlib_figures()
         click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
@@ -2217,6 +2235,7 @@ def cli(
             click.echo(f"[write] Wrote '{final_trj}'.")
             try:
                 run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+                _close_matplotlib_figures()
                 click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
             except Exception as e:
                 click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
@@ -2229,6 +2248,7 @@ def cli(
                 _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, tmp_trj_path)
                 try:
                     run_trj2fig(tmp_trj_path, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+                    _close_matplotlib_figures()
                     click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
                 except Exception as e:
                     click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
