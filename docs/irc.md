@@ -27,7 +27,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## Workflow
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. If the source is `.pdb`, EulerPC trajectories are automatically converted to PDB using the original topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens.
-2. **Configuration merge** – Defaults → YAML (`geom`, `calc`, `irc`) → CLI overrides. Charge/multiplicity inherit `.gjf` template metadata when available; otherwise `-q/--charge` is required and multiplicity defaults to `1`. Always set them explicitly to remain on the intended PES.
+2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available; otherwise `-q/--charge` is required and multiplicity defaults to `1`. Always set them explicitly to remain on the intended PES.
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
 4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, for PDB inputs, mirrored to `.pdb`. Optional HDF5 dumps capture per-step frames when `dump_every` > 0.
 
@@ -55,13 +55,13 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## Notes
-- CLI booleans (`--forward`, `--backward`) must be spelled out (`True`/`False`) to override YAML.
+- CLI booleans (`--forward`, `--backward`) must be spelled out (`True`/`False`) to be merged into YAML when desired.
 - UMA is reused throughout the IRC; aggressive `step_length` values can destabilise EulerPC.
 - Charge/spin inherit `.gjf` metadata when possible; override them explicitly for non-standard states.
 - `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; CLI overrides YAML. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values override the merged `calc` block.
+Provide a mapping; YAML overrides CLI. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.

@@ -137,7 +137,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-pdb` option of `path_search` is intentionally hidden in this wrapper.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to GSM/tsopt/freq/DFT; single-structure runs still require either `--scan-lists` or `--tsopt True`.
-- `--args-yaml` lets you coordinate all calculators from a single configuration file. CLI flags always override YAML values.
+- `--args-yaml` lets you coordinate all calculators from a single configuration file. YAML values override CLI flags.
 
 ## YAML configuration (`--args-yaml`)
 The same YAML file is forwarded unchanged to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
@@ -148,7 +148,7 @@ The same YAML file is forwarded unchanged to **every** invoked subcommand. Each 
 - [`freq`](freq.md#yaml-configuration-args-yaml): `geom`, `calc`, `freq`, `thermo`.
 - [`dft`](dft.md#yaml-configuration-args-yaml): `dft`.
 
-Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` are shared across modules, while module-specific blocks (for example `freq` or `dft`) apply only where supported. CLI values always take precedence over the YAML contents.
+Include whichever sections you need at the YAML root; overlapping names such as `geom`, `calc`, or `opt` are shared across modules, while module-specific blocks (for example `freq` or `dft`) apply only where supported. YAML contents take precedence over CLI values when both are provided.
 
 Example snippet combining shared and module-specific sections:
 

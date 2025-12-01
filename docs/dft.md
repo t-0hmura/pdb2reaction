@@ -59,7 +59,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
-Accepts a mapping with top-level key `dft`. CLI overrides YAML values.
+Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).

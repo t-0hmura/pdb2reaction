@@ -26,7 +26,7 @@ Description
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
 - Optimizers: LBFGS ("light") or RFOptimizer ("heavy", default).
-- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** CLI > YAML > built-in defaults.
+- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** YAML > CLI > built-in defaults.
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
 - Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those
@@ -109,7 +109,7 @@ Notes
   aborts on large uphill steps.
 - **Exit codes:** 0 (success); 2 (`ZeroStepLength`); 3 (`OptimizationError`); 130 (keyboard interrupt);
   1 (unhandled error).
-- **Precedence:** Settings are applied with the precedence **CLI > YAML > internal defaults**.
+- **Precedence:** Settings are applied with the precedence **YAML > CLI > internal defaults**.
 """
 
 from pathlib import Path
@@ -592,7 +592,16 @@ def cli(
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg = dict(RFO_KW)
 
-        # Merge YAML → defaults
+        # CLI overrides (defaults ← CLI)
+        calc_cfg["charge"] = charge
+        calc_cfg["spin"] = spin
+        opt_cfg["max_cycles"] = int(max_cycles)
+        opt_cfg["dump"] = bool(dump)
+        opt_cfg["out_dir"] = out_dir
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
+
+        # YAML has highest precedence (defaults ← CLI ← YAML)
         apply_yaml_overrides(
             yaml_cfg,
             [
@@ -603,15 +612,6 @@ def cli(
                 (rfo_cfg, (("rfo",),)),
             ],
         )
-
-        # CLI overrides (CLI > YAML)
-        calc_cfg["charge"] = charge
-        calc_cfg["spin"] = spin
-        opt_cfg["max_cycles"] = int(max_cycles)
-        opt_cfg["dump"] = bool(dump)
-        opt_cfg["out_dir"] = out_dir
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
 
         # Optionally infer "freeze_atoms" from link hydrogens in PDB
         if freeze_links and input_path.suffix.lower() == ".pdb":

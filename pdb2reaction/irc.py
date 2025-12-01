@@ -64,10 +64,7 @@ All files honor ``irc.prefix`` when it is set; the directory is created if missi
 
 Notes
 -----
-- CLI overrides YAML for:
-  `charge`→`calc.charge`, `mult`→`calc.spin`, `step-size`→`irc.step_length`, `max-cycles`→`irc.max_cycles`,
-  `root`→`irc.root`, `forward`→`irc.forward`, `backward`→`irc.backward`, `out-dir`→`irc.out_dir`,
-  `hessian-calc-mode`→`calc.hessian_calc_mode`.
+- YAML overrides CLI for overlapping keys such as `calc.charge`, `calc.spin`, IRC step control, and output paths.
 - UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
   the calculator selects GPU/CPU automatically. If `hessian_calc_mode: "FiniteDifference"`,
   `geom.freeze_atoms` can be used to skip frozen DOF in FD Hessian construction.
@@ -243,22 +240,13 @@ def cli(
         time_start = time.perf_counter()
 
         # --------------------------
-        # 1) Assemble configuration: defaults -> YAML overrides -> CLI overrides
+        # 1) Assemble configuration: defaults -> CLI overrides -> YAML overrides
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
         geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
         calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
         irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
-
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (irc_cfg, (("irc",),)),
-            ],
-        )
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)
@@ -279,6 +267,15 @@ def cli(
             irc_cfg["backward"] = bool(backward)
         if out_dir:
             irc_cfg["out_dir"] = str(out_dir)
+
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (irc_cfg, (("irc",),)),
+            ],
+        )
 
         # Normalize any existing freeze list and optionally augment with link parents
         merged_freeze = merge_freeze_atom_indices(geom_cfg)

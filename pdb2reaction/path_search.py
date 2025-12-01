@@ -69,7 +69,7 @@ The method runs a Growing String Method (GSM) to localize barriers and **recursi
 regions that exhibit covalent bond changes. Kinks (no bond change) are represented by linearly interpolated,
 individually optimized images. Multi‑structure inputs are processed per adjacent pair and stitched into a single MEP.
 A single UMA calculator (uma_pysis) is shared serially across all stages. Configuration precedence:
-**CLI > YAML > defaults**.
+**YAML > CLI > defaults**.
 
 Workflow
 --------
@@ -1927,7 +1927,7 @@ def cli(
             _PRIMARY_GJF_TEMPLATE = next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None)
 
         # --------------------------
-        # 1) Resolve settings (defaults ← YAML ← CLI)
+        # 1) Resolve settings (defaults ← CLI ← YAML)
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
@@ -1939,20 +1939,6 @@ def cli(
         rfo_cfg   = dict(_RFO_KW)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
-
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
-                (bond_cfg, (("bond",),)),
-                (search_cfg, (("search",),)),
-            ],
-        )
 
         resolved_charge = charge
         resolved_spin = spin
@@ -1990,6 +1976,21 @@ def cli(
         rfo_cfg["dump"]   = bool(dump)
         lbfgs_cfg["out_dir"] = out_dir
         rfo_cfg["out_dir"]   = out_dir
+
+        # YAML overrides (highest precedence)
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (gs_cfg, (("gs",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
+                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+                (bond_cfg, (("bond",),)),
+                (search_cfg, (("search",),)),
+            ],
+        )
 
         opt_kind = opt_mode.strip().lower()
         if opt_kind == "light":

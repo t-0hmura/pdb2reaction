@@ -86,7 +86,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
   and multiplicity defaults to `1`. Override them explicitly to ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; CLI values override YAML. Shared sections reuse
+Provide a mapping; YAML values override CLI. Shared sections reuse
 [`opt`](opt.md#yaml-configuration-args-yaml).
 
 ```yaml

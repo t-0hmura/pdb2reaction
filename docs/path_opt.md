@@ -64,7 +64,7 @@ out_dir/
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle GSM progress with timing information.
 
 ## YAML configuration (`--args-yaml`)
-CLI inputs override YAML, which override the defaults listed below.
+YAML inputs override CLI, which override the defaults listed below.
 
 ### `geom`
 - Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
