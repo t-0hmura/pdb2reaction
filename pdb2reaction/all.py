@@ -1739,7 +1739,7 @@ def _irc_and_match(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help=(
         "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "
@@ -1767,7 +1767,7 @@ def _irc_and_match(
     "--refine-path",
     "refine_path",
     type=click.BOOL,
-    default=False,
+    default=True,
     show_default=True,
     help=(
         "If True, run recursive path_search on the full ordered series; if False, run a single-pass "

@@ -1767,7 +1767,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="Single-structure optimizer: light (=LBFGS) or heavy (=RFO).",
 )

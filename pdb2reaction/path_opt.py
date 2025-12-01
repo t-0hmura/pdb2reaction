@@ -498,7 +498,7 @@ def _optimize_single(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="Single-structure optimizer for endpoint preoptimization: light (=LBFGS) or heavy (=RFO).",
 )
