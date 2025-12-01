@@ -2305,6 +2305,10 @@ def cli(
         tsroot = out_dir / "tsopt_single"
         _ensure_dir(tsroot)
 
+        # In TSOPT-only mode, no MEP search is performed. Use a placeholder for
+        # MEP-related fields in downstream summaries.
+        mep_mode_kind = "---"
+
         ts_initial_pdb = pocket_outputs[0] if not skip_extract else input_paths[0].resolve()
 
         ts_pdb, g_ts = _run_tsopt_on_hei(
