@@ -779,12 +779,21 @@ def _run_dmf_between(
     seg_dir = out_dir / f"{tag}_mep"
     seg_dir.mkdir(parents=True, exist_ok=True)
 
+    fix_atoms: List[int] = []
+    try:
+        fix_atoms = sorted(
+            {int(i) for g in [gA,gB] for i in getattr(g, "freeze_atoms", [])}
+        )
+    except Exception:
+        pass
+
     dmf_res = _run_dmf_mep(
         geoms=[gA, gB],
         calc_cfg=calc_cfg,
         out_dir_path=seg_dir,
         prepared_inputs=prepared_inputs,
         max_nodes=max_nodes,
+        fix_atoms,
     )
 
     energies = list(map(float, dmf_res.energies))
