@@ -25,6 +25,19 @@ def _fmt_bool(val: Optional[Any]) -> str:
 
 
 
+def _format_freeze_atoms(indices: Optional[Iterable[Any]]) -> str:
+    if indices is None:
+        return "-"
+
+    try:
+        normalized = sorted({int(i) for i in indices})
+    except Exception:
+        return "-"
+
+    return f"[{','.join(map(str, normalized))}]" if normalized else "[]"
+
+
+
 def _shorten_path(path: Optional[Path], root_out: Optional[Path]) -> str:
     """Return a User-friendly path string relative to ``root_out`` when possible."""
 
@@ -284,6 +297,9 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"UMA model          : {uma_model}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
+    lines.append(
+        f"Freeze atoms (0-based): {_format_freeze_atoms(payload.get('freeze_atoms'))}"
+    )
     lines.append("")
 
     mep = payload.get("mep", {}) or {}
