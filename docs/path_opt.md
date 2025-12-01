@@ -1,7 +1,7 @@
 # `path-opt` subcommand
 
 ## Overview
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. DMF is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
 
 ## Usage
 ```bash
@@ -37,14 +37,14 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
 | `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
-| `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `dmf` |
+| `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
 | `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump BOOL` | Dump GSM trajectories/restarts. | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `light` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
-| `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | YAML/default |
+| `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | `baker` |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
 | `--preopt BOOL` | Pre-optimise each endpoint with the selected single-structure optimizer before alignment/GSM. | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |

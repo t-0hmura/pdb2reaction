@@ -1,7 +1,7 @@
 # `path-search` subcommand
 
 ## Overview
-Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. With `--mep-mode dmf`, the same recursive workflow runs using DMF-generated segments instead of GSM, and **DMF is now the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist.
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. With `--mep-mode dmf`, the same recursive workflow runs using DMF-generated segments instead of GSM, and **GSM is now the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist.
 
 ## Usage
 ```bash
@@ -38,11 +38,11 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--max-cycles INT` | Maximum GSM optimization cycles. | `300` |
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
-| `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `dmf` |
+| `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
-| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
+| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 | `--preopt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before GSM (recommended). | `True` |
 | `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |
@@ -166,7 +166,7 @@ dmf:
   k_fix: 100.0
 sopt:
   lbfgs:
-    thresh: gau
+    thresh: baker
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08
@@ -192,7 +192,7 @@ sopt:
     mu_reg: null
     max_mu_reg_adaptions: 10
   rfo:
-    thresh: gau
+    thresh: baker
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08

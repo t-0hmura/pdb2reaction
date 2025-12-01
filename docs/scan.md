@@ -63,7 +63,7 @@ pdb2reaction scan -i input.pdb -q 0 \
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | Inherit YAML |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--endopt BOOL` | Run an unbiased optimization after each stage. | `True` |
@@ -129,7 +129,7 @@ calc:
   hessian_calc_mode: Analytical
   return_partial_hessian: true
 opt:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -147,7 +147,7 @@ opt:
   prefix: ""
   out_dir: ./result_scan/
 lbfgs:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -173,7 +173,7 @@ lbfgs:
   mu_reg: null
   max_mu_reg_adaptions: 10
 rfo:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08

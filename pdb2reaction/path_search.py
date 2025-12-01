@@ -29,7 +29,7 @@ Recommended/common:
     --opt-mode
         Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default light.
     --mep-mode
-        Segment generator: GSM (string) or DMF (direct max flux); default dmf.
+        Segment generator: GSM (string) or DMF (direct max flux); default gsm.
     --max-nodes
         Internal nodes for segment GSM; default 10.
     --max-cycles
@@ -1765,7 +1765,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="dmf",
+    default="gsm",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -1814,7 +1814,8 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--thresh",
     type=str,
-    default=None,
+    default="baker",
+    show_default=True,
     help="Convergence preset for GSM and single optimizations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(

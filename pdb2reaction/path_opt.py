@@ -28,7 +28,7 @@ Description
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
 - Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: YAML > CLI > built-in defaults.
 - Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light", default) or RFO ("heavy") before alignment and GSM. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
-- Path generator: `--mep-mode` accepts GSM or DMF, with DMF enabled by default to match the CLI default.
+- Path generator: `--mep-mode` accepts GSM or DMF, with GSM enabled by default to match the CLI default.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is available via YAML but is disabled by default; the CLI does not toggle it.
 - `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
@@ -516,7 +516,7 @@ def _optimize_single(
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="dmf",
+    default="gsm",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -591,7 +591,8 @@ def _optimize_single(
 @click.option(
     "--thresh",
     type=str,
-    default=None,
+    default="baker",
+    show_default=True,
     help="Convergence preset for the string optimizer, pre-alignment refinement, and endpoint preoptimization (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(

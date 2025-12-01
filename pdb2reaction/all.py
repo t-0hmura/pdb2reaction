@@ -1711,7 +1711,7 @@ def _irc_and_match(
 @click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="dmf",
+    default="gsm",
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
@@ -1777,7 +1777,8 @@ def _irc_and_match(
 @click.option(
     "--thresh",
     type=str,
-    default=None,
+    default="baker",
+    show_default=True,
     help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
