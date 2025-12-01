@@ -281,6 +281,17 @@ from . import irc as _irc_cli
 # -----------------------------
 
 
+def _close_matplotlib_figures() -> None:
+    """Best-effort cleanup for matplotlib figures to avoid open-figure warnings."""
+
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+
+        plt.close("all")
+    except Exception:
+        pass
+
+
 def _ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
@@ -998,6 +1009,7 @@ def _merge_irc_trajectories_to_single_plot(
 
     try:
         run_trj2fig(tmp_trj, [out_png], unit="kcal", reference="init", reverse_x=False)
+        _close_matplotlib_figures()
         click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_png}")
     except Exception as e:
         click.echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}", err=True)
@@ -1530,6 +1542,7 @@ def _irc_and_match(
     try:
         if finished_trj.exists():
             run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
+            _close_matplotlib_figures()
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
 
@@ -3046,6 +3059,7 @@ def cli(
 
         try:
             run_trj2fig(final_trj, [path_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            _close_matplotlib_figures()
             click.echo(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
