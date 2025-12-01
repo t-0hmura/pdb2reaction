@@ -265,7 +265,7 @@ def _run_dmf_mep(
         from torch_dmf import DirectMaxFlux, interpolate_fbenm
     except Exception as e:
         raise RuntimeError(
-            "DMF mode requires torch, ase, fairchem, and torch_dmf to be installed."
+            "DMF mode requires torch, ase, fairchem, cyiopt, and torch_dmf to be installed."
         ) from e
 
     def _geom_to_ase(g: Any):
@@ -311,6 +311,8 @@ def _run_dmf_mep(
         output_file=str(out_dir_path / "dmf_fbenm_ipopt.out"),
         device=device,
         dtype="float64",
+        fix_atoms=fix_atoms,
+        dmf_options={"remove_rotation_and_translation": False},
     )
 
     initial_trj = out_dir_path / "dmf_initial.trj"
@@ -331,6 +333,8 @@ def _run_dmf_mep(
         update_teval=True,
         device=device,
         dtype="float64",
+        fix_atoms=fix_atoms,
+        remove_rotation_and_translation=False,
     )
 
     for image in mxflx.images:
