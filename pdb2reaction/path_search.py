@@ -10,6 +10,7 @@ Usage (CLI)
                             [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
                             [--max-nodes N] [--max-cycles N] [--climb BOOL]
                             [--opt-mode light|heavy] [--dump BOOL]
+                            [--convert-files/--no-convert-files]
                             [--out-dir DIR] [--preopt BOOL]
                             [--align/--no-align] [--ref-pdb FILE ...]
                             [--args-yaml FILE]
@@ -26,9 +27,9 @@ Recommended/common:
         Spin multiplicity (2S+1); defaults to a .gjf template value when available,
         otherwise 1 when omitted.
     --opt-mode
-        Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default heavy.
+        Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default light.
     --mep-mode
-        Segment generator: GSM (string) or DMF (direct max flux); default gsm.
+        Segment generator: GSM (string) or DMF (direct max flux); default dmf.
     --max-nodes
         Internal nodes for segment GSM; default 10.
     --max-cycles
@@ -50,6 +51,8 @@ Recommended/common:
         Output directory; default ./result_path_search/
     --dump {True|False}
         Save optimizer dumps; default False.
+    --convert-files/--no-convert-files
+        Convert XYZ/TRJ outputs into format-aware PDB/GJF companions; default on.
     --freeze-links {True|False}
         Freeze parents of link hydrogens for PDB input; default True.
 
