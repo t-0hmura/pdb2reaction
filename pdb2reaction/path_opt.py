@@ -270,8 +270,16 @@ def _run_dmf_mep(
 
     def _geom_to_ase(g: Any):
         from io import StringIO
+        from ase.constraints import FixAtoms
 
-        return ase_read(StringIO(g.as_xyz()), format="xyz")
+        atoms = ase_read(StringIO(g.as_xyz()), format="xyz")
+        freeze = getattr(g, "freeze_atoms", None)
+        if freeze is not None:
+            freeze_idx = np.array(freeze, dtype=int).tolist()
+            if len(freeze_idx) > 0:
+                atoms.set_constraint(FixAtoms(indices=freeze_idx))
+
+        return atoms
 
     device = str(calc_cfg.get("device", "auto"))
     if device == "auto":
