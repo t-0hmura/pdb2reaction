@@ -355,6 +355,7 @@ def _run_dmf_mep(
     fbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("fbenm_options", {}))
     cfbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("cfbenm_options", {}))
     dmf_opts: Dict[str, Any] = dict(dmf_cfg.get("dmf_options", {}))
+    update_teval = bool(dmf_opts.pop("update_teval", False))
     k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
 
     mxflx_fbenm = interpolate_fbenm(
@@ -370,6 +371,7 @@ def _run_dmf_mep(
         fbenm_options=fbenm_opts,
         cfbenm_options=cfbenm_opts,
         dmf_options=dmf_opts,
+        update_teval=update_teval,
         k_fix=k_fix,
     )
 
@@ -388,7 +390,7 @@ def _run_dmf_mep(
         ref_images,
         coefs=coefs,
         nmove=max(1, int(max_nodes)),
-        update_teval=bool(dmf_opts.get("update_teval", False)),
+        update_teval=update_teval,
         device=device,
         dtype="float64",
         fix_atoms=fix_atoms,
