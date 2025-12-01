@@ -627,19 +627,6 @@ def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List
     return _FREEZE_ATOMS_GLOBAL
 
 
-def _freeze_atoms_for_log(freeze_links_flag: bool) -> List[int]:
-    if not freeze_links_flag:
-        return []
-
-    if _FREEZE_ATOMS_GLOBAL is not None:
-        try:
-            return sorted({int(i) for i in _FREEZE_ATOMS_GLOBAL})
-        except Exception:
-            return []
-
-    return []
-
-
 # ---------- Post-processing helpers ----------
 
 
@@ -2702,7 +2689,6 @@ def cli(
                     "command": command_str,
                     "charge": q_int,
                     "spin": spin,
-                    "freeze_atoms": _freeze_atoms_for_log(freeze_links_flag),
                     "mep": {"n_images": n_images, "n_segments": 1},
                     "segments": summary.get("segments", []),
                     "energy_diagrams": summary.get("energy_diagrams", []),
@@ -3236,7 +3222,6 @@ def cli(
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
-                "freeze_atoms": _freeze_atoms_for_log(freeze_links_flag),
                 "mep": mep_info,
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
@@ -3416,7 +3401,6 @@ def cli(
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
-                "freeze_atoms": _freeze_atoms_for_log(freeze_links_flag),
                 "mep": mep_info,
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
