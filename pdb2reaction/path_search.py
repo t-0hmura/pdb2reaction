@@ -2330,6 +2330,7 @@ def cli(
         # --------------------------
         diagram_payload: Optional[Dict[str, Any]] = None
         try:
+            # Map frames to segment indices (for anchoring R/P energies in Hartree)
             frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
             seg_to_frames: Dict[int, List[int]] = {}
             for ii, sidx in enumerate(frame_seg_indices):
@@ -2337,57 +2338,15 @@ def cli(
                     continue
                 seg_to_frames.setdefault(int(sidx), []).append(ii)
 
-            ts_groups: List[Dict[str, Any]] = []
-            ts_count = 0
-            current: Optional[Dict[str, Any]] = None
-
-            for s in combined_all.segments:
-                idxs = seg_to_frames.get(int(s.seg_index), [])
-                if not idxs:
-                    continue
-
-                if s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)":
-                    ts_count += 1
-                    imax = max(idxs, key=lambda j: combined_all.energies[j])
-                    ts_e = float(combined_all.energies[imax])
-                    first_im_e = float(combined_all.energies[idxs[-1]])
-                    current = {
-                        "ts_label": f"TS{ts_count}",
-                        "ts_energy": ts_e,
-                        "first_im_energy": first_im_e,
-                        "tail_im_energy": first_im_e,
-                        "has_extra": False,
-                        "index": ts_count,
-                        "bridge_peaks": [],
-                    }
-                    ts_groups.append(current)
-                else:
-                    if current is not None:
-                        if s.kind == "bridge":
-                            barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
-                            if np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
-                                seg_energies = [float(combined_all.energies[j]) for j in idxs]
-                                peak_e = float(max(seg_energies)) if seg_energies else None
-                                if peak_e is not None:
-                                    peaks = current.setdefault("bridge_peaks", [])
-                                    suffix = "" if len(peaks) == 0 else f"_{len(peaks) + 1}"
-                                    peak_label = f"IM{current['index']}_TS{suffix}"
-                                    peaks.append({"label": peak_label, "energy": peak_e})
-                                    click.echo(
-                                        "    [bridge] Recorded diagram-only TS peak "
-                                        f"{peak_label} at {peak_e:.6f} au (bridge segments skip tsopt/thermo/DFT)."
-                                    )
-
-                        current["tail_im_energy"] = float(combined_all.energies[idxs[-1]])
-                        current["has_extra"] = True
-
-            # Clip endpoints to first/last bond‑change segment edges
-            start_idx_for_diag = 0
-            end_idx_for_diag = len(combined_all.energies) - 1
+            # Bond‑change segments in the final MEP order
             bc_segments_in_order: List[SegmentReport] = [
                 s for s in combined_all.segments
                 if (s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)")
             ]
+
+            # Determine which frames to use as R and P for anchoring energies in au
+            start_idx_for_diag = 0
+            end_idx_for_diag = len(combined_all.energies) - 1
             if bc_segments_in_order:
                 first_bc = bc_segments_in_order[0]
                 last_bc = bc_segments_in_order[-1]
@@ -2398,40 +2357,125 @@ def cli(
                 if idxs_last_bc:
                     end_idx_for_diag = int(idxs_last_bc[-1])
 
-            labels: List[str] = ["R"]
-            energies_au: List[float] = [float(combined_all.energies[start_idx_for_diag])]
-            chain_tokens: List[str] = ["R"]
+            E0_au = float(combined_all.energies[start_idx_for_diag])
+            EP_au = float(combined_all.energies[end_idx_for_diag])
 
-            for i, g in enumerate(ts_groups, start=1):
-                last_group = (i == len(ts_groups))
+            # Build TS groups and compressed state energies purely from segment-level ΔE / ΔE‡
+            ts_groups: List[Dict[str, Any]] = []
+            ts_count = 0
+            current: Optional[Dict[str, Any]] = None
+            # Energy of the current state relative to R (in kcal/mol)
+            E_current_kcal = 0.0
 
-                labels.append(g["ts_label"])
-                energies_au.append(g["ts_energy"])
-                chain_tokens.extend(["-->", g["ts_label"]])
+            def _is_bond_change_seg(seg: SegmentReport) -> bool:
+                return (
+                    seg.kind == "seg"
+                    and bool(seg.summary)
+                    and seg.summary.strip() != "(no covalent changes detected)"
+                )
 
-                if last_group:
-                    continue
+            for s in combined_all.segments:
+                if _is_bond_change_seg(s):
+                    ts_count += 1
+                    barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
+                    delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
+                    if not np.isfinite(barrier_kcal):
+                        barrier_kcal = 0.0
+                    if not np.isfinite(delta_kcal):
+                        delta_kcal = 0.0
 
-                labels.append(f"IM{i}_1")
-                energies_au.append(g["first_im_energy"])
-                chain_tokens.extend(["-->", f"IM{i}_1"])
+                    ts_e = E_current_kcal + barrier_kcal
+                    first_im_e = E_current_kcal + delta_kcal
 
-                for bp in g.get("bridge_peaks", []):
-                    labels.append(bp["label"])
-                    energies_au.append(bp["energy"])
-                    chain_tokens.extend(["-->", bp["label"]])
+                    current = {
+                        "ts_label": f"TS{ts_count}",
+                        "ts_energy": ts_e,
+                        "first_im_energy": first_im_e,
+                        "tail_im_energy": first_im_e,
+                        "has_extra": False,
+                        "index": ts_count,
+                        "bridge_peaks": [],
+                    }
+                    ts_groups.append(current)
+                    E_current_kcal = first_im_e
+                else:
+                    # Segments without covalent changes (bridge or kinks) belong to
+                    # the current TS block if one exists.
+                    if current is None:
+                        # Before the first bond‑change segment: accumulate net ΔE if available.
+                        delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
+                        if np.isfinite(delta_kcal):
+                            E_current_kcal += delta_kcal
+                        continue
 
-                if g["has_extra"]:
-                    labels.append(f"IM{i}_2")
-                    energies_au.append(g["tail_im_energy"])
-                    chain_tokens.extend(["-|-->", f"IM{i}_2"])
+                    delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
+                    barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
 
-            labels.append("P")
-            energies_au.append(float(combined_all.energies[end_idx_for_diag]))
-            chain_tokens.extend(["-->", "P"])
+                    if s.kind == "bridge":
+                        if np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
+                            peak_e = E_current_kcal + barrier_kcal
+                            peaks = current.setdefault("bridge_peaks", [])
+                            suffix = "" if len(peaks) == 0 else f"_{len(peaks) + 1}"
+                            peak_label = f"IM{current['index']}_TS{suffix}"
+                            peaks.append({"label": peak_label, "energy": peak_e})
+                            # Log the corresponding peak in au for debugging
+                            peak_e_au = E0_au + peak_e / AU2KCALPERMOL
+                            click.echo(
+                                "    [bridge] Recorded diagram-only TS peak "
+                                f"{peak_label} at {peak_e_au:.6f} au "
+                                "(from segment-level ΔE‡; bridge segments skip tsopt/thermo/DFT)."
+                            )
 
-            e0 = energies_au[0]
-            energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_au]
+                    if np.isfinite(delta_kcal):
+                        E_current_kcal += delta_kcal
+                        current["tail_im_energy"] = E_current_kcal
+                        current["has_extra"] = True
+
+            # Assemble labels and energies in kcal/mol
+            labels: List[str]
+            energies_kcal: List[float]
+            chain_tokens: List[str]
+
+            if not ts_groups:
+                # No bond‑change segments: simple R→P diagram
+                labels = ["R", "P"]
+                energies_kcal = [0.0, (EP_au - E0_au) * AU2KCALPERMOL]
+                chain_tokens = ["R", "-->", "P"]
+            else:
+                labels = ["R"]
+                energies_kcal = [0.0]
+                chain_tokens = ["R"]
+
+                for i, g in enumerate(ts_groups, start=1):
+                    last_group = (i == len(ts_groups))
+
+                    labels.append(g["ts_label"])
+                    energies_kcal.append(float(g["ts_energy"]))
+                    chain_tokens.extend(["-->", g["ts_label"]])
+
+                    if last_group:
+                        continue
+
+                    labels.append(f"IM{i}_1")
+                    energies_kcal.append(float(g["first_im_energy"]))
+                    chain_tokens.extend(["-->", f"IM{i}_1"])
+
+                    for bp in g.get("bridge_peaks", []):
+                        labels.append(str(bp["label"]))
+                        energies_kcal.append(float(bp["energy"]))
+                        chain_tokens.extend(["-->", str(bp["label"])])
+
+                    if g["has_extra"]:
+                        labels.append(f"IM{i}_2")
+                        energies_kcal.append(float(g["tail_im_energy"]))
+                        chain_tokens.extend(["-|-->", f"IM{i}_2"])
+
+                labels.append("P")
+                energies_kcal.append(E_current_kcal)
+                chain_tokens.extend(["-->", "P"])
+
+            # Convert back to Hartree (au) for completeness in the summary
+            energies_au: List[float] = [E0_au + ek / AU2KCALPERMOL for ek in energies_kcal]
 
             diagram_payload = {
                 "name": "energy_diagram_MEP",
