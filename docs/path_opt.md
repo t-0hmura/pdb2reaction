@@ -72,6 +72,39 @@ YAML inputs override CLI, which override the defaults listed below.
 ### `calc`
 - UMA calculator setup identical to the single-structure optimization (`model`, `device`, neighbour radii, Hessian options, etc.).
 
+### `dmf`
+- Direct Max Flux + (C)FB-ENM interpolation controls. Keys mirror the CLI-accessible `dmf` block:
+```yaml
+dmf:
+  correlated: true              # Add correlated CFB_ENM corrections
+  sequential: true              # Stage barrier construction
+  fbenm_only_endpoints: false   # Use all images (not only endpoints) for ENM references
+  fbenm_options:
+    delta_scale: 0.2            # Distance penalty width scaling
+    bond_scale: 1.25            # Bond cutoff multiplier
+    fix_planes: true            # Preserve planarity with plane restraints
+    two_hop_mode: sparse        # 2-hop neighbor construction for FB_ENM
+  cfbenm_options:
+    bond_scale: 1.25
+    corr0_scale: 1.10
+    corr1_scale: 1.50
+    corr2_scale: 1.60
+    eps: 0.05
+    pivotal: true
+    single: true
+    remove_fourmembered: true
+    two_hop_mode: dense         # 2-hop neighbor construction for CFB_ENM
+  dmf_options:
+    remove_rotation_and_translation: false
+    mass_weighted: false
+    parallel: false
+    eps_vel: 0.01
+    eps_rot: 0.01
+    beta: 10.0                  # Geometric-action beta
+    update_teval: false         # Leave node updates to interpolate_fbenm
+  k_fix: 100.0                  # Harmonic restraint strength on fixed atoms [eV/Å^2]
+```
+
 ### `gs`
 - Controls the Growing String representation: `max_nodes`, `perp_thresh`, reparametrisation cadence (`reparam_check`, `reparam_every`, `reparam_every_full`, `param`), `max_micro_cycles`, DLC resets, climb toggles/thresholds, and optional scheduler hooks.
 
@@ -123,4 +156,32 @@ opt:
   coord_diff_thresh: 0.0
   out_dir: ./result_path_opt/
   print_every: 5
+dmf:
+  correlated: true
+  sequential: true
+  fbenm_only_endpoints: false
+  fbenm_options:
+    delta_scale: 0.2
+    bond_scale: 1.25
+    fix_planes: true
+    two_hop_mode: sparse
+  cfbenm_options:
+    bond_scale: 1.25
+    corr0_scale: 1.1
+    corr1_scale: 1.5
+    corr2_scale: 1.6
+    eps: 0.05
+    pivotal: true
+    single: true
+    remove_fourmembered: true
+    two_hop_mode: dense
+  dmf_options:
+    remove_rotation_and_translation: false
+    mass_weighted: false
+    parallel: false
+    eps_vel: 0.01
+    eps_rot: 0.01
+    beta: 10.0
+    update_teval: false
+  k_fix: 100.0
 ```
