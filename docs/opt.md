@@ -42,7 +42,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 | `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB/GJF companions for inputs with PDB/Gaussian templates. | `--convert-files` |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
-| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | YAML/default |
+| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--args-yaml FILE` | Supply YAML overrides (sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`). | _None_ |
 
 ## Outputs
@@ -100,7 +100,7 @@ calc:
   hessian_calc_mode: Analytical
   return_partial_hessian: true
 opt:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -118,7 +118,7 @@ opt:
   prefix: ""
   out_dir: ./result_opt/
 lbfgs:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -144,7 +144,7 @@ lbfgs:
   mu_reg: null
   max_mu_reg_adaptions: 10
 rfo:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 10
   min_step_norm: 1.0e-08

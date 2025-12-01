@@ -79,7 +79,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
-| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ (use YAML/default) |
+| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (use YAML/default) |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
@@ -132,7 +132,7 @@ calc:
   hessian_calc_mode: Analytical
   return_partial_hessian: true
 opt:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -151,7 +151,7 @@ opt:
   out_dir: ./result_tsopt/
 hessian_dimer:
   thresh_loose: gau_loose
-  thresh: gau
+  thresh: baker
   update_interval_hessian: 1000
   neg_freq_thresh_cm: 5.0
   flatten_amp_ang: 0.1
@@ -181,7 +181,7 @@ hessian_dimer:
     write_orientations: true
     forward_hessian: true
   lbfgs:
-    thresh: gau
+    thresh: baker
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08
@@ -207,7 +207,7 @@ hessian_dimer:
     mu_reg: null
     max_mu_reg_adaptions: 10
 rsirfo:
-  thresh: gau
+  thresh: baker
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
