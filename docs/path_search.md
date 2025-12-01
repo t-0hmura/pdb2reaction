@@ -39,7 +39,6 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `heavy` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `dmf` |
-| `--refine-mode {minima\|peak}` | Choose refinement endpoints: `minima` (nearest local minima on each side of the HEI) or `peak` (HEI±1). | `minima` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
@@ -51,7 +50,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 
 ## Workflow
 1. **Initial GSM per pair** – run `GrowingString` between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
-2. **Local relaxation around HEI** – by default (`--refine-mode minima`), locate the nearest local minima on each side of the HEI (endpoints count when they qualify) and optimize them with the chosen single-structure optimizer (`opt-mode`) to recover `End1`/`End2`. Use `--refine-mode peak` to keep the legacy HEI±1 refinement.
+2. **Local relaxation around HEI** – optimize HEI ± 1 with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
 3. **Decide between kink vs. refinement**:
    - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
    - Otherwise, launch a **refinement GSM** between `End1` and `End2` to sharpen the barrier.
@@ -88,7 +87,7 @@ The YAML root must be a mapping. CLI parameters override YAML values. Shared sec
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
-`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, and `refine_mode` (mirrors `--refine-mode`). The legacy `rmsd_align` flag is ignored but kept for compatibility.
+`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, and `kink_max_nodes`. The legacy `rmsd_align` flag is ignored but kept for compatibility.
 
 ```yaml
 geom:
