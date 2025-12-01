@@ -460,6 +460,15 @@ def cli(
         rfo_cfg = dict(RFO_KW)
         bias_cfg = dict(BIAS_KW)
 
+        # CLI overrides (defaults ← CLI)
+        calc_cfg["charge"] = int(charge)
+        calc_cfg["spin"] = int(spin)
+        opt_cfg["out_dir"] = out_dir
+        opt_cfg["dump"] = False
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
+
+        # YAML overrides (highest precedence)
         apply_yaml_overrides(
             yaml_cfg,
             [
@@ -472,12 +481,6 @@ def cli(
             ],
         )
 
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"] = int(spin)
-        opt_cfg["out_dir"] = out_dir
-        opt_cfg["dump"] = False
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
         if bias_k is not None:
             bias_cfg["k"] = float(bias_k)
 

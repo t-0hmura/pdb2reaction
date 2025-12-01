@@ -26,7 +26,7 @@ Description
 -----------
 - Optimizes a minimum-energy path between two endpoints using pysisyphus `GrowingString` and `StringOptimizer`, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
-- Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: CLI > YAML > built-in defaults.
+- Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: YAML > CLI > built-in defaults.
 - Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light") or RFO ("heavy", default) before alignment and GSM. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
 - Path generator: `--mep-mode` accepts GSM or DMF, with DMF enabled by default to match the CLI default.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
@@ -594,19 +594,7 @@ def cli(
         lbfgs_cfg = dict(_LBFGS_KW)
         rfo_cfg = dict(_RFO_KW)
 
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
-            ],
-        )
-
-        # CLI overrides (highest precedence)
+        # CLI overrides (defaults ← CLI)
         resolved_charge = charge
         resolved_spin = spin
         for prepared in prepared_inputs:
@@ -644,6 +632,18 @@ def cli(
         rfo_cfg["dump"] = bool(dump)
         lbfgs_cfg["out_dir"] = out_dir
         rfo_cfg["out_dir"] = out_dir
+
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (gs_cfg, (("gs",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
+                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+            ],
+        )
 
         opt_kind = opt_mode.strip().lower()
         mep_mode_kind = mep_mode.strip().lower()

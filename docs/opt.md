@@ -59,7 +59,7 @@ out_dir/
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
 ## YAML sections (`--args-yaml`)
-CLI values override YAML, which override the defaults below.
+YAML values override CLI, which override the defaults below.
 
 ### `geom`
 - `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.

@@ -1376,7 +1376,7 @@ def cli(
     time_start = time.perf_counter()
 
     # --------------------------
-    # 1) Assemble configuration
+    # 1) Assemble configuration (defaults ← CLI ← YAML)
     # --------------------------
     yaml_cfg = load_yaml_dict(args_yaml)
     geom_cfg = dict(GEOM_KW)
@@ -1384,18 +1384,6 @@ def cli(
     opt_cfg  = dict(OPT_BASE_KW)
     simple_cfg = dict(hessian_dimer_KW)
     rsirfo_cfg = dict(RSIRFO_KW)
-
-    # YAML → defaults
-    apply_yaml_overrides(
-        yaml_cfg,
-        [
-            (geom_cfg, (("geom",),)),
-            (calc_cfg, (("calc",),)),
-            (opt_cfg,  (("opt",),)),
-            (simple_cfg, (("hessian_dimer",),)),
-            (rsirfo_cfg, (("rsirfo",),)),
-        ],
-    )
 
     # CLI overrides
     calc_cfg["charge"] = int(charge)
@@ -1411,6 +1399,18 @@ def cli(
     # Hessian mode override from CLI
     if hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+
+    # YAML overrides (highest precedence)
+    apply_yaml_overrides(
+        yaml_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (opt_cfg,  (("opt",),)),
+            (simple_cfg, (("hessian_dimer",),)),
+            (rsirfo_cfg, (("rsirfo",),)),
+        ],
+    )
 
     # Freeze links (PDB only): merge with existing list
     if freeze_links and source_path.suffix.lower() == ".pdb":

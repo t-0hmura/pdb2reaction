@@ -422,7 +422,7 @@ def cli(
         time_start = time.perf_counter()
 
         # ------------------------------------------------------------------
-        # 1) Assemble configuration (defaults ← YAML ← CLI)
+        # 1) Assemble configuration (defaults ← CLI ← YAML)
         # ------------------------------------------------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
@@ -433,19 +433,6 @@ def cli(
         rfo_cfg   = dict(RFO_KW)
         bias_cfg  = dict(BIAS_KW)
         bond_cfg  = dict(BOND_KW)
-
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("lbfgs",),)),
-                (rfo_cfg, (("rfo",),)),
-                (bias_cfg, (("bias",),)),
-                (bond_cfg, (("bond",),)),
-            ],
-        )
 
         # CLI overrides
         calc_cfg["charge"] = int(charge)
@@ -460,6 +447,20 @@ def cli(
             param="--opt-mode",
             alias_groups=_OPT_MODE_ALIASES,
             allowed_hint="light|heavy",
+        )
+
+        # YAML overrides (highest precedence)
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("lbfgs",),)),
+                (rfo_cfg, (("rfo",),)),
+                (bias_cfg, (("bias",),)),
+                (bond_cfg, (("bond",),)),
+            ],
         )
 
         # Bias strength override

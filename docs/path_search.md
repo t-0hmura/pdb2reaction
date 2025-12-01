@@ -79,7 +79,7 @@ Bond-change detection relies on `bond_changes.compare_structures` with threshold
   `1`. Override them explicitly when you need a different electronic state.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. CLI parameters override YAML values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.
+The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 

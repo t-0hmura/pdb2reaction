@@ -110,7 +110,7 @@ out-dir/ (default: ./result_tsopt/)
   memory consumption while preserving correct eigenvectors in the active space.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; CLI values override YAML. Shared sections reuse
+Provide a mapping; YAML values override CLI. Shared sections reuse
 [`opt`](opt.md#yaml-configuration-args-yaml). Keep the full block below intact if it already
 matches your workflow—adjust only the values you need to change.
 

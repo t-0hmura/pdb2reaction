@@ -414,17 +414,18 @@ def cli(
     try:
         time_start = time.perf_counter()
         # --------------------------
-        # 1) Assemble configuration
+        # 1) Assemble configuration (defaults ← CLI ← YAML)
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
         dft_cfg = dict(DFT_KW)
-        apply_yaml_overrides(yaml_cfg, [(dft_cfg, (("dft",),))])
 
         # CLI overrides
         dft_cfg["conv_tol"] = float(conv_tol)
         dft_cfg["max_cycle"] = int(max_cycle)
         dft_cfg["grid_level"] = int(grid_level)
         dft_cfg["out_dir"] = out_dir
+
+        apply_yaml_overrides(yaml_cfg, [(dft_cfg, (("dft",),))])
 
         xc, basis = _parse_func_basis(func_basis)
         multiplicity = int(spin)

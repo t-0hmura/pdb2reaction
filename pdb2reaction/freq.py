@@ -26,7 +26,7 @@ Description
 - Computes vibrational frequencies and normal modes using the UMA calculator.
 - Supports Partial Hessian Vibrational Analysis (PHVA) when atoms are frozen.
 - Exports animated modes (.trj; .pdb only when the input is PDB) and prints a Gaussian-style thermochemistry summary.
-- Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); CLI values override YAML.
+- Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); YAML values override CLI.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
 - `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available and allow omitting
@@ -575,22 +575,13 @@ def cli(
     charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
 
     # --------------------------
-    # 1) Assemble configuration
+    # 1) Assemble configuration (defaults ← CLI ← YAML)
     # --------------------------
     yaml_cfg = load_yaml_dict(args_yaml)
     geom_cfg = dict(GEOM_KW)
     calc_cfg = dict(CALC_KW)
     freq_cfg = dict(FREQ_KW)
     thermo_cfg = dict(THERMO_KW)
-
-    apply_yaml_overrides(
-        yaml_cfg,
-        [
-            (geom_cfg, (("geom",),)),
-            (calc_cfg, (("calc",),)),
-            (freq_cfg, (("freq",),)),
-        ],
-    )
 
     # CLI overrides
     calc_cfg["charge"] = int(charge)
@@ -606,6 +597,16 @@ def cli(
     thermo_cfg["temperature"]   = float(temperature)
     thermo_cfg["pressure_atm"]  = float(pressure_atm)
     thermo_cfg["dump"]          = bool(dump)
+
+    # YAML overrides (highest precedence)
+    apply_yaml_overrides(
+        yaml_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (freq_cfg, (("freq",),)),
+        ],
+    )
 
     # Freeze links (PDB only): merge with existing list
     if freeze_links and input_path.suffix.lower() == ".pdb":

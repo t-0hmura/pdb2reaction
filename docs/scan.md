@@ -108,7 +108,7 @@ UMA-based bond-change detection mirrored from `path_search`:
   or Gaussian conversion when `--convert-files` is enabled.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. CLI parameters override YAML. Shared sections
+The YAML root must be a mapping. YAML parameters override CLI. Shared sections
 reuse the definitions documented for [`opt`](opt.md#yaml-configuration-args-yaml).
 
 ```yaml
