@@ -4,8 +4,8 @@
 `scan` performs a staged, bond-length–driven scan using the UMA calculator and
 harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
 every integration step the temporary targets are updated, the restraint wells
-are applied, and the entire structure is relaxed with RFOptimizer (`--opt-mode` heavy, default)
-or LBFGS (`--opt-mode` light). After the biased walk, you can optionally
+are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light, default)
+or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
 run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
 
@@ -58,12 +58,12 @@ pdb2reaction scan -i input.pdb -q 0 \
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during each biased step. Overrides `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `heavy` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--endopt BOOL` | Run an unbiased optimization after each stage. | `True` |
@@ -129,7 +129,7 @@ calc:
   hessian_calc_mode: Analytical
   return_partial_hessian: true
 opt:
-  thresh: baker
+  thresh: gau
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -147,7 +147,7 @@ opt:
   prefix: ""
   out_dir: ./result_scan/
 lbfgs:
-  thresh: baker
+  thresh: gau
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08
@@ -173,7 +173,7 @@ lbfgs:
   mu_reg: null
   max_mu_reg_adaptions: 10
 rfo:
-  thresh: baker
+  thresh: gau
   max_cycles: 10000
   print_every: 100
   min_step_norm: 1.0e-08

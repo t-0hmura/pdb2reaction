@@ -68,13 +68,13 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `heavy` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
 | `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). | _None_ |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or `(i,j,k)=(0,0,0)` is zero. | `min` |

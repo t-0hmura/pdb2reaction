@@ -591,7 +591,7 @@ def _optimize_single(
 @click.option(
     "--thresh",
     type=str,
-    default="baker",
+    default="gau",
     show_default=True,
     help="Convergence preset for the string optimizer, pre-alignment refinement, and endpoint preoptimization (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )

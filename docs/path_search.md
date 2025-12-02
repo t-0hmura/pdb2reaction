@@ -42,7 +42,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
-| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
+| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 | `--preopt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before GSM (recommended). | `True` |
 | `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |
@@ -166,7 +166,7 @@ dmf:
   k_fix: 100.0
 sopt:
   lbfgs:
-    thresh: baker
+    thresh: gau
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08
@@ -192,7 +192,7 @@ sopt:
     mu_reg: null
     max_mu_reg_adaptions: 10
   rfo:
-    thresh: baker
+    thresh: gau
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08

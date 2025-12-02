@@ -76,7 +76,7 @@ out_dir/ (default: ./result_scan/)
 Notes
 -----
 - UMA only: `uma_pysis` is the sole supported calculator.
-- Optimizers: `--opt-mode light` selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
+- Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
 - Indexing: (i, j) are 1‑based by default; use `--zero-based` if your tuples are 0‑based.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
@@ -359,7 +359,7 @@ def _snapshot_geometry(g) -> Any:
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
 )
@@ -379,7 +379,7 @@ def _snapshot_geometry(g) -> Any:
 @click.option(
     "--thresh",
     type=str,
-    default="baker",
+    default="gau",
     show_default=True,
     help="Convergence preset for relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )

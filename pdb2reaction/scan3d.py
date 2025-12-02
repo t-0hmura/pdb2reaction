@@ -96,7 +96,7 @@ out_dir/ (default: ./result_scan3d/)
 Notes
 -----
 - UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D/2D scan.
-- Convergence is controlled by LBFGS or RFO depending on `--opt-mode`.
+- Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (default: `light`).
   Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
@@ -405,7 +405,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
 )
@@ -450,7 +450,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "--thresh",
     type=str,
-    default="baker",
+    default="gau",
     show_default=True,
     help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )

@@ -54,6 +54,7 @@ Transition-state optimization with two modes:
 
 The CLI `--opt-mode` accepts two modes:
 `light` maps to the Hessian Dimer workflow, and `heavy` selects RS-I-RFO.
+The default is `light`.
 
 Configuration is driven by YAML overrides for sections: `geom`, `calc`, `opt`, `hessian_dimer`,
 and `rsirfo`. The `hessian_dimer` section accepts nested `dimer` and `lbfgs` dictionaries
@@ -1266,7 +1267,7 @@ LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
     "thresh_loose": "gau_loose",      # loose threshold preset for first pass
-    "thresh": "baker",                # main threshold preset for TS search
+    "thresh": "gau",                  # main threshold preset for TS search
     "update_interval_hessian": 1000,  # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
@@ -1329,7 +1330,7 @@ RSIRFO_KW.update({
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="light (=Dimer) or heavy (=RSIRFO)",
 )
@@ -1339,7 +1340,7 @@ RSIRFO_KW.update({
 @click.option(
     "--thresh",
     type=str,
-    default="baker",
+    default="gau",
     show_default=True,
     help="Convergence preset for the active optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
