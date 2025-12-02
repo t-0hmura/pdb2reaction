@@ -73,7 +73,7 @@ Optimizer scratch artifacts live in temporary directories; only the files above 
 Notes
 -----
 - UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D scan.
-- Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO).
+- Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO; default: light).
 - Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
 - `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available.
@@ -347,7 +347,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
 )

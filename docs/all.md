@@ -89,7 +89,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--max-nodes INT` | GSM internal nodes per segment. | `10` |
 | `--max-cycles INT` | GSM maximum optimization cycles. | `300` |
 | `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
-| `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `heavy` |
+| `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--dump BOOLEAN` | Dump GSM and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
 | `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `--convert-files` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |

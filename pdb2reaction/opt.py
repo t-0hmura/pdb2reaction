@@ -15,7 +15,7 @@ Usage (CLI)
 
 Examples
 --------
-    # Minimal geometry optimization with default RFO (heavy) settings
+    # Minimal geometry optimization with default LBFGS (light) settings
     pdb2reaction opt -i input.pdb -q 0 -m 1
 
     # RFO with trajectory dumps and YAML overrides
@@ -26,7 +26,7 @@ Description
 -----------
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
-- Optimizers: LBFGS ("light") or RFOptimizer ("heavy", default).
+- Optimizers: LBFGS ("light", default) or RFOptimizer ("heavy").
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest).
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
@@ -525,7 +525,7 @@ def _maybe_convert_outputs(
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO).",
 )

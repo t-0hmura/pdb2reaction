@@ -76,7 +76,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
+| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
@@ -100,7 +100,7 @@ out-dir/ (default: ./result_tsopt/)
 
 ## Notes
 - `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
-  algorithm rather than adjusting YAML keys manually (default: `heavy`).
+  algorithm rather than adjusting YAML keys manually (default: `light`).
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
   `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
   exported when multiple remain.

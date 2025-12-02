@@ -54,6 +54,7 @@ Transition-state optimization with two modes:
 
 The CLI `--opt-mode` accepts two modes:
 `light` maps to the Hessian Dimer workflow, and `heavy` selects RS-I-RFO.
+The default is `light`.
 
 Configuration is driven by YAML overrides for sections: `geom`, `calc`, `opt`, `hessian_dimer`,
 and `rsirfo`. The `hessian_dimer` section accepts nested `dimer` and `lbfgs` dictionaries
@@ -1329,7 +1330,7 @@ RSIRFO_KW.update({
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
+    default="light",
     show_default=True,
     help="light (=Dimer) or heavy (=RSIRFO)",
 )

@@ -1,7 +1,7 @@
 # `opt` subcommand
 
 ## Overview
-`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep heavyweight defaults while selectively overriding options. The optimizer preset now defaults to the RFO-based **`heavy`** mode.
+`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
 
 When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors outputs into `.pdb` or multi-geometry `.gjf` companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
@@ -20,7 +20,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 ```
 
 ## Workflow
-- **Optimizers**: `--opt-mode light` → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control (default).
+- **Optimizers**: `--opt-mode light` (default) → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If no template exists, the fallback is `0/1`. Always pass the physically correct values explicitly.
 - **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
@@ -38,7 +38,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
 | `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `heavy` |
+| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
 | `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB/GJF companions for inputs with PDB/Gaussian templates. | `--convert-files` |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |

@@ -68,7 +68,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `heavy` |
+| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
