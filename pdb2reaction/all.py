@@ -249,6 +249,8 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 
 AtomKey = Tuple[str, str, str, str, str, str]
 
+DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
+
 # Local imports from the package
 from .extract import extract_api
 from . import path_search as _path_search
@@ -256,7 +258,7 @@ from . import path_opt as _path_opt
 from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
-from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
 from .utils import (
@@ -694,7 +696,7 @@ def _geom_from_angstrom(
     return _path_search._new_geom_from_coords(
         elems,
         coords_bohr,
-        coord_type="cart",
+        coord_type=DEFAULT_COORD_TYPE,
         freeze_atoms=freeze_atoms,
     )
 
@@ -724,8 +726,8 @@ def _load_segment_endpoints(
         return None
 
     base = str(trj_path)
-    gL_ref = geom_loader(base + "[0]", coord_type="cart")
-    gR_ref = geom_loader(base + "[-1]", coord_type="cart")
+    gL_ref = geom_loader(base + "[0]", coord_type=DEFAULT_COORD_TYPE)
+    gR_ref = geom_loader(base + "[-1]", coord_type=DEFAULT_COORD_TYPE)
 
     try:
         fa = np.array(freeze_atoms, dtype=int)
@@ -1080,7 +1082,7 @@ def _optimize_endpoint_geom(
         )
 
     final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
-    g_final = geom_loader(final_xyz, coord_type="cart")
+    g_final = geom_loader(final_xyz, coord_type=DEFAULT_COORD_TYPE)
     try:
         g_final.freeze_atoms = np.array(getattr(geom, "freeze_atoms", []), dtype=int)
     except Exception:
@@ -1383,7 +1385,7 @@ def _run_tsopt_on_hei(
     else:
         raise click.ClickException("[tsopt] TS outputs not found.")
 
-    g_ts = geom_loader(ts_geom_path, coord_type="cart")
+    g_ts = geom_loader(ts_geom_path, coord_type=DEFAULT_COORD_TYPE)
 
     calc_args = dict(calc_cfg)
     calc = uma_pysis(**calc_args)
@@ -3680,7 +3682,7 @@ def cli(
                 continue
 
             try:
-                g_ts = geom_loader(hei_pocket_path, coord_type="cart")
+                g_ts = geom_loader(hei_pocket_path, coord_type=DEFAULT_COORD_TYPE)
                 if freeze_atoms:
                     fa = np.array(freeze_atoms, dtype=int)
                     g_ts.freeze_atoms = fa

@@ -2135,7 +2135,7 @@ def cli(
 
         geoms = _load_structures(
             inputs=prepared_inputs,
-            coord_type=geom_cfg.get("coord_type", "cart"),
+            coord_type=geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"]),
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
         )

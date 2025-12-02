@@ -662,7 +662,7 @@ def cli(
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        coord_type = geom_cfg.get("coord_type", "cart")
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         # Pass all geometry kwargs except coord_type as coord_kwargs
         coord_kwargs = dict(geom_cfg)
         coord_kwargs.pop("coord_type", None)

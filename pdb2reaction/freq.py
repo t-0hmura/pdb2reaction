@@ -635,7 +635,7 @@ def cli(
     # --------------------------
     # 2) Load geometry
     # --------------------------
-    coord_type = geom_cfg.get("coord_type", "cart")
+    coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
     coord_kwargs = dict(geom_cfg)
     coord_kwargs.pop("coord_type", None)
     geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
