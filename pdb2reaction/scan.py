@@ -316,7 +316,9 @@ def _snapshot_geometry(g) -> Any:
         tmp.write(s)
         tmp.flush()
         tmp.close()
-        snap = geom_loader(Path(tmp.name), coord_type=getattr(g, "coord_type", "cart"))
+        snap = geom_loader(
+            Path(tmp.name), coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"])
+        )
         try:
             snap.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
         except Exception:
@@ -498,7 +500,7 @@ def cli(
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
         # Load
-        coord_type = geom_cfg.get("coord_type", "cart")
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         geom = geom_loader(geom_input_path, coord_type=coord_type)
 
         max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii

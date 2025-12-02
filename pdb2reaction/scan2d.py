@@ -168,7 +168,9 @@ def _snapshot_geometry(g) -> Any:
         tmp.write(s)
         tmp.flush()
         tmp.close()
-        snap = geom_loader(Path(tmp.name), coord_type=getattr(g, "coord_type", "cart"))
+        snap = geom_loader(
+            Path(tmp.name), coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"])
+        )
         try:
             import numpy as _np
             snap.freeze_atoms = _np.array(getattr(g, "freeze_atoms", []), dtype=int)
@@ -529,7 +531,7 @@ def cli(
 
         final_dir = out_dir_path
 
-        coord_type = geom_cfg.get("coord_type", "cart")
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         geom_outer = geom_loader(geom_input_path, coord_type=coord_type)
 
         freeze = merge_freeze_atom_indices(geom_cfg)

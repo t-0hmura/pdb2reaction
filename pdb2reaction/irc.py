@@ -309,7 +309,7 @@ def cli(
         # --------------------------
         # 2) Load geometry and configure UMA calculator
         # --------------------------
-        coord_type = geom_cfg.get("coord_type", "cart")
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         coord_kwargs = dict(geom_cfg)
         coord_kwargs.pop("coord_type", None)
 

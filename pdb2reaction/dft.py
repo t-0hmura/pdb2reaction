@@ -96,6 +96,7 @@ from .utils import (
     maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
 )
+from .uma_pysis import GEOM_KW_DEFAULT
 
 
 # -----------------------------------------------
@@ -417,6 +418,7 @@ def cli(
         # 1) Assemble configuration (defaults ← CLI ← YAML)
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
+        geom_cfg = dict(GEOM_KW_DEFAULT)
         dft_cfg = dict(DFT_KW)
 
         # CLI overrides
@@ -425,7 +427,13 @@ def cli(
         dft_cfg["grid_level"] = int(grid_level)
         dft_cfg["out_dir"] = out_dir
 
-        apply_yaml_overrides(yaml_cfg, [(dft_cfg, (("dft",),))])
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (dft_cfg, (("dft",),)),
+            ],
+        )
 
         xc, basis = _parse_func_basis(func_basis)
         multiplicity = int(spin)
@@ -447,12 +455,16 @@ def cli(
             "out_dir": str(out_dir_path),
             "engine": engine,
         }
+        click.echo(pretty_block("geom", geom_cfg))
         click.echo(pretty_block("dft", echo_cfg))
 
         # --------------------------
         # 2) Load geometry
         # --------------------------
-        geometry = geom_loader(geom_input_path, coord_type="cart")
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+        coord_kwargs = dict(geom_cfg)
+        coord_kwargs.pop("coord_type", None)
+        geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
         xyz_s, atoms_list = _geometry_to_pyscf_atoms_string(geometry)
 
         out_dir_path.mkdir(parents=True, exist_ok=True)

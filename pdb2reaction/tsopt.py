@@ -790,7 +790,7 @@ class HessianDimer:
 
         # Geometry & masses (use provided geom kwargs so freeze_atoms etc. apply)
         gkw = dict(geom_kwargs or {})
-        coord_type = gkw.pop("coord_type", "cart")
+        coord_type = gkw.pop("coord_type", GEOM_KW_DEFAULT["coord_type"])
         self.geom = geom_loader(fn, coord_type=coord_type, **gkw)
         self.masses_amu = np.array([atomic_masses[z] for z in self.geom.atomic_numbers])
         self.masses_au_t = torch.as_tensor(self.masses_amu * AMU2AU, dtype=torch.float32)
@@ -1525,7 +1525,7 @@ def cli(
         else:
             # RS-I-RFO (heavy)
             #  - Build geometry now and attach UMA calculator
-            coord_type = geom_cfg.get("coord_type", "cart")
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
             coord_kwargs = dict(geom_cfg)
             coord_kwargs.pop("coord_type", None)
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
