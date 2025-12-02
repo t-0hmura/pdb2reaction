@@ -198,7 +198,9 @@ def _snapshot_geometry(g) -> Any:
         tmp.flush()
         tmp.close()
         snap = geom_loader(
-            Path(tmp.name), coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"])
+            Path(tmp.name),
+            coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"]),
+            freeze_atoms=getattr(g, "freeze_atoms", []),
         )
         try:
             import numpy as _np  # noqa: PLC0415
@@ -612,9 +614,6 @@ def cli(
             _ensure_dir(grid_dir)
             _ensure_dir(tmp_opt_dir)
 
-            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-            geom_outer = geom_loader(geom_input_path, coord_type=coord_type)
-
             freeze = merge_freeze_atom_indices(geom_cfg)
             if freeze_links and input_path.suffix.lower() == ".pdb":
                 detected = detect_freeze_links_safe(input_path)
@@ -622,6 +621,10 @@ def cli(
                     freeze = merge_freeze_atom_indices(geom_cfg, detected)
                     if freeze:
                         click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            geom_outer = geom_loader(
+                geom_input_path, coord_type=coord_type, freeze_atoms=freeze
+            )
             if freeze:
                 try:
                     import numpy as _np  # noqa: PLC0415

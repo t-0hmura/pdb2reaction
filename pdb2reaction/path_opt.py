@@ -208,7 +208,6 @@ def _load_two_endpoints(
     for prepared in inputs:
         geom_path = prepared.geom_path
         src_path = prepared.source_path
-        g = geom_loader(geom_path, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and src_path.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(src_path)
@@ -220,6 +219,7 @@ def _load_two_endpoints(
                 )
         else:
             freeze = merge_freeze_atom_indices(cfg)
+        g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
     return geoms
