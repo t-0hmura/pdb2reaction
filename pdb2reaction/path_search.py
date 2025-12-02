@@ -1986,6 +1986,7 @@ def cli(
         ref_pdb_paths = tuple(ref_parsed)
 
     time_start = time.perf_counter()
+    freeze_atoms_for_log: List[int] = []
     try:
         # --------------------------
         # 0) Input validation (multi‑structure)
@@ -2654,6 +2655,17 @@ def cli(
         click.echo(f"[write] Wrote '{out_dir_path / 'summary.yaml'}'.")
 
         try:
+            try:
+                freeze_atoms_for_log = sorted(
+                    {
+                        int(i)
+                        for g in getattr(combined_all, "images", [])
+                        for i in getattr(g, "freeze_atoms", [])
+                    }
+                )
+            except Exception:
+                pass
+
             diag_for_log: Dict[str, Any] = {}
             if diagram_payload is not None:
                 diag_for_log = dict(diagram_payload)
@@ -2679,6 +2691,7 @@ def cli(
                 "command": command_str,
                 "charge": calc_cfg.get("charge"),
                 "spin": calc_cfg.get("spin"),
+                "freeze_atoms": freeze_atoms_for_log,
                 "mep": mep_info,
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
