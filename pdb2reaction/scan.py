@@ -379,8 +379,8 @@ def _snapshot_geometry(g) -> Any:
 @click.option(
     "--thresh",
     type=str,
-    default="gau",
-    show_default=True,
+    default=None,
+    show_default=False,
     help="Convergence preset for relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(

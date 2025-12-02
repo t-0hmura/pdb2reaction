@@ -44,7 +44,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
-| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 | `--preopt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before GSM (recommended). | `True` |
 | `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |

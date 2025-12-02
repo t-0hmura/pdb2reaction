@@ -65,7 +65,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--dump BOOL` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |

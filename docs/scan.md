@@ -63,7 +63,7 @@ pdb2reaction scan -i input.pdb -q 0 \
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--endopt BOOL` | Run an unbiased optimization after each stage. | `True` |
