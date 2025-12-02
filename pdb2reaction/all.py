@@ -249,8 +249,6 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 
 AtomKey = Tuple[str, str, str, str, str, str]
 
-DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
-
 # Local imports from the package
 from .extract import extract_api
 from . import path_search as _path_search
@@ -259,6 +257,7 @@ from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
 from .utils import (
