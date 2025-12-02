@@ -294,6 +294,9 @@ def cli(
                     f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}"
                 )
 
+        # EulerPC currently only supports Cartesian coordinates
+        geom_cfg["coord_type"] = "cart"
+
         # Ensure the calculator receives the freeze list used by geometry
         # (so FD Hessian can skip frozen DOF, etc.)
         calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
