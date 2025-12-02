@@ -317,7 +317,9 @@ def _snapshot_geometry(g) -> Any:
         tmp.flush()
         tmp.close()
         snap = geom_loader(
-            Path(tmp.name), coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"])
+            Path(tmp.name),
+            coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"]),
+            freeze_atoms=getattr(g, "freeze_atoms", []),
         )
         try:
             snap.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
@@ -500,8 +502,16 @@ def cli(
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
         # Load
+        freeze = merge_freeze_atom_indices(geom_cfg)
+        if freeze_links and input_path.suffix.lower() == ".pdb":
+            detected = detect_freeze_links_safe(input_path)
+            if detected:
+                freeze = merge_freeze_atom_indices(geom_cfg, detected)
+                if freeze:
+                    click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+
         coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-        geom = geom_loader(geom_input_path, coord_type=coord_type)
+        geom = geom_loader(geom_input_path, coord_type=coord_type, freeze_atoms=freeze)
 
         max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
 
@@ -521,13 +531,6 @@ def cli(
             return RFOptimizer(geom, **args)
 
         # Merge freeze_atoms with link parents (PDB)
-        freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links and input_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(input_path)
-            if detected:
-                freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                if freeze:
-                    click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
         # Attach freeze indices to Geometry for optimizer awareness
         if freeze:
             try:

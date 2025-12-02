@@ -725,8 +725,12 @@ def _load_segment_endpoints(
         return None
 
     base = str(trj_path)
-    gL_ref = geom_loader(base + "[0]", coord_type=DEFAULT_COORD_TYPE)
-    gR_ref = geom_loader(base + "[-1]", coord_type=DEFAULT_COORD_TYPE)
+    gL_ref = geom_loader(
+        base + "[0]", coord_type=DEFAULT_COORD_TYPE, freeze_atoms=freeze_atoms
+    )
+    gR_ref = geom_loader(
+        base + "[-1]", coord_type=DEFAULT_COORD_TYPE, freeze_atoms=freeze_atoms
+    )
 
     try:
         fa = np.array(freeze_atoms, dtype=int)
@@ -1081,7 +1085,11 @@ def _optimize_endpoint_geom(
         )
 
     final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
-    g_final = geom_loader(final_xyz, coord_type=DEFAULT_COORD_TYPE)
+    g_final = geom_loader(
+        final_xyz,
+        coord_type=DEFAULT_COORD_TYPE,
+        freeze_atoms=getattr(geom, "freeze_atoms", []),
+    )
     try:
         g_final.freeze_atoms = np.array(getattr(geom, "freeze_atoms", []), dtype=int)
     except Exception:
@@ -1384,7 +1392,11 @@ def _run_tsopt_on_hei(
     else:
         raise click.ClickException("[tsopt] TS outputs not found.")
 
-    g_ts = geom_loader(ts_geom_path, coord_type=DEFAULT_COORD_TYPE)
+    g_ts = geom_loader(
+        ts_geom_path,
+        coord_type=DEFAULT_COORD_TYPE,
+        freeze_atoms=_freeze_atoms_for_log(),
+    )
 
     calc_args = dict(calc_cfg)
     calc = uma_pysis(**calc_args)
@@ -3681,7 +3693,11 @@ def cli(
                 continue
 
             try:
-                g_ts = geom_loader(hei_pocket_path, coord_type=DEFAULT_COORD_TYPE)
+                g_ts = geom_loader(
+                    hei_pocket_path,
+                    coord_type=DEFAULT_COORD_TYPE,
+                    freeze_atoms=freeze_atoms,
+                )
                 if freeze_atoms:
                     fa = np.array(freeze_atoms, dtype=int)
                     g_ts.freeze_atoms = fa

@@ -353,7 +353,6 @@ def _load_two_endpoints(
     """
     geoms = []
     for p in paths:
-        g = geom_loader(p, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and p.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(p)
@@ -362,6 +361,7 @@ def _load_two_endpoints(
                 click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
         else:
             freeze = merge_freeze_atom_indices(cfg)
+        g = geom_loader(p, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
     return geoms
@@ -381,7 +381,6 @@ def _load_structures(
     for prepared in inputs:
         geom_path = prepared.geom_path
         src_path = prepared.source_path
-        g = geom_loader(geom_path, coord_type=coord_type)
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and src_path.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(src_path)
@@ -390,6 +389,7 @@ def _load_structures(
                 click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
         else:
             freeze = merge_freeze_atom_indices(cfg)
+        g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
     return geoms
@@ -513,7 +513,9 @@ def _new_geom_from_coords(atoms: Sequence[str], coords: np.ndarray, coord_type: 
         tmp.write(s)
         tmp.flush()
         tmp.close()
-        g = geom_loader(Path(tmp.name), coord_type=coord_type)
+        g = geom_loader(
+            Path(tmp.name), coord_type=coord_type, freeze_atoms=freeze_atoms
+        )
         g.freeze_atoms = np.array(sorted(set(map(int, freeze_atoms))), dtype=int)
         return g
     finally:
@@ -788,7 +790,11 @@ def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None
         ase_write(tmp, atoms, format="xyz")
         tmp.flush()
         tmp.close()
-        g = geom_loader(Path(tmp.name), coord_type=coord_type)
+        g = geom_loader(
+            Path(tmp.name),
+            coord_type=coord_type,
+            freeze_atoms=getattr(template_g, "freeze_atoms", []),
+        )
         try:
             g.freeze_atoms = np.array(getattr(template_g, "freeze_atoms", []), dtype=int)
         except Exception:
