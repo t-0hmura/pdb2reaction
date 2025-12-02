@@ -102,7 +102,7 @@ H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr�
 
 # Default for potential geometry loader integrations (kept for completeness)
 GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",       # coordinate representation (Cartesian recommended)
+    "coord_type": "cart",       # coordinate representation (cart | dlc | redund (Cartesian, Delocalized Internal Coordinates, Z-matrix))
     "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
 }
 
