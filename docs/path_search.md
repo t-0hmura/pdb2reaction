@@ -7,6 +7,7 @@ Construct a continuous minimum-energy path (MEP) across **two or more** structur
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S+1]
                          [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
+                         [--refine-mode {peak|minima}]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--opt-mode light|heavy] [--dump BOOL]
                          [--out-dir DIR] [--preopt BOOL]
@@ -39,6 +40,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
+| `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
 | `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
@@ -50,7 +52,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 
 ## Workflow
 1. **Initial GSM per pair** – run `GrowingString` between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
-2. **Local relaxation around HEI** – optimize HEI ± 1 with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
+2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
 3. **Decide between kink vs. refinement**:
    - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
    - Otherwise, launch a **refinement GSM** between `End1` and `End2` to sharpen the barrier.
@@ -87,7 +89,7 @@ The YAML root must be a mapping. YAML parameters override the CLI values. Shared
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
-`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, and `kink_max_nodes`. The legacy `rmsd_align` flag is ignored but kept for compatibility.
+`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, and `refine_mode` (auto-selects `peak` for GSM or `minima` for DMF when left `null`). The legacy `rmsd_align` flag is ignored but kept for compatibility.
 
 `dmf` bundles Direct Max Flux + (C)FB-ENM controls applied whenever `--mep-mode dmf` is selected. The defaults mirror the shared `DMF_KW` dictionary and can be overridden per run:
 

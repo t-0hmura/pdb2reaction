@@ -8,6 +8,7 @@ Usage (CLI)
 -----------
     pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S+1]
                             [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
+                            [--refine-mode peak|minima]
                             [--max-nodes N] [--max-cycles N] [--climb BOOL]
                             [--opt-mode light|heavy] [--dump BOOL]
                             [--convert-files/--no-convert-files]
@@ -82,7 +83,8 @@ Workflow
 3) Refine the step:
    - If no covalent bond change between End1–End2 (a “kink”): insert `search.kink_max_nodes` linearly interpolated
      nodes and optimize each; **skip** GSM.
-   - Otherwise: run a refinement GSM between End1 and End2.
+   - Otherwise: run a refinement GSM between End1 and End2. With `refine-mode=minima`, End1/End2 are taken from the
+     nearest local minima flanking the HEI instead of strictly HEI±1.
 4) Recurse selectively: evaluate covalent changes for (A→End1) and (End2→B); recurse only on sides that change.
 5) Stitch subpaths: concatenate sub‑MEPs with duplicate removal via RMSD. If endpoints mismatch beyond
    `search.bridge_rmsd_thresh`, insert a *bridge* GSM.
@@ -336,6 +338,7 @@ SEARCH_KW: Dict[str, Any] = {
     "max_nodes_segment": 10,
     "max_nodes_bridge": 5,
     "kink_max_nodes": 3,
+    "refine_mode": None,
 }
 
 
@@ -569,6 +572,38 @@ def _segment_base_id(tag: str) -> str:
     """
     m = re.search(r"(seg_\d{3})", tag or "")
     return m.group(1) if m else (tag or "seg")
+
+
+def _is_local_minimum(idx: int, energies: Sequence[float]) -> bool:
+    """
+    Return True if the point at `idx` is a local minimum according to neighboring energies.
+
+    Definition:
+    - Interior point: both neighbors have higher energy.
+    - Endpoint: the single neighbor has higher energy.
+    """
+
+    if idx < 0 or idx >= len(energies):
+        return False
+    if idx == 0:
+        return len(energies) > 1 and energies[1] > energies[0]
+    if idx == len(energies) - 1:
+        return energies[-2] > energies[-1]
+    return energies[idx - 1] > energies[idx] and energies[idx + 1] > energies[idx]
+
+
+def _find_nearest_local_minimum(hei_idx: int, direction: int, energies: Sequence[float]) -> Optional[int]:
+    """
+    Starting from the HEI, walk `direction` (-1 for left, +1 for right) to find the nearest
+    local minimum. Returns the index of the first minimum encountered, or None if absent.
+    """
+
+    i = hei_idx + direction
+    while 0 <= i < len(energies):
+        if _is_local_minimum(i, energies):
+            return i
+        i += direction
+    return None
 
 
 @dataclass
@@ -1080,6 +1115,7 @@ def _build_multistep_path(
     sopt_cfg: Dict[str, Any],
     bond_cfg: Dict[str, Any],
     search_cfg: Dict[str, Any],
+    refine_mode_kind: str,
     mep_mode_kind: str,
     calc_cfg: Dict[str, Any],
     dmf_cfg: Dict[str, Any],
@@ -1167,8 +1203,24 @@ def _build_multistep_path(
         _tag_images(gsm0.images, pair_index=pair_index)
         return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
 
-    left_img = gsm0.images[hei - 1]
-    right_img = gsm0.images[hei + 1]
+    if refine_mode_kind == "minima":
+        left_idx = _find_nearest_local_minimum(hei_idx=hei, direction=-1, energies=gsm0.energies)
+        right_idx = _find_nearest_local_minimum(hei_idx=hei, direction=1, energies=gsm0.energies)
+
+        if left_idx is None:
+            left_idx = hei - 1
+        if right_idx is None:
+            right_idx = hei + 1
+
+        click.echo(
+            f"[{tag0}] Using nearest local minima around HEI (left idx={left_idx}, right idx={right_idx})."
+        )
+        left_img = gsm0.images[left_idx]
+        right_img = gsm0.images[right_idx]
+    else:
+        left_img = gsm0.images[hei - 1]
+        right_img = gsm0.images[hei + 1]
+        click.echo(f"[{tag0}] Refining HEI±1 (peak mode).")
 
     left_end = _optimize_single(
         left_img,
@@ -1276,7 +1328,7 @@ def _build_multistep_path(
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index
         )
@@ -1290,7 +1342,7 @@ def _build_multistep_path(
     if right_changed:
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+            sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index
         )
@@ -1307,7 +1359,7 @@ def _build_multistep_path(
             shared_calc,
             geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg,
-            bond_cfg, search_cfg, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+            bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
             prepared_input=prepared_input,
@@ -1770,6 +1822,17 @@ def _merge_final_and_write(final_images: List[Any],
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
 @click.option(
+    "--refine-mode",
+    type=click.Choice(["peak", "minima"], case_sensitive=False),
+    default=None,
+    show_default=True,
+    help=(
+        "Refinement seed selection around the highest-energy image: "
+        "'peak' uses HEI±1, 'minima' uses the nearest local minima in each direction. "
+        "Defaults to peak for gsm and minima for dmf when omitted."
+    ),
+)
+@click.option(
     "-q",
     "--charge",
     type=int,
@@ -1856,6 +1919,7 @@ def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
     mep_mode: str,
+    refine_mode: Optional[str],
     charge: Optional[int],
     spin: Optional[int],
     freeze_links_flag: bool,
@@ -1932,6 +1996,7 @@ def cli(
             )
 
         mep_mode_kind = mep_mode.strip().lower()
+        refine_mode_kind = refine_mode.strip().lower() if refine_mode else None
 
         do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
         if do_merge:
@@ -1962,6 +2027,7 @@ def cli(
         rfo_cfg   = dict(_RFO_KW)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
+        search_cfg["refine_mode"] = refine_mode_kind
 
         resolved_charge = charge
         resolved_spin = spin
@@ -2015,6 +2081,15 @@ def cli(
                 (search_cfg, (("search",),)),
             ],
         )
+
+        refine_mode_kind = search_cfg.get("refine_mode")
+        if refine_mode_kind is None:
+            refine_mode_kind = "peak" if mep_mode_kind == "gsm" else "minima"
+        else:
+            refine_mode_kind = str(refine_mode_kind).strip().lower()
+            if refine_mode_kind not in {"peak", "minima"}:
+                raise click.BadParameter(f"Unknown --refine-mode '{refine_mode_kind}'.")
+        search_cfg["refine_mode"] = refine_mode_kind
 
         opt_kind = opt_mode.strip().lower()
         if opt_kind == "light":
@@ -2132,7 +2207,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+                bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 prepared_input=main_prepared,
@@ -2152,7 +2227,7 @@ def cli(
                 shared_calc,
                 geom_cfg, gs_cfg, opt_cfg,
                 sopt_kind, sopt_cfg,
-                bond_cfg, search_cfg, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+                bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
                 prepared_input=main_prepared,
