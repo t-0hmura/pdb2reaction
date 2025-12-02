@@ -2098,6 +2098,9 @@ def cli(
                 raise click.BadParameter(f"Unknown --refine-mode '{refine_mode_kind}'.")
         search_cfg["refine_mode"] = refine_mode_kind
 
+        if mep_mode_kind == "gsm":
+            geom_cfg["coord_type"] = "dlc"
+
         opt_kind = opt_mode.strip().lower()
         if opt_kind == "light":
             sopt_kind = "lbfgs"

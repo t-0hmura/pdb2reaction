@@ -723,6 +723,8 @@ def cli(
 
         opt_kind = opt_mode.strip().lower()
         mep_mode_kind = mep_mode.strip().lower()
+        if mep_mode_kind == "gsm":
+            geom_cfg["coord_type"] = "dlc"
         if opt_kind == "light":
             sopt_kind = "lbfgs"
             sopt_cfg = lbfgs_cfg
