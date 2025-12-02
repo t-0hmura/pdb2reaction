@@ -450,7 +450,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "--thresh",
     type=str,
-    default="baker",
+    default="gau",
     show_default=True,
     help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )

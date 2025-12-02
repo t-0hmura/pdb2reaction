@@ -168,7 +168,7 @@ CALC_KW = dict(_UMA_CALC_KW)
 # Optimizer base (common to LBFGS & RFO)  (YAML key: opt)
 OPT_BASE_KW = {
     # Convergence threshold preset
-    "thresh": "baker",          # "gau_loose" | "gau" | "gau_tight" | "gau_vtight" | "baker" | "never"
+    "thresh": "gau",            # "gau_loose" | "gau" | "gau_tight" | "gau_vtight" | "baker" | "never"
 
     # Convergence criteria (forces in Hartree/bohr, steps in bohr)
     # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
@@ -546,7 +546,7 @@ def _maybe_convert_outputs(
 @click.option(
     "--thresh",
     type=str,
-    default="baker",
+    default="gau",
     show_default=True,
     help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )

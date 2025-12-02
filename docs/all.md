@@ -212,7 +212,7 @@ opt:
   print_every: 10
 sopt:
   lbfgs:
-    thresh: baker
+    thresh: gau
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08
@@ -238,7 +238,7 @@ sopt:
     mu_reg: null
     max_mu_reg_adaptions: 10
   rfo:
-    thresh: baker
+    thresh: gau
     max_cycles: 10000
     print_every: 100
     min_step_norm: 1.0e-08
