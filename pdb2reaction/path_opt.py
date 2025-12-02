@@ -70,7 +70,7 @@ import time
 import click
 import numpy as np
 
-from pysisyphus.constants import AU2EV
+from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
@@ -80,7 +80,6 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 
-EV2AU = 1.0 / AU2EV  # eV → Hartree
 from .utils import (
     convert_xyz_to_pdb,
     detect_freeze_links,
@@ -414,7 +413,17 @@ def _run_dmf_mep(
     mxflx.add_ipopt_options({"output_file": str(out_dir_path / "dmf_ipopt.out")})
     mxflx.solve(tol="tight")
 
-    energies = [float(img.get_potential_energy()) * EV2AU for img in mxflx.images]
+    calc_eval_kw = dict(calc_cfg)
+    if fix_atoms:
+        calc_eval_kw.setdefault("freeze_atoms", fix_atoms)
+
+    calc_eval = uma_pysis(**calc_eval_kw)
+
+    energies = []
+    for image in mxflx.images:
+        elems = image.get_chemical_symbols()
+        coords_bohr = np.asarray(image.get_positions(), dtype=float).reshape(-1, 3) * ANG2BOHR
+        energies.append(float(calc_eval.get_energy(elems, coords_bohr)["energy"]))
     hei_idx = _select_hei_index(energies)
 
     final_trj = out_dir_path / "final_geometries.trj"
