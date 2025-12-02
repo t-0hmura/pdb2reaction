@@ -872,7 +872,7 @@ class HessianDimer:
             # Update mode from Hessian (respect freeze atoms via PHVA)
             H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
             N = len(self.geom.atomic_numbers)
-            coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
+            coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                             dtype=H_t.dtype, device=H_t.device)
             # full vs active-block Hessian
             if H_t.size(0) == 3 * N:
@@ -884,7 +884,7 @@ class HessianDimer:
                 # partial (active) Hessian returned by UMA
                 active_idx = _active_indices(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
                 mode_xyz = _mode_direction_by_root_from_Hact(
-                    H_t, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                    H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                     self.masses_au_t, active_idx, self.device, root=self.root
                 )
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
@@ -935,7 +935,7 @@ class HessianDimer:
 
         # atomic coordinates in Å
         coords_ang = torch.as_tensor(
-            self.geom.coords.reshape(-1, 3) * BOHR2ANG,
+            self.geom.cart_coords.reshape(-1, 3) * BOHR2ANG,
             dtype=modes.dtype,
             device=modes.device,
         )
@@ -1003,7 +1003,7 @@ class HessianDimer:
             v_cart /= np.linalg.norm(v_cart)
 
             disp = amp_bohr * mass_scale * v_cart  # Bohr
-            ref = self.geom.coords.reshape(-1, 3)
+            ref = self.geom.cart_coords.reshape(-1, 3)
 
             plus = ref + disp
             minus = ref - disp
@@ -1032,7 +1032,7 @@ class HessianDimer:
 
         # (1) Initial Hessian → pick direction by `root`
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
-        coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
+        coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
 
         if H_t.size(0) == 3 * N:
@@ -1044,7 +1044,7 @@ class HessianDimer:
         else:
             print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
             mode_xyz = _mode_direction_by_root_from_Hact(
-                H_t, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
@@ -1065,7 +1065,7 @@ class HessianDimer:
 
         # (3) Update mode & normal loop
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
-        coords_bohr_t = torch.as_tensor(self.geom.coords.reshape(-1, 3),
+        coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
         if H_t.size(0) == 3 * N:
             print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
@@ -1076,7 +1076,7 @@ class HessianDimer:
         else:
             print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
             mode_xyz = _mode_direction_by_root_from_Hact(
-                H_t, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
@@ -1110,7 +1110,7 @@ class HessianDimer:
             # (a) Approximate frequencies & modes from the active Hessian
             freqs_cm_approx, modes_embedded = _modes_from_Hact_embedded(
                 H_act, self.geom.atomic_numbers,
-                self.geom.coords.reshape(-1, 3), active_idx, self.device
+                self.geom.cart_coords.reshape(-1, 3), active_idx, self.device
             )
             n_imag = int(np.sum(freqs_cm_approx < -abs(self.neg_freq_thresh_cm)))
             approx_ims = [float(x) for x in freqs_cm_approx if x < -abs(self.neg_freq_thresh_cm)]
@@ -1119,14 +1119,14 @@ class HessianDimer:
                 break
 
             # (b) Flatten using the approximate modes
-            x_before_flat = self.geom.coords.copy().reshape(-1)
+            x_before_flat = self.geom.cart_coords.copy().reshape(-1)
             g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
             did_flatten = self._flatten_once_with_modes(freqs_cm_approx, modes_embedded)
             if not did_flatten:
                 break
 
-            x_after_flat = self.geom.coords.copy().reshape(-1)
+            x_after_flat = self.geom.cart_coords.copy().reshape(-1)
             g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
             # (c) Bofill update using UMA gradients across the flatten displacement
@@ -1138,7 +1138,7 @@ class HessianDimer:
 
             # (d) Refresh dimer direction from updated active Hessian
             mode_xyz = _mode_direction_by_root_from_Hact(
-                H_act, self.geom.coords.reshape(-1, 3), self.geom.atomic_numbers,
+                H_act, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
@@ -1158,19 +1158,19 @@ class HessianDimer:
 
         # (5) Final outputs
         final_xyz = self.out_dir / "final_geometry.xyz"
-        atoms_final = Atoms(self.geom.atoms, positions=(self.geom.coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
+        atoms_final = Atoms(self.geom.atoms, positions=(self.geom.cart_coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
         write(final_xyz, atoms_final)
 
         # Final Hessian → imaginary mode animation
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
         if H_t.size(0) == 3 * N:
             freqs_cm, modes = _frequencies_cm_and_modes(
-                H_t, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3), self.device,
+                H_t, self.geom.atomic_numbers, self.geom.cart_coords.reshape(-1, 3), self.device,
                 freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
             freqs_cm, modes = _modes_from_Hact_embedded(
-                H_t, self.geom.atomic_numbers, self.geom.coords.reshape(-1, 3),
+                H_t, self.geom.atomic_numbers, self.geom.cart_coords.reshape(-1, 3),
                 active_idx, self.device
             )
 

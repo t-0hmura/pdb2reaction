@@ -377,7 +377,7 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
     kw = dict(uma_kwargs or {})
     kw["out_hess_torch"] = True
     calc = uma_pysis(**kw)
-    H_t = calc.get_hessian(geom.atoms, geom.coords)["hessian"].to(device=device)
+    H_t = calc.get_hessian(geom.atoms, geom.cart_coords)["hessian"].to(device=device)
     return H_t
 
 
@@ -409,7 +409,7 @@ def _write_mode_trj_and_pdb(geom,
     converting the .trj using the input PDB as the template; on failure, an ASE fallback is used.
     Set `write_pdb=False` to skip PDB generation.
     """
-    ref_ang = geom.coords.reshape(-1, 3) * BOHR2ANG
+    ref_ang = geom.cart_coords.reshape(-1, 3) * BOHR2ANG
     mode = mode_vec_3N.reshape(-1, 3).copy()
     mode /= np.linalg.norm(mode)
 
