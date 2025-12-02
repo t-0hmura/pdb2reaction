@@ -284,6 +284,16 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"UMA model          : {uma_model}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
+
+    freeze_atoms_raw = payload.get("freeze_atoms") or []
+    try:
+        freeze_atoms_list = sorted({int(i) for i in freeze_atoms_raw})
+    except Exception:
+        freeze_atoms_list = []
+    if freeze_atoms_list:
+        lines.append(
+            "Freeze atoms (0-based): " + ",".join(map(str, freeze_atoms_list))
+        )
     lines.append("")
 
     mep = payload.get("mep", {}) or {}
