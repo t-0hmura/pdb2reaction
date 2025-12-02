@@ -1340,8 +1340,8 @@ RSIRFO_KW.update({
 @click.option(
     "--thresh",
     type=str,
-    default="gau",
-    show_default=True,
+    default=None,
+    show_default=False,
     help="Convergence preset for the active optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(

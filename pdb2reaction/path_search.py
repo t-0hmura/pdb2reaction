@@ -1877,8 +1877,8 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--thresh",
     type=str,
-    default="gau",
-    show_default=True,
+    default=None,
+    show_default=False,
     help="Convergence preset for GSM and single optimizations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
