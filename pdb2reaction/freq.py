@@ -658,7 +658,7 @@ def cli(
         calc_cfg.setdefault("return_partial_hessian", True)
 
         H_t = _calc_full_hessian_torch(geometry, calc_cfg, device)
-        coords_bohr = geometry.coords.reshape(-1, 3)
+        coords_bohr = geometry.cart_coords.reshape(-1, 3)
 
         # PHVA: use the freeze list to carve out the active subspace and apply TR projection there.
         freqs_cm, modes_mw = _frequencies_cm_and_modes(
@@ -720,7 +720,7 @@ def cli(
             from thermoanalysis.constants import J2AU, NA, J2CAL
 
             qc_data = {
-                "coords3d": geometry.coords.reshape(-1, 3) * BOHR2ANG,  # Å
+                "coords3d": geometry.cart_coords.reshape(-1, 3) * BOHR2ANG,  # Å
                 "wavenumbers": freqs_cm,                                 # cm^-1
                 "scf_energy": _calc_energy(geometry, calc_cfg),          # Hartree
                 "masses": masses_amu,
