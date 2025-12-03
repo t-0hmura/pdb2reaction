@@ -1352,9 +1352,9 @@ RSIRFO_KW.update({
 )
 @click.option(
     "--hessian-calc-mode",
-    type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
+    type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="Choose UMA Hessian evaluation mode (overrides YAML/calc.hessian_calc_mode).",
+    help="Choose UMA Hessian evaluation mode (overrides YAML/calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
 )
 def cli(
     input_path: Path,

@@ -1821,9 +1821,9 @@ def _irc_and_match(
 )
 @click.option(
     "--hessian-calc-mode",
-    type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
+    type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="Common UMA Hessian calculation mode forwarded to tsopt and freq.",
+    help="Common UMA Hessian calculation mode forwarded to tsopt and freq. Defaults to 'FiniteDifference'.",
 )
 # ===== Post-processing toggles =====
 @click.option(

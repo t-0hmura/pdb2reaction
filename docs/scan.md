@@ -126,7 +126,7 @@ calc:
   r_edges: false
   out_hess_torch: true
   freeze_atoms: null
-  hessian_calc_mode: Analytical
+  hessian_calc_mode: FiniteDifference
   return_partial_hessian: true
 opt:
   thresh: gau

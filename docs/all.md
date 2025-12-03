@@ -94,7 +94,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `--convert-files` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
 | `--preopt BOOLEAN` | Pre-optimise pocket endpoints before GSM (also the default for scan preopt). | `True` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--tsopt BOOLEAN` | Run TS optimisation + pseudo-IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
 | `--thermo BOOLEAN` | Run vibrational analysis (`freq`) on R/TS/P and build UMA Gibbs diagram. | `False` |
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy + optional DFT//UMA diagrams. | `False` |
@@ -157,7 +157,7 @@ geom:
   coord_type: cart
 calc:
   model: uma-s-1p1
-  hessian_calc_mode: Analytical
+  hessian_calc_mode: FiniteDifference
 gs:
   max_nodes: 12
 freq:
@@ -181,7 +181,7 @@ calc:
   r_edges: false
   out_hess_torch: true
   freeze_atoms: null
-  hessian_calc_mode: Analytical
+  hessian_calc_mode: FiniteDifference
   return_partial_hessian: true
 gs:
   max_nodes: 10

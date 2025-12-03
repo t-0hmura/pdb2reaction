@@ -207,9 +207,9 @@ def _echo_convert_trj_if_exists(
 @click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
     "--hessian-calc-mode",
-    type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
+    type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="How UMA builds the Hessian (Analytical or FiniteDifference); overrides calc.hessian_calc_mode from YAML.",
+    help="How UMA builds the Hessian (Analytical or FiniteDifference); overrides calc.hessian_calc_mode from YAML. Defaults to 'FiniteDifference'.",
 )
 @click.option(
     "--args-yaml",
