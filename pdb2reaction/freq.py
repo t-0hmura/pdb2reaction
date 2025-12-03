@@ -45,7 +45,7 @@ Notes
 - Input geometry: .pdb, .xyz, .trj (via pysisyphus ``geom_loader``). For PDB, ``--freeze-links`` (default: True)
   detects parent atoms of link hydrogens and merges them with any ``geom.freeze_atoms``; the merged list is echoed.
 - UMA settings:
-  - ``--hessian-calc-mode``: ``Analytical`` (default) or ``FiniteDifference``; may also be set in YAML.
+  - ``--hessian-calc-mode``: ``FiniteDifference`` (default) or ``Analytical``; may also be set in YAML.
   - ``return_partial_hessian`` defaults to True so PHVA can use a reduced active‑block Hessian when possible.
   - Device: ``auto`` selects CUDA if available; otherwise CPU.
 - PHVA and projections:
@@ -548,7 +548,7 @@ THERMO_KW = {
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"]),
               default=None,
-              help="How UMA computes Hessian. Defaults to 'Analytical' (can also be set via YAML).")
+              help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 def cli(
     input_path: Path,
     charge: Optional[int],

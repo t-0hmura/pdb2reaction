@@ -46,7 +46,7 @@ Description
   the batch; charge/spin are stored in `Atoms.info`.
 - Robustness: analytical path catches CUDA out‑of‑memory and advises switching to
   finite differences.
-- Default Hessian mode at construction is `"Analytical"`. If `hessian_calc_mode`
+- Default Hessian mode at construction is `"FiniteDifference"`. If `hessian_calc_mode`
   is falsy *or unrecognized* in `get_hessian`, `"FiniteDifference"` is used.
 - Units: UMA runs in Å and eV; PySisyphus public API converts to Hartree/Bohr:
   energy eV→Hartree, forces eV·Å⁻¹→Hartree·Bohr⁻¹, Hessian eV·Å⁻²→Hartree·Bohr⁻².
@@ -127,7 +127,7 @@ CALC_KW: Dict[str, Any] = {
     "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms
 
     # Hessian interfaces to UMA
-    "hessian_calc_mode": "Analytical",        # "Analytical" (default) | "FiniteDifference"
+    "hessian_calc_mode": "FiniteDifference",        # "FiniteDifference" (default) | "Analytical"
     "return_partial_hessian": True,           # receive only the active-DOF Hessian block
 
     # Hessian precision (energy/forces are always returned as float64)
@@ -321,7 +321,7 @@ class uma_pysis(Calculator):
         """
         Parameters
         ----------
-        hessian_calc_mode : {"Analytical", "FiniteDifference"}, default "Analytical"
+        hessian_calc_mode : {"Analytical", "FiniteDifference"}, default "FiniteDifference"
             Select how to compute the Hessian in `get_hessian()`.
             - "Analytical": autograd-based analytical Hessian.
             - "FiniteDifference": central-difference Hessian; the matrix is
