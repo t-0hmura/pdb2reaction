@@ -11,7 +11,7 @@ license = {file = "LICENSE"}
 dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
-    "fairchem-core",
+    "fairchem-core[extras]",
     "pysisyphus @ git+https://github.com/t-0hmura/torch_pysis.git", 
     "thermoanalysis @ git+https://github.com/t-0hmura/thermoanalysis.git",
     "torch-dmf @ git+https://github.com/t-0hmura/torch-dmf.git",
