@@ -2,9 +2,10 @@
 
 ## Overview
 
-`pdb2reaction` is a Python toolkit for turning **experimental or modelled PDB structures** into **enzymatic reaction pathways** with Machine Learning Interatomic Potential (MLIP).
+`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with Machine Learning Interatomic Potential (MLIP). 
+Basically, you just need **single command** like `**pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"**`
 
-Given one or more full protein–ligand PDBs (reactant, intermediates, product), it:
+Given one or more full protein–ligand PDBs (reactant, intermediates, product), it automatically:
 
 - extracts a **catalytic pocket** around user‑defined substrates,
 - builds a **machine‑learned potential** using Meta’s UMA model,
@@ -161,13 +162,13 @@ Use this when you already have several full PDB structures along a putative reac
 **Minimal example**
 
 ```bash
-**pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"**
+**pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"**
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --outdir ./result_all --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --outdir ./result_all --tsopt True --thermo True --dft True
 ```
 
 Behaviour:
@@ -194,13 +195,13 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists "[(10,55,2.20),(23,34,1.80)]"
+pdb2reaction -i R.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --scan-lists "[(10,55,2.20),(23,34,1.80)]"
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c "GPP,MMT" --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --outdir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --outdir ./result_scan_all --tsopt True --thermo True --dft True
 ```
 
 Key points:
@@ -226,13 +227,13 @@ Provide exactly one PDB and enable `--tsopt`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
+pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --tsopt True --thermo True --dft True --outdir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True --thermo True --dft True --outdir ./result_tsopt_only
 ```
 
 Behaviour:
@@ -267,13 +268,13 @@ Below are the most commonly used options across workflows.
 
   - PDB paths,
   - residue IDs, e.g. `A:123,B:456`,
-  - residue names, e.g. `"GPP,MMT"`.
+  - residue names, e.g. `"SAM,GPP"`.
 
 - `--ligand-charge TEXT`  
   Total charge information, either:
 
   - a single integer (total pocket charge), or
-  - a mapping, e.g. `"GPP:-3,MMT:-1"`.
+  - a mapping, e.g. `"SAM:1,GPP:-3"`.
 
   The total charge of the first pocket is rounded to an integer and reused for scan, GSM, and TS optimisation runs.
 
