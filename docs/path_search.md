@@ -128,13 +128,13 @@ gs:
   scheduler: null
 opt:
   type: string
-  stop_in_when_full: 100
+  stop_in_when_full: 300
   align: false
   scale_step: global
-  max_cycles: 100
+  max_cycles: 300
   dump: false
   dump_restart: false
-  reparam_thresh: 0.001
+  reparam_thresh: 0.0
   coord_diff_thresh: 0.0
   out_dir: ./result_path_search/
   print_every: 10
@@ -156,7 +156,7 @@ dmf:
     pivotal: true
     single: true
     remove_fourmembered: true
-    two_hop_mode: dense
+    two_hop_mode: sparse
   dmf_options:
     remove_rotation_and_translation: false
     mass_weighted: false
