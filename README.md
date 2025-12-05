@@ -161,7 +161,7 @@ Use this when you already have several full PDB structures along a putative reac
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
+**pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"**
 ```
 
 **Richer example**
