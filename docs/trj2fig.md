@@ -13,7 +13,7 @@ lines.
 
 ## Usage
 ```bash
-pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [options]
+pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
 ```
 
 ### Examples
@@ -26,6 +26,9 @@ pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
 # Multiple figure formats with the x-axis reversed (reference becomes last frame)
 pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pdf
+
+# Recompute all frame energies with UMA before plotting
+pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 
 ## Workflow
