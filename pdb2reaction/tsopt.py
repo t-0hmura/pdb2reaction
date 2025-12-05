@@ -736,7 +736,7 @@ class HessianDimer:
                  thresh_loose: str = "gau_loose",
                  thresh: str = "gau",
                  update_interval_hessian: int = 100,
-                 neg_freq_thresh_cm: float = 5.0,
+                 neg_freq_thresh_cm: float = 10.0,
                  flatten_amp_ang: float = 0.20,
                  flatten_max_iter: int = 10,
                  mem: int = 100000,
