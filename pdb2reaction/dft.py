@@ -36,8 +36,9 @@ Description
   Names are case-insensitive in PySCF.
 - Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
   PySCF's default selection.
-- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF grids.level),
-  --out-dir. Verbosity can be overridden via YAML (dft.verbose).
+- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF grids.level).
+  Verbosity defaults to 0 and can be overridden via YAML (dft.verbose). Output directory
+  selection is handled separately via --out-dir.
 - Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
 - -q/--charge is required for non-.gjf inputs; .gjf templates supply charge/spin when available and allow omitting
   the CLI flag.
