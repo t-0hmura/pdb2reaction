@@ -351,10 +351,10 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | ------------ | ---------------------------------------------------------------------------- | ------------------------ |
 | `all`        | High‑level workflow orchestrator: extraction → GSM / path search → TS/freq/DFT. | `docs/all.md`           |
 | `scan`       | Staged biased scans on pocket models to generate additional intermediates.   | `docs/scan.md`          |
-| `opt`        | Optimise a single structure with UMA (LBFGS/RFO presets).       | `docs/opt.md`           |
+| `opt`        | Optimise a single structure (LBFGS / RFO presets).       | `docs/opt.md`           |
 | `path-opt`   | UMA optimisation on a specific path segment or snapshot.        | `docs/path_opt.md`      |
 | `path-search`| Recursive GSM‑based path search plus pocket/full‑system merging.             | `docs/path_search.md`   |
-| `tsopt`      | Transition‑state refinement with optional pseudo‑IRC propagation.            | `docs/tsopt.md`         |
+| `tsopt`      | Transition‑state refinement (Dimer+LBFGS or RS-I-RFO presets).            | `docs/tsopt.md`         |
 | `freq`       | Vibrational modes, thermochemistry, and UMA energy diagrams.    | `docs/freq.md`          |
 | `irc`        | Intrinsic reaction coordinate following from a TS structure.    | `docs/irc.md`           |
 | `extract`    | Extract catalytic pockets from full PDB structures (also used by `all`).     | `docs/extract.md`       |
