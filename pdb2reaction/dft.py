@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-m <multiplicity>] \
         [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
-        [--args-yaml <file>]
+        [--convert-files/--no-convert-files] [--args-yaml <file>]
 
 Examples
 --------
@@ -31,7 +31,7 @@ Description
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
   The geometry is written back unchanged as input_geometry.xyz. If a Gaussian .gjf template
-  is present, a convenience input_geometry.gjf is also written.
+  is present **and conversion is enabled**, a convenience input_geometry.gjf is also written.
 - Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-svp", "wb97m-v/def2-tzvpd").
   Names are case-insensitive in PySCF.
 - Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
@@ -53,7 +53,7 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_dft/)
   ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, timing, and per-atom charge/spin tables
   ├─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
-  └─ input_geometry.gjf         # Convenience GJF written when a Gaussian template is available
+  └─ input_geometry.gjf         # Convenience GJF when a Gaussian template is available and conversion is enabled
 
 Notes
 -----

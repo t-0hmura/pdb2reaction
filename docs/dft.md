@@ -23,9 +23,9 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 ```
 
 ## Workflow
-1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`, and when the source was a Gaussian template a matching `.gjf` snapshot is written for reference.
+1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`, and when the source was a Gaussian template and conversion is enabled a matching `.gjf` snapshot is written for reference.
 2. **Configuration merge** – Defaults → YAML (`dft` block) → CLI. Charge/multiplicity inherit `.gjf` metadata when present; otherwise `-q/--charge` is required and multiplicity defaults to `1`. Always set them explicitly so the correct RKS/UKS solver is selected.
-3. **SCF build** – `--func-basis` is parsed into XC functional and orbital basis. Density fitting is enabled automatically and a practical JKFIT auxiliary basis is guessed from the orbital basis (def2, cc-pVXZ, Pople families). `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal VV10 is activated for functionals whose names end in `-v` or contain `vv10`.
+3. **SCF build** – `--func-basis` is parsed into XC functional and orbital basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal VV10 is activated for functionals whose names end in `-v` or contain `vv10`.
 4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarising energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options
@@ -53,7 +53,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 
 ## Notes
 - GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur. Blackwell GPUs are detected and forced to CPU with a warning to avoid unsupported GPU4PySCF configurations.
-- Density fitting is always attempted; auxiliary bases are auto-selected for def2/cc-pVXZ/Pople families and silently skipped when unsupported.
+- Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
 - The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
 - Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
