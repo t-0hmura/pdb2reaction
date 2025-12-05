@@ -357,7 +357,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | `tsopt`      | Transition‑state refinement (Dimer+LBFGS or RS-I-RFO presets).            | `docs/tsopt.md`         |
 | `freq`       | Vibrational analysis, thermochemistry.    | `docs/freq.md`          |
 | `irc`        | Intrinsic reaction coordinate following from a TS structure.    | `docs/irc.md`           |
-| `extract`    | Extract catalytic pockets from full PDB structures (also used by `all`).     | `docs/extract.md`       |
+| `extract`    | Extract active sites from full PDB structures.     | `docs/extract.md`       |
 | `trj2fig`    | Convert trajectory data to interactive figures (Plotly / Kaleido).           | `docs/trj2fig.md`       |
 | `add-elem-info` | Add missing element metadata to PDB files.     | `docs/add_elem_info.md` |
 | `dft`        | DFT single‑point calculations on UMA geometries using PySCF / gpu4pyscf.     | `docs/dft.md`           |
@@ -366,8 +366,8 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 
 In practice, you can:
 
-- prototype with lower‑level subcommands (`scan`, `tsopt`, `opt`),
-- then wrap everything into a reproducible `pdb2reaction all --args-yaml config.yaml` run for production.
+- prototype with lower‑level subcommands (`scan`, `scan2d`, `opt`),
+- then wrap everything into a reproducible `pdb2reaction all` run for production.
 
 ---
 
