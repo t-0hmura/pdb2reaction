@@ -338,6 +338,7 @@ SEARCH_KW: Dict[str, Any] = {
     "max_nodes_segment": 10,
     "max_nodes_bridge": 5,
     "kink_max_nodes": 3,
+    "max_seq_kink": 2,
     "refine_mode": None,
 }
 
@@ -1110,6 +1111,18 @@ class CombinedPath:
     segments: List[SegmentReport]
 
 
+def _trailing_kink_count(segments: Sequence[SegmentReport]) -> int:
+    """Return the number of consecutive kink segments at the end of ``segments``."""
+
+    count = 0
+    for seg in reversed(segments):
+        if seg.tag and "kink" in seg.tag:
+            count += 1
+        else:
+            break
+    return count
+
+
 def _build_multistep_path(
     gA,
     gB,
@@ -1133,15 +1146,19 @@ def _build_multistep_path(
     seg_counter: List[int],
     branch_tag: str,
     pair_index: Optional[int] = None,
+    kink_seq_count: int = 0,
 ) -> CombinedPath:
     """
     Recursively construct a multistep MEP from A–B and return it (A→B order).
     """
     seg_max_nodes = int(search_cfg.get("max_nodes_segment", gs_cfg.get("max_nodes", 10)))
     gs_seg_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=seg_max_nodes)
+    max_seq_kink = int(search_cfg.get("max_seq_kink", 2))
 
-    if depth > int(search_cfg.get("max_depth", 10)):
-        click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
+    def _terminate_with_maxdepth(reason_msg: Optional[str] = None) -> CombinedPath:
+        if reason_msg:
+            click.echo(reason_msg)
+
         seg_tag = f"seg_{seg_counter[0]:03d}_maxdepth"
         gsm = (
             _run_dmf_between(
@@ -1201,6 +1218,10 @@ def _build_multistep_path(
         )
 
         return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[seg_report])
+
+    if depth > int(search_cfg.get("max_depth", 10)):
+        click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
+        return _terminate_with_maxdepth()
 
     seg_id = seg_counter[0]
     seg_counter[0] += 1
@@ -1361,16 +1382,28 @@ def _build_multistep_path(
     parts: List[Tuple[List[Any], List[float]]] = []
     seg_reports: List[SegmentReport] = []
 
+    trailing_kink_run = kink_seq_count
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
-            pair_index=pair_index
+            pair_index=pair_index,
+            kink_seq_count=kink_seq_count,
         )
         _tag_images(subL.images, pair_index=pair_index)
         parts.append((subL.images, subL.energies))
         seg_reports.extend(subL.segments)
+        trailing_kink_run = _trailing_kink_count(seg_reports)
+
+    current_kink_run = trailing_kink_run + 1 if use_kink else 0
+    if use_kink and current_kink_run >= max_seq_kink:
+        warning_msg = (
+            f"[{tag0}] Consecutive kink segments were detected. Something seems wrong. "
+            "Please check the initial structure and the generated intermediate structures. "
+            "Alternatively, try switching the mep-mode. If that still fails, try including intermediate structures in the inputs."
+        )
+        return _terminate_with_maxdepth(reason_msg=warning_msg)
 
     parts.append((step_imgs, step_E))
     seg_reports.append(seg_report)
@@ -1380,7 +1413,8 @@ def _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
-            pair_index=pair_index
+            pair_index=pair_index,
+            kink_seq_count=current_kink_run,
         )
         _tag_images(subR.images, pair_index=pair_index)
         parts.append((subR.images, subR.energies))
@@ -1403,6 +1437,7 @@ def _build_multistep_path(
             seg_counter=seg_counter,
             branch_tag=f"{branch_tag}B",
             pair_index=pair_index,
+            kink_seq_count=_trailing_kink_count(seg_reports),
         )
         _tag_images(sub.images, pair_index=pair_index)
         return sub
@@ -2252,6 +2287,7 @@ def cli(
                 seg_counter=seg_counter,
                 branch_tag="B",
                 pair_index=None,
+                kink_seq_count=_trailing_kink_count(seg_reports_all),
             )
             return sub
 
@@ -2272,6 +2308,7 @@ def cli(
                 seg_counter=seg_counter,
                 branch_tag=pair_tag,
                 pair_index=i,
+                kink_seq_count=_trailing_kink_count(seg_reports_all),
             )
 
             if i == 0:

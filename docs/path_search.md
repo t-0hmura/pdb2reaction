@@ -89,7 +89,7 @@ The YAML root must be a mapping. YAML parameters override the CLI values. Shared
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
-`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, and `refine_mode` (auto-selects `peak` for GSM or `minima` for DMF when left `null`). The legacy `rmsd_align` flag is ignored but kept for compatibility.
+`search` governs the recursion logic: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, `max_seq_kink`, and `refine_mode` (auto-selects `peak` for GSM or `minima` for DMF when left `null`). The legacy `rmsd_align` flag is ignored but kept for compatibility.
 
 `dmf` bundles Direct Max Flux + (C)FB-ENM controls applied whenever `--mep-mode dmf` is selected. The defaults mirror the shared `DMF_KW` dictionary and can be overridden per run:
 
@@ -243,4 +243,5 @@ search:
   max_nodes_segment: 10
   max_nodes_bridge: 5
   kink_max_nodes: 3
+  max_seq_kink: 2
 ```
