@@ -1,174 +1,383 @@
-# pdb2reaction
+# pdb2reaction: automated reaction-path modelling directly from PDB structures
 
-`pdb2reaction` is a Python toolkit for building enzymatic reaction models directly from protein databank (PDB) structures and
-running an automated pipeline of pocket extraction, reaction-path exploration, transition-state refinement, vibrational
-analysis, and DFT single-point post-processing. The command line interface (CLI) wraps a set of UMA-based geometry optimisers
-and growing string methods so that multi-step enzymatic reaction mechanisms can be generated with minimal manual intervention.
+## Overview
 
-## Installation
-### QUICK Installation (using conda environment and on HPC environment)
+`pdb2reaction` is a Python toolkit for turning **experimental or modelled PDB structures** into **enzymatic reaction pathways** with Machine Learning Interatomic Potential (MLIP).
+
+Given one or more full protein–ligand PDBs (reactant, intermediates, product), it:
+
+- extracts a **catalytic pocket** around user‑defined substrates,
+- builds a **machine‑learned potential** using Meta’s UMA model,
+- explores **minimum‑energy paths (MEPs)** with growing string / path optimisation methods,
+- refines **transition states**, runs **vibrational analysis**, and
+- optionally performs **DFT single‑point calculations** for higher‑level energetics.
+
+All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic mechanism** can be generated with minimal manual intervention.
+
+Typical use cases:
+
+- mapping out plausible reaction mechanisms from a handful of crystal structures or snapshots (with hydrogen atoms),
+- refining TS candidates obtained from other tools,
+- scanning key distances to generate intermediates,
+- building Gibbs and DFT//ML energy diagrams for publication.
+
+---
+
+## 1. Installation
+
+`pdb2reaction` is intended for Linux‑like environments (local workstations or HPC clusters) with a CUDA‑capable GPU. Several dependencies – notably **PyTorch**, **fairchem‑core (UMA)**, and **gpu4pyscf‑cuda12x** – expect a working CUDA installation.
+
+Refer to the upstream projects for additional details:
+
+- fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
+- Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
+
+### 1.1 Quick start on an HPC cluster (conda)
+
+Below is a minimal setup that works on many CUDA 12.8 clusters. Adjust module names and versions to match your system.
+
 ```bash
+# 1) Load CUDA (HPC module system)
 module load cuda/12.8
-conda create -n pdb2reaction python=3.11 -y
-conda activate pdb2reaction
 
-conda install -c conda-forge cyipopt -y
+# 2) Install a CUDA-enabled PyTorch build
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
 
-pip3 install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-pip3 install git+https://github.com/t-0hmura/pdb2reaction.git
-
-plotly_get_chrome -y
-
-hf auth login --token "<Your Access Token>" --add-to-git-credential
-```
-
-### Step by Step Instruction
-If you use HPC environment module, load CUDA like:
-```bash
-module load cuda/12.8
-```
-
-If you want to use DMF method in MEP search, We recommend using conda to install cyipopt on Linux, Mac, and Windows:
-```bash
-conda create -n pdb2reaction python=3.11 -y
-conda activate pdb2reaction
-
-conda install -c conda-forge cyipopt -y
-```
-
-then, Install appropriate-version pytorch like:
-```bash
-pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
-```
-
-afterthat, Install pdb2reaction itself (and get chrome for visuallization):
-```bash
+# 3) Install pdb2reaction from GitHub
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
+
+# 4) Install a headless Chrome for Plotly figure export
 plotly_get_chrome -y
 ```
 
-Meta's UMA model is on Hugging Face Hub. You need to log in once:
+Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. Either:
+
 ```bash
+# Newer Hugging Face CLI
+hf auth login --token "<YOUR_ACCESS_TOKEN>" --add-to-git-credential
+```
+
+or
+
+```bash
+# Classic CLI
 huggingface-cli login
 ```
-> See https://github.com/facebookresearch/fairchem, https://huggingface.co/facebook/UMA, https://huggingface.co/docs/hub/security-tokens
+
+You only need to do this once per machine / user account.
 
 
-> **Note**: Several dependencies (e.g., `torch`, `fairchem-core`, `gpu4pyscf-cuda12x`) expect a CUDA-capable environment. Refer
-to each project's installation guide when configuring GPUs or HPC nodes.
-
-## Usage
-
-The CLI is exposed via the `pdb2reaction` entry point declared in `pyproject.toml`. The Click group in
-[`pdb2reaction/cli.py`](pdb2reaction/cli.py) sets `all` as its default subcommand, so running `pdb2reaction ...` or
-`pdb2reaction all ...` is equivalent. The `all` command drives the end-to-end workflow and **defaults to a single-pass
-`path-opt` MEP search**; set `--refine-path True` to switch to the recursive `path_search` refiner and enable merged full-system
-PDB output when PDB templates are available. All workflows require `-i/--input` (full PDBs in reaction order) and `-c/--center`
-(substrate definition for pocket extraction) unless extraction is intentionally skipped.
-
-### Workflow modes
-
-#### Multi-structure GSM pipeline
+If you want to use Direct Max flux method for MEP search, create conda environment and install cyiopt before installation.
 
 ```bash
-# Minimal
+# Create and activate a dedicated conda environment
+conda create -n pdb2reaction python=3.11 -y
+conda activate pdb2reaction
+
+# Install cyipopt (required for the DMF method in MEP search)
+conda install -c conda-forge cyipopt -y
+```
+
+
+
+### 1.2 Step‑by‑step explanation
+
+If you prefer to build the environment piece by piece:
+
+1. **Load CUDA (HPC modules)**
+
+   ```bash
+   module load cuda/12.8
+   ```
+
+2. **Create and activate a conda environment**
+
+   ```bash
+   conda create -n pdb2reaction python=3.11 -y
+   conda activate pdb2reaction
+   ```
+
+3. **Install cyipopt**  
+   Required if you want to use the DMF method in MEP search.
+
+   ```bash
+   conda install -c conda-forge cyipopt -y
+   ```
+
+4. **Install PyTorch with the right CUDA build**
+
+   For CUDA 12.8:
+
+   ```bash
+   pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+   ```
+
+   (You may use another compatible version if your cluster recommends it.)
+
+5. **Install `pdb2reaction` itself and Chrome for visualization**
+
+   ```bash
+   pip install git+https://github.com/t-0hmura/pdb2reaction.git
+   plotly_get_chrome -y
+   ```
+
+6. **Log in to Hugging Face Hub (UMA model)**
+
+   ```bash
+   huggingface-cli login
+   ```
+
+   See also:
+
+   - <https://github.com/facebookresearch/fairchem>
+   - <https://huggingface.co/facebook/UMA>
+   - <https://huggingface.co/docs/hub/security-tokens>
+
+---
+
+## 2. Command line basics
+
+The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default subcommand is `all`.
+
+That means:
+
+```bash
+pdb2reaction [OPTIONS] ...
+# is equivalent to
+pdb2reaction all [OPTIONS] ...
+```
+
+The `all` workflow is an **orchestrator**: it chains pocket extraction, MEP search, TS optimisation, vibrational analysis, and optional DFT single points into a single command.
+
+All high‑level workflows share two important options:
+
+- `-i/--input`: one or more **full PDB structures** (reactant, intermediate(s), product).
+- `-c/--center`: how to define the **substrate / pocket center** (e.g., residue names or residue IDs).
+
+Unless you intentionally skip extraction, you must supply both.
+
+---
+
+## 3. Main workflow modes
+
+### 3.1 Multi‑structure GSM pipeline (reactant → product)
+
+Use this when you already have several full PDB structures along a putative reaction coordinate (e.g., R → I1 → I2 → P).
+
+**Minimal example**
+
+```bash
 pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
-
-# Additional Option
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb \
-             -c "GPP,MMT" \
-             --ligand-charge "GPP:-3,MMT:-1" \
-             --outdir ./result_all \
-             --tsopt True --thermo True --dft True
 ```
 
-Multiple full systems are processed in reaction order. The command extracts pockets, runs a single-pass GSM via `path-opt`
-by default (set `--refine-path True` to invoke recursive `path_search`), merges pocket minimum-energy paths back into the
-full structures when PDB templates are available, and (optionally) executes TS optimisation, vibrational analysis, and
-DFT single points for each reactive segment.
-
-#### Single-structure + staged scan (feeds GSM)
+**Richer example**
 
 ```bash
-# Minimal
-pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists "[(10,55,2.20),(23,34,1.80)]"
-
-# Additional Option
-pdb2reaction -i SINGLE.pdb \
-             -c "GPP,MMT" \
-             --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
-             --mult 1 --outdir ./result_scan_all \
-             --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"              --outdir ./result_all              --tsopt True --thermo True --dft True
 ```
 
-Providing exactly one input PDB alongside `--scan-lists` performs a staged distance scan **on the extracted pocket** using
-UMA. Each `stage_XX/result.pdb` becomes an ordered intermediate/product candidate. The default `all` mode concatenates the
-segments via `path-opt`; set `--refine-path True` to instead run the recursive `path_search` refiner and write merged
-`mep_w_ref*.pdb` files when PDB templates are available.
+Behaviour:
 
-#### Single-structure TSOPT-only mode
+- takes two or more **full systems** in reaction order,
+- extracts catalytic pockets for each structure,
+- performs a **single‑pass GSM / MEP search** via `path-opt` by default,
+- optionally switches to a recursive refiner (`path_search`) with `--refine-path True`,
+- when PDB templates are available, merges the pocket‑level MEP back into the **full system**,
+- optionally runs TS optimisation, vibrational analysis, and DFT single points for each segment.
+
+This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modelling).
+
+---
+
+### 3.2 Single‑structure + staged scan (feeds GSM)
+
+Use this when you only have **one PDB structure**, but you know which inter‑atomic distances should change along the reaction.
+
+Provide a single `-i` together with `--scan-lists`:
+
+**Minimal example**
 
 ```bash
-# Minimal
-pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
-
-# Additional Option
-pdb2reaction -i TS_CANDIDATE.pdb \
-             -c "GPP,MMT" \
-             --ligand-charge "GPP:-3,MMT:-1" \
-             --tsopt True --thermo True --dft True \
-             --outdir ./result_tsopt_only
+pdb2reaction -i R.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"              --scan-lists "[(10,55,2.20),(23,34,1.80)]"
 ```
 
-Supplying a single input **without** `--scan-lists` while setting `--tsopt True` skips the path search entirely. The tool
-optimises the pocket TS, performs a pseudo-IRC to minimise both ends, and can run `freq`/`dft` on the resulting R/TS/P trio
-to build UMA, Gibbs, DFT, and DFT//UMA diagrams. This TSOPT-only pocket mode still mirrors the `energy_diagram_*_all.png` and
-`irc_plot_all.png` outputs under the top-level `--outdir`.
+**Richer example**
 
-### Important flags and behaviours
+```bash
+pdb2reaction -i SINGLE.pdb              -c "GPP,MMT"              --scan-lists "[(10,55,2.20),(23,34,1.80)]"              --mult 1              --outdir ./result_scan_all              --tsopt True --thermo True --dft True
+```
 
-- `-i/--input PATH...`: Two or more full PDBs for GSM mode, or one PDB when paired with `--scan-lists` **or** `--tsopt True`.
-  A single `-i` may be followed by multiple filenames. When extraction is skipped, XYZ/GJF inputs are also accepted.
-- `-c/--center TEXT`: Substrate definition for pocket extraction. Accepts PDB paths, residue IDs (e.g., `A:123,B:456`), or
-  residue names (`GPP,MMT`).
-- `--ligand-charge TEXT`: Total charge or mapping (e.g., `GPP:-3,MMT:-1`). The first pocket’s total charge is rounded to an
-  integer and reused for scan/GSM/TS optimisation.
-- `-q/--charge INT`: Force the total system charge with a warning, bypassing extractor rounding, `.gjf` metadata, and
-  `--ligand-charge` resolution. Use when you need to override automated charge inference.
-- `--scan-lists TEXT...`: One or more Python-style lists describing staged scans for single-input runs. Each `(i, j, target_Å)`
-  tuple uses indices from the original full PDB (1-based) and is auto-remapped onto the extracted pocket.
-- `--tsopt/--thermo/--dft BOOLEAN`: Enable TS optimisation + pseudo-IRC, vibrational analysis (UMA Gibbs diagram), and DFT
-  single-point post-processing (adds a DFT//UMA Gibbs diagram when combined with `--thermo True`).
-- `--refine-path BOOLEAN`: Toggle recursive `path_search` refinement in `all` (off by default). When enabled and PDB templates
-  are available, merged full-system `mep_w_ref*.pdb` outputs are written under `<outdir>/path_search/`.
+Key points:
 
-Single-input runs require either `--scan-lists` (staged scan feeding GSM) or `--tsopt True` (TSOPT-only mode). Refer to
-[`docs/all.md`](docs/all.md) for a full option matrix, YAML schemas, and output details.
+- `--scan-lists` describes **staged distance scans** on the extracted pocket, using UMA.
+- Each tuple `(i, j, target_Å)` is:
+  - 1‑based indices taken from the original full PDB,
+  - automatically remapped to the pocket indices.
+- Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
+- The default `all` workflow then concatenates these stages using `path-opt`.
+- With `--refine-path True`, it instead runs the recursive `path_search` refiner and (when possible) writes merged full‑system `mep_w_ref*.pdb` files under `<outdir>/path_search/`.
 
-### Run summaries (`summary.log`)
+This mode is useful for building approximate reaction paths starting from a single experimental structure.
 
-Every `pdb2reaction all` run writes a human-readable `summary.log` to the top-level `--outdir` (and to each `path_search`
-segment directory). The log mirrors the machine-friendly `summary.yaml` but is formatted for quick inspection: it records the
-invoked CLI, global MEP statistics, per-segment barriers and bond changes, and post-processing energies (UMA/thermo/DFT).
+---
 
-### CLI subcommands
+### 3.3 Single‑structure TSOPT‑only mode
 
-| Subcommand | Summary | Documentation |
-| --- | --- | --- |
-| `all` | End-to-end workflow orchestrator that chains pocket extraction, GSM search (`path-opt` by default or recursive `path_search` with `--refine-path True`), TS/freq/DFT post-processing, and staged scans. | [`docs/all.md`](docs/all.md) |
-| `scan` | Perform staged biased scans on pocket models to create additional intermediates. | [`docs/scan.md`](docs/scan.md) |
-| `opt` | Optimise a single structure with UMA (LBFGS/RFO presets). | [`docs/opt.md`](docs/opt.md) |
-| `path-opt` | Run UMA optimisation on a specific path segment or snapshot. | [`docs/path_opt.md`](docs/path_opt.md) |
-| `path-search` | Launch the recursive GSM-based reaction path search and pocket/full-system merging. | [`docs/path_search.md`](docs/path_search.md) |
-| `tsopt` | Refine transition states (with optional pseudo-IRC propagation). | [`docs/tsopt.md`](docs/tsopt.md) |
-| `freq` | Compute vibrational modes, thermochemistry, and UMA energy diagrams. | [`docs/freq.md`](docs/freq.md) |
-| `irc` | Follow an intrinsic reaction coordinate starting from a TS structure. | [`docs/irc.md`](docs/irc.md) |
-| `extract` | Extract catalytic pockets from full PDB structures (also used implicitly by `all`). | [`docs/extract.md`](docs/extract.md) |
-| `trj2fig` | Convert trajectory data to interactive diagrams (Plotly/Kaleido). | [`docs/trj2fig.md`](docs/trj2fig.md) |
-| `add-elem-info` | Augment PDB files with missing element metadata. | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
-| `dft` | Run single-point DFT calculations on UMA geometries using PySCF/gpu4pyscf. | [`docs/dft.md`](docs/dft.md) |
-| `scan2d` | Explore two harmonic distance restraints simultaneously and build 2D PES grids with UMA relaxations. | [`docs/scan2d.md`](docs/scan2d.md) |
-| `scan3d` | Three-distance 3D grid scan with harmonic restraints (UMA) that can also plot existing `surface.csv` data. | [`docs/scan3d.md`](docs/scan3d.md) |
+Use this when you already have a **transition state candidate** and only want to refine it, without running a full path search.
 
-Each subcommand accepts `-h/--help` for inline usage hints and can also consume `--args-yaml` files that match the schemas
-documented above.
+Provide exactly one PDB and enable `--tsopt`:
+
+**Minimal example**
+
+```bash
+pdb2reaction -i TS_CANDIDATE.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"
+```
+
+**Richer example**
+
+```bash
+pdb2reaction -i TS_CANDIDATE.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"              --tsopt True --thermo True --dft True              --outdir ./result_tsopt_only
+```
+
+Behaviour:
+
+- skips the MEP/path search entirely,
+- refines the **pocket TS** with UMA‑based TS optimisation,
+- runs a **pseudo‑IRC** in both directions to relax down to R and P minima,
+- can then perform `freq` and `dft` on the R/TS/P trio,
+- produces UMA, Gibbs, and DFT//UMA energy diagrams, similar to the full `all` workflow.
+
+Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--outdir`.
+
+> **Important:** Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
+
+---
+
+## 4. Important CLI options and behaviours
+
+Below are the most commonly used options across workflows.
+
+- `-i, --input PATH...`  
+  Input structures. Interpretation depends on how many you provide:
+
+  - **≥ 2 PDBs** → GSM mode (reactant/intermediates/product).
+  - **1 PDB + `--scan-lists`** → staged scan → GSM.
+  - **1 PDB + `--tsopt True`** → TSOPT‑only mode.
+
+  When pocket extraction is skipped, XYZ/GJF inputs are also accepted.
+
+- `-c, --center TEXT`  
+  Defines the substrate / pocket centre for extraction. Supports:
+
+  - PDB paths,
+  - residue IDs, e.g. `A:123,B:456`,
+  - residue names, e.g. `"GPP,MMT"`.
+
+- `--ligand-charge TEXT`  
+  Total charge information, either:
+
+  - a single integer (total pocket charge), or
+  - a mapping, e.g. `"GPP:-3,MMT:-1"`.
+
+  The total charge of the first pocket is rounded to an integer and reused for scan, GSM, and TS optimisation runs.
+
+- `-q, --charge INT`  
+  Hard override of the total system charge. This bypasses:
+
+  - extractor rounding,
+  - `.gjf` metadata,
+  - and `--ligand-charge` resolution.
+
+  Use when you want full manual control of the charge.
+
+- `--scan-lists TEXT...`  
+  One or more Python‑style lists describing **staged scans** for single‑input runs. Example:
+
+  ```bash
+  --scan-lists "[(10,55,2.20),(23,34,1.80)]"
+  ```
+
+  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the pocket.
+
+- `--tsopt BOOLEAN`  
+  Enable TS optimisation and pseudo‑IRC propagation. Required for TSOPT‑only mode, but also useful in multi‑structure workflows to refine TS along the path.
+
+- `--thermo BOOLEAN`  
+  Run vibrational analysis and compute thermochemistry on UMA geometries. Produces Gibbs free energies and corresponding energy diagrams.
+
+- `--dft BOOLEAN`  
+  Perform DFT single‑point calculations on UMA optimised structures via PySCF / gpu4pyscf. When combined with `--thermo True`, this adds DFT//UMA Gibbs diagrams.
+
+- `--refine-path BOOLEAN`  
+  Switch between:
+
+  - **single‑pass GSM** with `path-opt` (simple MEP),
+  - **recursive GSM / MEP refinement** with `path_search`.
+
+  When `--refine-path True` and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<outdir>/path_search/`.
+
+- `--outdir PATH`  
+  Top‑level output directory. All intermediate files, logs, and figures are placed here.
+
+- `--mult INT`  
+  Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
+
+For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
+
+---
+
+## 5. Run summaries (`summary.log` and `summary.yaml`)
+
+Every `pdb2reaction all` run writes a human‑readable:
+
+- `summary.log` – formatted for quick inspection, and
+- `summary.yaml` – machine‑friendly version of the same information.
+
+They typically contain:
+
+- the exact CLI command invoked,
+- global MEP statistics (e.g. maximum barrier, path length),
+- per‑segment barrier heights and key bond changes,
+- energies from UMA, thermochemistry, and DFT post‑processing (where enabled).
+
+Each `path_search` segment directory also gets its own `summary.log` and `summary.yaml`, so you can inspect local refinements independently.
+
+---
+
+## 6. CLI subcommands
+
+While most users will primarily call `pdb2reaction all`, the CLI also exposes lower‑level building blocks. Each subcommand supports `-h/--help` and can read arguments from YAML files via `--args-yaml` (see `docs/*.md` for exact schemas).
+
+| Subcommand   | Role (short)                                                                 | Documentation            |
+| ------------ | ---------------------------------------------------------------------------- | ------------------------ |
+| `all`        | High‑level workflow orchestrator: extraction → GSM / path search → TS/freq/DFT. | `docs/all.md`           |
+| `scan`       | Staged biased scans on pocket models to generate additional intermediates.   | `docs/scan.md`          |
+| `opt`        | Optimise a single structure with UMA (LBFGS/RFO presets).                    | `docs/opt.md`           |
+| `path-opt`   | UMA optimisation on a specific path segment or snapshot.                     | `docs/path_opt.md`      |
+| `path-search`| Recursive GSM‑based path search plus pocket/full‑system merging.             | `docs/path_search.md`   |
+| `tsopt`      | Transition‑state refinement with optional pseudo‑IRC propagation.            | `docs/tsopt.md`         |
+| `freq`       | Vibrational modes, thermochemistry, and UMA energy diagrams.                 | `docs/freq.md`          |
+| `irc`        | Intrinsic reaction coordinate following from a TS structure.                 | `docs/irc.md`           |
+| `extract`    | Extract catalytic pockets from full PDB structures (also used by `all`).     | `docs/extract.md`       |
+| `trj2fig`    | Convert trajectory data to interactive figures (Plotly / Kaleido).           | `docs/trj2fig.md`       |
+| `add-elem-info` | Add missing element metadata to PDB files.                               | `docs/add_elem_info.md` |
+| `dft`        | DFT single‑point calculations on UMA geometries using PySCF / gpu4pyscf.     | `docs/dft.md`           |
+| `scan2d`     | 2D PES grid: two distance restraints with UMA relaxation.                    | `docs/scan2d.md`        |
+| `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.| `docs/scan3d.md`        |
+
+In practice, you can:
+
+- prototype with lower‑level subcommands (`scan`, `tsopt`, `opt`),
+- then wrap everything into a reproducible `pdb2reaction all --args-yaml config.yaml` run for production.
+
+---
+
+## 7. Getting help
+
+For any subcommand:
+
+```bash
+pdb2reaction <subcommand> --help
+```
+
+This prints the available options, defaults, and a short description. For detailed workflows, argument schemas, and example YAML files, consult the `docs/*.md` files in the repository (e.g. `docs/all.md`, `docs/scan.md`).
