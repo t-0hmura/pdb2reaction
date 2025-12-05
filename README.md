@@ -38,22 +38,20 @@ Below is a minimal setup that works on many CUDA 12.8 clusters. Adjust module na
 
 ```bash
 # 1) Load CUDA (HPC module system)
-module load cuda/12.8
-
 # 2) Install a CUDA-enabled PyTorch build
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-
 # 3) Install pdb2reaction from GitHub
-pip install git+https://github.com/t-0hmura/pdb2reaction.git
-
 # 4) Install a headless Chrome for Plotly figure export
+
+module load cuda/12.8
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
 
 Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. Either:
 
 ```bash
-# Newer Hugging Face CLI
+# Hugging Face CLI
 hf auth login --token "<YOUR_ACCESS_TOKEN>" --add-to-git-credential
 ```
 
@@ -64,19 +62,17 @@ or
 huggingface-cli login
 ```
 
-You only need to do this once per machine / user account.
+You only need to do this once per machine / environment.
 
+- If you want to use Direct Max flux method for MEP search, create conda environment and install cyiopt before installation.
+  ```bash
+  # Create and activate a dedicated conda environment
+  conda create -n pdb2reaction python=3.11 -y
+  conda activate pdb2reaction
 
-If you want to use Direct Max flux method for MEP search, create conda environment and install cyiopt before installation.
-
-```bash
-# Create and activate a dedicated conda environment
-conda create -n pdb2reaction python=3.11 -y
-conda activate pdb2reaction
-
-# Install cyipopt (required for the DMF method in MEP search)
-conda install -c conda-forge cyipopt -y
-```
+  # Install cyipopt (required for the DMF method in MEP search)
+  conda install -c conda-forge cyipopt -y
+  ```
 
 
 
@@ -290,6 +286,9 @@ Below are the most commonly used options across workflows.
 
   Use when you want full manual control of the charge.
 
+- `--mult INT`  
+  Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
+
 - `--scan-lists TEXT...`  
   One or more Python‑style lists describing **staged scans** for single‑input runs. Example:
 
@@ -298,6 +297,9 @@ Below are the most commonly used options across workflows.
   ```
 
   Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the pocket.
+
+- `--outdir PATH`  
+  Top‑level output directory. All intermediate files, logs, and figures are placed here.
 
 - `--tsopt BOOLEAN`  
   Enable TS optimisation and pseudo‑IRC propagation. Required for TSOPT‑only mode, but also useful in multi‑structure workflows to refine TS along the path.
@@ -316,12 +318,6 @@ Below are the most commonly used options across workflows.
 
   When `--refine-path True` and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<outdir>/path_search/`.
 
-- `--outdir PATH`  
-  Top‑level output directory. All intermediate files, logs, and figures are placed here.
-
-- `--mult INT`  
-  Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
-
 For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
 
 ---
@@ -331,7 +327,7 @@ For a full matrix of options and YAML schemas, see `docs/all.md` in the reposito
 Every `pdb2reaction all` run writes a human‑readable:
 
 - `summary.log` – formatted for quick inspection, and
-- `summary.yaml` – machine‑friendly version of the same information.
+- `summary.yaml` – YAML version of the same information.
 
 They typically contain:
 
@@ -346,7 +342,7 @@ Each `path_search` segment directory also gets its own `summary.log` and `summar
 
 ## 6. CLI subcommands
 
-While most users will primarily call `pdb2reaction all`, the CLI also exposes lower‑level building blocks. Each subcommand supports `-h/--help` and can read arguments from YAML files via `--args-yaml` (see `docs/*.md` for exact schemas).
+While most users will primarily call `pdb2reaction all`, the CLI also exposes lower‑level building blocks like `pdb2reaction opt`. Each subcommand supports `-h/--help` and can read arguments from YAML files via `--args-yaml` (see `docs/*.md` for exact schemas).
 
 | Subcommand   | Role (short)                                                                 | Documentation            |
 | ------------ | ---------------------------------------------------------------------------- | ------------------------ |
