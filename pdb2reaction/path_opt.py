@@ -30,7 +30,7 @@ Description
 - Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light", default) or RFO ("heavy") before alignment and GSM. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
 - Path generator: `--mep-mode` accepts GSM or DMF, with GSM enabled by default to match the CLI default.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
-- With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is available via YAML but is disabled by default; the CLI does not toggle it.
+- With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is enabled by default and follows the `--climb` flag; YAML can still override it.
 - `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
 - `--fix-ends=True` fixes both endpoint geometries during GSM (`fix_first=True`, `fix_last=True`).
 - After optimization, the highest-energy image (HEI) is identified as the highest-energy internal local maximum (preferring internal nodes). If none exist, the maximum among internal nodes is used; if there are no internal nodes, the global maximum is used. The selected HEI is exported.
@@ -172,7 +172,7 @@ GS_KW: Dict[str, Any] = {
     "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
     "climb": True,              # bool, enable climbing image
     "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent (disabled by default)
+    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent (enabled by default; tied to --climb)
     "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
     "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
     "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
@@ -691,8 +691,8 @@ def cli(
         gs_cfg["fix_first"] = bool(fix_ends)
         gs_cfg["fix_last"] = bool(fix_ends)
 
-        # Lanczos tangent estimation can be enabled via YAML (`gs.climb_lanczos`);
-        # the CLI does not modify this setting.
+        # Lanczos tangent estimation follows the CLI --climb flag by default but
+        # can still be overridden via YAML (`gs.climb_lanczos`).
         opt_cfg["dump"] = bool(dump)
         opt_cfg["out_dir"] = out_dir
         if thresh is not None:
