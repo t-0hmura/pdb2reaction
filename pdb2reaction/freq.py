@@ -520,7 +520,7 @@ THERMO_KW = {
     "convert_files",
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.",
 )
 @click.option("--max-write", type=int, default=10, show_default=True,
               help="How many modes to export (after sorting per --sort).")
