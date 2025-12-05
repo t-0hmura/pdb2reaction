@@ -126,6 +126,7 @@ Notes
   - ``--include-H2O`` default: **true**.
   - ``--exclude-backbone`` default: **true**.
   - ``--add-linkH`` default: **true**.
+  - ``--verbose`` default: **true** (INFO logging enabled; set to ``false`` to keep warnings only).
   - ``--ligand-charge`` default: **None** (unknown residues counted as 0 unless set).
   - Output default: single input → ``pocket.pdb``; multiple inputs → ``pocket_{original_filename}.pdb``.
 - **Geometry thresholds and tolerances:**
