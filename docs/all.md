@@ -124,13 +124,15 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimisation toggle. | _None_ |
 
 ## Outputs
-- `<out-dir>/summary.log`: Human-readable run digest (CLI invocation, MEP/segment stats, post-processing energies, key files);
-  also stored per GSM/TSOPT branch in `<out-dir>/path_search/*/summary.log`.
-- `<out-dir>/pockets/`: Per-input pocket PDBs when extraction runs.
-- `<out-dir>/scan/`: Present when `--scan-lists` is used; contains staged pocket scan results (`stage_XX/result.pdb`).
-- `<out-dir>/path_search/`: GSM results (trajectory, merged full-system PDBs, energy diagrams, `summary.yaml`, per-segment folders).
-- `<out-dir>/path_search/tsopt_seg_XX/`: Present when post-processing is enabled; includes TS optimisation, pseudo-IRC, freq, and DFT outputs plus diagrams.
-- `<out-dir>/tsopt_single/`: Present only in TSOPT-only mode; contains TS optimisation outputs, IRC endpoints, and optional freq/DFT directories.
+```
+out_dir/ (default: ./result_all/)
+├─ summary.log               # Human-readable digest (also mirrored under path_search/*/summary.log)
+├─ pockets/                  # Per-input pocket PDBs when extraction runs
+├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
+├─ path_search/              # GSM results: trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
+├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimisation, pseudo-IRC, freq, DFT, diagrams)
+├─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
+```
 - Console logs summarising pocket charge resolution, YAML contents, scan stages, GSM progress, and per-stage timing.
 
 ## Notes

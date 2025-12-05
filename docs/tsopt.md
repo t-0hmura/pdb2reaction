@@ -86,16 +86,18 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 
 ## Outputs (& directory layout)
 ```
-out-dir/ (default: ./result_tsopt/)
-  ├─ final_geometry.xyz                # Always written
-  ├─ final_geometry.pdb                # When the input was PDB (conversion enabled)
-  ├─ final_geometry.gjf                # When the input was Gaussian (conversion enabled)
-  ├─ optimization_all.trj/.pdb         # Light-mode dump (requires --dump True)
-  ├─ optimization.trj/.pdb             # Heavy-mode trajectory
-  ├─ vib/
-  │   ├─ final_imag_mode_±XXXX.Xcm-1.trj
-  │   └─ final_imag_mode_±XXXX.Xcm-1.pdb/.gjf
-  └─ .dimer_mode.dat                   # Light-mode orientation seed
+out_dir/ (default: ./result_tsopt/)
+├─ final_geometry.xyz            # Always written
+├─ final_geometry.pdb            # When the input was PDB (conversion enabled)
+├─ final_geometry.gjf            # When the input was Gaussian (conversion enabled)
+├─ optimization_all.trj          # Light-mode dump when --dump is True
+├─ optimization_all.pdb          # Light-mode companion for PDB inputs (conversion enabled)
+├─ optimization.trj              # Heavy-mode trajectory
+├─ optimization.pdb              # Heavy-mode PDB companion when conversion is enabled
+├─ vib/
+│  ├─ final_imag_mode_±XXXX.Xcm-1.trj
+│  └─ final_imag_mode_±XXXX.Xcm-1.pdb/.gjf
+└─ .dimer_mode.dat               # Light-mode orientation seed
 ```
 
 ## Notes

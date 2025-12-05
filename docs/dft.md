@@ -44,12 +44,19 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
-- `<out-dir>/input_geometry.xyz`: Geometry snapshot passed to PySCF (identical coordinates to the input file). `.gjf` is emitted when the input had Gaussian metadata and conversion is enabled.
-- `<out-dir>/result.yaml`:
-  - `energy` block with Hartree/kcal·mol⁻¹ values, convergence flag, wall time, and engine metadata (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
-  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (IAO may be `null` if unavailable).
-  - `spin_densities`: Mulliken, meta-Löwdin, and IAO atomic spin densities (restricted cases report zero/`null` as appropriate).
-- Console pretty block summarising charge, multiplicity, spin (2S), functional, basis, convergence knobs, and resolved output directory.
+```
+out_dir/ (default: ./result_dft/)
+├─ input_geometry.xyz   # Geometry snapshot sent to PySCF
+├─ input_geometry.gjf   # Only when a Gaussian template exists and conversion is enabled
+└─ result.yaml          # Energy/charge/spin summaries with convergence/engine metadata
+```
+- `result.yaml` expands to:
+  - `energy`: Hartree/kcal·mol⁻¹ values, convergence flag, wall time, engine metadata
+    (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
+  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
+  - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
+- Console pretty block summarising charge, multiplicity, spin (2S), functional, basis,
+  convergence knobs, and resolved output directory.
 
 ## Notes
 - GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur. Blackwell GPUs are detected and forced to CPU with a warning to avoid unsupported GPU4PySCF configurations.

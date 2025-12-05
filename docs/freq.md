@@ -73,11 +73,13 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
 
 ## Outputs
-- `<out-dir>/mode_XXXX_±freqcm-1.trj` animations for each written mode. `.pdb` companions are
-  produced only when a PDB template exists **and** `--convert-files` is enabled.
-- `<out-dir>/frequencies_cm-1.txt` listing every computed frequency according to the sort
-  order.
-- `<out-dir>/thermoanalysis.yaml` when both `thermoanalysis` is importable and `--dump True`.
+```
+out_dir/ (default: ./result_freq/)
+├─ mode_XXXX_±freqcm-1.trj  # Per-mode animations
+├─ mode_XXXX_±freqcm-1.pdb  # Only when a PDB template exists and conversion is enabled
+├─ frequencies_cm-1.txt     # Full frequency list using the selected sort order
+└─ thermoanalysis.yaml      # Present when `thermoanalysis` is importable and --dump is True
+```
 - Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
 ## Notes

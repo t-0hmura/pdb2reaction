@@ -80,12 +80,17 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 - `k` (`100`): Harmonic strength in eV·Å⁻². Overridden by `--bias-k`.
 
 ## Outputs
-`<out-dir>/` (default `./result_scan2d/`):
-- `surface.csv` — structured grid table.
-- `scan2d_map.png` (or `.html` fallback) and `scan2d_landscape.html`
-  — 2D contour and 3D surface visualizations.
-- `grid/point_i###_j###.xyz` — relaxed geometries for every `(i, j)` pair (with `.pdb`/`.gjf` companions when conversion is enabled and templates exist).
-- `grid/inner_path_d1_###.trj` — written only when `--dump True` (mirrored to `.pdb` when conversion is enabled for PDB inputs).
+```
+out_dir/ (default: ./result_scan2d/)
+├─ surface.csv                # Structured grid table
+├─ scan2d_map.png             # 2D contour (falls back to HTML when static export fails)
+├─ scan2d_map.html            # HTML contour fallback
+├─ scan2d_landscape.html      # 3D surface visualization
+├─ grid/point_i###_j###.xyz   # Relaxed geometries for every (i, j) pair
+├─ grid/point_i###_j###.pdb   # PDB companions when conversion is enabled and templates exist
+├─ grid/point_i###_j###.gjf   # Gaussian companions when templates exist and conversion is enabled
+└─ grid/inner_path_d1_###.trj # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
+```
 
 ## Notes
 - UMA via `uma_pysis` is the only calculator backend and reuses the same
