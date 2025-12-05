@@ -65,7 +65,7 @@ huggingface-cli login
 
 You only need to do this once per machine / environment.
 
-- If you want to use Direct Max flux method for MEP search, create conda environment and install cyiopt before installation.
+- If you want to use Direct Max flux method for MEP search, create conda environment and install cyipopt before installation.
   ```bash
   # Create and activate a dedicated conda environment
   conda create -n pdb2reaction python=3.11 -y
@@ -110,7 +110,7 @@ If you prefer to build the environment piece by piece:
    For CUDA 12.8:
 
    ```bash
-   pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
    ```
 
    (You may use another compatible version if your cluster recommends it.)
