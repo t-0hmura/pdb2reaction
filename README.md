@@ -74,7 +74,11 @@ You only need to do this once per machine / environment.
   # Install cyipopt (required for the DMF method in MEP search)
   conda install -c conda-forge cyipopt -y
   ```
-
+  
+- If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch, like this:
+  ```bash
+  module load cuda/12.6
+  ```
 
 
 ### 1.2 Step‑by‑step installation
