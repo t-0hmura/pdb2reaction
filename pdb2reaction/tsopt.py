@@ -738,7 +738,7 @@ class HessianDimer:
                  update_interval_hessian: int = 100,
                  neg_freq_thresh_cm: float = 10.0,
                  flatten_amp_ang: float = 0.20,
-                 flatten_max_iter: int = 10,
+                 flatten_max_iter: int = 0,
                  mem: int = 100000,
                  use_lobpcg: bool = True,  # deprecated; ignored
                  uma_kwargs: Optional[dict] = None,
