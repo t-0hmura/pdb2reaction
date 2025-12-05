@@ -9,14 +9,14 @@ Usage (CLI)
     pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-m <multiplicity>] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
         [--one-based|--zero-based] \
-        --max-step-size FLOAT \
-        --bias-k FLOAT \
-        --relax-max-cycles INT \
-        --opt-mode {light,heavy} \
-        --freeze-links {True|False} \
-        --dump {True|False} \
+        [--max-step-size FLOAT] \
+        [--bias-k FLOAT] \
+        [--relax-max-cycles INT] \
+        [--opt-mode {light,heavy}] \
+        [--freeze-links {True|False}] \
+        [--dump {True|False}] \
         [--convert-files/--no-convert-files] \
-        --out-dir PATH \
+        [--out-dir PATH] \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
         [--baseline {first|min}] \

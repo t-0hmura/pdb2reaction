@@ -46,8 +46,8 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
    `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
    reference via `--baseline {min|first}`. Generate `scan2d_map.png` (2D contour)
-   and `scan2d_landscape.html` (3D surface) inside `<out-dir>/plots/`. Use
-   `--zmin/--zmax` to clamp the color scale.
+   and `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax`
+   to clamp the color scale.
 
 ## CLI options
 | Option | Description | Default |
@@ -82,7 +82,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 ## Outputs
 `<out-dir>/` (default `./result_scan2d/`):
 - `surface.csv` — structured grid table.
-- `plots/scan2d_map.png` (or `.html` fallback) and `plots/scan2d_landscape.html`
+- `scan2d_map.png` (or `.html` fallback) and `scan2d_landscape.html`
   — 2D contour and 3D surface visualizations.
 - `grid/point_i###_j###.xyz` — relaxed geometries for every `(i, j)` pair (with `.pdb`/`.gjf` companions when conversion is enabled and templates exist).
 - `grid/inner_path_d1_###.trj` — written only when `--dump True` (mirrored to `.pdb` when conversion is enabled for PDB inputs).
