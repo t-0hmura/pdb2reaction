@@ -76,7 +76,7 @@ You only need to do this once per machine / environment.
 
 
 
-### 1.2 Step‑by‑step explanation
+### 1.2 Step‑by‑step installation
 
 If you prefer to build the environment piece by piece:
 
@@ -183,6 +183,8 @@ Behaviour:
 
 This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modelling).
 
+> You need to input structures in **same atomic order**.  
+> And PDB structures must have **hydrogen atoms**.  
 ---
 
 ### 3.2 Single‑structure + staged scan (feeds GSM)
