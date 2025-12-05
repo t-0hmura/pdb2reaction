@@ -1142,13 +1142,14 @@ def _build_multistep_path(
 
     if depth > int(search_cfg.get("max_depth", 10)):
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
+        seg_tag = f"seg_{seg_counter[0]:03d}_maxdepth"
         gsm = (
             _run_dmf_between(
                 gA,
                 gB,
                 calc_cfg,
                 out_dir,
-                tag=f"seg_{seg_counter[0]:03d}_maxdepth",
+                tag=seg_tag,
                 ref_pdb_path=ref_pdb_path,
                 max_nodes=seg_max_nodes,
                 prepared_inputs=prepared_inputs,
@@ -1163,14 +1164,43 @@ def _build_multistep_path(
                 gs_seg_cfg,
                 opt_cfg,
                 out_dir,
-                tag=f"seg_{seg_counter[0]:03d}_maxdepth",
+                tag=seg_tag,
                 ref_pdb_path=ref_pdb_path,
                 prepared_input=prepared_input,
             )
         )
         seg_counter[0] += 1
-        _tag_images(gsm.images, pair_index=pair_index)
-        return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[])
+
+        try:
+            changed, step_summary = _has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
+        except Exception as e:
+            click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
+            changed, step_summary = True, ""
+
+        try:
+            barrier_kcal = (max(gsm.energies) - gsm.energies[0]) * AU2KCALPERMOL
+            delta_kcal = (gsm.energies[-1] - gsm.energies[0]) * AU2KCALPERMOL
+        except Exception:
+            barrier_kcal = float("nan")
+            delta_kcal = float("nan")
+
+        seg_report = SegmentReport(
+            tag=seg_tag,
+            barrier_kcal=float(barrier_kcal),
+            delta_kcal=float(delta_kcal),
+            summary=step_summary if changed else "(no covalent changes detected)",
+            kind="seg",
+        )
+
+        _tag_images(
+            gsm.images,
+            mep_seg_tag=seg_tag,
+            mep_seg_kind="seg",
+            mep_has_bond_changes=bool(changed),
+            pair_index=pair_index,
+        )
+
+        return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[seg_report])
 
     seg_id = seg_counter[0]
     seg_counter[0] += 1
