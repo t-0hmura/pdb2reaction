@@ -23,7 +23,7 @@ Typical use cases:
 - mapping out plausible reaction mechanisms from a handful of crystal structures or snapshots (with hydrogen atoms),
 - refining TS candidates obtained from other tools,
 - scanning key distances to generate intermediates,
-- building Gibbs and DFT//ML energy diagrams for publication.
+- building Gibbs and DFT//ML energy diagrams.
 
 ---
 
