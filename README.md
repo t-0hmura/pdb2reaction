@@ -174,7 +174,7 @@ pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --outdir ./result_all --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all --tsopt True --thermo True --dft True
 ```
 
 Behaviour:
@@ -207,7 +207,7 @@ pdb2reaction -i R.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --scan-lists "
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --outdir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
 ```
 
 Key points:
@@ -239,7 +239,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True --thermo True --dft True --outdir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True --thermo True --dft True --out-dir ./result_tsopt_only
 ```
 
 Behaviour:
@@ -250,7 +250,7 @@ Behaviour:
 - can then perform `freq` and `dft` on the R/TS/P trio,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams, similar to the full `all` workflow.
 
-Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--outdir`.
+Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
 
 > **Important:** Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 
@@ -305,7 +305,7 @@ Below are the most commonly used options across workflows.
 
   Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the pocket.
 
-- `--outdir PATH`  
+- `--out-dir PATH`
   Top‑level output directory. All intermediate files, logs, and figures are placed here.
 
 - `--tsopt BOOLEAN`  
@@ -323,7 +323,7 @@ Below are the most commonly used options across workflows.
   - **recursive GSM / MEP refinement** with `path_search` (default),
   - **single‑pass GSM** with `path-opt` (simple MEP) when set to `False`.
 
-  When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<outdir>/path_search/`.
+  When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
 For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
 
