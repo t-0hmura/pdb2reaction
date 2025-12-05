@@ -167,7 +167,7 @@ pdb2reaction -i R.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"              --outdir ./result_all              --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --outdir ./result_all --tsopt True --thermo True --dft True
 ```
 
 Behaviour:
@@ -194,13 +194,13 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"              --scan-lists "[(10,55,2.20),(23,34,1.80)]"
+pdb2reaction -i R.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --scan-lists "[(10,55,2.20),(23,34,1.80)]"
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb              -c "GPP,MMT"              --scan-lists "[(10,55,2.20),(23,34,1.80)]"              --mult 1              --outdir ./result_scan_all              --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c "GPP,MMT" --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --outdir ./result_scan_all --tsopt True --thermo True --dft True
 ```
 
 Key points:
@@ -226,13 +226,13 @@ Provide exactly one PDB and enable `--tsopt`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"
+pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1"
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb              -c "GPP,MMT"              --ligand-charge "GPP:-3,MMT:-1"              --tsopt True --thermo True --dft True              --outdir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" --tsopt True --thermo True --dft True --outdir ./result_tsopt_only
 ```
 
 Behaviour:
@@ -344,21 +344,21 @@ Each `path_search` segment directory also gets its own `summary.log` and `summar
 
 While most users will primarily call `pdb2reaction all`, the CLI also exposes lower‑level building blocks like `pdb2reaction opt`. Each subcommand supports `-h/--help` and can read arguments from YAML files via `--args-yaml` (see `docs/*.md` for exact schemas).
 
-| Subcommand   | Role (short)                                                                 | Documentation            |
+| Subcommand   | Role (short)             | Documentation            |
 | ------------ | ---------------------------------------------------------------------------- | ------------------------ |
 | `all`        | High‑level workflow orchestrator: extraction → GSM / path search → TS/freq/DFT. | `docs/all.md`           |
 | `scan`       | Staged biased scans on pocket models to generate additional intermediates.   | `docs/scan.md`          |
-| `opt`        | Optimise a single structure with UMA (LBFGS/RFO presets).                    | `docs/opt.md`           |
-| `path-opt`   | UMA optimisation on a specific path segment or snapshot.                     | `docs/path_opt.md`      |
+| `opt`        | Optimise a single structure with UMA (LBFGS/RFO presets).       | `docs/opt.md`           |
+| `path-opt`   | UMA optimisation on a specific path segment or snapshot.        | `docs/path_opt.md`      |
 | `path-search`| Recursive GSM‑based path search plus pocket/full‑system merging.             | `docs/path_search.md`   |
 | `tsopt`      | Transition‑state refinement with optional pseudo‑IRC propagation.            | `docs/tsopt.md`         |
-| `freq`       | Vibrational modes, thermochemistry, and UMA energy diagrams.                 | `docs/freq.md`          |
-| `irc`        | Intrinsic reaction coordinate following from a TS structure.                 | `docs/irc.md`           |
+| `freq`       | Vibrational modes, thermochemistry, and UMA energy diagrams.    | `docs/freq.md`          |
+| `irc`        | Intrinsic reaction coordinate following from a TS structure.    | `docs/irc.md`           |
 | `extract`    | Extract catalytic pockets from full PDB structures (also used by `all`).     | `docs/extract.md`       |
 | `trj2fig`    | Convert trajectory data to interactive figures (Plotly / Kaleido).           | `docs/trj2fig.md`       |
-| `add-elem-info` | Add missing element metadata to PDB files.                               | `docs/add_elem_info.md` |
+| `add-elem-info` | Add missing element metadata to PDB files.     | `docs/add_elem_info.md` |
 | `dft`        | DFT single‑point calculations on UMA geometries using PySCF / gpu4pyscf.     | `docs/dft.md`           |
-| `scan2d`     | 2D PES grid: two distance restraints with UMA relaxation.                    | `docs/scan2d.md`        |
+| `scan2d`     | 2D PES grid: two distance restraints with UMA relaxation.       | `docs/scan2d.md`        |
 | `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.| `docs/scan3d.md`        |
 
 In practice, you can:
