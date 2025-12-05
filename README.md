@@ -77,7 +77,7 @@ You only need to do this once per machine / environment.
   
 - If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch, like this:
   ```bash
-  module load cuda/12.6
+  module load cuda/12.8
   ```
 
 
