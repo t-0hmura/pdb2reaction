@@ -300,6 +300,7 @@ def cli(
         # Ensure the calculator receives the freeze list used by geometry
         # (so FD Hessian can skip frozen DOF, etc.)
         calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+        calc_cfg["return_partial_hessian"] = False
 
         out_dir_path = Path(irc_cfg["out_dir"]).resolve()
         out_dir_path.mkdir(parents=True, exist_ok=True)
