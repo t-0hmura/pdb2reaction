@@ -42,8 +42,9 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 - **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
   value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
   (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `.trj`
-  animations are produced for every input; `.pdb` animations mirror them when a PDB template
-  is available (ASE conversion is used as a fallback).
+  animations are produced for every input; `.pdb` animations are written only when a PDB
+  template exists **and** `--convert-files` remains enabled (ASE conversion is used as a
+  fallback).
 - **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (EE, ZPE, E/H/G
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump True`, a `thermoanalysis.yaml` snapshot is
@@ -68,11 +69,12 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
 
 ## Outputs
-- `<out-dir>/mode_XXXX_±freqcm-1.trj` and `.pdb` animations for each written mode (mirroring follows `--convert-files`).
+- `<out-dir>/mode_XXXX_±freqcm-1.trj` animations for each written mode. `.pdb` companions are
+  produced only when a PDB template exists **and** `--convert-files` is enabled.
 - `<out-dir>/frequencies_cm-1.txt` listing every computed frequency according to the sort
   order.
 - `<out-dir>/thermoanalysis.yaml` when both `thermoanalysis` is importable and `--dump True`.
