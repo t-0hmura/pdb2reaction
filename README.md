@@ -361,7 +361,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | `trj2fig`    | Convert trajectory data to interactive figures (Plotly / Kaleido).           | `docs/trj2fig.md`       |
 | `add-elem-info` | Add missing element metadata to PDB files.     | `docs/add_elem_info.md` |
 | `dft`        | DFT single‑point calculations on UMA geometries using PySCF / gpu4pyscf.     | `docs/dft.md`           |
-| `scan2d`     | 2D PES grid: two distance restraints with UMA relaxation.       | `docs/scan2d.md`        |
+| `scan2d`     | 2D PES grid: two distance scan with restraints and relaxation.       | `docs/scan2d.md`        |
 | `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.| `docs/scan3d.md`        |
 
 In practice, you can:
