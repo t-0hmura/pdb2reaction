@@ -11,8 +11,9 @@ Usage (CLI)
         [--one-based|--zero-based] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dump {True|False}] [--out-dir <dir>] [--thresh <preset>] \
-        [--args-yaml <file>] [--preopt {True|False}] [--endopt {True|False}]
+        [--dump {True|False}] [--convert-files/--no-convert-files] \
+        [--out-dir <dir>] [--thresh <preset>] [--args-yaml <file>] \
+        [--preopt {True|False}] [--endopt {True|False}]
 
 Examples
 --------
@@ -64,20 +65,22 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_scan/)
   ├─ preopt/                      # Created when --preopt True; holds the unbiased starting optimization
   │   ├─ result.xyz
-  │   ├─ result.gjf               # Present when the original input provided a GJF template
-  │   └─ result.pdb               # Present when the input was PDB
+  │   ├─ result.gjf               # When a GJF template is available **and** conversion is enabled
+  │   └─ result.pdb               # When the input was PDB **and** conversion is enabled
   └─ stage_{k:02d}/               # One directory per stage (k = 1..K)
       ├─ result.xyz               # Final structure for the stage (after optional endopt)
-      ├─ result.gjf               # Present when the original input provided a GJF template
-      ├─ result.pdb               # Present when the input was PDB
+      ├─ result.gjf               # When a GJF template is available **and** conversion is enabled
+      ├─ result.pdb               # When the input was PDB **and** conversion is enabled
       ├─ scan.trj                 # Written only when --dump True (concatenated biased frames)
-      └─ scan.pdb                 # Written only when --dump True and the input was PDB
+      └─ scan.pdb                 # Written only when --dump True, the input was PDB, and conversion is enabled
 
 Notes
 -----
 - UMA only: `uma_pysis` is the sole supported calculator.
 - Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
+- Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
+  `--convert-files/--no-convert-files` toggle (default: enabled).
 - Indexing: (i, j) are 1‑based by default; use `--zero-based` if your tuples are 0‑based.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
   k converted from eV/Å² to Hartree/Bohr².

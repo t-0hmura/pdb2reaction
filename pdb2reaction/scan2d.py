@@ -15,6 +15,7 @@ Usage (CLI)
         --opt-mode {light,heavy} \
         --freeze-links {True|False} \
         --dump {True|False} \
+        [--convert-files/--no-convert-files] \
         --out-dir PATH \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
@@ -60,13 +61,13 @@ out_dir/ (default: ./result_scan2d/)
   ├─ scan2d_landscape.html        # 3D surface with a base-plane projection
   └─ grid/
       ├─ point_i125_j324.xyz      # Constrained, relaxed geometries; i/j tags are 100×distance in Å (rounded)
-      ├─ point_i125_j324.pdb      # Same, when the input was a PDB
-      ├─ point_i125_j324.gjf      # Same, when the input provided a GJF template
+      ├─ point_i125_j324.pdb      # Same, when the input was a PDB and conversion is enabled
+      ├─ point_i125_j324.gjf      # Same, when the input provided a GJF template and conversion is enabled
       ├─ preopt_i126_j326.xyz     # Preoptimized unbiased structure; tags from its d1/d2 distances
-      ├─ preopt_i126_j326.pdb     # Optional PDB version (for PDB input)
-      ├─ preopt_i126_j326.gjf     # Optional GJF version (for GJF input)
+      ├─ preopt_i126_j326.pdb     # Optional PDB version (for PDB input and conversion enabled)
+      ├─ preopt_i126_j326.gjf     # Optional GJF version (for GJF input and conversion enabled)
       ├─ inner_path_d1_###.trj    # Written only when --dump True; captures inner d2 trajectories per outer step
-      └─ inner_path_d1_###.pdb    # PDB conversion of inner_path_d1_###.trj when the input was a PDB
+      └─ inner_path_d1_###.pdb    # PDB conversion of inner_path_d1_###.trj when the input was a PDB and conversion is enabled
 
 Optimizer scratch artifacts live in temporary directories; only the files above persist under ``out_dir``.
 
@@ -77,6 +78,7 @@ Notes
 - Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
 - `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available.
+- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
