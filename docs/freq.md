@@ -59,7 +59,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. | Required when not in template |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
-| `--max-write INT` | Number of modes to export. | `20` |
+| `--max-write INT` | Number of modes to export. | `10` |
 | `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |
 | `--sort CHOICE` | Mode ordering: `value` (cm⁻¹) or `abs`. | `value` |
@@ -109,6 +109,6 @@ calc:
 freq:
   amplitude_ang: 0.8
   n_frames: 20
-  max_write: 20
+  max_write: 10
   sort: value
 ```
