@@ -1,12 +1,15 @@
 # `trj2fig` subcommand
 
 ## Overview
-`trj2fig` converts an XYZ trajectory into polished energy profiles. It reads the
-Hartree energies encoded in each frame’s comment line, converts them to
-kcal/mol or Hartree, optionally references all values to a chosen frame, and
+`trj2fig` converts an XYZ trajectory into polished energy profiles. By default it
+reads the Hartree energies encoded in each frame’s comment line, converts them
+to kcal/mol or Hartree, optionally references all values to a chosen frame, and
 exports the resulting series as static/interactive figures and CSV tables. The
 reference can be the first frame (`init`), the last frame when `--reverse-x` is
-used, or any explicit index.
+used, or any explicit index. When you supply `-q/--charge` and/or
+`-m/--multiplicity`, all energies are recomputed for every frame with the
+`uma_pysis` calculator using the provided charge/spin instead of the comment
+lines.
 
 ## Usage
 ```bash
@@ -26,9 +29,11 @@ pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pd
 ```
 
 ## Workflow
-1. Parse the XYZ trajectory, reading the first floating-point number found in
-   every frame comment (scientific notation is not supported). If no energies
-   are found, the run aborts.
+1. Parse the XYZ trajectory. By default, read the first floating-point number
+   found in every frame comment (scientific notation is not supported). If
+   `-q/-m` is present, recompute Hartree energies for each frame with
+   `uma_pysis` using those charge/spin values instead of the comment.
+   If no energies are found or produced, the run aborts.
 2. Normalize the reference specification:
    - `init` → frame `0` (or the last frame when `--reverse-x` is active).
    - `None`/`none`/`null` → absolute energies (no referencing).
@@ -48,6 +53,8 @@ pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pd
 | _extra arguments_ | Positional filenames listed after options; merged with the `-o` list. | _None_ |
 | `--unit {kcal,hartree}` | Target unit for the plotted/exported values. | `kcal` |
 | `-r, --reference TEXT` | Reference specification (`init`, `None`, or 0-based integer). | `init` |
+| `-q, --charge INT` | Total charge; triggers energy recomputation with `uma_pysis` when provided. | _None_ |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation with `uma_pysis` when provided. | _None_ |
 | `--reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 
 ## Outputs
