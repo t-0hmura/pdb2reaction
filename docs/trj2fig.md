@@ -61,11 +61,14 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `--reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 
 ## Outputs
-- Plotly figure(s) written to the requested extensions. When no `-o` is
-  supplied, a single `energy.png` is written to the current directory.
-- Optional CSV with `frame`, `energy_hartree`, and either `delta_kcal`,
-  `energy_kcal`, `delta_hartree`, or `energy_hartree` depending on the unit and
-  reference.
+```
+<output>.[png|jpg|jpeg|html|svg|pdf]  # Plotly export for every requested extension (defaults to energy.png)
+<output>.csv                          # Optional energy table when CSV is requested
+```
+- When no `-o` or positional outputs are provided, a single `energy.png` is written
+  to the current directory. CSV exports include `frame`, `energy_hartree`, and either
+  a ΔE column (`delta_kcal`/`delta_hartree`) or absolute column (`energy_kcal`/`energy_hartree`
+  when no reference is applied).
 - Console diagnostics describing parsing failures or unsupported extensions.
 
 ## Notes

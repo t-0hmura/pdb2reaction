@@ -89,17 +89,16 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 - `k` (`100`): Harmonic strength in eV·Å⁻². Overridden by `--bias-k`.
 
 ## Outputs
-`<out-dir>/` (default `./result_scan3d/`):
-- `surface.csv` — grid metadata: `i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged`; may include a reference row
-  with `i=j=k=-1` for the starting structure (preoptimized when `--preopt True`).
-- `scan3d_density.html` — 3D energy isosurface visualization.
-- `grid/point_i###_j###_k###.xyz` — relaxed geometries for every grid point
-  (with `.pdb`/`.gjf` companions when conversion is enabled and templates exist);
-  tags are integer Å×100, e.g., 1.25 Å → `125`.
-- `grid/preopt_i###_j###_k###.xyz` — starting structure saved before scanning
-  (preoptimized when `--preopt True`).
-- `grid/inner_path_d1_###_d2_###.trj` — written only when `--dump True` (mirrored
-  to `.pdb`/`.gjf` when conversion is enabled for PDB/Gaussian inputs).
+```
+out_dir/ (default: ./result_scan3d/)
+├─ surface.csv                     # Grid metadata; may include a reference row (i=j=k=-1)
+├─ scan3d_density.html             # 3D energy isosurface visualization
+├─ grid/point_i###_j###_k###.xyz   # Relaxed geometry for each grid point (Å×100 tags)
+├─ grid/point_i###_j###_k###.pdb   # PDB companions when conversion is enabled and templates exist
+├─ grid/point_i###_j###_k###.gjf   # Gaussian companions when templates exist and conversion is enabled
+├─ grid/preopt_i###_j###_k###.xyz  # Starting structure saved before scanning (preoptimized when --preopt is True)
+└─ grid/inner_path_d1_###_d2_###.trj # Present only when --dump is True (mirrored to .pdb/.gjf with conversion)
+```
 
 ## Notes
 - UMA via `uma_pysis` is the only calculator backend and reuses the same

@@ -49,9 +49,15 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
-- `<out-dir>/irc_data.h5` (written every `dump_every` steps).
-- `<out-dir>/<prefix>finished_irc.trj` plus optional forward/backward `.trj` files.
-- When the input is PDB or Gaussian, matching `.pdb`/`.gjf` trajectories are emitted using the original templates when `--convert-files` is enabled.
+```
+out_dir/ (default: ./result_irc/)
+├─ irc_data.h5                # Written every `dump_every` steps when enabled
+├─ <prefix>finished_irc.trj   # Complete IRC trajectory
+├─ <prefix>forward_irc.trj    # Present when the forward branch runs
+├─ <prefix>backward_irc.trj   # Present when the backward branch runs
+├─ *.pdb                      # Trajectory companions for PDB inputs (when conversion is enabled)
+└─ *.gjf                      # Gaussian companions when a template exists and conversion is enabled
+```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## Notes

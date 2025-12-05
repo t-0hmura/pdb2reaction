@@ -84,16 +84,20 @@ UMA-based bond-change detection mirrored from `path_search`:
 - `delta_fraction` (`0.05`): Minimum relative change to flag formation/breaking.
 
 ## Outputs
-- `<out-dir>/preopt/` when `--preopt True`:
-  - `result.xyz`, `result.gjf` (if the input provided a Gaussian template and conversion is enabled), and
-    `result.pdb` (for PDB inputs when conversion is enabled).
-- `<out-dir>/stage_XX/` for each stage:
-  - `result.xyz` and optional `result.gjf`/`result.pdb` mirrors of the final
-    structure (after `--endopt`, conversion enabled).
-  - `scan.trj` when `--dump True` plus `scan.pdb` companions for
-    PDB inputs when conversion is enabled.
-- Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and
-  optimizer blocks plus per-stage bond-change reports.
+```
+out_dir/ (default: ./result_scan/)
+├─ preopt/                   # Present when --preopt is True
+│  ├─ result.xyz
+│  ├─ result.pdb             # PDB companion for PDB inputs when conversion is enabled
+│  └─ result.gjf             # When a Gaussian template exists and conversion is enabled
+├─ stage_XX/                 # One folder per stage
+│  ├─ result.xyz
+│  ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
+│  ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
+│  ├─ scan.trj               # Written when --dump is True
+│  └─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
+```
+- Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
 - `--scan-lists` may be repeated; each literal becomes one stage. Tuples must

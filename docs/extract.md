@@ -95,10 +95,12 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
 | `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
 
 ## Outputs
-- Pocket PDB(s) containing the extracted residues, with optional link hydrogens appended after a `TER` record.
-  - Single input: defaults to `pocket.pdb`.
-  - Multiple inputs + no `-o`: defaults to `pocket_<original_basename>.pdb` per structure.
-  - Supplying one `-o` path with multiple inputs writes a single multi-MODEL PDB.
+```
+<output>.pdb  # Pocket PDB(s) with optional link hydrogens after a TER record
+               # Single input → pocket.pdb by default
+               # Multiple inputs without -o → pocket_<original_basename>.pdb per structure
+               # One -o path with multiple inputs → single multi-MODEL PDB
+```
 - Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
 - Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
 

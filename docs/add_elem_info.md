@@ -46,8 +46,9 @@ pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
 | `--overwrite` | Re-infer elements even if the original fields are present. | `False` |
 
 ## Outputs
-- A PDB with element symbols populated (`--out` destination or the input file in
-  place).
+```
+<output>.pdb  # Element symbols populated; defaults to overwriting the input when --out is omitted
+```
 - Console report with totals for processed/assigned/kept/overwritten atoms,
   per-element counts, and up to 50 unresolved atoms.
 
