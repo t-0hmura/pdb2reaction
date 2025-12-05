@@ -2,9 +2,10 @@
 
 """
 all — SINGLE command to execute an end-to-end enzymatic reaction workflow:
-Extract pockets → (optional) staged scan on a single structure → MEP (path-opt by default; recursive
-GSM with ``--refine-path True``) → merge to full systems (when PDB templates are available), with
-optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and DFT//UMA diagrams
+Extract pockets → (optional) staged scan on a single structure → MEP (recursive ``path_search`` by
+default; single-pass ``path-opt`` with ``--refine-path False``) → merge to full systems (when PDB
+templates are available), with optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and
+DFT//UMA diagrams
 ================================================================================================================
 
 Usage (CLI)
@@ -72,15 +73,16 @@ Runs a one-shot pipeline centered on pocket models:
       `[initial pocket or full input, stage_01/result.pdb, stage_02/result.pdb, ...]`.
 
 (2) **MEP search on pocket inputs**
-    - By default runs **single-pass** `path-opt` GSM per adjacent pair and concatenates the segments.
-      With ``--refine-path True``, uses recursive `path_search` instead (options forwarded from this command).
+    - By default runs recursive `path_search` (options forwarded from this command). With
+      ``--refine-path False``, switches to a **single-pass** `path-opt` GSM per adjacent pair and
+      concatenates the segments.
     - For multi-input runs, the original **full** PDBs are supplied as **merge references** automatically
       **only when the original inputs are PDB files**. In the single-structure scan series, if the original
       full input is a PDB, the same template is reused for all pocket (or full-input) structures.
 
 (3) **Merge to full systems**
-    - With ``--refine-path True`` **and** reference full-system PDB templates (see (2)), the pocket MEP is
-      merged back into the original full-system template(s) within `<out-dir>/path_search/`.
+    - With ``--refine-path True`` (default) **and** reference full-system PDB templates (see (2)), the pocket
+      MEP is merged back into the original full-system template(s) within `<out-dir>/path_search/`.
     - When ``--refine-path False``, only pocket-level outputs are produced and no merged `mep_w_ref*.pdb`
       files are written.
     - If references are not supplied (e.g., inputs are not PDB or extraction is skipped), only pocket-level

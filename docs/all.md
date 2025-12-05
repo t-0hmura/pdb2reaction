@@ -45,7 +45,8 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent GSM step.
 
 3. **MEP search on pockets (recursive GSM)**
-   - Executes `path_search` using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--multiplicity`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - Executes `path_search` by default using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--multiplicity`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - Use `--refine-path False` to switch to a single-pass `path-opt` GSM chain without the recursive refiner.
    - For multi-input PDB runs, the full-system templates are automatically passed to `path_search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
 4. **Merge pockets back to the full systems**
