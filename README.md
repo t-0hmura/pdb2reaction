@@ -5,6 +5,8 @@
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with Machine Learning Interatomic Potential (MLIP). 
 Basically, you just need **single command** such as `pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"`
 
+---
+
 Given one or more full protein–ligand PDBs (reactant, intermediates, product), it automatically:
 
 - extracts a **catalytic pocket** around user‑defined substrates,
