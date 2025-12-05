@@ -24,6 +24,8 @@ Description
 -----------
 - Extracts Hartree energies from the second-line comment of each XYZ frame
   (uses the first decimal number on that line; scientific notation/exponents are not parsed).
+- When -q/--charge or -m/--multiplicity is supplied, energies are recomputed for every
+  frame with `uma_pysis` using the provided charge/spin instead of reading the comments.
 - Computes either ΔE (relative to a chosen reference) or absolute E; units: kcal/mol (default) or hartree.
   Reference specification:
     - -r init  : use the initial frame (or the last frame if --reverse-x is set).
@@ -62,7 +64,11 @@ from typing import List, Optional, Sequence, Tuple
 
 import click
 import plotly.graph_objs as go
-from pysisyphus.constants import AU2KCALPERMOL
+from ase import Atoms
+from ase.io import read
+from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
+
+from .uma_pysis import uma_pysis
 
 AXIS_WIDTH = 3         # axis and tick thickness
 FONT_SIZE = 18         # tick-label font size
@@ -97,6 +103,28 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
                 fh.readline()
     if not energies:
         raise RuntimeError(f"No energy data in {fname}")
+    return energies
+
+
+def recompute_energies(
+    traj_path: Path, charge: Optional[int], multiplicity: Optional[int]
+) -> List[float]:
+    """
+    Recalculate Hartree energies for every frame using uma_pysis.
+    """
+
+    frames_obj = read(traj_path, index=":", format="xyz")
+    frames = [frames_obj] if isinstance(frames_obj, Atoms) else list(frames_obj)
+    if not frames:
+        raise RuntimeError(f"No frames found in {traj_path}")
+
+    calc = uma_pysis(charge=charge or 0, spin=multiplicity or 1)
+    energies: List[float] = []
+    for atoms in frames:
+        elems = atoms.get_chemical_symbols()
+        coords_bohr = atoms.get_positions() * ANG2BOHR
+        energies.append(float(calc.get_energy(elems, coords_bohr)["energy"]))
+
     return energies
 
 
@@ -296,6 +324,14 @@ def parse_cli() -> argparse.Namespace:
         default="init",
         help='Reference: "init" (initial frame; last frame if --reverse-x), "None" (absolute E), or an integer index.',
     )
+    p.add_argument("-q", "--charge", type=int, required=False, help="Total charge (recompute energies when provided)")
+    p.add_argument(
+        "-m",
+        "--multiplicity",
+        type=int,
+        required=False,
+        help="Spin multiplicity (2S+1). Recompute energies when provided.",
+    )
     p.add_argument(
         "--reverse-x",
         action="store_true",
@@ -304,12 +340,23 @@ def parse_cli() -> argparse.Namespace:
     return p.parse_args()
 
 
-def run_trj2fig(input_path: Path, outs: Sequence[Path], unit: str, reference: str, reverse_x: bool) -> None:
+def run_trj2fig(
+    input_path: Path,
+    outs: Sequence[Path],
+    unit: str,
+    reference: str,
+    reverse_x: bool,
+    charge: Optional[int] = None,
+    multiplicity: Optional[int] = None,
+) -> None:
     traj = input_path.expanduser().resolve()
     if not traj.is_file():
         raise FileNotFoundError(traj)
 
-    energies = read_energies_xyz(traj)
+    if charge is None and multiplicity is None:
+        energies = read_energies_xyz(traj)
+    else:
+        energies = recompute_energies(traj, charge, multiplicity)
     values, ylabel, is_delta = transform_series(energies, reference, unit, reverse_x)
 
     need_plot = any(Path(o).suffix.lower() != ".csv" for o in outs)
@@ -321,7 +368,15 @@ def run_trj2fig(input_path: Path, outs: Sequence[Path], unit: str, reference: st
 
 def main() -> None:
     args = parse_cli()
-    run_trj2fig(Path(args.input), args.out, args.unit, args.reference, args.reverse_x)
+    run_trj2fig(
+        Path(args.input),
+        args.out,
+        args.unit,
+        args.reference,
+        args.reverse_x,
+        args.charge,
+        args.multiplicity,
+    )
 
 
 # ---------------------------------------------------------------------
@@ -368,6 +423,20 @@ def main() -> None:
     help='Reference: "init" (initial frame; last frame if --reverse-x), "None" (absolute E), or an integer index.',
 )
 @click.option(
+    "-q",
+    "--charge",
+    type=int,
+    default=None,
+    help="Total charge. Triggers energy recomputation when supplied.",
+)
+@click.option(
+    "-m",
+    "--multiplicity",
+    type=int,
+    default=None,
+    help="Spin multiplicity (2S+1). Triggers energy recomputation when supplied.",
+)
+@click.option(
     "--reverse-x",
     is_flag=True,
     help="Reverse the x-axis (last frame on the left).",
@@ -378,10 +447,12 @@ def cli(
     extra_outs: Tuple[Path, ...],
     unit: str,
     reference: str,
+    charge: Optional[int],
+    multiplicity: Optional[int],
     reverse_x: bool,
 ) -> None:
     # Combine outputs from -o with positional filenames that follow the options
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
         all_outs = [Path("energy.png")]
-    run_trj2fig(input_path, all_outs, unit, reference, reverse_x)
+    run_trj2fig(input_path, all_outs, unit, reference, reverse_x, charge, multiplicity)
