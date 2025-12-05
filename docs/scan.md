@@ -90,12 +90,12 @@ out_dir/ (default: ./result_scan/)
 │  ├─ result.xyz
 │  ├─ result.pdb             # PDB companion for PDB inputs when conversion is enabled
 │  └─ result.gjf             # When a Gaussian template exists and conversion is enabled
-├─ stage_XX/                 # One folder per stage
-│  ├─ result.xyz
-│  ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
-│  ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
-│  ├─ scan.trj               # Written when --dump is True
-│  └─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
+└─ stage_XX/                 # One folder per stage
+   ├─ result.xyz
+   ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
+   ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
+   ├─ scan.trj               # Written when --dump is True
+   └─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
 ```
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
