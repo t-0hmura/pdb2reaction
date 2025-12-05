@@ -9,6 +9,7 @@ Usage (CLI)
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                         [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
+                        [--convert-files/--no-convert-files] \
                         [--out-dir DIR] [--args-yaml FILE]
 
 Examples
@@ -39,10 +40,10 @@ Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_path_opt/)
   ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line carries per-image energy when available
-  ├─ final_geometries.pdb        # Converted from .trj when the *first* endpoint is a PDB
+  ├─ final_geometries.pdb        # Converted from .trj when the *first* endpoint is a PDB and conversion is enabled
   ├─ hei.xyz                     # Highest-energy image with energy on the comment line
-  ├─ hei.pdb                     # HEI converted to PDB when the *first* endpoint is a PDB
-  ├─ hei.gjf                     # HEI written using a detected .gjf template, when available
+  ├─ hei.pdb                     # HEI converted to PDB when the *first* endpoint is a PDB and conversion is enabled
+  ├─ hei.gjf                     # HEI written using a detected .gjf template when available and conversion is enabled
   ├─ align_refine/               # Files from external alignment/refinement
   └─ <optimizer dumps / restarts>  # Emitted when dumping is enabled (e.g., via `--dump` and/or YAML `dump_restart` settings)
 
@@ -53,6 +54,7 @@ Notes
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
 - `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO, selected via `--opt-mode`) and does not affect `--max-cycles`.
+- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
 - Exit codes: 0 (success); 3 (optimization failed); 4 (final trajectory write error); 5 (HEI dump error); 130 (keyboard interrupt); 1 (unhandled error).
 """
 

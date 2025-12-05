@@ -16,6 +16,7 @@ Usage (CLI)
         [--opt-mode {light,heavy}] \
         [--freeze-links {True|False}] \
         [--dump {True|False}] \
+        [--convert-files/--no-convert-files] \
         [--out-dir PATH] \
         [--csv PATH] \
         [--args-yaml FILE] \
@@ -88,10 +89,15 @@ out_dir/ (default: ./result_scan3d/)
   └─ grid/
       ├─ point_iXXX_jYYY_kZZZ.xyz     # Constrained, relaxed geometries for each grid point
   │                                   # XXX,YYY,ZZZ = int(round(d(Å)*100)), e.g. d=1.25Å → "125"
+      ├─ point_iXXX_jYYY_kZZZ.pdb     # PDB companion when the input was PDB and conversion is enabled
+      ├─ point_iXXX_jYYY_kZZZ.gjf     # GJF companion when a template is available and conversion is enabled
       ├─ preopt_iXXX_jYYY_kZZZ.xyz    # Starting structure used for the scan:
   │                                   # pre-optimized when --preopt True, otherwise the input structure;
   │                                   # same naming convention as above.
+      ├─ preopt_iXXX_jYYY_kZZZ.pdb    # PDB companion for the starting structure when conversion is enabled
+      ├─ preopt_iXXX_jYYY_kZZZ.gjf    # GJF companion for the starting structure when conversion is enabled
       └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
+         inner_path_d1_###_d2_###.pdb  # PDB conversion of the inner-path trajectory when input was PDB and conversion enabled
 
 Notes
 -----
@@ -102,6 +108,7 @@ Notes
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the grid point with `(i,j,k) = (0,0,0)` is 0 kcal/mol;
               if that point is missing, the global minimum is used instead.
+- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
 - The 3D visualization:
   - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
   - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
