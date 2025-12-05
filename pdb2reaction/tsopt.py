@@ -734,11 +734,11 @@ class HessianDimer:
                  fn: str,
                  out_dir: str = "./result_dimer",
                  thresh_loose: str = "gau_loose",
-                 thresh: str = "baker",
-                 update_interval_hessian: int = 50,
+                 thresh: str = "gau",
+                 update_interval_hessian: int = 100,
                  neg_freq_thresh_cm: float = 5.0,
                  flatten_amp_ang: float = 0.20,
-                 flatten_max_iter: int = 20,
+                 flatten_max_iter: int = 10,
                  mem: int = 100000,
                  use_lobpcg: bool = True,  # deprecated; ignored
                  uma_kwargs: Optional[dict] = None,
@@ -751,8 +751,8 @@ class HessianDimer:
                  max_total_cycles: int = 10000,
                  #
                  # Multi-mode flatten control
-                 flatten_sep_cutoff: float = 2.0,
-                 flatten_k: int = 10,
+                 flatten_sep_cutoff: float = 1.0,
+                 flatten_k: int = 5,
                  #
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in light mode.
