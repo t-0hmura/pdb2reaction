@@ -24,10 +24,10 @@ Description
 -----------
 - Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and a CPU PySCF backend.
   The backend policy is controlled by --engine:
-  * gpu  (default): use GPU4PySCF only. If the GPU backend is unavailable or the SCF fails,the run stops.
+  * gpu  (default): try GPU4PySCF first; on import/runtime errors, automatically fall back to CPU PySCF.
+                    Blackwell GPUs are forced to CPU with a warning.
   * cpu           : use CPU PySCF only.
-  * auto          : try GPU4PySCF; if the GPU backend is not available at import time,
-                    fall back to CPU PySCF before starting SCF. No CPU fallback during/after SCF.
+  * auto          : try GPU4PySCF first and fall back to CPU PySCF if unavailable (same behaviour as "gpu").
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
   The geometry is written back unchanged as input_geometry.xyz. If a Gaussian .gjf template
