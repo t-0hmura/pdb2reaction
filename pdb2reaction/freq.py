@@ -17,7 +17,7 @@ Usage (CLI)
 Examples
 --------
     # Minimal frequency run with explicit charge and spin
-    pdb2reaction freq -i a.pdb -q 0 -s 1
+    pdb2reaction freq -i a.pdb -q 0 -m 1
 
     # PHVA with YAML overrides and a custom output directory
     pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq/
