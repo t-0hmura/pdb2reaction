@@ -173,6 +173,7 @@ from .utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
@@ -1439,7 +1440,7 @@ def cli(
 
     # Pretty-print config summary
     click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block("calc", calc_cfg))
+    click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
     click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
     if kind == "light":
         # Split out pass-through dicts for readability

@@ -161,7 +161,30 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     except TypeError:
         return g
 
-    g["freeze_atoms"] = ",".join(map(str, items)) if items else ""
+    joined = ",".join(map(str, items))
+    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
+    return g
+
+
+def format_freeze_atoms_for_echo(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of ``cfg`` with ``freeze_atoms`` flattened for logging."""
+
+    if "freeze_atoms" not in cfg:
+        return dict(cfg)
+
+    g = dict(cfg)
+    freeze_atoms = g.get("freeze_atoms")
+
+    if isinstance(freeze_atoms, str):
+        return g
+
+    try:
+        items = list(freeze_atoms)
+    except TypeError:
+        return g
+
+    joined = ",".join(map(str, items))
+    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
     return g
 
 
