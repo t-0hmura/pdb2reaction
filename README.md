@@ -16,7 +16,7 @@ Given one or more full protein–ligand PDBs `.pdb` (reactant, intermediates, pr
 - refines **transition states**, runs **vibrational analysis**, and
 - optionally performs **DFT single‑point calculations** for higher‑level energetics.
 
-All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic mechanism** can be generated with minimal manual intervention. Off course, this toolkit can handle small molecular systems. You can use `.xyz` or `.gjf` format input structures.
+All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic mechanism** can be generated with minimal manual intervention. Off course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
 
 Typical use cases:
 
