@@ -65,7 +65,7 @@ Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
 - `grid_level` (`3`): PySCF `grids.level`.
-- `verbose` (`4`): PySCF verbosity (0–9).
+- `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
 - `out_dir` (`"./result_dft/"`): Output directory root.
 
 _Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present; otherwise `-q/--charge` is required and spin defaults to `1`. Set them explicitly for non-default states._
@@ -75,6 +75,6 @@ dft:
   conv_tol: 1.0e-09
   max_cycle: 100
   grid_level: 3
-  verbose: 4
+  verbose: 0
   out_dir: ./result_dft/
 ```
