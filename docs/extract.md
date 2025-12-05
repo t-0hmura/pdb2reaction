@@ -92,7 +92,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
 | `--add-linkH BOOL` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `true` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,MMT:-1`). | `None` |
-| `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `false` |
+| `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
 
 ## Outputs
 - Pocket PDB(s) containing the extracted residues, with optional link hydrogens appended after a `TER` record.
