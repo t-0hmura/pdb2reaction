@@ -181,8 +181,8 @@ Behaviour:
 
 - takes two or more **full systems** in reaction order,
 - extracts catalytic pockets for each structure,
-- performs a **single‑pass GSM / MEP search** via `path-opt` by default,
-- optionally switches to a recursive refiner (`path_search`) with `--refine-path True`,
+- performs a **recursive GSM / MEP search** via `path_search` by default,
+- optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
 - when PDB templates are available, merges the pocket‑level MEP back into the **full system**,
 - optionally runs TS optimisation, vibrational analysis, and DFT single points for each segment.
 
@@ -217,8 +217,8 @@ Key points:
   - 1‑based indices taken from the original full PDB,
   - automatically remapped to the pocket indices.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
-- The default `all` workflow then concatenates these stages using `path-opt`.
-- With `--refine-path True`, it instead runs the recursive `path_search` refiner and (when possible) writes merged full‑system `mep_w_ref*.pdb` files under `<outdir>/path_search/`.
+- The default `all` workflow refines the concatenated stages with recursive `path_search`.
+- With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
 
 This mode is useful for building approximate reaction paths starting from a single experimental structure.
 
@@ -317,13 +317,13 @@ Below are the most commonly used options across workflows.
 - `--dft BOOLEAN`  
   Perform DFT single‑point calculations on UMA optimised structures via PySCF / gpu4pyscf. When combined with `--thermo True`, this adds DFT//UMA Gibbs diagrams.
 
-- `--refine-path BOOLEAN`  
+- `--refine-path BOOLEAN`
   Switch between:
 
-  - **single‑pass GSM** with `path-opt` (simple MEP),
-  - **recursive GSM / MEP refinement** with `path_search`.
+  - **recursive GSM / MEP refinement** with `path_search` (default),
+  - **single‑pass GSM** with `path-opt` (simple MEP) when set to `False`.
 
-  When `--refine-path True` and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<outdir>/path_search/`.
+  When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<outdir>/path_search/`.
 
 For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
 
