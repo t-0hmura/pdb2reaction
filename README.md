@@ -347,7 +347,7 @@ Each `path_search` segment directory also gets its own `summary.log` and `summar
 
 While most users will primarily call `pdb2reaction all`, the CLI also exposes lower‑level building blocks like `pdb2reaction opt`. Each subcommand supports `-h/--help` and can read arguments from YAML files via `--args-yaml` (see `docs/*.md` for exact schemas).
 
-| Subcommand   | Role (short)             | Documentation            |
+| Subcommand   | Role                | Documentation            |
 | ------------ | ---------------------------------------------------------------------------- | ------------------------ |
 | `all`        | High‑level workflow orchestrator: extraction → GSM / path search → TS/freq/DFT. | `docs/all.md`           |
 | `scan`       | Staged biased scans on pocket models to generate additional intermediates.   | `docs/scan.md`          |
@@ -355,7 +355,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | `path-opt`   | UMA optimisation on a specific path segment or snapshot.        | `docs/path_opt.md`      |
 | `path-search`| Recursive GSM‑based path search plus pocket/full‑system merging.             | `docs/path_search.md`   |
 | `tsopt`      | Transition‑state refinement (Dimer+LBFGS or RS-I-RFO presets).            | `docs/tsopt.md`         |
-| `freq`       | Vibrational modes, thermochemistry, and UMA energy diagrams.    | `docs/freq.md`          |
+| `freq`       | Vibrational analysis, thermochemistry.    | `docs/freq.md`          |
 | `irc`        | Intrinsic reaction coordinate following from a TS structure.    | `docs/irc.md`           |
 | `extract`    | Extract catalytic pockets from full PDB structures (also used by `all`).     | `docs/extract.md`       |
 | `trj2fig`    | Convert trajectory data to interactive figures (Plotly / Kaleido).           | `docs/trj2fig.md`       |
