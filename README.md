@@ -10,7 +10,7 @@ Basically, you just need a **single command** such as `pdb2reaction -i R.pdb P.p
 
 Given one or more full protein–ligand PDBs (reactant, intermediates, product), it automatically:
 
-- extracts a **catalytic pocket** around user‑defined substrates,
+- extracts a **active site** around user‑defined substrates,
 - builds a **machine‑learned potential** using Meta’s UMA model,
 - explores **minimum‑energy paths (MEPs)** with growing string / path optimisation methods,
 - refines **transition states**, runs **vibrational analysis**, and
