@@ -6,12 +6,13 @@ freq — Vibrational frequency analysis, mode export, and PHVA-based thermochemi
 
 Usage (CLI)
 -----------
-    pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-s <spin>] \
+    pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <spin>] \
         [--freeze-links {True|False}] [--max-write <int>] \
         [--amplitude-ang <float>] [--n-frames <int>] [--sort {value|abs}] \
         [--out-dir <dir>] [--args-yaml <file>] [--temperature <K>] \
         [--pressure <atm>] [--dump {True|False}] \
-        [--hessian-calc-mode {Analytical|FiniteDifference}]
+        [--hessian-calc-mode {Analytical|FiniteDifference}] \
+        [--convert-files/--no-convert-files]
 
 Examples
 --------
