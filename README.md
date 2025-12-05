@@ -32,17 +32,15 @@ Refer to the upstream projects for additional details:
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
 
-### 1.1 Quick start on an HPC cluster (conda)
+### 1.1 Quick start
 
 Below is a minimal setup that works on many CUDA 12.8 clusters. Adjust module names and versions to match your system.
 
 ```bash
-# 1) Load CUDA (HPC module system)
-# 2) Install a CUDA-enabled PyTorch build
-# 3) Install pdb2reaction from GitHub
-# 4) Install a headless Chrome for Plotly figure export
+# 1) Install a CUDA-enabled PyTorch build
+# 2) Install pdb2reaction from GitHub
+# 3) Install a headless Chrome for Plotly figure export
 
-module load cuda/12.8
 pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
