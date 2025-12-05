@@ -287,4 +287,5 @@ search:
   max_nodes_segment: 10
   max_nodes_bridge: 5
   kink_max_nodes: 3
+  max_seq_kink: 2
 ```
