@@ -7,12 +7,15 @@ trj2fig — Energy-profile utility for XYZ trajectories
 Usage (CLI)
 -----------
     pdb2reaction trj2fig -i traj.xyz [-o OUTPUT ...] [-r {init|None|INT}] \
-        [--unit {kcal|hartree}] [--reverse-x]
+        [-q CHARGE] [-m MULT] [--unit {kcal|hartree}] [--reverse-x]
 
 Examples
 --------
     # High-resolution PNG with x-axis reversed (reference is the last frame)
     pdb2reaction trj2fig -i traj.xyz --reverse-x
+
+    # Recompute energies with explicit charge/spin before plotting (kcal/mol)
+    pdb2reaction trj2fig -i traj.xyz -q 0 -m 1
 
     # CSV + figure (reference frame #5; output values in hartree)
     pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
