@@ -96,6 +96,7 @@ from .utils import (
     convert_xyz_like_outputs,
     pretty_block,
     format_geom_for_echo,
+    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     prepare_input_structure,
@@ -625,7 +626,7 @@ def cli(
 
     # Pretty-print config summary
     click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block("calc", calc_cfg))
+    click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
     click.echo(pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
     click.echo(pretty_block("thermo", {
         "temperature": thermo_cfg["temperature"],

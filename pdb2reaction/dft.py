@@ -91,6 +91,7 @@ from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
+    format_geom_for_echo,
     format_elapsed,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
@@ -456,7 +457,7 @@ def cli(
             "out_dir": str(out_dir_path),
             "engine": engine,
         }
-        click.echo(pretty_block("geom", geom_cfg))
+        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
         click.echo(pretty_block("dft", echo_cfg))
 
         # --------------------------

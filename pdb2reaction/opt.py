@@ -143,6 +143,7 @@ from .utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
@@ -636,12 +637,12 @@ def cli(
             allowed_hint="light|heavy",
         )
 
-        # Pretty-print the resolved configuration
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-        click.echo(pretty_block("calc", calc_cfg))
-        click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
-        click.echo(pretty_block(kind, (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
+    # Pretty-print the resolved configuration
+    out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+    click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+    click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
+    click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
+    click.echo(pretty_block(kind, (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
         if dist_freeze:
             display_pairs = []
             for (i, j, target) in dist_freeze:

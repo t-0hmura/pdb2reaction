@@ -121,6 +121,7 @@ from .utils import (
     detect_freeze_links_safe,
     pretty_block,
     format_geom_for_echo,
+    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
@@ -501,7 +502,7 @@ def cli(
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         _ensure_dir(out_dir_path)
         echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = dict(calc_cfg)
+        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
         echo_opt = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)

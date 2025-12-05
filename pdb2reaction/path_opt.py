@@ -91,6 +91,7 @@ from .utils import (
     deep_update,
     pretty_block,
     format_geom_for_echo,
+    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     prepare_input_structure,
@@ -740,7 +741,7 @@ def cli(
         # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = dict(calc_cfg)
+        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
         echo_gs = dict(gs_cfg)
         echo_opt = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)

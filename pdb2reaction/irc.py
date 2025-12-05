@@ -96,6 +96,7 @@ from pdb2reaction.utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    format_freeze_atoms_for_echo,
     format_elapsed,
     detect_freeze_links,
     merge_freeze_atom_indices,
@@ -307,7 +308,7 @@ def cli(
 
         # Pretty-print configuration (expand freeze_atoms for readability)
         click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-        click.echo(pretty_block("calc", calc_cfg))
+        click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
         click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
         # --------------------------
