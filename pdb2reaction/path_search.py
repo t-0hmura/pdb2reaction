@@ -295,7 +295,6 @@ def _bond_changes_block(text: Optional[str]):
 # Geometry (input handling)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator settings
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # DMF (Direct Max Flux + (C)FB-ENM)
@@ -307,40 +306,40 @@ GS_KW: Dict[str, Any] = dict(_PATH_GS_KW)
 # StringOptimizer (GSM optimization control)
 STOPT_KW: Dict[str, Any] = dict(_PATH_STOPT_KW)
 STOPT_KW.update({
-    "out_dir": "./result_path_search/",
+    "out_dir": "./result_path_search/",  # output directory for string-optimizer artifacts
 })
 
 # LBFGS settings
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 LBFGS_KW.update({
-    "out_dir": "./result_path_search/",
+    "out_dir": "./result_path_search/",  # LBFGS output directory (restart, logs)
 })
 
 # RFO settings
 RFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RFO_KW.update({
-    "out_dir": "./result_path_search/",
+    "out_dir": "./result_path_search/",  # RFO output directory (restart, logs)
 })
 
 # Covalent‑bond change detection
 BOND_KW: Dict[str, Any] = {
-    "device": "cuda",
-    "bond_factor": 1.20,
-    "margin_fraction": 0.05,
-    "delta_fraction": 0.05,
+    "device": "cuda",               # compute UMA graph features on CUDA when available
+    "bond_factor": 1.20,            # covalent cutoff multiplier (r_cov * bond_factor)
+    "margin_fraction": 0.05,        # tolerance margin added to bond cutoff for stability
+    "delta_fraction": 0.05,         # threshold fraction to flag bond formation/breaking
 }
 
 # Global search control
 SEARCH_KW: Dict[str, Any] = {
-    "max_depth": 10,
-    "stitch_rmsd_thresh": 1.0e-4,
-    "bridge_rmsd_thresh": 1.0e-4,
-    "rmsd_align": True,  # retained for compatibility (ignored internally)
-    "max_nodes_segment": 10,
-    "max_nodes_bridge": 5,
-    "kink_max_nodes": 3,
-    "max_seq_kink": 2,
-    "refine_mode": None,
+    "max_depth": 10,                 # recursion depth for path-search branching
+    "stitch_rmsd_thresh": 1.0e-4,    # RMSD cutoff when stitching partial segments
+    "bridge_rmsd_thresh": 1.0e-4,    # RMSD cutoff when bridging paths
+    "rmsd_align": True,              # retained for compatibility (ignored internally)
+    "max_nodes_segment": 10,         # max nodes per segment during expansion
+    "max_nodes_bridge": 5,           # max nodes per bridge construction
+    "kink_max_nodes": 3,             # max nodes for kink resolution
+    "max_seq_kink": 2,               # max sequential kinks allowed before aborting
+    "refine_mode": None,             # optional refinement strategy tag
 }
 
 

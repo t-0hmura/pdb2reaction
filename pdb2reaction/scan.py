@@ -149,26 +149,25 @@ from .bond_changes import compare_structures, summarize_changes
 # Geometry handling (Cartesian recommended for scans)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator defaults
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # Optimizer base (convergence, dumping, etc.)
 OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
-    "max_cycles": 100,
-    "out_dir": "./result_scan/",
+    "max_cycles": 100,          # hard cap on optimization cycles per biased segment
+    "out_dir": "./result_scan/",  # output directory for scan artifacts
 })
 
 # LBFGS specifics
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 LBFGS_KW.update({
-    "out_dir": "./result_scan/",
+    "out_dir": "./result_scan/",  # location for LBFGS-specific outputs (restart, etc.)
 })
 
 # RFO specifics
 RFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RFO_KW.update({
-    "out_dir": "./result_scan/",
+    "out_dir": "./result_scan/",  # location for RFO-specific outputs (restart, etc.)
 })
 
 # Bias (harmonic well) defaults; can be overridden via YAML: section "bias"
