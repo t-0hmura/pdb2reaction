@@ -213,7 +213,7 @@ pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[(10,55,2.20),(23,34,1.80)
 
 Key points:
 
-- `--scan-lists` describes **staged distance scans** on the extracted pocket, using UMA.
+- `--scan-lists` describes **staged distance scans** on the extracted pocket.
 - Each tuple `(i, j, target_Å)` is:
   - 1‑based indices taken from the original full PDB,
   - automatically remapped to the pocket indices.
@@ -246,7 +246,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --t
 Behaviour:
 
 - skips the MEP/path search entirely,
-- refines the **pocket TS** with UMA‑based TS optimisation,
+- refines the **pocket TS** with TS optimisation,
 - runs a **pseudo‑IRC** in both directions to relax down to R and P minima,
 - can then perform `freq` and `dft` on the R/TS/P trio,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams, similar to the full `all` workflow.
@@ -332,7 +332,7 @@ For a full matrix of options and YAML schemas, see `docs/all.md` in the reposito
 
 ## 5. Run summaries (`summary.log` and `summary.yaml`)
 
-Every `pdb2reaction all` run writes a human‑readable:
+Every `pdb2reaction all` run writes:
 
 - `summary.log` – formatted for quick inspection, and
 - `summary.yaml` – YAML version of the same information.
@@ -355,7 +355,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | Subcommand   | Role                                                                                  | Documentation                             |
 | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
 | `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot.    | [`docs/all.md`](docs/all.md)              |
-| `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation (UMA only).    | [`docs/scan.md`](docs/scan.md)            |
+| `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation           .    | [`docs/scan.md`](docs/scan.md)            |
 | `opt`        | Single‑structure geometry optimization using LBFGS or RFO.                            | [`docs/opt.md`](docs/opt.md)              |
 | `path-opt`   | MEP optimization via the Growing String method.                                       | [`docs/path_opt.md`](docs/path_opt.md)    |
 | `path-search`| Multistep MEP search via recursive GSM segmentation.                                  | [`docs/path_search.md`](docs/path_search.md) |
@@ -366,8 +366,8 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | `trj2fig`    | Plot ΔE or E from an XYZ trajectory and export figure/CSV.                            | [`docs/trj2fig.md`](docs/trj2fig.md)      |
 | `add-elem-info` | Add or repair PDB element columns (77–78) using Biopython.                         | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
 | `dft`        | Single-point DFT using GPU4PySCF (with CPU PySCF fallback).                           | [`docs/dft.md`](docs/dft.md)              |
-| `scan2d`     | 2D distance scan with harmonic restraints (UMA only).                                 | [`docs/scan2d.md`](docs/scan2d.md)        |
-| `scan3d`     | 3D distance scan with harmonic restraints (UMA only).                                 | [`docs/scan3d.md`](docs/scan3d.md)        |
+| `scan2d`     | 2D distance scan with harmonic restraints.                                 | [`docs/scan2d.md`](docs/scan2d.md)        |
+| `scan3d`     | 3D distance scan with harmonic restraints.                                 | [`docs/scan3d.md`](docs/scan3d.md)        |
 | `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.| [`docs/scan3d.md`](docs/scan3d.md)        |
 
 In practice, you can:
