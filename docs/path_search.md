@@ -101,152 +101,155 @@ The YAML root must be a mapping. YAML parameters override the CLI values. Shared
 ### Example YAML (default value)
 ```yaml
 geom:
-  coord_type: cart
-  freeze_atoms: []
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0
-  spin: 1
-  model: uma-s-1p1
-  task_name: omol
-  device: auto
-  max_neigh: null
-  radius: null
-  r_edges: false
-  out_hess_torch: true
-  freeze_atoms: null
-  hessian_calc_mode: FiniteDifference
-  return_partial_hessian: true
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  task_name: omol            # UMA task name
+  device: auto               # UMA device selection
+  max_neigh: null            # maximum neighbors for graph construction
+  radius: null               # cutoff radius for neighbor search
+  r_edges: false             # store radial edges
+  out_hess_torch: true       # request torch-form Hessian
+  freeze_atoms: null         # calculator-level frozen atoms
+  hessian_calc_mode: FiniteDifference   # Hessian mode selection
+  return_partial_hessian: true          # allow partial Hessians
 gs:
-  max_nodes: 10
-  perp_thresh: 0.005
-  reparam_check: rms
-  reparam_every: 1
-  reparam_every_full: 1
-  param: equi
-  max_micro_cycles: 10
-  reset_dlc: true
-  climb: true
-  climb_rms: 0.0005
-  climb_lanczos: true
-  climb_lanczos_rms: 0.0005
-  climb_fixed: false
-  scheduler: null
+  fix_first: true            # keep the first endpoint fixed during optimization
+  fix_last: true             # keep the last endpoint fixed during optimization
+  max_nodes: 10              # maximum string nodes
+  perp_thresh: 0.005         # perpendicular displacement threshold
+  reparam_check: rms         # reparametrization check metric
+  reparam_every: 1           # reparametrization stride
+  reparam_every_full: 1      # full reparametrization stride
+  param: equi                # parametrization scheme
+  max_micro_cycles: 10       # micro-iteration limit
+  reset_dlc: true            # rebuild delocalized coordinates each step
+  climb: true                # enable climbing image
+  climb_rms: 0.0005          # climbing RMS threshold
+  climb_lanczos: true        # Lanczos refinement for climbing
+  climb_lanczos_rms: 0.0005  # Lanczos RMS threshold
+  climb_fixed: false         # keep climbing image fixed
+  scheduler: null            # optional scheduler backend
 opt:
-  type: string
-  stop_in_when_full: 300
-  align: false
-  scale_step: global
-  max_cycles: 300
-  dump: false
-  dump_restart: false
-  reparam_thresh: 0.0
-  coord_diff_thresh: 0.0
-  out_dir: ./result_path_search/
-  print_every: 10
+  type: string               # optimizer type label
+  stop_in_when_full: 300     # early stop threshold when string is full
+  align: false               # alignment toggle (kept off)
+  scale_step: global         # step scaling mode
+  max_cycles: 300            # maximum optimization cycles
+  dump: false                # dump trajectory/restart data
+  dump_restart: false        # dump restart checkpoints
+  reparam_thresh: 0.0        # reparametrization threshold
+  coord_diff_thresh: 0.0     # coordinate difference threshold
+  out_dir: ./result_path_search/   # output directory
+  print_every: 10            # logging stride
 dmf:
-  correlated: true
-  sequential: true
-  fbenm_only_endpoints: false
+  correlated: true           # correlated DMF propagation
+  sequential: true           # sequential DMF execution
+  fbenm_only_endpoints: false   # run FB-ENM beyond endpoints
   fbenm_options:
-    delta_scale: 0.2
-    bond_scale: 1.25
-    fix_planes: true
-    two_hop_mode: sparse
+    delta_scale: 0.2         # FB-ENM displacement scaling
+    bond_scale: 1.25         # bond cutoff scaling
+    fix_planes: true         # enforce planar constraints
+    two_hop_mode: sparse     # neighbor traversal strategy
   cfbenm_options:
-    bond_scale: 1.25
-    corr0_scale: 1.1
-    corr1_scale: 1.5
-    corr2_scale: 1.6
-    eps: 0.05
-    pivotal: true
-    single: true
-    remove_fourmembered: true
-    two_hop_mode: sparse
+    bond_scale: 1.25         # CFB-ENM bond cutoff scaling
+    corr0_scale: 1.1         # correlation scale for corr0
+    corr1_scale: 1.5         # correlation scale for corr1
+    corr2_scale: 1.6         # correlation scale for corr2
+    eps: 0.05                # correlation epsilon
+    pivotal: true            # pivotal residue handling
+    single: true             # single-atom pivots
+    remove_fourmembered: true   # prune four-membered rings
+    two_hop_mode: sparse     # neighbor traversal strategy
   dmf_options:
-    remove_rotation_and_translation: false
-    mass_weighted: false
-    parallel: false
-    eps_vel: 0.01
-    eps_rot: 0.01
-    beta: 10.0
-    update_teval: false
-  k_fix: 100.0
+    remove_rotation_and_translation: false  # keep rigid-body motions
+    mass_weighted: false     # toggle mass weighting
+    parallel: false          # enable parallel DMF
+    eps_vel: 0.01            # velocity tolerance
+    eps_rot: 0.01            # rotational tolerance
+    beta: 10.0               # beta parameter for DMF
+    update_teval: false      # update transition evaluation
+  k_fix: 100.0               # harmonic constant for restraints
 sopt:
   lbfgs:
-    thresh: gau
-    max_cycles: 10000
-    print_every: 100
-    min_step_norm: 1.0e-08
-    assert_min_step: true
-    rms_force: null
-    rms_force_only: false
-    max_force_only: false
-    force_only: false
-    converge_to_geom_rms_thresh: 0.05
-    overachieve_factor: 0.0
-    check_eigval_structure: false
-    line_search: true
-    dump: false
-    dump_restart: false
-    prefix: ""
-    out_dir: ./result_path_search/
-    keep_last: 7
-    beta: 1.0
-    gamma_mult: false
-    max_step: 0.3
-    control_step: true
-    double_damp: true
-    mu_reg: null
-    max_mu_reg_adaptions: 10
+    thresh: gau                # LBFGS convergence preset
+    max_cycles: 10000          # iteration limit
+    print_every: 100           # logging stride
+    min_step_norm: 1.0e-08     # minimum accepted step norm
+    assert_min_step: true      # assert when steps stagnate
+    rms_force: null            # explicit RMS force target
+    rms_force_only: false      # rely only on RMS force convergence
+    max_force_only: false      # rely only on max force convergence
+    force_only: false          # skip displacement checks
+    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
+    overachieve_factor: 0.0    # tighten thresholds
+    check_eigval_structure: false   # validate Hessian eigenstructure
+    line_search: true          # enable line search
+    dump: false                # dump trajectory/restart data
+    dump_restart: false        # dump restart checkpoints
+    prefix: ""                 # filename prefix
+    out_dir: ./result_path_search/   # output directory
+    keep_last: 7               # history size for LBFGS buffers
+    beta: 1.0                  # initial damping beta
+    gamma_mult: false          # multiplicative gamma update toggle
+    max_step: 0.3              # maximum step length
+    control_step: true         # control step length adaptively
+    double_damp: true          # double damping safeguard
+    mu_reg: null               # regularization strength
+    max_mu_reg_adaptions: 10   # cap on mu adaptations
   rfo:
-    thresh: gau
-    max_cycles: 10000
-    print_every: 100
-    min_step_norm: 1.0e-08
-    assert_min_step: true
-    rms_force: null
-    rms_force_only: false
-    max_force_only: false
-    force_only: false
-    converge_to_geom_rms_thresh: 0.05
-    overachieve_factor: 0.0
-    check_eigval_structure: false
-    line_search: true
-    dump: false
-    dump_restart: false
-    prefix: ""
-    out_dir: ./result_path_search/
-    trust_radius: 0.3
-    trust_update: true
-    trust_min: 0.01
-    trust_max: 0.3
-    max_energy_incr: null
-    hessian_update: bfgs
-    hessian_init: calc
-    hessian_recalc: 100
-    hessian_recalc_adapt: 2.0
-    small_eigval_thresh: 1.0e-08
-    alpha0: 1.0
-    max_micro_cycles: 25
-    rfo_overlaps: false
-    gediis: false
-    gdiis: true
-    gdiis_thresh: 0.0025
-    gediis_thresh: 0.01
-    gdiis_test_direction: true
-    adapt_step_func: false
+    thresh: gau                # RFOptimizer convergence preset
+    max_cycles: 10000          # iteration cap
+    print_every: 100           # logging stride
+    min_step_norm: 1.0e-08     # minimum accepted step norm
+    assert_min_step: true      # assert when steps stagnate
+    rms_force: null            # explicit RMS force target
+    rms_force_only: false      # rely only on RMS force convergence
+    max_force_only: false      # rely only on max force convergence
+    force_only: false          # skip displacement checks
+    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
+    overachieve_factor: 0.0    # tighten thresholds
+    check_eigval_structure: false   # validate Hessian eigenstructure
+    line_search: true          # enable line search
+    dump: false                # dump trajectory/restart data
+    dump_restart: false        # dump restart checkpoints
+    prefix: ""                 # filename prefix
+    out_dir: ./result_path_search/   # output directory
+    trust_radius: 0.3          # trust-region radius
+    trust_update: true         # enable trust-region updates
+    trust_min: 0.01            # minimum trust radius
+    trust_max: 0.3             # maximum trust radius
+    max_energy_incr: null      # allowed energy increase per step
+    hessian_update: bfgs       # Hessian update scheme
+    hessian_init: calc         # Hessian initialization source
+    hessian_recalc: 100        # rebuild Hessian every N steps
+    hessian_recalc_adapt: 2.0  # adaptive Hessian rebuild factor
+    small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
+    alpha0: 1.0                # initial micro step
+    max_micro_cycles: 25       # micro-iteration limit
+    rfo_overlaps: false        # enable RFO overlaps
+    gediis: false              # enable GEDIIS
+    gdiis: true                # enable GDIIS
+    gdiis_thresh: 0.0025       # GDIIS acceptance threshold
+    gediis_thresh: 0.01        # GEDIIS acceptance threshold
+    gdiis_test_direction: true # test descent direction before DIIS
+    adapt_step_func: false     # adaptive step scaling toggle
 bond:
-  device: cuda
-  bond_factor: 1.2
-  margin_fraction: 0.05
-  delta_fraction: 0.05
+  device: cuda                # UMA device for bond analysis
+  bond_factor: 1.2            # covalent-radius scaling
+  margin_fraction: 0.05       # tolerance margin for comparisons
+  delta_fraction: 0.05        # minimum relative change to flag bonds
 search:
-  max_depth: 10
-  stitch_rmsd_thresh: 0.0001
-  bridge_rmsd_thresh: 0.0001
-  rmsd_align: true
-  max_nodes_segment: 10
-  max_nodes_bridge: 5
-  kink_max_nodes: 3
-  max_seq_kink: 2
+  max_depth: 10               # recursion depth limit
+  stitch_rmsd_thresh: 0.0001  # RMSD threshold for stitching segments
+  bridge_rmsd_thresh: 0.0001  # RMSD threshold for bridging nodes
+  rmsd_align: true            # legacy alignment flag (ignored)
+  max_nodes_segment: 10       # max nodes per segment
+  max_nodes_bridge: 5         # max nodes per bridge
+  kink_max_nodes: 3           # max nodes for kink optimizations
+  max_seq_kink: 2             # max sequential kinks
+  refine_mode: null           # optional refinement strategy (auto-chooses when null)
 ```

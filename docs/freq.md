@@ -95,24 +95,24 @@ Provide a mapping; YAML values override CLI. Shared sections reuse
 
 ```yaml
 geom:
-  coord_type: cart
-  freeze_atoms: []
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0
-  spin: 1
-  model: uma-s-1p1
-  task_name: omol
-  device: auto
-  max_neigh: null
-  radius: null
-  r_edges: false
-  out_hess_torch: true
-  freeze_atoms: null
-  hessian_calc_mode: FiniteDifference
-  return_partial_hessian: true
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  task_name: omol            # UMA task name
+  device: auto               # UMA device selection
+  max_neigh: null            # maximum neighbors for graph construction
+  radius: null               # cutoff radius for neighbor search
+  r_edges: false             # store radial edges
+  out_hess_torch: true       # request torch-form Hessian
+  freeze_atoms: null         # calculator-level frozen atoms
+  hessian_calc_mode: FiniteDifference   # Hessian mode selection
+  return_partial_hessian: true          # allow partial Hessians
 freq:
-  amplitude_ang: 0.8
-  n_frames: 20
-  max_write: 10
-  sort: value
+  amplitude_ang: 0.8         # displacement amplitude for modes (Å)
+  n_frames: 20               # number of frames per mode
+  max_write: 10              # maximum number of modes to write
+  sort: value                # sort order: value vs abs
 ```

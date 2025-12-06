@@ -108,21 +108,27 @@ configuration-args-yaml)):
 
 ```yaml
 geom:
-  coord_type: cart
-  freeze_atoms: []
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0
-  spin: 1
-  model: uma-s-1p1
-  device: auto
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  device: auto               # UMA device selection
 opt:
-  thresh: gau
-  max_cycles: 10000
-  out_dir: ./result_scan2d/
+  thresh: gau                # convergence preset (Gaussian/Baker-style)
+  max_cycles: 10000          # optimizer cycle cap
+  dump: false                # trajectory dumping disabled (CLI controls dumping)
+  out_dir: ./result_scan2d/  # output directory
 lbfgs:
-  max_step: 0.3
+  max_step: 0.3              # maximum step length
+  out_dir: ./result_scan2d/  # LBFGS-specific output directory
 rfo:
-  trust_radius: 0.3
+  trust_radius: 0.3          # trust-region radius
+  out_dir: ./result_scan2d/  # RFO-specific output directory
 bias:
-  k: 100.0
+  k: 100.0                  # harmonic bias strength (eV·Å⁻²)
 ```
+
+More YAML options about `opt` are available in [docs/opt.md](opt.md#yaml-
+configuration-args-yaml).

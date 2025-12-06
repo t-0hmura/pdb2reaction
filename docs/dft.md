@@ -79,9 +79,9 @@ _Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridd
 
 ```yaml
 dft:
-  conv_tol: 1.0e-09
-  max_cycle: 100
-  grid_level: 3
-  verbose: 0
-  out_dir: ./result_dft/
+  conv_tol: 1.0e-09     # SCF convergence tolerance (Hartree)
+  max_cycle: 100        # maximum SCF iterations
+  grid_level: 3         # PySCF grid level
+  verbose: 0            # PySCF verbosity (0-9)
+  out_dir: ./result_dft/  # output directory root
 ```

@@ -85,6 +85,37 @@ pdb2reaction scan3d -i input.pdb -q 0 \
   [`opt`](opt.md#yaml-configuration-args-yaml). `opt.dump` is forced to `False`
   so trajectory control stays on the CLI.
 
+More YAML options about `opt` are available in [docs/opt.md](opt.md#yaml-
+configuration-args-yaml).
+
+## YAML configuration (`--args-yaml`)
+A minimal example (extend using the keys documented for [`opt`](opt.md#yaml-
+configuration-args-yaml)):
+
+```yaml
+geom:
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+calc:
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  device: auto               # UMA device selection
+opt:
+  thresh: gau                # convergence preset (Gaussian/Baker-style)
+  max_cycles: 10000          # optimizer cycle cap
+  dump: false                # trajectory dumping disabled (CLI controls dumping)
+  out_dir: ./result_scan3d/  # output directory
+lbfgs:
+  max_step: 0.3              # maximum step length
+  out_dir: ./result_scan3d/  # LBFGS-specific output directory
+rfo:
+  trust_radius: 0.3          # trust-region radius
+  out_dir: ./result_scan3d/  # RFO-specific output directory
+bias:
+  k: 100.0                  # harmonic bias strength (eV·Å⁻²)
+```
+
 ### Section `bias`
 - `k` (`100`): Harmonic strength in eV·Å⁻². Overridden by `--bias-k`.
 

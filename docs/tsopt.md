@@ -118,124 +118,127 @@ matches your workflow—adjust only the values you need to change.
 
 ```yaml
 geom:
-  coord_type: cart
-  freeze_atoms: []
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0
-  spin: 1
-  model: uma-s-1p1
-  task_name: omol
-  device: auto
-  max_neigh: null
-  radius: null
-  r_edges: false
-  out_hess_torch: true
-  freeze_atoms: null
-  hessian_calc_mode: FiniteDifference
-  return_partial_hessian: true
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  task_name: omol            # UMA task name
+  device: auto               # UMA device selection
+  max_neigh: null            # maximum neighbors for graph construction
+  radius: null               # cutoff radius for neighbor search
+  r_edges: false             # store radial edges
+  out_hess_torch: true       # request torch-form Hessian
+  freeze_atoms: null         # calculator-level frozen atoms
+  hessian_calc_mode: FiniteDifference   # Hessian mode selection
+  return_partial_hessian: true          # allow partial Hessians
 opt:
-  thresh: gau
-  max_cycles: 10000
-  print_every: 100
-  min_step_norm: 1.0e-08
-  assert_min_step: true
-  rms_force: null
-  rms_force_only: false
-  max_force_only: false
-  force_only: false
-  converge_to_geom_rms_thresh: 0.05
-  overachieve_factor: 0.0
-  check_eigval_structure: false
-  line_search: true
-  dump: false
-  dump_restart: false
-  prefix: ""
-  out_dir: ./result_tsopt/
+  thresh: gau                # convergence preset (Gaussian/Baker-style)
+  max_cycles: 10000          # optimizer cycle cap
+  print_every: 100           # logging stride
+  min_step_norm: 1.0e-08     # minimum norm for step acceptance
+  assert_min_step: true      # stop if steps fall below threshold
+  rms_force: null            # explicit RMS force target
+  rms_force_only: false      # rely only on RMS force convergence
+  max_force_only: false      # rely only on max force convergence
+  force_only: false          # skip displacement checks
+  converge_to_geom_rms_thresh: 0.05   # geom RMS threshold when converging to ref
+  overachieve_factor: 0.0    # factor to tighten thresholds
+  check_eigval_structure: false   # validate Hessian eigenstructure
+  line_search: true          # enable line search
+  dump: false                # dump trajectory/restart data
+  dump_restart: false        # dump restart checkpoints
+  prefix: ""                 # filename prefix
+  out_dir: ./result_tsopt/   # output directory
 hessian_dimer:
-  thresh_loose: gau_loose
-  thresh: gau
-  update_interval_hessian: 1000
-  neg_freq_thresh_cm: 5.0
-  flatten_amp_ang: 0.1
-  flatten_max_iter: 20
-  mem: 100000
-  use_lobpcg: true
-  device: auto
-  root: 0
+  thresh_loose: gau_loose    # loose convergence preset
+  thresh: gau                # main convergence preset
+  update_interval_hessian: 1000   # Hessian rebuild cadence
+  neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
+  flatten_amp_ang: 0.1       # flattening amplitude (Å)
+  flatten_max_iter: 20       # flattening iteration cap
+  flatten_sep_cutoff: 2.0    # minimum distance between representative atoms (Å)
+  flatten_k: 10              # representative atoms sampled per mode
+  mem: 100000                # memory limit for solver
+  use_lobpcg: true           # enable LOBPCG eigen solver
+  device: auto               # device selection for eigensolver
+  root: 0                    # targeted TS root index
   dimer:
-    length: 0.0189
-    rotation_max_cycles: 15
-    rotation_method: fourier
-    rotation_thresh: 0.0001
-    rotation_tol: 1
-    rotation_max_element: 0.001
-    rotation_interpolate: true
-    rotation_disable: false
-    rotation_disable_pos_curv: true
-    rotation_remove_trans: true
-    trans_force_f_perp: true
-    bonds: null
-    N_hessian: null
-    bias_rotation: false
-    bias_translation: false
-    bias_gaussian_dot: 0.1
-    seed: null
-    write_orientations: true
-    forward_hessian: true
+    length: 0.0189           # dimer separation (Bohr)
+    rotation_max_cycles: 15  # max rotation iterations
+    rotation_method: fourier # rotation optimizer method
+    rotation_thresh: 0.0001  # rotation convergence threshold
+    rotation_tol: 1          # rotation tolerance factor
+    rotation_max_element: 0.001   # max rotation matrix element
+    rotation_interpolate: true    # interpolate rotation steps
+    rotation_disable: false   # disable rotations entirely
+    rotation_disable_pos_curv: true   # disable when positive curvature detected
+    rotation_remove_trans: true   # remove translational components
+    trans_force_f_perp: true  # project forces perpendicular to translation
+    bonds: null               # bond list for constraints
+    N_hessian: null           # Hessian size override
+    bias_rotation: false      # bias rotational search
+    bias_translation: false   # bias translational search
+    bias_gaussian_dot: 0.1    # Gaussian bias dot product
+    seed: null                # RNG seed for rotations
+    write_orientations: true  # write rotation orientations
+    forward_hessian: true     # propagate Hessian forward
   lbfgs:
-    thresh: gau
-    max_cycles: 10000
-    print_every: 100
-    min_step_norm: 1.0e-08
-    assert_min_step: true
-    rms_force: null
-    rms_force_only: false
-    max_force_only: false
-    force_only: false
-    converge_to_geom_rms_thresh: 0.05
-    overachieve_factor: 0.0
-    check_eigval_structure: false
-    line_search: true
-    dump: false
-    dump_restart: false
-    prefix: ""
-    out_dir: ./result_opt/
-    keep_last: 7
-    beta: 1.0
-    gamma_mult: false
-    max_step: 0.3
-    control_step: true
-    double_damp: true
-    mu_reg: null
-    max_mu_reg_adaptions: 10
+    thresh: gau                # LBFGS convergence preset
+    max_cycles: 10000          # iteration limit
+    print_every: 100           # logging stride
+    min_step_norm: 1.0e-08     # minimum accepted step norm
+    assert_min_step: true      # assert when steps stagnate
+    rms_force: null            # explicit RMS force target
+    rms_force_only: false      # rely only on RMS force convergence
+    max_force_only: false      # rely only on max force convergence
+    force_only: false          # skip displacement checks
+    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
+    overachieve_factor: 0.0    # tighten thresholds
+    check_eigval_structure: false   # validate Hessian eigenstructure
+    line_search: true          # enable line search
+    dump: false                # dump trajectory/restart data
+    dump_restart: false        # dump restart checkpoints
+    prefix: ""                 # filename prefix
+    out_dir: ./result_opt/     # output directory
+    keep_last: 7               # history size for LBFGS buffers
+    beta: 1.0                  # initial damping beta
+    gamma_mult: false          # multiplicative gamma update toggle
+    max_step: 0.3              # maximum step length
+    control_step: true         # control step length adaptively
+    double_damp: true          # double damping safeguard
+    mu_reg: null               # regularization strength
+    max_mu_reg_adaptions: 10   # cap on mu adaptations
 rsirfo:
-  thresh: gau
-  max_cycles: 10000
-  print_every: 100
-  min_step_norm: 1.0e-08
-  assert_min_step: true
-  rms_force: null
-  rms_force_only: false
-  max_force_only: false
-  force_only: false
-  converge_to_geom_rms_thresh: 0.05
-  overachieve_factor: 0.0
-  check_eigval_structure: false
-  line_search: true
-  dump: false
-  dump_restart: false
-  prefix: ""
-  out_dir: ./result_opt/
-  roots: [0]
-  hessian_ref: null
-  rx_modes: null
-  prim_coord: null
-  rx_coords: null
-  hessian_update: bofill
-  hessian_recalc_reset: true
-  max_micro_cycles: 50
-  augment_bonds: false
-  min_line_search: true
-  max_line_search: true
-  assert_neg_eigval: false
+  thresh: gau                # RS-IRFO convergence preset
+  max_cycles: 10000          # iteration cap
+  print_every: 100           # logging stride
+  min_step_norm: 1.0e-08     # minimum accepted step norm
+  assert_min_step: true      # assert when steps stagnate
+  rms_force: null            # explicit RMS force target
+  rms_force_only: false      # rely only on RMS force convergence
+  max_force_only: false      # rely only on max force convergence
+  force_only: false          # skip displacement checks
+  converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
+  overachieve_factor: 0.0    # tighten thresholds
+  check_eigval_structure: false   # validate Hessian eigenstructure
+  line_search: true          # enable line search
+  dump: false                # dump trajectory/restart data
+  dump_restart: false        # dump restart checkpoints
+  prefix: ""                 # filename prefix
+  out_dir: ./result_opt/     # output directory
+  roots: [0]                 # target root indices
+  hessian_ref: null          # reference Hessian
+  rx_modes: null             # reaction-mode definitions for projection
+  prim_coord: null           # primary coordinates to monitor
+  rx_coords: null            # reaction coordinates to monitor
+  hessian_update: bofill     # Hessian update scheme override
+  hessian_recalc_reset: true # reset recalc counter after exact Hessian
+  max_micro_cycles: 50       # micro-iterations per macro cycle
+  augment_bonds: false       # augment reaction path based on bond analysis
+  min_line_search: true      # enforce minimum line-search step
+  max_line_search: true      # enforce maximum line-search step
+  assert_neg_eigval: false   # require a negative eigenvalue at convergence
 ```
+
