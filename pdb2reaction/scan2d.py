@@ -137,18 +137,18 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
-    "out_dir": "./result_scan2d/",
-    "dump": False,
-    "max_cycles": 10000,
+    "out_dir": "./result_scan2d/",  # base output directory for 2D scan artifacts
+    "dump": False,                   # disable trajectory dumping by default
+    "max_cycles": 10000,             # safety cap on optimization cycles
 })
 
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_KW.update({"out_dir": "./result_scan2d/"})
+LBFGS_KW.update({"out_dir": "./result_scan2d/"})  # directory for LBFGS-specific files
 
 RFO_KW: Dict[str, Any] = dict(_RFO_KW)
-RFO_KW.update({"out_dir": "./result_scan2d/"})
+RFO_KW.update({"out_dir": "./result_scan2d/"})    # directory for RFO-specific files
 
-BIAS_KW: Dict[str, Any] = {"k": 100.0}  # eV/Å^2
+BIAS_KW: Dict[str, Any] = {"k": 100.0}  # harmonic restraint strength (eV/Å^2)
 
 _OPT_MODE_ALIASES = (
     (("light",), "lbfgs"),

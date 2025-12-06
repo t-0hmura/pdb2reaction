@@ -1218,13 +1218,12 @@ class HessianDimer:
 # Geometry defaults
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator defaults
 CALC_KW = dict(_UMA_CALC_KW)
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
 OPT_BASE_KW = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
-    "out_dir": "./result_tsopt/",
+    "out_dir": "./result_tsopt/",  # base output directory for TS optimization artifacts
 })
 
 DIMER_KW = {

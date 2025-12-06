@@ -163,7 +163,6 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 # Geometry options (YAML key: geom)
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-# Calculator: UMA / uma_pysis  (YAML key: calc)
 CALC_KW = dict(_UMA_CALC_KW)
 
 # Optimizer base (common to LBFGS & RFO)  (YAML key: opt)

@@ -338,7 +338,6 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     return default.parent / override
 
 
-# Default UMA calculator configuration (overridable via YAML `calc` section)
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 
