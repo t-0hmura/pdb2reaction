@@ -79,45 +79,45 @@ Provide a mapping; YAML overrides CLI. Shared sections reuse [`opt`](opt.md#yaml
 
 ```yaml
 geom:
-  coord_type: cart
-  freeze_atoms: []
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0
-  spin: 1
-  model: uma-s-1p1
-  task_name: omol
-  device: auto
-  max_neigh: null
-  radius: null
-  r_edges: false
-  out_hess_torch: true
-  freeze_atoms: null
-  hessian_calc_mode: FiniteDifference
-  return_partial_hessian: true
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  task_name: omol            # UMA task name
+  device: auto               # UMA device selection
+  max_neigh: null            # maximum neighbors for graph construction
+  radius: null               # cutoff radius for neighbor search
+  r_edges: false             # store radial edges
+  out_hess_torch: true       # request torch-form Hessian
+  freeze_atoms: null         # calculator-level frozen atoms
+  hessian_calc_mode: FiniteDifference   # Hessian mode selection
+  return_partial_hessian: true          # allow partial Hessians
 irc:
-  step_length: 0.1
-  max_cycles: 125
-  downhill: false
-  forward: true
-  backward: true
-  root: 0
-  hessian_init: calc
-  displ: energy
-  displ_energy: 0.001
-  displ_length: 0.1
-  rms_grad_thresh: 0.001
-  hard_rms_grad_thresh: null
-  energy_thresh: 0.000001
-  imag_below: 0.0
-  force_inflection: true
-  check_bonds: false
-  out_dir: ./result_irc/
-  prefix: ""
-  dump_fn: irc_data.h5
-  dump_every: 5
-  hessian_update: bofill
-  hessian_recalc: null
-  max_pred_steps: 500
-  loose_cycles: 3
-  corr_func: mbs
+  step_length: 0.1           # integration step length
+  max_cycles: 125            # maximum steps along IRC
+  downhill: false            # follow downhill direction only
+  forward: true              # propagate in forward direction
+  backward: true             # propagate in backward direction
+  root: 0                    # normal-mode root index
+  hessian_init: calc         # Hessian initialization source
+  displ: energy              # displacement construction method
+  displ_energy: 0.001        # energy-based displacement scaling
+  displ_length: 0.1          # length-based displacement fallback
+  rms_grad_thresh: 0.001     # RMS gradient convergence threshold
+  hard_rms_grad_thresh: null # hard RMS gradient stop
+  energy_thresh: 0.000001    # energy change threshold
+  imag_below: 0.0            # imaginary frequency cutoff
+  force_inflection: true     # enforce inflection detection
+  check_bonds: false         # check bonds during propagation
+  out_dir: ./result_irc/     # output directory
+  prefix: ""                 # filename prefix
+  dump_fn: irc_data.h5       # IRC data filename
+  dump_every: 5              # dump stride
+  hessian_update: bofill     # Hessian update scheme
+  hessian_recalc: null       # Hessian rebuild cadence
+  max_pred_steps: 500        # predictor-corrector max steps
+  loose_cycles: 3            # loose cycles before tightening
+  corr_func: mbs             # correlation function choice
 ```

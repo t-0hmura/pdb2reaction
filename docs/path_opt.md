@@ -84,74 +84,76 @@ YAML inputs override CLI, which override the defaults listed below.
 ### Example YAML (default value)
 ```yaml
 geom:
-  coord_type: cart
-  freeze_atoms: []
+  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0
-  spin: 1
-  model: uma-s-1p1
-  task_name: omol
-  device: auto
-  max_neigh: null
-  radius: null
-  r_edges: false
-  out_hess_torch: true
-  freeze_atoms: null
-  hessian_calc_mode: FiniteDifference
-  return_partial_hessian: true
+  charge: 0                  # total charge (CLI/template override)
+  spin: 1                    # spin multiplicity 2S+1
+  model: uma-s-1p1           # UMA model tag
+  task_name: omol            # UMA task name
+  device: auto               # UMA device selection
+  max_neigh: null            # maximum neighbors for graph construction
+  radius: null               # cutoff radius for neighbor search
+  r_edges: false             # store radial edges
+  out_hess_torch: true       # request torch-form Hessian
+  freeze_atoms: null         # calculator-level frozen atoms
+  hessian_calc_mode: FiniteDifference   # Hessian mode selection
+  return_partial_hessian: true          # allow partial Hessians
 gs:
-  max_nodes: 10
-  perp_thresh: 0.005
-  reparam_check: rms
-  reparam_every: 1
-  reparam_every_full: 1
-  param: equi
-  max_micro_cycles: 10
-  reset_dlc: true
-  climb: true
-  climb_rms: 0.0005
-  climb_lanczos: true
-  climb_lanczos_rms: 0.0005
-  climb_fixed: false
-  scheduler: null
+  fix_first: true            # keep the first endpoint fixed during optimization
+  fix_last: true             # keep the last endpoint fixed during optimization
+  max_nodes: 10              # maximum string nodes
+  perp_thresh: 0.005         # perpendicular displacement threshold
+  reparam_check: rms         # reparametrization check metric
+  reparam_every: 1           # reparametrization stride
+  reparam_every_full: 1      # full reparametrization stride
+  param: equi                # parametrization scheme
+  max_micro_cycles: 10       # micro-iteration limit
+  reset_dlc: true            # rebuild delocalized coordinates each step
+  climb: true                # enable climbing image
+  climb_rms: 0.0005          # climbing RMS threshold
+  climb_lanczos: true        # Lanczos refinement for climbing
+  climb_lanczos_rms: 0.0005  # Lanczos RMS threshold
+  climb_fixed: false         # keep climbing image fixed
+  scheduler: null            # optional scheduler backend
 opt:
-  type: string
-  stop_in_when_full: 300
-  align: false
-  scale_step: global
-  max_cycles: 300
-  dump: false
-  dump_restart: false
-  reparam_thresh: 0.0
-  coord_diff_thresh: 0.0
-  out_dir: ./result_path_opt/
-  print_every: 10
+  type: string               # optimizer type label
+  stop_in_when_full: 300     # early stop threshold when string is full
+  align: false               # alignment toggle (kept off)
+  scale_step: global         # step scaling mode
+  max_cycles: 300            # maximum optimization cycles
+  dump: false                # dump trajectory/restart data
+  dump_restart: false        # dump restart checkpoints
+  reparam_thresh: 0.0        # reparametrization threshold
+  coord_diff_thresh: 0.0     # coordinate difference threshold
+  out_dir: ./result_path_opt/   # output directory
+  print_every: 10            # logging stride
 dmf:
-  correlated: true
-  sequential: true
-  fbenm_only_endpoints: false
+  correlated: true           # correlated DMF propagation
+  sequential: true           # sequential DMF execution
+  fbenm_only_endpoints: false   # run FB-ENM beyond endpoints
   fbenm_options:
-    delta_scale: 0.2
-    bond_scale: 1.25
-    fix_planes: true
-    two_hop_mode: sparse
+    delta_scale: 0.2         # FB-ENM displacement scaling
+    bond_scale: 1.25         # bond cutoff scaling
+    fix_planes: true         # enforce planar constraints
+    two_hop_mode: sparse     # neighbor traversal strategy
   cfbenm_options:
-    bond_scale: 1.25
-    corr0_scale: 1.1
-    corr1_scale: 1.5
-    corr2_scale: 1.6
-    eps: 0.05
-    pivotal: true
-    single: true
-    remove_fourmembered: true
-    two_hop_mode: sparse
+    bond_scale: 1.25         # CFB-ENM bond cutoff scaling
+    corr0_scale: 1.1         # correlation scale for corr0
+    corr1_scale: 1.5         # correlation scale for corr1
+    corr2_scale: 1.6         # correlation scale for corr2
+    eps: 0.05                # correlation epsilon
+    pivotal: true            # pivotal residue handling
+    single: true             # single-atom pivots
+    remove_fourmembered: true   # prune four-membered rings
+    two_hop_mode: sparse     # neighbor traversal strategy
   dmf_options:
-    remove_rotation_and_translation: false
-    mass_weighted: false
-    parallel: false
-    eps_vel: 0.01
-    eps_rot: 0.01
-    beta: 10.0
-    update_teval: false
-  k_fix: 100.0
+    remove_rotation_and_translation: false  # keep rigid-body motions
+    mass_weighted: false     # toggle mass weighting
+    parallel: false          # enable parallel DMF
+    eps_vel: 0.01            # velocity tolerance
+    eps_rot: 0.01            # rotational tolerance
+    beta: 10.0               # beta parameter for DMF
+    update_teval: false      # update transition evaluation
+  k_fix: 100.0               # harmonic constant for restraints
 ```

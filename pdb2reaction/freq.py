@@ -478,7 +478,6 @@ def _write_mode_trj_and_pdb(geom,
 # Geometry defaults
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator defaults (freeze_atoms merged later from geom config)
 CALC_KW = dict(_UMA_CALC_KW)
 
 # Freq writer defaults

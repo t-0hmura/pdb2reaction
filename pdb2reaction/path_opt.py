@@ -115,7 +115,6 @@ from .align_freeze_atoms import align_and_refine_sequence_inplace
 # Geometry (input handling)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 
-# UMA calculator settings
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 # DMF (Direct Max Flux + (C)FB-ENM)
@@ -135,14 +134,14 @@ DMF_KW: Dict[str, Any] = {
 
     # CFB_ENM options (cfbenm_options)
     "cfbenm_options": {
-        "bond_scale": 1.25,
+        "bond_scale": 1.25,         # neighbor cutoff multiplier for CFB-ENM graph construction
         "corr0_scale": 1.10,        # d_corr0 ~ corr0_scale * d_bond
-        "corr1_scale": 1.50,
-        "corr2_scale": 1.60,
+        "corr1_scale": 1.50,        # scale for first correlation shell distance
+        "corr2_scale": 1.60,        # scale for second correlation shell distance
         "eps": 0.05,                # sqrt(pp^2 + eps^2) term's epsilon
-        "pivotal": True,
-        "single": True,
-        "remove_fourmembered": True,
+        "pivotal": True,            # enable pivotal constraints in the CFB-ENM
+        "single": True,             # enforce single-path constraint in correlation graph
+        "remove_fourmembered": True,# prune four-membered rings in the correlation network
         "two_hop_mode": "sparse",   # Two-hop construction on the CFB_ENM side
     },
 
@@ -150,9 +149,9 @@ DMF_KW: Dict[str, Any] = {
     "dmf_options": {
         "remove_rotation_and_translation": False,  # Do not explicitly constrain rigid-body motions
         "mass_weighted": False,                    # Whether to use mass-weighted velocity norms
-        "parallel": False,
-        "eps_vel": 0.01,
-        "eps_rot": 0.01,
+        "parallel": False,                         # allow parallel execution inside DMF core
+        "eps_vel": 0.01,                           # stabilization epsilon for velocity norms
+        "eps_rot": 0.01,                           # stabilization epsilon for rotational terms
         "beta": 10.0,                              # "Beta" for the geometric action
         "update_teval": False,                     # Control node relocation from interpolate_fbenm
     },
@@ -163,8 +162,8 @@ DMF_KW: Dict[str, Any] = {
 
 # GrowingString (path representation)
 GS_KW: Dict[str, Any] = {
-    "fix_first": True,
-    "fix_last": True,
+    "fix_first": True,           # keep the first image fixed during optimization
+    "fix_last": True,            # keep the last image fixed during optimization
     "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
     "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
     "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
