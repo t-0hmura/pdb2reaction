@@ -130,5 +130,4 @@ bias:
   k: 100.0                  # harmonic bias strength (eV·Å⁻²)
 ```
 
-More YAML options about `opt` are available in [docs/opt.md](opt.md#yaml-
-configuration-args-yaml).
+More YAML options about `opt` are available in [docs/opt.md](docs/opt.md).

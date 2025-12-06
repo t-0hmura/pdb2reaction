@@ -116,6 +116,8 @@ bias:
   k: 100.0                  # harmonic bias strength (eV·Å⁻²)
 ```
 
+More YAML options about `opt` are available in [docs/opt.md](docs/opt.md).
+
 ### Section `bias`
 - `k` (`100`): Harmonic strength in eV·Å⁻². Overridden by `--bias-k`.
 
