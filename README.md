@@ -352,21 +352,22 @@ Each `path_search` segment directory also gets its own `summary.log` and `summar
 
 While most users will primarily call `pdb2reaction all`, the CLI also exposes lower‑level building blocks like `pdb2reaction opt`. Each subcommand supports `-h/--help` and can read arguments from YAML files via `--args-yaml` (see `docs/*.md` for exact schemas).
 
-| Subcommand   | Role                | Documentation            |
-| ------------ | ---------------------------------------------------------------------------- | ------------------------ |
-| `all`        | High‑level workflow orchestrator: extraction → GSM / path search → TS/freq/DFT. | [`docs/all.md`](docs/all.md)           |
-| `scan`       | Staged biased scans on pocket models to generate additional intermediates.   | [`docs/scan.md`](docs/scan.md)          |
-| `opt`        | Optimise a single structure (LBFGS / RFO presets).       | [`docs/opt.md`](docs/opt.md)           |
-| `path-opt`   | UMA optimisation on a specific path segment or snapshot.        | [`docs/path_opt.md`](docs/path_opt.md)      |
-| `path-search`| Recursive GSM‑based path search plus pocket/full‑system merging.             | [`docs/path_search.md`](docs/path_search.md)   |
-| `tsopt`      | Transition‑state refinement (Dimer+LBFGS or RS-I-RFO presets).            | [`docs/tsopt.md`](docs/tsopt.md)         |
-| `freq`       | Vibrational analysis, thermochemistry.    | [`docs/freq.md`](docs/freq.md)          |
-| `irc`        | Intrinsic reaction coordinate following from a TS structure.    | [`docs/irc.md`](docs/irc.md)           |
-| `extract`    | Extract active sites from full PDB structures.     | [`docs/extract.md`](docs/extract.md)       |
-| `trj2fig`    | Convert trajectory data to interactive figures (Plotly / Kaleido).           | [`docs/trj2fig.md`](docs/trj2fig.md)       |
-| `add-elem-info` | Add missing element metadata to PDB files.     | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
-| `dft`        | DFT single‑point calculations on UMA geometries using PySCF / gpu4pyscf.     | [`docs/dft.md`](docs/dft.md)           |
-| `scan2d`     | 2D PES grid: two distance scan with restraints and relaxation.       | [`docs/scan2d.md`](docs/scan2d.md)        |
+| Subcommand   | Role                                                                                  | Documentation                             |
+| ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot.    | [`docs/all.md`](docs/all.md)              |
+| `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation (UMA only).    | [`docs/scan.md`](docs/scan.md)            |
+| `opt`        | Single‑structure geometry optimization using LBFGS or RFO.                            | [`docs/opt.md`](docs/opt.md)              |
+| `path-opt`   | MEP optimization via the Growing String method.                                       | [`docs/path_opt.md`](docs/path_opt.md)    |
+| `path-search`| Multistep MEP search via recursive GSM segmentation.                                  | [`docs/path_search.md`](docs/path_search.md) |
+| `tsopt`      | Transition state optimization (Dimer or RS-I-RFO).                                    | [`docs/tsopt.md`](docs/tsopt.md)          |
+| `freq`       | Vibrational frequency analysis and mode writer (+ thermochemistry summary).           | [`docs/freq.md`](docs/freq.md)            |
+| `irc`        | IRC calculation with EulerPC; YAML sets most options beyond the documented CLI flags. | [`docs/irc.md`](docs/irc.md)              |
+| `extract`    | Extract a binding pocket around substrate residues.                                   | [`docs/extract.md`](docs/extract.md)      |
+| `trj2fig`    | Plot ΔE or E from an XYZ trajectory and export figure/CSV.                            | [`docs/trj2fig.md`](docs/trj2fig.md)      |
+| `add-elem-info` | Add or repair PDB element columns (77–78) using Biopython.                         | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
+| `dft`        | Single-point DFT using GPU4PySCF (with CPU PySCF fallback).                           | [`docs/dft.md`](docs/dft.md)              |
+| `scan2d`     | 2D distance scan with harmonic restraints (UMA only).                                 | [`docs/scan2d.md`](docs/scan2d.md)        |
+| `scan3d`     | 3D distance scan with harmonic restraints (UMA only).                                 | [`docs/scan3d.md`](docs/scan3d.md)        |
 | `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.| [`docs/scan3d.md`](docs/scan3d.md)        |
 
 In practice, you can:
