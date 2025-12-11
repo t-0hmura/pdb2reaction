@@ -131,7 +131,7 @@ out_dir/ (default: ./result_all/)
 ├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/              # GSM results: trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
 ├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimisation, pseudo-IRC, freq, DFT, diagrams)
-├─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
+└─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
 ```
 - Console logs summarising pocket charge resolution, YAML contents, scan stages, GSM progress, and per-stage timing.
 
