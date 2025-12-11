@@ -1,8 +1,13 @@
-[Proceeding...]
+[Outlook]
 irc: Enable Active DOF input
+tsopt: Enable Active DOF input with RS-I-RFO
+opt: Enable Active DOF input with RFO
 all: Reuse TS Eigen Value for Freq from TS opt
 
-[Debugging...]
+[Debugging]
+Done.
+
+[Organize CLI, docstring and output]
 scan2d
 thermo
 trj2fig
@@ -22,8 +27,7 @@ path_search
 trj2fig
 uma_pysis
 utils
-
-[Organize CLI, docstring and output]
+README
 
 [Complete]
 
