@@ -90,7 +90,7 @@ You only need to do this once per machine / environment.
 
 If you prefer to build the environment piece by piece:
 
-1. **Load CUDA (HPC modules)**
+1. **Load CUDA (when you use environment modules on HPC)**
 
    ```bash
    module load cuda/12.8
