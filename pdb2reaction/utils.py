@@ -29,7 +29,7 @@ Description
     `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `"{}"`.
   - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"`
     is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are
-    left unchanged. Empty iterables become `""`.
+    left unchanged. Empty iterables become `"[]"`.
   - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given
     a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
   - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into
