@@ -128,7 +128,7 @@ CALC_KW: Dict[str, Any] = {
 
     # Hessian interfaces to UMA
     "hessian_calc_mode": "FiniteDifference",        # "FiniteDifference" (default) | "Analytical"
-    "return_partial_hessian": True,           # receive only the active-DOF Hessian block
+    "return_partial_hessian": False,          # receive the full Hessian (safer for pysisyphus)
 
     # Hessian precision (energy/forces are always returned as float64)
     "hessian_double": True,                   # if True, assemble/return Hessian in float64
@@ -329,9 +329,10 @@ class uma_pysis(Calculator):
         freeze_atoms : list[int], optional
             Atom indices (0-based). In both modes, DOFs of these atoms are
             treated as frozen.
-        return_partial_hessian : bool, default True
+        return_partial_hessian : bool, default False
             If True, return only the Active-DOF Hessian (submatrix for non-frozen atoms).
             If False, return a full (3N×3N) matrix where frozen-DOF columns are 0.
+            Full Hessians avoid shape mismatches with pysisyphus optimizers.
         hessian_double : bool, default True
             If True, assemble/return the Hessian in float64 (double precision).
             Energy and forces are always returned as float64 regardless of this flag.

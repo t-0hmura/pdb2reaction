@@ -98,7 +98,7 @@ calc:
   out_hess_torch: true       # request torch-form Hessian
   freeze_atoms: null         # calculator-level frozen atoms
   hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: true          # allow partial Hessians
+  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
 gs:
   fix_first: true            # keep the first endpoint fixed during optimization
   fix_last: true             # keep the last endpoint fixed during optimization
