@@ -157,7 +157,7 @@ hessian_dimer:
   update_interval_hessian: 1000   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
-  flatten_max_iter: 20       # flattening iteration cap
+  flatten_max_iter: 0        # flattening iteration cap (default: Disabled)
   flatten_sep_cutoff: 2.0    # minimum distance between representative atoms (Å)
   flatten_k: 10              # representative atoms sampled per mode
   mem: 100000                # memory limit for solver

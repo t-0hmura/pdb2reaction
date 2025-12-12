@@ -1271,7 +1271,7 @@ hessian_dimer_KW = {
     "update_interval_hessian": 1000,  # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 20,           # max flattening iterations
+    "flatten_max_iter": 0,            # max flattening iterations
     "flatten_sep_cutoff": 2.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
@@ -1470,7 +1470,7 @@ def cli(
                 update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 200)),
                 neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
                 flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
-                flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 20)),
+                flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
                 mem=int(simple_cfg.get("mem", 100000)),
                 use_lobpcg=bool(simple_cfg.get("use_lobpcg", True)),  # deprecated; ignored
                 uma_kwargs=uma_kwargs_for_sd,
