@@ -21,7 +21,7 @@ Usage (CLI)
         [--tsopt-max-cycles <int>] [--freq-* overrides] [--dft-* overrides] \
         [--dft-engine {gpu|cpu|auto}] [--scan-lists "[(...)]" ...]
 
-    # Single-structure scan builder (repeat --scan-lists to define stages; works with or without extraction)
+    # Single-structure scan builder (repeat --scan-lists to define sequential stages; works with or without extraction)
     pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --scan-lists "[(...)]" [...]
 
     # Single-structure TSOPT-only mode (no path_search) when --scan-lists is omitted and --tsopt True
@@ -67,6 +67,8 @@ Runs a one-shot pipeline centered on pocket models:
     - If **exactly one** full input PDB is provided and `--scan-lists` is given, the tool performs a
       **staged, bond-length–driven scan** on the extracted pocket PDB (or on the full input PDB when
       extraction is skipped) using the UMA calculator.
+    - When `--scan-lists` is repeated, **each stage starts from the relaxed structure of the previous
+      stage**, chaining the scans sequentially rather than running them independently.
     - For each stage, the final relaxed structure (`stage_XX/result.(pdb|xyz|gjf)`) is collected as an
       **intermediate/product candidate**.
     - The ordered input series for the MEP step becomes:
@@ -1962,7 +1964,9 @@ def _irc_and_match(
     multiple=True,
     required=False,
     help=(
-        "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable. "
+        "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable; "
+        "when repeated, stages run **sequentially**, each starting from the prior stage's relaxed "
+        "structure. "
         'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. Stage results feed into the MEP step (path_search or path_opt)."
