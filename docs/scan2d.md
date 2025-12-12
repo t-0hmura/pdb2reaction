@@ -4,8 +4,9 @@
 `scan2d` performs a two-distance (d₁, d₂) grid scan using harmonic restraints
 and UMA-based relaxations. You supply one `--scan-list` literal with two
 quadruples `(i, j, lowÅ, highÅ)`; the tool constructs linear grids for both
-ranges using `--max-step-size`, nests the loops (outer d₁, inner d₂), and writes
-both the PES samples and a ready-to-plot CSV/figure bundle. Energies reported in
+ranges using `--max-step-size`, then **reorders each axis so that points closest
+to the (pre)optimized structure are visited first**. Each grid point is relaxed
+and written alongside a ready-to-plot CSV/figure bundle. Energies reported in
 `surface.csv` are always evaluated **without bias** so you can compare grid
 points directly. Optimizations use LBFGS when `--opt-mode light` (default)
 or RFOptimizer when `--opt-mode heavy`.
@@ -32,22 +33,29 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 
 ## Workflow
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
-   run an unbiased preoptimization when `--preopt True`.
+   run an unbiased preoptimization when `--preopt True`. The preoptimized
+   structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
+   stored in `surface.csv` with indices `i = j = -1`.
 2. Parse the single `--scan-list` literal into two quadruples, normalize indices
    (1-based by default), and construct linear grids: `N = ceil(|high − low| / h)`
    with `h = --max-step-size`. Zero-length spans collapse to a single point.
-3. Iterate over every `d1[i]`. For each value, relax the system with **only the
-   d₁ restraint** active, snapshot that geometry, then run the inner loop over
-   `d2[j]` with **both restraints** applied.
+   Each axis is then reordered so that the distance closest to the preoptimized
+   geometry is indexed as `i = 0` / `j = 0`.
+3. Iterate over every `d1[i]` (nearest-first ordering). For each value, relax
+   the system with **only the d₁ restraint** active, snapshot that geometry, then
+   run the inner loop over `d2[j]` with **both restraints** applied starting from
+   the nearest previously converged structure.
 4. At each `(i, j)` pair, store the biased-optimization result under
    `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
    evaluate the UMA energy without bias. Optional per-outer-step inner
    trajectories are saved as `inner_path_d1_###.trj` when `--dump True`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
    `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
-   reference via `--baseline {min|first}`. Generate `scan2d_map.png` (2D contour)
-   and `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax`
-   to clamp the color scale.
+   reference via `--baseline {min|first}`. With `--baseline first`, the reference
+   is the first grid entry (`i = j = 0` after reordering), not necessarily
+   `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
+   `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
+   clamp the color scale.
 
 ## CLI options
 | Option | Description | Default |
@@ -83,8 +91,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 ```
 out_dir/ (default: ./result_scan2d/)
 ├─ surface.csv                # Structured grid table
-├─ scan2d_map.png             # 2D contour (falls back to HTML when static export fails)
-├─ scan2d_map.html            # HTML contour fallback
+├─ scan2d_map.png             # 2D contour (requires Kaleido; the run stops if PNG export fails)
 ├─ scan2d_landscape.html      # 3D surface visualization
 ├─ grid/point_i###_j###.xyz   # Relaxed geometries for every (i, j) pair
 ├─ grid/point_i###_j###.pdb   # PDB companions when conversion is enabled and templates exist
