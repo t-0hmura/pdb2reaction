@@ -361,14 +361,14 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | `path-search`| Multistep MEP search via recursive GSM segmentation.                                  | [`docs/path_search.md`](docs/path_search.md) |
 | `tsopt`      | Transition state optimization (Dimer or RS-I-RFO).                                    | [`docs/tsopt.md`](docs/tsopt.md)          |
 | `freq`       | Vibrational frequency analysis and mode writer (+ thermochemistry summary).           | [`docs/freq.md`](docs/freq.md)            |
-| `irc`        | IRC calculation with EulerPC; YAML sets most options beyond the documented CLI flags. | [`docs/irc.md`](docs/irc.md)              |
+| `irc`        | IRC calculation with EulerPC.                                                         | [`docs/irc.md`](docs/irc.md)              |
 | `extract`    | Extract a binding pocket around substrate residues.                                   | [`docs/extract.md`](docs/extract.md)      |
 | `trj2fig`    | Plot ΔE or E from an XYZ trajectory and export figure/CSV.                            | [`docs/trj2fig.md`](docs/trj2fig.md)      |
 | `add-elem-info` | Add or repair PDB element columns (77–78) using Biopython.                         | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
 | `dft`        | Single-point DFT using GPU4PySCF (with CPU PySCF fallback).                           | [`docs/dft.md`](docs/dft.md)              |
-| `scan2d`     | 2D distance scan with harmonic restraints.                                 | [`docs/scan2d.md`](docs/scan2d.md)        |
-| `scan3d`     | 3D distance scan with harmonic restraints.                                 | [`docs/scan3d.md`](docs/scan3d.md)        |
-| `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.| [`docs/scan3d.md`](docs/scan3d.md)        |
+| `scan2d`     | 2D distance scan with harmonic restraints.                                            | [`docs/scan2d.md`](docs/scan2d.md)        |
+| `scan3d`     | 3D distance scan with harmonic restraints.                                            | [`docs/scan3d.md`](docs/scan3d.md)        |
+| `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.         | [`docs/scan3d.md`](docs/scan3d.md)        |
 
 In practice, you can:
 
