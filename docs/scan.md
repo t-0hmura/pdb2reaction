@@ -57,7 +57,7 @@ pdb2reaction scan -i input.pdb -q 0 \
 | `--one-based / --zero-based` | Interpret atom indices as 1- or 0-based. | `--one-based` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
-| `--relax-max-cycles INT` | Cap on optimizer cycles during each biased step. Overrides `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Overrides `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
@@ -91,11 +91,12 @@ out_dir/ (default: ./result_scan/)
 │  ├─ result.pdb             # PDB companion for PDB inputs when conversion is enabled
 │  └─ result.gjf             # When a Gaussian template exists and conversion is enabled
 └─ stage_XX/                 # One folder per stage
-   ├─ result.xyz
-   ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
-   ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
-   ├─ scan.trj               # Written when --dump is True
-   └─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
+    ├─ result.xyz
+    ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
+    ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
+    ├─ scan.trj               # Written when --dump is True
+    ├─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
+    └─ scan.gjf               # Trajectory companion when a Gaussian template exists and conversion is enabled
 ```
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
@@ -108,8 +109,9 @@ out_dir/ (default: ./result_scan/)
   biased frame to avoid redundant evaluations.
 - Charge and spin inherit Gaussian template metadata when available; otherwise
   `-q/--charge` is required and spin defaults to `1`.
-- Trajectories are written only when `--dump` is `True`; this also triggers PDB
-  or Gaussian conversion when `--convert-files` is enabled.
+- Stage results (`result.xyz` plus optional PDB/GJF companions) are written
+  regardless of `--dump`; trajectories are written only when `--dump` is `True`
+  and converted to `scan.pdb`/`scan.gjf` when conversion is enabled.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. YAML parameters override CLI. Shared sections
