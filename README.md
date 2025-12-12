@@ -368,7 +368,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | `dft`        | Single-point DFT using GPU4PySCF (with CPU PySCF fallback).                           | [`docs/dft.md`](docs/dft.md)              |
 | `scan2d`     | 2D distance scan with harmonic restraints.                                            | [`docs/scan2d.md`](docs/scan2d.md)        |
 | `scan3d`     | 3D distance scan with harmonic restraints.                                            | [`docs/scan3d.md`](docs/scan3d.md)        |
-| `scan3d`     | 3D grid over three distances; can also visualise existing `surface.csv` data.         | [`docs/scan3d.md`](docs/scan3d.md)        |
+| `scan3d`     | 3D grid over three distances; can also visualise existing checkpoint `.csv` data.     | [`docs/scan3d.md`](docs/scan3d.md)        |
 
 In practice, you can:
 
