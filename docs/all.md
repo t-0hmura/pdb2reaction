@@ -41,6 +41,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 
 2. **Optional staged scan (single-input only)**
    - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering.
+   - When `--scan-lists` is repeated, stages run **sequentially**: stage 1 relaxes the starting structure, stage 2 begins from stage 1's result, and so on.
    - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent GSM step.
 
