@@ -971,7 +971,8 @@ def detect_freeze_links(pdb_path):
     Returns:
         List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
         to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
-        are present.
+        are present. When the input contains link hydrogens but no other atoms, the list
+        will contain ``-1`` entries to indicate missing parents.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
