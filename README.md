@@ -11,10 +11,10 @@ Basically, you just need a **single command** such as `pdb2reaction -i R.pdb P.p
 Given one or more full protein–ligand PDBs `.pdb` (reactant, intermediates, product), it automatically:
 
 - extracts a **active site** around user‑defined substrates,
-- builds a **machine‑learned potential** using Meta’s UMA model,
 - explores **minimum‑energy paths (MEPs)** with growing string / path optimisation methods,
-- refines **transition states**, runs **vibrational analysis**, and
-- optionally performs **DFT single‑point calculations** for higher‑level energetics.
+- _optionally_ refines **transition states**, runs **vibrational analysis**, and
+- _optionally_ performs **DFT single‑point calculations** for higher‑level energetics,
+- with **machine‑learned potential** using Meta’s UMA model.
 
 All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic mechanism** can be generated with minimal manual intervention. Off course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
 
