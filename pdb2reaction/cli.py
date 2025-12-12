@@ -85,7 +85,7 @@ cli.add_command(scan3d_cmd, name="scan3d")
 import logging
 logging.disable(logging.CRITICAL)
 
-# Silence noisy UMA/torch_dmf warnings that do not impact functionality
+# Filter noisy UMA/torch_dmf warnings that clutter CLI output
 import warnings
 
 warnings.filterwarnings(
