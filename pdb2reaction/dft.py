@@ -155,7 +155,7 @@ def _AU2KCALPERMOL(Eh: float) -> float:
 
 
 def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
-    """Apply common SCF settings (DF, tolerances, grids, VV10)."""
+    """Apply common SCF settings (XC, DF, tolerances, grids) to an SCF object."""
     mf.xc = xc
     mf.max_cycle = int(dft_cfg["max_cycle"])
     mf.conv_tol = float(dft_cfg["conv_tol"])

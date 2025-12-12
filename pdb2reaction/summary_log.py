@@ -26,7 +26,7 @@ def _fmt_bool(val: Optional[Any]) -> str:
 
 
 def _shorten_path(path: Optional[Path], root_out: Optional[Path]) -> str:
-    """Return a User-friendly path string relative to ``root_out`` when possible."""
+    """Return a path string, preferring a relative form to ``root_out`` or its parent."""
 
     if not path:
         return "(not available)"
