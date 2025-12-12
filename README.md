@@ -18,7 +18,7 @@ Given one or more full protein–ligand PDBs `.pdb` (reactant, intermediates, pr
 - explores **minimum‑energy paths (MEPs)** with growing string / path optimisation methods,
 - _optionally_ refines **transition states**, runs **vibrational analysis**, **irc calculations** and **DFT single‑point calculations**
 
-with **machine‑learned interatomic potential** using Meta’s UMA model.
+with **machine learning interatomic potential** using Meta’s UMA model.
 
 All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic mechanism** can be generated with minimal manual intervention. Off course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
 
