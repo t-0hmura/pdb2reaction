@@ -39,7 +39,8 @@ Description
 - SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF grids.level).
   Verbosity defaults to 0 and can be overridden via YAML (dft.verbose). Output directory
   selection is handled separately via --out-dir.
-- Nonlocal VV10 is enabled automatically when the functional ends with "-v" or contains "vv10".
+- VV10 / other nonlocal corrections are **not** configured explicitly; backends run with their
+  defaults for the chosen functional.
 - -q/--charge is required for non-.gjf inputs; .gjf templates supply charge/spin when available and allow omitting
   the CLI flag.
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
@@ -155,7 +156,7 @@ def _AU2KCALPERMOL(Eh: float) -> float:
 
 
 def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
-    """Apply common SCF settings (DF, tolerances, grids, VV10)."""
+    """Apply common SCF settings (DF, tolerances, grids)."""
     mf.xc = xc
     mf.max_cycle = int(dft_cfg["max_cycle"])
     mf.conv_tol = float(dft_cfg["conv_tol"])
