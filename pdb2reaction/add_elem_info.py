@@ -24,8 +24,7 @@ Description
 - Parses the input PDB with Biopython (`PDBParser`), assigns `atom.element`, and writes via
   `PDBIO` to populate columns 77–78.
 - Infers elements from atom names plus residue context (proteins, nucleic acids, water, ions).
-- Ion residues: prefers residue-derived elements; polyatomic ions (e.g., NH4, H3O+) are assigned
-  per atom (H/N/O).
+- Monoatomic ion residues in "ION" dict: use corresponding elements.
 - Polymers & water: maps H/D → H; water atoms to O/H; first-letter mapping for P/N/O/S;
   recognizes Se; carbon labels (CA/CB/CG/…) → C.
 - Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two‑letter/one‑letter
