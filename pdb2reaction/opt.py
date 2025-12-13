@@ -184,7 +184,7 @@ OPT_BASE_KW = {
     # * Baker rule in this tool: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
 
     "max_cycles": 10000,         # hard cap on optimization cycles
-    "print_every": 100,          # progress print frequency in cycles
+    "print_every": 1,          # progress print frequency in cycles
 
     # Step-size safeguarding
     "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength

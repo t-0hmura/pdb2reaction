@@ -10,11 +10,14 @@ Usage (CLI)
 
 Examples
 --------
-    # Populate element fields in-place
+    # Populate element fields and write to "<input>_add_elem.pdb"
     pdb2reaction add-elem-info -i 1abc.pdb
 
-    # Write to a new file and allow overwriting existing symbols
-    pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb --overwrite
+    # Overwrite the input file in-place (also re-infer existing symbols)
+    pdb2reaction add-elem-info -i 1abc.pdb --overwrite
+
+    # Write to a new file (preserve existing symbols by default)
+    pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 
 Description
 -----------
@@ -29,20 +32,22 @@ Description
   normalization; recognizes halogens (Cl/Br/I/F).
 - Preserves existing element fields unless `--overwrite` is given; with `--overwrite`, all atoms
   are re‑inferred and may change.
-- If no output path is provided, overwrites the input file. If inference fails, the atom’s element
-  is left unset/unchanged.
+- If no output path is provided, writes "<input>_add_elem.pdb". If `--overwrite` is given, the
+  input file is overwritten in-place (and `-o/--out` is ignored). If inference fails, the atom’s
+  element is left unset/unchanged.
 - Supports ATOM and HETATM records; works across models/chains/residues without altering
   coordinates.
 
 Outputs (& Directory Layout)
 ----------------------------
-<output>/ (default: overwrite the input file unless -o/--out is provided)
-  └─ PDB with element columns 77–78 populated or corrected (written to --out when supplied)
+<output>/ (default: write "<input>_add_elem.pdb" unless -o/--out is provided; when --overwrite
+           is used, overwrites the input file in-place)
+- PDB with element columns 77–78 populated or corrected (written to --out when supplied)
 
 Standard output summary
-  ├─ Total atoms processed and how many were newly assigned, kept, or overwritten.
-  ├─ Per-element counts for the final structure.
-  └─ Up to 50 unresolved atoms (model/chain/residue/atom/serial) when inference fails.
+- Total atoms processed and how many were newly assigned, kept, or overwritten.
+- Per-element counts for the final structure.
+- Up to 50 unresolved atoms (model/chain/residue/atom/serial) when inference fails.
 
 Notes
 -----
@@ -121,6 +126,19 @@ def _symbol_from_resname(resname: str) -> Optional[str]:
     """Extract an element symbol from an ion residue name (e.g., CA, FE2, Cl-, YB2)."""
     res = resname.strip()
     return _normalize_symbol(res)
+
+def _default_out_pdb_path(in_pdb: str) -> str:
+    """Default output path when -o/--out is omitted:
+    replace trailing '.pdb' (case-insensitive) with '_add_elem.pdb';
+    if no trailing '.pdb', append '_add_elem.pdb'.
+    """
+    p = Path(in_pdb)
+    name = p.name
+    if name.lower().endswith(".pdb"):
+        name = name[:-4] + "_add_elem.pdb"
+    else:
+        name = name + "_add_elem.pdb"
+    return str(p.with_name(name))
 
 # -----------------------------
 # Element inference (use residue to disambiguate)
@@ -295,7 +313,10 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
     io = PDBIO()
     io.set_structure(structure)
-    out_path = out_pdb if out_pdb else in_pdb
+    if overwrite:
+        out_path = in_pdb
+    else:
+        out_path = out_pdb if out_pdb else _default_out_pdb_path(in_pdb)
     io.save(out_path)
 
     # Summary
@@ -325,11 +346,15 @@ def main():
         description="Add/repair element columns (77–78) in a PDB using Biopython."
     )
     ap.add_argument("pdb", help="input PDB filepath")
-    ap.add_argument("-o", "--out", help="output PDB filepath (omit to overwrite input)")
+    ap.add_argument(
+        "-o",
+        "--out",
+        help='output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; ignored when --overwrite is set)',
+    )
     ap.add_argument(
         "--overwrite",
         action="store_true",
-        help="Re-infer and overwrite element fields even if present (by default, existing values are preserved).",
+        help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place (ignores -o/--out).",
     )
     args = ap.parse_args()
 
@@ -362,12 +387,12 @@ def main():
     "out_pdb",
     type=click.Path(path_type=Path, dir_okay=False),
     default=None,
-    help="Output PDB filepath (omit to overwrite input)",
+    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; ignored when --overwrite is set)',
 )
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="Re-infer and overwrite element fields even if present (by default, existing values are preserved).",
+    help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place (ignores -o/--out).",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     """Click wrapper to run via the `pdb2reaction add-elem-info` subcommand."""
@@ -378,4 +403,3 @@ def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     except Exception as e:
         click.echo(f"[ERR] Failed: {e}", err=True)
         sys.exit(2)
-
