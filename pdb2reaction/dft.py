@@ -30,8 +30,7 @@ Description
   * auto          : try GPU4PySCF first and fall back to CPU PySCF if unavailable (same behaviour as "gpu").
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
-  The geometry is written back unchanged as input_geometry.xyz. If a Gaussian .gjf template
-  is present **and conversion is enabled**, a convenience input_geometry.gjf is also written.
+  The geometry is written back unchanged as input_geometry.xyz.
 - Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-svp", "wb97m-v/def2-tzvpd").
   Names are case-insensitive in PySCF.
 - Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
@@ -55,7 +54,7 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_dft/)
   ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, timing, and per-atom charge/spin tables
   ├─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
-  └─ input_geometry.gjf         # Convenience GJF when a Gaussian template is available and conversion is enabled
+  └─ (no .gjf snapshot is written)
 
 Notes
 -----
@@ -96,7 +95,6 @@ from .utils import (
     format_elapsed,
     prepare_input_structure,
     resolve_charge_spin_or_raise,
-    maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
 )
 from .uma_pysis import GEOM_KW_DEFAULT
@@ -475,9 +473,6 @@ def cli(
         input_xyz = out_dir_path / "input_geometry.xyz"
         input_xyz.write_text(xyz_s if xyz_s.endswith("\n") else (xyz_s + "\n"))
         click.echo(f"[write] Wrote '{input_xyz}'.")
-        gjf_written = maybe_convert_xyz_to_gjf(input_xyz, prepared_input.gjf_template, out_dir_path / "input_geometry.gjf")
-        if gjf_written:
-            click.echo(f"[convert] Wrote '{gjf_written}'.")
 
         # --------------------------
         # 3) Build PySCF molecule
