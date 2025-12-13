@@ -32,16 +32,16 @@ Description
   normalization; recognizes halogens (Cl/Br/I/F).
 - Preserves existing element fields unless `--overwrite` is given; with `--overwrite`, all atoms
   are re‑inferred and may change.
-- If no output path is provided, writes "<input>_add_elem.pdb". If `--overwrite` is given, the
-  input file is overwritten in-place (and `-o/--out` is ignored). If inference fails, the atom’s
-  element is left unset/unchanged.
+ - If no output path is provided, writes "<input>_add_elem.pdb". If `--overwrite` is given without
+   `-o/--out`, the input file is overwritten in-place; when `-o/--out` is supplied, `--overwrite`
+   is ignored. If inference fails, the atom’s element is left unset/unchanged.
 - Supports ATOM and HETATM records; works across models/chains/residues without altering
   coordinates.
 
 Outputs (& Directory Layout)
 ----------------------------
 <output>/ (default: write "<input>_add_elem.pdb" unless -o/--out is provided; when --overwrite
-           is used, overwrites the input file in-place)
+           is used without -o/--out, overwrites the input file in-place)
 - PDB with element columns 77–78 populated or corrected (written to --out when supplied)
 
 Standard output summary
@@ -266,6 +266,10 @@ def _get_atom_serial(atom) -> Optional[int]:
 # Main processing
 # -----------------------------
 def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False) -> None:
+    # If an explicit output path is provided, never overwrite in-place even when --overwrite is
+    # passed. This keeps -o/-\-out as the higher-priority choice.
+    effective_overwrite = overwrite and out_pdb is None
+
     existing_by_serial = scan_existing_elements_by_serial(in_pdb)
 
     parser = PDBParser(QUIET=True)
@@ -293,7 +297,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
                     serial = _get_atom_serial(atom)
                     had_element_in_input = (serial in existing_by_serial) if serial is not None else False
 
-                    if had_element_in_input and not overwrite:
+                    if had_element_in_input and not effective_overwrite:
                         kept_existing += 1
                         continue
 
@@ -313,7 +317,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
     io = PDBIO()
     io.set_structure(structure)
-    if overwrite:
+    if effective_overwrite:
         out_path = in_pdb
     else:
         out_path = out_pdb if out_pdb else _default_out_pdb_path(in_pdb)
@@ -349,12 +353,12 @@ def main():
     ap.add_argument(
         "-o",
         "--out",
-        help='output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; ignored when --overwrite is set)',
+        help='output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored)',
     )
     ap.add_argument(
         "--overwrite",
         action="store_true",
-        help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place (ignores -o/--out).",
+        help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place when -o/--out is omitted.",
     )
     args = ap.parse_args()
 
@@ -387,12 +391,12 @@ def main():
     "out_pdb",
     type=click.Path(path_type=Path, dir_okay=False),
     default=None,
-    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; ignored when --overwrite is set)',
+    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored)',
 )
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place (ignores -o/--out).",
+    help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place when -o/--out is omitted.",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     """Click wrapper to run via the `pdb2reaction add-elem-info` subcommand."""
