@@ -26,7 +26,7 @@ Description
 -----------
 - Computes vibrational frequencies and normal modes using the UMA calculator.
 - Supports Partial Hessian Vibrational Analysis (PHVA) when atoms are frozen.
-- Exports animated modes (.trj; .pdb only when the input is PDB **and** ``--convert-files`` is enabled) and prints a Gaussian-style thermochemistry summary.
+- Exports animated modes (.trj; and, for PDB inputs, optionally .pdb animations when ``--convert-files`` is enabled) and prints a Gaussian-style thermochemistry summary.
 - Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); YAML values override CLI.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
@@ -37,7 +37,7 @@ Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_freq/)
   ├─ mode_XXXX_{±freq}cm-1.trj    # XYZ-like trajectory (Å) with sinusoidal motion per mode
-  ├─ mode_XXXX_{±freq}cm-1.pdb    # Multi-MODEL PDB animation (PDB inputs only, when --convert-files is enabled)
+  ├─ mode_XXXX_{±freq}cm-1.pdb    # Multi-MODEL PDB animation (PDB inputs only; attempted when --convert-files is enabled)
   ├─ frequencies_cm-1.txt         # All computed frequencies (cm^-1), sorted according to --sort
   └─ thermoanalysis.yaml          # Thermochemistry summary (written only when --dump True and thermoanalysis is available)
 
@@ -56,14 +56,12 @@ Notes
 - Mode writing:
   - ``--max-write`` limits how many modes are exported (ascending by value, or by absolute value with ``--sort abs``).
   - ``--amplitude-ang`` (Å) and ``--n-frames`` control the sinusoidal animation.
-  - For PDB inputs, the .trj is converted to a .pdb animation using the input PDB as a template; if conversion fails, an ASE fallback is used.
+  - For PDB inputs and when ``--convert-files`` is enabled, the .trj is converted to a .pdb animation using the input PDB as a template; if conversion fails, an ASE fallback is used.
 - Thermochemistry:
   - Requires the optional ``thermoanalysis`` package; if absent, the summary is skipped with a warning.
   - Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
 - Performance and numerical details:
   - GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO="U"``), and avoiding redundant allocations.
-- Exit behavior:
-  - On keyboard interrupt, exits with code 130; on other errors, prints a traceback and exits with code 1.
 """
 
 from __future__ import annotations

@@ -103,6 +103,8 @@ Truncation decides which atoms to delete from **non-substrate** residues; substr
       backbone-contact terminus rule).
   - **Isolated single residues** are reduced to a side-chain-only representation:
     remove N/H*, CA/HA*, and C/O/OXT.
+    - **Exception:** if the backbone-contact terminus rule preserves an N-cap and/or C-cap on this residue,
+      the corresponding N/H* and/or C/O/OXT atoms are retained (CA/HA* removal still applies for non‑PRO/HYP).
     - **PRO/HYP** retain N, CA, and H/HA* atoms to keep the ring, but may still lose C/O/OXT as C-cap.
 
 - With ``--exclude-backbone true`` (default):

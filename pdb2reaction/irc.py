@@ -9,8 +9,8 @@ Usage (CLI)
     pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
-        [--freeze-links {True|False}] [--out-dir <dir>] \
-        [--hessian-calc-mode {Analytical|FiniteDifference}] \
+        [--freeze-links {True|False}] [--convert-files/--no-convert-files] \
+        [--out-dir <dir>] [--hessian-calc-mode {Analytical|FiniteDifference}] \
         [--args-yaml <file>]
 
 Examples
@@ -26,27 +26,28 @@ Description
 -----------
 - Purpose: Run Intrinsic Reaction Coordinate (IRC) calculations using the EulerPC predictor–corrector integrator.
 - Inputs: Any structure readable by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, ...).
-  If the input is `.pdb`, trajectory files written by the run are additionally converted to PDB.
+  If the input is `.pdb`, trajectory files written by the run are additionally converted to PDB (when conversion is enabled).
 - Configuration model: Only the CLI options listed above are accepted. All other parameters
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
-  Final configuration precedence: built-in defaults → YAML → CLI.
-- Charge/spin defaults: `-q/--charge` and `-m/--mult` inherit values from `.gjf` templates when provided. For non-`.gjf`
+  Final configuration precedence: built-in defaults → CLI → YAML.
+- Charge/spin defaults: `-q/--charge` and `-m/--multiplicity` inherit values from `.gjf` templates when provided. For non-`.gjf`
   inputs, `-q/--charge` is mandatory and the CLI aborts if omitted; multiplicity still defaults to 1 when unspecified.
 
 CLI options
 -----------
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
-  - `-q/--charge INT`: Total charge; overrides `calc.charge` from YAML. Required for non-`.gjf` inputs; `.gjf` templates
+  - `-q/--charge INT`: Total charge; sets `calc.charge`. Required for non-`.gjf` inputs; `.gjf` templates
     supply defaults when available.
-  - `-m/--mult INT` (default 1): Spin multiplicity (2S+1); overrides `calc.spin` and defaults to the template multiplicity or `1`.
-  - `--max-cycles INT`: Max number of IRC steps; overrides `irc.max_cycles`.
-  - `--step-size FLOAT`: Step length in mass-weighted coordinates; overrides `irc.step_length`.
-  - `--root INT`: Imaginary mode index for the initial displacement; overrides `irc.root`.
-  - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); overrides `irc.forward`.
-  - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); overrides `irc.backward`.
+  - `-m/--multiplicity INT` (default 1): Spin multiplicity (2S+1); sets `calc.spin` and defaults to the template multiplicity or `1`.
+  - `--max-cycles INT`: Max number of IRC steps; sets `irc.max_cycles`.
+  - `--step-size FLOAT`: Step length in mass-weighted coordinates; sets `irc.step_length`.
+  - `--root INT`: Imaginary mode index for the initial displacement; sets `irc.root`.
+  - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); sets `irc.forward`.
+  - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); sets `irc.backward`.
   - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
-  - `--out-dir STR` (default `./result_irc/`): Output directory; overrides `irc.out_dir`.
-  - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; overrides `calc.hessian_calc_mode`.
+  - `--convert-files/--no-convert-files` (default `--convert-files`): Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.
+  - `--out-dir STR` (default `./result_irc/`): Output directory; sets `irc.out_dir`.
+  - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; sets `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
 
 Outputs (& Directory Layout)
@@ -56,9 +57,9 @@ out_dir/ (default: ./result_irc/)
   ├─ <prefix>finished_irc.trj       # Full IRC trajectory (TRJ)
   ├─ <prefix>forward_irc.trj        # Forward-only segment (TRJ)
   ├─ <prefix>backward_irc.trj       # Backward-only segment (TRJ)
-  ├─ <prefix>finished_irc.pdb       # PDB conversions (written when the input was .pdb)
-  ├─ <prefix>forward_irc.pdb        # PDB conversions (written when the input was .pdb)
-  └─ <prefix>backward_irc.pdb       # PDB conversions (written when the input was .pdb)
+  ├─ <prefix>finished_irc.pdb       # PDB conversions (written when the input was .pdb and conversion is enabled)
+  ├─ <prefix>forward_irc.pdb        # PDB conversions (written when the input was .pdb and conversion is enabled)
+  └─ <prefix>backward_irc.pdb       # PDB conversions (written when the input was .pdb and conversion is enabled)
 
 All files honor ``irc.prefix`` when it is set; the directory is created if missing.
 
@@ -71,6 +72,7 @@ Notes
   The geometry's freeze list is also forwarded to the calculator as `calc.freeze_atoms`.
 - `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
   for the initial displacement.
+- Output conversion steps can be disabled via `--no-convert-files`.
 - Standard output includes progress and timing. Exit codes: `0` on success, `130` on `KeyboardInterrupt`,
   `1` on unhandled exceptions.
 """

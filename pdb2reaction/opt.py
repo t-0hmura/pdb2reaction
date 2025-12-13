@@ -27,7 +27,7 @@ Description
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
 - Optimizers: LBFGS ("light", default) or RFOptimizer ("heavy").
-- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest).
+- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest). (If the same key is set in both `opt` and `lbfgs`/`rfo`, the `opt` value takes precedence.)
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
 - Format mirroring can be toggled with `--convert-files/--no-convert-files` (default: enabled); when a Gaussian template
@@ -43,7 +43,7 @@ Key options (YAML keys → meaning; defaults)
   - `freeze_atoms`: list[int], 0‑based indices to freeze (default: []).
 
 - Calculator (`calc`, UMA via `uma_pysis`):
-  - `charge` / `spin`: taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity` (default `1`)
+  - `charge` / `spin`: by default taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity` (default `1`)
     and reconciled with any `.gjf` template via `resolve_charge_spin_or_raise`.
   - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
   - `device`: "auto" (GPU if available) | "cuda" | "cpu".
@@ -65,14 +65,14 @@ Key options (YAML keys → meaning; defaults)
   - Bookkeeping: `dump` (`--dump True` writes `optimization.trj`), `dump_restart` (YAML every N cycles), `prefix`,
     `out_dir` (default `./result_opt/`).
 
-- LBFGS-specific (`lbfgs`, used when `--opt-mode light|lbfgs`):
+- LBFGS-specific (`lbfgs`, used when `--opt-mode light`):
   - Memory: `keep_last` 7.
   - Scaling: `beta` 1.0; `gamma_mult` False.
   - Step control: `max_step` 0.30; `control_step` True.
   - Safeguards: `double_damp` True.
   - Regularized L‑BFGS: `mu_reg`; `max_mu_reg_adaptions` 10.
 
-- RFO-specific (`rfo`, used when `--opt-mode heavy|rfo`):
+- RFO-specific (`rfo`, used when `--opt-mode heavy`):
   - Trust region: `trust_radius` 0.10; `trust_update` True; bounds: `trust_min` 0.00, `trust_max` 0.10;
     `max_energy_incr` Optional[float].
   - Hessian: `hessian_update` "bfgs" | "bofill"; `hessian_init` "calc"; `hessian_recalc` 200;
@@ -112,7 +112,7 @@ Notes
   aborts on large uphill steps.
 - **Exit codes:** 0 (success); 2 (`ZeroStepLength`); 3 (`OptimizationError`); 130 (keyboard interrupt);
   1 (unhandled error).
-- **Precedence:** Settings are applied with the precedence **YAML > CLI > internal defaults**.
+- **Precedence:** Settings are applied with the precedence **YAML > CLI > internal defaults**. If the same key is present in both `opt` and `lbfgs`/`rfo`, `opt` takes precedence.
 """
 
 from pathlib import Path

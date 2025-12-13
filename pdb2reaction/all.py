@@ -87,7 +87,7 @@ Pipeline overview
         • repeat ``--scan-lists`` to define sequential stages,
         • each stage starts from the previous stage’s relaxed final structure (stages are chained).
     - When extraction is enabled, indices in ``--scan-lists`` refer to the **original full input PDB**
-      (1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
+      (**ATOM/HETATM file order**, 1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
       (chain/residue/atom name, etc.) with occurrence counting for duplicates.
     - Stage endpoints are collected as ``scan/stage_XX/result.(pdb|xyz|gjf)`` and appended to the ordered
       input series for the MEP step:
@@ -112,14 +112,18 @@ Pipeline overview
     Shared knobs for the MEP step:
       - ``--mult`` (multiplicity), ``--freeze-links``, ``--max-nodes``, ``--max-cycles``, ``--climb``,
         ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
+      - Note: ``--dump`` is always passed to the MEP step; for scan/tsopt/freq it is forwarded only when
+        explicitly set on this command (otherwise each subcommand’s defaults apply; freq is run with dump=True by default).
       - ``--convert-files/--no-convert-files`` controls whether XYZ/TRJ outputs are converted into
         PDB/GJF companions when possible.
 
 (3) **Merge to full systems (PDB templates only)**
     - Only applicable in the recursive ``path_search`` branch (``--refine-path True``) and only when
       full-system PDB templates are available (see (2a)).
-    - In that case, merged trajectories (e.g., ``mep_w_ref.pdb`` and per-segment merged HEIs) are produced
-      by ``path_search`` under ``<out-dir>/path_search/`` and mirrored to ``<out-dir>/``.
+    - In that case, merged trajectories (e.g., ``mep_w_ref.pdb`` and per-segment merged files such as ``*_seg_XX.pdb``)
+      are produced by ``path_search`` under ``<out-dir>/path_search/``.
+      This wrapper mirrors only the main merged trajectory and key summary/plot files to ``<out-dir>/``;
+      per-segment merged files remain under ``<out-dir>/path_search/``.
     - When templates are unavailable (non-PDB inputs or extraction skipped), only pocket-level outputs exist.
 
 (4) **Optional per-segment post-processing (reactive segments only)**
@@ -162,7 +166,8 @@ Pipeline overview
         • Runs IRC (EulerPC) and obtains both endpoints,
         • Optimizes both endpoints to minima and builds UMA diagrams for **R–TS–P**,
         • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.
-    - In this special mode only, the higher-energy IRC endpoint is treated as the reactant (R).
+    - In this specific mode only, the higher-energy IRC endpoint (as returned by IRC, before endpoint minimization)
+      is treated as the reactant (R).
     - Outputs live under ``<out-dir>/tsopt_single/`` and key plots are mirrored to ``<out-dir>/`` as
       ``*_all.png``; the IRC plot is mirrored as ``irc_plot_all.png``; the TS is copied as
       ``ts_seg_01.(pdb|xyz)``.
@@ -231,6 +236,7 @@ Outputs (& Directory Layout)
   │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment trajectories
   │   ├─ hei_seg_XX.(xyz|pdb|gjf)        # HEI snapshots per reactive segment
   │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb / PDB input)
+  │   ├─ mep_w_ref_seg_XX.pdb            # merged per-segment trajectories (when --ref-pdb / PDB input; not mirrored)
   │   ├─ seg_XXX_~~~/ ...                # GSM internals / recursion tree
   │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
@@ -244,12 +250,17 @@ Outputs (& Directory Layout)
   │       └─ energy_diagram_G_DFT_plus_UMA.png
   ├─ path_opt/                           # when --refine-path False (pairwise path-opt + concatenation)
   │   ├─ mep.trj, summary.yaml, summary.log
+  │   ├─ mep_plot.png
+  │   ├─ energy_diagram_mep.png          # compressed diagram for concatenated MEP (when available; not mirrored)
   │   ├─ mep_seg_XX.* , hei_seg_XX.*     # per-segment outputs copied from each pairwise run
   │   ├─ seg_XXX_mep/ ...                # per-pair path-opt run directories
   │   └─ post_seg_XX/ ...                # same layout as path_search/ when post-processing runs
   ├─ mep_plot.png                        # copied from path_* / (MEP energy profile)
-  ├─ energy_diagram_MEP.png              # produced by path_search; in --refine-path False branch an
-  │                                      # aggregated diagram may be written as energy_diagram_mep.png
+  ├─ mep.trj / mep.xyz                   # copied from path_*/ when available (pocket MEP trajectory)
+  ├─ mep_w_ref.trj / mep_w_ref.xyz       # copied when produced (merged XYZ/TRJ companions)
+  ├─ energy_diagram_MEP.png              # produced by path_search and copied to <out-dir>/ when available
+  │                                      # (in --refine-path False branch, the compressed diagram is
+  │                                      #  written as path_opt/energy_diagram_mep.png and is not copied by default)
   ├─ mep.pdb                             # copied from path_* when a PDB representation is available
   ├─ mep_w_ref.pdb                       # copied from path_search/ when full-system merge is available
   ├─ summary.yaml                        # mirrored from path_*/summary.yaml
