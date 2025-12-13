@@ -5,7 +5,7 @@ Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySC
 
 ## Usage
 ```bash
-pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m 2S+1] \
+pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m MULTIPLICITY] \
                  --func-basis "FUNC/BASIS" \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
                  [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
