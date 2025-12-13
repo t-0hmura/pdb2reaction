@@ -16,7 +16,6 @@ irc
 scan
 all
 ts_opt
-add_elem_info
 bond_changes
 cli
 extract
@@ -30,4 +29,4 @@ utils
 README
 
 [Complete]
-
+add_elem_info
