@@ -161,6 +161,9 @@ from .utils import (
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
+    load_pdb_atom_metadata,
+    format_pdb_atom_metadata,
+    format_pdb_atom_metadata_header,
 )
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
@@ -601,6 +604,20 @@ def cli(
                 },
             )
         )
+
+        pdb_atom_meta: List[Dict[str, Any]] = []
+        if input_path.suffix.lower() == ".pdb":
+            pdb_atom_meta = load_pdb_atom_metadata(input_path)
+            if pdb_atom_meta:
+                click.echo("[scan3d] PDB atom details for scanned pairs:")
+                legend = format_pdb_atom_metadata_header()
+                click.echo(f"        legend: {legend}")
+                click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
+                click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
+                click.echo(f"  d3 i: {format_pdb_atom_metadata(pdb_atom_meta, i3)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j3)}")
 
         final_dir = out_dir_path
 
