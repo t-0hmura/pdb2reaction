@@ -17,8 +17,6 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
                      [--verbose true|false]
 ```
 
-`--verbose true|false` mirrors the Click wrapper (`pdb2reaction cli extract`) so the argparse entry behaves identically when called directly.
-
 ### Examples
 ```bash
 # Minimal (ID-based substrate) with explicit total ligand charge
