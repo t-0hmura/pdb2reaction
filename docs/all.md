@@ -16,7 +16,6 @@ pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 ### Examples
 ```bash
 # Multi-structure ensemble with explicit ligand charges and post-processing
-date=$(date +%Y%m%d)
 pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
     --ligand-charge "GPP:-3,MMT:-1" --mult 1 --freeze-links True \
     --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
