@@ -4,7 +4,7 @@
 `add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM
 records in a PDB file.
 
-### Output behavior (important)
+### Output behavior
 - If `-o/--out` is **omitted** and `--overwrite` is **not** set, the output is written to
   `<input>_add_elem.pdb` (i.e., it replaces a trailing `.pdb` with `_add_elem.pdb`;
   if the input does not end with `.pdb`, `_add_elem.pdb` is appended).

@@ -19,7 +19,7 @@ Examples
     # Overwrite the input file in-place
     pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
-Output behavior (important)
+Output behavior
 ---------------------------
 - If `-o/--out` is omitted and `--overwrite` is not set, write to `<input>_add_elem.pdb` (replace a
   trailing `.pdb` with `_add_elem.pdb`; otherwise append `_add_elem.pdb`).
