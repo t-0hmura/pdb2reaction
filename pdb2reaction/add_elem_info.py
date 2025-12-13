@@ -25,7 +25,7 @@ Description
   `PDBIO` to populate columns 77–78.
 - Infers elements from atom names plus residue context (proteins, nucleic acids, water, ions).
 - Monoatomic ion residues in "ION" dict: use corresponding elements.
-- Polymers & water: maps H/D → H; water atoms to O/H; first-letter mapping for P/N/O/S;
+- Proteins/nucleic acids/water: maps H/D → H; water atoms to O/H; first-letter mapping for P/N/O/S;
   recognizes Se; carbon labels (CA/CB/CG/…) → C.
 - Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two‑letter/one‑letter
   normalization; recognizes halogens (Cl/Br/I/F).
