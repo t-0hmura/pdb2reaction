@@ -128,6 +128,8 @@ from ase.data import chemical_symbols
 from ase.io import read, write
 import plotly.graph_objs as go
 
+from .add_elem_info import guess_element
+
 
 # =============================================================================
 # Generic helpers
@@ -957,6 +959,72 @@ def nearest_index(point, pool):
             best_d2 = d2
             best_i = i
     return best_i, math.sqrt(best_d2)
+
+
+def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
+    """Return per-atom metadata (serial, name, resname, resseq, element) in file order."""
+
+    atoms: List[Dict[str, Any]] = []
+    with open(pdb_path, "r") as f:
+        for line in f:
+            if not (line.startswith("ATOM") or line.startswith("HETATM")):
+                continue
+
+            serial_txt = line[6:11].strip()
+            resseq_txt = line[22:26].strip()
+            atom_name = line[12:16].strip()
+            res_name = line[17:20].strip()
+            element_txt = line[76:78].strip()
+            is_hetatm = line.startswith("HETATM")
+
+            try:
+                serial = int(serial_txt) if serial_txt else None
+            except ValueError:
+                serial = None
+            try:
+                resseq = int(resseq_txt) if resseq_txt else None
+            except ValueError:
+                resseq = None
+
+            if not element_txt:
+                inferred = guess_element(atom_name, res_name, is_hetatm)
+                element_txt = inferred or ""
+
+            atoms.append(
+                {
+                    "serial": serial,
+                    "name": atom_name,
+                    "resname": res_name,
+                    "resseq": resseq,
+                    "element": element_txt,
+                }
+            )
+
+    return atoms
+
+
+def format_pdb_atom_metadata_header() -> str:
+    """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
+
+    return f"{'id':>5} {'atom':<4} {'res':<4} {'resid':>4} {'el':<2}"
+
+
+def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
+    """Format metadata for atom *index* as aligned text: serial name resname resseq element."""
+
+    fallback_serial = index + 1
+    if index < 0 or index >= len(atom_meta):
+        return f"{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>4} {'?':<2}"
+
+    meta = atom_meta[index]
+    serial = meta.get("serial") or fallback_serial
+    name = meta.get("name") or "?"
+    resname = meta.get("resname") or "?"
+    resseq = meta.get("resseq")
+    resseq_txt = "?" if resseq is None else str(resseq)
+    element = (meta.get("element") or "?").strip() or "?"
+
+    return f"{serial:>5} {name:<4} {resname:<4} {resseq_txt:>4} {element:<2}"
 
 
 def detect_freeze_links(pdb_path):

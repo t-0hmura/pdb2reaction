@@ -138,6 +138,9 @@ from .utils import (
     prepare_input_structure,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
+    load_pdb_atom_metadata,
+    format_pdb_atom_metadata,
+    format_pdb_atom_metadata_header,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -495,6 +498,23 @@ def cli(
         stages = _parse_scan_lists(scan_lists_raw, one_based=one_based)
         K = len(stages)
         click.echo(f"[scan] Received {K} stage(s).")
+
+        pdb_atom_meta: List[Dict[str, Any]] = []
+        if input_path.suffix.lower() == ".pdb":
+            pdb_atom_meta = load_pdb_atom_metadata(input_path)
+            if pdb_atom_meta:
+                click.echo("[scan] PDB atom details for scanned pairs:")
+                legend = format_pdb_atom_metadata_header()
+                click.echo(f"        legend: {legend}")
+                for stage_idx, tuples in enumerate(stages, start=1):
+                    click.echo(f"  Stage {stage_idx}:")
+                    for pair_idx, (i, j, _) in enumerate(tuples, start=1):
+                        click.echo(
+                            f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}"
+                        )
+                        click.echo(
+                            f"              j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
+                        )
 
         # Prepare end-of-run summary collector
         stages_summary: List[Dict[str, Any]] = []
