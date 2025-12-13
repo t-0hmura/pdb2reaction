@@ -1,7 +1,7 @@
 # `dft` subcommand
 
 ## Overview
-Run single-point DFT calculations with a GPU-first policy (GPU4PySCF when available, CPU PySCF otherwise). If the GPU backend is unavailable or fails during setup/SCF, the run automatically falls back to CPU PySCF; Blackwell GPUs are forced to CPU with a warning. In addition to total energies the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities so users can reuse the results downstream without reprocessing the PySCF objects.
+Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySCF otherwise). If the GPU backend is unavailable or fails during setup/SCF, the run automatically falls back to CPU PySCF; Blackwell GPUs are forced to CPU with a warning. In addition to total energies the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities.
 
 ## Usage
 ```bash
