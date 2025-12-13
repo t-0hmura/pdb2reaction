@@ -2,19 +2,19 @@
 
 """
 all — SINGLE command to execute an end-to-end enzymatic reaction workflow:
-Extract pockets → (optional) staged scan on a single structure → MEP (recursive ``path_search`` by
-default; single-pass ``path-opt`` with ``--refine-path False``) → merge to full systems (when PDB
-templates are available), with optional TS optimization, IRC (EulerPC), thermochemistry, DFT, and
-DFT//UMA diagrams
+(Optional PDB element-field fix) → (optional) extract active-site pockets → (optional) staged scan on a single
+structure → MEP search (recursive ``path_search`` by default; pairwise ``path-opt`` with ``--refine-path False``)
+→ (optional) merge back into full-system PDB templates → optional TS optimization, IRC (EulerPC),
+thermochemistry (freq), DFT single-points, and DFT//UMA diagrams.
 ================================================================================================================
 
 Usage (CLI)
 -----------
     pdb2reaction all -i INPUT1 [INPUT2 ...] [-c <substrate-spec>] \
         [--ligand-charge <number|"RES:Q,...">] [-q/--charge <forced_net_charge>] [-m/--mult <2S+1>] \
-        [--freeze-links {True|False}] [--max-nodes <int>] [--max-cycles <int>] \
-        [--climb {True|False}] [--opt-mode {light|heavy}] [--refine-path {True|False}] \
-        [--dump {True|False}] [--thresh <preset>] \
+        [--freeze-links {True|False}] [--mep-mode {gsm|dmf}] [--max-nodes <int>] [--max-cycles <int>] \
+        [--climb {True|False}] [--opt-mode {light|heavy}] [--dump {True|False}] \
+        [--convert-files/--no-convert-files] [--refine-path {True|False}] [--thresh <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
@@ -24,7 +24,7 @@ Usage (CLI)
     # Single-structure scan builder (repeat --scan-lists to define sequential stages; works with or without extraction)
     pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --scan-lists "[(...)]" [...]
 
-    # Single-structure TSOPT-only mode (no path_search) when --scan-lists is omitted and --tsopt True
+    # Single-structure TSOPT-only mode (no MEP search) when --scan-lists is omitted and --tsopt True
     pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --tsopt True [other options]
 
 
@@ -40,142 +40,197 @@ Examples
         --opt-mode light --dump False --args-yaml params.yaml --preopt True \
         --out-dir result_all --tsopt True --thermo True --dft True
 
-    # Single-structure + scan to build an ordered series before path_search + post-processing
+    # Single-structure + staged scan to build an ordered series before the MEP step + post-processing
     pdb2reaction all -i A.pdb -c "308,309" \
         --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --out-dir result_scan_all \
         --tsopt True --thermo True --dft True
 
-    # Single-structure TSOPT-only mode (no path_search)
+    # Single-structure TSOPT-only mode (skips the MEP step entirely)
     pdb2reaction all -i A.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
         --tsopt True --thermo True --dft True --out-dir result_tsopt_only
 
 
 Description
 -----------
-Runs a one-shot pipeline centered on pocket models:
+Runs a one-shot pipeline centered on pocket models. The command is intentionally permissive about how
+``-i/--input`` is given: it accepts repeated ``-i`` flags and the sloppy form ``-i A.pdb B.pdb C.pdb``.
 
-(1) **Active-site pocket extraction** (multi-structure union when multiple inputs)
-    - Define the substrate (`-c/--center`, by PDB, residue IDs, or residue names).
-    - Optionally provide `--ligand-charge` as a total number (distributed) or a mapping (e.g., `GPP:-3,MMT:-1`).
-    - The extractor writes per-input pocket PDBs under `<out-dir>/pockets/`.
-    - The extractor’s **first-model total pocket charge** is used as the total charge in later steps,
-      cast to the nearest integer with a console note if rounding occurs.
-    - Additional extractor toggles: `--radius`, `--radius-het2het`, `--include-H2O True|False`,
-      `--exclude-backbone True|False`, `--add-linkH True|False`, `--selected_resn`, `--verbose True|False`.
+Pipeline overview
+-----------------
+(0) **Preflight: PDB element-field repair (automatic, best-effort)**
+    - If any input PDB contains ATOM/HETATM records with an empty element column (PDB cols 77–78),
+      ``add_elem_info`` is invoked to fill elements before downstream steps.
+    - Fixed copies are written to ``<out-dir>/add_elem_info/`` and used for extraction/MEP.
 
-(1b) **Optional staged scan (single-structure only)**
-    - If **exactly one** full input PDB is provided and `--scan-lists` is given, the tool performs a
-      **staged, bond-length–driven scan** on the extracted pocket PDB (or on the full input PDB when
-      extraction is skipped) using the UMA calculator.
-    - When `--scan-lists` is repeated, **each stage starts from the relaxed structure of the previous
-      stage**, chaining the scans sequentially rather than running them independently.
-    - For each stage, the final relaxed structure (`stage_XX/result.(pdb|xyz|gjf)`) is collected as an
-      **intermediate/product candidate**.
-    - The ordered input series for the MEP step becomes:
-      `[initial pocket or full input, stage_01/result.pdb, stage_02/result.pdb, ...]`.
+(1) **Active-site pocket extraction** *(enabled when ``-c/--center`` is provided)*
+    - Define the substrate/center by:
+        • a PDB path,
+        • residue IDs like ``"123,124"`` or ``"A:123,B:456"`` (insertion codes allowed: ``"123A"`` / ``"A:123A"``),
+        • residue names like ``"GPP,MMT"``.
+    - The extractor writes per-input pocket PDBs under ``<out-dir>/pockets/`` as ``pocket_<stem>.pdb``.
+    - The extractor’s **model #1 total pocket charge** is used as the workflow charge for later stages,
+      cast to the nearest integer; if rounding occurs a NOTE is printed.
+    - Common extractor knobs: ``--radius``, ``--radius-het2het``, ``--include-H2O``,
+      ``--exclude-backbone``, ``--add-linkH``, ``--selected_resn``, ``--verbose``.
+    - ``--ligand-charge`` can be either:
+        • a numeric total charge (distributed across unknown residues), or
+        • a residue-name mapping like ``"GPP:-3,MMT:-1"``.
 
-(2) **MEP search on pocket inputs**
-    - By default runs recursive `path_search` (options forwarded from this command). With
-      ``--refine-path False``, switches to a **single-pass** `path-opt` GSM per adjacent pair and
-      concatenates the segments.
-    - For multi-input runs, the original **full** PDBs are supplied as **merge references** automatically
-      **only when the original inputs are PDB files**. In the single-structure scan series, if the original
-      full input is a PDB, the same template is reused for all pocket (or full-input) structures.
+(1′) **Extraction skipped** *(when ``-c/--center`` is omitted)*
+    - No pocket is built; the **full input structure(s)** are used directly as the “pocket inputs”.
+    - Charge/spin are resolved as described in **Charge handling** below.
+    - Full-system merge is skipped (there is no separate “template” step).
 
-(3) **Merge to full systems**
-    - With ``--refine-path True`` (default) **and** reference full-system PDB templates (see (2)), the pocket
-      MEP is merged back into the original full-system template(s) within `<out-dir>/path_search/`.
-    - When ``--refine-path False``, only pocket-level outputs are produced and no merged `mep_w_ref*.pdb`
-      files are written.
-    - If references are not supplied (e.g., inputs are not PDB or extraction is skipped), only pocket-level
-      outputs are produced in either mode.
+(1b) **Optional staged scan (single-structure only; requires ``--scan-lists``)**
+    - Triggered only when **exactly one** input is given **and** ``--scan-lists`` is provided.
+    - The scan is a staged, bond-length–driven scan using the UMA calculator:
+        • repeat ``--scan-lists`` to define sequential stages,
+        • each stage starts from the previous stage’s relaxed final structure (stages are chained).
+    - When extraction is enabled, indices in ``--scan-lists`` refer to the **original full input PDB**
+      (1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
+      (chain/residue/atom name, etc.) with occurrence counting for duplicates.
+    - Stage endpoints are collected as ``scan/stage_XX/result.(pdb|xyz|gjf)`` and appended to the ordered
+      input series for the MEP step:
+      ``[initial pocket (or full input), stage_01/result.*, stage_02/result.*, ...]``.
 
-(4) **Optional per-segment post-processing** (for segments with covalent changes)
-    - `--tsopt True`: Optimize TS on the HEI pocket; perform an **IRC (EulerPC)**; assign forward/backward
-      correspondence by bond-state matching vs the GSM segment endpoints; then:
-        • write IRC endpoints as `reactant_irc.xyz` / `product_irc.xyz`,
-        • optimize both endpoints to minima (`reactant.xyz` / `product.xyz`),
-        • use these optimized endpoints as R/P for all downstream analyses.
-    - `--thermo True`: Compute UMA thermochemistry on (R, TS, P) and add a Gibbs diagram.
-    - `--dft True`: Do DFT single-point on (R, TS, P) and add a DFT diagram.
-      With `--thermo True`, also generate a **DFT//UMA** Gibbs diagram.
-    - Additionally, across all reactive segments, combined diagrams are written at `<out-dir>`:
-        • `energy_diagram_UMA_all.png` (UMA),
-        • `energy_diagram_G_UMA_all.png` (Gibbs, UMA),
-        • `energy_diagram_DFT_all.png` (DFT),
-        • `energy_diagram_G_DFT_plus_UMA_all.png` (Gibbs, DFT//UMA),
-      and a single aggregated IRC plot over all segments is written as `<out-dir>/irc_plot_all.png`.
-    - For each reactive segment, the TS structure is also copied to `<out-dir>` as:
-        • `ts_seg_XX.pdb` when PDB inputs are used,
-        • `ts_seg_XX.xyz` (single-frame XYZ trajectory with energy) for XYZ/GJF inputs.
+(2) **MEP search on the ordered pocket inputs**
+    Two modes are supported:
+
+    **(2a) Recursive MEP search (default):** ``--refine-path True``
+      - Runs the recursive ``path_search`` workflow on the ordered series.
+      - ``--mep-mode`` selects the optimizer: Growing String Method (``gsm``) or Direct Max Flux (``dmf``).
+      - When the original inputs are PDBs and extraction is enabled, the original **full-system** PDBs are
+        passed as merge templates (``--ref-pdb``) automatically:
+          • multi-input: one template per pocket input in reaction order,
+          • single+scan: the same original template is reused for all scan-derived structures.
+
+    **(2b) Pairwise GSM concatenation:** ``--refine-path False``
+      - Runs ``path-opt`` once for each adjacent pair in the ordered series and concatenates the resulting
+        trajectories into ``<out-dir>/path_opt/mep.trj`` (no recursive search).
+      - Full-system merge is not performed in this mode.
+
+    Shared knobs for the MEP step:
+      - ``--mult`` (multiplicity), ``--freeze-links``, ``--max-nodes``, ``--max-cycles``, ``--climb``,
+        ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
+      - ``--convert-files/--no-convert-files`` controls whether XYZ/TRJ outputs are converted into
+        PDB/GJF companions when possible.
+
+(3) **Merge to full systems (PDB templates only)**
+    - Only applicable in the recursive ``path_search`` branch (``--refine-path True``) and only when
+      full-system PDB templates are available (see (2a)).
+    - In that case, merged trajectories (e.g., ``mep_w_ref.pdb`` and per-segment merged HEIs) are produced
+      by ``path_search`` under ``<out-dir>/path_search/`` and mirrored to ``<out-dir>/``.
+    - When templates are unavailable (non-PDB inputs or extraction skipped), only pocket-level outputs exist.
+
+(4) **Optional per-segment post-processing (reactive segments only)**
+    Post-processing is applied only to segments that are flagged as having **covalent/bond changes** in
+    ``summary.yaml``. For each such segment:
+
+    - ``--tsopt True``:
+        • Optimize a TS starting from the segment HEI snapshot,
+        • Run **IRC (EulerPC)** from the optimized TS,
+        • Map IRC endpoints onto the segment’s left/right MEP endpoints (bond-state matching first,
+          RMSD fallback) to assign backward/forward consistently across segments,
+        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode``),
+        • Use these optimized minima as the final R and P for downstream analyses.
+        • Write per-segment UMA energy diagram: ``post_seg_XX/energy_diagram_UMA.png``.
+        • Copy the TS structure to ``<out-dir>/ts_seg_XX.pdb`` (when a PDB representation is available)
+          or ``<out-dir>/ts_seg_XX.xyz`` otherwise.
+
+    - ``--thermo True`` (with or without ``--tsopt``):
+        • Run ``freq`` on (R, TS, P) and build a UMA Gibbs diagram
+          ``post_seg_XX/energy_diagram_G_UMA.png``.
+        • If ``--tsopt`` is **off**, “TS” is the raw HEI snapshot from the MEP; R/P come from the segment
+          endpoints (no IRC-based reassignment).
+
+    - ``--dft True`` (with or without ``--tsopt``):
+        • Run DFT single-point on (R, TS, P) and build ``post_seg_XX/energy_diagram_DFT.png``.
+        • With ``--thermo True``, also build **DFT//UMA** Gibbs diagram
+          ``post_seg_XX/energy_diagram_G_DFT_plus_UMA.png``.
+
+    Across all reactive segments, aggregated plots are written at ``<out-dir>/`` when the required data exist:
+      - ``energy_diagram_UMA_all.png`` (UMA R–TS–P; requires ``--tsopt``),
+      - ``energy_diagram_G_UMA_all.png`` (UMA Gibbs; requires ``--thermo``),
+      - ``energy_diagram_DFT_all.png`` (DFT; requires ``--dft``),
+      - ``energy_diagram_G_DFT_plus_UMA_all.png`` (DFT//UMA Gibbs; requires ``--dft`` and ``--thermo``),
+      - ``irc_plot_all.png`` (aggregated IRC plot; requires ``--tsopt``).
 
 (Alt) **Single-structure TSOPT-only mode**
-    - If **exactly one** input is given, **no** `--scan-lists` is provided, and `--tsopt True`,
-      the tool skips (2)-(3) and:
-        • Runs `tsopt` on the **pocket** of that structure (or the full input when extraction is skipped),
-        • Runs **IRC (EulerPC)** from TS and obtains both ends,
-        • Writes `reactant_irc.xyz` / `product_irc.xyz`, optimizes them to `reactant.xyz` / `product.xyz`,
-        • Builds UMA energy diagrams for **R–TS–P**,
+    - Triggered when **exactly one** input is given, **no** ``--scan-lists`` is provided, and ``--tsopt True``.
+    - The tool skips the MEP step entirely and instead:
+        • Runs ``tsopt`` on the pocket (or full input when extraction is skipped),
+        • Runs IRC (EulerPC) and obtains both endpoints,
+        • Optimizes both endpoints to minima and builds UMA diagrams for **R–TS–P**,
         • Optionally adds UMA Gibbs, DFT, and **DFT//UMA** diagrams.
-      In this special mode only, the higher-energy IRC endpoint is treated as the reactant (R).
-      The single-structure energy diagrams are also mirrored to `<out-dir>` as
-      `energy_diagram_*_all.png`, and `irc/irc_plot.png` is mirrored to `<out-dir>/irc_plot_all.png`.
-      The TS structure is copied to `<out-dir>/ts_seg_01.pdb` when a PDB TS is available, or to
-      `<out-dir>/ts_seg_01.xyz` (single-frame XYZ trajectory with energy) otherwise.
+    - In this special mode only, the higher-energy IRC endpoint is treated as the reactant (R).
+    - Outputs live under ``<out-dir>/tsopt_single/`` and key plots are mirrored to ``<out-dir>/`` as
+      ``*_all.png``; the IRC plot is mirrored as ``irc_plot_all.png``; the TS is copied as
+      ``ts_seg_01.(pdb|xyz)``.
 
-**Charge handling**
-  - `-q/--charge` **forces** the total system charge with a console **WARNING**, overriding
-    extractor/GJF/`--ligand-charge` logic.
-  - With extraction enabled, the extractor’s **first-model total pocket charge** is used (rounded to int) when
-    no `-q/--charge` override is provided.
-  - With extraction **skipped** (`-c/--center` omitted), the **total system charge** is set as:
-      1) a numeric `--ligand-charge` value (if provided), otherwise
-      2) parsed from the **first input GJF** (if the first input is `.gjf`), otherwise
-      3) default **0**.
-    Spin precedence when extraction is skipped: explicit `--mult` > GJF value (if available) > default.
+Charge handling
+---------------
+  - ``-q/--charge`` **forces** the total system charge with a console **WARNING**, overriding
+    extractor/GJF/``--ligand-charge``-derived values.
+  - With extraction enabled (``-c/--center``):
+      • the extractor’s model #1 **total pocket charge** is used (rounded to an integer) unless overridden.
+  - With extraction skipped (no ``--center``):
+      1) a numeric ``--ligand-charge`` value is interpreted as the **TOTAL system charge** (rounded),
+      2) else, if the first input is ``.gjf``, its charge is used,
+      3) else default is **0**.
+    Non-numeric ``--ligand-charge`` mappings are ignored in this mode.
+  - Spin precedence when extraction is skipped:
+      explicit ``--mult`` > GJF multiplicity (if available) > default.
 
-**Inputs**
-  - `-i/--input` accepts two or more **full structures** in reaction order (reactant [intermediates ...] product).
-    Accepted formats are **PDB/XYZ/GJF** when **extraction is skipped**. When using extraction (`-c/--center`),
-    inputs must be **PDB**. For **single-structure + scan**, the input must be a **PDB**.
+Inputs
+------
+  - ``-i/--input`` accepts:
+      • Two or more structures in reaction order (reactant [intermediates ...] product), or
+      • A single structure when using ``--scan-lists`` (staged scan), or
+      • A single structure when using ``--tsopt True`` (TSOPT-only mode).
+  - When using extraction (``-c/--center``), inputs must be **PDB**.
+  - When using ``--scan-lists`` with extraction skipped, the single input must be a **PDB**.
+  - When extraction is skipped, multi-structure runs accept **PDB/XYZ/GJF** inputs.
 
-**Forwarded / relevant options**
-  - Path search: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`,
-    `--dump`, `--thresh`, `--preopt`, `--args-yaml`, `--out-dir`. (`--freeze-links` / `--dump` propagate to scan/tsopt/freq as
-    shared flags.)
-  - Scan (single-structure, pocket or full-input): inherits charge/spin, `--freeze-links`, `--opt-mode`, `--dump`,
-    `--args-yaml`, `--preopt`, and per-stage overrides (`--scan-out-dir`, `--scan-one-based`
-    (omit to keep scan's default 1‑based indexing), `--scan-max-step-size`, `--scan-bias-k`,
-    `--scan-relax-max-cycles`, `--scan-preopt`, `--scan-endopt`). Indices given to `--scan-lists`
-    refer to the original full input PDB; when extraction is used they are remapped to the pocket.
-  - Shared knobs: `--opt-mode light|heavy` applies to both scan and tsopt; light maps to LBFGS/Dimer and heavy to
-    RFO/RSIRFO across the workflow.
-    `--hessian-calc-mode` applies to tsopt and freq.
-  - TS optimization / IRC: `--tsopt-max-cycles`, `--tsopt-out-dir`, and the shared knobs above tune downstream tsopt/irc.
-  - Frequency analysis: `--freq-out-dir`, `--freq-max-write`, `--freq-amplitude-ang`, `--freq-n-frames`, `--freq-sort`,
-    `--freq-temperature`, `--freq-pressure`, plus shared `--freeze-links`, `--dump`, `--hessian-calc-mode`.
-  - DFT single-points: `--dft-out-dir`, `--dft-func-basis`, `--dft-max-cycle`, `--dft-conv-tol`, `--dft-grid-level`, `--dft-engine`.
-  - Post-processing toggles: `--tsopt`, `--thermo`, `--dft`.
-  - YAML forwarding: `--args-yaml` is passed unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft` so a single file can
-    host per-module sections (see the respective subcommand docs for accepted keys).
+Forwarded / relevant options
+----------------------------
+  - MEP search: ``--mult``, ``--freeze-links``, ``--mep-mode``, ``--max-nodes``, ``--max-cycles``,
+    ``--climb``, ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
+  - File conversion: ``--convert-files/--no-convert-files`` toggles conversion of XYZ/TRJ outputs into
+    PDB/GJF companions when possible.
+  - Scan (single-structure): inherits charge/spin and shared knobs; per-stage/scan overrides include
+    ``--scan-out-dir``, ``--scan-one-based``, ``--scan-max-step-size``, ``--scan-bias-k``,
+    ``--scan-relax-max-cycles``, ``--scan-preopt``, ``--scan-endopt``.
+  - TS optimization / IRC: ``--tsopt``, ``--tsopt-max-cycles``, ``--tsopt-out-dir`` and shared knobs above.
+    ``--hessian-calc-mode`` is forwarded to TSOPT and freq.
+  - Frequency analysis: ``--freq-out-dir``, ``--freq-max-write``, ``--freq-amplitude-ang``,
+    ``--freq-n-frames``, ``--freq-sort``, ``--freq-temperature``, ``--freq-pressure`` plus shared knobs.
+  - DFT single-points: ``--dft-out-dir``, ``--dft-func-basis``, ``--dft-max-cycle``, ``--dft-conv-tol``,
+    ``--dft-grid-level``, ``--dft-engine``.
+  - YAML forwarding: ``--args-yaml`` is passed unchanged to ``path_search``, ``path-opt``, ``scan``,
+    ``tsopt``, ``freq``, and ``dft`` so a single file can host per-module sections
+    (see each subcommand for accepted keys).
 
 Outputs (& Directory Layout)
 ----------------------------
 <out-dir>/ (default: ./result_all/)
-  ├─ pockets/                            # created when extraction (-c/--center) is run
-  │   ├─ pocket_<input1_basename>.pdb
-  │   ├─ pocket_<input2_basename>.pdb
+  ├─ add_elem_info/                      # created only when element fields are missing in inputs
+  │   ├─ <input1>.pdb
+  │   └─ ...
+  ├─ pockets/                            # created when extraction (-c/--center) is used
+  │   ├─ pocket_<input1_stem>.pdb
+  │   ├─ pocket_<input2_stem>.pdb
   │   └─ ...
   ├─ scan/                               # present only in single-structure + scan mode
   │   ├─ stage_01/result.(pdb|xyz|gjf)
   │   ├─ stage_02/result.(pdb|xyz|gjf)
   │   └─ ...
-  ├─ path_search/                        # with --refine-path True (recursive GSM)
-  │   ├─ mep.trj                         # final pocket MEP as XYZ
+  ├─ path_search/                        # when --refine-path True (recursive path_search)
+  │   ├─ mep.trj                         # final pocket MEP as XYZ/TRJ trajectory
   │   ├─ summary.yaml
-  │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment paths
+  │   ├─ summary.log                     # human-readable summary (also mirrored to <out-dir>/)
+  │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment trajectories
   │   ├─ hei_seg_XX.(xyz|pdb|gjf)        # HEI snapshots per reactive segment
-  │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb, PDB input)
+  │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb / PDB input)
   │   ├─ seg_XXX_~~~/ ...                # GSM internals / recursion tree
   │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
@@ -183,46 +238,50 @@ Outputs (& Directory Layout)
   │       ├─ structures/
   │       ├─ freq/ ...                   # with --thermo True
   │       ├─ dft/  ...                   # with --dft True
-  │       ├─ energy_diagram_UMA.(png)
-  │       ├─ energy_diagram_G_UMA.(png)
-  │       ├─ energy_diagram_DFT.(png)
-  │       └─ energy_diagram_G_DFT_plus_UMA.(png)
-  ├─ path_opt/                           # with --refine-path False (single-pass GSM per pair)
-  │   ├─ mep.trj, summary.yaml, mep_seg_XX.* , hei_seg_XX.*
-  │   └─ post_seg_XX/ ...                # identical layout to path_search/ when post-processing runs
-  ├─ mep_plot.png                        # copied from path_* / (GSM energy profile)
-  ├─ energy_diagram_MEP.png              # copied from path_* / (compressed GSM diagram)
-  ├─ mep.pdb                             # copied from path_* / when PDB pockets are used
+  │       ├─ energy_diagram_UMA.png
+  │       ├─ energy_diagram_G_UMA.png
+  │       ├─ energy_diagram_DFT.png
+  │       └─ energy_diagram_G_DFT_plus_UMA.png
+  ├─ path_opt/                           # when --refine-path False (pairwise path-opt + concatenation)
+  │   ├─ mep.trj, summary.yaml, summary.log
+  │   ├─ mep_seg_XX.* , hei_seg_XX.*     # per-segment outputs copied from each pairwise run
+  │   ├─ seg_XXX_mep/ ...                # per-pair path-opt run directories
+  │   └─ post_seg_XX/ ...                # same layout as path_search/ when post-processing runs
+  ├─ mep_plot.png                        # copied from path_* / (MEP energy profile)
+  ├─ energy_diagram_MEP.png              # produced by path_search; in --refine-path False branch an
+  │                                      # aggregated diagram may be written as energy_diagram_mep.png
+  ├─ mep.pdb                             # copied from path_* when a PDB representation is available
   ├─ mep_w_ref.pdb                       # copied from path_search/ when full-system merge is available
-  ├─ energy_diagram_UMA_all.png        # UMA R–TS–P energies across all reactive segments
-  ├─ energy_diagram_G_UMA_all.png        # UMA Gibbs R–TS–P across all reactive segments
-  ├─ energy_diagram_DFT_all.png          # DFT R–TS–P across all reactive segments
-  ├─ energy_diagram_G_DFT_plus_UMA_all.png  # DFT//UMA Gibbs R–TS–P across all reactive segments
-  ├─ irc_plot_all.png                    # concatenation of IRC data from all segments in one plot
+  ├─ summary.yaml                        # mirrored from path_*/summary.yaml
+  ├─ summary.log                         # mirrored from path_*/summary.log
+  ├─ energy_diagram_UMA_all.png
+  ├─ energy_diagram_G_UMA_all.png
+  ├─ energy_diagram_DFT_all.png
+  ├─ energy_diagram_G_DFT_plus_UMA_all.png
+  ├─ irc_plot_all.png
   ├─ ts_seg_XX.pdb / ts_seg_XX.xyz       # TS structure per reactive segment (format depends on inputs)
+  │
   └─ tsopt_single/                       # present only in single-structure TSOPT-only mode
       ├─ ts/ ...
       ├─ irc/ ...
       ├─ structures/
       ├─ freq/ ...                       # with --thermo True
       ├─ dft/  ...                       # with --dft True
-      ├─ energy_diagram_UMA.(png)
-      ├─ energy_diagram_G_UMA.(png)
-      ├─ energy_diagram_DFT.(png)
-      ├─ energy_diagram_G_DFT_plus_UMA.(png)
-      └─ (mirrored diagrams as *_all.png at <out-dir>)
+      ├─ energy_diagram_UMA.png
+      ├─ energy_diagram_G_UMA.png
+      ├─ energy_diagram_DFT.png
+      ├─ energy_diagram_G_DFT_plus_UMA.png
+      ├─ summary.yaml
+      ├─ summary.log
+      └─ (mirrored diagrams as *_all.png at <out-dir>/)
 
 Notes
 -----
-- **Python ≥ 3.10** is required.
-- Specifying the substrate (`-c/--center`) and, when needed, `--ligand-charge` is practically mandatory.
-- A **single-structure** run works only when `--scan-lists` **or** `--tsopt True` is provided; otherwise you still need
-  **at least two structures**.
+- ``-c/--center`` is strongly recommended for meaningful pocket models; without it the full structure is used.
+- A **single-structure** run requires either ``--scan-lists`` (staged scan) or ``--tsopt True`` (TSOPT-only).
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
-- Omitting `-c/--center` skips extraction and feeds the **entire input structure** directly as the pocket input.
-  The total charge defaults to 0; providing `--ligand-charge <number>` sets that value as the **overall system charge**
-  (rounded). If the first input is a GJF, its charge/spin are used when `--ligand-charge` (numeric) and `--mult`
-  are not explicitly provided. `-q/--charge` overrides all of the above with a console warning when used.
+- ``--no-convert-files`` may suppress generation of PDB/GJF companion files from XYZ/TRJ outputs; the core
+  numeric results and YAML summaries are unaffected.
 """
 
 from __future__ import annotations
