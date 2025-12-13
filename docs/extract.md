@@ -17,8 +17,6 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
                      [--verbose true|false]
 ```
 
-`--verbose true|false` mirrors the Click wrapper (`pdb2reaction cli extract`) so the argparse entry behaves identically when called directly.
-
 ### Examples
 ```bash
 # Minimal (ID-based substrate) with explicit total ligand charge
@@ -26,10 +24,10 @@ pdb2reaction extract -i complex.pdb -c A:123 -o pocket.pdb --ligand-charge -3
 
 # Substrate provided as a PDB plus per-resname charge mapping
 pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb \
-                     --ligand-charge "GPP:-3,MMT:-1"
+                     --ligand-charge "GPP:-3,SAM:1"
 
 # Name-based substrate selection (all matches kept; warning logged)
-pdb2reaction extract -i complex.pdb -c "GPP,MMT" -o pocket.pdb --ligand-charge -4
+pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge -2
 
 # Multi-structure → single multi-MODEL output with hetero–hetero cutoff enabled
 pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
@@ -48,7 +46,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
 - **Neighbor safeguards:**
   - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, auto-include the peptide-adjacent N/C neighbors (C–N ≤ 1.9 Å). Termini keep caps (N/H* or C/O/OXT).
   - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
-  - Non-terminal PRO residues always pull in the preceding amino acid; CA is preserved even if backbone atoms are removed, and when `--exclude-backbone true`, the neighbor’s C/O/OXT remain to maintain the peptide bond.
+  - Non-terminal PRO residues always pull in the N-side amino acid; CA is preserved even if backbone atoms are removed, and when `--exclude-backbone true`, the neighbor’s C/O/OXT remain to maintain the peptide bond.
 
 ### Truncation/capping
 - Isolated residues retain only side-chain atoms; amino-acid backbone atoms (N, CA, C, O, OXT plus N/CA hydrogens) are removed except for PRO/HYP safeguards.
@@ -63,7 +61,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
 
 ### Charge summary (`--ligand-charge`)
 - Amino acids and common ions draw charges from internal dictionaries; waters are zero.
-- Unknown residues default to 0 unless `--ligand-charge` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,MMT:-1`.
+- Unknown residues default to 0 unless `--ligand-charge` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,SAM:-1`.
 - Summaries (protein/ligand/ion/total) are logged for the first input when verbose mode is enabled.
 
 ### Multi-structure ensembles
@@ -91,7 +89,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
 | `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `true` |
 | `--add-linkH BOOL` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `true` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,MMT:-1`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:-1`). | `None` |
 | `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
 
 ## Outputs
