@@ -364,7 +364,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
