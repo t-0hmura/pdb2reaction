@@ -46,7 +46,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
 - **Neighbor safeguards:**
   - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, auto-include the peptide-adjacent N/C neighbors (C–N ≤ 1.9 Å). Termini keep caps (N/H* or C/O/OXT).
   - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
-  - Non-terminal PRO residues always pull in the preceding amino acid; CA is preserved even if backbone atoms are removed, and when `--exclude-backbone true`, the neighbor’s C/O/OXT remain to maintain the peptide bond.
+  - Non-terminal PRO residues always pull in the N-side amino acid; CA is preserved even if backbone atoms are removed, and when `--exclude-backbone true`, the neighbor’s C/O/OXT remain to maintain the peptide bond.
 
 ### Truncation/capping
 - Isolated residues retain only side-chain atoms; amino-acid backbone atoms (N, CA, C, O, OXT plus N/CA hydrogens) are removed except for PRO/HYP safeguards.
