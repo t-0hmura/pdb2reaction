@@ -1,7 +1,7 @@
 # `dft` subcommand
 
 ## Overview
-Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySCF otherwise). If the GPU backend is unavailable or fails during setup/SCF, the run automatically falls back to CPU PySCF; Blackwell GPUs are forced to CPU with a warning. In addition to total energies the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities.
+Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySCF otherwise). In addition to total energies the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities.
 
 ## Usage
 ```bash
@@ -58,7 +58,8 @@ out_dir/ (default: ./result_dft/)
   convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur. Blackwell GPUs are detected and forced to CPU with a warning to avoid unsupported GPU4PySCF configurations.
+- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur. **Blackwell GPUs** are detected and forced to CPU with a warning to avoid unsupported GPU4PySCF configurations.
+- GPU4PySCF is required to by compiled from source when you do not use **x86** archtecture. (See <https://github.com/pyscf/gpu4pyscf>)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
 - The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
 - Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
