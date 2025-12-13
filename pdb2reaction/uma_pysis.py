@@ -242,17 +242,9 @@ class UMAcore:
         """
         atoms = Atoms(self.elem, positions=coord_ang)
         batch = self._ase_to_batch(atoms)
+        batch.pos.requires_grad_(True)
 
-        need_grad = bool(forces or hessian)
-        pos = batch.pos.detach().clone()
-        pos.requires_grad_(need_grad)
-        batch.pos = pos
-
-        if need_grad:
-            res = self.predict.predict(batch)
-        else:
-            with torch.no_grad():
-                res = self.predict.predict(batch)
+        res = self.predict.predict(batch)
 
         energy = float(res["energy"].squeeze().detach().item())
         forces_np = (
