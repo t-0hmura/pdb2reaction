@@ -53,8 +53,7 @@ Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_dft/)
   ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, timing, and per-atom charge/spin tables
-  ├─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
-  └─ (no .gjf snapshot is written)
+  └─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
 
 Notes
 -----
