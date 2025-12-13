@@ -30,7 +30,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
 ## Workflow
 1. Parse the input file with `Bio.PDB.PDBParser`, mirroring the residue
-   definitions used elsewhere (`extract.AMINO_ACIDS`, `WATER_RES`, `ION`).
+   definitions used in `extract.py` (`AMINO_ACIDS`, `WATER_RES`, `ION`).
 2. For each atom, guess the element by combining the atom name, residue name,
    and whether the record is HETATM:
    - Ion residues: prefer the residue name for monatomic ions; polyatomic ions
