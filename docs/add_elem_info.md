@@ -33,8 +33,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
    definitions used in `extract.py` (`AMINO_ACIDS`, `WATER_RES`, `ION`).
 2. For each atom, guess the element by combining the atom name, residue name,
    and whether the record is HETATM:
-   - Ion residues: prefer the residue name for monatomic ions; polyatomic ions
-     (e.g., NH4, H3O+) are split into per-atom assignments.
+   - Monatomic ion residues in `ION` dict: use corresponding elements.
    - Proteins/nucleic acids/water: apply special handling for H/D, Se, and
      first-letter mapping for C/N/O/P/S; carbon sidechain labels default to C.
    - Other ligands: use atom-name prefixes and fall back to element-symbol
