@@ -6,27 +6,33 @@ extract — Automated binding‑pocket (active‑site) extractor
 
 Usage (CLI)
 -----------
-    pdb2reaction extract -i INPUT.pdb [INPUT2.pdb ...] -c <substrate_spec> \
-        [-o OUTPUT.pdb ...] [-r <Å>] [--radius-het2het <Å>] \
-        [--include-H2O {true|false}] [--exclude-backbone {true|false}] \
-        [--add-linkH {true|false}] [--selected-resn "CHAIN:RES" ...] \
-        [--ligand-charge <number|"RES:Q,...">] [--verbose {true|false}]
+    pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
+                        -c SUBSTRATE_SPEC
+                        [-o POCKET.pdb [POCKET2.pdb ...]]
+                        [--radius Å] [--radius-het2het Å]
+                        [--include-H2O true|false]
+                        [--exclude-backbone true|false]
+                        [--add-linkH true|false]
+                        [--selected-resn LIST]
+                        [--ligand-charge MAP_OR_NUMBER]
+                        [--verbose true|false]
 
 Examples
 --------
     # Minimal (ID-based substrate) with explicit total ligand charge
-    pdb2reaction extract -i complex.pdb -c A:123 -o pocket.pdb --ligand-charge -3
+    pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
 
     # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb \
-        --ligand-charge "GPP:-3,MMT:-1"
+    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
 
     # Name-based substrate selection including all matches (WARNING is logged)
-    pdb2reaction extract -i complex.pdb -c "GPP,MMT" -o pocket.pdb --ligand-charge -4
+    pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
 
     # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
-        -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge "GPP:-3,SAM:1"
+
+    # Multi-structure to multi outputs with hetero-hetero proximity enabled
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb pocket2.pdb --ligand-charge "GPP:-3,SAM:1"
 
 Description
 -----------
@@ -102,7 +108,7 @@ Substrate specification
 ``-c/--center`` accepts:
 - a **PDB path** (exact coordinate match on the first input; IDs propagated to others),
 - a list of **residue IDs**: ``"123,124"``, ``"A:123,B:456"``, ``"123A"``, ``"A:123A"`` (insertion codes OK),
-- or a list of **residue names** (case‑insensitive), e.g., ``"GPP,MMT"``.
+- or a list of **residue names** (case‑insensitive), e.g., ``"GPP,SAM"``.
   If multiple residues share the same name, **all** matches are used and a **WARNING** is logged.
 
 Outputs (& Directory Layout)
@@ -325,11 +331,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "-c", "--center", dest="substrate_pdb", required=True,
-        metavar="substrate.pdb | '123,124' | 'A:123,B:456' | 'GPP,MMT'",
+        metavar="substrate.pdb | '123,124' | 'A:123,B:456' | 'GPP,SAM'",
         help=("Substrate specification: either a PDB containing exactly the substrate residue(s), "
               "a comma/space‑separated residue‑ID list like '123,124' or 'A:123,B:456' "
               "(insertion codes supported: '123A' / 'A:123A'), "
-              "or a comma/space‑separated **residue‑name** list like 'GPP,MMT'. "
+              "or a comma/space‑separated **residue‑name** list like 'GPP,SAM'. "
               "When residue names are used and multiple residues share a name, all are used and a WARNING is logged.")
     )
     p.add_argument(
@@ -372,7 +378,7 @@ def parse_args() -> argparse.Namespace:
         "--ligand-charge", type=str, default=None,
         help=("Either a single **number** giving the **total** charge to distribute across unknown residues "
               "(preferring unknown substrate), or a comma/space‑separated **per‑resname** list like "
-              "'GPP:-3,MMT:-1'. In mapping mode, any other unknown residues remain 0.")
+              "'GPP:-3,SAM:1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
         "-v", "--verbose", type=str2bool, default=True,
@@ -532,7 +538,7 @@ def find_substrate_by_idspec(complex_struct, spec: str) -> List[PDB.Residue.Resi
 
 def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Residue]:
     """
-    Resolve a comma/space-separated residue-name list (e.g., 'GPP,MMT') into residues in the complex.
+    Resolve a comma/space-separated residue-name list (e.g., 'GPP,SAM') into residues in the complex.
 
     Behavior
     --------
@@ -575,7 +581,7 @@ def resolve_substrate_residues(complex_struct, center_spec: str) -> List[PDB.Res
         _parse_res_tokens(center_spec)
         return find_substrate_by_idspec(complex_struct, center_spec)
     except ValueError:
-        # Otherwise, interpret as residue-name list (e.g., 'GPP,MMT').
+        # Otherwise, interpret as residue-name list (e.g., 'GPP,SAM').
         return find_substrate_by_resname(complex_struct, center_spec)
 
 
@@ -1190,7 +1196,7 @@ def compute_charge_summary(structure,
         Residues designated as substrate.
     ligand_charge : float | str | dict[str,float] | None
         - float: total charge to assign across **unknown residues** (preferring unknown substrate).
-        - str  : numeric string (total) or mapping like "GPP:-3,MMT:-1" (per‑resname).
+        - str  : numeric string (total) or mapping like "GPP:-3,SAM:1" (per‑resname).
         - dict : mapping {RESNAME: charge}. In mapping mode, other unknown residues remain 0.
 
     Returns
@@ -1931,7 +1937,7 @@ def extract_api(complex_pdb: List[str],
         Input PDB path(s). len==1 → single, len>1 → multi.
     center : str
         Substrate spec: a PDB path, a residue‑ID list 'A:123,456' (insertion codes OK),
-        or a residue‑name list 'GPP,MMT'.
+        or a residue‑name list 'GPP,SAM'.
     output : list[str] | None
         Output path(s): one path for multi‑MODEL PDB, or N paths for per‑file outputs.
         If None, defaults to ['pocket.pdb'].
@@ -1949,7 +1955,7 @@ def extract_api(complex_pdb: List[str],
         Additional residues to force‑include (comma/space separated).
     ligand_charge : float | str | dict[str,float] | None
         Either a total charge (float/str) for unknown residues (prefer unknown substrate),
-        or a mapping like {'GPP': -3, 'MMT': -1}. In mapping mode, other unknown residues remain 0.
+        or a mapping like {'GPP': -3, 'SAM': -1}. In mapping mode, other unknown residues remain 0.
     verbose : bool
         Enable INFO logging.
 
