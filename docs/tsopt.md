@@ -154,7 +154,7 @@ opt:
 hessian_dimer:
   thresh_loose: gau_loose    # loose convergence preset
   thresh: gau                # main convergence preset
-  update_interval_hessian: 1000   # Hessian rebuild cadence
+  update_interval_hessian: 500   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
   flatten_max_iter: 0        # flattening iteration cap (default: Disabled)

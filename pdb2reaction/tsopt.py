@@ -1268,7 +1268,7 @@ LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 hessian_dimer_KW = {
     "thresh_loose": "gau_loose",      # loose threshold preset for first pass
     "thresh": "gau",                  # main threshold preset for TS search
-    "update_interval_hessian": 1000,  # LBFGS cycles per Hessian refresh for direction
+    "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
     "flatten_max_iter": 0,            # max flattening iterations
