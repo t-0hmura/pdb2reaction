@@ -40,28 +40,30 @@ Description
   selection is handled separately via --out-dir.
 - VV10 / other nonlocal corrections are **not** configured explicitly; backends run with their
   defaults for the chosen functional.
-- -q/--charge is required for non-.gjf inputs; .gjf templates supply charge/spin when available and allow omitting
-  the CLI flag.
+- Charge/spin are resolved by internal helpers; .gjf templates may supply charge/spin when available.
+  Provide explicit -q/--charge and -m/--multiplicity values whenever possible to enforce the intended state
+  (multiplicity > 1 selects UKS).
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
     * Mulliken (charges: scf.hf.mulliken_pop; spins: scf.uhf.mulliken_spin_pop for UKS; RKS → zeros; failure → null)
     * meta‑Löwdin (charges: scf.hf.mulliken_pop_meta_lowdin_ao; spins: scf.uhf.mulliken_spin_pop_meta_lowdin_ao for UKS; RKS → zeros; not available or failure → null)
     * IAO (charges: lo.iao.fast_iao_mullikan_pop; spins: fast_iao_mullikan_spin_pop implemented here; RKS → zeros; failure → null)
-- Energies are reported in Hartree and kcal/mol; SCF convergence metadata and timing are recorded.
+- Energies are reported in Hartree and kcal/mol; SCF convergence status and backend selection are recorded.
+  Elapsed time is printed to stdout.
 - The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
 
 Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_dft/)
-  ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, timing, and per-atom charge/spin tables
+  ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, backend used, and per-atom charge/spin tables
   └─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
 
 Notes
 -----
-- Charge/spin resolution: -q/--charge and -m/--mult inherit values from .gjf templates when present
+- Charge/spin resolution: -q/--charge and -m/--multiplicity may inherit values from .gjf templates when present
   and otherwise fall back to 0/1. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
-- YAML overrides: --args-yaml points to a file with top-level key dft (conv_tol, max_cycle,
-  grid_level, verbose, out_dir).
+- YAML overrides: --args-yaml points to a file with top-level keys "dft" (conv_tol, max_cycle,
+  grid_level, verbose, out_dir) and "geom" (passed to pysisyphus.helpers.geom_loader).
 - Grids: sets grids.level when supported.
 - Units: input coordinates are in Å.
 - Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.

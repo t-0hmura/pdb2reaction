@@ -62,6 +62,9 @@ Notes
   - Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
 - Performance and numerical details:
   - GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO="U"``), and avoiding redundant allocations.
+- Exit behavior:
+  - On keyboard interrupt, exits with code 130; on errors during frequency analysis, prints a traceback and exits with code 1.
+    Errors during the optional thermochemistry summary are reported but do not abort the run.
 """
 
 from __future__ import annotations
