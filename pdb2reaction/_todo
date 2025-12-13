@@ -9,7 +9,6 @@ Done.
 
 [Organize CLI, docstring and output]
 scan2d
-thermo
 trj2fig
 dft
 irc
@@ -17,7 +16,6 @@ scan
 all
 ts_opt
 bond_changes
-cli
 extract
 freq
 opt
@@ -26,7 +24,9 @@ path_search
 trj2fig
 uma_pysis
 utils
+align_freeze_atoms
 README
 
 [Complete]
 add_elem_info
+cli
