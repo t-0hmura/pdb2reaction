@@ -1,10 +1,8 @@
 # `add-elem-info` subcommand
 
 ## Overview
-`add-elem-info` populates (or repairs) the element-symbol columns (77–78) of ATOM/HETATM
-records in a PDB file. The command relies on Biopython to parse/write the structure,
-preserves coordinates and metadata, and only rewrites element fields unless `--overwrite`
-is supplied.
+`add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM
+records in a PDB file.
 
 ### Output behavior (important)
 - If `-o/--out` is **omitted** and `--overwrite` is **not** set, the output is written to
@@ -55,7 +53,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file. | Required |
 | `-o, --out PATH` | Output path. When set, `--overwrite` is ignored. | _None_ → `<input>_add_elem.pdb` |
-| `--overwrite` | Re-infer elements even if the original fields are present **and** overwrite the input file in-place when `-o/--out` is omitted. | `False` |
+| `--overwrite` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
 
 ## Outputs
 - A PDB file with element symbols populated/corrected:
