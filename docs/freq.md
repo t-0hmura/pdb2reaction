@@ -5,9 +5,9 @@
 frozen atoms via partial Hessian vibrational analysis (PHVA). It exports mass-weighted
 normal modes as `.trj`/`.pdb` animations, prints a Gaussian-style thermochemistry summary
 when the optional `thermoanalysis` package is installed, and can emit a YAML summary when
-`--dump True`. Configuration values are read from YAML (`geom`, `calc`, `freq`) and then
-overridden by CLI switches, so the same template can drive both standalone runs and
-workflows launched by other subcommands.
+`--dump True`. Configuration starts from defaults, applies CLI switches, and finally
+applies YAML overrides (`geom`, `calc`, `freq`) with highest precedence, so the same
+template can drive both standalone runs and workflows launched by other subcommands.
 
 ## Usage
 ```bash
@@ -90,8 +90,8 @@ out_dir/ (default: ./result_freq/)
   and multiplicity defaults to `1`. Override them explicitly to ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; YAML values override CLI. Shared sections reuse
-[`opt`](opt.md#yaml-configuration-args-yaml).
+Provide a mapping; YAML values override both defaults and CLI switches (highest
+precedence). Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
 
 ```yaml
 geom:
