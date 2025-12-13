@@ -21,10 +21,10 @@ pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
 # Populate element fields and write to "<input>_add_elem.pdb"
 pdb2reaction add-elem-info -i 1abc.pdb
 
-# Write to a specific output file (preserve existing symbols by default)
+# Write to a specific output file
 pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 
-# Overwrite the input file in-place and re-infer all element symbols
+# Overwrite the input file in-place
 pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
 
@@ -38,14 +38,12 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
      first-letter mapping for C/N/O/P/S; carbon sidechain labels default to C.
    - Other ligands: use atom-name prefixes and fall back to element-symbol
      normalization (recognising halogens, deuterium → hydrogen, etc.).
-3. Preserve existing element fields unless `--overwrite` is set; in overwrite
-   mode, all atoms are re-inferred even if the original fields were populated.
-4. Write the structure through `PDBIO`:
+3. Write the structure through `PDBIO`:
    - default output: `<input>_add_elem.pdb` (when `-o/--out` is omitted and `--overwrite` is not set)
    - `-o/--out`: write to the specified path; `--overwrite` is ignored when this is provided
    - `--overwrite` (without `-o/--out`): overwrite the input path in-place
-5. Print a summary reporting how many atoms were newly assigned, kept, or
-   overwritten plus per-element totals and a truncated list of unresolved atoms.
+4. Print a summary reporting how many atoms were assigned/reassigned, plus
+   per-element totals and a truncated list of unresolved atoms.
 
 ## CLI options
 | Option | Description | Default |
@@ -59,12 +57,10 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
   - `<input>_add_elem.pdb` by default (when `-o/--out` is omitted and `--overwrite` is not set)
   - `OUTPUT.pdb` if `-o/--out` is provided (regardless of `--overwrite`)
   - `INPUT.pdb` overwritten in-place if `--overwrite` is set without `-o/--out`
-- Console report with totals for processed/assigned/kept/overwritten atoms,
+- Console report with totals for processed/assigned atoms,
   per-element counts, and up to 50 unresolved atoms.
 
 ## Notes
-- Existing element fields are detected by scanning the original file’s ATOM/HETATM lines
-  (serials 7–11, elements 77–78) to reflect the true presence/absence and avoid parser side effects.
 - Only columns 77–78 are modified; coordinates, occupancies, B-factors, charges, altlocs,
   insertion codes, and record ordering stay untouched.
 - ATOM and HETATM records across all models/chains/residues are supported.

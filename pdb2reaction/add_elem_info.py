@@ -13,10 +13,10 @@ Examples
     # Populate element fields and write to "<input>_add_elem.pdb"
     pdb2reaction add-elem-info -i 1abc.pdb
 
-    # Overwrite the input file in-place (also re-infer existing symbols)
+    # Overwrite the input file in-place
     pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
-    # Write to a new file (preserve existing symbols by default)
+    # Write to a new file
     pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 
 Description
@@ -30,11 +30,10 @@ Description
   recognizes Se; carbon labels (CA/CB/CG/…) → C.
 - Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two‑letter/one‑letter
   normalization; recognizes halogens (Cl/Br/I/F).
-- Preserves existing element fields unless `--overwrite` is given; with `--overwrite`, all atoms
-  are re‑inferred and may change.
- - If no output path is provided, writes "<input>_add_elem.pdb". If `--overwrite` is given without
-   `-o/--out`, the input file is overwritten in-place; when `-o/--out` is supplied, `--overwrite`
-   is ignored. If inference fails, the atom’s element is left unset/unchanged.
+- Always re‑infers element fields. If no output path is provided, writes "<input>_add_elem.pdb".
+  If `--overwrite` is given without `-o/--out`, the input file is overwritten in-place; when
+  `-o/--out` is supplied, `--overwrite` is ignored. If inference fails, the atom’s element is left
+  unset/unchanged.
 - Supports ATOM and HETATM records; works across models/chains/residues without altering
   coordinates.
 
@@ -45,15 +44,13 @@ Outputs (& Directory Layout)
 - PDB with element columns 77–78 populated or corrected (written to --out when supplied)
 
 Standard output summary
-- Total atoms processed and how many were newly assigned, kept, or overwritten.
+- Total atoms processed and how many were assigned/updated.
 - Per-element counts for the final structure.
 - Up to 50 unresolved atoms (model/chain/residue/atom/serial) when inference fails.
 
 Notes
 -----
 - Depends on Biopython (`Bio.PDB`) and Click.
-- Existing element fields are detected by scanning the original file’s ATOM/HETATM lines
-  (serials 7–11, elements 77–78) to reflect the true presence and avoid parser side effects.
 - Recognizes standard water/nucleic/protein residue names; treats deuterium “D” as hydrogen “H”.
 - Does not alter coordinates, occupancies, B-factors, charges, altlocs, insertion codes,
   or record order.
@@ -67,7 +64,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional, Set
+from typing import Optional
 
 import click
 from Bio.PDB import PDBParser, PDBIO
@@ -78,7 +75,7 @@ from .extract import AMINO_ACIDS, ION, WATER_RES
 # -----------------------------
 # Element symbols (IUPAC, 1–118)
 # -----------------------------
-ELEMENTS: Set[str] = {
+ELEMENTS: set[str] = {
     "H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar",
     "K","Ca","Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br","Kr",
     "Rb","Sr","Y","Zr","Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd","In","Sn","Sb","Te","I","Xe",
@@ -220,38 +217,6 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
     # 4) Unresolved
     return None
 
-# -----------------------------
-# Detect whether the input originally had element fields,
-# keyed by atom serial number (columns 7–11)
-# -----------------------------
-def scan_existing_elements_by_serial(pdb_path: str) -> Set[int]:
-    """
-    Scan the raw PDB lines and return the serial numbers of ATOM/HETATM records whose
-    element field (columns 77–78) was non-empty in the original file.
-    This avoids Biopython side effects and reflects the true presence/absence in the input.
-    """
-    serials_with_elem: Set[int] = set()
-    try:
-        with open(pdb_path, "r", encoding="utf-8", errors="ignore") as fh:
-            for line in fh:
-                if not (line.startswith("ATOM") or line.startswith("HETATM")):
-                    continue
-                if len(line) < 78:
-                    continue
-                serial_str = line[6:11].strip()
-                elem_raw = line[76:78].strip()
-                if not serial_str:
-                    continue
-                try:
-                    serial = int(serial_str)
-                except ValueError:
-                    continue
-                if elem_raw:
-                    serials_with_elem.add(serial)
-    except Exception:
-        pass
-    return serials_with_elem
-
 def _get_atom_serial(atom) -> Optional[int]:
     """Safely obtain the serial number from a Biopython Atom, handling version differences."""
     sn = getattr(atom, "serial_number", None)
@@ -270,16 +235,12 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     # passed. This keeps -o/-\-out as the higher-priority choice.
     effective_overwrite = overwrite and out_pdb is None
 
-    existing_by_serial = scan_existing_elements_by_serial(in_pdb)
-
     parser = PDBParser(QUIET=True)
     structure_id = os.path.splitext(os.path.basename(in_pdb))[0]
     structure = parser.get_structure(structure_id, in_pdb)
 
     total = 0
-    assigned_new = 0          # newly set for atoms that lacked an element field
-    overwritten = 0           # element existed originally but was re-inferred due to --overwrite
-    kept_existing = 0         # element existed originally and was preserved (no --overwrite)
+    assigned_or_updated = 0   # atoms whose inferred element differs from the parsed value
     unknown = []              # could not infer (left unchanged)
 
     by_element = collections.Counter()
@@ -294,26 +255,17 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
                     total += 1
                     name = atom.get_name()
 
-                    serial = _get_atom_serial(atom)
-                    had_element_in_input = (serial in existing_by_serial) if serial is not None else False
-
-                    if had_element_in_input and not effective_overwrite:
-                        kept_existing += 1
-                        continue
-
                     sym = guess_element(name, resname, is_het)
                     if sym is None:
+                        serial = _get_atom_serial(atom)
                         unknown.append((model.id, chain.id, residue.id, resname, name, serial))
                         continue
 
                     prev = getattr(atom, "element", None)
                     atom.element = sym
                     by_element[sym] += 1
-                    if had_element_in_input:
-                        if prev != sym:
-                            overwritten += 1
-                    else:
-                        assigned_new += 1
+                    if prev != sym:
+                        assigned_or_updated += 1
 
     io = PDBIO()
     io.set_structure(structure)
@@ -326,9 +278,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     # Summary
     print(f"[OK] Wrote: {out_path}")
     print(f"  total atoms                 : {total}")
-    print(f"  newly assigned              : {assigned_new}")
-    print(f"  kept existing (no overwrite): {kept_existing}")
-    print(f"  overwritten (--overwrite)   : {overwritten}")
+    print(f"  assigned/updated            : {assigned_or_updated}")
     if by_element:
         top = ", ".join(f"{k}:{v}" for k, v in by_element.most_common())
         print(f"  assignment breakdown        : {top}")
@@ -358,7 +308,7 @@ def main():
     ap.add_argument(
         "--overwrite",
         action="store_true",
-        help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place when -o/--out is omitted.",
+        help="Overwrite the input file in-place when -o/--out is omitted.",
     )
     args = ap.parse_args()
 
@@ -396,7 +346,7 @@ def main():
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="Re-infer and overwrite element fields even if present; also overwrite the input file in-place when -o/--out is omitted.",
+    help="Overwrite the input file in-place when -o/--out is omitted.",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     """Click wrapper to run via the `pdb2reaction add-elem-info` subcommand."""
