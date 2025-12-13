@@ -82,9 +82,9 @@ Notes
   - The selection used for special-cased alignment and for scanning is the **union** of `freeze_atoms`
     from `g_ref` and `g_mob`. If the union is empty, Kabsch uses all atoms; the scan is skipped.
 - Calculator handling:
-  - If a `Geometry` already has a calculator, it is reused.
-  - Otherwise UMA (`uma_pysis`) is attached automatically; `charge`, `spin`, `model`, and `device` are configurable,
-    or a `shared_calc` can be supplied.
+  - If `shared_calc` is supplied, it is set on the geometries even when a calculator is already present.
+  - Otherwise an existing calculator is reused; if none is present, UMA (`uma_pysis`) is attached automatically.
+    (`charge`, `spin`, `model`, and `device` are configurable.)
 - Rigid alignment priority and RMSD reporting:
   - union length = 1 → rotations about the single anchor only; RMSD minimized and reported on all atoms.
   - union length = 2 → align anchor-defined axis; optimize rotation about that axis; RMSD reported on all atoms.
@@ -238,7 +238,7 @@ def _set_all_coords_disabling_freeze(geom, coords3d_bohr: np.ndarray) -> None:
 def _attach_calc_if_needed(geom, shared_calc=None, *, charge=0, spin=1,
                            model="uma-s-1p1", device="auto") -> None:
     """
-    Attach UMA if no calculator is present; prefer `shared_calc` when provided.
+    Set `shared_calc` when provided; otherwise attach UMA if no calculator is present.
     """
     try:
         has_calc = getattr(geom, "calculator", None) is not None
@@ -297,6 +297,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
         _set_all_coords_disabling_freeze(g_mob, Q_new)
 
     mode = "kabsch"
+    report_all_atoms = False
 
     # ---- 1 anchor ----
     if len(idx) == 1:
@@ -352,6 +353,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
                 print(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))")
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
         # If the axis is degenerate, fall through to the generic Kabsch case.
+        report_all_atoms = True
 
     # ---- Default: Kabsch (selected freeze atoms or all atoms) ----
     if len(idx) > 0:
@@ -366,17 +368,19 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     n_used = int(P_sel.shape[0])
 
     before_sel = _rmsd(P_sel, Q_sel)
+    before_report = _rmsd(P, Q) if report_all_atoms else before_sel
 
     R, t = kabsch_R_t(P_sel, Q_sel)
     Q_aln = (Q @ R) + t
     _set_all(Q_aln)
 
     after_sel = _rmsd(P_sel, Q_aln[use])
+    after_report = _rmsd(P, Q_aln) if report_all_atoms else after_sel
 
     if verbose:
-        print(f"[align] kabsch:     RMSD {before_sel:.6f} Å → {after_sel:.6f} Å (used {n_used})")
+        print(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})")
 
-    return {"before_A": before_sel, "after_A": after_sel, "n_used": n_used, "mode": mode}
+    return {"before_A": before_report, "after_A": after_report, "n_used": n_used, "mode": mode}
 
 
 # =============================================================================
