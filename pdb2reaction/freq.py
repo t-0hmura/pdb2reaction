@@ -1,7 +1,7 @@
 # pdb2reaction/freq.py
 
 """
-freq — Vibrational frequency analysis, mode export, and PHVA-based thermochemistry
+freq — Vibrational frequency analysis, mode export, and thermochemistry
 ====================================================================
 
 Usage (CLI)
