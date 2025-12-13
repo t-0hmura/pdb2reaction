@@ -2,7 +2,7 @@
 
 ## Overview
 `add-elem-info` populates the element-symbol columns (77–78) of ATOM/HETATM
-records using the same heuristics as the extractor module. The command relies on
+records. The command relies on
 Biopython to parse/write the structure, preserves coordinates and metadata, and
 only rewrites element fields unless `--overwrite` is supplied.
 
