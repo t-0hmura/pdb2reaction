@@ -1,7 +1,7 @@
 # pdb2reaction/dft.py
 
 """
-dft — Single-point DFT
+dft — Single-point DFT calculation
 ====================================================================
 
 Usage (CLI)
