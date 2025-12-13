@@ -44,8 +44,8 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--backward BOOL` | Run backward branch (`irc.backward`). Requires explicit `True`/`False`. | _None_ (default `True`) |
 | `--freeze-links BOOL` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
-| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | _None_ |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `--convert-files` |
+| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | `FiniteDifference` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
@@ -55,8 +55,7 @@ out_dir/ (default: ./result_irc/)
 ├─ <prefix>finished_irc.trj   # Complete IRC trajectory
 ├─ <prefix>forward_irc.trj    # Present when the forward branch runs
 ├─ <prefix>backward_irc.trj   # Present when the backward branch runs
-├─ *.pdb                      # Trajectory companions for PDB inputs (when conversion is enabled)
-└─ *.gjf                      # Gaussian companions when a template exists and conversion is enabled
+└─ *.pdb                      # Trajectory companions for PDB inputs (when conversion is enabled)
 ```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
