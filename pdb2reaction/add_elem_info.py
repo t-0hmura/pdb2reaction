@@ -1,58 +1,57 @@
 # pdb2reaction/add_elem_info.py
 
 """
-add-elem-info — Add/repair PDB element symbols (columns 77–78) using Biopython
-===============================================================================
+add-elem-info — repair PDB element symbols (columns 77–78) with Biopython
+===========================================================================
 
 Usage (CLI)
 -----------
-    pdb2reaction add-elem-info -i input.pdb [-o fixed.pdb] [--overwrite]
+    pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
 
 Examples
 --------
     # Populate element fields and write to "<input>_add_elem.pdb"
     pdb2reaction add-elem-info -i 1abc.pdb
 
+    # Write to a specific output file
+    pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
+
     # Overwrite the input file in-place
     pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
-    # Write to a new file
-    pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
+Output behavior (important)
+---------------------------
+- If `-o/--out` is omitted and `--overwrite` is not set, write to `<input>_add_elem.pdb` (replace a
+  trailing `.pdb` with `_add_elem.pdb`; otherwise append `_add_elem.pdb`).
+- If `--overwrite` is set without `-o/--out`, overwrite the input file in-place.
+- When `-o/--out` is supplied, write to that path and ignore `--overwrite`.
 
-Description
------------
-- Parses the input PDB with Biopython (`PDBParser`), assigns `atom.element`, and writes via
-  `PDBIO` to populate columns 77–78.
-- Infers elements from atom names plus residue context (proteins, nucleic acids, water, ions).
-- Monoatomic ion residues in "ION" dict: use corresponding elements.
-- Proteins/nucleic acids/water: maps H/D → H; water atoms to O/H; first-letter mapping for P/N/O/S;
-  recognizes Se; carbon labels (CA/CB/CG/…) → C.
-- Ligands/cofactors: uses atom-name prefixes (C*/P*, excluding CL) and two‑letter/one‑letter
-  normalization; recognizes halogens (Cl/Br/I/F).
-- Always re‑infers element fields. If no output path is provided, writes "<input>_add_elem.pdb".
-  If `--overwrite` is given without `-o/--out`, the input file is overwritten in-place; when
-  `-o/--out` is supplied, `--overwrite` is ignored. If inference fails, the atom’s element is left
-  unset/unchanged.
-- Supports ATOM and HETATM records; works across models/chains/residues without altering
-  coordinates.
+Workflow
+--------
+- Parse the input with `Bio.PDB.PDBParser`, sharing residue definitions with `extract.py`
+  (`AMINO_ACIDS`, `WATER_RES`, `ION`).
+- Infer elements per atom using the atom name, residue name, and HETATM flag:
+  - Ion residues from the `ION` dict: use residue-derived elements (polyatomic ions handled per
+    atom; D* → H).
+  - Proteins/nucleic acids/water: special handling for H/D, Se, and first-letter mapping for
+    C/N/O/P/S; carbon sidechain labels default to C.
+  - Other ligands: use atom-name prefixes (C*/P*, excluding CL) and fall back to element-symbol
+    normalization (recognizing halogens and D → H).
+- Write the structure through `PDBIO` and print a summary: totals for processed/assigned atoms,
+  per-element counts, and up to 50 unresolved atoms.
 
-Outputs (& Directory Layout)
-----------------------------
-<output>/ (default: write "<input>_add_elem.pdb" unless -o/--out is provided; when --overwrite
-           is used without -o/--out, overwrites the input file in-place)
-- PDB with element columns 77–78 populated or corrected (written to --out when supplied)
-
-Standard output summary
-- Total atoms processed and how many were assigned/updated.
-- Per-element counts for the final structure.
-- Up to 50 unresolved atoms (model/chain/residue/atom/serial) when inference fails.
+Outputs
+-------
+- PDB with element columns 77–78 populated/corrected at the path determined above.
+- Console report with totals, per-element counts, and truncated unresolved-atom list.
 
 Notes
 -----
-- Depends on Biopython (`Bio.PDB`) and Click.
-- Recognizes standard water/nucleic/protein residue names; treats deuterium “D” as hydrogen “H”.
-- Does not alter coordinates, occupancies, B-factors, charges, altlocs, insertion codes,
-  or record order.
+- Only element columns are modified; coordinates, occupancies, B-factors, charges, altlocs,
+  insertion codes, and record ordering stay untouched.
+- Supports ATOM and HETATM records across all models/chains/residues.
+- Depends on Biopython (`Bio.PDB`) and Click; deuterium labels map to hydrogen; selenium (`SE*`) and
+  halogens are recognized automatically.
 """
 
 from __future__ import annotations
