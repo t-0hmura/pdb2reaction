@@ -111,10 +111,6 @@ DFT_KW: Dict[str, Any] = {
     "grid_level": 3,           # Numerical integration grid level (PySCF grids.level)
     "verbose": 0,              # PySCF verbosity (0..9)
     "out_dir": "./result_dft/",# Output directory
-    "charge": None,            # Total charge (optional; may be filled by .gjf template)
-    "multiplicity": 1,         # Spin multiplicity (2S+1)
-    "func_basis": "wb97m-v/def2-tzvpd",  # Functional/basis pair
-    "engine": "gpu",          # Preferred backend policy
 }
 
 
@@ -399,7 +395,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='Optional YAML overrides under key "dft" (charge, multiplicity, func_basis, engine, conv_tol, max_cycle, grid_level, verbose, out_dir).',
+    help='Optional YAML overrides under key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).',
 )
 def cli(
     input_path: Path,
@@ -428,18 +424,10 @@ def cli(
         dft_cfg = dict(DFT_KW)
 
         # CLI overrides
-        dft_cfg.update(
-            {
-                "conv_tol": float(conv_tol),
-                "max_cycle": int(max_cycle),
-                "grid_level": int(grid_level),
-                "out_dir": out_dir,
-                "engine": engine,
-                "func_basis": func_basis,
-                "charge": charge,
-                "multiplicity": spin,
-            }
-        )
+        dft_cfg["conv_tol"] = float(conv_tol)
+        dft_cfg["max_cycle"] = int(max_cycle)
+        dft_cfg["grid_level"] = int(grid_level)
+        dft_cfg["out_dir"] = out_dir
 
         apply_yaml_overrides(
             yaml_cfg,
@@ -449,20 +437,11 @@ def cli(
             ],
         )
 
-        charge, multiplicity = resolve_charge_spin_or_raise(
-            prepared_input,
-            dft_cfg.get("charge"),
-            dft_cfg.get("multiplicity"),
-        )
-        dft_cfg["charge"] = charge
-        dft_cfg["multiplicity"] = multiplicity
-
-        xc, basis = _parse_func_basis(str(dft_cfg["func_basis"]))
+        xc, basis = _parse_func_basis(func_basis)
+        multiplicity = int(spin)
         if multiplicity < 1:
             raise click.BadParameter("Multiplicity (spin) must be >= 1.")
         spin2s = multiplicity - 1  # PySCF expects 2S
-        engine = str(dft_cfg.get("engine") or "gpu").strip().lower()
-        dft_cfg["engine"] = engine
 
         # Echo resolved config
         out_dir_path = Path(dft_cfg["out_dir"]).resolve()
@@ -476,7 +455,7 @@ def cli(
             "max_cycle": dft_cfg["max_cycle"],
             "grid_level": dft_cfg["grid_level"],
             "out_dir": str(out_dir_path),
-            "engine": dft_cfg.get("engine"),
+            "engine": engine,
         }
         click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
         click.echo(pretty_block("dft", echo_cfg))
@@ -518,6 +497,7 @@ def cli(
         # --------------------------
         # 4) Activate GPU & build SCF object
         # --------------------------
+        engine = (engine or "gpu").strip().lower()
         using_gpu = False
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))

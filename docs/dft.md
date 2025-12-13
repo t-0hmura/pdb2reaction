@@ -23,9 +23,9 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-
 
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`.
-2. **Configuration merge** – Defaults → CLI → YAML (`dft` block). YAML values take final precedence and can override `charge`, `multiplicity`, `func_basis`, and `engine` in addition to SCF knobs. Charge/multiplicity inherit `.gjf` metadata when present; otherwise `-q/--charge` is required and multiplicity defaults to `1`.
-3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal VV10 corrections are not configured explicitly.
-4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarising energy (Hartree/kcal·mol⁻¹), convergence metadata, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
+2. **Configuration merge** – Defaults → YAML (`dft` block) → CLI. Charge/multiplicity inherit `.gjf` metadata when present; otherwise `-q/--charge` is required and multiplicity defaults to `1`.  
+3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal VV10 is activated for functionals whose names end in `-v` or contain `vv10`.
+4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarising energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options
 | Option | Description | Default |
@@ -49,7 +49,7 @@ out_dir/ (default: ./result_dft/)
 └─ result.yaml          # Energy/charge/spin summaries with convergence/engine metadata
 ```
 - `result.yaml` expands to:
-  - `energy`: Hartree/kcal·mol⁻¹ values, convergence flag, and engine metadata
+  - `energy`: Hartree/kcal·mol⁻¹ values, convergence flag, wall time, engine metadata
     (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
   - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
   - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
@@ -60,32 +60,24 @@ out_dir/ (default: ./result_dft/)
 - GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur. **Blackwell architecture** GPUs are detected and forced to CPU with a warning to avoid unsupported GPU4PySCF configurations.
 - GPU4PySCF is required to by compiled from source when you do not use **x86** archtecture. (See <https://github.com/pyscf/gpu4pyscf>)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
-- YAML overrides are read from a mapping root; `dft` entries override CLI/defaults (including `charge`, `multiplicity`, `func_basis`, and `engine`) and an optional `geom` block is passed to `geom_loader`.
+- The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
 - Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
-Accepts a mapping with optional top-level key `dft` (and `geom`). YAML values override CLI values.
+Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
-- `charge` (`null` → template or `-q` required): Total charge.
-- `multiplicity` (`1`): Spin multiplicity (2S+1).
-- `func_basis` (`"wb97m-v/def2-tzvpd"`): Functional/basis pair in `FUNC/BASIS` form.
-- `engine` (`"gpu"`): Backend policy; accepts `gpu`, `cpu`, or `auto`.
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
 - `grid_level` (`3`): PySCF `grids.level`.
 - `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
 - `out_dir` (`"./result_dft/"`): Output directory root.
 
-Charge/spin inherit `.gjf` template metadata when present; otherwise `-q/--charge` is required and spin defaults to `1`. YAML values override both CLI inputs and template metadata.
+_Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present; otherwise `-q/--charge` is required and spin defaults to `1`. Set them explicitly for non-default states._
 
 ```yaml
 dft:
-  charge: 0             # total charge (overrides CLI/template)
-  multiplicity: 1       # spin multiplicity (2S+1)
-  func_basis: wb97m-v/def2-tzvpd  # functional/basis
-  engine: gpu           # backend policy: gpu, cpu, or auto
   conv_tol: 1.0e-09     # SCF convergence tolerance (Hartree)
   max_cycle: 100        # maximum SCF iterations
   grid_level: 3         # PySCF grid level
