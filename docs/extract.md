@@ -20,18 +20,19 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
 ### Examples
 ```bash
 # Minimal (ID-based substrate) with explicit total ligand charge
-pdb2reaction extract -i complex.pdb -c A:123 -o pocket.pdb --ligand-charge -3
+pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
 
-# Substrate provided as a PDB plus per-resname charge mapping
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb \
-                     --ligand-charge "GPP:-3,SAM:1"
+# Substrate provided as a PDB; per-resname charge mapping (others remain 0)
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
 
-# Name-based substrate selection (all matches kept; warning logged)
-pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge -2
+# Name-based substrate selection including all matches (WARNING is logged)
+pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
 
-# Multi-structure → single multi-MODEL output with hetero–hetero cutoff enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c A:123 \
-                     -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge -3 --verbose true
+# Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
+pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge "GPP:-3,SAM:1"
+
+# Multi-structure to multi outputs with hetero-hetero proximity enabled
+pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb pocket2.pdb --ligand-charge "GPP:-3,SAM:1"
 ```
 
 ## Workflow
