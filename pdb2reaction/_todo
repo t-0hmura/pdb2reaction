@@ -8,23 +8,24 @@ all: Reuse TS Eigen Value for Freq from TS opt
 Done.
 
 [Organize CLI, docstring and output]
+dft
+extract
+utils
+align_freeze_atoms
+
 scan2d
 trj2fig
-dft
 irc
 scan
 all
 ts_opt
 bond_changes
-extract
 freq
 opt
 path_opt
 path_search
 trj2fig
 uma_pysis
-utils
-align_freeze_atoms
 README
 
 [Complete]
