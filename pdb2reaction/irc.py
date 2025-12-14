@@ -73,8 +73,7 @@ Notes
 - `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
   for the initial displacement.
 - Output conversion steps can be disabled via `--no-convert-files`.
-- Standard output includes progress and timing. Exit codes: `0` on success, `130` on `KeyboardInterrupt`,
-  `1` on unhandled exceptions.
+- Standard output includes progress and timing.
 """
 
 from __future__ import annotations

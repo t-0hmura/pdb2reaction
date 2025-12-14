@@ -67,7 +67,6 @@ Notes
   grid_level, verbose, out_dir) and "geom" (passed to pysisyphus.helpers.geom_loader).
 - Grids: sets grids.level when supported.
 - Units: input coordinates are in Å.
-- Exit codes: 0 if SCF converged; 3 if not converged; 2 if PySCF import fails; 1 on unhandled errors; 130 on user interrupt.
 - If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column is null.
 """
 
