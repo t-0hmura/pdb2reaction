@@ -166,7 +166,7 @@ Unless you intentionally skip extraction, you must supply both.
 
 ## 3. Main workflow modes
 
-### 3.1 Multi‑structure GSM pipeline (reactant → product)
+### 3.1 Multi‑structure MEP pipeline (reactant → product)
 
 Use this when you already have several full PDB structures along a putative reaction coordinate (e.g., R → I1 → I2 → P).
 
@@ -186,7 +186,7 @@ Behaviour:
 
 - takes two or more **full systems** in reaction order,
 - extracts catalytic pockets for each structure,
-- performs a **recursive GSM / MEP search** via `path_search` by default,
+- performs a **recursive MEP search** via `path_search` by default,
 - optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
 - when PDB templates are available, merges the pocket‑level MEP back into the **full system**,
 - optionally runs TS optimisation, vibrational analysis, and DFT single points for each segment.
@@ -197,7 +197,7 @@ This is the recommended mode when you can generate reasonably spaced intermediat
 > And PDB structures must have **hydrogen atoms**.  
 ---
 
-### 3.2 Single‑structure + staged scan (feeds GSM)
+### 3.2 Single‑structure + staged scan (feeds MEP refinement)
 
 Use this when you only have **one PDB structure**, but you know which inter‑atomic distances should change along the reaction.
 
@@ -324,11 +324,16 @@ Below are the most commonly used options across workflows.
 
 - `--refine-path BOOLEAN`
   Switch between:
-
-  - **recursive GSM / MEP refinement** with `path_search` (default),
-  - **single‑pass GSM** with `path-opt` (simple MEP) when set to `False`.
+  - **recursive MEP refinement** with `path_search` (default),
+  - **single‑pass MEP refinement** with `path-opt` (simple MEP) when set to `False`.
 
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
+
+- `--opt-mode light | heavy`
+  Switch Optimization / TS refinement method with Light (LBFGS and Dimer method) or Heavy (Hessian-using RFO and RS-I-RFO) algorithm. 
+
+- `--mep-mode gsm | dmf`
+  Switch MEP refinement method with Growing String Method (GSM) or Direct Max Flux (DMF) Method.
 
 For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
 
@@ -359,10 +364,10 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes lo
 | Subcommand   | Role                                                                                  | Documentation                             |
 | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
 | `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot.    | [`docs/all.md`](docs/all.md)              |
-| `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation           .    | [`docs/scan.md`](docs/scan.md)            |
+| `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation.               | [`docs/scan.md`](docs/scan.md)            |
 | `opt`        | Single‑structure geometry optimization using LBFGS or RFO.                            | [`docs/opt.md`](docs/opt.md)              |
-| `path-opt`   | MEP optimization via the Growing String method.                                       | [`docs/path_opt.md`](docs/path_opt.md)    |
-| `path-search`| Multistep MEP search via recursive GSM segmentation.                                  | [`docs/path_search.md`](docs/path_search.md) |
+| `path-opt`   | MEP optimization via the GSM or DMF.                                                  | [`docs/path_opt.md`](docs/path_opt.md)    |
+| `path-search`| Multistep MEP search via recursive GSM or DMF segmentation.                           | [`docs/path_search.md`](docs/path_search.md) |
 | `tsopt`      | Transition state optimization (Dimer or RS-I-RFO).                                    | [`docs/tsopt.md`](docs/tsopt.md)          |
 | `freq`       | Vibrational frequency analysis and mode writer (+ thermochemistry summary).           | [`docs/freq.md`](docs/freq.md)            |
 | `irc`        | IRC calculation with EulerPC.                                                         | [`docs/irc.md`](docs/irc.md)              |
