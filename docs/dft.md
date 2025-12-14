@@ -61,7 +61,6 @@ out_dir/ (default: ./result_dft/)
 - GPU4PySCF is required to by compiled from source when you do not use **x86** archtecture. (See <https://github.com/pyscf/gpu4pyscf>)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
 - The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
-- Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
