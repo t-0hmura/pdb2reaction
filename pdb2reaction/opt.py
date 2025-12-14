@@ -108,10 +108,8 @@ Notes
   coordinates.
 - **Devices:** `calc.device="auto"` selects CUDA when available; otherwise CPU.
 - **Hessian form:** Set `calc.out_hess_torch=True` to receive a torch/CUDA Hessian; otherwise numpy/CPU.
-- **Stopping safeguards:** A `ZeroStepLength` triggers exit code 2 (minimum step < 1e-8). `max_energy_incr` (RFO)
+- **Stopping safeguards:** A `ZeroStepLength` triggers termination when the minimum step is below 1e-8. `max_energy_incr` (RFO)
   aborts on large uphill steps.
-- **Exit codes:** 0 (success); 2 (`ZeroStepLength`); 3 (`OptimizationError`); 130 (keyboard interrupt);
-  1 (unhandled error).
 - **Precedence:** Settings are applied with the precedence **YAML > CLI > internal defaults**. If the same key is present in both `opt` and `lbfgs`/`rfo`, `opt` takes precedence.
 """
 
