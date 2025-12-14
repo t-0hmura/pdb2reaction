@@ -232,6 +232,7 @@ Notes
   - ``--add-linkH`` default: **true**.
   - ``--verbose`` default: **true** for the CLI entry; ``extract_api(..., verbose=False)`` defaults to warnings only.
   - ``--ligand-charge`` default: **None** (unknown residues remain 0 unless set).
+  - Input PDBs are assumed to be **single-model**; files containing ``MODEL``/``ENDMDL`` records are not supported.
 
 - Geometry thresholds:
   - Peptide adjacency: **C(prev)–N(next) ≤ 1.9 Å** (distance-based).
@@ -481,7 +482,14 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     Load a PDB file into a Biopython Structure object.
     """
     parser = PDB.PDBParser(QUIET=True)
-    return parser.get_structure(name, path)
+    structure = parser.get_structure(name, path)
+    missing_elem = [a for a in structure.get_atoms() if not (getattr(a, "element", "") or "").strip()]
+    if missing_elem:
+        raise ValueError(
+            f"Element symbols are missing in '{path}'. "
+            f"Please run `pdb2reaction add-elem-info -i {path}` to populate element columns before running extract."
+        )
+    return structure
 
 
 # ---------------------------------------------------------------------
@@ -661,7 +669,7 @@ def resolve_substrate_residues(complex_struct, center_spec: str) -> List[PDB.Res
     """
     Determine substrate residues from a PDB path, residue-ID list, or residue-name list.
     """
-    if os.path.exists(center_spec):
+    if center_spec.lower().endswith(".pdb"):
         substrate_struct = load_structure(center_spec, "substrate")
         return find_substrate_residues(complex_struct, substrate_struct)
     # If it parses as ID-spec, treat as IDs (and propagate any not-found errors).
@@ -1461,7 +1469,7 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
     * If `center_spec` is a residue‑name list: apply to all structures; names may match multiple residues
       (all included; WARNING logged per structure).
     """
-    if os.path.exists(center_spec):
+    if center_spec.lower().endswith(".pdb"):
         sub_first = resolve_substrate_residues(structs[0], center_spec)
         tokens = []
         for res in sub_first:
