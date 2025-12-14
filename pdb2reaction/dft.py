@@ -59,8 +59,9 @@ out_dir/ (default: ./result_dft/)
 
 Notes
 -----
-- Charge/spin resolution: -q/--charge and -m/--multiplicity may inherit values from .gjf templates when present
-  and otherwise fall back to 0/1. Provide explicit values whenever possible to enforce the intended state
+- Charge/spin resolution: -q/--charge and -m/--multiplicity may inherit values from .gjf templates when present.
+  For .pdb/.xyz/.trj (and other non-.gjf inputs), omitting -q/--charge is an error; no fallback to 0 occurs.
+  Spin defaults to 1 when unspecified. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
 - YAML overrides: --args-yaml points to a file with top-level keys "dft" (conv_tol, max_cycle,
   grid_level, verbose, out_dir) and "geom" (passed to pysisyphus.helpers.geom_loader).
