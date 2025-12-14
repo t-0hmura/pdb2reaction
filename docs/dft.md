@@ -18,7 +18,7 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m MULTIPLICITY] \
 pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis "wb97m-v/6-31g**"
 
 # Tighter controls, larger basis, CPU-only backend
-pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --engine cpu
+pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --engine cpu
 ```
 
 ## Workflow
