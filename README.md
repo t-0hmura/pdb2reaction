@@ -42,14 +42,14 @@ Refer to the upstream projects for additional details:
 
 ### 1.1 Quick start
 
-Below is a minimal setup that works on many CUDA 12.8 clusters. Adjust module names and versions to match your system.
+Below is a minimal setup that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system.
 
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
 # 2) Install pdb2reaction from GitHub
 # 3) Install a headless Chrome for Plotly figure export
 
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
@@ -82,7 +82,7 @@ You only need to do this once per machine / environment.
   
 - If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch, like this:
   ```bash
-  module load cuda/12.8
+  module load cuda/12.9
   ```
 
 
@@ -93,7 +93,7 @@ If you prefer to build the environment piece by piece:
 1. **Load CUDA (when you use environment modules on HPC)**
 
    ```bash
-   module load cuda/12.8
+   module load cuda/12.9
    ```
 
 2. **Create and activate a conda environment**
@@ -112,10 +112,10 @@ If you prefer to build the environment piece by piece:
 
 4. **Install PyTorch with the right CUDA build**
 
-   For CUDA 12.8:
+   For CUDA 12.9:
 
    ```bash
-   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
    ```
 
    (You may use another compatible version if your cluster recommends it.)
