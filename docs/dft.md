@@ -18,7 +18,7 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m MULTIPLICITY] \
 pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis "wb97m-v/6-31g**"
 
 # Tighter controls, larger basis, CPU-only backend
-pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --engine cpu
+pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --engine cpu
 ```
 
 ## Workflow
@@ -38,7 +38,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-
 | `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
-| `--engine [gpu|cpu|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
+| `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
 | `--convert-files/--no-convert-files` | Toggle XYZ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
@@ -61,7 +61,6 @@ out_dir/ (default: ./result_dft/)
 - GPU4PySCF is required to by compiled from source when you do not use **x86** archtecture. (See <https://github.com/pyscf/gpu4pyscf>)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
 - The YAML file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
-- Exit codes: `0` (converged), `3` (not converged), `2` (PySCF import failure), `1` (other errors), `130` (interrupt).
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
