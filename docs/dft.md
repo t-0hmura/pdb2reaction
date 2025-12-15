@@ -53,7 +53,7 @@ out_dir/ (default: ./result_dft/)
     (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
   - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
   - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
-- Console pretty block summarising charge, multiplicity, spin (2S), functional, basis,
+- It also summarises charge, multiplicity, spin (2S), functional, basis,
   convergence knobs, and resolved output directory.
 
 ## Notes
