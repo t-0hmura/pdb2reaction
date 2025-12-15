@@ -12,7 +12,7 @@ for modeling enzymatic reaction pathways.
 
 ---
 
-Given one or more full protein–ligand PDBs `.pdb` (reactant, intermediates, product), it automatically:
+Given one or more full protein–ligand PDBs `.pdb` (reactant, product, intermediates if you need), it automatically:
 
 - extracts a **active site** around user‑defined substrates to build **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimisation methods such as (growing string method and direct max flux method),
