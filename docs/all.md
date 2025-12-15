@@ -6,7 +6,7 @@
 Key modes:
 - **End-to-end ensemble** – Supply ≥2 PDBs/GJFs/XYZ files in reaction order plus a substrate definition; the command extracts pockets, runs GSM, merges to the parent PDB(s), and optionally runs TSOPT/freq/DFT per reactive segment.
 - **Single-structure + staged scan** – Provide one PDB plus one or more `--scan-lists`; UMA scans on the extracted pocket generate intermediates that become GSM endpoints.
-- **TSOPT-only pocket refinement** – Provide one input structure, omit `--scan-lists`, and enable `--tsopt True`; the command extracts the pocket (if `-c/--center` is given) and only runs TS optimization + pseudo-IRC (with optional freq/DFT) on that single system.
+- **TSOPT-only pocket refinement** – Provide one input structure, omit `--scan-lists`, and enable `--tsopt True`; the command extracts the pocket (if `-c/--center` is given) and only runs TS optimization + IRC (with optional freq/DFT) on that single system.
 
 ## Usage
 ```bash
@@ -53,7 +53,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
    - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
 
 5. **Optional per-segment post-processing**
-   - `--tsopt True`: run TS optimization on each HEI pocket, follow with EulerPC pseudo-IRC, and emit segment energy diagrams.
+   - `--tsopt True`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
    - `--thermo True`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
    - `--dft True`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo True`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
    - Shared overrides include `--opt-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
@@ -96,7 +96,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
 | `--preopt BOOLEAN` | Pre-optimise pocket endpoints before GSM (also the default for scan preopt). | `True` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ (uses YAML/default of `FiniteDifference`) |
-| `--tsopt BOOLEAN` | Run TS optimisation + pseudo-IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
+| `--tsopt BOOLEAN` | Run TS optimisation + IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
 | `--thermo BOOLEAN` | Run vibrational analysis (`freq`) on R/TS/P and build UMA Gibbs diagram. | `False` |
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy + optional DFT//UMA diagrams. | `False` |
 | `--dft-engine [gpu\|cpu\|auto]` | Preferred backend for the DFT stage (`auto` tries GPU then CPU). | `gpu` |
@@ -130,7 +130,7 @@ out_dir/ (default: ./result_all/)
 ├─ pockets/                  # Per-input pocket PDBs when extraction runs
 ├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/              # GSM results: trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
-├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimisation, pseudo-IRC, freq, DFT, diagrams)
+├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimisation, IRC, freq, DFT, diagrams)
 └─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
 ```
 - Console logs summarising pocket charge resolution, YAML contents, scan stages, GSM progress, and per-stage timing.
