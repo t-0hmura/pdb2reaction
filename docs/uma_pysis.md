@@ -159,22 +159,22 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 ```
 
 ## Configuration reference
-Common constructor keywords (defaults shown in parentheses):
+Common constructor keywords (defaults shown in the rightmost column):
 
-| Option | Description |
-| --- | --- |
-| `charge` (0) | Total system charge. |
-| `spin` (1) | Spin multiplicity (2S+1). |
-| `model` ("uma-s-1p1") | UMA pretrained model name. |
-| `task_name` ("omol") | Task tag recorded in UMA batches. |
-| `device` ("auto") | "cuda", "cpu", or automatic selection. |
-| `workers` (1) / `workers_per_nodes` (1) | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. |
-| `max_neigh`, `radius`, `r_edges` (all `None`/`False`) | Optional overrides for UMA neighborhood construction. |
-| `freeze_atoms` (`None`) | List of 0-based atom indices to freeze. |
-| `hessian_calc_mode` ("FiniteDifference") | "Analytical" or "FiniteDifference" for Hessian evaluation. |
-| `return_partial_hessian` (`False`) | Return only the active-DOF Hessian block instead of the full matrix. |
-| `hessian_double` (`True`) | Assemble and return the Hessian in float64 precision. |
-| `out_hess_torch` (`True`) | Return Hessians as `torch.Tensor` objects. |
+| Option | Description | Default |
+| --- | --- | --- |
+| `charge` | Total system charge. | `0` |
+| `spin` | Spin multiplicity (2S+1). | `1` |
+| `model` | UMA pretrained model name. | `"uma-s-1p1"` |
+| `task_name` | Task tag recorded in UMA batches. | `"omol"` |
+| `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
+| `workers` / `workers_per_nodes` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
+| `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
+| `freeze_atoms` | List of 0-based atom indices to freeze. | `None` |
+| `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |
+| `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `False` |
+| `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |
+| `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
 
 ## CLI and YAML usage
 `uma_pysis` is registered as a PySisyphus calculator entry point. With a YAML input file matching these keywords you can run:
