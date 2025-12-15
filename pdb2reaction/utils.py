@@ -123,6 +123,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
 
 import click
+import math
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
@@ -773,6 +774,54 @@ def fill_charge_spin_from_gjf(
     return charge, spin
 
 
+def _round_charge_with_note(q: float, prefix: str) -> int:
+    if not math.isfinite(q):
+        raise click.BadParameter(f"{prefix} Computed total charge is non-finite: {q!r}")
+    q_int = int(round(q))
+    if not math.isclose(q_int, q):
+        click.echo(
+            f"{prefix} NOTE: extractor total charge = {q:+g} → rounded to integer {q_int:+d}."
+        )
+    return q_int
+
+
+def _derive_charge_from_ligand_charge(
+    prepared: PreparedInputStructure,
+    ligand_charge: Optional[float | str | Dict[str, float]],
+    *,
+    prefix: str,
+) -> Optional[int]:
+    if ligand_charge is None:
+        return None
+    try:
+        from Bio import PDB
+
+        from .extract import compute_charge_summary, log_charge_summary
+
+        parser = PDB.PDBParser(QUIET=True)
+        complex_struct = parser.get_structure("complex", str(prepared.source_path))
+        selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
+        summary = compute_charge_summary(complex_struct, selected_ids, set(), ligand_charge)
+        log_charge_summary(prefix, summary)
+        q_total = float(summary.get("total_charge", 0.0))
+        click.echo(
+            f"{prefix} Charge summary from full complex (--ligand-charge without extraction):"
+        )
+        click.echo(
+            f"  Protein: {summary.get('protein_charge', 0.0):+g},  "
+            f"Ligand: {summary.get('ligand_total_charge', 0.0):+g},  "
+            f"Ions: {summary.get('ion_total_charge', 0.0):+g},  "
+            f"Total: {q_total:+g}"
+        )
+        return _round_charge_with_note(q_total, prefix)
+    except Exception as e:
+        click.echo(
+            f"{prefix} NOTE: failed to derive total charge from --ligand-charge: {e}",
+            err=True,
+        )
+        return None
+
+
 def resolve_charge_spin_or_raise(
     prepared: PreparedInputStructure,
     charge: Optional[int],
@@ -780,8 +829,14 @@ def resolve_charge_spin_or_raise(
     *,
     spin_default: int = 1,
     charge_default: int = 0,
+    ligand_charge: Optional[float | str | Dict[str, float]] = None,
+    prefix: str = "[charge]",
 ) -> Tuple[int, int]:
     charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
+    if charge is None and ligand_charge is not None:
+        charge = _derive_charge_from_ligand_charge(
+            prepared, ligand_charge, prefix=prefix
+        )
     if charge is None:
         if prepared.is_gjf:
             charge = charge_default

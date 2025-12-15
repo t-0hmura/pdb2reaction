@@ -374,6 +374,13 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
+@click.option(
     "-m", "--multiplicity", "spin",
     type=int,
     default=1,
@@ -506,6 +513,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     scan_list_raw: str,
     one_based: bool,
@@ -531,7 +539,13 @@ def cli(
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
 
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[scan3d]",
+    )
 
     try:
         time_start = time.perf_counter()

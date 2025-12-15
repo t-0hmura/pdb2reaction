@@ -370,6 +370,13 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
     "--convert-files/--no-convert-files",
@@ -406,6 +413,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     convert_files: bool,
     func_basis: str,
@@ -419,7 +427,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[dft]",
+    )
     try:
         time_start = time.perf_counter()
         # --------------------------

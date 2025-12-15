@@ -468,6 +468,13 @@ def _maybe_convert_outputs(
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
+@click.option(
     "-m",
     "--multiplicity",
     "spin",
@@ -557,6 +564,7 @@ def _maybe_convert_outputs(
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     dist_freeze_raw: Sequence[str],
     one_based: bool,
@@ -574,7 +582,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[opt]",
+    )
 
     try:
         dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))

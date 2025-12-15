@@ -185,6 +185,13 @@ def _echo_convert_trj_if_exists(
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
@@ -222,6 +229,7 @@ def _echo_convert_trj_if_exists(
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     max_cycles: Optional[int],
     step_size: Optional[float],
@@ -237,7 +245,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[irc]",
+    )
     try:
         time_start = time.perf_counter()
 

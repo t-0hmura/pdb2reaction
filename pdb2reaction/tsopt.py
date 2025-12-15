@@ -1316,6 +1316,13 @@ RSIRFO_KW.update({
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
@@ -1359,6 +1366,7 @@ RSIRFO_KW.update({
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     freeze_links: bool,
     convert_files: bool,
@@ -1374,7 +1382,13 @@ def cli(
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
     source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[tsopt]",
+    )
     time_start = time.perf_counter()
 
     # --------------------------
