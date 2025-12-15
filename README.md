@@ -31,7 +31,7 @@ Typical use cases:
 - scanning key distances to generate intermediates,
 - building Gibbs and DFT//ML energy diagrams.
   
-> **Important:** Input PDB files must already contain hydrogen atoms.
+> **Important:** Input PDB files must already contain **hydrogen atoms**.
 
 ---
 
