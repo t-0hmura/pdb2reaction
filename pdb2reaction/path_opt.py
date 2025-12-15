@@ -95,6 +95,7 @@ from .utils import (
     merge_freeze_atom_indices,
     prepare_input_structure,
     fill_charge_spin_from_gjf,
+    _derive_charge_from_ligand_charge,
     maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -538,6 +539,13 @@ def _optimize_single(
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
+@click.option(
     "-m",
     "--multiplicity",
     "spin",
@@ -642,6 +650,7 @@ def cli(
     input_paths: Sequence[Path],
     mep_mode: str,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     freeze_links_flag: bool,
     max_nodes: int,
@@ -682,6 +691,10 @@ def cli(
         for prepared in prepared_inputs:
             resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
                 resolved_charge, resolved_spin, prepared.gjf_template
+            )
+        if resolved_charge is None and ligand_charge is not None:
+            resolved_charge = _derive_charge_from_ligand_charge(
+                prepared_inputs[0], ligand_charge, prefix="[path-opt]"
             )
         if resolved_charge is None:
             resolved_charge = 0

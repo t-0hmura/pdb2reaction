@@ -324,7 +324,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 AtomKey = Tuple[str, str, str, str, str, str]
 
 # Local imports from the package
-from .extract import extract_api
+from .extract import compute_charge_summary, extract_api, log_charge_summary
 from . import path_search as _path_search
 from . import path_opt as _path_opt
 from . import tsopt as _tsopt
@@ -2361,25 +2361,55 @@ def cli(
 
         q_total_fallback: float
         numeric_ligand_charge: Optional[float] = None
+        charge_summary: Optional[Dict[str, Any]] = None
         if ligand_charge is not None:
+            try:
+                parser = PDB.PDBParser(QUIET=True)
+                complex_struct = parser.get_structure("complex", str(first_input))
+                selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
+                charge_summary = compute_charge_summary(
+                    complex_struct, selected_ids, set(), ligand_charge
+                )
+                log_charge_summary("[all]", charge_summary)
+                q_total_fallback = float(charge_summary.get("total_charge", 0.0))
+                click.echo(
+                    "[all] Charge summary from full complex (--ligand-charge without extraction):"
+                )
+                click.echo(
+                    f"  Protein: {charge_summary.get('protein_charge', 0.0):+g},  "
+                    f"Ligand: {charge_summary.get('ligand_total_charge', 0.0):+g},  "
+                    f"Ions: {charge_summary.get('ion_total_charge', 0.0):+g},  "
+                    f"Total: {q_total_fallback:+g}"
+                )
+            except Exception as e:
+                charge_summary = None
+                click.echo(
+                    f"[all] NOTE: failed to compute charge from full complex: {e}; "
+                    "falling back to legacy handling.",
+                    err=True,
+                )
             try:
                 numeric_ligand_charge = float(ligand_charge)
             except Exception:
                 numeric_ligand_charge = None
 
-        if numeric_ligand_charge is not None:
+        if charge_summary is not None:
+            q_from_flow = _round_charge_with_note(q_total_fallback)
+        elif numeric_ligand_charge is not None:
             q_total_fallback = numeric_ligand_charge
             click.echo(
                 f"[all] Using --ligand-charge as TOTAL system charge: {q_total_fallback:+g}"
             )
+            q_from_flow = _round_charge_with_note(q_total_fallback)
         elif gjf_charge is not None:
             q_total_fallback = float(gjf_charge)
             click.echo(f"[all] Using total charge from first GJF: {q_total_fallback:+g}")
+            q_from_flow = _round_charge_with_note(q_total_fallback)
         else:
             q_total_fallback = 0.0
             if ligand_charge is not None:
                 click.echo(
-                    "[all] NOTE: non-numeric --ligand-charge is ignored without --center; "
+                    "[all] NOTE: failed to derive total charge from --ligand-charge; "
                     "defaulting total charge to 0 (no GJF charge available).",
                     err=True,
                 )
@@ -2389,7 +2419,7 @@ def cli(
                         "[all] NOTE: No total charge provided; defaulting to 0. "
                         "Supply '--ligand-charge <number>' to override."
                     )
-        q_from_flow = _round_charge_with_note(q_total_fallback)
+            q_from_flow = _round_charge_with_note(q_total_fallback)
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
