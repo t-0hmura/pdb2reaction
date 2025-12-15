@@ -1,7 +1,7 @@
 # `dft` subcommand
 
 ## Overview
-Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySCF otherwise). In addition to total energies the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities.
+Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySCF otherwise). In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities.
 
 ## Usage
 ```bash
