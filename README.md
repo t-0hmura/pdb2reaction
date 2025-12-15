@@ -251,9 +251,9 @@ Behaviour:
 
 - skips the MEP/path search entirely,
 - refines the **pocket TS** with TS optimisation,
-- runs a **pseudo‑IRC** in both directions to relax down to R and P minima,
-- can then perform `freq` and `dft` on the R/TS/P trio,
-- produces UMA, Gibbs, and DFT//UMA energy diagrams, similar to the full `all` workflow.
+- runs a **IRC** in both directions and optimize both ends to relax down to R and P minima,
+- can then perform `freq` and `dft` on the R/TS/P,
+- produces UMA, Gibbs, and DFT//UMA energy diagrams.
 
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
 
