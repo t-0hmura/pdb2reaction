@@ -1,7 +1,7 @@
 # `extract` subcommand
 
 ## Overview
-Automatically carve binding pockets (active sites) from protein–substrate complexes. The tool applies chemically aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
+Automatically extract binding pockets (active sites) from protein–substrate complexes. The tool applies chemically aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
 
 ## Usage
 ```bash
