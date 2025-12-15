@@ -301,7 +301,13 @@ def _run_dmf_mep(
     fix_atoms: Sequence[int],
     dmf_cfg: Optional[Dict[str, Any]] = None,
 ) -> DMFMepResult:
-    """Run Direct Max Flux (DMF) MEP optimization between two endpoints."""
+    """Run Direct Max Flux (DMF) MEP optimization between two endpoints.
+
+    References:
+    [1] S.-i. Koda and  S. Saito, Locating Transition States by Variational Reaction Path Optimization with an Energy-Derivative-Free Objective Function, JCTC, 20, 2798–2811 (2024). [doi: 10.1021/acs.jctc.3c01246]
+    [2] S.-i. Koda and  S. Saito, Flat-bottom Elastic Network Model for Generating Improved Plausible Reaction Paths, JCTC, 20, 7176−7187 (2024). [doi: 10.1021/acs.jctc.4c00792]
+    [3] S.-i. Koda and  S. Saito, Correlated Flat-bottom Elastic Network Model for Improved Bond Rearrangement in Reaction Paths, JCTC, 21, 3513−3522 (2025). [doi: 10.1021/acs.jctc.4c01549]
+    """
 
     try:
         import torch
