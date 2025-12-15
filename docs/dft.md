@@ -24,7 +24,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`.
 2. **Configuration merge** – Defaults → CLI → YAML (`dft` block). YAML overrides take precedence over CLI flags. Charge/multiplicity inherit `.gjf` metadata when present; otherwise `-q/--charge` is required and multiplicity defaults to `1`.
-3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
+3. **SCF build** – The functional/basis pair comes from CLI `--func-basis` or YAML (`dft.func`/`dft.basis` or `dft.func_basis`). Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarising energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options
@@ -67,16 +67,21 @@ out_dir/ (default: ./result_dft/)
 Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
+- `func` (`"wb97m-v"`): Exchange–correlation functional.
+- `basis` (`"def2-tzvpd"`): Basis set name.
+- `func_basis` (_None_): Optional combined `FUNC/BASIS` string that overrides `func`/`basis` when provided.
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
 - `grid_level` (`3`): PySCF `grids.level`.
 - `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
 - `out_dir` (`"./result_dft/"`): Output directory root.
 
-_Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present; otherwise `-q/--charge` is required and spin defaults to `1`. Set them explicitly for non-default states._
+_Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI or via YAML. Charge/spin inherit `.gjf` template metadata when present; otherwise `-q/--charge` is required and spin defaults to `1`. Set them explicitly for non-default states._
 
 ```yaml
 dft:
+  func: wb97m-v         # exchange–correlation functional
+  basis: def2-tzvpd     # basis set name (alternatively use func_basis: "FUNC/BASIS")
   conv_tol: 1.0e-09     # SCF convergence tolerance (Hartree)
   max_cycle: 100        # maximum SCF iterations
   grid_level: 3         # PySCF grid level
