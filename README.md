@@ -403,5 +403,11 @@ pdb2reaction <subcommand> --help
 This prints the available options, defaults, and a short description. For detailed workflows, argument schemas, and example YAML files, consult the `docs/*.md` files in the repository (e.g. `docs/all.md`, `docs/scan.md`).
 
 ## Citation
-
 A preprint describing `pdb2reaction` will be released soon. Please check back for citation details once it is available.
+
+## References
+[1] Wood, B. M., Dzamba, M., Fu, X., Gao, M., Shuaibi, M., Barroso-Luque, L., Abdelmaqsoud, K., Gharakhanyan, V., Kitchin, J. R., Levine, D. S., Michel, K., Sriram, A., Cohen, T., Das, A., Rizvi, A., Sahoo, S. J., Ulissi, Z. W., & Zitnick, C. L. (2025). UMA: A Family of Universal Models for Atoms. http://arxiv.org/abs/2506.23971   
+[2] Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. International Journal of Quantum Chemistry, 121(3). https://doi.org/10.1002/qua.26390
+
+## License
+`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** derived from Pysisyphus.  
