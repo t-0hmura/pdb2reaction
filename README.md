@@ -26,7 +26,7 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process **en
 
 Typical use cases:
 
-- mapping out plausible reaction mechanisms from a handful of crystal structures or snapshots (with hydrogen atoms),
+- mapping out plausible reaction mechanisms from a handful of crystal structures or MD snapshots,
 - refining TS candidates obtained from other tools,
 - scanning key distances to generate intermediates,
 - building Gibbs and DFT//ML energy diagrams.
