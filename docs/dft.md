@@ -38,7 +38,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-
 | `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
-| `--engine [gpu*|cpu*|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
+| `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
 | `--convert-files/--no-convert-files` | Toggle XYZ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
