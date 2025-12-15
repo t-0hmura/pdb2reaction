@@ -62,7 +62,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb po
 
 ### Charge summary (`--ligand-charge`)
 - Amino acids and common ions draw charges from internal dictionaries; waters are zero.
-- Unknown residues default to 0 unless `--ligand-charge` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,SAM:-1`.
+- Unknown residues default to 0 unless `--ligand-charge` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,SAM:1`.
 - Summaries (protein/ligand/ion/total) are logged for the first input when verbose mode is enabled.
 
 ### Multi-structure ensembles
@@ -90,7 +90,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb po
 | `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `true` |
 | `--add-linkH BOOL` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `true` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:-1`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | `None` |
 | `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
 
 ## Outputs
