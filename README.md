@@ -400,3 +400,7 @@ pdb2reaction <subcommand> --help
 ```
 
 This prints the available options, defaults, and a short description. For detailed workflows, argument schemas, and example YAML files, consult the `docs/*.md` files in the repository (e.g. `docs/all.md`, `docs/scan.md`).
+
+## Citation
+
+A preprint describing `pdb2reaction` will be released soon. Please check back for citation details once it is available.
