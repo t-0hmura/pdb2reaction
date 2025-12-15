@@ -317,7 +317,7 @@ Below are the most commonly used options across workflows.
   Top‑level output directory. All intermediate files, logs, and figures are placed here.
 
 - `--tsopt BOOLEAN`  
-  Enable TS optimisation and pseudo‑IRC propagation. Required for TSOPT‑only mode, but also useful in multi‑structure workflows to refine TS along the path.
+  Enable TS optimisation and IRC propagation. Required for TSOPT‑only mode, but also useful in multi‑structure workflows to refine TS along the path.
 
 - `--thermo BOOLEAN`  
   Run vibrational analysis and compute thermochemistry on UMA geometries. Produces Gibbs free energies and corresponding energy diagrams.
