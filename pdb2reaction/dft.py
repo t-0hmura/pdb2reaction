@@ -63,8 +63,9 @@ Notes
   For .pdb/.xyz/.trj (and other non-.gjf inputs), omitting -q/--charge is an error; no fallback to 0 occurs.
   Spin defaults to 1 when unspecified. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
-- YAML overrides: --args-yaml points to a file with top-level keys "dft" (conv_tol, max_cycle,
-  grid_level, verbose, out_dir) and "geom" (passed to pysisyphus.helpers.geom_loader).
+- YAML overrides: --args-yaml points to a file with top-level keys "dft" (func, basis, conv_tol,
+  max_cycle, grid_level, verbose, out_dir, or combined func_basis) and "geom" (passed to
+  pysisyphus.helpers.geom_loader).
 - Grids: sets grids.level when supported.
 - Units: input coordinates are in Å.
 - If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column is null.
@@ -105,12 +106,17 @@ from .uma_pysis import GEOM_KW_DEFAULT
 # Defaults (override via CLI / YAML)
 # -----------------------------------------------
 
+DFT_DEFAULT_FUNC = "wb97m-v"
+DFT_DEFAULT_BASIS = "def2-tzvpd"
+
 DFT_KW: Dict[str, Any] = {
     "conv_tol": 1e-9,          # SCF convergence tolerance (Eh)
     "max_cycle": 100,          # Maximum number of SCF iterations
     "grid_level": 3,           # Numerical integration grid level (PySCF grids.level)
     "verbose": 0,              # PySCF verbosity (0..9)
     "out_dir": "./result_dft/",# Output directory
+    "func": DFT_DEFAULT_FUNC,  # XC functional (can be overridden via YAML)
+    "basis": DFT_DEFAULT_BASIS,# Basis set (can be overridden via YAML)
 }
 
 
@@ -376,7 +382,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "--func-basis",
     "func_basis",
     type=str,
-    default="wb97m-v/def2-tzvpd",
+    default=f"{DFT_DEFAULT_FUNC}/{DFT_DEFAULT_BASIS}",
     show_default=True,
     help='Exchange–correlation functional and basis set as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").',
 )
@@ -395,7 +401,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='Optional YAML overrides under key "dft" (conv_tol, max_cycle, grid_level, verbose, out_dir).',
+    help='Optional YAML overrides under key "dft" (func/basis, conv_tol, max_cycle, grid_level, verbose, out_dir).',
 )
 def cli(
     input_path: Path,
@@ -428,6 +434,9 @@ def cli(
         dft_cfg["max_cycle"] = int(max_cycle)
         dft_cfg["grid_level"] = int(grid_level)
         dft_cfg["out_dir"] = out_dir
+        cli_xc, cli_basis = _parse_func_basis(func_basis)
+        dft_cfg["func"] = cli_xc
+        dft_cfg["basis"] = cli_basis
 
         apply_yaml_overrides(
             yaml_cfg,
@@ -437,7 +446,16 @@ def cli(
             ],
         )
 
-        xc, basis = _parse_func_basis(func_basis)
+        if "func_basis" in dft_cfg:
+            # Allow a combined "FUNC/BASIS" field in YAML for convenience.
+            yaml_func, yaml_basis = _parse_func_basis(str(dft_cfg["func_basis"]))
+            dft_cfg["func"] = yaml_func
+            dft_cfg["basis"] = yaml_basis
+
+        xc = str(dft_cfg.get("func", "")).strip()
+        basis = str(dft_cfg.get("basis", "")).strip()
+        if not xc or not basis:
+            raise click.BadParameter("Functional and basis must be non-empty (set via --func-basis or YAML dft.func/basis)")
         multiplicity = int(spin)
         if multiplicity < 1:
             raise click.BadParameter("Multiplicity (spin) must be >= 1.")
