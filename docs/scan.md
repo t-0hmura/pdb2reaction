@@ -31,7 +31,10 @@ pdb2reaction scan -i input.pdb -q 0 \
 
 ## Workflow
 1. Load the structure through `geom_loader`, resolving charge/spin from the CLI
-   overrides, the embedded Gaussian template (if present), or defaults.
+   overrides, the embedded Gaussian template (if present), or defaults. If `-q`
+   is omitted but `--ligand-charge` is provided, the input is treated as an
+   enzyme–substrate complex and `extract.py`’s charge summary derives the total
+   charge before any scans.
 2. Optionally run an unbiased preoptimization (`--preopt True`) before any
    biasing so the starting point is relaxed.
 3. For each stage literal supplied via `--scan-lists`, parse and normalize the
@@ -51,7 +54,9 @@ pdb2reaction scan -i input.pdb -q 0 \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template > 0). | Required when not in template |
+| `-q, --charge INT` | Total charge (CLI > template > 0). Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
 | `--scan-lists TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. | Required |
 | `--one-based / --zero-based` | Interpret atom indices as 1- or 0-based. | `--one-based` |
@@ -107,8 +112,11 @@ out_dir/ (default: ./result_scan/)
   atoms in PDB files so pockets stay rigid.
 - UMA is the only supported calculator; energies are not re-queried for every
   biased frame to avoid redundant evaluations.
-- Charge and spin inherit Gaussian template metadata when available; otherwise
-  `-q/--charge` is required and spin defaults to `1`.
+- Charge and spin inherit Gaussian template metadata when available. If `-q` is
+  omitted but `--ligand-charge` is provided, the full structure is treated as an
+  enzyme–substrate complex and `extract.py`’s charge summary computes the total
+  charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and
+  spin to `1`.
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are written
   regardless of `--dump`; trajectories are written only when `--dump` is `True`
   and converted to `scan.pdb`/`scan.gjf` when conversion is enabled.

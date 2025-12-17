@@ -63,7 +63,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 
 ### Charge and spin precedence
 - With extraction: pocket charge = rounded extractor charge; spin comes from `--mult` (default 1).
-- Without extraction: total system charge follows (1) numeric `--ligand-charge`, else (2) parsed from the first `.gjf`, else defaults to 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
+- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge from the supplied substrate charge(s); otherwise the first `.gjf` supplies the charge or the default is 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
 
 ### Input expectations
 - Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
@@ -82,8 +82,9 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--exclude-backbone BOOLEAN` | Remove backbone atoms on non-substrate amino acids. | `True` |
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
-| `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). | `None` |
+| `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex. | `None` |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
+| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
 | `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
 | `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |

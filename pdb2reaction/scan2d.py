@@ -77,7 +77,10 @@ Notes
 - Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO; default: light).
 - Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
 - The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
-- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available.
+- `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
+  charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
+  enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
+  always overrides any derived charge.
 - Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
@@ -311,6 +314,21 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
     "--ligand-charge",
     type=str,
     default=None,
@@ -441,6 +459,8 @@ def cli(
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     scan_list_raw: str,
     one_based: bool,
@@ -488,6 +508,8 @@ def cli(
         # CLI overrides (defaults ← CLI)
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"] = int(spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
         opt_cfg["out_dir"] = out_dir
         opt_cfg["dump"] = False
         if thresh is not None:

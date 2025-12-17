@@ -32,7 +32,9 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
-| `-q, --charge INT` | Total charge. Required unless the first input is a `.gjf` template that already stores charge. | Required when not in template |
+| `-q, --charge INT` | Total charge. Required unless the first input is a `.gjf` template that already stores charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex even when pockets are skipped. | `None` |
+| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
@@ -82,8 +84,7 @@ out_dir/ (default: ./result_path_search/)
 - `--ref-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, GSM and single-structure optimizations emit trajectories and restart YAML files.
-- Charge/spin inherit `.gjf` template metadata when available; otherwise `-q/--charge` is required and multiplicity defaults to
-  `1`. Override them explicitly when you need a different electronic state.
+- Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to 0 and multiplicity to `1`.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.

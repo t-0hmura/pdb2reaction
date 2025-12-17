@@ -179,10 +179,11 @@ Charge handling
   - With extraction enabled (``-c/--center``):
       • the extractor’s model #1 **total pocket charge** is used (rounded to an integer) unless overridden.
   - With extraction skipped (no ``--center``):
-      1) a numeric ``--ligand-charge`` value is interpreted as the **TOTAL system charge** (rounded),
-      2) else, if the first input is ``.gjf``, its charge is used,
+      1) if ``--ligand-charge`` is provided **and** ``-q`` is omitted, the full input is treated as an
+         enzyme–substrate complex and the total system charge is inferred using the same residue-aware
+         logic as ``extract.py`` (``--ligand-charge`` may be numeric or a residue→charge mapping);
+      2) else, if the first input is ``.gjf``, its charge is used;
       3) else default is **0**.
-    Non-numeric ``--ligand-charge`` mappings are ignored in this mode.
   - Spin precedence when extraction is skipped:
       explicit ``--mult`` > GJF multiplicity (if available) > default.
 
@@ -413,11 +414,21 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 
-def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _build_calc_cfg(
+    charge: int,
+    spin: int,
+    workers: Optional[int] = None,
+    workers_per_nodes: Optional[int] = None,
+    yaml_cfg: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Return a UMA calculator configuration honoring YAML overrides when provided."""
     cfg: Dict[str, Any] = dict(CALC_KW)
     cfg["charge"] = int(charge)
     cfg["spin"] = int(spin)
+    if workers is not None:
+        cfg["workers"] = int(workers)
+    if workers_per_nodes is not None:
+        cfg["workers_per_nodes"] = int(workers_per_nodes)
     if yaml_cfg:
         apply_yaml_overrides(
             yaml_cfg,
@@ -1779,6 +1790,21 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
     "--verbose",
     type=click.BOOL,
     default=True,
@@ -2105,6 +2131,8 @@ def cli(
     selected_resn: str,
     ligand_charge: Optional[str],
     charge_override: Optional[int],
+    workers: int,
+    workers_per_nodes: int,
     verbose: bool,
     spin: int,
     freeze_links_flag: bool,
@@ -2436,7 +2464,13 @@ def cli(
     else:
         q_int = int(q_from_flow) if q_from_flow is not None else 0
 
-    calc_cfg_shared = _build_calc_cfg(q_int, spin, yaml_cfg)
+    calc_cfg_shared = _build_calc_cfg(
+        q_int,
+        spin,
+        workers=workers,
+        workers_per_nodes=workers_per_nodes,
+        yaml_cfg=yaml_cfg,
+    )
 
     # -------------------------------------------------------------------------
     # TSOPT-only single-structure mode

@@ -30,8 +30,10 @@ Description
 - Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); YAML values override CLI.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
-- `-q/--charge` is required for non-`.gjf` inputs; `.gjf` templates supply charge/spin when available and allow omitting
-  `-q/--charge`.
+- `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; when ``-q`` is omitted and
+  ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the total charge is inferred
+  using ``extract.py``’s residue-aware logic. `.gjf` templates supply charge/spin when available and allow omitting
+  `-q/--charge`. Explicit `-q` always overrides derived values.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -514,6 +516,21 @@ THERMO_KW = {
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
     "--ligand-charge",
     type=str,
     default=None,
@@ -562,6 +579,8 @@ def cli(
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     freeze_links: bool,
     convert_files: bool,
@@ -602,6 +621,8 @@ def cli(
     # CLI overrides
     calc_cfg["charge"] = int(charge)
     calc_cfg["spin"]   = int(spin)
+    calc_cfg["workers"] = int(workers)
+    calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
     if hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 

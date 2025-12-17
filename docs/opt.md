@@ -22,7 +22,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 ## Workflow
 - **Optimizers**: `--opt-mode light` (default) → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
-- **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If no template exists, the fallback is `0/1`. Always pass the physically correct values explicitly.
+- **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. If no template or ligand-charge hint exists, the fallback is `0/1`. Always pass the physically correct values explicitly.
 - **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
 - **Dumping & conversion**: `--dump True` mirrors `opt.dump=True` and writes `optimization.trj`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
@@ -31,7 +31,9 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template that already encodes charge. | Required when not in template |
+| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template that already encodes charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
 | `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_A)` tuples for harmonic restraints. | _None_ |
 | `--one-based / --zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `--one-based` |

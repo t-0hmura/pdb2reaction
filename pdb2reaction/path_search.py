@@ -20,8 +20,11 @@ Core inputs (strongly recommended):
     -i/--input
         Two or more structures in reaction order (repeatable or space‑separated after a single -i).
     -q/--charge
-        Total system charge for the ML region (required for non-`.gjf` inputs; `.gjf` templates supply
-        defaults when available).
+        Total system charge for the ML region (required for non-`.gjf` inputs **unless** ``--ligand-charge``
+        is supplied; `.gjf` templates supply defaults when available). When ``-q`` is omitted but
+        ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the total
+        charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q`` overrides any derived
+        charge.
 
 Recommended/common:
     -m/--mult
@@ -1913,6 +1916,21 @@ def _merge_final_and_write(final_images: List[Any],
     help="Charge of the ML region.",
 )
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
     "--ligand-charge",
     type=str,
     default=None,
@@ -2001,6 +2019,8 @@ def cli(
     refine_mode: Optional[str],
     charge: Optional[int],
     ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     freeze_links_flag: bool,
     max_nodes: int,
@@ -2132,6 +2152,8 @@ def cli(
             resolved_spin = 1
         calc_cfg["charge"] = int(resolved_charge)
         calc_cfg["spin"] = int(resolved_spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
 
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
