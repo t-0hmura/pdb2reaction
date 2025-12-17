@@ -68,6 +68,9 @@ out_dir/ (default: ./result_dft/)
 Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
+- `func` (`"wb97m-v"`): Exchange–correlation functional.
+- `basis` (`"def2-tzvpd"`): Basis set name.
+- `func_basis` (_None_): Optional combined `FUNC/BASIS` string that overrides `func`/`basis` when provided.
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
 - `grid_level` (`3`): PySCF `grids.level`.
@@ -78,6 +81,8 @@ _Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridd
 
 ```yaml
 dft:
+  func: wb97m-v         # exchange–correlation functional
+  basis: def2-tzvpd     # basis set name (alternatively use func_basis: "FUNC/BASIS")
   conv_tol: 1.0e-09     # SCF convergence tolerance (Hartree)
   max_cycle: 100        # maximum SCF iterations
   grid_level: 3         # PySCF grid level
