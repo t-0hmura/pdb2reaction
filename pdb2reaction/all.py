@@ -179,10 +179,11 @@ Charge handling
   - With extraction enabled (``-c/--center``):
       • the extractor’s model #1 **total pocket charge** is used (rounded to an integer) unless overridden.
   - With extraction skipped (no ``--center``):
-      1) a numeric ``--ligand-charge`` value is interpreted as the **TOTAL system charge** (rounded),
-      2) else, if the first input is ``.gjf``, its charge is used,
+      1) if ``--ligand-charge`` is provided **and** ``-q`` is omitted, the full input is treated as an
+         enzyme–substrate complex and the total system charge is inferred using the same residue-aware
+         logic as ``extract.py`` (``--ligand-charge`` may be numeric or a residue→charge mapping);
+      2) else, if the first input is ``.gjf``, its charge is used;
       3) else default is **0**.
-    Non-numeric ``--ligand-charge`` mappings are ignored in this mode.
   - Spin precedence when extraction is skipped:
       explicit ``--mult`` > GJF multiplicity (if available) > default.
 
@@ -324,7 +325,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 AtomKey = Tuple[str, str, str, str, str, str]
 
 # Local imports from the package
-from .extract import extract_api
+from .extract import compute_charge_summary, extract_api, log_charge_summary
 from . import path_search as _path_search
 from . import path_opt as _path_opt
 from . import tsopt as _tsopt
@@ -413,11 +414,21 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 
-def _build_calc_cfg(charge: int, spin: int, yaml_cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _build_calc_cfg(
+    charge: int,
+    spin: int,
+    workers: Optional[int] = None,
+    workers_per_nodes: Optional[int] = None,
+    yaml_cfg: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Return a UMA calculator configuration honoring YAML overrides when provided."""
     cfg: Dict[str, Any] = dict(CALC_KW)
     cfg["charge"] = int(charge)
     cfg["spin"] = int(spin)
+    if workers is not None:
+        cfg["workers"] = int(workers)
+    if workers_per_nodes is not None:
+        cfg["workers_per_nodes"] = int(workers_per_nodes)
     if yaml_cfg:
         apply_yaml_overrides(
             yaml_cfg,
@@ -1779,6 +1790,21 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
     "--verbose",
     type=click.BOOL,
     default=True,
@@ -2105,6 +2131,8 @@ def cli(
     selected_resn: str,
     ligand_charge: Optional[str],
     charge_override: Optional[int],
+    workers: int,
+    workers_per_nodes: int,
     verbose: bool,
     spin: int,
     freeze_links_flag: bool,
@@ -2361,25 +2389,55 @@ def cli(
 
         q_total_fallback: float
         numeric_ligand_charge: Optional[float] = None
+        charge_summary: Optional[Dict[str, Any]] = None
         if ligand_charge is not None:
+            try:
+                parser = PDB.PDBParser(QUIET=True)
+                complex_struct = parser.get_structure("complex", str(first_input))
+                selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
+                charge_summary = compute_charge_summary(
+                    complex_struct, selected_ids, set(), ligand_charge
+                )
+                log_charge_summary("[all]", charge_summary)
+                q_total_fallback = float(charge_summary.get("total_charge", 0.0))
+                click.echo(
+                    "[all] Charge summary from full complex (--ligand-charge without extraction):"
+                )
+                click.echo(
+                    f"  Protein: {charge_summary.get('protein_charge', 0.0):+g},  "
+                    f"Ligand: {charge_summary.get('ligand_total_charge', 0.0):+g},  "
+                    f"Ions: {charge_summary.get('ion_total_charge', 0.0):+g},  "
+                    f"Total: {q_total_fallback:+g}"
+                )
+            except Exception as e:
+                charge_summary = None
+                click.echo(
+                    f"[all] NOTE: failed to compute charge from full complex: {e}; "
+                    "falling back to legacy handling.",
+                    err=True,
+                )
             try:
                 numeric_ligand_charge = float(ligand_charge)
             except Exception:
                 numeric_ligand_charge = None
 
-        if numeric_ligand_charge is not None:
+        if charge_summary is not None:
+            q_from_flow = _round_charge_with_note(q_total_fallback)
+        elif numeric_ligand_charge is not None:
             q_total_fallback = numeric_ligand_charge
             click.echo(
                 f"[all] Using --ligand-charge as TOTAL system charge: {q_total_fallback:+g}"
             )
+            q_from_flow = _round_charge_with_note(q_total_fallback)
         elif gjf_charge is not None:
             q_total_fallback = float(gjf_charge)
             click.echo(f"[all] Using total charge from first GJF: {q_total_fallback:+g}")
+            q_from_flow = _round_charge_with_note(q_total_fallback)
         else:
             q_total_fallback = 0.0
             if ligand_charge is not None:
                 click.echo(
-                    "[all] NOTE: non-numeric --ligand-charge is ignored without --center; "
+                    "[all] NOTE: failed to derive total charge from --ligand-charge; "
                     "defaulting total charge to 0 (no GJF charge available).",
                     err=True,
                 )
@@ -2389,7 +2447,7 @@ def cli(
                         "[all] NOTE: No total charge provided; defaulting to 0. "
                         "Supply '--ligand-charge <number>' to override."
                     )
-        q_from_flow = _round_charge_with_note(q_total_fallback)
+            q_from_flow = _round_charge_with_note(q_total_fallback)
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
@@ -2406,7 +2464,13 @@ def cli(
     else:
         q_int = int(q_from_flow) if q_from_flow is not None else 0
 
-    calc_cfg_shared = _build_calc_cfg(q_int, spin, yaml_cfg)
+    calc_cfg_shared = _build_calc_cfg(
+        q_int,
+        spin,
+        workers=workers,
+        workers_per_nodes=workers_per_nodes,
+        yaml_cfg=yaml_cfg,
+    )
 
     # -------------------------------------------------------------------------
     # TSOPT-only single-structure mode

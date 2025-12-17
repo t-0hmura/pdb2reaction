@@ -31,7 +31,9 @@ Description
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
   Final configuration precedence: built-in defaults → CLI → YAML.
 - Charge/spin defaults: `-q/--charge` and `-m/--multiplicity` inherit values from `.gjf` templates when provided. For non-`.gjf`
-  inputs, `-q/--charge` is mandatory and the CLI aborts if omitted; multiplicity still defaults to 1 when unspecified.
+  inputs, omitting `-q/--charge` is allowed only when ``--ligand-charge`` is set: the full complex is treated as an
+  enzyme–substrate system and its total charge is derived with ``extract.py``’s residue-aware logic. Otherwise the CLI aborts;
+  multiplicity still defaults to 1 when unspecified, and an explicit `-q` overrides any derived charge.
 
 CLI options
 -----------
@@ -185,6 +187,28 @@ def _echo_convert_trj_if_exists(
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW_DEFAULT["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW_DEFAULT["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
@@ -222,6 +246,9 @@ def _echo_convert_trj_if_exists(
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     max_cycles: Optional[int],
     step_size: Optional[float],
@@ -237,7 +264,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[irc]",
+    )
     try:
         time_start = time.perf_counter()
 
@@ -253,6 +286,8 @@ def cli(
         # CLI overrides
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
 
         if hessian_calc_mode is not None:
             calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)

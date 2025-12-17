@@ -39,7 +39,9 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 ## Workflow
 1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
    embedded Gaussian templates, and optionally run an unbiased preoptimization
-   when `--preopt True`.
+   when `--preopt True`. If `-q` is omitted but `--ligand-charge` is provided, the
+   structure is treated as an enzyme–substrate complex and `extract.py`’s charge
+   summary derives the total charge before scanning.
 2. Parse the single `--scan-list` literal (default 1-based indices unless
    `--zero-based` is passed) into three quadruples. Build each linear grid using
    `h = --max-step-size` and reorder the values so the ones closest to the
@@ -61,7 +63,9 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template > 0). | Required when not in template |
+| `-q, --charge INT` | Total charge (CLI > template > 0). Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
 | `--scan-list TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. | Required |
 | `--one-based / --zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `--one-based` |

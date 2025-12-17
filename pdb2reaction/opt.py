@@ -10,6 +10,7 @@ Usage (CLI)
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
+        [--workers <int>] [--workers-per-nodes <int>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
         [--convert-files | --no-convert-files]
 
@@ -18,9 +19,9 @@ Examples
     # Minimal geometry optimization with default LBFGS (light) settings
     pdb2reaction opt -i input.pdb -q 0 -m 1
 
-    # RFO with trajectory dumps and YAML overrides
+    # RFO with trajectory dumps, extra UMA workers, and YAML overrides
     pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode heavy --dump True \
-        --out-dir ./result_opt/ --args-yaml ./args.yaml
+        --workers 4 --workers-per-nodes 2 --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----------
@@ -97,9 +98,12 @@ Console output echoes the resolved geom/calc/opt/(lbfgs|rfo) blocks, per-print p
 
 Notes
 -----
-- **Charge/spin handling:** The CLI requires `-q/--charge` for non-`.gjf` inputs and takes `-m/--multiplicity` (default
-  `1`). `resolve_charge_spin_or_raise` reconciles these with any `.gjf` template (when available) and otherwise raises a
-  user-facing error when `-q/--charge` is omitted for non-`.gjf` inputs. Always provide physically correct values.
+- **Charge/spin handling & workers:** The CLI requires `-q/--charge` for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided;
+  when ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the
+  total charge is inferred using ``extract.py``’s residue-aware logic. `resolve_charge_spin_or_raise` reconciles CLI input with
+  `.gjf` templates when available, and explicit `-q` always overrides derived values. UMA parallelism can be tuned via
+  ``--workers``/``--workers-per-nodes``; analytic Hessians are automatically disabled when `workers>1`. Always provide physically
+  correct states.
 - **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type="dlc"` can
   improve stability for small molecules.
 - **Freeze links (PDB only):** With `--freeze-links` (default), parent atoms of link hydrogens are detected and frozen;
@@ -468,6 +472,28 @@ def _maybe_convert_outputs(
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
+@click.option(
     "-m",
     "--multiplicity",
     "spin",
@@ -557,6 +583,9 @@ def _maybe_convert_outputs(
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     dist_freeze_raw: Sequence[str],
     one_based: bool,
@@ -574,7 +603,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[opt]",
+    )
 
     try:
         dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
@@ -597,6 +632,8 @@ def cli(
         # CLI overrides (defaults ← CLI)
         calc_cfg["charge"] = charge
         calc_cfg["spin"] = spin
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["dump"] = bool(dump)
         opt_cfg["out_dir"] = out_dir

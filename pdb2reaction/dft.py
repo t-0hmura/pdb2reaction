@@ -42,7 +42,9 @@ Description
   defaults for the chosen functional.
 - Charge/spin are resolved by internal helpers; .gjf templates may supply charge/spin when available.
   Provide explicit -q/--charge and -m/--multiplicity values whenever possible to enforce the intended state
-  (multiplicity > 1 selects UKS).
+  (multiplicity > 1 selects UKS). When ``-q`` is omitted but ``--ligand-charge`` is given for a parseable
+  complex structure, the total system charge is inferred using ``extract.py``’s residue-aware logic; an
+  explicit ``-q`` always takes precedence.
 - **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
     * Mulliken (charges: scf.hf.mulliken_pop; spins: scf.uhf.mulliken_spin_pop for UKS; RKS → zeros; failure → null)
     * meta‑Löwdin (charges: scf.hf.mulliken_pop_meta_lowdin_ao; spins: scf.uhf.mulliken_spin_pop_meta_lowdin_ao for UKS; RKS → zeros; not available or failure → null)
@@ -60,7 +62,9 @@ out_dir/ (default: ./result_dft/)
 Notes
 -----
 - Charge/spin resolution: -q/--charge and -m/--multiplicity may inherit values from .gjf templates when present.
-  For .pdb/.xyz/.trj (and other non-.gjf inputs), omitting -q/--charge is an error; no fallback to 0 occurs.
+  For non-.gjf inputs, omitting -q/--charge is allowed only when ``--ligand-charge`` is supplied; the full complex
+  is treated as an enzyme–substrate system and the total charge is derived with the same logic as ``extract.py``.
+  Otherwise the CLI aborts. Explicit ``-q`` overrides any derived charge.
   Spin defaults to 1 when unspecified. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
 - YAML overrides: --args-yaml points to a file with top-level keys "dft" (conv_tol, max_cycle,
@@ -364,6 +368,13 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
     "--convert-files/--no-convert-files",
@@ -400,6 +411,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
     spin: Optional[int],
     convert_files: bool,
     func_basis: str,
@@ -413,7 +425,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[dft]",
+    )
     try:
         time_start = time.perf_counter()
         # --------------------------

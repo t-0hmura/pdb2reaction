@@ -57,8 +57,10 @@ Optional optimizations
   - By default, both `--preopt` and `--endopt` are enabled.
 
 Charge/spin resolution
-  - `-q/--charge` is required unless the input is a `.gjf` template; otherwise the CLI aborts.
-    Multiplicity defaults to 1 when omitted.
+  - `-q/--charge` is required unless the input is a `.gjf` template **or** ``--ligand-charge`` is provided.
+    When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate
+    system and the total charge is inferred using ``extract.py``’s residue-aware logic. Multiplicity defaults to 1
+    when omitted, and an explicit `-q` overrides any derived charge.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -351,6 +353,28 @@ def _snapshot_geometry(g) -> Any:
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--scan-lists", "scan_lists_raw",
@@ -406,6 +430,9 @@ def _snapshot_geometry(g) -> Any:
 def cli(
     input_path: Path,
     charge: Optional[int],
+    ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     scan_lists_raw: Sequence[str],
     one_based: bool,
@@ -425,7 +452,13 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     geom_input_path = prepared_input.geom_path
-    charge, spin = resolve_charge_spin_or_raise(prepared_input, charge, spin)
+    charge, spin = resolve_charge_spin_or_raise(
+        prepared_input,
+        charge,
+        spin,
+        ligand_charge=ligand_charge,
+        prefix="[scan]",
+    )
     needs_pdb = input_path.suffix.lower() == ".pdb"
     needs_gjf = prepared_input.is_gjf
     ref_pdb = input_path.resolve() if needs_pdb else None
@@ -448,6 +481,8 @@ def cli(
         # CLI overrides
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
         opt_cfg["out_dir"] = out_dir
         # Do not use the optimizer's own dump per step; stage dumping is controlled separately.
         opt_cfg["dump"]    = False

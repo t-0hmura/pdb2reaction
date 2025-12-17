@@ -49,7 +49,11 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` (required for non-`.gjf` inputs) and `-m/--multiplicity` are reconciled with any `.gjf` template values: explicit CLI options win; otherwise template values are used, and omitting `-q/--charge` for non-`.gjf` inputs causes the CLI to abort. Override explicitly to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` (required for non-`.gjf` inputs **unless** ``--ligand-charge`` is supplied) and `-m/--multiplicity`
+  are reconciled with any `.gjf` template values: explicit CLI options win. When ``-q`` is omitted but ``--ligand-charge`` is set,
+  the full complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware
+  logic. Omitting both `-q` and `--ligand-charge` for non-`.gjf` inputs causes the CLI to abort. Override explicitly to avoid
+  unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
@@ -95,6 +99,7 @@ from .utils import (
     merge_freeze_atom_indices,
     prepare_input_structure,
     fill_charge_spin_from_gjf,
+    _derive_charge_from_ligand_charge,
     maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -538,6 +543,28 @@ def _optimize_single(
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
+    "--workers",
+    type=int,
+    default=CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-nodes",
+    "workers_per_nodes",
+    type=int,
+    default=CALC_KW["workers_per_nodes"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+)
+@click.option(
     "-m",
     "--multiplicity",
     "spin",
@@ -642,6 +669,9 @@ def cli(
     input_paths: Sequence[Path],
     mep_mode: str,
     charge: Optional[int],
+    ligand_charge: Optional[str],
+    workers: int,
+    workers_per_nodes: int,
     spin: Optional[int],
     freeze_links_flag: bool,
     max_nodes: int,
@@ -683,12 +713,18 @@ def cli(
             resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
                 resolved_charge, resolved_spin, prepared.gjf_template
             )
+        if resolved_charge is None and ligand_charge is not None:
+            resolved_charge = _derive_charge_from_ligand_charge(
+                prepared_inputs[0], ligand_charge, prefix="[path-opt]"
+            )
         if resolved_charge is None:
             resolved_charge = 0
         if resolved_spin is None:
             resolved_spin = 1
         calc_cfg["charge"] = int(resolved_charge)
         calc_cfg["spin"] = int(resolved_spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
 
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
