@@ -147,7 +147,7 @@ lbfgs:
 rfo:
   thresh: gau                # RFOptimizer convergence preset
   max_cycles: 10000          # iteration cap
-  print_every: 10            # logging stride
+  print_every: 100           # logging stride (matches shared opt defaults)
   min_step_norm: 1.0e-08     # minimum accepted step norm
   assert_min_step: true      # assert when steps stagnate
   rms_force: null            # explicit RMS force target
