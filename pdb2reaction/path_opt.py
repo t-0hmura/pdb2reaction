@@ -49,11 +49,11 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` (required for non-`.gjf` inputs **unless** ``--ligand-charge`` is supplied) and `-m/--multiplicity`
+- Charge/spin: `-q/--charge` (recommended for non-`.gjf` inputs; otherwise defaults to 0) and `-m/--multiplicity`
   are reconciled with any `.gjf` template values: explicit CLI options win. When ``-q`` is omitted but ``--ligand-charge`` is set,
   the full complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware
-  logic. Omitting both `-q` and `--ligand-charge` for non-`.gjf` inputs causes the CLI to abort. Override explicitly to avoid
-  unphysical conditions.
+  logic. If neither `-q` nor `--ligand-charge` is supplied, the charge falls back to 0; set it explicitly to avoid unphysical
+  conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
