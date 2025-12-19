@@ -1,7 +1,7 @@
 # `path-search` subcommand
 
 ## Overview
-Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together Growing String Method (GSM) segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. With `--mep-mode dmf`, the same recursive workflow runs using DMF-generated segments instead of GSM, and **GSM is now the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist.
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist.
 
 ## Usage
 ```bash
@@ -37,29 +37,29 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
-| `--max-nodes INT` | Internal nodes for GSM segments (`String` has `max_nodes + 2` images). | `10` |
-| `--max-cycles INT` | Maximum GSM optimization cycles. | `300` |
-| `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair. | `True` |
+| `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |
+| `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
+| `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair (GSM only). | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
-| `--dump BOOL` | Explicit `True`/`False`. Dump GSM and single-structure trajectories/restarts. | `False` |
+| `--dump BOOL` | Explicit `True`/`False`. Dump MEP (GSM/DMF) and single-structure trajectories/restarts. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before GSM (recommended). | `True` |
+| `--preopt BOOL` | Explicit `True`/`False`. Pre-optimise each endpoint before MEP search (recommended). | `True` |
 | `--align / --no-align` | Flag toggle. Align all inputs to the first structure before searching. | `--align` |
 | `--ref-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 
 ## Workflow
-1. **Initial GSM per pair** – run `GrowingString` between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
+1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
 2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
 3. **Decide between kink vs. refinement**:
    - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
-   - Otherwise, launch a **refinement GSM** between `End1` and `End2` to sharpen the barrier.
+   - Otherwise, launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
 4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
-5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a bridge GSM. When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
+5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a bridge MEP segment (GSM/DMF). When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
 6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-pdb` to merge pocket trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
 
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. UMA calculators are constructed once and shared across all structures for efficiency.
@@ -75,7 +75,7 @@ out_dir/ (default: ./result_path_search/)
 ├─ mep_plot.png             # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
 ├─ energy_diagram.html      # Plotly state-energy diagram (relative to reactant)
 ├─ energy_diagram.png       # Static export of the energy diagram
-└─ segments/seg_000_*/      # GSM dumps, HEI snapshots, kink/refinement diagnostics per segment
+└─ segments/seg_000_*/      # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
 ```
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
 
@@ -83,7 +83,7 @@ out_dir/ (default: ./result_path_search/)
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
 - `--ref-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
-- When `--dump` is set, GSM and single-structure optimizations emit trajectories and restart YAML files.
+- When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories and restart YAML files.
 - Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to 0 and multiplicity to `1`.
 
 ## YAML configuration (`--args-yaml`)
