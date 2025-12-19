@@ -127,7 +127,8 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 ## Outputs
 ```
 out_dir/ (default: ./result_all/)
-├─ summary.log               # Human-readable digest (also mirrored under path_search/*/summary.log)
+├─ summary.log               # formatted summary for quick inspection
+├─ summary.yaml              # YAML version summary
 ├─ pockets/                  # Per-input pocket PDBs when extraction runs
 ├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/              # GSM results: trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
@@ -135,6 +136,22 @@ out_dir/ (default: ./result_all/)
 └─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
 ```
 - Console logs summarising pocket charge resolution, YAML contents, scan stages, GSM progress, and per-stage timing.
+
+### Reading `summary.log`
+The log is organized into numbered sections:
+- **[1] Global MEP overview** – image/segment counts, MEP trajectory plot paths, and the aggregate MEP energy diagram.
+- **[2] Segment-level MEP summary (UMA path)** – per-segment barriers (`ΔE‡`), reaction energies (`ΔE`), and bond-change summaries.
+- **[3] Per-segment post-processing (TSOPT / Thermo / DFT)** – per-segment TS imaginary frequency checks, IRC outputs, and UMA/thermo/DFT energy tables.
+- **[4] Energy diagrams (overview)** – diagram tables for MEP/UMA/Gibbs/DFT series plus an optional cross-method summary table.
+- **[5] Output directory structure** – a compact tree of generated files with inline annotations.
+
+### Reading `summary.yaml`
+The YAML is a compact, machine-readable summary. Common top-level keys include:
+- `out_dir`, `n_images`, `n_segments` – run metadata and total counts.
+- `segments` – list of per-segment entries with `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, and `bond_changes`.
+- `energy_diagrams` (optional) – diagram payloads with `labels`, `energies_kcal`, `energies_au`, `ylabel`, and `image` paths.
+
+`summary.yaml` intentionally omits the formatted tables and filesystem tree that appear in `summary.log`.
 
 ## Notes
 - Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/GSM/TSOPT/DFT.
