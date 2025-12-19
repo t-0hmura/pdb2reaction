@@ -12,9 +12,9 @@ dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
     "fairchem-core[extras]",
-    "pysisyphus @ git+https://github.com/t-0hmura/torch_pysis.git", 
-    "thermoanalysis @ git+https://github.com/t-0hmura/thermoanalysis.git",
-    "torch-dmf @ git+https://github.com/t-0hmura/torch-dmf.git",
+    "pysisyphus @ git+https://github.com/t-0hmura/torch_pysis.git@v0.1.0", 
+    "thermoanalysis @ git+https://github.com/t-0hmura/thermoanalysis.git@v0.1.0",
+    "torch-dmf @ git+https://github.com/t-0hmura/torch-dmf.git@v0.2.0",
     "torch>=2.6.0",
     "torch_geometric>=2.7.0",
     "torch_scatter>=2.1.2",
