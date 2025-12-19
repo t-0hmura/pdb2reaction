@@ -30,7 +30,7 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process **en
 
 ## 1. Installation
 
-`pdb2reaction` is intended for Linux‑like environments (local workstations or HPC clusters) with a CUDA‑capable GPU. Several dependencies – notably **PyTorch**, **fairchem‑core (UMA)**, and **gpu4pyscf‑cuda12x** – expect a working CUDA installation.
+`pdb2reaction` is intended for Linux environments (local workstations or HPC clusters) with a CUDA‑capable GPU. Several dependencies – notably **PyTorch**, **fairchem‑core (UMA)**, and **gpu4pyscf‑cuda12x** – expect a working CUDA installation.
 
 Refer to the upstream projects for additional details:
 
