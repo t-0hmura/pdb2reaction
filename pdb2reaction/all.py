@@ -104,9 +104,9 @@ Pipeline overview
           • multi-input: one template per pocket input in reaction order,
           • single+scan: the same original template is reused for all scan-derived structures.
 
-    **(2b) Pairwise GSM concatenation:** ``--refine-path False``
-      - Runs ``path-opt`` once for each adjacent pair in the ordered series and concatenates the resulting
-        trajectories into ``<out-dir>/path_opt/mep.trj`` (no recursive search).
+    **(2b) Pairwise MEP concatenation (GSM/DMF):** ``--refine-path False``
+      - Runs ``path-opt`` once for each adjacent pair in the ordered series (GSM or DMF, per ``--mep-mode``)
+        and concatenates the resulting trajectories into ``<out-dir>/path_opt/mep.trj`` (no recursive search).
       - Full-system merge is not performed in this mode.
 
     Shared knobs for the MEP step:
@@ -238,7 +238,7 @@ Outputs (& Directory Layout)
   │   ├─ hei_seg_XX.(xyz|pdb|gjf)        # HEI snapshots per reactive segment
   │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb / PDB input)
   │   ├─ mep_w_ref_seg_XX.pdb            # merged per-segment trajectories (when --ref-pdb / PDB input; not mirrored)
-  │   ├─ seg_XXX_~~~/ ...                # GSM internals / recursion tree
+  │   ├─ seg_XXX_~~~/ ...                # GSM/DMF internals / recursion tree
   │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
   │       ├─ irc/ ...

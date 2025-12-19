@@ -1,8 +1,8 @@
 # pdb2reaction/path_search.py
 
 """
-path_search — Recursive GSM segmentation to build a continuous multistep MEP
-============================================================================
+path_search — Recursive MEP segmentation (GSM/DMF) to build a continuous multistep MEP
+=============================================================================
 
 Usage (CLI)
 -----------
@@ -35,7 +35,7 @@ Recommended/common:
     --mep-mode
         Segment generator: GSM (string) or DMF (direct max flux); default gsm.
     --max-nodes
-        Internal nodes for segment GSM; default 10.
+        Internal nodes per MEP segment (GSM string or DMF path); default 10.
     --max-cycles
         Max optimization cycles; default 300.
     --climb {True|False}
@@ -72,25 +72,25 @@ Examples
 Description
 -----------
 Constructs a continuous minimum‑energy path (MEP) between two or more structures ordered along a reaction.
-The method runs a Growing String Method (GSM) to localize barriers and **recursively** refines only those
-regions that exhibit covalent bond changes. Kinks (no bond change) are represented by linearly interpolated,
-individually optimized images. Multi‑structure inputs are processed per adjacent pair and stitched into a single MEP.
-A single UMA calculator (uma_pysis) is shared serially across all stages. Configuration precedence:
+The method runs GSM or DMF segments to localize barriers and **recursively** refines only those regions that
+exhibit covalent bond changes. Kinks (no bond change) are represented by linearly interpolated, individually
+optimized images. Multi‑structure inputs are processed per adjacent pair and stitched into a single MEP. A
+single UMA calculator (uma_pysis) is shared serially across all stages. Configuration precedence:
 **YAML > CLI > defaults**.
 
 Workflow
 --------
-1) Initial path (per adjacent pair A→B): run GSM to obtain a preliminary MEP.
+1) Initial path (per adjacent pair A→B): run GSM or DMF to obtain a preliminary MEP.
 2) Localize barrier: find the highest‑energy image (HEI); optimize HEI±1 as single structures → two nearby minima,
    End1 and End2.
 3) Refine the step:
    - If no covalent bond change between End1–End2 (a “kink”): insert `search.kink_max_nodes` linearly interpolated
      nodes and optimize each; **skip** GSM.
-   - Otherwise: run a refinement GSM between End1 and End2. With `refine-mode=minima`, End1/End2 are taken from the
+   - Otherwise: run a refinement GSM/DMF segment between End1 and End2. With `refine-mode=minima`, End1/End2 are taken from the
      nearest local minima flanking the HEI instead of strictly HEI±1.
 4) Recurse selectively: evaluate covalent changes for (A→End1) and (End2→B); recurse only on sides that change.
 5) Stitch subpaths: concatenate sub‑MEPs with duplicate removal via RMSD. If endpoints mismatch beyond
-   `search.bridge_rmsd_thresh`, insert a *bridge* GSM.
+   `search.bridge_rmsd_thresh`, insert a *bridge* MEP segment (GSM/DMF).
    - If the interface itself shows covalent changes, insert a **new recursive segment** instead of a bridge.
 6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
    refine `freeze_atoms` to match the first input. If `--ref-pdb` is supplied, merge pocket trajectories
@@ -110,12 +110,12 @@ out_dir/ (default: ./result_path_search/)
   ├─ mep_plot.png                    # ΔE profile vs. image index (from trj2fig)
   ├─ energy_diagram_MEP.png          # PNG export of the diagram when kaleido is installed
   └─ segments/
-      ├─ seg_000_mep/ ...                # Initial GSM for each primary segment
+      ├─ seg_000_mep/ ...                # Initial GSM/DMF for each primary segment
       ├─ seg_000_left_<lbfgs|rfo>_opt/   # HEI-1 single-structure optimization
       ├─ seg_000_right_<lbfgs|rfo>_opt/  # HEI+1 single-structure optimization
-      ├─ seg_000_refine_mep/ ...         # Refinement GSM (bond-change segments)
+      ├─ seg_000_refine_mep/ ...         # Refinement GSM/DMF (bond-change segments)
       ├─ seg_000_kink_...                # Kink interpolation optimizations (when applicable)
-      ├─ seg_000_seg_002_bridge_mep/ ... # Bridge GSMs; path indicates bridged segments
+      ├─ seg_000_seg_002_bridge_mep/ ... # Bridge GSM/DMF segments; path indicates bridged segments
       ├─ seg_001_...                     # Left-side recursive substeps (if any)
       └─ seg_002_...                     # Right-side recursive substeps (if any)
 
@@ -129,7 +129,7 @@ Notes
   and `delta_fraction` thresholds.
 - Concatenation policy:
   - Endpoint duplicate removal when RMSD ≤ `search.stitch_rmsd_thresh` (default 1e‑4 Å).
-  - Bridge GSM when gap RMSD > `search.bridge_rmsd_thresh` (default 1e‑4 Å).
+  - Bridge GSM/DMF segment when gap RMSD > `search.bridge_rmsd_thresh` (default 1e‑4 Å).
   - If an interface shows covalent changes, insert a **new recursive segment** instead of a bridge.
 - Nodes and recursion:
   - Segment vs bridge nodes can differ via `search.max_nodes_segment` and `search.max_nodes_bridge` (segment defaults to `--max-nodes`).
@@ -137,7 +137,8 @@ Notes
   - Recursion depth is capped by `search.max_depth` (default 10).
 - Calculators & optimizers:
   - A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
-  - GSM employs pysisyphus `GrowingString` + `StringOptimizer`; single‑structure uses LBFGS or RFO.
+  - GSM employs pysisyphus `GrowingString` + `StringOptimizer`; DMF uses the Direct Max Flux interpolator.
+    Single‑structure optimization uses LBFGS or RFO.
 - Final merge rule with `--align True`: when `--ref-pdb` is provided, the **first** reference PDB is used for *all* pairs
   in the final merge (passing one file is sufficient). Without `--align`, supply one reference PDB per input.
 - Console output prints the linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) and the exact

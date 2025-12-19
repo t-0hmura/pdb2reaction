@@ -24,7 +24,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 ### Key behaviours
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
 - **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. When both are omitted, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
-- **Growing string**: `--max-nodes` controls the number of *internal* nodes (total images = `max_nodes + 2`). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
+- **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
 - **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.
 - **Exit codes**: `0` success, `3` optimizer failure, `4` trajectory write error, `5` HEI export error, `130` interrupt, `1` unexpected error.
@@ -42,13 +42,13 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
 | `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
-| `--dump BOOL` | Dump GSM trajectories/restarts. | `False` |
+| `--dump BOOL` | Dump MEP trajectories/restarts (GSM/DMF). | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `light` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | _None_ |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
-| `--preopt BOOL` | Pre-optimise each endpoint with the selected single-structure optimizer before alignment/GSM. | `False` |
+| `--preopt BOOL` | Pre-optimise each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
 | `--fix-ends BOOL` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
 
@@ -63,7 +63,7 @@ out_dir/
 ├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created only when scan output exists)
 └─ <optimizer dumps/restarts>  # Present when dumping is enabled
 ```
-Console output echoes the resolved YAML blocks and prints cycle-by-cycle GSM progress with timing information.
+Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
 
 ## YAML configuration (`--args-yaml`)
 YAML inputs override CLI, which override the defaults listed below.
