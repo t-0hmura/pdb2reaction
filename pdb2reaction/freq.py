@@ -414,7 +414,12 @@ def _write_mode_trj_and_pdb(geom,
     converting the .trj using the input PDB as the template; on failure, an ASE fallback is used.
     Set `write_pdb=False` to skip PDB generation.
     """
-    ref_ang = geom.cart_coords.reshape(-1, 3) * BOHR2ANG
+    cart_coords = getattr(geom, "cart_coords", None)
+    if cart_coords is None:
+        cart_coords = getattr(geom, "coords", None)
+    if cart_coords is None:
+        raise AttributeError("Geometry object must provide cart_coords or coords.")
+    ref_ang = np.asarray(cart_coords).reshape(-1, 3) * BOHR2ANG
     mode = mode_vec_3N.reshape(-1, 3).copy()
     mode /= np.linalg.norm(mode)
 
