@@ -346,7 +346,7 @@ For a full matrix of options and YAML schemas, see `docs/all.md` in the reposito
 
 Every `pdb2reaction all` run writes:
 
-- `summary.log` – formatted for quick inspection, and
+- `summary.log` – formatted summary for quick inspection, and
 - `summary.yaml` – YAML version of the same information.
 
 They typically contain:

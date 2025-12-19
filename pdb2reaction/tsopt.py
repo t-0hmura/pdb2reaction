@@ -1672,14 +1672,9 @@ def cli(
                 out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj"
                 out_pdb = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb"
 
-                @dataclass
-                class _GProxy:
-                    atoms: List[str]
-                    coords: np.ndarray
-                gproxy = _GProxy(atoms=geometry.atoms, coords=geometry.coords.copy())
                 ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
                 _write_mode_trj_and_pdb(
-                    gproxy,
+                    geometry,
                     v_cart,
                     out_trj,
                     amplitude_ang=0.8,
