@@ -23,13 +23,6 @@ with **machine learning interatomic potential** using Meta’s UMA model.
 All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Off course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
 
 On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process **entire protein–ligand complexes** by scaling UMA inference across nodes. Set `workers` and `workers_per_nodes` to enable parallel calculation; see [`docs/uma_pysis.md`](docs/uma_pysis.md) for configuration details.
-
-Typical use cases:
-
-- mapping out plausible reaction mechanisms from a handful of crystal structures or MD snapshots,
-- refining TS candidates obtained from other tools,
-- scanning key distances to generate intermediates,
-- building Gibbs and DFT//ML energy diagrams.
   
 > **Important:** Input PDB files must already contain **hydrogen atoms**.
 
