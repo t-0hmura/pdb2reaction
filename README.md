@@ -39,7 +39,7 @@ Refer to the upstream projects for additional details:
 
 ### 1.1 Quick start
 
-Below is a minimal setup that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system.
+Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system.
 
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
