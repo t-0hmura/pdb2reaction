@@ -234,7 +234,7 @@ Provide exactly one PDB and enable `--tsopt`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
+pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True
 ```
 
 **Richer example**
