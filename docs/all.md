@@ -95,9 +95,9 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--dump BOOLEAN` | Dump MEP (GSM/DMF) and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
 | `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `--convert-files` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
-| `--preopt BOOLEAN` | Pre-optimise pocket endpoints before MEP search (also the default for scan preopt). | `True` |
+| `--preopt BOOLEAN` | Pre-optimize pocket endpoints before MEP search (also the default for scan preopt). | `True` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ (uses YAML/default of `FiniteDifference`) |
-| `--tsopt BOOLEAN` | Run TS optimisation + IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
+| `--tsopt BOOLEAN` | Run TS optimization + IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
 | `--thermo BOOLEAN` | Run vibrational analysis (`freq`) on R/TS/P and build UMA Gibbs diagram. | `False` |
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy + optional DFT//UMA diagrams. | `False` |
 | `--dft-engine [gpu\|cpu\|auto]` | Preferred backend for the DFT stage (`auto` tries GPU then CPU). | `gpu` |
@@ -107,7 +107,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
 | `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
 | `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
-| `--freq-sort [value\|abs]` | Override freq mode sorting behaviour. | _None_ |
+| `--freq-sort [value\|abs]` | Override freq mode sorting behavior. | _None_ |
 | `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | _None_ |
 | `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | _None_ |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
@@ -121,8 +121,8 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
 | `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |
 | `--scan-relax-max-cycles INT` | Override scan relaxation max cycles per step. | _None_ |
-| `--scan-preopt BOOLEAN` | Override the scan preoptimisation toggle (otherwise `--preopt` propagates). | _None_ |
-| `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimisation toggle. | _None_ |
+| `--scan-preopt BOOLEAN` | Override the scan preoptimization toggle (otherwise `--preopt` propagates). | _None_ |
+| `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimization toggle. | _None_ |
 
 ## Outputs
 ```
@@ -132,10 +132,10 @@ out_dir/ (default: ./result_all/)
 ├─ pockets/                  # Per-input pocket PDBs when extraction runs
 ├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/              # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
-├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimisation, IRC, freq, DFT, diagrams)
+├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimization, IRC, freq, DFT, diagrams)
 └─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
 ```
-- Console logs summarising pocket charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
+- Console logs summarizing pocket charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
 
 ### Reading `summary.log`
 The log is organized into numbered sections:

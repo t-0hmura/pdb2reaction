@@ -109,4 +109,4 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb po
 - Waters can be excluded with `--include-H2O false`.
 - Backbone trimming plus capping respect chain breaks and PRO/HYP safeguards as outlined above; non-amino residues never lose backbone-like atom names.
 - Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
-- INFO logs summarise residue selection, truncation counts, and charge breakdowns.
+- INFO logs summarize residue selection, truncation counts, and charge breakdowns.

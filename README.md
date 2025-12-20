@@ -1,4 +1,4 @@
-# pdb2reaction: automated reaction-path modelling directly from PDB structures
+# pdb2reaction: automated reaction-path modeling directly from PDB structures
 
 ## Overview
 
@@ -14,13 +14,13 @@ for modeling enzymatic reaction pathways.
 
 Given one or more full protein–ligand PDBs `.pdb` (reactant, product, intermediates if you need), it automatically:
 
-- extracts a **active site** around user‑defined substrates to build **cluster model**,
-- explores **minimum‑energy paths (MEPs)** with path optimisation methods such as (growing string method and direct max flux method),
+- extracts an **active site** around user‑defined substrates to build **cluster model**,
+- explores **minimum‑energy paths (MEPs)** with path optimization methods such as the growing string method and direct max flux method,
 - _optionally_ refines **transition states**, runs **vibrational analysis**, **irc calculations** and **DFT single‑point calculations**
 
 with **machine learning interatomic potential** using Meta’s UMA model.
    
-All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Off course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
+All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Of course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
 
 On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process **entire protein–ligand complexes** by scaling UMA inference across nodes. Set `workers` and `workers_per_nodes` to enable parallel calculation; see [`docs/uma_pysis.md`](docs/uma_pysis.md) for configuration details.
   
@@ -150,7 +150,7 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-The `all` workflow is an **orchestrator**: it chains pocket extraction, MEP search, TS optimisation, vibrational analysis, and optional DFT single points into a single command.
+The `all` workflow is an **orchestrator**: it chains pocket extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
 
 All high‑level workflows share two important options:
 
@@ -179,16 +179,16 @@ pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
 pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all --tsopt True --thermo True --dft True
 ```
 
-Behaviour:
+Behavior:
 
 - takes two or more **full systems** in reaction order,
 - extracts catalytic pockets for each structure,
 - performs a **recursive MEP search** via `path_search` by default,
 - optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
 - when PDB templates are available, merges the pocket‑level MEP back into the **full system**,
-- optionally runs TS optimisation, vibrational analysis, and DFT single points for each segment.
+- optionally runs TS optimization, vibrational analysis, and DFT single points for each segment.
 
-This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modelling).
+This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modeling).
 
 > **Important:** You need to input structures in **same atomic order**. And PDB structures must have **hydrogen atoms**.  
 ---
@@ -243,10 +243,10 @@ pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
 pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True --thermo True --dft True --out-dir ./result_tsopt_only
 ```
 
-Behaviour:
+Behavior:
 
 - skips the MEP/path search entirely,
-- refines the **pocket TS** with TS optimisation,
+- refines the **pocket TS** with TS optimization,
 - runs a **IRC** in both directions and optimize both ends to relax down to R and P minima,
 - can then perform `freq` and `dft` on the R/TS/P,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams.
@@ -257,7 +257,7 @@ Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored u
 
 ---
 
-## 4. Important CLI options and behaviours
+## 4. Important CLI options and behaviors
 
 Below are the most commonly used options across workflows.
 
@@ -271,7 +271,7 @@ Below are the most commonly used options across workflows.
   When pocket extraction is skipped, XYZ/GJF inputs are also accepted.
 
 - `-c, --center TEXT`  
-  Defines the substrate / pocket centre for extraction. Supports:
+  Defines the substrate / pocket center for extraction. Supports:
 
   - PDB paths,
   - residue IDs, e.g. `A:123,B:456`,
@@ -283,7 +283,7 @@ Below are the most commonly used options across workflows.
   - a single integer (total pocket charge), or
   - a mapping, e.g. `"SAM:1,GPP:-3"`.
 
-  The total charge of the first pocket is rounded to an integer and reused for scan, GSM, and TS optimisation runs.
+  The total charge of the first pocket is rounded to an integer and reused for scan, GSM, and TS optimization runs.
 
 - `-q, --charge INT`  
   Hard override of the total system charge. This bypasses:
@@ -310,13 +310,13 @@ Below are the most commonly used options across workflows.
   Top‑level output directory. All intermediate files, logs, and figures are placed here.
 
 - `--tsopt BOOLEAN`  
-  Enable TS optimisation and IRC propagation. Required for TSOPT‑only mode, but also useful in multi‑structure workflows to refine TS along the path.
+  Enable TS optimization and IRC propagation. Required for TSOPT‑only mode, but also useful in multi‑structure workflows to refine TS along the path.
 
 - `--thermo BOOLEAN`  
   Run vibrational analysis and compute thermochemistry on UMA geometries. Produces Gibbs free energies and corresponding energy diagrams.
 
 - `--dft BOOLEAN`  
-  Perform DFT single‑point calculations on UMA optimised structures via PySCF / gpu4pyscf. When combined with `--thermo True`, this adds DFT//UMA Gibbs diagrams.
+  Perform DFT single‑point calculations on UMA optimized structures via PySCF / gpu4pyscf. When combined with `--thermo True`, this adds DFT//UMA Gibbs diagrams.
 
 - `--refine-path BOOLEAN`
   Switch between:
@@ -326,10 +326,10 @@ Below are the most commonly used options across workflows.
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
 - `--opt-mode light | heavy`
-  Switch Optimization / TS refinement method with Light (LBFGS and Dimer method) or Heavy (Hessian-using RFO and RS-I-RFO) algorithm. 
+  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms.
 
 - `--mep-mode gsm | dmf`
-  Switch MEP refinement method with Growing String Method (GSM) or Direct Max Flux (DMF) Method.
+  Switch MEP refinement between the Growing String Method (GSM) and Direct Max Flux (DMF).
 
 For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
 
