@@ -15,7 +15,7 @@ for modeling enzymatic reaction pathways.
 Given one or more full protein–ligand PDBs `.pdb` (reactant, product, intermediates if you need), it automatically:
 
 - extracts an **active site** around user‑defined substrates to build **cluster model**,
-- explores **minimum‑energy paths (MEPs)** with path optimization methods such as the growing string method and direct max flux method,
+- explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method and direct max flux method,
 - _optionally_ refines **transition states**, runs **vibrational analysis**, **irc calculations** and **DFT single‑point calculations**
 
 with **machine learning interatomic potential** using Meta’s UMA model.
@@ -39,7 +39,7 @@ Refer to the upstream projects for additional details:
 
 ### 1.1 Quick start
 
-Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system.
+Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. Below assumes the default GSM MEP mode (no DMF). For DMF, install cyipopt via conda first.
 
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
@@ -67,7 +67,7 @@ huggingface-cli login
 
 You only need to do this once per machine / environment.
 
-- If you want to use Direct Max flux method for MEP search, create conda environment and install cyipopt before installation.
+- If you want to use Direct Max Flux method for MEP search, create conda environment and install cyipopt before installation.
   ```bash
   # Create and activate a dedicated conda environment
   conda create -n pdb2reaction python=3.11 -y
@@ -215,7 +215,7 @@ Key points:
 
 - `--scan-lists` describes **staged distance scans** on the extracted pocket.
 - Each tuple `(i, j, target_Å)` is:
-  - 1‑based indices taken from the original full PDB,
+  - 1‑based atom order indices in the input file after parsing (not the PDB ATOM serial number).,
   - automatically remapped to the pocket indices.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
