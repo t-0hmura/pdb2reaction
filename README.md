@@ -283,7 +283,7 @@ Below are the most commonly used options across workflows.
   - a single integer (total pocket charge), or
   - a mapping, e.g. `"SAM:1,GPP:-3"`.
 
-  The total charge of the first pocket is rounded to an integer and reused for scan, GSM, and TS optimization runs.
+  The total charge of the first pocket is summed and used for scan, GSM, and TS optimization runs.
 
 - `-q, --charge INT`  
   Hard override of the total system charge. This bypasses:
