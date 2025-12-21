@@ -23,11 +23,11 @@ hessian = calc.get_hessian(["C", "O"], coords_bohr)
 - **Hessian modes** – `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
 - **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. Hessians either drop frozen degrees of freedom (`return_partial_hessian=True`) or zero corresponding columns in the full matrix.
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian in the model's native dtype (typically float32).
-- **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_nodes` workers per node, useful for batch throughput. Analytical Hessians are skipped in this mode.
+- **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput. Analytical Hessians are skipped in this mode.
 
 ## HPC example: PBS + Open MPI + Ray
 
-`workers` / `workers_per_nodes` can be scaled across nodes by launching a Ray cluster under your scheduler. The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system (adjust module names, ports, and resource requests to match your environment):
+`workers` / `workers_per_node` can be scaled across nodes by launching a Ray cluster under your scheduler. The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system (adjust module names, ports, and resource requests to match your environment):
 
 ```bash
 #!/bin/bash
@@ -168,7 +168,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `model` | UMA pretrained model name. | `"uma-s-1p1"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
-| `workers` / `workers_per_nodes` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
+| `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
 | `freeze_atoms` | List of 0-based atom indices to freeze. | `None` |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |

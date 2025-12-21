@@ -1924,10 +1924,10 @@ def _merge_final_and_write(final_images: List[Any],
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    "--workers-per-nodes",
-    "workers_per_nodes",
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_nodes"],
+    default=CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -2021,7 +2021,7 @@ def cli(
     charge: Optional[int],
     ligand_charge: Optional[str],
     workers: int,
-    workers_per_nodes: int,
+    workers_per_node: int,
     spin: Optional[int],
     freeze_links_flag: bool,
     max_nodes: int,
@@ -2154,7 +2154,7 @@ def cli(
         calc_cfg["charge"] = int(resolved_charge)
         calc_cfg["spin"] = int(resolved_spin)
         calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
+        calc_cfg["workers_per_node"] = int(workers_per_node)
 
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)

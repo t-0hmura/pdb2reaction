@@ -195,10 +195,10 @@ def _echo_convert_trj_if_exists(
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    "--workers-per-nodes",
-    "workers_per_nodes",
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW_DEFAULT["workers_per_nodes"],
+    default=CALC_KW_DEFAULT["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -248,7 +248,7 @@ def cli(
     charge: Optional[int],
     ligand_charge: Optional[str],
     workers: int,
-    workers_per_nodes: int,
+    workers_per_node: int,
     spin: Optional[int],
     max_cycles: Optional[int],
     step_size: Optional[float],
@@ -287,7 +287,7 @@ def cli(
         calc_cfg["charge"] = int(charge)
         calc_cfg["spin"]   = int(spin)
         calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
+        calc_cfg["workers_per_node"] = int(workers_per_node)
 
         if hessian_calc_mode is not None:
             calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
