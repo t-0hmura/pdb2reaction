@@ -34,7 +34,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
 | `-q, --charge INT` | Total charge. Required unless the first input is a `.gjf` template that already stores charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex even when pockets are skipped. | `None` |
-| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |

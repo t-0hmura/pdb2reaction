@@ -49,12 +49,12 @@ Description
 - Default Hessian mode at construction is `"FiniteDifference"`. If `hessian_calc_mode`
   is falsy *or unrecognized* in `get_hessian`, `"FiniteDifference"` is used.
 
-- **Parallel inference workers** (`workers`, `workers_per_nodes`):
+- **Parallel inference workers** (`workers`, `workers_per_node`):
     * If `workers > 1`, this wrapper directly instantiates FAIR‑Chem's
       `ParallelMLIPPredictUnit` (instead of calling `pretrained_mlip.get_predict_unit`)
       using:
         - `num_workers = workers`
-        - `num_workers_per_node = workers_per_nodes`
+        - `num_workers_per_node = workers_per_node`
     * When `workers>1`, FAIR‑Chem returns a parallel predictor that does **not**
       expose `predictor.model`. Therefore:
         - all `predictor.model`-related operations (eval/train toggles, dropout
@@ -147,7 +147,7 @@ CALC_KW: Dict[str, Any] = {
     # Device & graph construction
     "device": "auto",         # str, "cuda" | "cpu" | "auto"
     "workers": 1,             # int, predictor workers; if >1, ParallelMLIPPredictUnit is instantiated directly and Analytical Hessian is disabled
-    "workers_per_nodes": 1,   # int, num_workers_per_node passed to ParallelMLIPPredictUnit when workers>1
+    "workers_per_node": 1,   # int, num_workers_per_node passed to ParallelMLIPPredictUnit when workers>1
     "max_neigh": None,        # Optional[int], override model's neighbor cap
     "radius": None,           # Optional[float], cutoff radius (Å)
     "r_edges": False,         # bool, store edge vectors in graph (UMA option)
@@ -174,7 +174,7 @@ class UMAcore:
     Notes on `workers`
     ------------------
     If `workers > 1`, this wrapper directly instantiates `ParallelMLIPPredictUnit`
-    (with `num_workers=workers` and `num_workers_per_node=workers_per_nodes`) which
+    (with `num_workers=workers` and `num_workers_per_node=workers_per_node`) which
     typically does not expose `predictor.model`. In that situation, this wrapper will:
       - skip all `predictor.model` related operations (eval/dropout/etc.)
       - disallow Analytical Hessians (caller should use FD)
@@ -191,7 +191,7 @@ class UMAcore:
         task_name: str = "omol",
         device: str = "auto",
         workers: int = 1,
-        workers_per_nodes: int = 1,
+        workers_per_node: int = 1,
         max_neigh: Optional[int] = None,
         radius: Optional[float] = None,
         r_edges: bool = False,
@@ -206,9 +206,9 @@ class UMAcore:
         if self.workers < 1:
             self.workers = 1
 
-        self.workers_per_nodes = int(workers_per_nodes) if workers_per_nodes is not None else 1
-        if self.workers_per_nodes < 1:
-            self.workers_per_nodes = 1
+        self.workers_per_node = int(workers_per_node) if workers_per_node is not None else 1
+        if self.workers_per_node < 1:
+            self.workers_per_node = 1
 
         # If workers>1, we use ParallelMLIPPredictUnit directly.
         self.parallel_predict = self.workers > 1
@@ -238,7 +238,7 @@ class UMAcore:
                 atom_refs=atom_refs,
                 form_elem_refs=form_elem_refs,
                 num_workers=self.workers,
-                num_workers_per_node=self.workers_per_nodes,
+                num_workers_per_node=self.workers_per_node,
             )
         else:
             # Keep a defensive fallback if the installed fairchem build doesn't accept `workers`
@@ -438,7 +438,7 @@ class uma_pysis(Calculator):
         task_name: str = CALC_KW["task_name"],
         device: str = CALC_KW["device"],
         workers: int = CALC_KW["workers"],
-        workers_per_nodes: int = CALC_KW["workers_per_nodes"],
+        workers_per_node: int = CALC_KW["workers_per_node"],
         out_hess_torch: bool = CALC_KW["out_hess_torch"],
         max_neigh: Optional[int] = CALC_KW["max_neigh"],
         radius: Optional[float] = CALC_KW["radius"],
@@ -464,7 +464,7 @@ class uma_pysis(Calculator):
             If `workers > 1`, this wrapper instantiates `ParallelMLIPPredictUnit`
             directly (and `predictor.model` is not exposed); Hessian is forced
             to FiniteDifference.
-        workers_per_nodes : int, default 1
+        workers_per_node : int, default 1
             Passed as `num_workers_per_node` to `ParallelMLIPPredictUnit` when
             `workers > 1`.
         freeze_atoms : list[int], optional
@@ -487,7 +487,7 @@ class uma_pysis(Calculator):
             task_name=task_name,
             device=device,
             workers=workers,
-            workers_per_nodes=workers_per_nodes,
+            workers_per_node=workers_per_node,
             max_neigh=max_neigh,
             radius=radius,
             r_edges=r_edges,

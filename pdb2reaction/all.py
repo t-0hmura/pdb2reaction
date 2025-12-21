@@ -418,7 +418,7 @@ def _build_calc_cfg(
     charge: int,
     spin: int,
     workers: Optional[int] = None,
-    workers_per_nodes: Optional[int] = None,
+    workers_per_node: Optional[int] = None,
     yaml_cfg: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Return a UMA calculator configuration honoring YAML overrides when provided."""
@@ -427,8 +427,8 @@ def _build_calc_cfg(
     cfg["spin"] = int(spin)
     if workers is not None:
         cfg["workers"] = int(workers)
-    if workers_per_nodes is not None:
-        cfg["workers_per_nodes"] = int(workers_per_nodes)
+    if workers_per_node is not None:
+        cfg["workers_per_node"] = int(workers_per_node)
     if yaml_cfg:
         apply_yaml_overrides(
             yaml_cfg,
@@ -1797,10 +1797,10 @@ def _irc_and_match(
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    "--workers-per-nodes",
-    "workers_per_nodes",
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_nodes"],
+    default=CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -2132,7 +2132,7 @@ def cli(
     ligand_charge: Optional[str],
     charge_override: Optional[int],
     workers: int,
-    workers_per_nodes: int,
+    workers_per_node: int,
     verbose: bool,
     spin: int,
     freeze_links_flag: bool,
@@ -2468,7 +2468,7 @@ def cli(
         q_int,
         spin,
         workers=workers,
-        workers_per_nodes=workers_per_nodes,
+        workers_per_node=workers_per_node,
         yaml_cfg=yaml_cfg,
     )
 

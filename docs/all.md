@@ -84,7 +84,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex. | `None` |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
-| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
 | `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |

@@ -10,7 +10,7 @@ Usage (CLI)
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
         [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
-        [--workers <int>] [--workers-per-nodes <int>] \
+        [--workers <int>] [--workers-per-node <int>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
         [--convert-files | --no-convert-files]
 
@@ -21,7 +21,7 @@ Examples
 
     # RFO with trajectory dumps, extra UMA workers, and YAML overrides
     pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode heavy --dump True \
-        --workers 4 --workers-per-nodes 2 --out-dir ./result_opt/ --args-yaml ./args.yaml
+        --workers 4 --workers-per-node 2 --out-dir ./result_opt/ --args-yaml ./args.yaml
 
 Description
 -----------
@@ -102,7 +102,7 @@ Notes
   when ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the
   total charge is inferred using ``extract.py``’s residue-aware logic. `resolve_charge_spin_or_raise` reconciles CLI input with
   `.gjf` templates when available, and explicit `-q` always overrides derived values. UMA parallelism can be tuned via
-  ``--workers``/``--workers-per-nodes``; analytic Hessians are automatically disabled when `workers>1`. Always provide physically
+  ``--workers``/``--workers-per-node``; analytic Hessians are automatically disabled when `workers>1`. Always provide physically
   correct states.
 - **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type="dlc"` can
   improve stability for small molecules.
@@ -479,10 +479,10 @@ def _maybe_convert_outputs(
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    "--workers-per-nodes",
-    "workers_per_nodes",
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_nodes"],
+    default=CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -585,7 +585,7 @@ def cli(
     charge: Optional[int],
     ligand_charge: Optional[str],
     workers: int,
-    workers_per_nodes: int,
+    workers_per_node: int,
     spin: Optional[int],
     dist_freeze_raw: Sequence[str],
     one_based: bool,
@@ -633,7 +633,7 @@ def cli(
         calc_cfg["charge"] = charge
         calc_cfg["spin"] = spin
         calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
+        calc_cfg["workers_per_node"] = int(workers_per_node)
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["dump"] = bool(dump)
         opt_cfg["out_dir"] = out_dir

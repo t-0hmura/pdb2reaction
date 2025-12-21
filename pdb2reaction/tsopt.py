@@ -1326,10 +1326,10 @@ RSIRFO_KW.update({
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    "--workers-per-nodes",
-    "workers_per_nodes",
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_nodes"],
+    default=CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -1385,7 +1385,7 @@ def cli(
     charge: Optional[int],
     ligand_charge: Optional[str],
     workers: int,
-    workers_per_nodes: int,
+    workers_per_node: int,
     spin: Optional[int],
     freeze_links: bool,
     convert_files: bool,
@@ -1424,7 +1424,7 @@ def cli(
     calc_cfg["charge"] = int(charge)
     calc_cfg["spin"]   = int(spin)
     calc_cfg["workers"] = int(workers)
-    calc_cfg["workers_per_nodes"] = int(workers_per_nodes)
+    calc_cfg["workers_per_node"] = int(workers_per_node)
     opt_cfg["max_cycles"] = int(max_cycles)
     opt_cfg["dump"]       = bool(dump)
     opt_cfg["out_dir"]    = out_dir

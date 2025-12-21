@@ -65,7 +65,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template > 0). Overrides `--ligand-charge` when both are set. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
-| `--workers`, `--workers-per-nodes` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_nodes` forwarded to the parallel predictor). | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
 | `--scan-list TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. | Required |
 | `--one-based / --zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `--one-based` |
