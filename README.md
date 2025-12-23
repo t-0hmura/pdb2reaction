@@ -12,19 +12,22 @@ for modeling enzymatic reaction pathways.
 
 ---
 
-Given one or more full protein–ligand PDBs `.pdb` (reactant, product, intermediates if you need), it automatically:
+Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
 
-- extracts an **active site** around user‑defined substrates to build **cluster model**,
-- explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method and direct max flux method,
-- _optionally_ refines **transition states**, runs **vibrational analysis**, **irc calculations** and **DFT single‑point calculations**
+- extracts an **active site** around user‑defined substrates to build a **cluster model**,
+- explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
+- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations** and **DFT single‑point calculations**
 
-with **machine learning interatomic potential** using Meta’s UMA model.
+with a **machine learning interatomic potential (MLIP)** using Meta’s UMA model.
    
-All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Of course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures.
+All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Of course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures when you run workflows on the full structure (i.e., omit `--center/-c` and `--ligand-charge`).
 
-On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process large pockets (and optionally **full protein–ligand complexes**) by scaling UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel calculation; see [`docs/uma_pysis.md`](docs/uma_pysis.md) for configuration details.
+On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference itself across nodes. Set `workers` and `workers_per_node` to enable parallel calculation; see [`docs/uma_pysis.md`](docs/uma_pysis.md) for configuration details.
 
-> **Important:** Input PDB files must already contain **hydrogen atoms**.
+> **Important (prerequisites):**  
+> - Input PDB files must already contain **hydrogen atoms**.  
+> - When you provide multiple PDBs, they must contain **the same atoms in the same order** (only coordinates may differ); otherwise an error is raised.  
+> - Boolean CLI options are passed explicitly as `True`/`False` (e.g., `--tsopt True`).
 
 ---
 
@@ -150,14 +153,14 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-The `all` workflow is an **orchestrator**: it chains pocket extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
+The `all` workflow is an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
 
-All high‑level workflows share two important options:
+All high‑level workflows share two important options when you want cluster extraction:
 
-- `-i/--input`: one or more **full PDB structures** (reactant, intermediate(s), product).
-- `-c/--center`: how to define the **substrate / pocket center** (e.g., residue names or residue IDs).
+- `-i/--input`: one or more **full structures** (reactant, intermediate(s), product).
+- `-c/--center`: how to define the **substrate / extraction center** (e.g., residue names or residue IDs).
 
-Unless you intentionally skip extraction, you must supply both.
+If you omit `--center/-c`, cluster extraction is skipped and the **full input structure** is used directly.
 
 ---
 
@@ -182,15 +185,15 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GP
 Behavior:
 
 - takes two or more **full systems** in reaction order,
-- extracts catalytic pockets for each structure,
+- extracts catalytic cluster models for each structure,
 - performs a **recursive MEP search** via `path_search` by default,
 - optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
-- when PDB templates are available, merges the pocket‑level MEP back into the **full system**,
+- when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and DFT single points for each segment.
 
 This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modeling).
 
-> **Important:** You need to input structures in **same atomic order**. And PDB structures must have **hydrogen atoms**.  
+> **Important:** `pdb2reaction` assumes that multiple input PDBs contain **exactly the same atoms in the same order** (only coordinates may differ). If any non-coordinate fields differ across inputs, an error is raised. Input PDB files must also contain **hydrogen atoms**.  
 ---
 
 ### 3.2 Single‑structure + staged scan (feeds MEP refinement)
@@ -213,10 +216,10 @@ pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[(10,55,2.20),(23,34,1.80)
 
 Key points:
 
-- `--scan-lists` describes **staged distance scans** on the extracted pocket.
+- `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
-  - 1‑based atom order indices in the input file after parsing (not the PDB ATOM serial number).,
-  - automatically remapped to the pocket indices.
+  - 1‑based atom order indices in the input file after parsing (not the PDB ATOM serial number),
+  - automatically remapped to the cluster-model indices.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
 - With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
@@ -246,8 +249,8 @@ pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --t
 Behavior:
 
 - skips the MEP/path search entirely,
-- refines the **pocket TS** with TS optimization,
-- runs a **IRC** in both directions and optimize both ends to relax down to R and P minima,
+- refines the **cluster-model TS** with TS optimization,
+- runs an **IRC** in both directions and optimizes both ends to relax down to R and P minima,
 - can then perform `freq` and `dft` on the R/TS/P,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams.
 
@@ -264,26 +267,26 @@ Below are the most commonly used options across workflows.
 - `-i, --input PATH...`  
   Input structures. Interpretation depends on how many you provide:
 
-  - **≥ 2 PDBs** → GSM mode (reactant/intermediates/product).
+  - **≥ 2 PDBs** → MEP search (GSM by default, DMF with `--mep-mode dmf`) (reactant/intermediates/product).
   - **1 PDB + `--scan-lists`** → staged scan → GSM.
   - **1 PDB + `--tsopt True`** → TSOPT‑only mode.
 
-  When pocket extraction is skipped, XYZ/GJF inputs are also accepted.
+  If `--center/-c` is omitted, cluster extraction is skipped and the **full input structure** is used directly. In this mode, `.xyz` and `.gjf` inputs are also accepted; when using them, omit `--center/-c` and `--ligand-charge`.
 
 - `-c, --center TEXT`  
-  Defines the substrate / pocket center for extraction. Supports:
+  Defines the substrate / extraction center for cluster extraction. Supports:
 
-  - PDB paths,
+  - PDB paths (the atoms in the given PDB define the center structure used during cluster extraction),
   - residue IDs, e.g. `A:123,B:456`,
   - residue names, e.g. `"SAM,GPP"`.
 
 - `--ligand-charge TEXT`  
   Total charge information, either:
 
-  - a single integer (total pocket charge), or
+  - a single integer (total cluster-model charge), or
   - a mapping, e.g. `"SAM:1,GPP:-3"`.
 
-  The total charge of the first pocket is summed and used for scan, GSM, and TS optimization runs.
+  The total charge of the first cluster model is summed and used for scan, GSM, and TS optimization runs.
 
 - `-q, --charge INT`  
   Hard override of the total system charge. This bypasses:
@@ -304,7 +307,7 @@ Below are the most commonly used options across workflows.
   --scan-lists "[(10,55,2.20),(23,34,1.80)]"
   ```
 
-  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the pocket.
+  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model.
 
 - `--out-dir PATH`
   Top‑level output directory. All intermediate files, logs, and figures are placed here.
@@ -367,7 +370,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes su
 | `tsopt`      | Transition state optimization (Dimer or RS-I-RFO).                                    | [`docs/tsopt.md`](docs/tsopt.md)          |
 | `freq`       | Vibrational frequency analysis and mode writer (+ thermochemistry summary).           | [`docs/freq.md`](docs/freq.md)            |
 | `irc`        | IRC calculation with EulerPC.                                                         | [`docs/irc.md`](docs/irc.md)              |
-| `extract`    | Extract a binding pocket around substrate residues.                                   | [`docs/extract.md`](docs/extract.md)      |
+| `extract`    | Extract an active site structure around substrate residues and build cluster model.   | [`docs/extract.md`](docs/extract.md)      |
 | `trj2fig`    | Plot ΔE or E from an XYZ trajectory and export figure/CSV.                            | [`docs/trj2fig.md`](docs/trj2fig.md)      |
 | `add-elem-info` | Add or repair PDB element columns (77–78) using Biopython.                         | [`docs/add_elem_info.md`](docs/add_elem_info.md) |
 | `dft`        | Single-point DFT using GPU4PySCF (with CPU PySCF fallback).                           | [`docs/dft.md`](docs/dft.md)              |
