@@ -364,7 +364,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes su
 
 | Subcommand   | Role                                                                                  | Documentation                             |
 | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot.    | [`docs/all.md`](docs/all.md)              |
+| `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot. (Optionally, following TS opt, IRC, Thermochemistry analysis, DFT single point calculation) | [`docs/all.md`](docs/all.md)              |
 | `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation.               | [`docs/scan.md`](docs/scan.md)            |
 | `opt`        | Single‑structure geometry optimization using LBFGS or RFO.                            | [`docs/opt.md`](docs/opt.md)              |
 | `path-opt`   | MEP optimization via the GSM or DMF.                                                  | [`docs/path_opt.md`](docs/path_opt.md)    |
