@@ -17,7 +17,7 @@ pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
                   [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \
                   [--temperature K] [--pressure atm] [--dump {True|False}] \
                   [--hessian-calc-mode Analytical|FiniteDifference] \
-                  [--convert-files/--no-convert-files]
+                  [--convert-files {True|False}]
 ```
 
 ### Examples
@@ -71,7 +71,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `--convert-files` |
+| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
 | `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
 
 ## Outputs

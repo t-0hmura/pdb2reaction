@@ -25,7 +25,7 @@ pdb2reaction trj2fig -i traj.xyz
 pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
 # Multiple figure formats with the x-axis reversed (reference becomes last frame)
-pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pdf
+pdb2reaction trj2fig -i traj.xyz --reverse-x True -o energy.png energy.html energy.pdf
 
 # Recompute all frame energies with UMA before plotting
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
@@ -58,7 +58,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-r, --reference TEXT` | Reference specification (`init`, `None`, or 0-based integer). | `init` |
 | `-q, --charge INT` | Total charge; triggers energy recomputation with `uma_pysis` when provided. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation with `uma_pysis` when provided. | _None_ |
-| `--reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
+| `--reverse-x {True|False}` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 
 ## Outputs
 ```

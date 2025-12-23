@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
-        [--freeze-links {True|False}] [--convert-files/--no-convert-files] \
+        [--freeze-links {True|False}] [--convert-files {True|False}] \
         [--out-dir <dir>] [--hessian-calc-mode {Analytical|FiniteDifference}] \
         [--args-yaml <file>]
 
@@ -47,7 +47,7 @@ CLI options
   - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); sets `irc.forward`.
   - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); sets `irc.backward`.
   - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
-  - `--convert-files/--no-convert-files` (default `--convert-files`): Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.
+  - `--convert-files {True|False}` (default `True`): Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.
   - `--out-dir STR` (default `./result_irc/`): Output directory; sets `irc.out_dir`.
   - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; sets `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
@@ -74,7 +74,7 @@ Notes
   The geometry's freeze list is also forwarded to the calculator as `calc.freeze_atoms`.
 - `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
   for the initial displacement.
-- Output conversion steps can be disabled via `--no-convert-files`.
+- Output conversion steps can be disabled via `--convert-files False`.
 - Standard output includes progress and timing.
 """
 
@@ -224,8 +224,9 @@ def _echo_convert_trj_if_exists(
     help="Freeze parent atoms of link hydrogens when the input is PDB.",
 )
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

@@ -12,7 +12,7 @@ Usage (CLI)
         [--out-dir <dir>] [--args-yaml <file>] [--temperature <K>] \
         [--pressure <atm>] [--dump {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] \
-        [--convert-files/--no-convert-files]
+        [--convert-files {True|False}]
 
 Examples
 --------
@@ -541,8 +541,9 @@ THERMO_KW = {
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.",

@@ -5,15 +5,15 @@
 records in a PDB file.
 
 ### Output behavior
-- If `-o/--out` is **omitted** and `--overwrite` is **not** set, the output is written to
+- If `-o/--out` is **omitted** and `--overwrite` is **not** `True`, the output is written to
   `<input>_add_elem.pdb` (i.e., it replaces a trailing `.pdb` with `_add_elem.pdb`;
   if the input does not end with `.pdb`, `_add_elem.pdb` is appended).
-- If `--overwrite` **is set** **and** `-o/--out` is **omitted**, the **input file is overwritten
+- If `--overwrite True` **and** `-o/--out` is **omitted**, the **input file is overwritten
   in-place**. When `-o/--out` is supplied, `--overwrite` is ignored.
 
 ## Usage
 ```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
+pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True|False}]
 ```
 
 ## Examples
@@ -25,7 +25,7 @@ pdb2reaction add-elem-info -i 1abc.pdb
 pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 
 # Overwrite the input file in-place
-pdb2reaction add-elem-info -i 1abc.pdb --overwrite
+pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 ```
 
 ## Workflow
@@ -39,9 +39,9 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
    - Other ligands: use atom-name prefixes and fall back to element-symbol
      normalization (recognising halogens, deuterium → hydrogen, etc.).
 3. Write the structure through `PDBIO`:
-   - default output: `<input>_add_elem.pdb` (when `-o/--out` is omitted and `--overwrite` is not set)
+   - default output: `<input>_add_elem.pdb` (when `-o/--out` is omitted and `--overwrite` is not `True`)
    - `-o/--out`: write to the specified path; `--overwrite` is ignored when this is provided
-   - `--overwrite` (without `-o/--out`): overwrite the input path in-place
+   - `--overwrite True` (without `-o/--out`): overwrite the input path in-place
 4. Print a summary reporting how many atoms were assigned/reassigned, plus
    per-element totals and a truncated list of unresolved atoms.
 
@@ -50,13 +50,13 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file. | Required |
 | `-o, --out PATH` | Output path. When set, `--overwrite` is ignored. | _None_ → `<input>_add_elem.pdb` |
-| `--overwrite` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
+| `--overwrite {True|False}` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
 
 ## Outputs
 - A PDB file with element symbols populated/corrected:
-  - `<input>_add_elem.pdb` by default (when `-o/--out` is omitted and `--overwrite` is not set)
+  - `<input>_add_elem.pdb` by default (when `-o/--out` is omitted and `--overwrite` is not `True`)
   - `OUTPUT.pdb` if `-o/--out` is provided (regardless of `--overwrite`)
-  - `INPUT.pdb` overwritten in-place if `--overwrite` is set without `-o/--out`
+  - `INPUT.pdb` overwritten in-place if `--overwrite True` is set without `-o/--out`
 - Console report with totals for processed/assigned atoms,
   per-element counts, and up to 50 unresolved atoms.
 

@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-m <multiplicity>] \
         [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
-        [--convert-files/--no-convert-files] [--args-yaml <file>]
+        [--convert-files {True|False}] [--args-yaml <file>]
 
 Examples
 --------
@@ -382,8 +382,9 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

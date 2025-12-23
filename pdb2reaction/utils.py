@@ -856,7 +856,7 @@ _CONVERT_FILES_ENABLED: bool = True
 def set_convert_file_enabled(enabled: bool) -> None:
     """Globally enable or disable XYZ/TRJ conversions to PDB/GJF outputs.
 
-    The toggle mirrors the ``--convert-files/--no-convert-files`` CLI flag used
+    The toggle mirrors the ``--convert-files {True|False}`` CLI flag used
     by every workflow. When disabled, format-aware conversions are skipped even
     if reference templates are available.
     """

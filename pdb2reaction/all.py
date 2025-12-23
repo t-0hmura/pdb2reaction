@@ -14,7 +14,7 @@ Usage (CLI)
         [--ligand-charge <number|"RES:Q,...">] [-q/--charge <forced_net_charge>] [-m/--mult <2S+1>] \
         [--freeze-links {True|False}] [--mep-mode {gsm|dmf}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--opt-mode {light|heavy}] [--dump {True|False}] \
-        [--convert-files/--no-convert-files] [--refine-path {True|False}] [--thresh <preset>] \
+        [--convert-files {True|False}] [--refine-path {True|False}] [--thresh <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
@@ -114,7 +114,7 @@ Pipeline overview
         ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
       - Note: ``--dump`` is always passed to the MEP step; for scan/tsopt/freq it is forwarded only when
         explicitly set on this command (otherwise each subcommand’s defaults apply; freq is run with dump=True by default).
-      - ``--convert-files/--no-convert-files`` controls whether XYZ/TRJ outputs are converted into
+      - ``--convert-files {True|False}`` controls whether XYZ/TRJ outputs are converted into
         PDB/GJF companions when possible.
 
 (3) **Merge to full systems (PDB templates only)**
@@ -201,7 +201,7 @@ Forwarded / relevant options
 ----------------------------
   - MEP search: ``--mult``, ``--freeze-links``, ``--mep-mode``, ``--max-nodes``, ``--max-cycles``,
     ``--climb``, ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
-  - File conversion: ``--convert-files/--no-convert-files`` toggles conversion of XYZ/TRJ outputs into
+  - File conversion: ``--convert-files {True|False}`` toggles conversion of XYZ/TRJ outputs into
     PDB/GJF companions when possible.
   - Scan (single-structure): inherits charge/spin and shared knobs; per-stage/scan overrides include
     ``--scan-out-dir``, ``--scan-one-based``, ``--scan-max-step-size``, ``--scan-bias-k``,
@@ -292,7 +292,7 @@ Notes
 - ``-c/--center`` is strongly recommended for meaningful pocket models; without it the full structure is used.
 - A **single-structure** run requires either ``--scan-lists`` (staged scan) or ``--tsopt True`` (TSOPT-only).
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
-- ``--no-convert-files`` may suppress generation of PDB/GJF companion files from XYZ/TRJ outputs; the core
+- ``--convert-files False`` may suppress generation of PDB/GJF companion files from XYZ/TRJ outputs; the core
   numeric results and YAML summaries are unaffected.
 """
 
@@ -1878,8 +1878,9 @@ def _irc_and_match(
     ),
 )
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -2999,7 +3000,7 @@ def cli(
             )
 
         if scan_one_based is not None:
-            scan_args.append("--one-based" if scan_one_based else "--zero-based")
+            scan_args.extend(["--one-based", "True" if scan_one_based else "False"])
 
         _append_cli_arg(scan_args, "--max-step-size", scan_max_step_size)
         _append_cli_arg(scan_args, "--bias-k", scan_bias_k)

@@ -8,7 +8,7 @@ Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySC
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m MULTIPLICITY] \
                  --func-basis "FUNC/BASIS" \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True|False}] \
                  [--args-yaml FILE]
 ```
 
@@ -40,7 +40,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
-| `--convert-files/--no-convert-files` | Toggle XYZ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
+| `--convert-files {True|False}` | Toggle XYZ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
