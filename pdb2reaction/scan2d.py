@@ -1,7 +1,7 @@
 # pdb2reaction/scan2d.py
 
 """
-scan2d — Two-distance 2D scan with harmonic restraints (UMA only)
+scan2d — Two-distance 2D scan with harmonic restraints 
 ==================================================================
 
 Usage (CLI)
@@ -301,7 +301,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 
 
 @click.command(
-    help="2D distance scan with harmonic restraints (UMA only).",
+    help="2D distance scan with harmonic restraints.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(

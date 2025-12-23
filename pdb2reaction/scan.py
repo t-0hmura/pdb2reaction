@@ -1,7 +1,7 @@
 # pdb2reaction/scan.py
 
 """
-scan — Bond‑length–driven staged scan with harmonic distance restraints and full relaxation (UMA only)
+scan — Bond‑length–driven staged scan with harmonic distance restraints and full relaxation
 =====================================================================================================
 
 Usage (CLI)
@@ -78,7 +78,6 @@ out_dir/ (default: ./result_scan/)
 
 Notes
 -----
-- UMA only: `uma_pysis` is the sole supported calculator.
 - Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
 - Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
@@ -342,7 +341,7 @@ def _snapshot_geometry(g) -> Any:
 
 
 @click.command(
-    help="Bond-length driven scan with staged harmonic restraints and relaxation (UMA only).",
+    help="Bond-length driven scan with staged harmonic restraints and relaxation.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(

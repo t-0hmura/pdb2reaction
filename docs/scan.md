@@ -110,8 +110,6 @@ out_dir/ (default: ./result_scan/)
   have positive targets. Atom indices are normalized to 0-based internally.
 - `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
   atoms in PDB files so pockets stay rigid.
-- UMA is the only supported calculator; energies are not re-queried for every
-  biased frame to avoid redundant evaluations.
 - Charge and spin inherit Gaussian template metadata when available. If `-q` is
   omitted but `--ligand-charge` is provided, the full structure is treated as an
   enzyme–substrate complex and `extract.py`’s charge summary computes the total
