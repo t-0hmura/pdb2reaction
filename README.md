@@ -12,7 +12,7 @@ for modeling enzymatic reaction pathways.
 
 ---
 
-Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
+Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
 
 - extracts an **active site** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
@@ -399,6 +399,8 @@ pdb2reaction <subcommand> --help
 ```
 
 This prints the available options, defaults, and a short description. For detailed workflows, argument schemas, and example YAML files, consult the `docs/*.md` files in the repository (e.g. `docs/all.md`, `docs/scan.md`).
+
+> If you encounter any issues during installation—such as dependency conflicts, library bugs, or other uncertainties—please open an Issue on the repository. I will address them as promptly as possible.
 
 ## Citation
 A preprint describing `pdb2reaction` will be released soon. Please check back for citation details once it is available.
