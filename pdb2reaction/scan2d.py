@@ -8,14 +8,14 @@ Usage (CLI)
 -----------
     pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-m <multiplicity>] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
-        [--one-based|--zero-based] \
+        [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
         [--relax-max-cycles INT] \
         [--opt-mode {light,heavy}] \
         [--freeze-links {True|False}] \
         [--dump {True|False}] \
-        [--convert-files/--no-convert-files] \
+        [--convert-files {True|False}] \
         [--out-dir PATH] \
         [--args-yaml FILE] \
         [--preopt {True|False}] \
@@ -39,7 +39,7 @@ Description
 -----------
 - A 2D grid scan driven by harmonic restraints on two inter-atomic distances (d1, d2).
 - Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
-  - Indices are **1-based by default**; pass **--zero-based** to interpret them as 0-based.
+  - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
@@ -81,7 +81,7 @@ Notes
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
   always overrides any derived charge.
-- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
+- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
@@ -352,8 +352,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help='Python-like list with two quadruples: "[(i1,j1,low1,high1),(i2,j2,low2,high2)]".',
 )
 @click.option(
-    "--one-based/--zero-based",
+    "--one-based",
     "one_based",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
@@ -401,8 +402,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
 )
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

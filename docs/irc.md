@@ -10,7 +10,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1]
                  [--forward True|False] [--backward True|False]
                  [--freeze-links True|False]
                  [--out-dir DIR]
-                 [--convert-files/--no-convert-files]
+                 [--convert-files {True|False}]
                  [--hessian-calc-mode Analytical|FiniteDifference]
                  [--args-yaml FILE]
 ```
@@ -46,7 +46,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--backward BOOL` | Run backward branch (`irc.backward`). Requires explicit `True`/`False`. | _None_ (default `True`) |
 | `--freeze-links BOOL` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `--convert-files` |
+| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `True` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | `FiniteDifference` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

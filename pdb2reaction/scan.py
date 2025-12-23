@@ -8,10 +8,10 @@ Usage (CLI)
 -----------
     pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q <charge>] \
         [--scan-lists "[(I,J,TARGET_ANG), ...]" ...] [-m <spin>] \
-        [--one-based|--zero-based] [--max-step-size <float>] \
+        [--one-based {True|False}] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dump {True|False}] [--convert-files/--no-convert-files] \
+        [--dump {True|False}] [--convert-files {True|False}] \
         [--out-dir <dir>] [--thresh <preset>] [--args-yaml <file>] \
         [--preopt {True|False}] [--endopt {True|False}]
 
@@ -82,8 +82,8 @@ Notes
 - Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
 - Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
-  `--convert-files/--no-convert-files` toggle (default: enabled).
-- Indexing: (i, j) are 1‑based by default; use `--zero-based` if your tuples are 0‑based.
+  `--convert-files {True|False}` toggle (default: enabled).
+- Indexing: (i, j) are 1‑based by default; use `--one-based False` if your tuples are 0‑based.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
   k converted from eV/Å² to Hartree/Bohr².
 - Performance simplifications:
@@ -382,7 +382,7 @@ def _snapshot_geometry(g) -> Any:
     help='Python-like list of (i,j,target) per stage. Repeatable. Example: '
          '"[(0,1,1.50),(2,3,2.00)]" "[(5,7,1.20)]".',
 )
-@click.option("--one-based/--zero-based", "one_based", default=True, show_default=True,
+@click.option("--one-based", "one_based", type=click.BOOL, default=True, show_default=True,
               help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
 @click.option("--max-step-size", type=float, default=0.20, show_default=True,
               help="Maximum change in any scanned bond length per step [Å].")
@@ -402,8 +402,9 @@ def _snapshot_geometry(g) -> Any:
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).")
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

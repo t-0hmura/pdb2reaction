@@ -6,7 +6,7 @@ add-elem-info — repair PDB element symbols (columns 77–78) with Biopython
 
 Usage (CLI)
 -----------
-    pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite]
+    pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True|False}]
 
 Examples
 --------
@@ -17,13 +17,13 @@ Examples
     pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 
     # Overwrite the input file in-place
-    pdb2reaction add-elem-info -i 1abc.pdb --overwrite
+    pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 
 Output behavior
 ---------------------------
-- If `-o/--out` is omitted and `--overwrite` is not set, write to `<input>_add_elem.pdb` (replace a
+- If `-o/--out` is omitted and `--overwrite` is not `True`, write to `<input>_add_elem.pdb` (replace a
   trailing `.pdb` with `_add_elem.pdb`; otherwise append `_add_elem.pdb`).
-- If `--overwrite` is set without `-o/--out`, overwrite the input file in-place.
+- If `--overwrite True` is set without `-o/--out`, overwrite the input file in-place.
 - When `-o/--out` is supplied, write to that path and ignore `--overwrite`.
 
 Workflow
@@ -290,8 +290,18 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
                 resseq, icode = "?", ""
             s_str = f" serial {serial}" if serial is not None else ""
             print(f"    model {mid} chain {chid} {resn} {resseq}{icode} : {aname}{s_str}")
-        if len(unknown) > 50:
-            print("    ... (truncated) ...")
+    if len(unknown) > 50:
+        print("    ... (truncated) ...")
+
+
+def _parse_bool(value: str) -> bool:
+    value_lower = value.strip().lower()
+    if value_lower in {"true", "1", "yes", "y", "t"}:
+        return True
+    if value_lower in {"false", "0", "no", "n", "f"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value!r}. Use True/False.")
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -311,8 +321,9 @@ def main():
     )
     ap.add_argument(
         "--overwrite",
-        action="store_true",
-        help="Overwrite the input file in-place when -o/--out is omitted.",
+        type=_parse_bool,
+        default=False,
+        help="Overwrite the input file in-place when -o/--out is omitted. Use True/False.",
     )
     args = ap.parse_args()
 
@@ -349,7 +360,9 @@ def main():
 )
 @click.option(
     "--overwrite",
-    is_flag=True,
+    type=click.BOOL,
+    default=False,
+    show_default=True,
     help="Overwrite the input file in-place when -o/--out is omitted.",
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:

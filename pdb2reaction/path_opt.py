@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                         [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
-                        [--convert-files/--no-convert-files] \
+                        [--convert-files {True|False}] \
                         [--out-dir DIR] [--args-yaml FILE]
 
 Examples
@@ -58,7 +58,7 @@ Notes
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
 - `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO, selected via `--opt-mode`) and does not affect `--max-cycles`.
-- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
+- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
 """
 
 from __future__ import annotations
@@ -617,8 +617,9 @@ def _optimize_single(
     help="Dump optimizer trajectory/restarts during the run.",
 )
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

@@ -15,7 +15,7 @@ rerunning the scan.
 ```bash
 pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
                     --scan-list "[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]" [options] \
-                    [--convert-files/--no-convert-files]
+                    [--convert-files {True|False}]
 ```
 
 ### Examples
@@ -43,7 +43,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
    structure is treated as an enzyme–substrate complex and `extract.py`’s charge
    summary derives the total charge before scanning.
 2. Parse the single `--scan-list` literal (default 1-based indices unless
-   `--zero-based` is passed) into three quadruples. Build each linear grid using
+   `--one-based False` is passed) into three quadruples. Build each linear grid using
    `h = --max-step-size` and reorder the values so the ones closest to the
    starting distances are visited first.
 3. Outer loop over `d1[i]`: relax with only the d₁ restraint active, starting
@@ -68,14 +68,14 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
 | `--scan-list TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. | Required |
-| `--one-based / --zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `--one-based` |
+| `--one-based {True|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
+| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
 | `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). | _None_ |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |

@@ -11,9 +11,9 @@ Usage (CLI)
                             [--refine-mode peak|minima]
                             [--max-nodes N] [--max-cycles N] [--climb BOOL]
                             [--opt-mode light|heavy] [--dump BOOL]
-                            [--convert-files/--no-convert-files]
+                            [--convert-files {True|False}]
                             [--out-dir DIR] [--preopt BOOL]
-                            [--align/--no-align] [--ref-pdb FILE ...]
+                            [--align {True|False}] [--ref-pdb FILE ...]
                             [--args-yaml FILE]
 
 Core inputs (strongly recommended):
@@ -42,7 +42,7 @@ Recommended/common:
         Enable TS search (GSM climbing) for all GSM segments; default True.
     --preopt {True|False}
         Preoptimize endpoints; default True.
-    --align/--no-align
+    --align {True|False}
         Rigidly co‑align all inputs after pre‑opt; default on.
     --args-yaml PATH
         YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
@@ -55,7 +55,7 @@ Recommended/common:
         Output directory; default ./result_path_search/
     --dump {True|False}
         Save optimizer dumps; default False.
-    --convert-files/--no-convert-files
+    --convert-files {True|False}
         Convert XYZ/TRJ outputs into format-aware PDB/GJF companions; default on.
     --freeze-links {True|False}
         Freeze parents of link hydrogens for PDB input; default True.
@@ -1965,8 +1965,9 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("--dump", type=click.BOOL, default=False, show_default=True,
               help="Dump GSM/single-optimization trajectories during the run.")
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -1994,8 +1995,9 @@ def _merge_final_and_write(final_images: List[Any],
     help="If False, skip initial single-structure optimizations of inputs."
 )
 @click.option(
-    "--align/--no-align",
+    "--align",
     "align",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help=("After preoptimization, align all inputs to the *first* input and match freeze_atoms "
@@ -2294,7 +2296,7 @@ def cli(
             except Exception as e:
                 click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
         else:
-            click.echo("[align] Skipping input alignment as requested by --no-align.")
+            click.echo("[align] Skipping input alignment as requested by --align False.")
 
         # --------------------------
         # 3) Run recursive search for each adjacent pair and stitch

@@ -9,14 +9,14 @@ Usage (CLI)
     pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} [-q CHARGE] \
         [-m MULTIPLICITY] \
         --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]" \
-        [--one-based|--zero-based] \
+        [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
         [--relax-max-cycles INT] \
         [--opt-mode {light,heavy}] \
         [--freeze-links {True|False}] \
         [--dump {True|False}] \
-        [--convert-files/--no-convert-files] \
+        [--convert-files {True|False}] \
         [--out-dir PATH] \
         [--csv PATH] \
         [--args-yaml FILE] \
@@ -48,7 +48,7 @@ Description
 - Provide exactly one Python-like list
       [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
   via **--scan-list**.
-  - Indices are **1-based by default**; pass **--zero-based** to interpret them as 0-based.
+  - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
@@ -111,7 +111,7 @@ Notes
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the grid point with `(i,j,k) = (0,0,0)` is 0 kcal/mol;
               if that point is missing, the global minimum is used instead.
-- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files/--no-convert-files` toggle (default: enabled).
+- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
 - The 3D visualization:
   - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
   - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
@@ -415,8 +415,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     ),
 )
 @click.option(
-    "--one-based/--zero-based",
+    "--one-based",
     "one_based",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
@@ -464,8 +465,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
 )
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

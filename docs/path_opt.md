@@ -9,7 +9,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
                       [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                       [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
                       [--out-dir DIR] [--args-yaml FILE] \
-                      [--convert-files/--no-convert-files]
+                      [--convert-files {True|False}]
 ```
 
 ## Workflow
@@ -44,7 +44,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT 
 | `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump BOOL` | Dump MEP trajectories/restarts (GSM/DMF). | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `light` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `--convert-files` |
+| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | _None_ |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |

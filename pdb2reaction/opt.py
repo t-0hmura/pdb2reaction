@@ -8,11 +8,11 @@ Usage (CLI)
 -----------
     pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based|--zero-based] \
+        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based {True|False}] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
         [--workers <int>] [--workers-per-node <int>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
-        [--convert-files | --no-convert-files]
+        [--convert-files {True|False}]
 
 Examples
 --------
@@ -31,7 +31,7 @@ Description
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest). (If the same key is set in both `opt` and `lbfgs`/`rfo`, the `opt` value takes precedence.)
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
-- Format mirroring can be toggled with `--convert-files/--no-convert-files` (default: enabled); when a Gaussian template
+- Format mirroring can be toggled with `--convert-files {True|False}` (default: enabled); when a Gaussian template
   is present, `.gjf` companions are emitted alongside `.xyz` and `.pdb` outputs.
 - Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those
   (0‑based indices), merged with any `geom.freeze_atoms`.
@@ -512,8 +512,9 @@ def _maybe_convert_outputs(
     help="Python-like list(s) of (i,j,target_A) to restrain distances (target optional).",
 )
 @click.option(
-    "--one-based/--zero-based",
+    "--one-based",
     "one_based",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Interpret --dist-freeze indices as 1-based (default) or 0-based.",
@@ -533,8 +534,9 @@ def _maybe_convert_outputs(
     help="Freeze the parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
-    "--convert-files/--no-convert-files",
+    "--convert-files",
     "convert_files",
+    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",

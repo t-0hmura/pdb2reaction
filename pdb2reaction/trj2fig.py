@@ -7,12 +7,12 @@ trj2fig — Energy-profile utility for XYZ trajectories
 Usage (CLI)
 -----------
     pdb2reaction trj2fig -i traj.xyz [-o OUTPUT ...] [-r {init|None|INT}] \
-        [-q CHARGE] [-m MULT] [--unit {kcal|hartree}] [--reverse-x]
+        [-q CHARGE] [-m MULT] [--unit {kcal|hartree}] [--reverse-x {True|False}]
 
 Examples
 --------
     # High-resolution PNG with x-axis reversed (reference is the last frame)
-    pdb2reaction trj2fig -i traj.xyz --reverse-x
+    pdb2reaction trj2fig -i traj.xyz --reverse-x True
 
     # Recompute energies with explicit charge/spin before plotting (kcal/mol)
     pdb2reaction trj2fig -i traj.xyz -q 0 -m 1
@@ -441,7 +441,9 @@ def main() -> None:
 )
 @click.option(
     "--reverse-x",
-    is_flag=True,
+    type=click.BOOL,
+    default=False,
+    show_default=True,
     help="Reverse the x-axis (last frame on the left).",
 )
 def cli(
