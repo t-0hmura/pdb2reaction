@@ -29,7 +29,7 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process larg
 > - When you provide multiple PDBs, they must contain **the same atoms in the same order** (only coordinates may differ); otherwise an error is raised.  
 > - Boolean CLI options are passed explicitly as `True`/`False` (e.g., `--tsopt True`).
 
-***This software is under development. Please use with caution.***
+***This software is still under development. Please use it at your own risk.***
 
 ---
 
