@@ -25,6 +25,7 @@ Description
 - Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and a CPU PySCF backend.
   The backend policy is controlled by --engine:
   * gpu  (default): try GPU4PySCF first; on import/runtime errors, automatically fall back to CPU PySCF.
+                    Blackwell GPUs are forced to CPU with a warning.
   * cpu           : use CPU PySCF only.
   * auto          : try GPU4PySCF first and fall back to CPU PySCF if unavailable (same behavior as "gpu").
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
@@ -537,6 +538,27 @@ def cli(
         using_gpu = False
         engine_label = "pyscf(cpu)"
         make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
+
+
+        # --- Detect Blackwell GPU and force CPU backend ---
+        is_blackwell_gpu = False
+        try:
+            import cupy as cp
+            dev_id = cp.cuda.runtime.getDevice()
+            props = cp.cuda.runtime.getDeviceProperties(dev_id)
+            name = props["name"]
+            if isinstance(name, bytes):
+                name = name.decode()
+            if ("rtx 50" in name.lower()) or ("nvidia b" in name.lower()):
+                is_blackwell_gpu = True
+        except Exception:
+            is_blackwell_gpu = False
+
+        if is_blackwell_gpu:
+            click.echo("[gpu] WARNING: GPU4PySCF does not support the Blackwell architecture; forcing CPU engine as requested.")
+            engine = "cpu"
+        # --------------------------------------------------
+
 
         if engine in ("gpu", "auto"):
             try:
