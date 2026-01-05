@@ -58,8 +58,9 @@ out_dir/ (default: ./result_dft/)
   convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur. If **Blackwell architecture** GPUs are detected, it will be forced to fallback on CPU with a warning to avoid unsupported GPU4PySCF configurations.
-- GPU4PySCF is required to be compiled from source when you do **not** use **x86** archtecture. (See <https://github.com/pyscf/gpu4pyscf>)
+- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur.
+- If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
+- Compiled GPU4PySCF wheels may not support Blackwell-architecture GPUs, and non-x86 systems require compiling from source; we recommend using the CPU backend or building GPU4PySCF yourself in these situations. (see https://github.com/pyscf/gpu4pyscf)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
 - The YAML input file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
