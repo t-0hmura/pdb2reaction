@@ -35,7 +35,7 @@ from .scan3d import cli as scan3d_cmd
 @click.group(
     cls=DefaultGroup,
     default="all",
-    help="pdb2reaction: Execute each step by subcommands.",
+    help="pdb2reaction: Root command to execute each subcommands.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 def cli() -> None:
