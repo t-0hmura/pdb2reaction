@@ -808,10 +808,10 @@ def _derive_charge_from_ligand_charge(
             f'{prefix} Charge summary from full complex (--ligand-charge without extraction):'
         )
         click.echo(
-            f'  Protein: {summary.get('protein_charge', 0.0):+g},  '
-            f'Ligand: {summary.get('ligand_total_charge', 0.0):+g},  '
-            f'Ions: {summary.get('ion_total_charge', 0.0):+g},  '
-            f'Total: {q_total:+g}'
+            f"  Protein: {summary.get('protein_charge', 0.0):+g},  "
+            f"Ligand: {summary.get('ligand_total_charge', 0.0):+g},  "
+            f"Ions: {summary.get('ion_total_charge', 0.0):+g},  "
+            f"Total: {q_total:+g}"
         )
         return _round_charge_with_note(q_total, prefix)
     except Exception as e:
@@ -1124,7 +1124,7 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
 def format_pdb_atom_metadata_header() -> str:
     """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
 
-    return f'{'id':>5} {'atom':<4} {'res':<4} {'resid':>4} {'el':<2}'
+    return f"{'id':>5} {'atom':<4} {'res':<4} {'resid':>4} {'el':<2}"
 
 
 def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
@@ -1132,7 +1132,7 @@ def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) ->
 
     fallback_serial = index + 1
     if index < 0 or index >= len(atom_meta):
-        return f'{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>4} {'?':<2}'
+        return f"{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>4} {'?':<2}"
 
     meta = atom_meta[index]
     serial = meta.get('serial') or fallback_serial

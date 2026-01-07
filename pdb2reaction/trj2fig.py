@@ -194,10 +194,10 @@ def transform_series(
     if is_delta:
         base = energies_hartree[ref_idx]  # type: ignore[index]
         values = [float((e - base) * scale) for e in energies_hartree]
-        ylabel = f'ΔE ({'kcal/mol' if unit == 'kcal' else 'hartree'})'
+        ylabel = f"ΔE ({'kcal/mol' if unit == 'kcal' else 'hartree'})"
     else:
         values = [float(e * scale) for e in energies_hartree]
-        ylabel = f'E ({'kcal/mol' if unit == 'kcal' else 'hartree'})'
+        ylabel = f"E ({'kcal/mol' if unit == 'kcal' else 'hartree'})"
 
     return values, ylabel, is_delta
 
