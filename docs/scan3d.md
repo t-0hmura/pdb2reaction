@@ -11,6 +11,9 @@ appropriate restraints active; unbiased energies are recorded so you can compare
 points directly. A precomputed `surface.csv` can also be visualized without
 rerunning the scan.
 
+> If you want to adjust the plot for better visibility, we recommend adding the
+option to load the CSV after the scan finishes and changing `--zmax`.
+
 ## Usage
 ```bash
 pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
