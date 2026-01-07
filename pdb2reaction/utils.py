@@ -1059,7 +1059,7 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 
 
 def _split_atom_spec_tokens(spec: str) -> List[str]:
-    tokens = [t for t in re.split(r"[\\s/`,\\\\,]+", spec.strip()) if t]
+    tokens = [t for t in re.split(r"[\s/`,\\]+", spec.strip()) if t]
     return tokens
 
 
