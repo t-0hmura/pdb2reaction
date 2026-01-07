@@ -59,8 +59,8 @@ def _format_energy_rows(
         if rel_e is None and abs_e is not None and base_e is not None:
             rel_e = (abs_e - base_e) * AU2KCALPERMOL
 
-        abs_txt = f'{abs_e:14.6f}' if abs_e is not None else f"{'n/a':>14}"
-        rel_txt = f'{rel_e:14.4f}' if rel_e is not None else f"{'n/a':>14}"
+        abs_txt = f'{abs_e:14.6f}' if abs_e is not None else f'{'n/a':>14}'
+        rel_txt = f'{rel_e:14.4f}' if rel_e is not None else f'{'n/a':>14}'
         rows.append(f'        {lab:<8}{abs_txt}    {rel_txt}')
     return rows
 
@@ -267,23 +267,23 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     )
     lines.append(f'Path module dir    : {path_module_disp}')
     lines.append(f'Pipeline mode      : {pipeline_mode}')
-    lines.append(f"refine-path        : {_fmt_bool(payload.get('refine_path'))}")
-    lines.append(f"TSOPT/IRC          : {_fmt_bool(payload.get('tsopt'))}")
-    lines.append(f"Thermochemistry    : {_fmt_bool(payload.get('thermo'))}")
-    lines.append(f"DFT single-point   : {_fmt_bool(payload.get('dft'))}")
+    lines.append(f'refine-path        : {_fmt_bool(payload.get('refine_path'))}')
+    lines.append(f'TSOPT/IRC          : {_fmt_bool(payload.get('tsopt'))}')
+    lines.append(f'Thermochemistry    : {_fmt_bool(payload.get('thermo'))}')
+    lines.append(f'DFT single-point   : {_fmt_bool(payload.get('dft'))}')
     opt_mode_disp = payload.get('opt_mode') or '-'
     lines.append(
         f'Opt mode           : {opt_mode_disp}  (light: LBFGS/Dimer; heavy: RFO/RSIRFO)'
     )
-    lines.append(f"MEP mode           : {payload.get('mep_mode') or '-'}")
+    lines.append(f'MEP mode           : {payload.get('mep_mode') or '-'}')
 
     version_base = payload.get('code_version') or __version__
     version_txt = f'pdb2reaction {version_base}'
     lines.append(f'Code version       : {version_txt}')
     uma_model = payload.get('uma_model') or CALC_KW.get('model') or '-'
     lines.append(f'UMA model          : {uma_model}')
-    lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
-    lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
+    lines.append(f'Total charge (ML)  : {charge if charge is not None else '-'}')
+    lines.append(f'Multiplicity (2S+1): {spin if spin is not None else '-'}')
 
     freeze_atoms_raw = payload.get('freeze_atoms') or []
     try:
@@ -299,22 +299,22 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     mep = payload.get('mep', {}) or {}
     diag = mep.get('diagram') or {}
     lines.append('[1] Global MEP overview')
-    lines.append(f"  Number of MEP images : {mep.get('n_images', '-')}")
-    lines.append(f"  Number of segments   : {mep.get('n_segments', '-')}")
+    lines.append(f'  Number of MEP images : {mep.get('n_images', '-')}')
+    lines.append(f'  Number of segments   : {mep.get('n_segments', '-')}')
     if mep.get('traj_pdb'):
         lines.append(
-            f"  MEP trajectory (PDB) : {_shorten_path(mep.get('traj_pdb'), root_out_path)}"
+            f'  MEP trajectory (PDB) : {_shorten_path(mep.get('traj_pdb'), root_out_path)}'
         )
     if mep.get('mep_plot'):
         lines.append(
-            f"  MEP energy plot      : {_shorten_path(mep.get('mep_plot'), root_out_path)}"
+            f'  MEP energy plot      : {_shorten_path(mep.get('mep_plot'), root_out_path)}'
         )
     lines.append('')
     lines.append('  MEP energy diagram (ΔE, kcal/mol)')
     if diag:
         if diag.get('image'):
             lines.append(
-                f"    Image : {_shorten_path(diag.get('image'), root_out_path)}"
+                f'    Image : {_shorten_path(diag.get('image'), root_out_path)}'
             )
         lines.append('    State    ΔE [kcal/mol]')
         labels = diag.get('labels', [])
@@ -370,17 +370,17 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             lines.append(f'  === Segment {idx:02d} ({kind}) tag={tag} ===')
             if seg.get('post_dir'):
                 lines.append(
-                    f"    Post-process dir : {_shorten_path(seg.get('post_dir'), root_out_path)}"
+                    f'    Post-process dir : {_shorten_path(seg.get('post_dir'), root_out_path)}'
                 )
             ts_imag = seg.get('ts_imag') or seg.get('ts_imag_freq_cm')
             lines.extend(_format_ts_imag_info(ts_imag))
             if seg.get('irc_plot'):
                 lines.append(
-                    f"    IRC plot         : {_shorten_path(seg.get('irc_plot'), root_out_path)}"
+                    f'    IRC plot         : {_shorten_path(seg.get('irc_plot'), root_out_path)}'
                 )
             if seg.get('irc_traj'):
                 lines.append(
-                    f"    IRC trajectory   : {_shorten_path(seg.get('irc_traj'), root_out_path)}"
+                    f'    IRC trajectory   : {_shorten_path(seg.get('irc_traj'), root_out_path)}'
                 )
             _emit_energy_block(
                 lines, 'UMA energies (TSOPT+IRC)', seg.get('uma'), root_out_path
@@ -441,7 +441,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             ('DFT//UMA ΔG  [kcal/mol]', 'gibbs_dft_uma_delta'),
         ]
         sorted_entries = [segment_entries[k] for k in sorted(segment_entries.keys())]
-        headers = [f"{int(e.get('index', 0)):d}({e.get('tag', '-')})" for e in sorted_entries]
+        headers = [f'{int(e.get('index', 0)):d}({e.get('tag', '-')})' for e in sorted_entries]
         label_width = max(len(label) for label, _ in table_rows) + 2
         col_width = max(max(len(h) for h in headers), 8)
 
@@ -457,7 +457,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         lines.append('  Segment overview table')
         lines.append(
             '    '
-            + f"{'Seg':<{label_width}} "
+            + f'{'Seg':<{label_width}} '
             + ' '.join(f'{h:>{col_width}}' for h in headers)
         )
         for label, key in table_rows:
@@ -501,7 +501,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             idx = labels_map.get(st)
             val = energies[idx] if idx is not None and idx < len(energies) else None
             row_vals.append(f'{val:>{col_width}.2f}' if val is not None else '---'.rjust(col_width))
-        return f"    {label:<{label_width}} {' '.join(row_vals)}"
+        return f'    {label:<{label_width}} {' '.join(row_vals)}'
 
     if diagrams:
         for diag_payload in diagrams:
@@ -522,7 +522,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 lines.append(f'        {lab:<8}{rel_txt}')
             if diag_payload.get('image'):
                 lines.append(
-                    f"    Image : {_shorten_path(diag_payload.get('image'), root_out_path)}"
+                    f'    Image : {_shorten_path(diag_payload.get('image'), root_out_path)}'
                 )
 
             method_key = _classify_method(diag_payload)
@@ -549,7 +549,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
         lines.append(
             '    '
-            + f"{'State':<{label_width}} "
+            + f'{'State':<{label_width}} '
             + ' '.join(f'{st:>{col_width}}' for st in state_order)
         )
 

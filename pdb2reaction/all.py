@@ -543,7 +543,7 @@ def _read_full_atom_keys_in_file_order(full_pdb: Path) -> List[AtomKey]:
 def _format_atom_key_for_msg(key: AtomKey) -> str:
     """Pretty string for diagnostics."""
     chain, resn, resseq, icode, atom, alt = key
-    res = f"{chain}:{resn}{resseq}{(icode if icode else '')}"
+    res = f'{chain}:{resn}{resseq}{(icode if icode else '')}'
     alt_sfx = f',alt={alt}' if alt else ''
     return f'{res}:{atom}{alt_sfx}'
 
@@ -2446,9 +2446,9 @@ def cli(
                     '[all] Charge summary from full complex (--ligand-charge without extraction):'
                 )
                 click.echo(
-                    f"  Protein: {charge_summary.get('protein_charge', 0.0):+g},  "
-                    f"Ligand: {charge_summary.get('ligand_total_charge', 0.0):+g},  "
-                    f"Ions: {charge_summary.get('ion_total_charge', 0.0):+g},  "
+                    f'  Protein: {charge_summary.get('protein_charge', 0.0):+g},  '
+                    f'Ligand: {charge_summary.get('ligand_total_charge', 0.0):+g},  '
+                    f'Ions: {charge_summary.get('ion_total_charge', 0.0):+g},  '
                     f'Total: {q_total_fallback:+g}'
                 )
             except Exception as e:
@@ -2794,7 +2794,7 @@ def cli(
         try:
             with open(tsroot / 'summary.yaml', 'w') as f:
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-            click.echo(f"[write] Wrote \"{tsroot / 'summary.yaml'}\".")
+            click.echo(f'[write] Wrote "{tsroot / 'summary.yaml'}".')
             try:
                 dst_summary = out_dir / 'summary.yaml'
                 shutil.copy2(tsroot / 'summary.yaml', dst_summary)
@@ -3274,7 +3274,7 @@ def cli(
         try:
             run_trj2fig(final_trj, [path_dir / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
             _close_matplotlib_figures()
-            click.echo(f"[plot] Saved energy plot → \"{path_dir / 'mep_plot.png'}\"")
+            click.echo(f'[plot] Saved energy plot → "{path_dir / 'mep_plot.png'}"')
         except Exception as e:
             click.echo(f'[plot] WARNING: Failed to plot concatenated MEP: {e}', err=True)
 
@@ -3362,7 +3362,7 @@ def cli(
         try:
             with open(path_dir / 'summary.yaml', 'w') as f:
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-            click.echo(f"[write] Wrote \"{path_dir / 'summary.yaml'}\".")
+            click.echo(f'[write] Wrote "{path_dir / 'summary.yaml'}".')
         except Exception as e:
             click.echo(f'[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}', err=True)
 
@@ -3446,7 +3446,7 @@ def cli(
             write_summary_log(path_dir / 'summary.log', summary_payload)
             try:
                 shutil.copy2(path_dir / 'summary.log', out_dir / 'summary.log')
-                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
+                click.echo(f'[all] Copied summary.log → {out_dir / 'summary.log'}')
             except Exception:
                 pass
         except Exception as e:
@@ -3627,7 +3627,7 @@ def cli(
             write_summary_log(path_dir / 'summary.log', summary_payload)
             try:
                 shutil.copy2(path_dir / 'summary.log', out_dir / 'summary.log')
-                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
+                click.echo(f'[all] Copied summary.log → {out_dir / 'summary.log'}')
             except Exception:
                 pass
         except Exception as e:
@@ -4225,7 +4225,7 @@ def cli(
         summary['energy_diagrams'] = list(energy_diagrams)
         with open(path_dir / 'summary.yaml', 'w') as f:
             yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        click.echo(f"[write] Updated \"{path_dir / 'summary.yaml'}\" with energy diagrams.")
+        click.echo(f'[write] Updated "{path_dir / 'summary.yaml'}" with energy diagrams.')
         try:
             dst_summary = out_dir / 'summary.yaml'
             shutil.copy2(path_dir / 'summary.yaml', dst_summary)

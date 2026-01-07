@@ -364,9 +364,7 @@ def _load_two_endpoints(
             detected = detect_freeze_links_safe(p)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(
-                    f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}"
-                )
+                click.echo(f'[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}')
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g = geom_loader(p, coord_type=coord_type, freeze_atoms=freeze)
@@ -394,9 +392,7 @@ def _load_structures(
             detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(
-                    f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}"
-                )
+                click.echo(f'[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}')
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
@@ -711,7 +707,7 @@ def _run_mep_between(
         if wrote_with_energy:
             run_trj2fig(final_trj, [seg_dir / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
             _close_matplotlib_figures()
-            click.echo(f"[{tag}] Saved energy plot → \"{seg_dir / 'mep_plot.png'}\"")
+            click.echo(f'[{tag}] Saved energy plot → "{seg_dir / 'mep_plot.png'}"')
         else:
             click.echo(f'[{tag}] WARNING: Energies missing; skipping plot.', err=True)
     except Exception as e:
@@ -865,7 +861,7 @@ def _run_dmf_between(
     try:
         run_trj2fig(final_trj, [seg_dir / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
         _close_matplotlib_figures()
-        click.echo(f"[{tag}] Saved energy plot → \"{seg_dir / 'mep_plot.png'}\"")
+        click.echo(f'[{tag}] Saved energy plot → "{seg_dir / 'mep_plot.png'}"')
     except Exception as e:
         click.echo(f'[{tag}] WARNING: Failed to plot energy: {e}', err=True)
 
@@ -1366,10 +1362,10 @@ def _build_multistep_path(
     left_changed, left_summary = _has_bond_change(gA, left_end, bond_cfg)
     right_changed, right_summary = _has_bond_change(right_end, gB, bond_cfg)
 
-    click.echo(f"[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}")
+    click.echo(f'[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}')
     if left_changed:
         click.echo(textwrap.indent(left_summary, prefix='  '))
-    click.echo(f"[{tag0}] Covalent changes (right_end vs B): {'Yes' if right_changed else 'No'}")
+    click.echo(f'[{tag0}] Covalent changes (right_end vs B): {'Yes' if right_changed else 'No'}')
     if right_changed:
         click.echo(textwrap.indent(right_summary, prefix='  '))
 
@@ -2413,7 +2409,7 @@ def cli(
             try:
                 run_trj2fig(final_trj, [out_dir_path / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
                 _close_matplotlib_figures()
-                click.echo(f"[plot] Saved energy plot → \"{out_dir_path / 'mep_plot.png'}\"")
+                click.echo(f'[plot] Saved energy plot → "{out_dir_path / 'mep_plot.png'}"')
             except Exception as e:
                 click.echo(f'[plot] WARNING: Failed to plot final energy: {e}', err=True)
 
@@ -2426,7 +2422,7 @@ def cli(
                 try:
                     run_trj2fig(tmp_trj_path, [out_dir_path / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
                     _close_matplotlib_figures()
-                    click.echo(f"[plot] Saved energy plot → \"{out_dir_path / 'mep_plot.png'}\"")
+                    click.echo(f'[plot] Saved energy plot → "{out_dir_path / 'mep_plot.png'}"')
                 except Exception as e:
                     click.echo(f'[plot] WARNING: Failed to plot final energy: {e}', err=True)
                 try:
@@ -2644,7 +2640,7 @@ def cli(
                             peak_e = E_current_kcal + barrier_kcal
                             peaks = current.setdefault('bridge_peaks', [])
                             suffix = '' if len(peaks) == 0 else f'_{len(peaks) + 1}'
-                            peak_label = f"IM{current['index']}_TS{suffix}"
+                            peak_label = f'IM{current['index']}_TS{suffix}'
                             peaks.append({'label': peak_label, 'energy': peak_e})
                             # Log the corresponding peak in au for debugging
                             peak_e_au = E0_au + peak_e / AU2KCALPERMOL
@@ -2767,7 +2763,7 @@ def cli(
 
         with open(out_dir_path / 'summary.yaml', 'w') as f:
             yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        click.echo(f"[write] Wrote \"{out_dir_path / 'summary.yaml'}\".")
+        click.echo(f'[write] Wrote "{out_dir_path / 'summary.yaml'}".')
 
         try:
             try:
@@ -2818,7 +2814,7 @@ def cli(
                 },
             }
             write_summary_log(out_dir_path / 'summary.log', summary_payload)
-            click.echo(f"[write] Wrote \"{out_dir_path / 'summary.log'}\".")
+            click.echo(f'[write] Wrote "{out_dir_path / 'summary.log'}".')
         except Exception as e:
             click.echo(f'[write] WARNING: Failed to write summary.log: {e}', err=True)
 

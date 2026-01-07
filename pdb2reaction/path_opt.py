@@ -220,7 +220,7 @@ def _load_two_endpoints(
             if detected and freeze:
                 click.echo(
                     f'[freeze-links] {src_path.name}: Freeze atoms (0-based): '
-                    f"{','.join(map(str, freeze))}"
+                    f'{','.join(map(str, freeze))}'
                 )
         else:
             freeze = merge_freeze_atom_indices(cfg)

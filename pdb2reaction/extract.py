@@ -1183,13 +1183,13 @@ def _format_linkH_block(link_coords: List[Tuple[float, float, float]],
         serial += 1
         line = (
             f'HETATM{serial:5d} '
-            f"{'HL':>4s} "
-            f"{'LKH':>3s} "
+            f'{'HL':>4s} '
+            f'{'LKH':>3s} '
             f'{chain_id}'
             f'{resseq:4d}    '
             f'{x:8.3f}{y:8.3f}{z:8.3f}'
             f'{1.00:6.2f}{0.00:6.2f}'
-            f"          {'H':>2s}"
+            f'          {'H':>2s}'
         )
         lines.append(line)
         resseq += 1
@@ -1447,9 +1447,7 @@ def _keys_to_fids(structure, keys: Iterable[ResidueKey]) -> Set[Tuple]:
         else:
             fids.add(fid)
     if missing:
-        raise ValueError(
-            f"Some residues not found in structure: {missing[:5]}{' ...' if len(missing)>5 else ''}"
-        )
+        raise ValueError(f'Some residues not found in structure: {missing[:5]}{' ...' if len(missing)>5 else ''}')
     return fids
 
 def _fids_to_keys(structure, fids: Iterable[Tuple]) -> Set[ResidueKey]:
