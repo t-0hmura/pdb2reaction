@@ -655,9 +655,7 @@ def cli(
             detected = []
         merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
-            click.echo(
-                f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}"
-            )
+            click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}')
 
     out_dir_path = Path(out_dir).resolve()
     out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -719,9 +717,7 @@ def cli(
             order = np.argsort(freqs_cm)
 
         n_write = int(min(freq_cfg['max_write'], len(order)))
-        click.echo(
-            f"[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending)."
-        )
+        click.echo(f'[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).')
 
         # Reference PDB (only when input is PDB)
         ref_pdb = input_path if input_path.suffix.lower() == '.pdb' else None

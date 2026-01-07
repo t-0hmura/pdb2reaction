@@ -596,9 +596,7 @@ def cli(
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
                 if freeze:
-                    click.echo(
-                        f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
-                    )
+                    click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}')
 
         coord_type = geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type'])
         geom = geom_loader(geom_input_path, coord_type=coord_type, freeze_atoms=freeze)
@@ -666,7 +664,7 @@ def cli(
                         written.append('"result.pdb"')
                     if needs_gjf:
                         written.append('"result.gjf"')
-                    click.echo(f"[convert] Wrote {', '.join(written)}.")
+                    click.echo(f'[convert] Wrote {', '.join(written)}.')
             except Exception as e:
                 click.echo(f'[convert] WARNING: Failed to convert preopt result: {e}', err=True)
 
@@ -691,12 +689,8 @@ def cli(
             R_bohr = np.array(geom.coords3d, dtype=float)      # (N,3) Bohr
             R_ang  = R_bohr * BOHR2ANG                         # (N,3) Å
             Nsteps, r0, rT, step_widths = _schedule_for_stage(R_ang, tuples, float(max_step_size))
-            click.echo(
-                f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}"
-            )
-            click.echo(
-                f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}"
-            )
+            click.echo(f'[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}')
+            click.echo(f'[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}')
             click.echo(f'[stage {k}] steps N = {Nsteps}')
 
             # Record per-stage summary
@@ -731,9 +725,7 @@ def cli(
                 # Bond changes: start vs final (possibly endopt)
                 try:
                     changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
-                    click.echo(
-                        f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}"
-                    )
+                    click.echo(f'[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}')
                     if changed and summary and summary.strip():
                         click.echo(textwrap.indent(summary.strip(), prefix='  '))
                     if not changed:
@@ -762,7 +754,7 @@ def cli(
                             written.append('"result.pdb"')
                         if needs_gjf:
                             written.append('"result.gjf"')
-                        click.echo(f"[convert] Wrote {', '.join(written)}.")
+                        click.echo(f'[convert] Wrote {', '.join(written)}.')
                 except Exception as e:
                     click.echo(f'[convert] WARNING: Failed to convert stage result: {e}', err=True)
                 continue
@@ -807,9 +799,7 @@ def cli(
             # Bond changes: start vs final (possibly endopt)
             try:
                 changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
-                click.echo(
-                    f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}"
-                )
+                click.echo(f'[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}')
                 if changed and summary and summary.strip():
                     click.echo(textwrap.indent(summary.strip(), prefix='  '))
                 if not changed:
@@ -839,7 +829,7 @@ def cli(
                             written.append('"scan.pdb"')
                         if needs_gjf:
                             written.append('"scan.gjf"')
-                        click.echo(f"[convert] Wrote {', '.join(written)}.")
+                        click.echo(f'[convert] Wrote {', '.join(written)}.')
                 except Exception as e:
                     click.echo(f'[convert] WARNING: Failed to convert stage trajectory: {e}', err=True)
 
@@ -861,7 +851,7 @@ def cli(
                         written.append('"result.pdb"')
                     if needs_gjf:
                         written.append('"result.gjf"')
-                    click.echo(f"[convert] Wrote {', '.join(written)}.")
+                    click.echo(f'[convert] Wrote {', '.join(written)}.')
             except Exception as e:
                 click.echo(f'[convert] WARNING: Failed to convert stage result: {e}', err=True)
 
@@ -901,9 +891,7 @@ def cli(
                 click.echo(f'[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }')
                 click.echo(f'[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }')
                 click.echo(f'[stage {idx}] steps N = {N}')
-                click.echo(
-                    f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}"
-                )
+                click.echo(f'[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}')
                 if changed and summary_txt:
                     click.echo(textwrap.indent(summary_txt, prefix='  '))
                 if not changed:

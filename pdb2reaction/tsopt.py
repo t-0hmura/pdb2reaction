@@ -1459,9 +1459,7 @@ def cli(
             detected = []
         merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
-            click.echo(
-                f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}"
-            )
+            click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}')
 
     # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
     if 'freeze_atoms' in geom_cfg:

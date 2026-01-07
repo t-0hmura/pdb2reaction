@@ -329,7 +329,7 @@ def cli(
             merged_freeze = merge_freeze_atom_indices(geom_cfg, detected)
             if merged_freeze:
                 click.echo(
-                    f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}"
+                    f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}'
                 )
 
         # EulerPC currently only supports Cartesian coordinates
@@ -378,31 +378,19 @@ def cli(
         # --------------------------
         suffix_prefix = irc_cfg.get('prefix', '')
         _echo_convert_trj_if_exists(
-            out_dir_path / f'{suffix_prefix}finished_irc.trj',
+            out_dir_path / f'{suffix_prefix}{'finished_irc.trj'}',
             prepared_input,
-            out_pdb=(
-                out_dir_path / f'{suffix_prefix}finished_irc.pdb'
-                if prepared_input.source_path.suffix.lower() == '.pdb'
-                else None
-            ),
+            out_pdb=out_dir_path / f'{suffix_prefix}{'finished_irc.pdb'}' if prepared_input.source_path.suffix.lower() == '.pdb' else None,
         )
         _echo_convert_trj_if_exists(
-            out_dir_path / f'{suffix_prefix}forward_irc.trj',
+            out_dir_path / f'{suffix_prefix}{'forward_irc.trj'}',
             prepared_input,
-            out_pdb=(
-                out_dir_path / f'{suffix_prefix}forward_irc.pdb'
-                if prepared_input.source_path.suffix.lower() == '.pdb'
-                else None
-            ),
+            out_pdb=out_dir_path / f'{suffix_prefix}{'forward_irc.pdb'}' if prepared_input.source_path.suffix.lower() == '.pdb' else None,
         )
         _echo_convert_trj_if_exists(
-            out_dir_path / f'{suffix_prefix}backward_irc.trj',
+            out_dir_path / f'{suffix_prefix}{'backward_irc.trj'}',
             prepared_input,
-            out_pdb=(
-                out_dir_path / f'{suffix_prefix}backward_irc.pdb'
-                if prepared_input.source_path.suffix.lower() == '.pdb'
-                else None
-            ),
+            out_pdb=out_dir_path / f'{suffix_prefix}{'backward_irc.pdb'}' if prepared_input.source_path.suffix.lower() == '.pdb' else None,
         )
 
         click.echo(format_elapsed('[time] Elapsed Time for IRC', time_start))
