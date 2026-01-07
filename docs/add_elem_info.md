@@ -18,7 +18,7 @@ pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True|False
 
 ## Examples
 ```bash
-# Populate element fields and write to '<input>_add_elem.pdb'
+# Populate element fields and write to "<input>_add_elem.pdb"
 pdb2reaction add-elem-info -i 1abc.pdb
 
 # Write to a specific output file

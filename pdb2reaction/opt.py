@@ -8,7 +8,7 @@ Usage (CLI)
 -----------
     pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dist-freeze '[(I,J,TARGET_A), ...]'] [--one-based {True|False}] \
+        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based {True|False}] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
         [--workers <int>] [--workers-per-node <int>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
@@ -27,7 +27,7 @@ Description
 -----------
 - Single-structure geometry optimization using pysisyphus with a UMA calculator.
 - Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
-- Optimizers: LBFGS ('light', default) or RFOptimizer ('heavy').
+- Optimizers: LBFGS ("light", default) or RFOptimizer ("heavy").
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest). (If the same key is set in both `opt` and `lbfgs`/`rfo`, the `opt` value takes precedence.)
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
@@ -40,14 +40,14 @@ Description
 
 Key options (YAML keys → meaning; defaults)
 - Geometry (`geom`):
-  - `coord_type`: 'cart' (default) | 'dlc' (often more stable for small molecules).
+  - `coord_type`: "cart" (default) | "dlc" (often more stable for small molecules).
   - `freeze_atoms`: list[int], 0‑based indices to freeze (default: []).
 
 - Calculator (`calc`, UMA via `uma_pysis`):
   - `charge` / `spin`: by default taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity` (default `1`)
     and reconciled with any `.gjf` template via `resolve_charge_spin_or_raise`.
-  - `model`: 'uma-s-1p1' (default) | 'uma-m-1p1'; `task_name`: 'omol'.
-  - `device`: 'auto' (GPU if available) | 'cuda' | 'cpu'.
+  - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
+  - `device`: "auto" (GPU if available) | "cuda" | "cpu".
   - `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
   - `out_hess_torch`: bool; when True, provide a torch.Tensor Hessian (CUDA); else numpy on CPU.
 
@@ -76,7 +76,7 @@ Key options (YAML keys → meaning; defaults)
 - RFO-specific (`rfo`, used when `--opt-mode heavy`):
   - Trust region: `trust_radius` 0.10; `trust_update` True; bounds: `trust_min` 0.00, `trust_max` 0.10;
     `max_energy_incr` Optional[float].
-  - Hessian: `hessian_update` 'bfgs' | 'bofill'; `hessian_init` 'calc'; `hessian_recalc` 200;
+  - Hessian: `hessian_update` "bfgs" | "bofill"; `hessian_init` "calc"; `hessian_recalc` 200;
     `hessian_recalc_adapt` None.
   - Numerics: `small_eigval_thresh` 1e-8.
   - RFO/RS micro-iterations: `alpha0` 1.0; `max_micro_cycles` 50; `rfo_overlaps` False.
@@ -104,13 +104,13 @@ Notes
   `.gjf` templates when available, and explicit `-q` always overrides derived values. UMA parallelism can be tuned via
   ``--workers``/``--workers-per-node``; analytic Hessians are automatically disabled when `workers>1`. Always provide physically
   correct states.
-- **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type='dlc'` can
+- **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type="dlc"` can
   improve stability for small molecules.
 - **Freeze links (PDB only):** With `--freeze-links` (default), parent atoms of link hydrogens are detected and frozen;
   indices are 0-based and merged with `geom.freeze_atoms`.
 - **PDB conversion caveat:** Conversions reuse the input PDB topology; ensure atom order/topology match the optimized
   coordinates.
-- **Devices:** `calc.device='auto'` selects CUDA when available; otherwise CPU.
+- **Devices:** `calc.device="auto"` selects CUDA when available; otherwise CPU.
 - **Hessian form:** Set `calc.out_hess_torch=True` to receive a torch/CUDA Hessian; otherwise numpy/CPU.
 - **Stopping safeguards:** A `ZeroStepLength` triggers termination when the minimum step is below 1e-8. `max_energy_incr` (RFO)
   aborts on large uphill steps.
@@ -170,14 +170,14 @@ CALC_KW = dict(_UMA_CALC_KW)
 # Optimizer base (common to LBFGS & RFO)  (YAML key: opt)
 OPT_BASE_KW = {
     # Convergence threshold preset
-    'thresh': 'gau',            # 'gau_loose' | 'gau' | 'gau_tight' | 'gau_vtight' | 'baker' | 'never'
+    "thresh": "gau",            # "gau_loose" | "gau" | "gau_tight" | "gau_vtight" | "baker" | "never"
 
     # Convergence criteria (forces in Hartree/bohr, steps in bohr)
     # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
     # |  Preset    | Purpose                                                    | max|F|  | RMS(F) | max|step| | RMS(step)   |
     # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
     # | gau_loose  | Loose/quick preoptimization; rough path searches           | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
-    # | gau        | Standard 'Gaussian-like' tightness for routine work        | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
+    # | gau        | Standard "Gaussian-like" tightness for routine work        | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
     # | gau_tight  | Tighter; better structures / freq / TS refinement          | 1.5e-5  | 1.0e-5 | 6.0e-5    | 4.0e-5      |
     # | gau_vtight | Very tight; benchmarking/high-precision final structures   | 2.0e-6  | 1.0e-6 | 6.0e-6    | 4.0e-6      |
     # | baker*     | Baker-style rule (special; see below)                      | 3.0e-4* |   —    | 3.0e-4*   |     —       |
@@ -185,32 +185,32 @@ OPT_BASE_KW = {
     # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
     # * Baker rule in this tool: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
 
-    'max_cycles': 10000,         # hard cap on optimization cycles
-    'print_every': 100,          # progress print frequency in cycles
+    "max_cycles": 10000,         # hard cap on optimization cycles
+    "print_every": 100,          # progress print frequency in cycles
 
     # Step-size safeguarding
-    'min_step_norm': 1e-8,       # minimum ||step|| before raising ZeroStepLength
-    'assert_min_step': True,     # enforce the min_step_norm check
+    "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength
+    "assert_min_step": True,     # enforce the min_step_norm check
 
     # Convergence criteria toggles
-    'rms_force': None,           # Optional[float], if set, derive thresholds from this RMS(F)
-    'rms_force_only': False,     # only check RMS(force)
-    'max_force_only': False,     # only check max(|force|)
-    'force_only': False,         # check RMS(force) and max(|force|) only
+    "rms_force": None,           # Optional[float], if set, derive thresholds from this RMS(F)
+    "rms_force_only": False,     # only check RMS(force)
+    "max_force_only": False,     # only check max(|force|)
+    "force_only": False,         # check RMS(force) and max(|force|) only
 
     # Extra convergence mechanisms
-    'converge_to_geom_rms_thresh': 0.05,  # RMSD to reference geometry (Growing-NT)
-    'overachieve_factor': 0.0,            # consider converged if forces < thresh/this_factor
-    'check_eigval_structure': False,      # TS search: require expected negative modes
+    "converge_to_geom_rms_thresh": 0.05,  # RMSD to reference geometry (Growing-NT)
+    "overachieve_factor": 0.0,            # consider converged if forces < thresh/this_factor
+    "check_eigval_structure": False,      # TS search: require expected negative modes
 
     # Line search
-    'line_search': True,         # enable polynomial line search
+    "line_search": True,         # enable polynomial line search
 
     # Dumping / restart / bookkeeping
-    'dump': False,               # write optimization trajectory
-    'dump_restart': False,       # False | int, write restart YAML every N cycles (False disables)
-    'prefix': '',                # file name prefix
-    'out_dir': './result_opt/',  # output directory
+    "dump": False,               # write optimization trajectory
+    "dump_restart": False,       # False | int, write restart YAML every N cycles (False disables)
+    "prefix": "",                # file name prefix
+    "out_dir": "./result_opt/",  # output directory
 }
 
 # LBFGS-specific (YAML key: lbfgs)
@@ -218,22 +218,22 @@ LBFGS_KW = {
     **OPT_BASE_KW,
 
     # History / memory
-    'keep_last': 7,              # number of (s, y) pairs to retain
+    "keep_last": 7,              # number of (s, y) pairs to retain
 
     # Preconditioner / initial scaling
-    'beta': 1.0,                 # β in -(H + βI)^{-1} g
-    'gamma_mult': False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
+    "beta": 1.0,                 # β in -(H + βI)^{-1} g
+    "gamma_mult": False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
 
     # Step-size control
-    'max_step': 0.30,            # maximum allowed component-wise step
-    'control_step': True,        # scale step to satisfy |max component| <= max_step
+    "max_step": 0.30,            # maximum allowed component-wise step
+    "control_step": True,        # scale step to satisfy |max component| <= max_step
 
     # Safeguards
-    'double_damp': True,         # double-damping to enforce s·y > 0
+    "double_damp": True,         # double-damping to enforce s·y > 0
 
     # Regularized L-BFGS (μ_reg)
-    'mu_reg': None,              # initial regularization; enables regularized L-BFGS if set
-    'max_mu_reg_adaptions': 10,  # maximum trial steps for μ adaptation
+    "mu_reg": None,              # initial regularization; enables regularized L-BFGS if set
+    "max_mu_reg_adaptions": 10,  # maximum trial steps for μ adaptation
 }
 
 # RFO-specific (YAML key: rfo)
@@ -241,44 +241,44 @@ RFO_KW = {
     **OPT_BASE_KW,
 
     # Trust-region (step-size) control
-    'trust_radius': 0.10,        # initial trust radius (in working coordinates)
-    'trust_update': True,        # adapt the trust radius based on step quality
-    'trust_min': 0.00,           # lower bound for trust radius
-    'trust_max': 0.10,           # upper bound for trust radius
-    'max_energy_incr': None,     # abort if ΔE exceeds this after a bad step
+    "trust_radius": 0.10,        # initial trust radius (in working coordinates)
+    "trust_update": True,        # adapt the trust radius based on step quality
+    "trust_min": 0.00,           # lower bound for trust radius
+    "trust_max": 0.10,           # upper bound for trust radius
+    "max_energy_incr": None,     # abort if ΔE exceeds this after a bad step
 
     # Hessian model / refresh
-    'hessian_update': 'bfgs',    # 'bfgs' (faster convergence) | 'bofill' (more robust)
-    'hessian_init': 'calc',      # initial Hessian calculation
-    'hessian_recalc': 200,       # recompute exact Hessian every N cycles
-    'hessian_recalc_adapt': None,# heuristic: trigger exact Hessian recompute based on force norm
+    "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
+    "hessian_init": "calc",      # initial Hessian calculation
+    "hessian_recalc": 200,       # recompute exact Hessian every N cycles
+    "hessian_recalc_adapt": None,# heuristic: trigger exact Hessian recompute based on force norm
 
     # Numerical hygiene & mode filtering
-    'small_eigval_thresh': 1e-8, # treat |λ| < threshold as zero / remove corresponding modes
+    "small_eigval_thresh": 1e-8, # treat |λ| < threshold as zero / remove corresponding modes
 
     # RFO/RS micro-iterations
-    'alpha0': 1.0,               # initial α for restricted-step RFO
-    'max_micro_cycles': 50,      # max inner iterations to hit the trust radius
-    'rfo_overlaps': False,       # mode following via eigenvector overlap across cycles
+    "alpha0": 1.0,               # initial α for restricted-step RFO
+    "max_micro_cycles": 50,      # max inner iterations to hit the trust radius
+    "rfo_overlaps": False,       # mode following via eigenvector overlap across cycles
 
     # Inter/Extrapolation helpers
-    'gediis': False,             # enable GEDIIS (energy-based DIIS)
-    'gdiis': True,               # enable GDIIS (gradient-based DIIS)
+    "gediis": False,             # enable GEDIIS (energy-based DIIS)
+    "gdiis": True,               # enable GDIIS (gradient-based DIIS)
 
     # Thresholds for enabling DIIS (semantics matter)
-    'gdiis_thresh': 2.5e-3,      # compared to RMS(step)  → enable GDIIS when small
-    'gediis_thresh': 1.0e-2,     # compared to RMS(force) → enable GEDIIS when small
+    "gdiis_thresh": 2.5e-3,      # compared to RMS(step)  → enable GDIIS when small
+    "gediis_thresh": 1.0e-2,     # compared to RMS(force) → enable GEDIIS when small
 
-    'gdiis_test_direction': True,# compare DIIS step direction to the RFO step
+    "gdiis_test_direction": True,# compare DIIS step direction to the RFO step
 
     # Choice of step model
-    'adapt_step_func': True,     # switch to shifted-Newton on trust when PD & gradient is small
+    "adapt_step_func": True,     # switch to shifted-Newton on trust when PD & gradient is small
 }
 
 # Normalization helpers
 _OPT_MODE_ALIASES = (
-    (('light',), 'lbfgs'),
-    (('heavy',), 'rfo'),
+    (("light",), "lbfgs"),
+    (("heavy",), "rfo"),
 )
 
 
@@ -319,24 +319,24 @@ class HarmonicBiasCalculator:
     def get_forces(self, elem, coords):
         coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
         base = self.base.get_forces(elem, coords_bohr)
-        E0 = float(base['energy'])
-        F0 = np.asarray(base['forces'], dtype=float).reshape(-1)
+        E0 = float(base["energy"])
+        F0 = np.asarray(base["forces"], dtype=float).reshape(-1)
         Ebias, Fbias = self._bias_energy_forces_bohr(coords_bohr)
-        return {'energy': E0 + Ebias, 'forces': F0 + Fbias}
+        return {"energy": E0 + Ebias, "forces": F0 + Fbias}
 
     def get_energy(self, elem, coords):
         coords_bohr = np.asarray(coords, dtype=float).reshape(-1, 3)
-        E0 = float(self.base.get_energy(elem, coords_bohr)['energy'])
+        E0 = float(self.base.get_energy(elem, coords_bohr)["energy"])
         Ebias, _ = self._bias_energy_forces_bohr(coords_bohr)
-        return {'energy': E0 + Ebias}
+        return {"energy": E0 + Ebias}
 
     def get_energy_and_forces(self, elem, coords):
         res = self.get_forces(elem, coords)
-        return res['energy'], res['forces']
+        return res["energy"], res["forces"]
 
     def get_energy_and_gradient(self, elem, coords):
         res = self.get_forces(elem, coords)
-        return res['energy'], -np.asarray(res['forces'], dtype=float).reshape(-1)
+        return res["energy"], -np.asarray(res["forces"], dtype=float).reshape(-1)
 
     def __getattr__(self, name: str):
         return getattr(self.base, name)
@@ -352,7 +352,7 @@ def _parse_dist_freeze(
         try:
             obj = ast.literal_eval(raw)
         except Exception as e:
-            raise click.BadParameter(f'Invalid literal for --dist-freeze #{idx}: {e}')
+            raise click.BadParameter(f"Invalid literal for --dist-freeze #{idx}: {e}")
         if isinstance(obj, (list, tuple)) and not obj:
             iterable = []
         elif isinstance(obj, (list, tuple)) and isinstance(obj[0], (list, tuple)):
@@ -362,27 +362,27 @@ def _parse_dist_freeze(
         for entry in iterable:
             if not (isinstance(entry, (list, tuple)) and len(entry) in (2, 3)):
                 raise click.BadParameter(
-                    f'--dist-freeze #{idx} entries must be (i,j) or (i,j,target_A): {entry}'
+                    f"--dist-freeze #{idx} entries must be (i,j) or (i,j,target_A): {entry}"
                 )
             if not (
                 isinstance(entry[0], (int, np.integer))
                 and isinstance(entry[1], (int, np.integer))
             ):
-                raise click.BadParameter(f'Atom indices in --dist-freeze #{idx} must be integers: {entry}')
+                raise click.BadParameter(f"Atom indices in --dist-freeze #{idx} must be integers: {entry}")
             i = int(entry[0])
             j = int(entry[1])
             target = None
             if len(entry) == 3:
                 if not isinstance(entry[2], (int, float, np.floating)):
-                    raise click.BadParameter(f'Target distance must be numeric in --dist-freeze #{idx}: {entry}')
+                    raise click.BadParameter(f"Target distance must be numeric in --dist-freeze #{idx}: {entry}")
                 target = float(entry[2])
                 if target <= 0.0:
-                    raise click.BadParameter(f'Target distance must be > 0 in --dist-freeze #{idx}: {entry}')
+                    raise click.BadParameter(f"Target distance must be > 0 in --dist-freeze #{idx}: {entry}")
             if one_based:
                 i -= 1
                 j -= 1
             if i < 0 or j < 0:
-                raise click.BadParameter(f'--dist-freeze #{idx} produced negative index after conversion: {entry}')
+                raise click.BadParameter(f"--dist-freeze #{idx} produced negative index after conversion: {entry}")
             parsed.append((i, j, target))
     return parsed
 
@@ -398,7 +398,7 @@ def _resolve_dist_freeze_targets(
     for (i, j, target) in tuples:
         if not (0 <= i < n and 0 <= j < n):
             raise click.BadParameter(
-                f'--dist-freeze indices {(i, j)} are out of bounds for the loaded geometry (N={n}).'
+                f"--dist-freeze indices {(i, j)} are out of bounds for the loaded geometry (N={n})."
             )
         if target is None:
             vec = coords_ang[i] - coords_ang[j]
@@ -410,14 +410,14 @@ def _resolve_dist_freeze_targets(
 
 
 def _maybe_convert_outputs(
-    prepared_input: 'PreparedInputStructure',
+    prepared_input: "PreparedInputStructure",
     out_dir: Path,
     dump: bool,
     get_trj_fn,
     final_xyz_path: Path,
 ) -> None:
     """Convert outputs (final geometry and trajectory) to PDB/GJF when requested by the input type."""
-    needs_pdb = prepared_input.source_path.suffix.lower() == '.pdb'
+    needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
     needs_gjf = prepared_input.is_gjf
     if not (needs_pdb or needs_gjf):
         return
@@ -430,29 +430,29 @@ def _maybe_convert_outputs(
             final_xyz_path,
             prepared_input,
             ref_pdb_path=ref_pdb,
-            out_pdb_path=out_dir / 'final_geometry.pdb' if needs_pdb else None,
-            out_gjf_path=out_dir / 'final_geometry.gjf' if needs_gjf else None,
+            out_pdb_path=out_dir / "final_geometry.pdb" if needs_pdb else None,
+            out_gjf_path=out_dir / "final_geometry.gjf" if needs_gjf else None,
         )
-        click.echo('[convert] Wrote "final_geometry" outputs.')
+        click.echo("[convert] Wrote 'final_geometry' outputs.")
     except Exception as e:
-        click.echo(f'[convert] WARNING: Failed to convert final geometry: {e}', err=True)
+        click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
     # optimization.trj → optimization.pdb (if dump)
     if dump and needs_pdb:
         try:
-            trj_path = get_trj_fn('optimization.trj')
+            trj_path = get_trj_fn("optimization.trj")
             if trj_path.exists():
                 convert_xyz_like_outputs(
                     trj_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=out_dir / 'optimization.pdb' if needs_pdb else None,
+                    out_pdb_path=out_dir / "optimization.pdb" if needs_pdb else None,
                 )
-                click.echo('[convert] Wrote "optimization" outputs.')
+                click.echo("[convert] Wrote 'optimization' outputs.")
             else:
-                click.echo('[convert] WARNING: "optimization.trj" not found; skipping conversion.', err=True)
+                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
         except Exception as e:
-            click.echo(f'[convert] WARNING: Failed to convert optimization trajectory: {e}', err=True)
+            click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
 
 
 # -----------------------------------------------
@@ -460,127 +460,127 @@ def _maybe_convert_outputs(
 # -----------------------------------------------
 
 @click.command(
-    help='Single-structure geometry optimization using LBFGS or RFO.',
-    context_settings={'help_option_names': ['-h', '--help']},
+    help="Single-structure geometry optimization using LBFGS or RFO.",
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
-    '-i', '--input',
-    'input_path',
+    "-i", "--input",
+    "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help='Input structure file (.pdb, .xyz, .trj, ...).',
+    help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option('-q', '--charge', type=int, required=False, help='Charge of the ML region.')
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
-    '--workers',
+    "--workers",
     type=int,
-    default=CALC_KW['workers'],
+    default=CALC_KW["workers"],
     show_default=True,
-    help='UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).',
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    '--workers-per-node',
-    'workers_per_node',
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW['workers_per_node'],
+    default=CALC_KW["workers_per_node"],
     show_default=True,
-    help='Workers per node when using a parallel UMA predictor (workers>1).',
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
 @click.option(
-    '--ligand-charge',
+    "--ligand-charge",
     type=str,
     default=None,
     show_default=False,
-    help='Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.',
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
 @click.option(
-    '-m',
-    '--multiplicity',
-    'spin',
+    "-m",
+    "--multiplicity",
+    "spin",
     type=int,
     default=1,
     show_default=True,
-    help='Spin multiplicity (2S+1) for the ML region.',
+    help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
-    '--dist-freeze',
-    'dist_freeze_raw',
+    "--dist-freeze",
+    "dist_freeze_raw",
     type=str,
     multiple=True,
     default=(),
     show_default=False,
-    help='Python-like list(s) of (i,j,target_A) to restrain distances (target optional).',
+    help="Python-like list(s) of (i,j,target_A) to restrain distances (target optional).",
 )
 @click.option(
-    '--one-based',
-    'one_based',
+    "--one-based",
+    "one_based",
     type=click.BOOL,
     default=True,
     show_default=True,
-    help='Interpret --dist-freeze indices as 1-based (default) or 0-based.',
+    help="Interpret --dist-freeze indices as 1-based (default) or 0-based.",
 )
 @click.option(
-    '--bias-k',
+    "--bias-k",
     type=float,
     default=10.0,
     show_default=True,
-    help='Harmonic restraint strength k [eV/Å^2] for --dist-freeze.',
+    help="Harmonic restraint strength k [eV/Å^2] for --dist-freeze.",
 )
 @click.option(
-    '--freeze-links',
+    "--freeze-links",
     type=click.BOOL,
     default=True,
     show_default=True,
-    help='Freeze the parent atoms of link hydrogens (PDB only).',
+    help="Freeze the parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
-    '--convert-files',
-    'convert_files',
+    "--convert-files",
+    "convert_files",
     type=click.BOOL,
     default=True,
     show_default=True,
-    help='Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.',
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
-    '--max-cycles',
+    "--max-cycles",
     type=int,
     default=10000,
     show_default=True,
-    help='Maximum number of optimization cycles.',
+    help="Maximum number of optimization cycles.",
 )
 @click.option(
-    '--opt-mode',
-    type=click.Choice(['light', 'heavy'], case_sensitive=False),
-    default='light',
+    "--opt-mode",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="light",
     show_default=True,
-    help='Optimization mode: "light" (=LBFGS) or "heavy" (=RFO).',
+    help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO).",
 )
 @click.option(
-    '--dump',
+    "--dump",
     type=click.BOOL,
     default=False,
     show_default=True,
-    help='Write optimization trajectory to "optimization.trj".',
+    help="Write optimization trajectory to 'optimization.trj'.",
 )
 @click.option(
-    '--out-dir',
+    "--out-dir",
     type=str,
-    default='./result_opt/',
+    default="./result_opt/",
     show_default=True,
-    help='Output directory.',
+    help="Output directory.",
 )
 @click.option(
-    '--thresh',
+    "--thresh",
     type=str,
     default=None,
     show_default=False,
-    help='Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).',
+    help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
-    '--args-yaml',
+    "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='YAML with extra arguments (sections: geom, calc, opt, lbfgs, rfo).',
+    help="YAML with extra arguments (sections: geom, calc, opt, lbfgs, rfo).",
 )
 def cli(
     input_path: Path,
@@ -610,13 +610,13 @@ def cli(
         charge,
         spin,
         ligand_charge=ligand_charge,
-        prefix='[opt]',
+        prefix="[opt]",
     )
 
     try:
         dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
     except click.BadParameter as e:
-        click.echo(f'ERROR: {e}', err=True)
+        click.echo(f"ERROR: {e}", err=True)
         prepared_input.cleanup()
         sys.exit(1)
 
@@ -632,64 +632,64 @@ def cli(
         rfo_cfg = dict(RFO_KW)
 
         # CLI overrides (defaults ← CLI)
-        calc_cfg['charge'] = charge
-        calc_cfg['spin'] = spin
-        calc_cfg['workers'] = int(workers)
-        calc_cfg['workers_per_node'] = int(workers_per_node)
-        opt_cfg['max_cycles'] = int(max_cycles)
-        opt_cfg['dump'] = bool(dump)
-        opt_cfg['out_dir'] = out_dir
+        calc_cfg["charge"] = charge
+        calc_cfg["spin"] = spin
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_node"] = int(workers_per_node)
+        opt_cfg["max_cycles"] = int(max_cycles)
+        opt_cfg["dump"] = bool(dump)
+        opt_cfg["out_dir"] = out_dir
         if thresh is not None:
-            opt_cfg['thresh'] = str(thresh)
+            opt_cfg["thresh"] = str(thresh)
 
         # YAML has highest precedence (defaults ← CLI ← YAML)
         apply_yaml_overrides(
             yaml_cfg,
             [
-                (geom_cfg, (('geom',),)),
-                (calc_cfg, (('calc',),)),
-                (opt_cfg, (('opt',),)),
-                (lbfgs_cfg, (('lbfgs',),)),
-                (rfo_cfg, (('rfo',),)),
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("lbfgs",),)),
+                (rfo_cfg, (("rfo",),)),
             ],
         )
 
-        # Optionally infer 'freeze_atoms' from link hydrogens in PDB
-        if freeze_links and input_path.suffix.lower() == '.pdb':
+        # Optionally infer "freeze_atoms" from link hydrogens in PDB
+        if freeze_links and input_path.suffix.lower() == ".pdb":
             try:
                 detected = detect_freeze_links(input_path)
             except Exception as e:
-                click.echo(f'[freeze-links] WARNING: Could not detect link parents: {e}', err=True)
+                click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
                 detected = []
             merged = merge_freeze_atom_indices(geom_cfg, detected)
             if merged:
-                click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}')
+                click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
         # Normalize and select optimizer kind
         kind = normalize_choice(
             opt_mode,
-            param='--opt-mode',
+            param="--opt-mode",
             alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint='light|heavy',
+            allowed_hint="light|heavy",
         )
 
         # Pretty-print the resolved configuration
-        out_dir_path = Path(opt_cfg['out_dir']).resolve()
-        click.echo(pretty_block('geom', format_geom_for_echo(geom_cfg)))
-        click.echo(pretty_block('calc', format_freeze_atoms_for_echo(calc_cfg)))
-        click.echo(pretty_block('opt', {**opt_cfg, 'out_dir': str(out_dir_path)}))
-        click.echo(pretty_block(kind, (lbfgs_cfg if kind == 'lbfgs' else rfo_cfg)))
+        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+        click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
+        click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
+        click.echo(pretty_block(kind, (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
         if dist_freeze:
             display_pairs = []
             for (i, j, target) in dist_freeze:
-                label = (f'{target:.4f}' if target is not None else '<current>')
+                label = (f"{target:.4f}" if target is not None else "<current>")
                 display_pairs.append((int(i) + 1, int(j) + 1, label))
             click.echo(
                 pretty_block(
-                    'dist_freeze (input)',
+                    "dist_freeze (input)",
                     {
-                        'k (eV/Å^2)': float(bias_k),
-                        'pairs_1based': display_pairs,
+                        "k (eV/Å^2)": float(bias_k),
+                        "pairs_1based": display_pairs,
                     },
                 )
             )
@@ -699,10 +699,10 @@ def cli(
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        coord_type = geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type'])
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         # Pass all geometry kwargs except coord_type as coord_kwargs
         coord_kwargs = dict(geom_cfg)
-        coord_kwargs.pop('coord_type', None)
+        coord_kwargs.pop("coord_type", None)
         geometry = geom_loader(
             geom_input_path,
             coord_type=coord_type,
@@ -722,15 +722,15 @@ def cli(
             try:
                 resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
             except click.BadParameter as e:
-                click.echo(f'ERROR: {e}', err=True)
+                click.echo(f"ERROR: {e}", err=True)
                 sys.exit(1)
             click.echo(
                 pretty_block(
-                    'dist_freeze (active)',
+                    "dist_freeze (active)",
                     {
-                        'k (eV/Å^2)': float(bias_k),
-                        'pairs_1based': [
-                            (int(i) + 1, int(j) + 1, float(f'{t:.4f}'))
+                        "k (eV/Å^2)": float(bias_k),
+                        "pairs_1based": [
+                            (int(i) + 1, int(j) + 1, float(f"{t:.4f}"))
                             for (i, j, t) in resolved_dist_freeze
                         ],
                     },
@@ -745,9 +745,9 @@ def cli(
         # --------------------------
         common_kwargs = dict(opt_cfg)
         # Ensure paths (strings) are OK; Optimizer expects str, not Path
-        common_kwargs['out_dir'] = str(out_dir_path)
+        common_kwargs["out_dir"] = str(out_dir_path)
 
-        if kind == 'lbfgs':
+        if kind == "lbfgs":
             lbfgs_args = {**lbfgs_cfg, **common_kwargs}
             optimizer = LBFGS(geometry, **lbfgs_args)
         else:
@@ -757,9 +757,9 @@ def cli(
         # --------------------------
         # 4) Run optimization
         # --------------------------
-        click.echo('\n=== Optimization started ===\n')
+        click.echo("\n=== Optimization started ===\n")
         optimizer.run()
-        click.echo('\n=== Optimization finished ===\n')
+        click.echo("\n=== Optimization finished ===\n")
 
         # --------------------------
         # 5) Post-processing: PDB conversions (if input is PDB)
@@ -769,25 +769,25 @@ def cli(
         _maybe_convert_outputs(
             prepared_input=prepared_input,
             out_dir=out_dir_path,
-            dump=bool(opt_cfg['dump']),
+            dump=bool(opt_cfg["dump"]),
             get_trj_fn=optimizer.get_path_for_fn,
             final_xyz_path=final_xyz_path,
         )
 
-        click.echo(format_elapsed('[time] Elapsed Time for Opt', time_start))
+        click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
 
     except ZeroStepLength:
-        click.echo('ERROR: Step length fell below the minimum allowed (ZeroStepLength).', err=True)
+        click.echo("ERROR: Step length fell below the minimum allowed (ZeroStepLength).", err=True)
         sys.exit(2)
     except OptimizationError as e:
-        click.echo(f'ERROR: Optimization failed - {e}', err=True)
+        click.echo(f"ERROR: Optimization failed - {e}", err=True)
         sys.exit(3)
     except KeyboardInterrupt:
-        click.echo('\nInterrupted by user.', err=True)
+        click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
-        tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo('Unhandled exception during optimization:\n' + textwrap.indent(tb, '  '), err=True)
+        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
     finally:
         prepared_input.cleanup()
