@@ -68,8 +68,8 @@ All files honor ``irc.prefix`` when it is set; the directory is created if missi
 Notes
 -----
 - YAML overrides CLI for overlapping keys such as `calc.charge`, `calc.spin`, IRC step control, and output paths.
-- UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: 'auto'`,
-  the calculator selects GPU/CPU automatically. If `hessian_calc_mode: 'FiniteDifference'`,
+- UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
+  the calculator selects GPU/CPU automatically. If `hessian_calc_mode: "FiniteDifference"`,
   `geom.freeze_atoms` can be used to skip frozen DOF in FD Hessian construction.
   The geometry's freeze list is also forwarded to the calculator as `calc.freeze_atoms`.
 - `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
@@ -117,43 +117,43 @@ CALC_KW_DEFAULT: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 IRC_KW_DEFAULT: Dict[str, Any] = {
     # Arguments for IRC.__init__ (forwarded to EulerPC via **kwargs)
-    'step_length': 0.10,         # float, default step length in mass-weighted coordinates (overridden by CLI)
-    'max_cycles': 125,           # int, maximum IRC steps (overridden by CLI)
-    'downhill': False,           # bool, follow downhill potential (debug option)
-    'forward': True,             # bool, integrate forward branch (CLI override --forward)
-    'backward': True,            # bool, integrate backward branch (CLI override --backward)
-    'root': 0,                   # int, imaginary mode index for initial displacement (CLI override --root)
-    'hessian_init': 'calc',      # str, initial Hessian source ('calc' = calculator-provided TS Hessian)
-    'displ': 'energy',           # str, displacement metric (energy|length)
-    'displ_energy': 1.0e-3,      # float, energy step (Hartree) when displ == 'energy'
-    'displ_length': 0.10,        # float, length step in mass-weighted coordinates when displ == 'length'
-    'rms_grad_thresh': 1.0e-3,   # float, RMS gradient threshold for convergence (Hartree/bohr)
-    'hard_rms_grad_thresh': None,# Optional[float], stricter RMS gradient cutoff
-    'energy_thresh': 1.0e-6,     # float, energy-change threshold for convergence (Hartree)
-    'imag_below': 0.0,           # float, treat imaginary frequency below this as zero
-    'force_inflection': True,    # bool, stop when force inflection detected
-    'check_bonds': False,        # bool, enable bond-change detection during IRC
-    'out_dir': './result_irc/',  # str, output directory
-    'prefix': '',                # str, file name prefix
+    "step_length": 0.10,         # float, default step length in mass-weighted coordinates (overridden by CLI)
+    "max_cycles": 125,           # int, maximum IRC steps (overridden by CLI)
+    "downhill": False,           # bool, follow downhill potential (debug option)
+    "forward": True,             # bool, integrate forward branch (CLI override --forward)
+    "backward": True,            # bool, integrate backward branch (CLI override --backward)
+    "root": 0,                   # int, imaginary mode index for initial displacement (CLI override --root)
+    "hessian_init": "calc",      # str, initial Hessian source ("calc" = calculator-provided TS Hessian)
+    "displ": "energy",           # str, displacement metric (energy|length)
+    "displ_energy": 1.0e-3,      # float, energy step (Hartree) when displ == "energy"
+    "displ_length": 0.10,        # float, length step in mass-weighted coordinates when displ == "length"
+    "rms_grad_thresh": 1.0e-3,   # float, RMS gradient threshold for convergence (Hartree/bohr)
+    "hard_rms_grad_thresh": None,# Optional[float], stricter RMS gradient cutoff
+    "energy_thresh": 1.0e-6,     # float, energy-change threshold for convergence (Hartree)
+    "imag_below": 0.0,           # float, treat imaginary frequency below this as zero
+    "force_inflection": True,    # bool, stop when force inflection detected
+    "check_bonds": False,        # bool, enable bond-change detection during IRC
+    "out_dir": "./result_irc/",  # str, output directory
+    "prefix": "",                # str, file name prefix
 
     # EulerPC-specific options
-    'hessian_update': 'bofill',  # str, Hessian update algorithm
-    'hessian_recalc': None,      # Optional[int], force Hessian recalculation every N steps
-    'max_pred_steps': 500,       # int, predictor steps per segment
-    'loose_cycles': 3,           # int, cycles using looser thresholds
-    'corr_func': 'mbs',          # str, correction function selection
+    "hessian_update": "bofill",  # str, Hessian update algorithm
+    "hessian_recalc": None,      # Optional[int], force Hessian recalculation every N steps
+    "max_pred_steps": 500,       # int, predictor steps per segment
+    "loose_cycles": 3,           # int, cycles using looser thresholds
+    "corr_func": "mbs",          # str, correction function selection
 }
 
 
 def _echo_convert_trj_if_exists(
     trj_path: Path,
-    prepared_input: 'PreparedInputStructure',
+    prepared_input: "PreparedInputStructure",
     *,
     out_pdb: Optional[Path] = None,
 ) -> None:
     if trj_path.exists():
         try:
-            ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == '.pdb' else None
+            ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == ".pdb" else None
             convert_xyz_like_outputs(
                 trj_path,
                 prepared_input,
@@ -162,11 +162,11 @@ def _echo_convert_trj_if_exists(
             )
             targets = [p for p in (out_pdb,) if p is not None and p.exists()]
             if targets:
-                written = ', '.join(f'"{p.name}"' for p in targets)
-                click.echo(f'[convert] Wrote {written}.')
+                written = ", ".join(f"'{p.name}'" for p in targets)
+                click.echo(f"[convert] Wrote {written}.")
         except Exception as e:
             click.echo(
-                f'[convert] WARNING: Failed to convert "{trj_path.name}" outputs: {e}',
+                f"[convert] WARNING: Failed to convert '{trj_path.name}' outputs: {e}",
                 err=True,
             )
 
@@ -176,73 +176,73 @@ def _echo_convert_trj_if_exists(
 # --------------------------
 
 @click.command(
-    help='Run an IRC calculation with EulerPC. Only the documented CLI options are accepted; all other settings come from YAML.',
-    context_settings={'help_option_names': ['-h', '--help']},
+    help="Run an IRC calculation with EulerPC. Only the documented CLI options are accepted; all other settings come from YAML.",
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
-    '-i', '--input',
-    'input_path',
+    "-i", "--input",
+    "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help='Input structure file (.pdb, .xyz, .trj, etc.).',
+    help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@click.option('-q', '--charge', type=int, required=False, help='Charge of the ML region.')
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
-    '--workers',
+    "--workers",
     type=int,
-    default=CALC_KW_DEFAULT['workers'],
+    default=CALC_KW_DEFAULT["workers"],
     show_default=True,
-    help='UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).',
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    '--workers-per-node',
-    'workers_per_node',
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW_DEFAULT['workers_per_node'],
+    default=CALC_KW_DEFAULT["workers_per_node"],
     show_default=True,
-    help='Workers per node when using a parallel UMA predictor (workers>1).',
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
 @click.option(
-    '--ligand-charge',
+    "--ligand-charge",
     type=str,
     default=None,
     show_default=False,
-    help='Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.',
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option('-m', '--multiplicity', 'spin', type=int, default=1, show_default=True, help='Spin multiplicity (2S+1) for the ML region.')
-@click.option('--max-cycles', type=int, default=None, help='Maximum number of IRC steps; overrides irc.max_cycles from YAML.')
-@click.option('--step-size', type=float, default=None, help='Step length in mass-weighted coordinates; overrides irc.step_length from YAML.')
-@click.option('--root', type=int, default=None, help='Imaginary mode index used for the initial displacement; overrides irc.root from YAML.')
-@click.option('--forward', type=bool, default=None, help='Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly.')
-@click.option('--backward', type=bool, default=None, help='Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly.')
+@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
+@click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
+@click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")
+@click.option("--forward", type=bool, default=None, help="Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly.")
+@click.option("--backward", type=bool, default=None, help="Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly.")
 @click.option(
-    '--freeze-links',
-    'freeze_links_flag',
+    "--freeze-links",
+    "freeze_links_flag",
     type=click.BOOL,
     default=True,
     show_default=True,
-    help='Freeze parent atoms of link hydrogens when the input is PDB.',
+    help="Freeze parent atoms of link hydrogens when the input is PDB.",
 )
 @click.option(
-    '--convert-files',
-    'convert_files',
+    "--convert-files",
+    "convert_files",
     type=click.BOOL,
     default=True,
     show_default=True,
-    help='Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.',
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
-@click.option('--out-dir', type=str, default='./result_irc/', show_default=True, help='Output directory; overrides irc.out_dir from YAML.')
+@click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
-    '--hessian-calc-mode',
-    type=click.Choice(['FiniteDifference', 'Analytical'], case_sensitive=False),
+    "--hessian-calc-mode",
+    type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help='How UMA builds the Hessian (Analytical or FiniteDifference); overrides calc.hessian_calc_mode from YAML. Defaults to "FiniteDifference".',
+    help="How UMA builds the Hessian (Analytical or FiniteDifference); overrides calc.hessian_calc_mode from YAML. Defaults to 'FiniteDifference'.",
 )
 @click.option(
-    '--args-yaml',
+    "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='YAML file providing extra parameters (sections: geom, calc, irc).',
+    help="YAML file providing extra parameters (sections: geom, calc, irc).",
 )
 def cli(
     input_path: Path,
@@ -270,7 +270,7 @@ def cli(
         charge,
         spin,
         ligand_charge=ligand_charge,
-        prefix='[irc]',
+        prefix="[irc]",
     )
     try:
         time_start = time.perf_counter()
@@ -285,75 +285,75 @@ def cli(
         irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
 
         # CLI overrides
-        calc_cfg['charge'] = int(charge)
-        calc_cfg['spin']   = int(spin)
-        calc_cfg['workers'] = int(workers)
-        calc_cfg['workers_per_node'] = int(workers_per_node)
+        calc_cfg["charge"] = int(charge)
+        calc_cfg["spin"]   = int(spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_node"] = int(workers_per_node)
 
         if hessian_calc_mode is not None:
-            calc_cfg['hessian_calc_mode'] = str(hessian_calc_mode)
+            calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
         if max_cycles is not None:
-            irc_cfg['max_cycles'] = int(max_cycles)
+            irc_cfg["max_cycles"] = int(max_cycles)
         if step_size is not None:
-            irc_cfg['step_length'] = float(step_size)
+            irc_cfg["step_length"] = float(step_size)
         if root is not None:
-            irc_cfg['root'] = int(root)
+            irc_cfg["root"] = int(root)
         if forward is not None:
-            irc_cfg['forward'] = bool(forward)
+            irc_cfg["forward"] = bool(forward)
         if backward is not None:
-            irc_cfg['backward'] = bool(backward)
+            irc_cfg["backward"] = bool(backward)
         if out_dir:
-            irc_cfg['out_dir'] = str(out_dir)
+            irc_cfg["out_dir"] = str(out_dir)
 
         apply_yaml_overrides(
             yaml_cfg,
             [
-                (geom_cfg, (('geom',),)),
-                (calc_cfg, (('calc',),)),
-                (irc_cfg, (('irc',),)),
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (irc_cfg, (("irc",),)),
             ],
         )
 
         # Normalize any existing freeze list and optionally augment with link parents
         merged_freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links_flag and input_path.suffix.lower() == '.pdb':
+        if freeze_links_flag and input_path.suffix.lower() == ".pdb":
             try:
                 detected = detect_freeze_links(input_path)
             except Exception as e:
                 click.echo(
-                    f'[freeze-links] WARNING: Could not detect link parents: {e}',
+                    f"[freeze-links] WARNING: Could not detect link parents: {e}",
                     err=True,
                 )
                 detected = []
             merged_freeze = merge_freeze_atom_indices(geom_cfg, detected)
             if merged_freeze:
                 click.echo(
-                    f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}'
+                    f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}"
                 )
 
         # EulerPC currently only supports Cartesian coordinates
-        geom_cfg['coord_type'] = 'cart'
+        geom_cfg["coord_type"] = "cart"
 
         # Ensure the calculator receives the freeze list used by geometry
         # (so FD Hessian can skip frozen DOF, etc.)
-        calc_cfg['freeze_atoms'] = list(geom_cfg.get('freeze_atoms', []))
-        calc_cfg['return_partial_hessian'] = False
+        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+        calc_cfg["return_partial_hessian"] = False
 
-        out_dir_path = Path(irc_cfg['out_dir']).resolve()
+        out_dir_path = Path(irc_cfg["out_dir"]).resolve()
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
         # Pretty-print configuration (expand freeze_atoms for readability)
-        click.echo(pretty_block('geom', format_geom_for_echo(geom_cfg)))
-        click.echo(pretty_block('calc', format_freeze_atoms_for_echo(calc_cfg)))
-        click.echo(pretty_block('irc',  {**irc_cfg, 'out_dir': str(out_dir_path)}))
+        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+        click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
+        click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
         # --------------------------
         # 2) Load geometry and configure UMA calculator
         # --------------------------
-        coord_type = geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type'])
+        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         coord_kwargs = dict(geom_cfg)
-        coord_kwargs.pop('coord_type', None)
+        coord_kwargs.pop("coord_type", None)
 
         geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
@@ -369,38 +369,38 @@ def cli(
         # EulerPC.__init__ forwards **kwargs directly to IRC.__init__
         eulerpc = EulerPC(geometry, **irc_cfg)
 
-        click.echo('\n=== IRC (EulerPC) started ===\n')
+        click.echo("\n=== IRC (EulerPC) started ===\n")
         eulerpc.run()
-        click.echo('\n=== IRC (EulerPC) finished ===\n')
+        click.echo("\n=== IRC (EulerPC) finished ===\n")
 
         # --------------------------
         # 4) Convert trajectories to PDB based on input type
         # --------------------------
-        suffix_prefix = irc_cfg.get('prefix', '')
+        suffix_prefix = irc_cfg.get("prefix", "")
         _echo_convert_trj_if_exists(
-            out_dir_path / f'{suffix_prefix}{'finished_irc.trj'}',
+            out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
             prepared_input,
-            out_pdb=out_dir_path / f'{suffix_prefix}{'finished_irc.pdb'}' if prepared_input.source_path.suffix.lower() == '.pdb' else None,
+            out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
         )
         _echo_convert_trj_if_exists(
-            out_dir_path / f'{suffix_prefix}{'forward_irc.trj'}',
+            out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
             prepared_input,
-            out_pdb=out_dir_path / f'{suffix_prefix}{'forward_irc.pdb'}' if prepared_input.source_path.suffix.lower() == '.pdb' else None,
+            out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
         )
         _echo_convert_trj_if_exists(
-            out_dir_path / f'{suffix_prefix}{'backward_irc.trj'}',
+            out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
             prepared_input,
-            out_pdb=out_dir_path / f'{suffix_prefix}{'backward_irc.pdb'}' if prepared_input.source_path.suffix.lower() == '.pdb' else None,
+            out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
         )
 
-        click.echo(format_elapsed('[time] Elapsed Time for IRC', time_start))
+        click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 
     except KeyboardInterrupt:
-        click.echo('\nInterrupted by user.', err=True)
+        click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
-        tb = textwrap.indent(''.join(__import__('traceback').format_exception(type(e), e, e.__traceback__)), '  ')
-        click.echo('Unhandled exception during IRC:\n' + tb, err=True)
+        tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
+        click.echo("Unhandled exception during IRC:\n" + tb, err=True)
         sys.exit(1)
     finally:
         prepared_input.cleanup()

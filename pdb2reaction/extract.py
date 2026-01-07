@@ -23,16 +23,16 @@ Examples
     pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
 
     # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
+    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
 
     # Name-based substrate selection including all matches (WARNING is logged)
-    pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
+    pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
 
     # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge "GPP:-3,SAM:1"
 
     # Multi-structure to multi outputs with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --ligand-charge 'GPP:-3,SAM:1'
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb pocket2.pdb --ligand-charge "GPP:-3,SAM:1"
 
 Description
 -----------
@@ -159,7 +159,7 @@ Residues are categorized as:
 ``--ligand-charge`` handling (applies only to **unknown** residues):
 - ``--ligand-charge <number>``: assign the given total charge equally across **unknown substrate residues**;
   if there are none, distribute across **all unknown residues** in the pocket.
-- ``--ligand-charge 'RES1:Q1,RES2:Q2'``: per-resname charges for unknown residues; unspecified unknowns remain 0.
+- ``--ligand-charge "RES1:Q1,RES2:Q2"``: per-resname charges for unknown residues; unspecified unknowns remain 0.
 
 The logged summary includes:
 - net protein charge, net unknown/ligand charge, ion list and net ion charge, and total pocket charge.
@@ -198,10 +198,10 @@ Substrate specification
   inputs by residue IDs (chain/resseq/icode), so numbering must be consistent across inputs.
 
 - a list of **residue IDs** (comma/space separated):
-  ``'123,124'``, ``'A:123,B:456'``, ``'123A'``, ``'A:123A'`` (insertion codes supported).
+  ``"123,124"``, ``"A:123,B:456"``, ``"123A"``, ``"A:123A"`` (insertion codes supported).
   Chain may be omitted (matches all chains); insertion code may be omitted (matches any insertion code for that resseq).
 
-- a list of **residue names** (comma/space separated, case-insensitive), e.g., ``'GPP,SAM'``.
+- a list of **residue names** (comma/space separated, case-insensitive), e.g., ``"GPP,SAM"``.
   If multiple residues share the same residue name, **all** matches are included and a WARNING is logged.
 
 Outputs (& Paths)
@@ -220,7 +220,7 @@ Link hydrogens, logs, and programmatic use
   (set ``--verbose false`` to keep warnings only).
 - Programmatic use:
   - ``extract(..., api=True)`` and ``extract_api(...)`` return
-    ``{'outputs': [...], 'counts': [...], 'charge_summary': {...}}``.
+    ``{"outputs": [...], "counts": [...], "charge_summary": {...}}``.
 
 Notes
 -----
@@ -257,14 +257,14 @@ from Bio import PDB
 from Bio.PDB import NeighborSearch
 
 # Public API
-__all__ = ['extract', 'extract_api']
+__all__ = ["extract", "extract_api"]
 
 # ---------------------------------------------------------------------
 #   Constants
 # ---------------------------------------------------------------------
 BACKBONE_ATOMS: Set[str] = {
-    'N', 'C', 'O', 'CA', 'OXT',
-    'H', 'H1', 'H2', 'H3', 'HN', 'HA', 'HA2', 'HA3',
+    "N", "C", "O", "CA", "OXT",
+    "H", "H1", "H2", "H3", "HN", "HA", "HA2", "HA3",
 }
 # When --exclude-backbone true, remove the full main-chain set:
 BACKBONE_ALL: Set[str] = BACKBONE_ATOMS
@@ -273,112 +273,112 @@ BACKBONE_ALL: Set[str] = BACKBONE_ATOMS
 # (membership checks throughout the code use dictionary keys)
 AMINO_ACIDS: Dict[str, int] = {
     # --- Standard 20 (L) ---
-    'ALA':  0, 'ARG': +1, 'ASN':  0, 'ASP': -1, 'CYS':  0,
-    'GLU': -1, 'GLN':  0, 'GLY':  0, 'HIS':  0, 'ILE':  0,
-    'LEU':  0, 'LYS': +1, 'MET':  0, 'PHE':  0, 'PRO':  0,
-    'SER':  0, 'THR':  0, 'TRP':  0, 'TYR':  0, 'VAL':  0,
+    "ALA":  0, "ARG": +1, "ASN":  0, "ASP": -1, "CYS":  0,
+    "GLU": -1, "GLN":  0, "GLY":  0, "HIS":  0, "ILE":  0,
+    "LEU":  0, "LYS": +1, "MET":  0, "PHE":  0, "PRO":  0,
+    "SER":  0, "THR":  0, "TRP":  0, "TYR":  0, "VAL":  0,
 
     # --- Canonical extras ---
-    'SEC':  0,   # selenocysteine
-    'PYL': +1,   # pyrrolysine
+    "SEC":  0,   # selenocysteine
+    "PYL": +1,   # pyrrolysine
 
     # --- Protonation / tautomers (Amber/CHARMM style) ---
-    'HIP': +1,   # fully protonated His
-    'HID':  0,   # Nδ-protonated His
-    'HIE':  0,   # Nε-protonated His
-    'ASH':  0,   # neutral Asp
-    'GLH':  0,   # neutral Glu
-    'LYN':  0,   # neutral Lys
-    'ARN':  0,   # neutral Arg
-    'TYM': -1,   # deprotonated Tyr (phenolate)
+    "HIP": +1,   # fully protonated His
+    "HID":  0,   # Nδ-protonated His
+    "HIE":  0,   # Nε-protonated His
+    "ASH":  0,   # neutral Asp
+    "GLH":  0,   # neutral Glu
+    "LYN":  0,   # neutral Lys
+    "ARN":  0,   # neutral Arg
+    "TYM": -1,   # deprotonated Tyr (phenolate)
 
     # --- Phosphorylated residues ---
-    'SEP': -2, 'TPO': -2, 'PTR': -2,
-    'S1P': -1, 'T1P': -1, 'Y1P': -1,   # monoanionic phospho-Ser/Thr/Tyr
+    "SEP": -2, "TPO": -2, "PTR": -2,
+    "S1P": -1, "T1P": -1, "Y1P": -1,   # monoanionic phospho-Ser/Thr/Tyr
 
     # --- Phosphorylated histidines (phosaa19SB) ---
-    'H1D':  0,  # ND1-phospho-His, neutral
-    'H2D': -1,  # ND1-phospho-His, anionic
-    'H1E':  0,  # NE2-phospho-His, neutral
-    'H2E': -1,  # NE2-phospho-His, anionic
+    "H1D":  0,  # ND1-phospho-His, neutral
+    "H2D": -1,  # ND1-phospho-His, anionic
+    "H1E":  0,  # NE2-phospho-His, neutral
+    "H2E": -1,  # NE2-phospho-His, anionic
     
     # --- Cys family ---
-    'CYX':  0,   # disulfide Cys
-    'CSO':  0,   # Cys sulfenic acid
-    'CSD': -1,   # Cys sulfinic acid
-    'CSX':  0,   # generic Cys derivative
-    'OCS': -1,   # cysteic acid
-    'CYM': -1,   # deprotonated Cys
+    "CYX":  0,   # disulfide Cys
+    "CSO":  0,   # Cys sulfenic acid
+    "CSD": -1,   # Cys sulfinic acid
+    "CSX":  0,   # generic Cys derivative
+    "OCS": -1,   # cysteic acid
+    "CYM": -1,   # deprotonated Cys
 
     # --- Lys variants / carboxylation ---
-    'MLY': +1, 'LLP': +1, 'DLY': +1,
-    'KCX': -1,   # Lysine Nz-Carboxylic Acid
+    "MLY": +1, "LLP": +1, "DLY": +1,
+    "KCX": -1,   # Lysine Nz-Carboxylic Acid
 
     # --- D isomers (19 residues) ---
-    'DAL':  0, 'DAR': +1, 'DSG': 0, 'DAS': -1, 'DCY': 0,
-    'DGN':  0, 'DGL': -1, 'DHI': 0, 'DIL':  0, 'DLE': 0,
-    'DLY': +1, 'MED':  0, 'DPN': 0, 'DPR':  0, 'DSN': 0,
-    'DTH':  0, 'DTR':  0, 'DTY': 0, 'DVA':  0,
+    "DAL":  0, "DAR": +1, "DSG": 0, "DAS": -1, "DCY": 0,
+    "DGN":  0, "DGL": -1, "DHI": 0, "DIL":  0, "DLE": 0,
+    "DLY": +1, "MED":  0, "DPN": 0, "DPR":  0, "DSN": 0,
+    "DTH":  0, "DTR":  0, "DTY": 0, "DVA":  0,
 
     # --- Carboxylation / cyclization / others ---
-    'CGU': -2,   # gamma-carboxy-glutamate
-    'CGA': -1,   # carboxymethylated glutamate
-    'PCA':  0,   # pyroglutamate
-    'MSE':  0,   # selenomethionine
-    'OMT':  0,   # methionine sulfone
+    "CGU": -2,   # gamma-carboxy-glutamate
+    "CGA": -1,   # carboxymethylated glutamate
+    "PCA":  0,   # pyroglutamate
+    "MSE":  0,   # selenomethionine
+    "OMT":  0,   # methionine sulfone
 
     # --- Other modified residues possibly encountered ---
-    'ASA': 0, 'CIR': 0, 'FOR': 0, 'MVA': 0, 'IIL': 0, 'AIB': 0, 'HTN': 0,
-    'SAR': 0, 'NMC': 0, 'PFF': 0, 'NFA': 0, 'ALY': 0, 'AZF': 0, 'CNX': 0, 'CYF': 0,
+    "ASA": 0, "CIR": 0, "FOR": 0, "MVA": 0, "IIL": 0, "AIB": 0, "HTN": 0,
+    "SAR": 0, "NMC": 0, "PFF": 0, "NFA": 0, "ALY": 0, "AZF": 0, "CNX": 0, "CYF": 0,
 
     # --- Hydroxyproline ---
-    'HYP': 0,
+    "HYP": 0,
 
     # --- All C-terminus ---
-    'CALA': -1, 'CARG':  0, 'CASN': -1, 'CASP': -2, 'CCYS': -1,
-    'CCYX': -1, 'CGLN': -1, 'CGLU': -2, 'CGLY': -1, 'CHID': -1,
-    'CHIE': -1, 'CHIP':  0, 'CHYP': -1, 'CILE': -1, 'CLEU': -1,
-    'CLYS':  0, 'CMET': -1, 'CPHE': -1, 'CPRO': -1, 'CSER': -1,
-    'CTHR': -1, 'CTRP': -1, 'CTYR': -1, 'CVAL': -1, 'NHE': 0,
-    'NME': 0,
-    'CTER': -1,  # generic C-terminus
+    "CALA": -1, "CARG":  0, "CASN": -1, "CASP": -2, "CCYS": -1,
+    "CCYX": -1, "CGLN": -1, "CGLU": -2, "CGLY": -1, "CHID": -1,
+    "CHIE": -1, "CHIP":  0, "CHYP": -1, "CILE": -1, "CLEU": -1,
+    "CLYS":  0, "CMET": -1, "CPHE": -1, "CPRO": -1, "CSER": -1,
+    "CTHR": -1, "CTRP": -1, "CTYR": -1, "CVAL": -1, "NHE": 0,
+    "NME": 0,
+    "CTER": -1,  # generic C-terminus
     
     # --- All N-terminus ---
-    'NALA': +1, 'NARG': +2, 'NASN': +1, 'NASP':  0, 'NCYS': +1,
-    'NCYX': +1, 'NGLN': +1, 'NGLU':  0, 'NGLY': +1, 'NHID': +1,
-    'NHIE': +1, 'NHIP': +2, 'NILE': +1, 'NLEU': +1, 'NLYS': +2,
-    'NMET': +1, 'NPHE': +1, 'NPRO': +1, 'NSER': +1, 'NTHR': +1,
-    'NTRP': +1, 'NTYR': +1, 'NVAL': +1, 'ACE': 0,
-    'NTER': +1,  # generic N-terminus
+    "NALA": +1, "NARG": +2, "NASN": +1, "NASP":  0, "NCYS": +1,
+    "NCYX": +1, "NGLN": +1, "NGLU":  0, "NGLY": +1, "NHID": +1,
+    "NHIE": +1, "NHIP": +2, "NILE": +1, "NLEU": +1, "NLYS": +2,
+    "NMET": +1, "NPHE": +1, "NPRO": +1, "NSER": +1, "NTHR": +1,
+    "NTRP": +1, "NTYR": +1, "NVAL": +1, "ACE": 0,
+    "NTER": +1,  # generic N-terminus
 }
 
 # Common ions (by residue name) and their formal charges
 ION: Dict[str, int] = {
     # +1
-    'LI': +1, 'NA': +1, 'K': +1, 'RB': +1, 'CS': +1, 'TL': +1, 'AG': +1, 'CU1': +1,
-    'Ag': +1, 'K+': +1, 'NA+': +1, 'NH4': +1, 'H3O+': +1, 'TL': +1,
+    "LI": +1, "NA": +1, "K": +1, "RB": +1, "CS": +1, "TL": +1, "AG": +1, "CU1": +1,
+    "Ag": +1, "K+": +1, "NA+": +1, "NH4": +1, "H3O+": +1, "TL": +1,
 
     # +2
-    'MG': +2, 'CA': +2, 'SR': +2, 'BA': +2, 'MN': +2, 'FE2': +2, 'CO': +2, 'NI': +2,
-    'CU': +2, 'ZN': +2, 'CD': +2, 'HG': +2, 'PB': +2, 'BE': +2, 'PD': +2, 'PT': +2,
-    'SN': +2, 'RA': +2, 'YB2': +2, 'V2+': +2,
+    "MG": +2, "CA": +2, "SR": +2, "BA": +2, "MN": +2, "FE2": +2, "CO": +2, "NI": +2,
+    "CU": +2, "ZN": +2, "CD": +2, "HG": +2, "PB": +2, "BE": +2, "PD": +2, "PT": +2,
+    "SN": +2, "RA": +2, "YB2": +2, "V2+": +2,
 
     # +3
-    'FE': +3, 'AU3': +3, 'AL': +3, 'GA': +3, 'IN': +3,
-    'CE': +3, 'CR': +3, 'DY': +3, 'EU': +3, 'EU3': +3, 'ER': +3,
-    'GD3': +3, 'LA': +3, 'LU': +3, 'ND': +3, 'PR': +3, 'SM': +3, 'TB': +3,
-    'TM': +3, 'Y': +3, 'PU': +3,
+    "FE": +3, "AU3": +3, "AL": +3, "GA": +3, "IN": +3,
+    "CE": +3, "CR": +3, "DY": +3, "EU": +3, "EU3": +3, "ER": +3,
+    "GD3": +3, "LA": +3, "LU": +3, "ND": +3, "PR": +3, "SM": +3, "TB": +3,
+    "TM": +3, "Y": +3, "PU": +3,
 
     # +4
-    'U4+': +4, 'TH': +4, 'HF': +4, 'ZR': +4,
+    "U4+": +4, "TH": +4, "HF": +4, "ZR": +4,
 
     # -1
-    'F': -1, 'CL': -1, 'BR': -1, 'I': -1, 'CL-': -1, 'IOD': -1,
+    "F": -1, "CL": -1, "BR": -1, "I": -1, "CL-": -1, "IOD": -1,
 }
 
 DISULFIDE_CUTOFF = 2.5   # Å Sγ–Sγ (SG–SG)
 EXACT_EPS = 1e-3         # Å tolerance for exact match
-WATER_RES = {'HOH','WAT','H2O','DOD','TIP','TIP3','SOL'}
+WATER_RES = {"HOH","WAT","H2O","DOD","TIP","TIP3","SOL"}
 
 # Type for cross-structure residue identity (chain, hetflag, resseq, icode, resname)
 ResidueKey = Tuple[str, str, int, str, str]
@@ -393,7 +393,7 @@ def str2bool(v: str) -> bool:
     """
     if isinstance(v, bool):
         return v
-    return v.lower() in {'true', '1', 'yes', 'y'}
+    return v.lower() in {"true", "1", "yes", "y"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -407,72 +407,72 @@ def parse_args() -> argparse.Namespace:
     """
     p = argparse.ArgumentParser(
         description=(
-            'Extract a binding pocket around substrate residues (from a PDB or residue IDs/names), '
-            'with biochemically aware truncation and optional link‑H; supports multi‑structure input '
-            'and multi‑MODEL output. Also logs pocket charge summary.'
+            "Extract a binding pocket around substrate residues (from a PDB or residue IDs/names), "
+            "with biochemically aware truncation and optional link‑H; supports multi‑structure input "
+            "and multi‑MODEL output. Also logs pocket charge summary."
         )
     )
 
     p.add_argument(
-        '-i', '--input', dest='complex_pdb', required=True, nargs='+',
-        metavar='complex.pdb',
-        help='Protein–substrate complex PDB(s). If multiple, they must have identical atom counts and ordering.'
+        "-i", "--input", dest="complex_pdb", required=True, nargs="+",
+        metavar="complex.pdb",
+        help="Protein–substrate complex PDB(s). If multiple, they must have identical atom counts and ordering."
     )
     p.add_argument(
-        '-c', '--center', dest='substrate_pdb', required=True,
-        metavar='substrate.pdb | "123,124" | "A:123,B:456" | "GPP,SAM"',
-        help=('Substrate specification: either a PDB containing exactly the substrate residue(s), '
-              'a comma/space‑separated residue‑ID list like "123,124" or "A:123,B:456" '
-              '(insertion codes supported: "123A" / "A:123A"), '
-              'or a comma/space‑separated **residue‑name** list like "GPP,SAM". '
-              'When residue names are used and multiple residues share a name, all are used and a WARNING is logged.')
+        "-c", "--center", dest="substrate_pdb", required=True,
+        metavar="substrate.pdb | '123,124' | 'A:123,B:456' | 'GPP,SAM'",
+        help=("Substrate specification: either a PDB containing exactly the substrate residue(s), "
+              "a comma/space‑separated residue‑ID list like '123,124' or 'A:123,B:456' "
+              "(insertion codes supported: '123A' / 'A:123A'), "
+              "or a comma/space‑separated **residue‑name** list like 'GPP,SAM'. "
+              "When residue names are used and multiple residues share a name, all are used and a WARNING is logged.")
     )
     p.add_argument(
-        '-o', '--output', dest='output_pdb', required=False, nargs='+',
-        metavar='pocket.pdb', default=None,
-        help=('Output PDB path(s). Provide one path to write a single multi‑MODEL PDB, '
-              'or provide N paths where N == number of inputs to write N single‑model PDBs (one per input, in order). '
-              'If omitted: single input → pocket.pdb; multiple inputs → pocket_{original_filename}.pdb.')
+        "-o", "--output", dest="output_pdb", required=False, nargs="+",
+        metavar="pocket.pdb", default=None,
+        help=("Output PDB path(s). Provide one path to write a single multi‑MODEL PDB, "
+              "or provide N paths where N == number of inputs to write N single‑model PDBs (one per input, in order). "
+              "If omitted: single input → pocket.pdb; multiple inputs → pocket_{original_filename}.pdb.")
     )
     p.add_argument(
-        '-r', '--radius', type=float, default=2.6,
-        help=('Cutoff (Å) around substrate atoms. With --exclude-backbone true (default), an **amino-acid** '
-              'neighbor must have a **non-backbone** atom within this distance; otherwise **any atom** suffices. '
-              '(default: 2.6)')
+        "-r", "--radius", type=float, default=2.6,
+        help=("Cutoff (Å) around substrate atoms. With --exclude-backbone true (default), an **amino-acid** "
+              "neighbor must have a **non-backbone** atom within this distance; otherwise **any atom** suffices. "
+              "(default: 2.6)")
     )
     p.add_argument(
-        '--radius-het2het', type=float, default=0,
-        help=('Cutoff (Å) for substrate–protein hetero‑atom proximity (non‑C/H on both sides); '
-              'applied independently of --radius. 0 conceptually disables this rule, '
-              'but is internally treated as 0.001 Å. (default: 0)')
+        "--radius-het2het", type=float, default=0,
+        help=("Cutoff (Å) for substrate–protein hetero‑atom proximity (non‑C/H on both sides); "
+              "applied independently of --radius. 0 conceptually disables this rule, "
+              "but is internally treated as 0.001 Å. (default: 0)")
     )
     p.add_argument(
-        '--include-H2O', type=str2bool, default=True,
-        help='Include waters (HOH/WAT/TIP3/SOL). (default: true)'
+        "--include-H2O", type=str2bool, default=True,
+        help="Include waters (HOH/WAT/TIP3/SOL). (default: true)"
     )
     p.add_argument(
-        '--exclude-backbone', type=str2bool, default=True,
-        help='Delete main‑chain atoms (N, H*, CA, HA*, C, O) from non‑substrate amino acids; PRO/HYP keep N, CA, HA, H*. (default: true)'
+        "--exclude-backbone", type=str2bool, default=True,
+        help="Delete main‑chain atoms (N, H*, CA, HA*, C, O) from non‑substrate amino acids; PRO/HYP keep N, CA, HA, H*. (default: true)"
     )
     p.add_argument(
-        '--add-linkH', type=str2bool, default=True,
-        help='Add carbon‑only link‑H at 1.09 Å along cut‑bond directions; appended after a TER as HL/LKH HETATM records. (default: true)'
+        "--add-linkH", type=str2bool, default=True,
+        help="Add carbon‑only link‑H at 1.09 Å along cut‑bond directions; appended after a TER as HL/LKH HETATM records. (default: true)"
     )
     p.add_argument(
-        '--selected-resn', dest='selected_resn', required=False, default='',
-        help=('Comma/space‑separated residue IDs to force‑include (e.g., "123,124", "A:123,B:456"; '
-              'insertion codes allowed: "123A" / "A:123A").')
+        "--selected-resn", dest="selected_resn", required=False, default="",
+        help=("Comma/space‑separated residue IDs to force‑include (e.g., '123,124', 'A:123,B:456'; "
+              "insertion codes allowed: '123A' / 'A:123A').")
     )
     p.add_argument(
-        '--ligand-charge', type=str, default=None,
-        help=('Either a single **number** giving the **total** charge to distribute across unknown residues '
-              '(preferring unknown substrate), or a comma/space‑separated **per‑resname** list like '
-              '"GPP:-3,SAM:1". In mapping mode, any other unknown residues remain 0.')
+        "--ligand-charge", type=str, default=None,
+        help=("Either a single **number** giving the **total** charge to distribute across unknown residues "
+              "(preferring unknown substrate), or a comma/space‑separated **per‑resname** list like "
+              "'GPP:-3,SAM:1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
-        '-v', '--verbose', type=str2bool, default=True,
-        help=('Enable INFO-level logging.'
-              ' Default: True.')
+        "-v", "--verbose", type=str2bool, default=True,
+        help=("Enable INFO-level logging."
+              " Default: True.")
     )
     return p.parse_args()
 
@@ -483,11 +483,11 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     """
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(name, path)
-    missing_elem = [a for a in structure.get_atoms() if not (getattr(a, 'element', '') or '').strip()]
+    missing_elem = [a for a in structure.get_atoms() if not (getattr(a, "element", "") or "").strip()]
     if missing_elem:
         raise ValueError(
-            f'Element symbols are missing in "{path}". '
-            f'Please run `pdb2reaction add-elem-info -i {path}` to populate element columns before running extract.'
+            f"Element symbols are missing in '{path}'. "
+            f"Please run `pdb2reaction add-elem-info -i {path}` to populate element columns before running extract."
         )
     return structure
 
@@ -500,11 +500,11 @@ def _fmt_res_id(res: PDB.Residue.Residue) -> str:
     """
     Return a compact residue tag like 'A:123A SER' or '123 SER'.
     """
-    chain = res.get_parent().id or ''
+    chain = res.get_parent().id or ""
     het, resseq, icode = res.id
-    icode_txt = '' if icode == ' ' else icode
-    chain_txt = f'{chain}:' if chain else ''
-    return f'{chain_txt}{resseq}{icode_txt} {res.get_resname()}'
+    icode_txt = "" if icode == " " else icode
+    chain_txt = f"{chain}:" if chain else ""
+    return f"{chain_txt}{resseq}{icode_txt} {res.get_resname()}"
 
 
 def _fmt_fid(structure, fid: Tuple) -> str:
@@ -548,12 +548,12 @@ def find_substrate_residues(complex_struct, substrate_struct) -> List[PDB.Residu
                 matched.append(cand)
                 break
         else:
-            chain_id = lig.get_full_id()[2] if len(lig.get_full_id()) > 2 else ''
+            chain_id = lig.get_full_id()[2] if len(lig.get_full_id()) > 2 else ""
             resseq = lig.id[1]
-            icode = lig.id[2] if len(lig.id) > 2 else ' '
-            icode_str = '' if icode == ' ' else icode
+            icode = lig.id[2] if len(lig.id) > 2 else " "
+            icode_str = "" if icode == " " else icode
             raise ValueError(
-                f'Exact match not found for substrate residue {lig_name} chain {chain_id} {resseq}{icode_str}'
+                f"Exact match not found for substrate residue {lig_name} chain {chain_id} {resseq}{icode_str}"
             )
     return matched
 
@@ -573,18 +573,18 @@ def _parse_res_tokens(spec: str) -> List[Tuple[str | None, int, str | None]]:
     Parse a residue specification string into (chain, resseq, icode) tuples.
     """
     if not spec or not spec.strip():
-        raise ValueError('Empty -c/--center specification.')
-    tokens = [t.strip() for t in re.split(r'[,\s]+', spec) if t.strip()]
+        raise ValueError("Empty -c/--center specification.")
+    tokens = [t.strip() for t in re.split(r"[,\s]+", spec) if t.strip()]
     parsed: List[Tuple[str | None, int, str | None]] = []
     for tok in tokens:
         m = _RES_TOKEN_RE.match(tok)
         if not m:
             raise ValueError(
-                f'Invalid residue specifier "{tok}". Use "123", "123A", "A:123", or "A:123A".'
+                f"Invalid residue specifier '{tok}'. Use '123', '123A', 'A:123', or 'A:123A'."
             )
-        chain = m.group('chain')
-        resseq = int(m.group('resseq'))
-        icode = m.group('icode') or None
+        chain = m.group("chain")
+        resseq = int(m.group("resseq"))
+        icode = m.group("icode") or None
         parsed.append((chain, resseq, icode))
     return parsed
 
@@ -623,9 +623,9 @@ def find_substrate_by_idspec(complex_struct, spec: str) -> List[PDB.Residue.Resi
                         seen.add(fid)
                         matches.append(res)
         if not matches:
-            chain_txt = f'{chain_req}:' if chain_req is not None else ''
-            icode_txt = icode_req or ''
-            raise ValueError(f'Residue "{chain_txt}{resseq_req}{icode_txt}" not found in complex.')
+            chain_txt = f"{chain_req}:" if chain_req is not None else ""
+            icode_txt = icode_req or ""
+            raise ValueError(f"Residue '{chain_txt}{resseq_req}{icode_txt}' not found in complex.")
         found.extend(matches)
 
     return found
@@ -642,20 +642,20 @@ def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Res
     * If multiple residues share the same name, **all** are included and a **WARNING** is logged.
     """
     if not spec or not spec.strip():
-        raise ValueError('Empty -c/--center specification.')
-    tokens = [t.strip().upper() for t in re.split(r'[,\s]+', spec) if t.strip()]
+        raise ValueError("Empty -c/--center specification.")
+    tokens = [t.strip().upper() for t in re.split(r"[,\s]+", spec) if t.strip()]
     found: List[PDB.Residue.Residue] = []
     seen_fids: Set[Tuple] = set()
     for rn in tokens:
         matches = [r for r in complex_struct.get_residues() if r.get_resname().upper() == rn]
         if not matches:
-            raise ValueError(f'Residue name "{rn}" not found in complex.')
+            raise ValueError(f"Residue name '{rn}' not found in complex.")
         if len(matches) > 1:
             try:
-                sample = ', '.join(_fmt_res_id(r) for r in matches[:5])
+                sample = ", ".join(_fmt_res_id(r) for r in matches[:5])
             except Exception:
-                sample = '(list omitted)'
-            logging.warning('[extract] Multiple residues with resname "%s" found (%d). Using all: %s',
+                sample = "(list omitted)"
+            logging.warning("[extract] Multiple residues with resname '%s' found (%d). Using all: %s",
                             rn, len(matches), sample)
         for r in matches:
             fid = r.get_full_id()
@@ -669,8 +669,8 @@ def resolve_substrate_residues(complex_struct, center_spec: str) -> List[PDB.Res
     """
     Determine substrate residues from a PDB path, residue-ID list, or residue-name list.
     """
-    if center_spec.lower().endswith('.pdb'):
-        substrate_struct = load_structure(center_spec, 'substrate')
+    if center_spec.lower().endswith(".pdb"):
+        substrate_struct = load_structure(center_spec, "substrate")
         return find_substrate_residues(complex_struct, substrate_struct)
     # If it parses as ID-spec, treat as IDs (and propagate any not-found errors).
     try:
@@ -698,10 +698,10 @@ def are_peptide_adjacent(prev_res: PDB.Residue.Residue,
     """
     if prev_res.get_resname() not in AMINO_ACIDS or next_res.get_resname() not in AMINO_ACIDS:
         return False
-    if ('C' not in prev_res) or ('N' not in next_res):
+    if ("C" not in prev_res) or ("N" not in next_res):
         return False
     try:
-        d = (prev_res['C'].get_vector() - next_res['N'].get_vector()).norm()
+        d = (prev_res["C"].get_vector() - next_res["N"].get_vector()).norm()
     except Exception:
         return False
     return (d == d) and (d <= max_cn_dist)  # d==d to filter NaN
@@ -740,7 +740,7 @@ def select_residues(complex_struct,
                              (Waters ignored; only relevant when exclude_backbone == False)
     """
     substrate_atoms = [a for lig in substrate_res_list for a in lig]
-    substrate_het = [a for a in substrate_atoms if a.element not in ('C', 'H')]
+    substrate_het = [a for a in substrate_atoms if a.element not in ("C", "H")]
     ns = NeighborSearch(list(complex_struct.get_atoms()))
 
     selected_ids: Set[Tuple] = {res.get_full_id() for res in substrate_res_list}
@@ -770,7 +770,7 @@ def select_residues(complex_struct,
     # hetero-hetero radius: both sides non-C/H (and non-backbone filter for amino acids when exclude_backbone==True)
     for atom in substrate_het:
         for neigh in ns.search(atom.get_coord(), r_het):
-            if neigh.element in ('C', 'H'):
+            if neigh.element in ("C", "H"):
                 continue
             if exclude_backbone and is_amino_backbone_atom(neigh):
                 continue
@@ -789,8 +789,8 @@ def augment_disulfides(structure, selected_ids: Set[Tuple],
     """
     Include Cys–Cys disulfide partners if either residue is selected (SG–SG ≤ cutoff).
     """
-    sg_atoms = [r['SG'] for r in structure.get_residues()
-                if r.get_resname() in {'CYS', 'CYX'} and 'SG' in r]
+    sg_atoms = [r["SG"] for r in structure.get_residues()
+                if r.get_resname() in {"CYS", "CYX"} and "SG" in r]
 
     if not sg_atoms:
         return
@@ -823,7 +823,7 @@ def augment_proline_prev_neighbor(structure, selected_ids: Set[Tuple]):
     for fid in list(selected_ids):
         model_id, chain_id, res_id = fid[1], fid[2], fid[3]
         res: PDB.Residue.Residue = structure[model_id][chain_id].child_dict[res_id]
-        if res.get_resname() != 'PRO':
+        if res.get_resname() != "PRO":
             continue
         chain = structure[model_id][chain_id]
         residues: List[PDB.Residue.Residue] = list(chain.get_residues())
@@ -846,7 +846,7 @@ def augment_proline_prev_neighbor(structure, selected_ids: Set[Tuple]):
             selected_ids.add(prev_fid)
             added += 1
     if added:
-        logging.info('[extract] Added %d N-side neighbor residues for PRO (TER-aware).', added)
+        logging.info("[extract] Added %d N-side neighbor residues for PRO (TER-aware).", added)
 
 
 # ---------------------------------------------------------------------
@@ -920,7 +920,7 @@ def augment_backbone_contact_neighbors(structure,
             termini_kept_c += 1
 
     if added or termini_kept_n or termini_kept_c:
-        logging.info('[extract] Backbone-contact context (TER-aware): added %d neighbors; kept N-cap on %d, C-cap on %d residues.',
+        logging.info("[extract] Backbone-contact context (TER-aware): added %d neighbors; kept N-cap on %d, C-cap on %d residues.",
                      added, termini_kept_n, termini_kept_c)
     return keep_ncap_ids, keep_ccap_ids
 
@@ -994,15 +994,15 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
             c_res = chain_obj.child_dict[c_id[3]]
 
             # N-terminal cap deletion (only for amino acids; skip if PRO/HYP or explicitly kept)
-            if (n_res.get_resname() in AMINO_ACIDS) and (n_res.get_resname() not in {'PRO', 'HYP'}) and (n_id not in keep_ncap_ids):
-                add(n_id, {'N', 'H', 'H1', 'H2', 'H3', 'HN'})
+            if (n_res.get_resname() in AMINO_ACIDS) and (n_res.get_resname() not in {"PRO", "HYP"}) and (n_id not in keep_ncap_ids):
+                add(n_id, {"N", "H", "H1", "H2", "H3", "HN"})
             # C-terminal cap deletion (only for amino acids; skip if explicitly kept)
             if (c_res.get_resname() in AMINO_ACIDS) and (c_id not in keep_ccap_ids):
-                add(c_id, {'C', 'O', 'OXT'})
+                add(c_id, {"C", "O", "OXT"})
 
             # Isolated stretch – remove CA/HA* (only for amino acids; except PRO/HYP)
-            if single and (n_res.get_resname() in AMINO_ACIDS) and (n_res.get_resname() not in {'PRO', 'HYP'}):
-                add(n_id, {'CA', 'HA', 'HA2', 'HA3'})
+            if single and (n_res.get_resname() in AMINO_ACIDS) and (n_res.get_resname() not in {"PRO", "HYP"}):
+                add(n_id, {"CA", "HA", "HA2", "HA3"})
 
     # ---------------------------------------------------------------------
     #   Optional: remove *all* backbone atoms from every non-substrate residue
@@ -1016,8 +1016,8 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
             if res.get_resname() in WATER_RES:
                 continue
             if res.get_resname() in AMINO_ACIDS:
-                if res.get_resname() in {'PRO', 'HYP'}:
-                    to_remove = BACKBONE_ALL - {'N', 'CA', 'HA', 'H', 'H1', 'H2', 'H3'}
+                if res.get_resname() in {"PRO", "HYP"}:
+                    to_remove = BACKBONE_ALL - {"N", "CA", "HA", "H", "H1", "H2", "H3"}
                 else:
                     to_remove = BACKBONE_ALL
                 skip.setdefault(fid, set()).update(to_remove)
@@ -1025,7 +1025,7 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
         # Preserve peptide carbonyl on the N-side neighbor of PRO
         for fid in selected_ids:
             res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-            if res.get_resname() != 'PRO':
+            if res.get_resname() != "PRO":
                 continue
             chain = structure[fid[1]][fid[2]]
             residues: List[PDB.Residue.Residue] = list(chain.get_residues())
@@ -1046,14 +1046,14 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
             prev_fid = prev_res.get_full_id()
             if prev_fid in selected_ids:
                 sk = skip.setdefault(prev_fid, set())
-                for nm in ('C', 'O', 'OXT'):
+                for nm in ("C", "O", "OXT"):
                     if nm in sk:
                         sk.remove(nm)
 
     # Always keep CA on the N-side neighbor of PRO (independent of --exclude-backbone)
     for fid in selected_ids:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        if res.get_resname() != 'PRO':
+        if res.get_resname() != "PRO":
             continue
         chain = structure[fid[1]][fid[2]]
         residues: List[PDB.Residue.Residue] = list(chain.get_residues())
@@ -1074,8 +1074,8 @@ def mark_atoms_to_skip(structure, selected_ids: Set[Tuple], substrate_ids: Set[T
         prev_fid = prev_res.get_full_id()
         if prev_fid in selected_ids:
             sk = skip.setdefault(prev_fid, set())
-            if 'CA' in sk:
-                sk.remove('CA')
+            if "CA" in sk:
+                sk.remove("CA")
 
     return skip
 
@@ -1126,7 +1126,7 @@ def compute_linkH_atoms(structure,
             parent = res[parent_name]
             partner = res[partner_name]
             parent_elem = (parent.element or parent.get_name()[0]).upper()
-            if parent_elem != 'C':
+            if parent_elem != "C":
                 return
             v = np.array(partner.get_coord(), dtype=float) - np.array(parent.get_coord(), dtype=float)
             norm = np.linalg.norm(v)
@@ -1137,12 +1137,12 @@ def compute_linkH_atoms(structure,
             h = np.array(parent.get_coord(), dtype=float) + v * dist
             link_coords.append((float(h[0]), float(h[1]), float(h[2])))
 
-        if resname in {'PRO', 'HYP'}:
-            _add_if_cut('CA', 'C')
+        if resname in {"PRO", "HYP"}:
+            _add_if_cut("CA", "C")
         else:
-            _add_if_cut('CB', 'CA')
-            _add_if_cut('CA', 'N')
-            _add_if_cut('CA', 'C')
+            _add_if_cut("CB", "CA")
+            _add_if_cut("CA", "N")
+            _add_if_cut("CA", "C")
 
     return link_coords
 
@@ -1153,7 +1153,7 @@ def _max_serial_from_pdb_text(pdb_text: str) -> int:
     """
     max_serial = 0
     for line in pdb_text.splitlines():
-        if line.startswith('ATOM') or line.startswith('HETATM'):
+        if line.startswith("ATOM") or line.startswith("HETATM"):
             try:
                 serial = int(line[6:11])
                 if serial > max_serial:
@@ -1165,7 +1165,7 @@ def _max_serial_from_pdb_text(pdb_text: str) -> int:
 
 def _format_linkH_block(link_coords: List[Tuple[float, float, float]],
                         start_serial: int,
-                        chain_id: str = 'L') -> str:
+                        chain_id: str = "L") -> str:
     """
     Format a contiguous HETATM block for link‑H atoms.
 
@@ -1182,18 +1182,18 @@ def _format_linkH_block(link_coords: List[Tuple[float, float, float]],
     for (x, y, z) in link_coords:
         serial += 1
         line = (
-            f'HETATM{serial:5d} '
-            f'{'HL':>4s} '
-            f'{'LKH':>3s} '
-            f'{chain_id}'
-            f'{resseq:4d}    '
-            f'{x:8.3f}{y:8.3f}{z:8.3f}'
-            f'{1.00:6.2f}{0.00:6.2f}'
-            f'          {'H':>2s}'
+            f"HETATM{serial:5d} "
+            f"{'HL':>4s} "
+            f"{'LKH':>3s} "
+            f"{chain_id}"
+            f"{resseq:4d}    "
+            f"{x:8.3f}{y:8.3f}{z:8.3f}"
+            f"{1.00:6.2f}{0.00:6.2f}"
+            f"          {'H':>2s}"
         )
         lines.append(line)
         resseq += 1
-    return ('\n'.join(lines) + ('\n' if lines else ''))
+    return ("\n".join(lines) + ("\n" if lines else ""))
 
 
 # ---------------------------------------------------------------------
@@ -1219,7 +1219,7 @@ def _residue_key_from_res(res: PDB.Residue.Residue) -> ResidueKey:
     """
     chain_id = res.get_parent().id
     hetflag, resseq, icode = res.id
-    icode_str = icode if icode != ' ' else ''
+    icode_str = icode if icode != " " else ""
     return (chain_id, hetflag, int(resseq), icode_str, res.get_resname())
 
 def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
@@ -1255,25 +1255,25 @@ def _parse_ligand_charge_option(ligand_charge: float | str | Dict[str, float] | 
             return float(s), None
         except ValueError:
             pass
-        # mapping: tokens 'RES:Q'
-        tokens = [t for t in re.split(r'[,\s]+', s) if t]
+        # mapping: tokens "RES:Q"
+        tokens = [t for t in re.split(r"[,\s]+", s) if t]
         mapping: Dict[str, float] = {}
         for tok in tokens:
-            if ':' not in tok:
-                raise ValueError(f'Invalid --ligand-charge token "{tok}". Use "RES:Q" (e.g., GPP:-3) or a number (e.g., -3).')
-            res, qtxt = tok.split(':', 1)
+            if ":" not in tok:
+                raise ValueError(f"Invalid --ligand-charge token '{tok}'. Use 'RES:Q' (e.g., GPP:-3) or a number (e.g., -3).")
+            res, qtxt = tok.split(":", 1)
             resname = res.strip().upper()
             if not resname:
-                raise ValueError(f'Invalid --ligand-charge token "{tok}": empty residue name.')
+                raise ValueError(f"Invalid --ligand-charge token '{tok}': empty residue name.")
             try:
                 qval = float(qtxt.strip())
             except ValueError:
-                raise ValueError(f'Invalid --ligand-charge token "{tok}": "{qtxt}" is not a number.')
+                raise ValueError(f"Invalid --ligand-charge token '{tok}': '{qtxt}' is not a number.")
             mapping[resname] = qval
         if not mapping:
-            raise ValueError('Empty --ligand-charge mapping.')
+            raise ValueError("Empty --ligand-charge mapping.")
         return None, mapping
-    raise TypeError(f'Unsupported type for ligand_charge: {type(ligand_charge)!r}')
+    raise TypeError(f"Unsupported type for ligand_charge: {type(ligand_charge)!r}")
 
 def compute_charge_summary(structure,
                            selected_ids: Set[Tuple],
@@ -1292,7 +1292,7 @@ def compute_charge_summary(structure,
         Residues designated as substrate.
     ligand_charge : float | str | dict[str,float] | None
         - float: total charge to assign across **unknown residues** (preferring unknown substrate).
-        - str  : numeric string (total) or mapping like 'GPP:-3,SAM:1' (per‑resname).
+        - str  : numeric string (total) or mapping like "GPP:-3,SAM:1" (per‑resname).
         - dict : mapping {RESNAME: charge}. In mapping mode, other unknown residues remain 0.
 
     Returns
@@ -1376,12 +1376,12 @@ def compute_charge_summary(structure,
         unknown_residue_charges[rn] = float(per_map[key])
 
     return {
-        'total_charge': float(total),
-        'protein_charge': float(aa_charge),
-        'ligand_total_charge': float(ligand_total),
-        'ion_total_charge': float(ion_total),
-        'ion_charges': [(tag, float(q)) for tag, q in ion_entries],
-        'unknown_residue_charges': unknown_residue_charges,
+        "total_charge": float(total),
+        "protein_charge": float(aa_charge),
+        "ligand_total_charge": float(ligand_total),
+        "ion_total_charge": float(ion_total),
+        "ion_charges": [(tag, float(q)) for tag, q in ion_entries],
+        "unknown_residue_charges": unknown_residue_charges,
     }
 
 def log_charge_summary(prefix: str,
@@ -1389,29 +1389,29 @@ def log_charge_summary(prefix: str,
     """
     Emit concise charge summary logs.
     """
-    total = summary['total_charge']
-    protein = summary['protein_charge']
-    ligand = summary.get('ligand_total_charge', 0.0)
-    ion_list: List[Tuple[str, float]] = summary.get('ion_charges', [])
-    ion_total = summary.get('ion_total_charge', sum(q for _, q in ion_list))
-    unk_map: Dict[str, float] = summary.get('unknown_residue_charges', {}) or {}
+    total = summary["total_charge"]
+    protein = summary["protein_charge"]
+    ligand = summary.get("ligand_total_charge", 0.0)
+    ion_list: List[Tuple[str, float]] = summary.get("ion_charges", [])
+    ion_total = summary.get("ion_total_charge", sum(q for _, q in ion_list))
+    unk_map: Dict[str, float] = summary.get("unknown_residue_charges", {}) or {}
 
     if unk_map:
-        items = ', '.join(f'{res}: {q:g}' for res, q in sorted(unk_map.items()))
-        logging.info('%s Per-resname ligand charges: %s', prefix, items)
+        items = ", ".join(f"{res}: {q:g}" for res, q in sorted(unk_map.items()))
+        logging.info("%s Per-resname ligand charges: %s", prefix, items)
     else:
-        logging.info('%s Per-resname ligand charges: (none)', prefix)
+        logging.info("%s Per-resname ligand charges: (none)", prefix)
 
-    logging.info('%s Net protein charge: %+g', prefix, protein)
-    logging.info('%s Net ligand charge: %+g', prefix, ligand)
+    logging.info("%s Net protein charge: %+g", prefix, protein)
+    logging.info("%s Net ligand charge: %+g", prefix, ligand)
     if ion_list:
-        logging.info('%s Ion charges (each):', prefix)
+        logging.info("%s Ion charges (each):", prefix)
         for tag, q in ion_list:
-            logging.info('  %s  ->  %+g', tag, q)
-        logging.info('%s Net ion charge: %+g', prefix, ion_total)
+            logging.info("  %s  ->  %+g", tag, q)
+        logging.info("%s Net ion charge: %+g", prefix, ion_total)
     else:
-        logging.info('%s Ion charges: (none)', prefix)
-    logging.info('%s Total pocket charge: %+g', prefix, total)
+        logging.info("%s Ion charges: (none)", prefix)
+    logging.info("%s Total pocket charge: %+g", prefix, total)
 
 
 # =========================== Cross-structure helpers ===========================
@@ -1447,7 +1447,7 @@ def _keys_to_fids(structure, keys: Iterable[ResidueKey]) -> Set[Tuple]:
         else:
             fids.add(fid)
     if missing:
-        raise ValueError(f'Some residues not found in structure: {missing[:5]}{' ...' if len(missing)>5 else ''}')
+        raise ValueError(f"Some residues not found in structure: {missing[:5]}{' ...' if len(missing)>5 else ''}")
     return fids
 
 def _fids_to_keys(structure, fids: Iterable[Tuple]) -> Set[ResidueKey]:
@@ -1469,19 +1469,19 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
     * If `center_spec` is a residue‑name list: apply to all structures; names may match multiple residues
       (all included; WARNING logged per structure).
     """
-    if center_spec.lower().endswith('.pdb'):
+    if center_spec.lower().endswith(".pdb"):
         sub_first = resolve_substrate_residues(structs[0], center_spec)
         tokens = []
         for res in sub_first:
             chain = res.get_parent().id
-            chain_txt = (chain or '').strip()
+            chain_txt = (chain or "").strip()
             het, num, icode = res.id
-            icode_txt = '' if icode == ' ' else icode
+            icode_txt = "" if icode == " " else icode
             if chain_txt:
-                tokens.append(f'{chain}:{num}{icode_txt}')
+                tokens.append(f"{chain}:{num}{icode_txt}")
             else:
-                tokens.append(f'{num}{icode_txt}')
-        idspec = ','.join(tokens)
+                tokens.append(f"{num}{icode_txt}")
+        idspec = ",".join(tokens)
         out: List[List[PDB.Residue.Residue]] = []
         for si, st in enumerate(structs):
             out.append(find_substrate_by_idspec(st, idspec))
@@ -1503,8 +1503,8 @@ def _disulfide_partner_keys(structure, candidate_keys: Set[ResidueKey],
     sg_atoms: List[PDB.Atom.Atom] = []
     res_of_atom: Dict[PDB.Atom.Atom, ResidueKey] = {}
     for res in structure.get_residues():
-        if res.get_resname() in {'CYS', 'CYX'} and 'SG' in res:
-            at = res['SG']
+        if res.get_resname() in {"CYS", "CYX"} and "SG" in res:
+            at = res["SG"]
             sg_atoms.append(at)
             res_of_atom[at] = _residue_key_from_res(res)
     add: Set[ResidueKey] = set()
@@ -1534,16 +1534,16 @@ def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
             for chain in model:
                 for res in chain.get_residues():
                     het, resseq, icode = res.id
-                    icode_txt = icode if icode != ' ' else ''
-                    base = f'{chain.id}|{het}|{resseq}{icode_txt}|{res.get_resname()}'
+                    icode_txt = icode if icode != " " else ""
+                    base = f"{chain.id}|{het}|{resseq}{icode_txt}|{res.get_resname()}"
                     for atom in res:
-                        sig.append(base + f'|{atom.get_name()}')
+                        sig.append(base + f"|{atom.get_name()}")
         return sig
     sig0 = signature(structs[0])
     for i in range(1, len(structs)):
         sigi = signature(structs[i])
         if len(sigi) != len(sig0):
-            raise ValueError(f'[multi] Atom count mismatch between input #1 and input #{i+1}: {len(sig0)} vs {len(sigi)}')
+            raise ValueError(f"[multi] Atom count mismatch between input #1 and input #{i+1}: {len(sig0)} vs {len(sigi)}")
         check_pairs = [(0, min(10, len(sig0))),
                        (max(0, len(sig0)-10), len(sig0))]
         mismatch = False
@@ -1552,17 +1552,17 @@ def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
                 mismatch = True
                 break
         if mismatch and sig0 != sigi:
-            raise ValueError(f'[multi] Atom order mismatch between input #1 and input #{i+1}.')
+            raise ValueError(f"[multi] Atom order mismatch between input #1 and input #{i+1}.")
 
 
 def _strip_trailing_END(text: str) -> str:
     """
     Remove trailing 'END' lines and ensure a final newline.
     """
-    lines = [ln for ln in text.splitlines() if ln.strip() != 'END']
-    out = '\n'.join(lines)
-    if not out.endswith('\n'):
-        out += '\n'
+    lines = [ln for ln in text.splitlines() if ln.strip() != "END"]
+    out = "\n".join(lines)
+    if not out.endswith("\n"):
+        out += "\n"
     return out
 
 
@@ -1574,7 +1574,7 @@ def _compute_linkH_defs(structure,
 
     Returns
     -------
-    list of ((ResidueKey, cut_type), (x, y, z)), where cut_type ∈ {'CB-CA','CA-N','CA-C'}.
+    list of ((ResidueKey, cut_type), (x, y, z)), where cut_type ∈ {"CB-CA","CA-N","CA-C"}.
     Ordering is by residue file order, then by cut_type in the sequence above.
     """
     out: List[Tuple[Tuple[ResidueKey, str], Tuple[float, float, float]]] = []
@@ -1593,7 +1593,7 @@ def _compute_linkH_defs(structure,
             parent = res[parent_name]
             partner = res[partner_name]
             parent_elem = (parent.element or parent.get_name()[0]).upper()
-            if parent_elem != 'C':
+            if parent_elem != "C":
                 return
             v = np.array(partner.get_coord(), dtype=float) - np.array(parent.get_coord(), dtype=float)
             norm = np.linalg.norm(v)
@@ -1604,12 +1604,12 @@ def _compute_linkH_defs(structure,
             h = np.array(parent.get_coord(), dtype=float) + v * dist
             out.append(((key, cut_type), (float(h[0]), float(h[1]), float(h[2]))))
 
-        if res.get_resname() in {'PRO', 'HYP'}:
-            _maybe('CA', 'C', 'CA-C')
+        if res.get_resname() in {"PRO", "HYP"}:
+            _maybe("CA", "C", "CA-C")
         else:
-            _maybe('CB', 'CA', 'CB-CA')
-            _maybe('CA', 'N',  'CA-N')
-            _maybe('CA', 'C',  'CA-C')
+            _maybe("CB", "CA", "CB-CA")
+            _maybe("CA", "N",  "CA-N")
+            _maybe("CA", "C",  "CA-C")
     return out
 
 
@@ -1632,10 +1632,10 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         }
     """
     paths: List[str] = args.complex_pdb
-    names = [f'complex{i+1}' for i in range(len(paths))]
+    names = [f"complex{i+1}" for i in range(len(paths))]
     structs: List[PDB.Structure.Structure] = [load_structure(p, n) for p, n in zip(paths, names)]
 
-    logging.info('[extract:multi] Loaded %d structures.', len(structs))
+    logging.info("[extract:multi] Loaded %d structures.", len(structs))
     _assert_atom_ordering_identical(structs)
 
     # Substrates per structure (PDB-path -> first only, then propagate by IDs)
@@ -1650,17 +1650,17 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         union_sel_keys |= _fids_to_keys(st, selected_ids)
         union_bb_contact_keys |= _fids_to_keys(st, bb_contact_ids)
 
-    logging.info('[extract:multi] Initial union selection: %d residues; backbone-contact: %d residues.',
+    logging.info("[extract:multi] Initial union selection: %d residues; backbone-contact: %d residues.",
                  len(union_sel_keys), len(union_bb_contact_keys))
 
     # 1a) Force-include residues via --selected-resn (OR across structures)
-    if getattr(args, 'selected_resn', ''):
+    if getattr(args, "selected_resn", ""):
         forced_union: Set[ResidueKey] = set()
         for st in structs:
             forced_res = find_substrate_by_idspec(st, args.selected_resn)
             forced_union |= {_residue_key_from_res(r) for r in forced_res}
         if forced_union:
-            logging.info('[extract:multi] Force-include (--selected-resn): +%d residues.', len(forced_union))
+            logging.info("[extract:multi] Force-include (--selected-resn): +%d residues.", len(forced_union))
             union_sel_keys |= forced_union
 
     # 2) Disulfide partners (OR across structures)
@@ -1668,7 +1668,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     for st in structs:
         dis_keys_union |= _disulfide_partner_keys(st, union_sel_keys, DISULFIDE_CUTOFF)
     if dis_keys_union:
-        logging.info('[extract:multi] Disulfide partner addition (union): +%d residues.', len(dis_keys_union))
+        logging.info("[extract:multi] Disulfide partner addition (union): +%d residues.", len(dis_keys_union))
     union_sel_keys |= dis_keys_union
 
     # 3) Backbone-contact neighbor augmentation (if exclude_backbone == False)
@@ -1687,7 +1687,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             keep_ncap_union |= _fids_to_keys(st, kn_fids)
             keep_ccap_union |= _fids_to_keys(st, kc_fids)
         if added_neighbor_union:
-            logging.info('[extract:multi] Backbone-contact neighbor addition (union): +%d residues.',
+            logging.info("[extract:multi] Backbone-contact neighbor addition (union): +%d residues.",
                          len(added_neighbor_union))
         union_sel_keys |= added_neighbor_union
 
@@ -1699,7 +1699,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         added = _fids_to_keys(st, sel_ids) - union_sel_keys
         pro_prev_add_union |= added
     if pro_prev_add_union:
-        logging.info('[extract:multi] PRO N-side neighbor addition (union): +%d residues.',
+        logging.info("[extract:multi] PRO N-side neighbor addition (union): +%d residues.",
                      len(pro_prev_add_union))
     union_sel_keys |= pro_prev_add_union
 
@@ -1728,16 +1728,16 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         targets_i = [ld[0] for ld in linkdefs_per_struct[i]]
         if targets_i != ref_targets:
             raise RuntimeError(
-                f'[multi] link-H targets/order differ between model #1 and model #{i+1}. '
-                f'Ensure inputs and options produce identical truncation across models.'
+                f"[multi] link-H targets/order differ between model #1 and model #{i+1}. "
+                f"Ensure inputs and options produce identical truncation across models."
             )
-    logging.info('[extract:multi] link-H targets common across models: %d.', len(ref_targets))
+    logging.info("[extract:multi] link-H targets common across models: %d.", len(ref_targets))
 
     # ==== Write outputs ====
     per_file_outputs = (len(args.output_pdb) == len(paths))
     if not per_file_outputs and len(args.output_pdb) != 1:
-        raise ValueError('[extract:multi] Provide either a single output path for a multi‑MODEL PDB '
-                         'or exactly N output paths where N == number of inputs for per‑structure outputs.')
+        raise ValueError("[extract:multi] Provide either a single output path for a multi‑MODEL PDB "
+                         "or exactly N output paths where N == number of inputs for per‑structure outputs.")
 
     io = PDB.PDBIO()
     model_texts: List[str] = []
@@ -1756,22 +1756,22 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             for a in st[fid[1]][fid[2]].child_dict[fid[3]]
             if a.get_name() not in skip_map.get(fid, set())
         )
-        logging.info('[extract:multi] Raw atoms (model %d): %d', m, raw_atoms)
-        logging.info('[extract:multi] Atoms after truncation (model %d): %d', m, kept_atoms)
-        model_counts.append({'raw_atoms': raw_atoms, 'kept_atoms': kept_atoms})
+        logging.info("[extract:multi] Raw atoms (model %d): %d", m, raw_atoms)
+        logging.info("[extract:multi] Atoms after truncation (model %d): %d", m, kept_atoms)
+        model_counts.append({"raw_atoms": raw_atoms, "kept_atoms": kept_atoms})
 
         # Append TER + link‑H block (honor --add-linkH)
         link_coords = [coord for (_, coord) in linkdefs_per_struct[m-1]]
         if args.add_linkH and link_coords:
-            if not main_text.endswith('\n'):
-                main_text += '\n'
+            if not main_text.endswith("\n"):
+                main_text += "\n"
             parts = [main_text]
-            last_line = main_text.splitlines()[-1].strip() if main_text.strip() else ''
-            if last_line != 'TER':
-                parts.append('TER\n')
+            last_line = main_text.splitlines()[-1].strip() if main_text.strip() else ""
+            if last_line != "TER":
+                parts.append("TER\n")
             start_serial = _max_serial_from_pdb_text(main_text)
             parts.append(_format_linkH_block(link_coords, start_serial))
-            main_text = ''.join(parts)
+            main_text = "".join(parts)
 
         model_texts.append(main_text)
 
@@ -1779,44 +1779,44 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     if per_file_outputs:
         for idx, text in enumerate(model_texts):
             content = text
-            if not content.endswith('\n'):
-                content += '\n'
-            content += 'END\n'
+            if not content.endswith("\n"):
+                content += "\n"
+            content += "END\n"
             out_path = args.output_pdb[idx]
-            with open(out_path, 'w') as fh:
+            with open(out_path, "w") as fh:
                 fh.write(content)
             outputs.append(out_path)
-            logging.info('[extract:multi] Single‑model pocket saved to %s', out_path)
+            logging.info("[extract:multi] Single‑model pocket saved to %s", out_path)
     else:
         buf_models: List[str] = []
         for m, text in enumerate(model_texts, start=1):
             model_block = []
-            model_block.append(f'MODEL     {m}\n')
+            model_block.append(f"MODEL     {m}\n")
             model_block.append(text)
-            model_block.append('ENDMDL\n')
-            buf_models.append(''.join(model_block))
+            model_block.append("ENDMDL\n")
+            buf_models.append("".join(model_block))
         out_path = args.output_pdb[0]
-        with open(out_path, 'w') as fh:
+        with open(out_path, "w") as fh:
             for blk in buf_models:
                 fh.write(blk)
-            fh.write('END\n')
+            fh.write("END\n")
         outputs.append(out_path)
-        logging.info('[extract:multi] Multi‑MODEL pocket saved to %s', out_path)
+        logging.info("[extract:multi] Multi‑MODEL pocket saved to %s", out_path)
 
     # ==== Charge summary (first model only) ====
     charge_summary = compute_charge_summary(
         structs[0],
         selected_ids_per_struct[0],
         substrate_idsets_per_struct[0],
-        getattr(args, 'ligand_charge', None)
+        getattr(args, "ligand_charge", None)
     )
-    log_charge_summary('[extract:multi]', charge_summary)
+    log_charge_summary("[extract:multi]", charge_summary)
 
     if api==True:
         return {
-            'outputs': outputs,
-            'counts': model_counts,
-            'charge_summary': charge_summary,
+            "outputs": outputs,
+            "counts": model_counts,
+            "charge_summary": charge_summary,
         }
     else:
         return
@@ -1866,7 +1866,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
     logging.basicConfig(
         level=logging.INFO if args.verbose else logging.WARNING,
-        format='%(levelname)s: %(message)s'
+        format="%(levelname)s: %(message)s"
     )
 
     # Route INFO-level messages through click.echo when verbose is enabled
@@ -1887,7 +1887,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         if len(args.complex_pdb) > 1:
             # multiple inputs → per-file outputs: pocket_{original_filename}.pdb
             args.output_pdb = [
-                f'pocket_{os.path.splitext(os.path.basename(p))[0]}.pdb'
+                f"pocket_{os.path.splitext(os.path.basename(p))[0]}.pdb"
                 for p in args.complex_pdb
             ]
         else:
@@ -1895,12 +1895,12 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
     # Single-structure path
     if len(args.complex_pdb) == 1:
-        complex_struct = load_structure(args.complex_pdb[0], 'complex')
+        complex_struct = load_structure(args.complex_pdb[0], "complex")
 
         # Resolve substrate residues from PDB path or residue-ID/name list
         substrate_residues = resolve_substrate_residues(complex_struct, args.substrate_pdb)
         substrate_ids = {r.get_full_id() for r in substrate_residues}
-        logging.info('[extract] Substrate residues matched: resseq %s',
+        logging.info("[extract] Substrate residues matched: resseq %s",
                      [r.id[1] for r in substrate_residues])
 
         selected_ids, backbone_contact_ids = select_residues(
@@ -1911,7 +1911,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         )
 
         # Force-include residues via --selected-resn
-        if getattr(args, 'selected_resn', ''):
+        if getattr(args, "selected_resn", ""):
             forced_res = find_substrate_by_idspec(complex_struct, args.selected_resn)
             add_n = 0
             for r in forced_res:
@@ -1920,7 +1920,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
                     selected_ids.add(fid)
                     add_n += 1
             if add_n:
-                logging.info('[extract] Force-include (--selected-resn): +%d residues.', add_n)
+                logging.info("[extract] Force-include (--selected-resn): +%d residues.", add_n)
 
         augment_disulfides(complex_struct, selected_ids)
 
@@ -1939,7 +1939,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
         # Atom counts
         raw = sum(len(complex_struct[f[1]][f[2]].child_dict[f[3]]) for f in selected_ids)
-        logging.info('[extract] Raw atoms: %d', raw)
+        logging.info("[extract] Raw atoms: %d", raw)
 
         skip_map = mark_atoms_to_skip(
             complex_struct, selected_ids, substrate_ids,
@@ -1953,7 +1953,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
             for a in complex_struct[fid[1]][fid[2]].child_dict[fid[3]]
             if a.get_name() not in skip_map.get(fid, set())
         )
-        logging.info('[extract] Atoms after truncation: %d', kept_atoms)
+        logging.info("[extract] Atoms after truncation: %d", kept_atoms)
 
         # Save structure (and optionally append link‑H block)
         io = PDB.PDBIO()
@@ -1968,43 +1968,43 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
         if args.add_linkH:
             link_coords = compute_linkH_atoms(complex_struct, selected_ids, skip_map)
-            logging.info('[extract] Link-H to add: %d', len(link_coords))
+            logging.info("[extract] Link-H to add: %d", len(link_coords))
 
-            lines = [ln for ln in main_pdb_text.splitlines() if ln.strip() != 'END']
-            if lines and lines[-1].strip() == 'TER':
+            lines = [ln for ln in main_pdb_text.splitlines() if ln.strip() != "END"]
+            if lines and lines[-1].strip() == "TER":
                 pass
-            main_no_end = '\n'.join(lines)
-            if not main_no_end.endswith('\n'):
-                main_no_end += '\n'
+            main_no_end = "\n".join(lines)
+            if not main_no_end.endswith("\n"):
+                main_no_end += "\n"
 
             final_parts = [main_no_end]
             if link_coords:
-                final_parts.append('TER\n')
+                final_parts.append("TER\n")
                 start_serial = _max_serial_from_pdb_text(main_no_end)
                 final_parts.append(_format_linkH_block(link_coords, start_serial))
-            final_parts.append('END\n')
+            final_parts.append("END\n")
 
-            with open(output_path, 'w') as fh:
-                fh.write(''.join(final_parts))
-            logging.info('[extract] Binding-Pocket (Active Site) + link-H saved to %s', output_path)
+            with open(output_path, "w") as fh:
+                fh.write("".join(final_parts))
+            logging.info("[extract] Binding-Pocket (Active Site) + link-H saved to %s", output_path)
             outputs.append(output_path)
         else:
-            with open(output_path, 'w') as fh:
+            with open(output_path, "w") as fh:
                 fh.write(main_pdb_text)
-            logging.info('[extract] Binding-Pocket (Active Site) saved to %s', output_path)
+            logging.info("[extract] Binding-Pocket (Active Site) saved to %s", output_path)
             outputs.append(output_path)
 
         # Charge summary (single model)
         charge_summary = compute_charge_summary(
-            complex_struct, selected_ids, substrate_ids, getattr(args, 'ligand_charge', None)
+            complex_struct, selected_ids, substrate_ids, getattr(args, "ligand_charge", None)
         )
-        log_charge_summary('[extract]', charge_summary)
+        log_charge_summary("[extract]", charge_summary)
         
         if api:
             return {
-                'outputs': outputs,
-                'counts': [{'raw_atoms': raw, 'kept_atoms': kept_atoms}],
-                'charge_summary': charge_summary,
+                "outputs": outputs,
+                "counts": [{"raw_atoms": raw, "kept_atoms": kept_atoms}],
+                "charge_summary": charge_summary,
             }
         else:
             return
@@ -2021,7 +2021,7 @@ def extract_api(complex_pdb: List[str],
                    include_H2O: bool = True,
                    exclude_backbone: bool = True,
                    add_linkH: bool = True,
-                   selected_resn: str = '',
+                   selected_resn: str = "",
                    ligand_charge: Optional[float | str | Dict[str, float]] = None,
                    verbose: bool = False) -> Dict[str, Any]:
     """

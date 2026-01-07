@@ -63,7 +63,7 @@ Notes
   - Requires the optional ``thermoanalysis`` package; if absent, the summary is skipped with a warning.
   - Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
 - Performance and numerical details:
-  - GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO='U'``), and avoiding redundant allocations.
+  - GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO="U"``), and avoiding redundant allocations.
 - Exit behavior:
   - On keyboard interrupt, exits with code 130; on errors during frequency analysis, prints a traceback and exits with code 1.
     Errors during the optional thermochemistry summary are reported but do not abort the run.
@@ -108,9 +108,9 @@ from .utils import (
 )
 
 
-def _torch_device(auto: str = 'auto') -> torch.device:
-    if auto == 'auto':
-        return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def _torch_device(auto: str = "auto") -> torch.device:
+    if auto == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(auto)
 
 
@@ -163,7 +163,7 @@ def _mw_projected_hessian(H_t: torch.Tensor,
     Hmw = M^{-1/2} H M^{-1/2};  P = I - QQ^T;  Hmw_proj = P Hmw P
 
     To save memory, update **H_t in-place** (no clone) and return it.
-    No explicit symmetrization. The eigen-decomposition uses only the upper triangle (UPLO='U').
+    No explicit symmetrization. The eigen-decomposition uses only the upper triangle (UPLO="U").
     """
     dtype, device = H_t.dtype, H_t.device
     with torch.no_grad():
@@ -192,7 +192,7 @@ def _mw_projected_hessian(H_t: torch.Tensor,
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
         del Q, Qt, QtH, HQ, QtHQ, tmp
 
-        if torch.cuda.is_available() and device.type == 'cuda':
+        if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
         return H_t
 
@@ -277,7 +277,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 QtHQ = QtH @ Q
                 Hmw_act.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
 
-                omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO='U')
+                omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="U")
 
                 del Hmw_act
                 del H_t
@@ -322,7 +322,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 QtH = QtH @ Q
                 H_t.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
 
-                omega2, Vsub = torch.linalg.eigh(H_t, UPLO='U')
+                omega2, Vsub = torch.linalg.eigh(H_t, UPLO="U")
 
                 del H_t
                 if torch.cuda.is_available():
@@ -338,7 +338,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
 
         else:
             H_t = _mw_projected_hessian(H_t, coords_bohr_t, masses_au_t)
-            omega2, V = torch.linalg.eigh(H_t, UPLO='U')
+            omega2, V = torch.linalg.eigh(H_t, UPLO="U")
 
             del H_t
             if torch.cuda.is_available():
@@ -380,9 +380,9 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
     UMA calculator producing Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
     """
     kw = dict(uma_kwargs or {})
-    kw['out_hess_torch'] = True
+    kw["out_hess_torch"] = True
     calc = uma_pysis(**kw)
-    H_t = calc.get_hessian(geom.atoms, geom.cart_coords)['hessian'].to(device=device)
+    H_t = calc.get_hessian(geom.atoms, geom.cart_coords)["hessian"].to(device=device)
     return H_t
 
 
@@ -402,10 +402,10 @@ def _write_mode_trj_and_pdb(geom,
                             out_trj: Path,
                             amplitude_ang: float = 0.8,
                             n_frames: int = 20,
-                            comment: str = 'mode',
+                            comment: str = "mode",
                             ref_pdb: Optional[Path] = None,
                             write_pdb: bool = True,
-                            prepared_input: Optional['PreparedInputStructure'] = None,
+                            prepared_input: Optional["PreparedInputStructure"] = None,
                             out_pdb: Optional[Path] = None) -> None:
     """
     Write a single mode animation as .trj (XYZ-like) and optionally .pdb.
@@ -421,14 +421,14 @@ def _write_mode_trj_and_pdb(geom,
     trj_written = False
 
     # .trj (concatenated XYZ-like trajectory)
-    if write_pdb and ref_pdb is not None and ref_pdb.suffix.lower() == '.pdb':
-        with out_trj.open('w', encoding='utf-8') as f:
+    if write_pdb and ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb":
+        with out_trj.open("w", encoding="utf-8") as f:
             for i in range(n_frames):
                 phase = np.sin(2.0 * np.pi * i / n_frames)
                 coords = ref_ang + phase * amplitude_ang * mode
-                f.write(f'{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n')
+                f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
                 for sym, (x, y, z) in zip(geom.atoms, coords):
-                    f.write(f'{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n')
+                    f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
         trj_written = True
 
     if not trj_written:
@@ -438,25 +438,25 @@ def _write_mode_trj_and_pdb(geom,
             amp_ang = amplitude_ang
             steps = np.sin(2.0 * np.pi * np.arange(n_frames) / n_frames)[:, None, None] * (amp_ang * mode[None, :, :])
             traj_ang = ref_ang[None, :, :] + steps  # (T,N,3) in Å
-            comments = [f'{comment}  frame={i+1}/{n_frames}' for i in range(n_frames)]
+            comments = [f"{comment}  frame={i+1}/{n_frames}" for i in range(n_frames)]
             trj_str = make_trj_str(geom.atoms, traj_ang, comments=comments)
-            out_trj.write_text(trj_str, encoding='utf-8')
+            out_trj.write_text(trj_str, encoding="utf-8")
             trj_written = True
         except Exception:
-            with out_trj.open('w', encoding='utf-8') as f:
+            with out_trj.open("w", encoding="utf-8") as f:
                 for i in range(n_frames):
                     phase = np.sin(2.0 * np.pi * i / n_frames)
                     coords = ref_ang + phase * amplitude_ang * mode
-                    f.write(f'{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n')
+                    f.write(f"{len(geom.atoms)}\n{comment} frame={i+1}/{n_frames}\n")
                     for sym, (x, y, z) in zip(geom.atoms, coords):
-                        f.write(f'{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n')
+                        f.write(f"{sym:2s} {x: .8f} {y: .8f} {z: .8f}\n")
 
     needs_pdb = write_pdb and out_pdb is not None
 
     if not needs_pdb:
         return
 
-    ref_for_conv = ref_pdb if (ref_pdb and ref_pdb.suffix.lower() == '.pdb') else None
+    ref_for_conv = ref_pdb if (ref_pdb and ref_pdb.suffix.lower() == ".pdb") else None
     try:
         convert_xyz_like_outputs(
             out_trj,
@@ -485,17 +485,17 @@ CALC_KW = dict(_UMA_CALC_KW)
 
 # Freq writer defaults
 FREQ_KW = {
-    'amplitude_ang': 0.8,     # animation amplitude (Å) applied to both .trj and .pdb outputs
-    'n_frames': 20,           # number of frames per vibrational mode
-    'max_write': 10,          # maximum number of modes to export
-    'sort': 'value',          # 'value' (ascending by cm^-1) | 'abs' (ascending by absolute value)
+    "amplitude_ang": 0.8,     # animation amplitude (Å) applied to both .trj and .pdb outputs
+    "n_frames": 20,           # number of frames per vibrational mode
+    "max_write": 10,          # maximum number of modes to export
+    "sort": "value",          # "value" (ascending by cm^-1) | "abs" (ascending by absolute value)
 }
 
 # Thermochemistry defaults
 THERMO_KW = {
-    'temperature': 298.15,    # temperature in Kelvin
-    'pressure_atm': 1.0,      # pressure in atm (converted to Pa internally)
-    'dump': False,            # write thermoanalysis.yaml when True
+    "temperature": 298.15,    # temperature in Kelvin
+    "pressure_atm": 1.0,      # pressure in atm (converted to Pa internally)
+    "dump": False,            # write thermoanalysis.yaml when True
 }
 
 
@@ -504,78 +504,78 @@ THERMO_KW = {
 # ===================================================================
 
 @click.command(
-    help='Vibrational frequency analysis and mode writer (+ default thermochemistry summary).',
-    context_settings={'help_option_names': ['-h', '--help']},
+    help="Vibrational frequency analysis and mode writer (+ default thermochemistry summary).",
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
-    '-i', '--input',
-    'input_path',
+    "-i", "--input",
+    "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help='Input structure (.pdb, .xyz, .trj, ...)',
+    help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option('-q', '--charge', type=int, required=False, help='Charge of the ML region.')
+@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
-    '--workers',
+    "--workers",
     type=int,
-    default=CALC_KW['workers'],
+    default=CALC_KW["workers"],
     show_default=True,
-    help='UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).',
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
-    '--workers-per-node',
-    'workers_per_node',
+    "--workers-per-node",
+    "workers_per_node",
     type=int,
-    default=CALC_KW['workers_per_node'],
+    default=CALC_KW["workers_per_node"],
     show_default=True,
-    help='Workers per node when using a parallel UMA predictor (workers>1).',
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
 @click.option(
-    '--ligand-charge',
+    "--ligand-charge",
     type=str,
     default=None,
     show_default=False,
-    help='Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.',
+    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option('-m', '--multiplicity', 'spin', type=int, default=1, show_default=True, help='Spin multiplicity (2S+1) for the ML region.')
-@click.option('--freeze-links', type=click.BOOL, default=True, show_default=True,
-              help='Freeze parent atoms of link hydrogens (PDB only).')
+@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
+              help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(
-    '--convert-files',
-    'convert_files',
+    "--convert-files",
+    "convert_files",
     type=click.BOOL,
     default=True,
     show_default=True,
-    help='Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.',
+    help="Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.",
 )
-@click.option('--max-write', type=int, default=10, show_default=True,
-              help='How many modes to export (after sorting per --sort).')
-@click.option('--amplitude-ang', type=float, default=0.8, show_default=True,
-              help='Animation amplitude (Å) used for both .trj and .pdb.')
-@click.option('--n-frames', type=int, default=20, show_default=True,
-              help='Number of frames per mode animation.')
-@click.option('--sort', type=click.Choice(['value', 'abs']), default='value', show_default=True,
-              help='Sort modes by "value" (cm^-1) or by absolute value.')
-@click.option('--out-dir', type=str, default='./result_freq/', show_default=True, help='Output directory')
+@click.option("--max-write", type=int, default=10, show_default=True,
+              help="How many modes to export (after sorting per --sort).")
+@click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
+              help="Animation amplitude (Å) used for both .trj and .pdb.")
+@click.option("--n-frames", type=int, default=20, show_default=True,
+              help="Number of frames per mode animation.")
+@click.option("--sort", type=click.Choice(["value", "abs"]), default="value", show_default=True,
+              help="Sort modes by 'value' (cm^-1) or by absolute value.")
+@click.option("--out-dir", type=str, default="./result_freq/", show_default=True, help="Output directory")
 @click.option(
-    '--args-yaml',
+    "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='YAML with extra args (sections: geom, calc, freq).',
+    help="YAML with extra args (sections: geom, calc, freq).",
 )
 # Thermochemistry options
-@click.option('--temperature', type=float, default=THERMO_KW['temperature'], show_default=True,
-              help='Temperature (K) for thermochemistry summary.')
-@click.option('--pressure', 'pressure_atm',
-              type=float, default=THERMO_KW['pressure_atm'], show_default=True,
-              help='Pressure (atm) for thermochemistry summary.')
-@click.option('--dump', type=click.BOOL, default=THERMO_KW['dump'], show_default=True,
-              help='When True, write "thermoanalysis.yaml" under out-dir.')
+@click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,
+              help="Temperature (K) for thermochemistry summary.")
+@click.option("--pressure", "pressure_atm",
+              type=float, default=THERMO_KW["pressure_atm"], show_default=True,
+              help="Pressure (atm) for thermochemistry summary.")
+@click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
+              help="When True, write 'thermoanalysis.yaml' under out-dir.")
 # Hessian calculation mode
-@click.option('--hessian-calc-mode',
-              type=click.Choice(['FiniteDifference', 'Analytical']),
+@click.option("--hessian-calc-mode",
+              type=click.Choice(["FiniteDifference", "Analytical"]),
               default=None,
-              help='How UMA computes Hessian. Defaults to "FiniteDifference" (can also be set via YAML).')
+              help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 def cli(
     input_path: Path,
     charge: Optional[int],
@@ -607,7 +607,7 @@ def cli(
         charge,
         spin,
         ligand_charge=ligand_charge,
-        prefix='[freq]',
+        prefix="[freq]",
     )
 
     # --------------------------
@@ -620,68 +620,68 @@ def cli(
     thermo_cfg = dict(THERMO_KW)
 
     # CLI overrides
-    calc_cfg['charge'] = int(charge)
-    calc_cfg['spin']   = int(spin)
-    calc_cfg['workers'] = int(workers)
-    calc_cfg['workers_per_node'] = int(workers_per_node)
+    calc_cfg["charge"] = int(charge)
+    calc_cfg["spin"]   = int(spin)
+    calc_cfg["workers"] = int(workers)
+    calc_cfg["workers_per_node"] = int(workers_per_node)
     if hessian_calc_mode is not None:
-        calc_cfg['hessian_calc_mode'] = str(hessian_calc_mode)
+        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
-    freq_cfg['max_write']     = int(max_write)
-    freq_cfg['amplitude_ang'] = float(amplitude_ang)
-    freq_cfg['n_frames']      = int(n_frames)
-    freq_cfg['sort']          = sort
+    freq_cfg["max_write"]     = int(max_write)
+    freq_cfg["amplitude_ang"] = float(amplitude_ang)
+    freq_cfg["n_frames"]      = int(n_frames)
+    freq_cfg["sort"]          = sort
 
-    thermo_cfg['temperature']   = float(temperature)
-    thermo_cfg['pressure_atm']  = float(pressure_atm)
-    thermo_cfg['dump']          = bool(dump)
+    thermo_cfg["temperature"]   = float(temperature)
+    thermo_cfg["pressure_atm"]  = float(pressure_atm)
+    thermo_cfg["dump"]          = bool(dump)
 
     # YAML overrides (highest precedence)
     apply_yaml_overrides(
         yaml_cfg,
         [
-            (geom_cfg, (('geom',),)),
-            (calc_cfg, (('calc',),)),
-            (freq_cfg, (('freq',),)),
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (freq_cfg, (("freq",),)),
         ],
     )
 
     # Freeze links (PDB only): merge with existing list
-    if freeze_links and input_path.suffix.lower() == '.pdb':
+    if freeze_links and input_path.suffix.lower() == ".pdb":
         try:
             detected = detect_freeze_links(input_path)
         except Exception as e:
-            click.echo(f'[freeze-links] WARNING: Could not detect link parents: {e}', err=True)
+            click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
         merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
-            click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}')
+            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
     out_dir_path = Path(out_dir).resolve()
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
     # Pretty-print config summary
-    click.echo(pretty_block('geom', format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block('calc', format_freeze_atoms_for_echo(calc_cfg)))
-    click.echo(pretty_block('freq', {**freq_cfg, 'out_dir': str(out_dir_path)}))
-    click.echo(pretty_block('thermo', {
-        'temperature': thermo_cfg['temperature'],
-        'pressure_atm': thermo_cfg['pressure_atm'],
-        'dump': thermo_cfg['dump'],
+    click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+    click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
+    click.echo(pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
+    click.echo(pretty_block("thermo", {
+        "temperature": thermo_cfg["temperature"],
+        "pressure_atm": thermo_cfg["pressure_atm"],
+        "dump": thermo_cfg["dump"],
     }))
 
     # --------------------------
     # 2) Load geometry
     # --------------------------
-    coord_type = geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type'])
+    coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
     coord_kwargs = dict(geom_cfg)
-    coord_kwargs.pop('coord_type', None)
+    coord_kwargs.pop("coord_type", None)
     geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
     # Masses (AU tensor for TR projection & MW->Cart conversion)
     masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
     masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=torch.float32)
-    device = _torch_device(calc_cfg.get('device', 'auto'))
+    device = _torch_device(calc_cfg.get("device", "auto"))
     masses_au_t = masses_au_t.to(device=device)
 
     # --------------------------
@@ -690,10 +690,10 @@ def cli(
     try:
         # Inject freeze list into UMA calc config for Hessian construction,
         # and ensure partial Hessian return is default True (can be overridden by YAML).
-        freeze_list = list(geom_cfg.get('freeze_atoms', []))
+        freeze_list = list(geom_cfg.get("freeze_atoms", []))
         calc_cfg = dict(calc_cfg)
-        calc_cfg['freeze_atoms'] = freeze_list
-        calc_cfg.setdefault('return_partial_hessian', True)
+        calc_cfg["freeze_atoms"] = freeze_list
+        calc_cfg.setdefault("return_partial_hessian", True)
 
         H_t = _calc_full_hessian_torch(geometry, calc_cfg, device)
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
@@ -711,38 +711,38 @@ def cli(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        if freq_cfg['sort'] == 'abs':
+        if freq_cfg["sort"] == "abs":
             order = np.argsort(np.abs(freqs_cm))
         else:
             order = np.argsort(freqs_cm)
 
-        n_write = int(min(freq_cfg['max_write'], len(order)))
-        click.echo(f'[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).')
+        n_write = int(min(freq_cfg["max_write"], len(order)))
+        click.echo(f"[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).")
 
         # Reference PDB (only when input is PDB)
-        ref_pdb = input_path if input_path.suffix.lower() == '.pdb' else None
+        ref_pdb = input_path if input_path.suffix.lower() == ".pdb" else None
         write_pdb = ref_pdb is not None
 
         # write modes
         for k, idx in enumerate(order[:n_write], start=1):
             freq = float(freqs_cm[idx])
             mode_cart_3N = _mw_mode_to_cart(modes_mw[idx], masses_au_t)
-            out_trj = out_dir_path / f'mode_{k:04d}_{freq:+.2f}cm-1.trj'
+            out_trj = out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.trj"
             _write_mode_trj_and_pdb(
                 geometry,
                 mode_cart_3N,
                 out_trj,
-                amplitude_ang=freq_cfg['amplitude_ang'],
-                n_frames=freq_cfg['n_frames'],
-                comment=f'mode {k}  {freq:+.2f} cm-1',
+                amplitude_ang=freq_cfg["amplitude_ang"],
+                n_frames=freq_cfg["n_frames"],
+                comment=f"mode {k}  {freq:+.2f} cm-1",
                 ref_pdb=ref_pdb,
                 write_pdb=write_pdb,
                 prepared_input=prepared_input,
-                out_pdb=out_dir_path / f'mode_{k:04d}_{freq:+.2f}cm-1.pdb' if write_pdb else None,
+                out_pdb=out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb" if write_pdb else None,
             )
-        (out_dir_path / 'frequencies_cm-1.txt').write_text(
-            '\n'.join(f'{i+1:4d}  {float(freqs_cm[j]):+12.4f}' for i, j in enumerate(order)),
-            encoding='utf-8'
+        (out_dir_path / "frequencies_cm-1.txt").write_text(
+            "\n".join(f"{i+1:4d}  {float(freqs_cm[j]):+12.4f}" for i, j in enumerate(order)),
+            encoding="utf-8"
         )
 
         del modes_mw
@@ -758,16 +758,16 @@ def cli(
             from thermoanalysis.constants import J2AU, NA, J2CAL
 
             qc_data = {
-                'coords3d': geometry.cart_coords.reshape(-1, 3) * BOHR2ANG,  # Å
-                'wavenumbers': freqs_cm,                                 # cm^-1
-                'scf_energy': _calc_energy(geometry, calc_cfg),          # Hartree
-                'masses': masses_amu,
-                'mult': int(spin),
+                "coords3d": geometry.cart_coords.reshape(-1, 3) * BOHR2ANG,  # Å
+                "wavenumbers": freqs_cm,                                 # cm^-1
+                "scf_energy": _calc_energy(geometry, calc_cfg),          # Hartree
+                "masses": masses_amu,
+                "mult": int(spin),
             }
-            qc = QCData(qc_data, point_group='c1', mult=int(spin))
+            qc = QCData(qc_data, point_group="c1", mult=int(spin))
 
-            T = float(thermo_cfg['temperature'])
-            p_atm = float(thermo_cfg['pressure_atm'])
+            T = float(thermo_cfg["temperature"])
+            p_atm = float(thermo_cfg["pressure_atm"])
             p_pa = p_atm * 101325.0  # Pa
 
             tr = thermochemistry(qc, T, pressure=p_pa)  # default: QRRHO
@@ -793,74 +793,74 @@ def cli(
             Cv_cal_per_Kmol = J_per_Kmol_to_cal_per_Kmol(tr.c_tot)
             S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)
 
-            click.echo('\nThermochemistry Summary')
-            click.echo('------------------------')
-            click.echo(f'Temperature (K)         = {T:.2f}')
-            click.echo(f'Pressure    (atm)       = {p_atm:.4f}')
+            click.echo("\nThermochemistry Summary")
+            click.echo("------------------------")
+            click.echo(f"Temperature (K)         = {T:.2f}")
+            click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
             if freeze_list:
-                click.echo('[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.')
-            click.echo(f'Number of Imaginary Freq = {n_imag:d}\n')
+                click.echo("[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.")
+            click.echo(f"Number of Imaginary Freq = {n_imag:d}\n")
 
-            def _ha(x): return f'{float(x): .6f} Ha'
-            def _cal(x): return f'{float(x): .2f} cal/mol'
-            def _calK(x): return f'{float(x): .2f} cal/(mol*K)'
+            def _ha(x): return f"{float(x): .6f} Ha"
+            def _cal(x): return f"{float(x): .2f} cal/mol"
+            def _calK(x): return f"{float(x): .2f} cal/(mol*K)"
 
-            click.echo(f'Electronic Energy (EE)                 = {_ha(EE)}')
-            click.echo(f'Zero-point Energy Correction           = {_ha(ZPE)}')
-            click.echo(f'Thermal Correction to Energy           = {_ha(dE_therm)}')
-            click.echo(f'Thermal Correction to Enthalpy         = {_ha(dH_therm)}')
-            click.echo(f'Thermal Correction to Free Energy      = {_ha(dG_therm)}')
-            click.echo(f'EE + Zero-point Energy                 = {_ha(sum_EE_ZPE)}')
-            click.echo(f'EE + Thermal Energy Correction         = {_ha(sum_EE_thermal_E)}')
-            click.echo(f'EE + Thermal Enthalpy Correction       = {_ha(sum_EE_thermal_H)}')
-            click.echo(f'EE + Thermal Free Energy Correction    = {_ha(sum_EE_thermal_G)}')
-            click.echo('')
-            click.echo(f'E (Thermal)                            = {_cal(E_thermal_cal)}')
-            click.echo(f'Heat Capacity (Cv)                     = {_calK(Cv_cal_per_Kmol)}')
-            click.echo(f'Entropy (S)                            = {_calK(S_cal_per_Kmol)}')
-            click.echo('')
+            click.echo(f"Electronic Energy (EE)                 = {_ha(EE)}")
+            click.echo(f"Zero-point Energy Correction           = {_ha(ZPE)}")
+            click.echo(f"Thermal Correction to Energy           = {_ha(dE_therm)}")
+            click.echo(f"Thermal Correction to Enthalpy         = {_ha(dH_therm)}")
+            click.echo(f"Thermal Correction to Free Energy      = {_ha(dG_therm)}")
+            click.echo(f"EE + Zero-point Energy                 = {_ha(sum_EE_ZPE)}")
+            click.echo(f"EE + Thermal Energy Correction         = {_ha(sum_EE_thermal_E)}")
+            click.echo(f"EE + Thermal Enthalpy Correction       = {_ha(sum_EE_thermal_H)}")
+            click.echo(f"EE + Thermal Free Energy Correction    = {_ha(sum_EE_thermal_G)}")
+            click.echo("")
+            click.echo(f"E (Thermal)                            = {_cal(E_thermal_cal)}")
+            click.echo(f"Heat Capacity (Cv)                     = {_calK(Cv_cal_per_Kmol)}")
+            click.echo(f"Entropy (S)                            = {_calK(S_cal_per_Kmol)}")
+            click.echo("")
 
-            if bool(thermo_cfg['dump']):
-                out_yaml = out_dir_path / 'thermoanalysis.yaml'
+            if bool(thermo_cfg["dump"]):
+                out_yaml = out_dir_path / "thermoanalysis.yaml"
                 payload = {
-                    'temperature_K': T,
-                    'pressure_atm': p_atm,
-                    'num_imag_freq': n_imag,
-                    'electronic_energy_ha': EE,
-                    'zpe_correction_ha': ZPE,
-                    'thermal_correction_energy_ha': dE_therm,
-                    'thermal_correction_enthalpy_ha': dH_therm,
-                    'thermal_correction_free_energy_ha': dG_therm,
-                    'sum_EE_and_ZPE_ha': sum_EE_ZPE,
-                    'sum_EE_and_thermal_energy_ha': sum_EE_thermal_E,
-                    'sum_EE_and_thermal_enthalpy_ha': sum_EE_thermal_H,
-                    'sum_EE_and_thermal_free_energy_ha': sum_EE_thermal_G,
-                    'E_thermal_cal_per_mol': E_thermal_cal,
-                    'Cv_cal_per_mol_K': Cv_cal_per_Kmol,
-                    'S_cal_per_mol_K': S_cal_per_Kmol,
+                    "temperature_K": T,
+                    "pressure_atm": p_atm,
+                    "num_imag_freq": n_imag,
+                    "electronic_energy_ha": EE,
+                    "zpe_correction_ha": ZPE,
+                    "thermal_correction_energy_ha": dE_therm,
+                    "thermal_correction_enthalpy_ha": dH_therm,
+                    "thermal_correction_free_energy_ha": dG_therm,
+                    "sum_EE_and_ZPE_ha": sum_EE_ZPE,
+                    "sum_EE_and_thermal_energy_ha": sum_EE_thermal_E,
+                    "sum_EE_and_thermal_enthalpy_ha": sum_EE_thermal_H,
+                    "sum_EE_and_thermal_free_energy_ha": sum_EE_thermal_G,
+                    "E_thermal_cal_per_mol": E_thermal_cal,
+                    "Cv_cal_per_mol_K": Cv_cal_per_Kmol,
+                    "S_cal_per_mol_K": S_cal_per_Kmol,
                 }
-                with out_yaml.open('w', encoding='utf-8') as f:
+                with out_yaml.open("w", encoding="utf-8") as f:
                     yaml.safe_dump(payload, f, sort_keys=False, allow_unicode=True)
-                click.echo(f'[dump] Wrote thermoanalysis summary → {out_yaml}')
+                click.echo(f"[dump] Wrote thermoanalysis summary → {out_yaml}")
 
         except ImportError:
-            click.echo('[thermo] WARNING: "thermoanalysis" package not found; skipped thermochemistry summary.', err=True)
+            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.", err=True)
         except Exception as e:
             import traceback
-            tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo('Unhandled error during thermochemistry summary:\n' + textwrap.indent(tb, '  '), err=True)
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "), err=True)
 
-        click.echo(f'[DONE] Wrote modes and list → {out_dir_path}')
+        click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
 
-        click.echo(format_elapsed('[time] Elapsed Time for Freq', time_start))
+        click.echo(format_elapsed("[time] Elapsed Time for Freq", time_start))
 
     except KeyboardInterrupt:
-        click.echo('\nInterrupted by user.', err=True)
+        click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         import traceback
-        tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo('Unhandled error during frequency analysis:\n' + textwrap.indent(tb, '  '), err=True)
+        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
     finally:
         prepared_input.cleanup()
