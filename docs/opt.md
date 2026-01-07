@@ -1,7 +1,7 @@
 # `opt` subcommand
 
 ## Overview
-`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
+`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ('light') or RFOptimizer ('heavy') engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
 
 When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True|False}` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
@@ -13,7 +13,7 @@ A Gaussian `.gjf` template seeds the charge/spin defaults and enables automatic 
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
                  [--opt-mode light|heavy] [--freeze-links BOOL] \
-                 [--dist-freeze "[(i,j,target_A), ...]"] [--one-based {True|False}] \
+                 [--dist-freeze '[(i,j,target_A), ...]'] [--one-based {True|False}] \
                  [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
                  [--max-cycles N] [--thresh PRESET] [--args-yaml FILE] \
                  [--convert-files {True|False}]
@@ -63,7 +63,7 @@ The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus
 YAML values override CLI, which override the defaults below.
 
 ### `geom`
-- `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.
+- `coord_type` (`'cart'`): Cartesian vs. `'dlc'` delocalized internal coordinates.
 - `freeze_atoms` (`[]`): Base 0-based frozen indices; automatically merged with CLI link detection.
 
 ### `calc`
@@ -116,7 +116,7 @@ opt:
   line_search: true          # enable line search
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
+  prefix: ''                 # filename prefix
   out_dir: ./result_opt/     # output directory
 lbfgs:
   thresh: gau                # LBFGS convergence preset
@@ -134,7 +134,7 @@ lbfgs:
   line_search: true          # enable line search
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
+  prefix: ''                 # filename prefix
   out_dir: ./result_opt/     # output directory
   keep_last: 7               # history size for LBFGS buffers
   beta: 1.0                  # initial damping beta
@@ -160,7 +160,7 @@ rfo:
   line_search: true          # enable line search
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
+  prefix: ''                 # filename prefix
   out_dir: ./result_opt/     # output directory
   trust_radius: 0.1          # trust-region radius
   trust_update: true         # enable trust-region updates

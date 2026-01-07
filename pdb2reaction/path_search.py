@@ -136,7 +136,7 @@ Notes
   - Kinks use `search.kink_max_nodes` (default 3) linear nodes, each optimized individually.
   - Recursion depth is capped by `search.max_depth` (default 10).
 - Calculators & optimizers:
-  - A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
+  - A single UMA calculator (`uma_pysis`, default model 'uma-s-1p1') is shared serially across all stages.
   - GSM employs pysisyphus `GrowingString` + `StringOptimizer`; DMF uses the Direct Max Flux interpolator.
     Single‑structure optimization uses LBFGS or RFO.
 - Final merge rule with `--align True`: when `--ref-pdb` is provided, the **first** reference PDB is used for *all* pairs
@@ -223,7 +223,7 @@ def _close_matplotlib_figures() -> None:
     try:
         import matplotlib.pyplot as plt  # type: ignore
 
-        plt.close("all")
+        plt.close('all')
     except Exception:
         pass
 
@@ -234,7 +234,7 @@ class _LiteralStr(str):
 
 
 def _literal_str_representer(dumper, data):
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
 
 
 yaml.add_representer(_LiteralStr, _literal_str_representer)
@@ -248,11 +248,11 @@ def _bond_changes_block(text: Optional[str]):
     """
 
     if text is None:
-        return ""
+        return ''
 
     cleaned = str(text).strip()
     if not cleaned:
-        return ""
+        return ''
 
     # Convert the ``summarize_changes`` output
     #   Bond formed (1):
@@ -268,19 +268,19 @@ def _bond_changes_block(text: Optional[str]):
         nonlocal title, entries
         if title is None:
             return
-        payload = entries if entries else ["None"]
+        payload = entries if entries else ['None']
         sections.append({title: payload})
         title, entries = None, []
 
     for ln in lines:
         stripped = ln.strip()
-        if stripped.startswith("Bond "):
+        if stripped.startswith('Bond '):
             _flush()
-            if stripped.endswith(": None"):
-                sections.append({stripped[:-len(": None")]: ["None"]})
+            if stripped.endswith(': None'):
+                sections.append({stripped[:-len(': None')]: ['None']})
             else:
-                title = stripped.rstrip(":")
-        elif stripped.startswith("- "):
+                title = stripped.rstrip(':')
+        elif stripped.startswith('- '):
             entries.append(stripped[2:])
 
     _flush()
@@ -288,7 +288,7 @@ def _bond_changes_block(text: Optional[str]):
     # Fallback to literal block if the format is unexpected
     if sections:
         return sections
-    if "\n" in cleaned:
+    if '\n' in cleaned:
         return _LiteralStr(cleaned)
     return cleaned
 
@@ -311,40 +311,40 @@ GS_KW: Dict[str, Any] = dict(_PATH_GS_KW)
 # StringOptimizer (GSM optimization control)
 STOPT_KW: Dict[str, Any] = dict(_PATH_STOPT_KW)
 STOPT_KW.update({
-    "out_dir": "./result_path_search/",  # output directory for string-optimizer artifacts
+    'out_dir': './result_path_search/',  # output directory for string-optimizer artifacts
 })
 
 # LBFGS settings
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 LBFGS_KW.update({
-    "out_dir": "./result_path_search/",  # LBFGS output directory (restart, logs)
+    'out_dir': './result_path_search/',  # LBFGS output directory (restart, logs)
 })
 
 # RFO settings
 RFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RFO_KW.update({
-    "out_dir": "./result_path_search/",  # RFO output directory (restart, logs)
+    'out_dir': './result_path_search/',  # RFO output directory (restart, logs)
 })
 
 # Covalent‑bond change detection
 BOND_KW: Dict[str, Any] = {
-    "device": "cuda",               # compute UMA graph features on CUDA when available
-    "bond_factor": 1.20,            # covalent cutoff multiplier (r_cov * bond_factor)
-    "margin_fraction": 0.05,        # tolerance margin added to bond cutoff for stability
-    "delta_fraction": 0.05,         # threshold fraction to flag bond formation/breaking
+    'device': 'cuda',               # compute UMA graph features on CUDA when available
+    'bond_factor': 1.20,            # covalent cutoff multiplier (r_cov * bond_factor)
+    'margin_fraction': 0.05,        # tolerance margin added to bond cutoff for stability
+    'delta_fraction': 0.05,         # threshold fraction to flag bond formation/breaking
 }
 
 # Global search control
 SEARCH_KW: Dict[str, Any] = {
-    "max_depth": 10,                 # recursion depth for path-search branching
-    "stitch_rmsd_thresh": 1.0e-4,    # RMSD cutoff when stitching partial segments
-    "bridge_rmsd_thresh": 1.0e-4,    # RMSD cutoff when bridging paths
-    "rmsd_align": True,              # retained for compatibility (ignored internally)
-    "max_nodes_segment": 10,         # max nodes per segment during expansion
-    "max_nodes_bridge": 5,           # max nodes per bridge construction
-    "kink_max_nodes": 3,             # max nodes for kink resolution
-    "max_seq_kink": 2,               # max sequential kinks allowed before aborting
-    "refine_mode": None,             # optional refinement strategy tag
+    'max_depth': 10,                 # recursion depth for path-search branching
+    'stitch_rmsd_thresh': 1.0e-4,    # RMSD cutoff when stitching partial segments
+    'bridge_rmsd_thresh': 1.0e-4,    # RMSD cutoff when bridging paths
+    'rmsd_align': True,              # retained for compatibility (ignored internally)
+    'max_nodes_segment': 10,         # max nodes per segment during expansion
+    'max_nodes_bridge': 5,           # max nodes per bridge construction
+    'kink_max_nodes': 3,             # max nodes for kink resolution
+    'max_seq_kink': 2,               # max sequential kinks allowed before aborting
+    'refine_mode': None,             # optional refinement strategy tag
 }
 
 
@@ -359,12 +359,12 @@ def _load_two_endpoints(
     """
     geoms = []
     for p in paths:
-        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and p.suffix.lower() == ".pdb":
+        cfg: Dict[str, Any] = {'freeze_atoms': list(base_freeze)}
+        if auto_freeze_links and p.suffix.lower() == '.pdb':
             detected = detect_freeze_links_safe(p)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+                click.echo(f'[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}')
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g = geom_loader(p, coord_type=coord_type, freeze_atoms=freeze)
@@ -387,12 +387,12 @@ def _load_structures(
     for prepared in inputs:
         geom_path = prepared.geom_path
         src_path = prepared.source_path
-        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
+        cfg: Dict[str, Any] = {'freeze_atoms': list(base_freeze)}
+        if auto_freeze_links and src_path.suffix.lower() == '.pdb':
             detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
-                click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+                click.echo(f'[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}')
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
@@ -411,13 +411,13 @@ def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path
         s = geom.as_xyz()
         lines = s.splitlines()
         if len(lines) >= 2 and lines[0].strip().isdigit():
-            lines[1] = f"{e:.12f}"
-        s_mod = "\n".join(lines)
-        if not s_mod.endswith("\n"):
-            s_mod += "\n"
+            lines[1] = f'{e:.12f}'
+        s_mod = '\n'.join(lines)
+        if not s_mod.endswith('\n'):
+            s_mod += '\n'
         blocks.append(s_mod)
-    with open(path, "w") as f:
-        f.write("".join(blocks))
+    with open(path, 'w') as f:
+        f.write(''.join(blocks))
 
 
 def _maybe_convert_to_gjf(
@@ -431,12 +431,12 @@ def _maybe_convert_to_gjf(
     try:
         if template is None or (not xyz_path.exists()):
             return None
-        target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
+        target = out_path if out_path is not None else xyz_path.with_suffix('.gjf')
         maybe_convert_xyz_to_gjf(xyz_path, template, target)
-        click.echo(f"[convert] Wrote '{target}'.")
+        click.echo(f'[convert] Wrote "{target}".')
         return target
     except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert '{xyz_path.name}' to GJF: {e}", err=True)
+        click.echo(f'[convert] WARNING: Failed to convert "{xyz_path.name}" to GJF: {e}', err=True)
         return None
 
 
@@ -468,10 +468,10 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     """
     res = compare_structures(
         x, y,
-        device=bond_cfg.get("device", "cuda"),
-        bond_factor=float(bond_cfg.get("bond_factor", 1.20)),
-        margin_fraction=float(bond_cfg.get("margin_fraction", 0.05)),
-        delta_fraction=float(bond_cfg.get("delta_fraction", 0.05)),
+        device=bond_cfg.get('device', 'cuda'),
+        bond_factor=float(bond_cfg.get('bond_factor', 1.20)),
+        margin_fraction=float(bond_cfg.get('margin_fraction', 0.05)),
+        delta_fraction=float(bond_cfg.get('delta_fraction', 0.05)),
     )
     formed = len(res.formed_covalent) > 0
     broken = len(res.broken_covalent) > 0
@@ -500,7 +500,7 @@ def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequ
     A = np.asarray(ga.coords3d, dtype=float)
     B = np.asarray(gb.coords3d, dtype=float)
     if A.shape != B.shape or A.shape[1] != 3:
-        raise ValueError("Geometries must have the same number of atoms for displacement.")
+        raise ValueError('Geometries must have the same number of atoms for displacement.')
     disp = np.linalg.norm(A - B, axis=1)
     return float(np.max(disp))
 
@@ -509,12 +509,12 @@ def _new_geom_from_coords(atoms: Sequence[str], coords: np.ndarray, coord_type: 
     """
     Create a pysisyphus Geometry from Bohr coords via temporary XYZ; attach `freeze_atoms`.
     """
-    lines = [str(len(atoms)), ""]
+    lines = [str(len(atoms)), '']
     coords_ang = np.asarray(coords, dtype=float) * BOHR2ANG
     for sym, (x, y, z) in zip(atoms, coords_ang):
-        lines.append(f"{sym} {x:.15f} {y:.15f} {z:.15f}")
-    s = "\n".join(lines) + "\n"
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+        lines.append(f'{sym} {x:.15f} {y:.15f} {z:.15f}')
+    s = '\n'.join(lines) + '\n'
+    tmp = tempfile.NamedTemporaryFile('w+', suffix='.xyz', delete=False)
     try:
         tmp.write(s)
         tmp.flush()
@@ -538,11 +538,11 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
     """
     A = np.asarray(gL.coords3d, dtype=float)
     B = np.asarray(gR.coords3d, dtype=float)
-    assert A.shape == B.shape and A.shape[1] == 3, "Atom counts must match for interpolation."
+    assert A.shape == B.shape and A.shape[1] == 3, 'Atom counts must match for interpolation.'
     atoms = [a for a in gL.atoms]
     coord_type = gL.coord_type
-    faL = getattr(gL, "freeze_atoms", np.array([], dtype=int))
-    faR = getattr(gR, "freeze_atoms", np.array([], dtype=int))
+    faL = getattr(gL, 'freeze_atoms', np.array([], dtype=int))
+    faR = getattr(gR, 'freeze_atoms', np.array([], dtype=int))
     freeze_union = sorted(set(map(int, faL)) | set(map(int, faR)))
     interps: List[Any] = []
     for k in range(1, n_internal + 1):
@@ -556,7 +556,7 @@ def _energy_of(g) -> float:
     """
     Return the energy (Hartree) of a Geometry (ensures calculator is attached).
     """
-    g.set_calculator(getattr(g, "calculator", None))
+    g.set_calculator(getattr(g, 'calculator', None))
     return float(g.energy)
 
 
@@ -578,8 +578,8 @@ def _segment_base_id(tag: str) -> str:
     """
     Extract base id 'seg_XXX' from a tag like 'seg_000_refine'; fallback to `tag` or 'seg'.
     """
-    m = re.search(r"(seg_\d{3})", tag or "")
-    return m.group(1) if m else (tag or "seg")
+    m = re.search(r'(seg_\d{3})', tag or '')
+    return m.group(1) if m else (tag or 'seg')
 
 
 def _is_local_minimum(idx: int, energies: Sequence[float]) -> bool:
@@ -628,7 +628,7 @@ class SegmentReport:
     barrier_kcal: float
     delta_kcal: float
     summary: str  # summarize_changes string (empty for bridges)
-    kind: str = "seg"          # "seg" or "bridge"
+    kind: str = 'seg'          # 'seg' or 'bridge'
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
 
 
@@ -664,19 +664,19 @@ def _run_mep_between(
         **gs_cfg,
     )
 
-    seg_dir = out_dir / f"{tag}_mep"
+    seg_dir = out_dir / f'{tag}_mep'
     seg_dir.mkdir(parents=True, exist_ok=True)
     _opt_args = dict(opt_cfg)
-    _opt_args["out_dir"] = str(seg_dir)
+    _opt_args['out_dir'] = str(seg_dir)
 
     optimizer = StringOptimizer(
         geometry=gs,
-        **{k: v for k, v in _opt_args.items() if k != "type"}
+        **{k: v for k, v in _opt_args.items() if k != 'type'}
     )
 
-    click.echo(f"\n=== [{tag}] GSM started ===\n")
+    click.echo(f'\n=== [{tag}] GSM started ===\n')
     optimizer.run()
-    click.echo(f"\n=== [{tag}] GSM finished ===\n")
+    click.echo(f'\n=== [{tag}] GSM finished ===\n')
 
     energies = list(map(float, np.array(gs.energy, dtype=float)))
     images = list(gs.images)
@@ -691,27 +691,27 @@ def _run_mep_between(
         hei_idx = int(np.argmax(E[1:-1])) + 1 if nE >= 3 else int(np.argmax(E))
 
     # Write trajectory
-    final_trj = seg_dir / "final_geometries.trj"
+    final_trj = seg_dir / 'final_geometries.trj'
     wrote_with_energy = True
     try:
         _write_xyz_trj_with_energy(images, energies, final_trj)
-        click.echo(f"[{tag}] Wrote '{final_trj}'.")
+        click.echo(f'[{tag}] Wrote "{final_trj}".')
     except Exception:
         wrote_with_energy = False
-        with open(final_trj, "w") as f:
+        with open(final_trj, 'w') as f:
             f.write(gs.as_xyz())
-        click.echo(f"[{tag}] Wrote '{final_trj}'.")
+        click.echo(f'[{tag}] Wrote "{final_trj}".')
 
     # Energy plot for the segment
     try:
         if wrote_with_energy:
-            run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            run_trj2fig(final_trj, [seg_dir / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
             _close_matplotlib_figures()
-            click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
+            click.echo(f'[{tag}] Saved energy plot → "{seg_dir / 'mep_plot.png'}"')
         else:
-            click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
+            click.echo(f'[{tag}] WARNING: Energies missing; skipping plot.', err=True)
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
+        click.echo(f'[{tag}] WARNING: Failed to plot energy: {e}', err=True)
 
     # Convert trajectory and HEI outputs based on the input template
     prepared_for_outputs = prepared_input
@@ -728,7 +728,7 @@ def _run_mep_between(
             geom_path=ref_for_conv,
         )
     if prepared_for_outputs is not None and ref_for_conv is None:
-        if prepared_for_outputs.source_path.suffix.lower() == ".pdb":
+        if prepared_for_outputs.source_path.suffix.lower() == '.pdb':
             ref_for_conv = prepared_for_outputs.source_path.resolve()
 
     needs_pdb = ref_for_conv is not None
@@ -740,29 +740,29 @@ def _run_mep_between(
                 final_trj,
                 prepared_for_outputs,
                 ref_pdb_path=ref_for_conv,
-                out_pdb_path=seg_dir / "final_geometries.pdb" if needs_pdb else None,
-                out_gjf_path=seg_dir / "final_geometries.gjf" if needs_gjf else None,
+                out_pdb_path=seg_dir / 'final_geometries.pdb' if needs_pdb else None,
+                out_gjf_path=seg_dir / 'final_geometries.gjf' if needs_gjf else None,
             )
         except Exception as e:
             click.echo(
-                f"[{tag}] WARNING: Failed to convert segment trajectory: {e}", err=True
+                f'[{tag}] WARNING: Failed to convert segment trajectory: {e}', err=True
             )
 
     # Write HEI structure
     try:
         hei_geom = images[hei_idx]
         hei_E = float(E[hei_idx])
-        hei_xyz = seg_dir / "hei.xyz"
+        hei_xyz = seg_dir / 'hei.xyz'
         s = hei_geom.as_xyz()
         lines = s.splitlines()
         if len(lines) >= 2 and lines[0].strip().isdigit():
-            lines[1] = f"{hei_E:.12f}"
-        s_out = "\n".join(lines)
-        if not s_out.endswith("\n"):
-            s_out += "\n"
-        with open(hei_xyz, "w") as f:
+            lines[1] = f'{hei_E:.12f}'
+        s_out = '\n'.join(lines)
+        if not s_out.endswith('\n'):
+            s_out += '\n'
+        with open(hei_xyz, 'w') as f:
             f.write(s_out)
-        click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
+        click.echo(f'[{tag}] Wrote "{hei_xyz}".')
 
         if prepared_for_outputs is not None and (needs_pdb or needs_gjf):
             try:
@@ -770,16 +770,16 @@ def _run_mep_between(
                     hei_xyz,
                     prepared_for_outputs,
                     ref_pdb_path=ref_for_conv,
-                    out_pdb_path=seg_dir / "hei.pdb" if needs_pdb else None,
-                    out_gjf_path=seg_dir / "hei.gjf" if needs_gjf else None,
+                    out_pdb_path=seg_dir / 'hei.pdb' if needs_pdb else None,
+                    out_gjf_path=seg_dir / 'hei.gjf' if needs_gjf else None,
                 )
             except Exception as e:
                 click.echo(
-                    f"[{tag}] WARNING: Failed to convert HEI structure: {e}",
+                    f'[{tag}] WARNING: Failed to convert HEI structure: {e}',
                     err=True,
                 )
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
+        click.echo(f'[{tag}] WARNING: Failed to write HEI structure: {e}', err=True)
 
     return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
 
@@ -791,18 +791,18 @@ def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None
 
     from ase.io import write as ase_write
 
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+    tmp = tempfile.NamedTemporaryFile('w+', suffix='.xyz', delete=False)
     try:
-        ase_write(tmp, atoms, format="xyz")
+        ase_write(tmp, atoms, format='xyz')
         tmp.flush()
         tmp.close()
         g = geom_loader(
             Path(tmp.name),
             coord_type=coord_type,
-            freeze_atoms=getattr(template_g, "freeze_atoms", []),
+            freeze_atoms=getattr(template_g, 'freeze_atoms', []),
         )
         try:
-            g.freeze_atoms = np.array(getattr(template_g, "freeze_atoms", []), dtype=int)
+            g.freeze_atoms = np.array(getattr(template_g, 'freeze_atoms', []), dtype=int)
         except Exception:
             pass
         if shared_calc is not None:
@@ -831,13 +831,13 @@ def _run_dmf_between(
     Run DMF for a segment and convert outputs to pysisyphus Geometries.
     """
 
-    seg_dir = out_dir / f"{tag}_mep"
+    seg_dir = out_dir / f'{tag}_mep'
     seg_dir.mkdir(parents=True, exist_ok=True)
 
     fix_atoms: List[int] = []
     try:
         fix_atoms = sorted(
-            {int(i) for g in [gA,gB] for i in getattr(g, "freeze_atoms", [])}
+            {int(i) for g in [gA,gB] for i in getattr(g, 'freeze_atoms', [])}
         )
     except Exception:
         pass
@@ -854,16 +854,16 @@ def _run_dmf_between(
 
     energies = list(map(float, dmf_res.energies))
 
-    final_trj = seg_dir / "final_geometries.trj"
+    final_trj = seg_dir / 'final_geometries.trj'
     _write_ase_trj_with_energy(dmf_res.images, energies, final_trj)
     _maybe_convert_to_pdb(final_trj, ref_pdb_path)
 
     try:
-        run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+        run_trj2fig(final_trj, [seg_dir / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
         _close_matplotlib_figures()
-        click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
+        click.echo(f'[{tag}] Saved energy plot → "{seg_dir / 'mep_plot.png'}"')
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
+        click.echo(f'[{tag}] WARNING: Failed to plot energy: {e}', err=True)
 
     imgs: List[Any] = []
     for atoms in dmf_res.images:
@@ -893,13 +893,13 @@ def _refine_between(
     Refine End1–End2 via GSM or DMF depending on the selected mode.
     """
 
-    if mep_mode_kind == "dmf":
+    if mep_mode_kind == 'dmf':
         return _run_dmf_between(
             gL,
             gR,
             calc_cfg,
             out_dir,
-            tag=f"{tag}_refine",
+            tag=f'{tag}_refine',
             ref_pdb_path=ref_pdb_path,
             max_nodes=max_nodes,
             prepared_inputs=prepared_inputs,
@@ -907,7 +907,7 @@ def _refine_between(
             dmf_cfg=dmf_cfg,
         )
 
-    return _run_mep_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
+    return _run_mep_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f'{tag}_refine', ref_pdb_path=ref_pdb_path)
 
 
 def _maybe_bridge_segments(
@@ -933,15 +933,15 @@ def _maybe_bridge_segments(
     if rmsd <= rmsd_thresh:
         return None
     click.echo(
-        f"[{tag}] Gap detected between segments (RMSD={rmsd:.4e} Å) — bridging via {mep_mode_kind.upper()}."
+        f'[{tag}] Gap detected between segments (RMSD={rmsd:.4e} Å) — bridging via {mep_mode_kind.upper()}.'
     )
-    if mep_mode_kind == "dmf":
+    if mep_mode_kind == 'dmf':
         return _run_dmf_between(
             tail_g,
             head_g,
             calc_cfg,
             out_dir,
-            tag=f"{tag}_bridge",
+            tag=f'{tag}_bridge',
             ref_pdb_path=ref_pdb_path,
             max_nodes=max_nodes,
             prepared_inputs=prepared_inputs,
@@ -949,7 +949,7 @@ def _maybe_bridge_segments(
             dmf_cfg=dmf_cfg,
         )
 
-    return _run_mep_between(tail_g, head_g, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_bridge", ref_pdb_path=ref_pdb_path)
+    return _run_mep_between(tail_g, head_g, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f'{tag}_bridge', ref_pdb_path=ref_pdb_path)
 
 
 def _stitch_paths(
@@ -963,10 +963,10 @@ def _stitch_paths(
     tag: str,
     ref_pdb_path: Optional[Path],
     bond_cfg: Optional[Dict[str, Any]] = None,
-    segment_builder: Optional[Callable[[Any, Any, str], "CombinedPath"]] = None,
-    segments_out: Optional[List["SegmentReport"]] = None,
+    segment_builder: Optional[Callable[[Any, Any, str], 'CombinedPath']] = None,
+    segments_out: Optional[List['SegmentReport']] = None,
     bridge_pair_index: Optional[int] = None,
-    mep_mode_kind: str = "dmf",
+    mep_mode_kind: str = 'dmf',
     calc_cfg: Optional[Dict[str, Any]] = None,
     max_nodes: int = 10,
     prepared_inputs: Optional[Sequence[PreparedInputStructure]] = None,
@@ -983,14 +983,14 @@ def _stitch_paths(
 
     def _last_known_seg_tag_from_images(imgs: List[Any]) -> Optional[str]:
         for im in reversed(imgs):
-            t = getattr(im, "mep_seg_tag", None)
+            t = getattr(im, 'mep_seg_tag', None)
             if t:
                 return t
         return None
 
     def _first_known_seg_tag_from_images(imgs: List[Any]) -> Optional[str]:
         for im in imgs:
-            t = getattr(im, "mep_seg_tag", None)
+            t = getattr(im, 'mep_seg_tag', None)
             if t:
                 return t
         return None
@@ -1006,20 +1006,20 @@ def _stitch_paths(
         tail = all_imgs[-1]
         head = imgs[0]
 
-        adj_changed, adj_summary = False, ""
+        adj_changed, adj_summary = False, ''
         if segment_builder is not None and bond_cfg is not None:
             try:
                 adj_changed, adj_summary = _has_bond_change(tail, head, bond_cfg)
             except Exception:
-                adj_changed, adj_summary = False, ""
+                adj_changed, adj_summary = False, ''
 
         if adj_changed and segment_builder is not None:
-            click.echo(f"[{tag}] Covalent changes detected at interface — inserting a new recursive segment.")
+            click.echo(f'[{tag}] Covalent changes detected at interface — inserting a new recursive segment.')
             if adj_summary:
-                click.echo(textwrap.indent(adj_summary, prefix="  "))
-            sub = segment_builder(tail, head, f"{tag}_mid")
+                click.echo(textwrap.indent(adj_summary, prefix='  '))
+            sub = segment_builder(tail, head, f'{tag}_mid')
             seg_imgs, seg_E = sub.images, sub.energies
-            if segments_out is not None and getattr(sub, "segments", None):
+            if segments_out is not None and getattr(sub, 'segments', None):
                 segments_out.extend(sub.segments)
             if seg_imgs:
                 if _rmsd_between(all_imgs[-1], seg_imgs[0], align=False) <= stitch_rmsd_thresh:
@@ -1039,11 +1039,11 @@ def _stitch_paths(
             all_imgs.extend(imgs[1:])
             all_E.extend(Es[1:])
         elif rmsd > bridge_rmsd_thresh:
-            left_tag_recent = _last_known_seg_tag_from_images(all_imgs) or "segL"
-            right_tag_upcoming = _first_known_seg_tag_from_images(imgs) or "segR"
+            left_tag_recent = _last_known_seg_tag_from_images(all_imgs) or 'segL'
+            right_tag_upcoming = _first_known_seg_tag_from_images(imgs) or 'segR'
             left_base = _segment_base_id(left_tag_recent)
             right_base = _segment_base_id(right_tag_upcoming)
-            bridge_name_base = f"{left_base}_{right_base}"
+            bridge_name_base = f'{left_base}_{right_base}'
 
             br = _maybe_bridge_segments(
                 tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
@@ -1053,7 +1053,7 @@ def _stitch_paths(
                 dmf_cfg=dmf_cfg,
             )
             if br is not None:
-                _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
+                _tag_images(br.images, mep_seg_tag=f'{bridge_name_base}_bridge', mep_seg_kind='bridge',
                             mep_has_bond_changes=False, pair_index=bridge_pair_index)
                 b_imgs, b_E = br.images, br.energies
                 if _rmsd_between(all_imgs[-1], b_imgs[0], align=False) <= stitch_rmsd_thresh:
@@ -1068,14 +1068,14 @@ def _stitch_paths(
                         barrier_kcal = (max(br.energies) - br.energies[0]) * AU2KCALPERMOL
                         delta_kcal = (br.energies[-1] - br.energies[0]) * AU2KCALPERMOL
                     except Exception:
-                        barrier_kcal = float("nan")
-                        delta_kcal = float("nan")
+                        barrier_kcal = float('nan')
+                        delta_kcal = float('nan')
                     bridge_report = SegmentReport(
-                        tag=f"{bridge_name_base}_bridge",
+                        tag=f'{bridge_name_base}_bridge',
                         barrier_kcal=float(barrier_kcal),
                         delta_kcal=float(delta_kcal),
-                        summary="",
-                        kind="bridge"
+                        summary='',
+                        kind='bridge'
                     )
                     insert_pos: Optional[int] = None
                     try:
@@ -1121,7 +1121,7 @@ def _trailing_kink_count(segments: Sequence[SegmentReport]) -> int:
 
     count = 0
     for seg in reversed(segments):
-        if seg.tag and "kink" in seg.tag:
+        if seg.tag and 'kink' in seg.tag:
             count += 1
         else:
             break
@@ -1156,15 +1156,15 @@ def _build_multistep_path(
     """
     Recursively construct a multistep MEP from A–B and return it (A→B order).
     """
-    seg_max_nodes = int(search_cfg.get("max_nodes_segment", gs_cfg.get("max_nodes", 10)))
+    seg_max_nodes = int(search_cfg.get('max_nodes_segment', gs_cfg.get('max_nodes', 10)))
     gs_seg_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=seg_max_nodes)
-    max_seq_kink = int(search_cfg.get("max_seq_kink", 2))
+    max_seq_kink = int(search_cfg.get('max_seq_kink', 2))
 
     def _terminate_with_maxdepth(reason_msg: Optional[str] = None) -> CombinedPath:
         if reason_msg:
             click.echo(reason_msg)
 
-        seg_tag = f"seg_{seg_counter[0]:03d}_maxdepth"
+        seg_tag = f'seg_{seg_counter[0]:03d}_maxdepth'
         gsm = (
             _run_dmf_between(
                 gA,
@@ -1178,7 +1178,7 @@ def _build_multistep_path(
                 shared_calc=shared_calc,
                 dmf_cfg=dmf_cfg,
             )
-            if mep_mode_kind == "dmf"
+            if mep_mode_kind == 'dmf'
             else _run_mep_between(
                 gA,
                 gB,
@@ -1196,41 +1196,41 @@ def _build_multistep_path(
         try:
             changed, step_summary = _has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
-            click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
-            changed, step_summary = True, ""
+            click.echo(f'[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}', err=True)
+            changed, step_summary = True, ''
 
         try:
             barrier_kcal = (max(gsm.energies) - gsm.energies[0]) * AU2KCALPERMOL
             delta_kcal = (gsm.energies[-1] - gsm.energies[0]) * AU2KCALPERMOL
         except Exception:
-            barrier_kcal = float("nan")
-            delta_kcal = float("nan")
+            barrier_kcal = float('nan')
+            delta_kcal = float('nan')
 
         seg_report = SegmentReport(
             tag=seg_tag,
             barrier_kcal=float(barrier_kcal),
             delta_kcal=float(delta_kcal),
-            summary=step_summary if changed else "(no covalent changes detected)",
-            kind="seg",
+            summary=step_summary if changed else '(no covalent changes detected)',
+            kind='seg',
         )
 
         _tag_images(
             gsm.images,
             mep_seg_tag=seg_tag,
-            mep_seg_kind="seg",
+            mep_seg_kind='seg',
             mep_has_bond_changes=bool(changed),
             pair_index=pair_index,
         )
 
         return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[seg_report])
 
-    if depth > int(search_cfg.get("max_depth", 10)):
-        click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
+    if depth > int(search_cfg.get('max_depth', 10)):
+        click.echo(f'[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.')
         return _terminate_with_maxdepth()
 
     seg_id = seg_counter[0]
     seg_counter[0] += 1
-    tag0 = f"seg_{seg_id:03d}"
+    tag0 = f'seg_{seg_id:03d}'
 
     gsm0 = (
         _run_dmf_between(
@@ -1245,7 +1245,7 @@ def _build_multistep_path(
             shared_calc=shared_calc,
             dmf_cfg=dmf_cfg,
         )
-        if mep_mode_kind == "dmf"
+        if mep_mode_kind == 'dmf'
         else _run_mep_between(
             gA,
             gB,
@@ -1261,11 +1261,11 @@ def _build_multistep_path(
 
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
-        click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.")
+        click.echo(f'[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.')
         _tag_images(gsm0.images, pair_index=pair_index)
         return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
 
-    if refine_mode_kind == "minima":
+    if refine_mode_kind == 'minima':
         left_idx = _find_nearest_local_minimum(hei_idx=hei, direction=-1, energies=gsm0.energies)
         right_idx = _find_nearest_local_minimum(hei_idx=hei, direction=1, energies=gsm0.energies)
 
@@ -1275,14 +1275,14 @@ def _build_multistep_path(
             right_idx = hei + 1
 
         click.echo(
-            f"[{tag0}] Using nearest local minima around HEI (left idx={left_idx}, right idx={right_idx})."
+            f'[{tag0}] Using nearest local minima around HEI (left idx={left_idx}, right idx={right_idx}).'
         )
         left_img = gsm0.images[left_idx]
         right_img = gsm0.images[right_idx]
     else:
         left_img = gsm0.images[hei - 1]
         right_img = gsm0.images[hei + 1]
-        click.echo(f"[{tag0}] Refining HEI±1 (peak mode).")
+        click.echo(f'[{tag0}] Refining HEI±1 (peak mode).')
 
     left_end = _optimize_single(
         left_img,
@@ -1290,7 +1290,7 @@ def _build_multistep_path(
         sopt_kind,
         sopt_cfg,
         out_dir,
-        tag=f"{tag0}_left",
+        tag=f'{tag0}_left',
         prepared_input=prepared_input,
     )
     right_end = _optimize_single(
@@ -1299,21 +1299,21 @@ def _build_multistep_path(
         sopt_kind,
         sopt_cfg,
         out_dir,
-        tag=f"{tag0}_right",
+        tag=f'{tag0}_right',
         prepared_input=prepared_input,
     )
 
     try:
         lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
-        click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
-        lr_changed, lr_summary = True, ""
+        click.echo(f'[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}', err=True)
+        lr_changed, lr_summary = True, ''
     use_kink = (not lr_changed)
 
     if use_kink:
-        n_inter = int(search_cfg.get("kink_max_nodes", 3))
-        click.echo(f"[{tag0}] Kink detected (no covalent changes between End1 and End2). "
-                   f"Using {n_inter} linear interpolation nodes + single-structure optimizations instead of GSM.")
+        n_inter = int(search_cfg.get('kink_max_nodes', 3))
+        click.echo(f'[{tag0}] Kink detected (no covalent changes between End1 and End2). '
+                   f'Using {n_inter} linear interpolation nodes + single-structure optimizations instead of GSM.')
         inter_geoms = _make_linear_interpolations(left_end, right_end, n_inter)
         opt_inters: List[Any] = []
         for i, g_int in enumerate(inter_geoms, 1):
@@ -1324,18 +1324,18 @@ def _build_multistep_path(
                 sopt_kind,
                 sopt_cfg,
                 out_dir,
-                tag=f"{tag0}_kink_int{i}",
+                tag=f'{tag0}_kink_int{i}',
                 prepared_input=prepared_input,
             )
             opt_inters.append(g_opt)
         step_imgs = [left_end] + opt_inters + [right_end]
         step_E = [float(img.energy) for img in step_imgs]
         ref1 = GSMResult(images=step_imgs, energies=step_E, hei_idx=int(np.argmax(step_E)))
-        step_tag_for_report = f"{tag0}_kink"
+        step_tag_for_report = f'{tag0}_kink'
     else:
-        click.echo(f"[{tag0}] Kink not detected (covalent changes present between End1 and End2).")
+        click.echo(f'[{tag0}] Kink not detected (covalent changes present between End1 and End2).')
         if lr_summary:
-            click.echo(textwrap.indent(lr_summary, prefix="  "))
+            click.echo(textwrap.indent(lr_summary, prefix='  '))
         ref1 = _refine_between(
             left_end,
             right_end,
@@ -1351,37 +1351,37 @@ def _build_multistep_path(
             prepared_inputs=prepared_inputs,
             dmf_cfg=dmf_cfg,
         )
-        step_tag_for_report = f"{tag0}_refine"
+        step_tag_for_report = f'{tag0}_refine'
 
     step_imgs, step_E = ref1.images, ref1.energies
 
     _changed, step_summary = _has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
-    _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind="seg",
+    _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind='seg',
                 mep_has_bond_changes=bool(_changed), pair_index=pair_index)
 
     left_changed, left_summary = _has_bond_change(gA, left_end, bond_cfg)
     right_changed, right_summary = _has_bond_change(right_end, gB, bond_cfg)
 
-    click.echo(f"[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}")
+    click.echo(f'[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}')
     if left_changed:
-        click.echo(textwrap.indent(left_summary, prefix="  "))
-    click.echo(f"[{tag0}] Covalent changes (right_end vs B): {'Yes' if right_changed else 'No'}")
+        click.echo(textwrap.indent(left_summary, prefix='  '))
+    click.echo(f'[{tag0}] Covalent changes (right_end vs B): {'Yes' if right_changed else 'No'}')
     if right_changed:
-        click.echo(textwrap.indent(right_summary, prefix="  "))
+        click.echo(textwrap.indent(right_summary, prefix='  '))
 
     try:
         barrier_kcal = (max(step_E) - step_E[0]) * AU2KCALPERMOL
         delta_kcal = (step_E[-1] - step_E[0]) * AU2KCALPERMOL
     except Exception:
-        barrier_kcal = float("nan")
-        delta_kcal = float("nan")
+        barrier_kcal = float('nan')
+        delta_kcal = float('nan')
 
     seg_report = SegmentReport(
         tag=step_tag_for_report,
         barrier_kcal=float(barrier_kcal),
         delta_kcal=float(delta_kcal),
-        summary=step_summary if _changed else "(no covalent changes detected)",
-        kind="seg"
+        summary=step_summary if _changed else '(no covalent changes detected)',
+        kind='seg'
     )
 
     parts: List[Tuple[List[Any], List[float]]] = []
@@ -1392,7 +1392,7 @@ def _build_multistep_path(
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
-            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
+            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f'{branch_tag}L',
             pair_index=pair_index,
             kink_seq_count=kink_seq_count,
         )
@@ -1404,9 +1404,9 @@ def _build_multistep_path(
     current_kink_run = trailing_kink_run + 1 if use_kink else 0
     if use_kink and current_kink_run >= max_seq_kink:
         warning_msg = (
-            f"[{tag0}] Consecutive kink segments were detected. Something seems wrong. "
-            "Please check the initial structure and the generated intermediate structures. "
-            "Alternatively, try switching the mep-mode. If that still fails, try including intermediate structures in the inputs."
+            f'[{tag0}] Consecutive kink segments were detected. Something seems wrong. '
+            'Please check the initial structure and the generated intermediate structures. '
+            'Alternatively, try switching the mep-mode. If that still fails, try including intermediate structures in the inputs.'
         )
         return _terminate_with_maxdepth(reason_msg=warning_msg)
 
@@ -1417,7 +1417,7 @@ def _build_multistep_path(
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
             sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
-            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
+            out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f'{branch_tag}R',
             pair_index=pair_index,
             kink_seq_count=current_kink_run,
         )
@@ -1425,7 +1425,7 @@ def _build_multistep_path(
         parts.append((subR.images, subR.energies))
         seg_reports.extend(subR.segments)
 
-    bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 5))
+    bridge_max_nodes = int(search_cfg.get('max_nodes_bridge', 5))
     gs_bridge_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=bridge_max_nodes, climb=False, climb_lanczos=False)
 
     def _segment_builder(tail_g, head_g, _tag: str) -> CombinedPath:
@@ -1440,7 +1440,7 @@ def _build_multistep_path(
             prepared_input=prepared_input,
             depth=depth + 1,
             seg_counter=seg_counter,
-            branch_tag=f"{branch_tag}B",
+            branch_tag=f'{branch_tag}B',
             pair_index=pair_index,
             kink_seq_count=_trailing_kink_count(seg_reports),
         )
@@ -1449,8 +1449,8 @@ def _build_multistep_path(
 
     stitched_imgs, stitched_E = _stitch_paths(
         parts,
-        stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-4)),
-        bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
+        stitch_rmsd_thresh=float(search_cfg.get('stitch_rmsd_thresh', 1e-4)),
+        bridge_rmsd_thresh=float(search_cfg.get('bridge_rmsd_thresh', 1e-4)),
         shared_calc=shared_calc,
         gs_cfg=gs_bridge_cfg,
         opt_cfg=opt_cfg,
@@ -1484,11 +1484,11 @@ def _atom_key_from_res_atom(res: PDB.Residue.Residue, atom: PDB.Atom.Atom) -> Tu
     - RESSEQ is numeric (without insertion code).
     - ICODE is '' when blank (or ' ' in PDB).
     """
-    resname = (res.get_resname() or "").strip().upper()
+    resname = (res.get_resname() or '').strip().upper()
     het, resseq, icode = res.id
-    icode_txt = "" if (icode == " " or icode is None) else str(icode).strip().upper()
+    icode_txt = '' if (icode == ' ' or icode is None) else str(icode).strip().upper()
     resseq_txt = str(int(resseq))
-    chain_id = (res.get_parent().id or "").strip().upper()
+    chain_id = (res.get_parent().id or '').strip().upper()
     atname = atom.get_name().strip().upper()
     return (resname, resseq_txt, icode_txt, chain_id, atname)
 
@@ -1516,7 +1516,7 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
     Load all full templates and rigidly chain‑align them into the coordinate frame of the first template.
     """
     parser = PDBParser(QUIET=True)
-    structs: List[PDB.Structure.Structure] = [parser.get_structure(f"ref{i:02d}", str(p)) for i, p in enumerate(ref_paths)]
+    structs: List[PDB.Structure.Structure] = [parser.get_structure(f'ref{i:02d}', str(p)) for i, p in enumerate(ref_paths)]
     N_expected = None
     coords_list: List[np.ndarray] = []
     atoms_list: List[List[PDB.Atom.Atom]] = []
@@ -1528,7 +1528,7 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
             N_expected = coords.shape[0]
         else:
             if coords.shape[0] != N_expected:
-                raise click.BadParameter(f"[merge] Atom count mismatch among --ref-pdb templates: {N_expected} vs {coords.shape[0]}")
+                raise click.BadParameter(f'[merge] Atom count mismatch among --ref-pdb templates: {N_expected} vs {coords.shape[0]}')
         coords_list.append(coords)
         atoms_list.append(atoms)
         keymaps.append(key2idx)
@@ -1550,7 +1550,7 @@ def _pocket_keys_from_pdb(pocket_pdb: Path) -> List[Tuple[str, str, str, str, st
     Return atom identity keys for a pocket PDB file.
     """
     parser = PDBParser(QUIET=True)
-    st = parser.get_structure("pocket", str(pocket_pdb))
+    st = parser.get_structure('pocket', str(pocket_pdb))
     keys: List[Tuple[str, str, str, str, str]] = []
     for a in st.get_atoms():
         res = a.get_parent()
@@ -1569,29 +1569,29 @@ def _write_model_block(structure: PDB.Structure.Structure,
     from io import StringIO
     buf = StringIO()
     io.save(buf)
-    body = "\n".join([ln for ln in buf.getvalue().splitlines() if ln.strip() != "END"])
-    rem = ""
+    body = '\n'.join([ln for ln in buf.getvalue().splitlines() if ln.strip() != 'END'])
+    rem = ''
     for line in remark_lines:
-        rem += f"REMARK   1 {line}\n"
-    return rem + body + ("\n" if not body.endswith("\n") else "")
+        rem += f'REMARK   1 {line}\n'
+    return rem + body + ('\n' if not body.endswith('\n') else '')
 
 
 def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
     """
     Wrap pocket atom indices into REMARK lines with limited width.
     """
-    s = ",".join(map(str, indices))
+    s = ','.join(map(str, indices))
     out: List[str] = []
-    cur = ""
-    for tok in s.split(","):
-        add = (tok if not cur else "," + tok)
+    cur = ''
+    for tok in s.split(','):
+        add = (tok if not cur else ',' + tok)
         if len(cur) + len(add) > width:
-            out.append(f"POCKET_ATOM_INDICES {cur}")
+            out.append(f'POCKET_ATOM_INDICES {cur}')
             cur = tok
         else:
-            cur += tok if not cur else "," + tok
+            cur += tok if not cur else ',' + tok
     if cur:
-        out.append(f"POCKET_ATOM_INDICES {cur}")
+        out.append(f'POCKET_ATOM_INDICES {cur}')
     return out
 
 
@@ -1628,7 +1628,7 @@ def _merge_pair_to_full(pair_images: List[Any],
 
     Nfull = coordsA_aligned.shape[0]
     if Nfull != coordsB_aligned.shape[0]:
-        raise click.BadParameter("[merge] Template A/B atom count mismatch.")
+        raise click.BadParameter('[merge] Template A/B atom count mismatch.')
 
     atomsA: List[PDB.Atom.Atom] = [a for a in structA.get_atoms()]
 
@@ -1676,7 +1676,7 @@ def _merge_pair_to_full(pair_images: List[Any],
             a.set_bfactor(100.0 if i in active_full_idx else 0.0)
 
         remark_lines: List[str] = []
-        remark_lines.append(f"PAIR_MERGE FRAC {tfrac:.6f}")
+        remark_lines.append(f'PAIR_MERGE FRAC {tfrac:.6f}')
 
         if include_pocket_indices_for_first_model and kk == 0:
             remark_lines.extend(_chunk_remark_indices([i for i in active_one_based], width=60))
@@ -1686,25 +1686,25 @@ def _merge_pair_to_full(pair_images: List[Any],
             rep = seg_report_lookup.get(seg_idx, None)
             if rep is not None:
                 remark_lines.append(
-                    f"MEP_SEG_INDEX {int(seg_idx):02d} TAG {rep.tag} KIND {rep.kind} "
-                    f"DELTAE_BARRIER_KCAL {rep.barrier_kcal:.6f} DELTAE_KCAL {rep.delta_kcal:.6f}"
+                    f'MEP_SEG_INDEX {int(seg_idx):02d} TAG {rep.tag} KIND {rep.kind} '
+                    f'DELTAE_BARRIER_KCAL {rep.barrier_kcal:.6f} DELTAE_KCAL {rep.delta_kcal:.6f}'
                 )
-                if rep.kind != "bridge" and rep.summary and rep.summary.strip() and rep.summary.strip() != "(no covalent changes detected)":
+                if rep.kind != 'bridge' and rep.summary and rep.summary.strip() and rep.summary.strip() != '(no covalent changes detected)':
                     for ln in rep.summary.strip().splitlines():
-                        remark_lines.append(f"SEG_BONDS {ln.strip()}")
+                        remark_lines.append(f'SEG_BONDS {ln.strip()}')
             else:
-                remark_lines.append(f"MEP_SEG_INDEX {int(seg_idx):02d}")
+                remark_lines.append(f'MEP_SEG_INDEX {int(seg_idx):02d}')
 
         model_blocks.append(_write_model_block(structA, remark_lines))
 
     if out_path is not None:
-        with open(out_path, "w") as f:
+        with open(out_path, 'w') as f:
             for m, blk in enumerate(model_blocks, start=1):
-                f.write(f"MODEL     {m}\n")
+                f.write(f'MODEL     {m}\n')
                 f.write(blk)
-                f.write("ENDMDL\n")
-            f.write("END\n")
-        click.echo(f"[merge] Wrote pair-merged PDB → '{out_path}'")
+                f.write('ENDMDL\n')
+            f.write('END\n')
+        click.echo(f'[merge] Wrote pair-merged PDB → "{out_path}"')
 
     return model_blocks, active_one_based
 
@@ -1718,7 +1718,7 @@ def _merge_final_and_write(final_images: List[Any],
     Merge the entire pocket MEP into full templates (for all pairs) and write outputs.
     """
     if len(ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
+        raise click.BadParameter('--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).')
 
     structs, aligned_coords, _atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
@@ -1729,7 +1729,7 @@ def _merge_final_and_write(final_images: List[Any],
     cur_idx = None
     cur_list: List[Any] = []
     for im in final_images:
-        pi = getattr(im, "pair_index", None)
+        pi = getattr(im, 'pair_index', None)
         if pi is None:
             pi = 0
         if cur_idx is None:
@@ -1746,7 +1746,7 @@ def _merge_final_and_write(final_images: List[Any],
 
     for (pi, _) in groups:
         if not (0 <= pi < n_pairs):
-            raise click.BadParameter(f"[merge] Illegal pair_index {pi} (n_pairs={n_pairs}).")
+            raise click.BadParameter(f'[merge] Illegal pair_index {pi} (n_pairs={n_pairs}).')
 
     final_blocks: List[str] = []
     wrote_indices = False
@@ -1759,7 +1759,7 @@ def _merge_final_and_write(final_images: List[Any],
         coordsB = aligned_coords[pi+1]
         keymapA = keymaps[pi]
         keymapB = keymaps[pi+1]
-        seg_indices_for_frames = [int(getattr(im, "mep_seg_index", 0) or 0) for im in imgs]
+        seg_indices_for_frames = [int(getattr(im, 'mep_seg_index', 0) or 0) for im in imgs]
 
         blocks, active_one_based = _merge_pair_to_full(
             pair_images=imgs,
@@ -1780,24 +1780,24 @@ def _merge_final_and_write(final_images: List[Any],
             wrote_indices = True
             final_blocks.extend(blocks)
 
-    final_path = out_dir / "mep_w_ref.pdb"
-    with open(final_path, "w") as f:
+    final_path = out_dir / 'mep_w_ref.pdb'
+    with open(final_path, 'w') as f:
         for m, blk in enumerate(final_blocks, start=1):
-            f.write(f"MODEL     {m}\n")
+            f.write(f'MODEL     {m}\n')
             f.write(blk)
-            f.write("ENDMDL\n")
-        f.write("END\n")
-    click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
+            f.write('ENDMDL\n')
+        f.write('END\n')
+    click.echo(f'[merge] Wrote concatenated full-system trajectory → "{final_path}"')
 
     # Per‑segment merged MEPs (bond‑change segments only) + HEI merged only for bond‑change segments
     for s in segments:
         seg_idx = int(s.seg_index)
-        seg_frames: List[Any] = [im for im in final_images if int(getattr(im, "mep_seg_index", 0) or 0) == seg_idx]
+        seg_frames: List[Any] = [im for im in final_images if int(getattr(im, 'mep_seg_index', 0) or 0) == seg_idx]
         if not seg_frames:
             continue
 
         # Determine pair index for this segment (assume consistent within the segment)
-        pi_vals = sorted({int(getattr(im, "pair_index", 0)) for im in seg_frames})
+        pi_vals = sorted({int(getattr(im, 'pair_index', 0)) for im in seg_frames})
         pi = pi_vals[0]
         pocket_ref = Path(pocket_inputs[pi])
         structA = structs[pi]
@@ -1808,7 +1808,7 @@ def _merge_final_and_write(final_images: List[Any],
         keymapB = keymaps[pi+1]
 
         # Per‑segment merged MEP only when covalent changes are present
-        if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+        if s.kind != 'bridge' and s.summary and s.summary.strip() != '(no covalent changes detected)':
             seg_indices_for_frames = [seg_idx] * len(seg_frames)
             blocks, _ = _merge_pair_to_full(
                 pair_images=seg_frames,
@@ -1825,19 +1825,19 @@ def _merge_final_and_write(final_images: List[Any],
                 seg_report_lookup=seg_lookup,
                 include_pocket_indices_for_first_model=True,
             )
-            out_seg = out_dir / f"mep_w_ref_seg_{seg_idx:02d}.pdb"
-            with open(out_seg, "w") as f:
+            out_seg = out_dir / f'mep_w_ref_seg_{seg_idx:02d}.pdb'
+            with open(out_seg, 'w') as f:
                 for m, blk in enumerate(blocks, start=1):
-                    f.write(f"MODEL     {m}\n")
+                    f.write(f'MODEL     {m}\n')
                     f.write(blk)
-                    f.write("ENDMDL\n")
-                f.write("END\n")
-            click.echo(f"[merge] Wrote per-segment merged trajectory → '{out_seg}'")
+                    f.write('ENDMDL\n')
+                f.write('END\n')
+            click.echo(f'[merge] Wrote per-segment merged trajectory → "{out_seg}"')
 
         # Per‑segment HEI merged to reference (only for bond‑change segments)
-        if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+        if s.kind != 'bridge' and s.summary and s.summary.strip() != '(no covalent changes detected)':
             try:
-                energies_au = [float(getattr(im, "energy")) for im in seg_frames]
+                energies_au = [float(getattr(im, 'energy')) for im in seg_frames]
                 imax = int(np.argmax(np.array(energies_au, dtype=float)))
                 hei_frame = seg_frames[imax]
                 blocks_hei, _ = _merge_pair_to_full(
@@ -1855,16 +1855,16 @@ def _merge_final_and_write(final_images: List[Any],
                     seg_report_lookup=seg_lookup,
                     include_pocket_indices_for_first_model=True,
                 )
-                out_hei = out_dir / f"hei_w_ref_seg_{seg_idx:02d}.pdb"
-                with open(out_hei, "w") as f:
+                out_hei = out_dir / f'hei_w_ref_seg_{seg_idx:02d}.pdb'
+                with open(out_hei, 'w') as f:
                     for m, blk in enumerate(blocks_hei, start=1):
-                        f.write(f"MODEL     {m}\n")
+                        f.write(f'MODEL     {m}\n')
                         f.write(blk)
-                        f.write("ENDMDL\n")
-                    f.write("END\n")
-                click.echo(f"[merge] Wrote merged HEI for segment → '{out_hei}'")
+                        f.write('ENDMDL\n')
+                    f.write('END\n')
+                click.echo(f'[merge] Wrote merged HEI for segment → "{out_hei}"')
             except Exception as e:
-                click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}", err=True)
+                click.echo(f'[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}', err=True)
 
 
 # -----------------------------------------------
@@ -1872,147 +1872,147 @@ def _merge_final_and_write(final_images: List[Any],
 # -----------------------------------------------
 
 @click.command(
-    help="Multistep MEP search via recursive GSM segmentation.",
+    help='Multistep MEP search via recursive GSM segmentation.',
     context_settings={
-        "help_option_names": ["-h", "--help"],
+        'help_option_names': ['-h', '--help'],
         # Allow a single '-i' followed by multiple paths (as extra args)
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
+        'ignore_unknown_options': True,
+        'allow_extra_args': True,
     },
 )
 @click.option(
-    "-i", "--input",
-    "input_paths",
+    '-i', '--input',
+    'input_paths',
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     required=True,
-    help=("Two or more structures in reaction order. "
-          "Either repeat '-i' (e.g., '-i A -i B -i C') or use a single '-i' "
-          "followed by multiple space-separated paths (e.g., '-i A B C').")
+    help=('Two or more structures in reaction order. '
+          'Either repeat "-i" (e.g., "-i A -i B -i C") or use a single "-i" '
+          'followed by multiple space-separated paths (e.g., "-i A B C").')
 )
 @click.option(
-    "--mep-mode",
-    type=click.Choice(["gsm", "dmf"], case_sensitive=False),
-    default="gsm",
+    '--mep-mode',
+    type=click.Choice(['gsm', 'dmf'], case_sensitive=False),
+    default='gsm',
     show_default=True,
-    help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
+    help='MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).',
 )
 @click.option(
-    "--refine-mode",
-    type=click.Choice(["peak", "minima"], case_sensitive=False),
+    '--refine-mode',
+    type=click.Choice(['peak', 'minima'], case_sensitive=False),
     default=None,
     show_default=True,
     help=(
-        "Refinement seed selection around the highest-energy image: "
-        "'peak' uses HEI±1, 'minima' uses the nearest local minima in each direction. "
-        "Defaults to peak for gsm and minima for dmf when omitted."
+        'Refinement seed selection around the highest-energy image: '
+        '"peak" uses HEI±1, "minima" uses the nearest local minima in each direction. '
+        'Defaults to peak for gsm and minima for dmf when omitted.'
     ),
 )
 @click.option(
-    "-q",
-    "--charge",
+    '-q',
+    '--charge',
     type=int,
     default=None,
     show_default=False,
-    help="Charge of the ML region.",
+    help='Charge of the ML region.',
 )
 @click.option(
-    "--workers",
+    '--workers',
     type=int,
-    default=CALC_KW["workers"],
+    default=CALC_KW['workers'],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help='UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).',
 )
 @click.option(
-    "--workers-per-node",
-    "workers_per_node",
+    '--workers-per-node',
+    'workers_per_node',
     type=int,
-    default=CALC_KW["workers_per_node"],
+    default=CALC_KW['workers_per_node'],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help='Workers per node when using a parallel UMA predictor (workers>1).',
 )
 @click.option(
-    "--ligand-charge",
+    '--ligand-charge',
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help='Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.',
 )
 @click.option(
-    "-m",
-    "--multiplicity",
-    "spin",
+    '-m',
+    '--multiplicity',
+    'spin',
     type=int,
     default=None,
     show_default=False,
-    help="Spin multiplicity (2S+1) for the ML region (defaults from a .gjf template when available, otherwise 1).",
+    help='Spin multiplicity (2S+1) for the ML region (defaults from a .gjf template when available, otherwise 1).',
 )
-@click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,
-              help="For PDB input, freeze parent atoms of link hydrogens.")
-@click.option("--max-nodes", type=int, default=10, show_default=True,
-              help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
-                    "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
-@click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
-@click.option("--climb", type=click.BOOL, default=True, show_default=True,
-              help="Enable transition-state search after path growth.")
+@click.option('--freeze-links', 'freeze_links_flag', type=click.BOOL, default=True, show_default=True,
+              help='For PDB input, freeze parent atoms of link hydrogens.')
+@click.option('--max-nodes', type=int, default=10, show_default=True,
+              help=('Number of internal nodes (string has max_nodes+2 images including endpoints). '
+                    'Used for *segment* GSM unless overridden by YAML search.max_nodes_segment.'))
+@click.option('--max-cycles', type=int, default=300, show_default=True, help='Maximum GSM optimization cycles.')
+@click.option('--climb', type=click.BOOL, default=True, show_default=True,
+              help='Enable transition-state search after path growth.')
 @click.option(
-    "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    '--opt-mode',
+    type=click.Choice(['light', 'heavy'], case_sensitive=False),
+    default='light',
     show_default=True,
-    help="Single-structure optimizer: light (=LBFGS) or heavy (=RFO).",
+    help='Single-structure optimizer: light (=LBFGS) or heavy (=RFO).',
 )
-@click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump GSM/single-optimization trajectories during the run.")
+@click.option('--dump', type=click.BOOL, default=False, show_default=True,
+              help='Dump GSM/single-optimization trajectories during the run.')
 @click.option(
-    "--convert-files",
-    "convert_files",
+    '--convert-files',
+    'convert_files',
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help='Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.',
 )
-@click.option("--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
+@click.option('--out-dir', 'out_dir', type=str, default='./result_path_search/', show_default=True, help='Output directory.')
 @click.option(
-    "--thresh",
+    '--thresh',
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset for GSM and single optimizations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help='Convergence preset for GSM and single optimizations (gau_loose|gau|gau_tight|gau_vtight|baker|never).',
 )
 @click.option(
-    "--args-yaml",
+    '--args-yaml',
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search)."
+    help='YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search).'
 )
 @click.option(
-    "--preopt",
-    "preopt",
+    '--preopt',
+    'preopt',
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="If False, skip initial single-structure optimizations of inputs."
+    help='If False, skip initial single-structure optimizations of inputs.'
 )
 @click.option(
-    "--align",
-    "align",
+    '--align',
+    'align',
     type=click.BOOL,
     default=True,
     show_default=True,
-    help=("After preoptimization, align all inputs to the *first* input and match freeze_atoms "
-          "using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, "
-          "the first reference PDB will be used for all pairs in the final merge.")
+    help=('After preoptimization, align all inputs to the *first* input and match freeze_atoms '
+          'using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, '
+          'the first reference PDB will be used for all pairs in the final merge.')
 )
 @click.option(
-    "--ref-pdb",
-    "ref_pdb_paths",
+    '--ref-pdb',
+    'ref_pdb_paths',
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     default=None,
-    help=("Full-size template PDBs in the same reaction order as --input. "
-          "With --align True, only the *first* provided reference PDB is used for all pairs "
-          "in the final merge (you may pass just one).")
+    help=('Full-size template PDBs in the same reaction order as --input. '
+          'With --align True, only the *first* provided reference PDB is used for all pairs '
+          'in the final merge (you may pass just one).')
 )
 @click.pass_context
 def cli(
@@ -2043,7 +2043,7 @@ def cli(
     prepared_inputs: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
-    command_str = " ".join(sys.argv)
+    command_str = ' '.join(sys.argv)
 
     # Robustly accept both styles for -i/--input and --ref-pdb
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
@@ -2053,7 +2053,7 @@ def cli(
             tok = argv[i]
             if tok in names:
                 j = i + 1
-                while j < len(argv) and not argv[j].startswith("-"):
+                while j < len(argv) and not argv[j].startswith('-'):
                     vals.append(argv[j])
                     j += 1
                 i = j
@@ -2062,28 +2062,28 @@ def cli(
         return vals
 
     argv_all = sys.argv[1:]
-    i_vals = _collect_option_values(argv_all, ("-i", "--input"))
+    i_vals = _collect_option_values(argv_all, ('-i', '--input'))
     if i_vals:
         i_parsed: List[Path] = []
         for tok in i_vals:
             p = Path(tok)
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
-                    f"Input path '{tok}' not found or is a directory. "
-                    f"When using '-i', list only existing file paths (multiple paths may follow a single '-i')."
+                    f'Input path "{tok}" not found or is a directory. '
+                    f'When using "-i", list only existing file paths (multiple paths may follow a single "-i").'
                 )
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    ref_vals = _collect_option_values(argv_all, ("--ref-pdb",))
+    ref_vals = _collect_option_values(argv_all, ('--ref-pdb',))
     if ref_vals:
         ref_parsed: List[Path] = []
         for tok in ref_vals:
             p = Path(tok)
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
-                    f"Reference PDB path '{tok}' not found or is a directory. "
-                    f"When using '--ref-pdb', multiple files may follow a single option."
+                    f'Reference PDB path "{tok}" not found or is a directory. '
+                    f'When using "--ref-pdb", multiple files may follow a single option.'
                 )
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
@@ -2096,7 +2096,7 @@ def cli(
         # --------------------------
         if len(input_paths) < 2:
             raise click.BadParameter(
-                "Provide at least two structures for --input in reaction order (reactant [intermediates ...] product)."
+                'Provide at least two structures for --input in reaction order (reactant [intermediates ...] product).'
             )
 
         mep_mode_kind = mep_mode.strip().lower()
@@ -2108,8 +2108,8 @@ def cli(
                 pass
             else:
                 if len(ref_pdb_paths) != len(input_paths):
-                    raise click.BadParameter("--ref-pdb must be given for each --input (same count and order). "
-                                             "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
+                    raise click.BadParameter('--ref-pdb must be given for each --input (same count and order). '
+                                             'Alternatively, use --align to allow using only the first reference PDB for all pairs.')
 
         p_list = [Path(p) for p in input_paths]
         prepared_inputs = [prepare_input_structure(p) for p in p_list]
@@ -2131,7 +2131,7 @@ def cli(
         rfo_cfg   = dict(_RFO_KW)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
-        search_cfg["refine_mode"] = refine_mode_kind
+        search_cfg['refine_mode'] = refine_mode_kind
 
         resolved_charge = charge
         resolved_spin = spin
@@ -2141,99 +2141,99 @@ def cli(
             )
         if resolved_charge is None and ligand_charge is not None:
             resolved_charge = _derive_charge_from_ligand_charge(
-                prepared_inputs[0], ligand_charge, prefix="[path-search]"
+                prepared_inputs[0], ligand_charge, prefix='[path-search]'
             )
         if resolved_charge is None:
             if any_non_gjf:
                 for prepared in prepared_inputs:
                     prepared.cleanup()
                 raise click.ClickException(
-                    "-q/--charge is required unless all inputs are .gjf templates with charge metadata."
+                    '-q/--charge is required unless all inputs are .gjf templates with charge metadata.'
                 )
             resolved_charge = 0
         if resolved_spin is None:
             resolved_spin = 1
-        calc_cfg["charge"] = int(resolved_charge)
-        calc_cfg["spin"] = int(resolved_spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
+        calc_cfg['charge'] = int(resolved_charge)
+        calc_cfg['spin'] = int(resolved_spin)
+        calc_cfg['workers'] = int(workers)
+        calc_cfg['workers_per_node'] = int(workers_per_node)
 
-        gs_cfg["max_nodes"] = int(max_nodes)
-        opt_cfg["max_cycles"] = int(max_cycles)
-        opt_cfg["stop_in_when_full"] = int(max_cycles)
-        gs_cfg["climb"] = bool(climb)
-        gs_cfg["climb_lanczos"] = bool(climb)
+        gs_cfg['max_nodes'] = int(max_nodes)
+        opt_cfg['max_cycles'] = int(max_cycles)
+        opt_cfg['stop_in_when_full'] = int(max_cycles)
+        gs_cfg['climb'] = bool(climb)
+        gs_cfg['climb_lanczos'] = bool(climb)
 
-        opt_cfg["dump"]       = bool(dump)
-        opt_cfg["out_dir"]    = out_dir
+        opt_cfg['dump']       = bool(dump)
+        opt_cfg['out_dir']    = out_dir
         if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-            lbfgs_cfg["thresh"] = str(thresh)
-            rfo_cfg["thresh"] = str(thresh)
+            opt_cfg['thresh'] = str(thresh)
+            lbfgs_cfg['thresh'] = str(thresh)
+            rfo_cfg['thresh'] = str(thresh)
 
-        lbfgs_cfg["dump"] = bool(dump)
-        rfo_cfg["dump"]   = bool(dump)
-        lbfgs_cfg["out_dir"] = out_dir
-        rfo_cfg["out_dir"]   = out_dir
+        lbfgs_cfg['dump'] = bool(dump)
+        rfo_cfg['dump']   = bool(dump)
+        lbfgs_cfg['out_dir'] = out_dir
+        rfo_cfg['out_dir']   = out_dir
 
         # YAML overrides (highest precedence)
         apply_yaml_overrides(
             yaml_cfg,
             [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (dmf_cfg, (("dmf",),)),
-                (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
-                (bond_cfg, (("bond",),)),
-                (search_cfg, (("search",),)),
+                (geom_cfg, (('geom',),)),
+                (calc_cfg, (('calc',),)),
+                (dmf_cfg, (('dmf',),)),
+                (gs_cfg, (('gs',),)),
+                (opt_cfg, (('opt',),)),
+                (lbfgs_cfg, (('sopt', 'lbfgs'), ('opt', 'lbfgs'), ('lbfgs',))),
+                (rfo_cfg, (('sopt', 'rfo'), ('opt', 'rfo'), ('rfo',))),
+                (bond_cfg, (('bond',),)),
+                (search_cfg, (('search',),)),
             ],
         )
 
-        refine_mode_kind = search_cfg.get("refine_mode")
+        refine_mode_kind = search_cfg.get('refine_mode')
         if refine_mode_kind is None:
-            refine_mode_kind = "peak" if mep_mode_kind == "gsm" else "minima"
+            refine_mode_kind = 'peak' if mep_mode_kind == 'gsm' else 'minima'
         else:
             refine_mode_kind = str(refine_mode_kind).strip().lower()
-            if refine_mode_kind not in {"peak", "minima"}:
-                raise click.BadParameter(f"Unknown --refine-mode '{refine_mode_kind}'.")
-        search_cfg["refine_mode"] = refine_mode_kind
+            if refine_mode_kind not in {'peak', 'minima'}:
+                raise click.BadParameter(f'Unknown --refine-mode "{refine_mode_kind}".')
+        search_cfg['refine_mode'] = refine_mode_kind
 
         opt_kind = opt_mode.strip().lower()
-        if opt_kind == "light":
-            sopt_kind = "lbfgs"
+        if opt_kind == 'light':
+            sopt_kind = 'lbfgs'
             sopt_cfg = lbfgs_cfg
-        elif opt_kind == "heavy":
-            sopt_kind = "rfo"
+        elif opt_kind == 'heavy':
+            sopt_kind = 'rfo'
             sopt_cfg = rfo_cfg
         else:
-            raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
+            raise click.BadParameter(f'Unknown --opt-mode "{opt_mode}".')
 
-        if "max_nodes_segment" not in yaml_cfg.get("search", {}):
-            search_cfg["max_nodes_segment"] = int(max_nodes)
+        if 'max_nodes_segment' not in yaml_cfg.get('search', {}):
+            search_cfg['max_nodes_segment'] = int(max_nodes)
 
         out_dir_path = Path(out_dir).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_freeze_atoms_for_echo(calc_cfg)
         echo_gs   = dict(gs_cfg)
         echo_opt  = dict(opt_cfg)
-        echo_opt["out_dir"] = str(out_dir_path)
+        echo_opt['out_dir'] = str(out_dir_path)
 
-        click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("gs",   echo_gs))
-        click.echo(pretty_block("opt",  echo_opt))
-        if mep_mode_kind == "dmf":
-            click.echo(pretty_block("dmf", dmf_cfg))
-        click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
-        click.echo(pretty_block("bond", bond_cfg))
-        click.echo(pretty_block("search", search_cfg))
+        click.echo(pretty_block('geom', echo_geom))
+        click.echo(pretty_block('calc', echo_calc))
+        click.echo(pretty_block('gs',   echo_gs))
+        click.echo(pretty_block('opt',  echo_opt))
+        if mep_mode_kind == 'dmf':
+            click.echo(pretty_block('dmf', dmf_cfg))
+        click.echo(pretty_block('sopt.'+sopt_kind, sopt_cfg))
+        click.echo(pretty_block('bond', bond_cfg))
+        click.echo(pretty_block('search', search_cfg))
         click.echo(
             pretty_block(
-                "run_flags",
-                {"preopt": bool(preopt), "align": bool(align), "mep_mode": mep_mode_kind},
+                'run_flags',
+                {'preopt': bool(preopt), 'align': bool(align), 'mep_mode': mep_mode_kind},
             )
         )
 
@@ -2244,8 +2244,8 @@ def cli(
 
         geoms = _load_structures(
             inputs=prepared_inputs,
-            coord_type=geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"]),
-            base_freeze=geom_cfg.get("freeze_atoms", []),
+            coord_type=geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type']),
+            base_freeze=geom_cfg.get('freeze_atoms', []),
             auto_freeze_links=bool(freeze_links_flag),
         )
 
@@ -2255,17 +2255,17 @@ def cli(
         for g in geoms:
             g.set_calculator(shared_calc)
 
-        # If any input is PDB, treat as "PDB input" for final output handling.
+        # If any input is PDB, treat as 'PDB input' for final output handling.
         ref_pdb_for_segments: Optional[Path] = None
         for p in p_list:
-            if p.suffix.lower() == ".pdb":
+            if p.suffix.lower() == '.pdb':
                 ref_pdb_for_segments = p.resolve()
                 break
 
         if preopt:
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
-                tag = f"init{i:02d}"
+                tag = f'init{i:02d}'
                 g_opt = _optimize_single(
                     g,
                     shared_calc,
@@ -2278,33 +2278,33 @@ def cli(
                 new_geoms.append(g_opt)
             geoms = new_geoms
         else:
-            click.echo("[init] Skipping endpoint preoptimization as requested by --preopt False.")
+            click.echo('[init] Skipping endpoint preoptimization as requested by --preopt False.')
 
         # Align all inputs to the first structure, guided by freeze constraints, when requested
-        align_thresh = str(opt_cfg.get("thresh", "gau"))
+        align_thresh = str(opt_cfg.get('thresh', 'gau'))
         if align:
             try:
-                click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
+                click.echo('\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n')
                 _ = align_and_refine_sequence_inplace(
                     geoms,
                     thresh=align_thresh,
                     shared_calc=shared_calc,
-                    out_dir=out_dir_path / "align_refine",
+                    out_dir=out_dir_path / 'align_refine',
                     verbose=True,
                 )
-                click.echo("[align] Completed input alignment.")
+                click.echo('[align] Completed input alignment.')
             except Exception as e:
-                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
+                click.echo(f'[align] WARNING: Alignment failed; continuing without alignment: {e}', err=True)
         else:
-            click.echo("[align] Skipping input alignment as requested by --align False.")
+            click.echo('[align] Skipping input alignment as requested by --align False.')
 
         # --------------------------
         # 3) Run recursive search for each adjacent pair and stitch
         # --------------------------
-        click.echo("\n=== Multistep MEP search (multi-structure) started ===\n")
+        click.echo('\n=== Multistep MEP search (multi-structure) started ===\n')
         seg_counter = [0]
 
-        bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 10))
+        bridge_max_nodes = int(search_cfg.get('max_nodes_bridge', 10))
         gs_bridge_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=bridge_max_nodes, climb=False, climb_lanczos=False)
 
         combined_imgs: List[Any] = []
@@ -2323,7 +2323,7 @@ def cli(
                 prepared_input=main_prepared,
                 depth=0,
                 seg_counter=seg_counter,
-                branch_tag="B",
+                branch_tag='B',
                 pair_index=None,
                 kink_seq_count=_trailing_kink_count(seg_reports_all),
             )
@@ -2331,8 +2331,8 @@ def cli(
 
         for i in range(len(geoms) - 1):
             gA, gB = geoms[i], geoms[i + 1]
-            pair_tag = f"pair_{i:02d}"
-            click.echo(f"\n--- Processing pair {i:02d}: image {i} → {i+1} ---")
+            pair_tag = f'pair_{i:02d}'
+            click.echo(f'\n--- Processing pair {i:02d}: image {i} → {i+1} ---')
             pair_path = _build_multistep_path(
                 gA, gB,
                 shared_calc,
@@ -2357,8 +2357,8 @@ def cli(
                 parts = [(combined_imgs, combined_Es), (pair_path.images, pair_path.energies)]
                 combined_imgs, combined_Es = _stitch_paths(
                     parts=parts,
-                    stitch_rmsd_thresh=float(search_cfg.get("stitch_rmsd_thresh", 1e-4)),
-                    bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
+                    stitch_rmsd_thresh=float(search_cfg.get('stitch_rmsd_thresh', 1e-4)),
+                    bridge_rmsd_thresh=float(search_cfg.get('bridge_rmsd_thresh', 1e-4)),
                     shared_calc=shared_calc,
                     gs_cfg=gs_bridge_cfg,
                     opt_cfg=opt_cfg,
@@ -2377,7 +2377,7 @@ def cli(
                 )
                 seg_reports_all.extend(pair_path.segments)
 
-        click.echo("\n=== Multistep MEP search (multi-structure) finished ===\n")
+        click.echo('\n=== Multistep MEP search (multi-structure) finished ===\n')
 
         combined_all = CombinedPath(images=combined_imgs, energies=combined_Es, segments=seg_reports_all)
 
@@ -2388,10 +2388,10 @@ def cli(
             srep.seg_index = idx
         tag_to_index = {s.tag: int(s.seg_index) for s in combined_all.segments}
         for im in combined_all.images:
-            tag = getattr(im, "mep_seg_tag", None)
+            tag = getattr(im, 'mep_seg_tag', None)
             if tag and tag in tag_to_index:
                 try:
-                    setattr(im, "mep_seg_index", int(tag_to_index[tag]))
+                    setattr(im, 'mep_seg_index', int(tag_to_index[tag]))
                 except Exception:
                     pass
 
@@ -2403,38 +2403,38 @@ def cli(
         needs_gjf = main_prepared.is_gjf
 
         if not needs_pdb:
-            final_trj = out_dir_path / "mep.trj"
+            final_trj = out_dir_path / 'mep.trj'
             _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
-            click.echo(f"[write] Wrote '{final_trj}'.")
+            click.echo(f'[write] Wrote "{final_trj}".')
             try:
-                run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+                run_trj2fig(final_trj, [out_dir_path / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
                 _close_matplotlib_figures()
-                click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
+                click.echo(f'[plot] Saved energy plot → "{out_dir_path / 'mep_plot.png'}"')
             except Exception as e:
-                click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+                click.echo(f'[plot] WARNING: Failed to plot final energy: {e}', err=True)
 
         else:
-            tmp_trj = tempfile.NamedTemporaryFile("w+", suffix=".trj", delete=False)
+            tmp_trj = tempfile.NamedTemporaryFile('w+', suffix='.trj', delete=False)
             tmp_trj_path = Path(tmp_trj.name)
             tmp_trj.close()
             try:
                 _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, tmp_trj_path)
                 try:
-                    run_trj2fig(tmp_trj_path, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+                    run_trj2fig(tmp_trj_path, [out_dir_path / 'mep_plot.png'], unit='kcal', reference='init', reverse_x=False)
                     _close_matplotlib_figures()
-                    click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
+                    click.echo(f'[plot] Saved energy plot → "{out_dir_path / 'mep_plot.png'}"')
                 except Exception as e:
-                    click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+                    click.echo(f'[plot] WARNING: Failed to plot final energy: {e}', err=True)
                 try:
                     convert_xyz_like_outputs(
                         tmp_trj_path,
                         main_prepared,
                         ref_pdb_path=ref_pdb_for_segments,
-                        out_pdb_path=out_dir_path / "mep.pdb",
+                        out_pdb_path=out_dir_path / 'mep.pdb',
                     )
-                    click.echo("[convert] Wrote final MEP outputs.")
+                    click.echo('[convert] Wrote final MEP outputs.')
                 except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
+                    click.echo(f'[convert] WARNING: Failed to convert final MEP outputs: {e}', err=True)
             finally:
                 try:
                     os.unlink(tmp_trj_path)
@@ -2443,7 +2443,7 @@ def cli(
 
         # Pocket‑only per‑segment trajectories & HEIs (bond‑change segments only)
         try:
-            frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
+            frame_seg_indices: List[int] = [int(getattr(im, 'mep_seg_index', 0) or 0) for im in combined_all.images]
             seg_to_frames: Dict[int, List[int]] = {}
             for ii, sidx in enumerate(frame_seg_indices):
                 if sidx <= 0:
@@ -2456,59 +2456,59 @@ def cli(
                 if not idxs:
                     continue
 
-                if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+                if s.kind != 'bridge' and s.summary and s.summary.strip() != '(no covalent changes detected)':
                     seg_imgs = [combined_all.images[j] for j in idxs]
                     seg_Es = [combined_all.energies[j] for j in idxs]
-                    seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}.trj"
+                    seg_trj = out_dir_path / f'mep_seg_{seg_idx:02d}.trj'
                     _write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
-                    click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
+                    click.echo(f'[write] Wrote per-segment pocket trajectory → "{seg_trj}"')
                     if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
                                 seg_trj,
                                 main_prepared,
                                 ref_pdb_path=ref_pdb_for_segments,
-                                out_pdb_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb" if needs_pdb else None,
-                                out_gjf_path=out_dir_path / f"mep_seg_{seg_idx:02d}.gjf" if needs_gjf else None,
+                                out_pdb_path=out_dir_path / f'mep_seg_{seg_idx:02d}.pdb' if needs_pdb else None,
+                                out_gjf_path=out_dir_path / f'mep_seg_{seg_idx:02d}.gjf' if needs_gjf else None,
                             )
                         except Exception as e:
                             click.echo(
-                                f"[convert] WARNING: Failed to convert per-segment trajectory {seg_idx:02d}: {e}",
+                                f'[convert] WARNING: Failed to convert per-segment trajectory {seg_idx:02d}: {e}',
                                 err=True,
                             )
 
-                if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
+                if s.kind != 'bridge' and s.summary and s.summary.strip() != '(no covalent changes detected)':
                     energies_seg = [combined_all.energies[j] for j in idxs]
                     imax_rel = int(np.argmax(np.array(energies_seg, dtype=float)))
                     imax_abs = idxs[imax_rel]
                     hei_img = combined_all.images[imax_abs]
                     hei_E = [combined_all.energies[imax_abs]]
-                    hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
+                    hei_trj = out_dir_path / f'hei_seg_{seg_idx:02d}.xyz'
                     _write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
-                    click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
+                    click.echo(f'[write] Wrote segment HEI (pocket) → "{hei_trj}"')
                     if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
                                 hei_trj,
                                 main_prepared,
                                 ref_pdb_path=ref_pdb_for_segments,
-                                out_pdb_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb" if needs_pdb else None,
-                                out_gjf_path=out_dir_path / f"hei_seg_{seg_idx:02d}.gjf" if needs_gjf else None,
+                                out_pdb_path=out_dir_path / f'hei_seg_{seg_idx:02d}.pdb' if needs_pdb else None,
+                                out_gjf_path=out_dir_path / f'hei_seg_{seg_idx:02d}.gjf' if needs_gjf else None,
                             )
                         except Exception as e:
                             click.echo(
-                                f"[convert] WARNING: Failed to convert HEI for segment {seg_idx:02d}: {e}",
+                                f'[convert] WARNING: Failed to convert HEI for segment {seg_idx:02d}: {e}',
                                 err=True,
                             )
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
+            click.echo(f'[write] WARNING: Failed to emit per-segment pocket outputs: {e}', err=True)
 
         if do_merge:
-            click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
+            click.echo('\n=== Full-system merge (pocket → templates) started ===\n')
             # With --align True, use only the first reference PDB for all pairs (replicate it).
             if align:
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:
-                    raise click.BadParameter("--ref-pdb must provide at least one file when performing final merge with --align True.")
+                    raise click.BadParameter('--ref-pdb must provide at least one file when performing final merge with --align True.')
                 first_ref = Path(ref_pdb_paths[0])
                 ref_list_for_merge = [first_ref for _ in input_paths]
             else:
@@ -2521,7 +2521,7 @@ def cli(
                 segments=combined_all.segments,
                 out_dir=out_dir_path
             )
-            click.echo("\n=== Full-system merge finished ===\n")
+            click.echo('\n=== Full-system merge finished ===\n')
 
         # --------------------------
         # 5) Console summary
@@ -2529,25 +2529,25 @@ def cli(
         try:
             overall_changed, overall_summary = _has_bond_change(combined_all.images[0], combined_all.images[-1], bond_cfg)
         except Exception:
-            overall_changed, overall_summary = False, ""
+            overall_changed, overall_summary = False, ''
 
-        click.echo("\n=== MEP Summary ===\n")
+        click.echo('\n=== MEP Summary ===\n')
 
-        click.echo("\n[overall] Covalent-bond changes between first and last image:")
+        click.echo('\n[overall] Covalent-bond changes between first and last image:')
         if overall_changed and overall_summary.strip():
-            click.echo(textwrap.indent(overall_summary.strip(), prefix="  "))
+            click.echo(textwrap.indent(overall_summary.strip(), prefix='  '))
         else:
-            click.echo("  (no covalent changes detected)")
+            click.echo('  (no covalent changes detected)')
 
         if combined_all.segments:
-            click.echo("\n[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:")
+            click.echo('\n[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:')
             for i, seg in enumerate(combined_all.segments, 1):
-                kind_label = "BRIDGE" if seg.kind == "bridge" else "SEG"
-                click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
-                if seg.kind != "bridge" and seg.summary.strip():
-                    click.echo(textwrap.indent(seg.summary.strip(), prefix="      "))
+                kind_label = 'BRIDGE' if seg.kind == 'bridge' else 'SEG'
+                click.echo(f'  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol')
+                if seg.kind != 'bridge' and seg.summary.strip():
+                    click.echo(textwrap.indent(seg.summary.strip(), prefix='      '))
         else:
-            click.echo("\n[segments] (no segment reports)")
+            click.echo('\n[segments] (no segment reports)')
 
         # --------------------------
         # 6) Energy diagram (compressed state sequence)
@@ -2555,7 +2555,7 @@ def cli(
         diagram_payload: Optional[Dict[str, Any]] = None
         try:
             # Map frames to segment indices (for anchoring R/P energies in Hartree)
-            frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
+            frame_seg_indices: List[int] = [int(getattr(im, 'mep_seg_index', 0) or 0) for im in combined_all.images]
             seg_to_frames: Dict[int, List[int]] = {}
             for ii, sidx in enumerate(frame_seg_indices):
                 if sidx <= 0:
@@ -2565,7 +2565,7 @@ def cli(
             # Bond‑change segments in the final MEP order
             bc_segments_in_order: List[SegmentReport] = [
                 s for s in combined_all.segments
-                if (s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)")
+                if (s.kind == 'seg' and s.summary and s.summary.strip() != '(no covalent changes detected)')
             ]
 
             # Determine which frames to use as R and P for anchoring energies in au
@@ -2593,16 +2593,16 @@ def cli(
 
             def _is_bond_change_seg(seg: SegmentReport) -> bool:
                 return (
-                    seg.kind == "seg"
+                    seg.kind == 'seg'
                     and bool(seg.summary)
-                    and seg.summary.strip() != "(no covalent changes detected)"
+                    and seg.summary.strip() != '(no covalent changes detected)'
                 )
 
             for s in combined_all.segments:
                 if _is_bond_change_seg(s):
                     ts_count += 1
-                    barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
-                    delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
+                    barrier_kcal = float(getattr(s, 'barrier_kcal', float('nan')))
+                    delta_kcal = float(getattr(s, 'delta_kcal', float('nan')))
                     if not np.isfinite(barrier_kcal):
                         barrier_kcal = 0.0
                     if not np.isfinite(delta_kcal):
@@ -2612,13 +2612,13 @@ def cli(
                     first_im_e = E_current_kcal + delta_kcal
 
                     current = {
-                        "ts_label": f"TS{ts_count}",
-                        "ts_energy": ts_e,
-                        "first_im_energy": first_im_e,
-                        "tail_im_energy": first_im_e,
-                        "has_extra": False,
-                        "index": ts_count,
-                        "bridge_peaks": [],
+                        'ts_label': f'TS{ts_count}',
+                        'ts_energy': ts_e,
+                        'first_im_energy': first_im_e,
+                        'tail_im_energy': first_im_e,
+                        'has_extra': False,
+                        'index': ts_count,
+                        'bridge_peaks': [],
                     }
                     ts_groups.append(current)
                     E_current_kcal = first_im_e
@@ -2627,33 +2627,33 @@ def cli(
                     # the current TS block if one exists.
                     if current is None:
                         # Before the first bond‑change segment: accumulate net ΔE if available.
-                        delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
+                        delta_kcal = float(getattr(s, 'delta_kcal', float('nan')))
                         if np.isfinite(delta_kcal):
                             E_current_kcal += delta_kcal
                         continue
 
-                    delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
-                    barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
+                    delta_kcal = float(getattr(s, 'delta_kcal', float('nan')))
+                    barrier_kcal = float(getattr(s, 'barrier_kcal', float('nan')))
 
-                    if s.kind == "bridge":
+                    if s.kind == 'bridge':
                         if np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
                             peak_e = E_current_kcal + barrier_kcal
-                            peaks = current.setdefault("bridge_peaks", [])
-                            suffix = "" if len(peaks) == 0 else f"_{len(peaks) + 1}"
-                            peak_label = f"IM{current['index']}_TS{suffix}"
-                            peaks.append({"label": peak_label, "energy": peak_e})
+                            peaks = current.setdefault('bridge_peaks', [])
+                            suffix = '' if len(peaks) == 0 else f'_{len(peaks) + 1}'
+                            peak_label = f'IM{current['index']}_TS{suffix}'
+                            peaks.append({'label': peak_label, 'energy': peak_e})
                             # Log the corresponding peak in au for debugging
                             peak_e_au = E0_au + peak_e / AU2KCALPERMOL
                             click.echo(
-                                "    [bridge] Recorded diagram-only TS peak "
-                                f"{peak_label} at {peak_e_au:.6f} au "
-                                "(from segment-level ΔE‡; bridge segments skip tsopt/thermo/DFT)."
+                                '    [bridge] Recorded diagram-only TS peak '
+                                f'{peak_label} at {peak_e_au:.6f} au '
+                                '(from segment-level ΔE‡; bridge segments skip tsopt/thermo/DFT).'
                             )
 
                     if np.isfinite(delta_kcal):
                         E_current_kcal += delta_kcal
-                        current["tail_im_energy"] = E_current_kcal
-                        current["has_extra"] = True
+                        current['tail_im_energy'] = E_current_kcal
+                        current['has_extra'] = True
 
             # Assemble labels and energies in kcal/mol
             labels: List[str]
@@ -2662,116 +2662,116 @@ def cli(
 
             if not ts_groups:
                 # No bond‑change segments: simple R→P diagram
-                labels = ["R", "P"]
+                labels = ['R', 'P']
                 energies_kcal = [0.0, (EP_au - E0_au) * AU2KCALPERMOL]
-                chain_tokens = ["R", "-->", "P"]
+                chain_tokens = ['R', '-->', 'P']
             else:
-                labels = ["R"]
+                labels = ['R']
                 energies_kcal = [0.0]
-                chain_tokens = ["R"]
+                chain_tokens = ['R']
 
                 for i, g in enumerate(ts_groups, start=1):
                     last_group = (i == len(ts_groups))
 
-                    labels.append(g["ts_label"])
-                    energies_kcal.append(float(g["ts_energy"]))
-                    chain_tokens.extend(["-->", g["ts_label"]])
+                    labels.append(g['ts_label'])
+                    energies_kcal.append(float(g['ts_energy']))
+                    chain_tokens.extend(['-->', g['ts_label']])
 
                     if last_group:
                         continue
 
-                    labels.append(f"IM{i}_1")
-                    energies_kcal.append(float(g["first_im_energy"]))
-                    chain_tokens.extend(["-->", f"IM{i}_1"])
+                    labels.append(f'IM{i}_1')
+                    energies_kcal.append(float(g['first_im_energy']))
+                    chain_tokens.extend(['-->', f'IM{i}_1'])
 
-                    for bp in g.get("bridge_peaks", []):
-                        labels.append(str(bp["label"]))
-                        energies_kcal.append(float(bp["energy"]))
-                        chain_tokens.extend(["-->", str(bp["label"])])
+                    for bp in g.get('bridge_peaks', []):
+                        labels.append(str(bp['label']))
+                        energies_kcal.append(float(bp['energy']))
+                        chain_tokens.extend(['-->', str(bp['label'])])
 
-                    if g["has_extra"]:
-                        labels.append(f"IM{i}_2")
-                        energies_kcal.append(float(g["tail_im_energy"]))
-                        chain_tokens.extend(["-|-->", f"IM{i}_2"])
+                    if g['has_extra']:
+                        labels.append(f'IM{i}_2')
+                        energies_kcal.append(float(g['tail_im_energy']))
+                        chain_tokens.extend(['-|-->', f'IM{i}_2'])
 
-                labels.append("P")
+                labels.append('P')
                 energies_kcal.append(E_current_kcal)
-                chain_tokens.extend(["-->", "P"])
+                chain_tokens.extend(['-->', 'P'])
 
             # Convert back to Hartree (au) for completeness in the summary
             energies_au: List[float] = [E0_au + ek / AU2KCALPERMOL for ek in energies_kcal]
 
             diagram_payload = {
-                "name": "energy_diagram_MEP",
-                "labels": labels,
-                "energies_kcal": energies_kcal,
-                "ylabel": "ΔE (kcal/mol)",
-                "energies_au": energies_au,
-                "image": str(out_dir_path / "energy_diagram_MEP.png"),
+                'name': 'energy_diagram_MEP',
+                'labels': labels,
+                'energies_kcal': energies_kcal,
+                'ylabel': 'ΔE (kcal/mol)',
+                'energies_au': energies_au,
+                'image': str(out_dir_path / 'energy_diagram_MEP.png'),
             }
 
-            labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
-            energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
-            click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
-            click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
+            labels_repr = '[' + ', '.join(f'"{lab}"' for lab in labels) + ']'
+            energies_repr = '[' + ', '.join(f'{val:.6f}' for val in energies_kcal) + ']'
+            click.echo(f'[diagram] build_energy_diagram.labels = {labels_repr}')
+            click.echo(f'[diagram] build_energy_diagram.energies_kcal = {energies_repr}')
 
-            title_note = "(MEP; all segments)"
+            title_note = '(MEP; all segments)'
             fig = build_energy_diagram(
                 energies=energies_kcal,
                 labels=labels,
-                ylabel="ΔE (kcal/mol)",
+                ylabel='ΔE (kcal/mol)',
                 baseline=True,
                 showgrid=False,
             )
             fig.update_layout(title=title_note)
 
             try:
-                png_path = out_dir_path / "energy_diagram_MEP.png"
+                png_path = out_dir_path / 'energy_diagram_MEP.png'
                 fig.write_image(str(png_path), scale=2)
-                click.echo(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'")
+                click.echo(f'[diagram] Wrote energy diagram (PNG) → "{png_path}"')
             except Exception as e:
-                click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}", err=True)
+                click.echo(f'[diagram] NOTE: PNG export skipped (install "kaleido" to enable): {e}', err=True)
 
-            chain_text = " ".join(chain_tokens)
-            click.echo(f"[diagram] State label sequence: {chain_text}")
+            chain_text = ' '.join(chain_tokens)
+            click.echo(f'[diagram] State label sequence: {chain_text}')
 
         except Exception as e:
-            click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
+            click.echo(f'[diagram] WARNING: Failed to build energy diagram: {e}', err=True)
 
         # --------------------------
         # 7) Summary (YAML)
         # --------------------------
         summary = {
-            "out_dir": str(out_dir_path),
-            "n_images": len(combined_all.images),
-            "n_segments": len(combined_all.segments),
-            "segments": [
+            'out_dir': str(out_dir_path),
+            'n_images': len(combined_all.images),
+            'n_segments': len(combined_all.segments),
+            'segments': [
                 {
-                    "index": int(s.seg_index),
-                    "tag": s.tag,
-                    "kind": s.kind,
-                    "barrier_kcal": float(s.barrier_kcal),
-                    "delta_kcal": float(s.delta_kcal),
-                    "bond_changes": (
-                        _bond_changes_block(s.summary) if (s.kind != "bridge") else ""
+                    'index': int(s.seg_index),
+                    'tag': s.tag,
+                    'kind': s.kind,
+                    'barrier_kcal': float(s.barrier_kcal),
+                    'delta_kcal': float(s.delta_kcal),
+                    'bond_changes': (
+                        _bond_changes_block(s.summary) if (s.kind != 'bridge') else ''
                     ),
                 } for s in combined_all.segments
             ],
         }
         if diagram_payload is not None:
-            summary["energy_diagrams"] = [diagram_payload]
+            summary['energy_diagrams'] = [diagram_payload]
 
-        with open(out_dir_path / "summary.yaml", "w") as f:
+        with open(out_dir_path / 'summary.yaml', 'w') as f:
             yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        click.echo(f"[write] Wrote '{out_dir_path / 'summary.yaml'}'.")
+        click.echo(f'[write] Wrote "{out_dir_path / 'summary.yaml'}".')
 
         try:
             try:
                 freeze_atoms_for_log = sorted(
                     {
                         int(i)
-                        for g in getattr(combined_all, "images", [])
-                        for i in getattr(g, "freeze_atoms", [])
+                        for g in getattr(combined_all, 'images', [])
+                        for i in getattr(g, 'freeze_atoms', [])
                     }
                 )
             except Exception:
@@ -2781,60 +2781,60 @@ def cli(
             if diagram_payload is not None:
                 diag_for_log = dict(diagram_payload)
             mep_info = {
-                "n_images": len(combined_all.images),
-                "n_segments": len(combined_all.segments),
-                "traj_pdb": str(out_dir_path / "mep.pdb") if (out_dir_path / "mep.pdb").exists() else None,
-                "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
-                "diagram": diag_for_log,
+                'n_images': len(combined_all.images),
+                'n_segments': len(combined_all.segments),
+                'traj_pdb': str(out_dir_path / 'mep.pdb') if (out_dir_path / 'mep.pdb').exists() else None,
+                'mep_plot': str(out_dir_path / 'mep_plot.png') if (out_dir_path / 'mep_plot.png').exists() else None,
+                'diagram': diag_for_log,
             }
             summary_payload = {
-                "root_out_dir": str(out_dir_path),
-                "path_dir": str(out_dir_path),
-                "path_module_dir": "path_search",
-                "pipeline_mode": mep_mode,
-                "refine_path": True,
-                "tsopt": False,
-                "thermo": False,
-                "dft": False,
-                "opt_mode": opt_mode,
-                "mep_mode": mep_mode,
-                "uma_model": calc_cfg.get("model"),
-                "command": command_str,
-                "charge": calc_cfg.get("charge"),
-                "spin": calc_cfg.get("spin"),
-                "freeze_atoms": freeze_atoms_for_log,
-                "mep": mep_info,
-                "segments": summary.get("segments", []),
-                "energy_diagrams": summary.get("energy_diagrams", []),
-                "key_files": {
-                    "summary.yaml": "YAML-format summary",
-                    "summary.log": "This summary",
-                    "mep_plot.png": "UMA MEP energy vs image index",
-                    "energy_diagram_MEP.png": "Compressed MEP diagram R–TS–IM–P",
+                'root_out_dir': str(out_dir_path),
+                'path_dir': str(out_dir_path),
+                'path_module_dir': 'path_search',
+                'pipeline_mode': mep_mode,
+                'refine_path': True,
+                'tsopt': False,
+                'thermo': False,
+                'dft': False,
+                'opt_mode': opt_mode,
+                'mep_mode': mep_mode,
+                'uma_model': calc_cfg.get('model'),
+                'command': command_str,
+                'charge': calc_cfg.get('charge'),
+                'spin': calc_cfg.get('spin'),
+                'freeze_atoms': freeze_atoms_for_log,
+                'mep': mep_info,
+                'segments': summary.get('segments', []),
+                'energy_diagrams': summary.get('energy_diagrams', []),
+                'key_files': {
+                    'summary.yaml': 'YAML-format summary',
+                    'summary.log': 'This summary',
+                    'mep_plot.png': 'UMA MEP energy vs image index',
+                    'energy_diagram_MEP.png': 'Compressed MEP diagram R–TS–IM–P',
                 },
             }
-            write_summary_log(out_dir_path / "summary.log", summary_payload)
-            click.echo(f"[write] Wrote '{out_dir_path / 'summary.log'}'.")
+            write_summary_log(out_dir_path / 'summary.log', summary_payload)
+            click.echo(f'[write] Wrote "{out_dir_path / 'summary.log'}".')
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+            click.echo(f'[write] WARNING: Failed to write summary.log: {e}', err=True)
 
         # --------------------------
         # 8) Elapsed time
         # --------------------------
-        click.echo(format_elapsed("[time] Elapsed for Path Search", time_start))
+        click.echo(format_elapsed('[time] Elapsed for Path Search', time_start))
 
     except ZeroStepLength:
-        click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
+        click.echo('ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).', err=True)
         sys.exit(2)
     except OptimizationError as e:
-        click.echo(f"ERROR: Path search failed — {e}", err=True)
+        click.echo(f'ERROR: Path search failed — {e}', err=True)
         sys.exit(3)
     except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
+        click.echo('\nInterrupted by user.', err=True)
         sys.exit(130)
     except Exception as e:
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during path search:\n" + textwrap.indent(tb, "  "), err=True)
+        tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        click.echo('Unhandled error during path search:\n' + textwrap.indent(tb, '  '), err=True)
         sys.exit(1)
     finally:
         for prepared in prepared_inputs:

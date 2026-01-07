@@ -16,19 +16,19 @@ pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 ### Examples
 ```bash
 # Multi-structure ensemble with explicit ligand charges and post-processing
-pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
-    --ligand-charge "GPP:-3,MMT:-1" --mult 1 --freeze-links True \
+pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
+    --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links True \
     --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
     --out-dir result_all_${date} --tsopt True --thermo True --dft True
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
-pdb2reaction all -i single.pdb -c "308,309" \
-    --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]" \
+pdb2reaction all -i single.pdb -c '308,309' \
+    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
     --opt-mode heavy --tsopt True --thermo True --dft True
 
 # TSOPT-only workflow (no path search)
-pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
-    --ligand-charge "GPP:-3,MMT:-1" --tsopt True --thermo True --dft True
+pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
+    --ligand-charge 'GPP:-3,MMT:-1' --tsopt True --thermo True --dft True
 ```
 
 ## Workflow
@@ -39,7 +39,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
    - The **first pocket’s total charge** is rounded to the nearest integer and propagated to scan/MEP/TSOPT (a console note appears when rounding occurs).
 
 2. **Optional staged scan (single-input only)**
-   - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `"TYR,285,CA"`; selectors accept spaces/commas/slashes/backticks/backslashes as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
+   - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
    - When `--scan-lists` is repeated, stages run **sequentially**: stage 1 relaxes the starting structure, stage 2 begins from stage 1's result, and so on.
    - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
@@ -81,7 +81,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--include-H2O BOOLEAN` | Include waters (set `False` to drop HOH/WAT/TIP3/SOL). | `True` |
 | `--exclude-backbone BOOLEAN` | Remove backbone atoms on non-substrate amino acids. | `True` |
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
-| `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
+| `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `''` |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex. | `None` |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
@@ -115,7 +115,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
-| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; `i`/`j` can be integer indices or PDB atom selectors like `"TYR,285,CA"` and are remapped internally. | _None_ |
+| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'` and are remapped internally. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan`). | _None_ |
 | `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
@@ -248,7 +248,7 @@ sopt:
     line_search: true          # enable line search
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
+    prefix: ''                 # filename prefix
     out_dir: ./result_path_search/   # output directory
     keep_last: 7               # history size for LBFGS buffers
     beta: 1.0                  # initial damping beta
@@ -274,7 +274,7 @@ sopt:
     line_search: true          # enable line search
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
+    prefix: ''                 # filename prefix
     out_dir: ./result_path_search/   # output directory
     trust_radius: 0.3          # trust-region radius
     trust_update: true         # enable trust-region updates

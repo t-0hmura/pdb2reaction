@@ -73,10 +73,10 @@ Provide a mapping; YAML overrides CLI. Shared sections reuse [`opt`](opt.md#yaml
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
 - `downhill` (`False`), `forward` (`True`), `backward` (`True`), `root` (`0`): branch selection and initial displacement index (`--forward`, `--backward`, `--root`).
-- `hessian_init` (`"calc"`), `hessian_update` (`"bofill"`), `hessian_recalc` (`null`): Hessian initialization/update cadence.
+- `hessian_init` (`'calc'`), `hessian_update` (`'bofill'`), `hessian_recalc` (`null`): Hessian initialization/update cadence.
 - `displ`, `displ_energy`, `displ_length`: displacement construction; keep defaults unless debugging.
 - Convergence thresholds: `rms_grad_thresh` (`1.0e-3`), `hard_rms_grad_thresh` (`null`), `energy_thresh` (`1.0e-6`), `imag_below` (`0.0`).
-- Output & diagnostics: `force_inflection` (`True`), `check_bonds` (`False`), `out_dir` (`"./result_irc/"`), `prefix` (`""`), `dump_fn` (`"irc_data.h5"`), `dump_every` (`5`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`"mbs"`).
+- Output & diagnostics: `force_inflection` (`True`), `check_bonds` (`False`), `out_dir` (`'./result_irc/'`), `prefix` (`''`), `dump_fn` (`'irc_data.h5'`), `dump_every` (`5`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`'mbs'`).
 
 ```yaml
 geom:
@@ -113,7 +113,7 @@ irc:
   force_inflection: true     # enforce inflection detection
   check_bonds: false         # check bonds during propagation
   out_dir: ./result_irc/     # output directory
-  prefix: ""                 # filename prefix
+  prefix: ''                 # filename prefix
   dump_fn: irc_data.h5       # IRC data filename
   dump_every: 5              # dump stride
   hessian_update: bofill     # Hessian update scheme
