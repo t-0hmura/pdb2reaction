@@ -90,7 +90,7 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import ast
 import math
@@ -135,6 +135,7 @@ from .utils import (
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
+    resolve_atom_spec_index,
 )
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
@@ -195,7 +196,11 @@ def _snapshot_geometry(g) -> Any:
             pass
 
 
-def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float]]:
+def _parse_scan_list(
+    raw: str,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float]]:
     try:
         obj = ast.literal_eval(raw)
     except Exception as e:
@@ -204,23 +209,44 @@ def _parse_scan_list(raw: str, one_based: bool) -> Tuple[Tuple[int, int, float, 
     if not (isinstance(obj, (list, tuple)) and len(obj) == 2):
         raise click.BadParameter("--scan-list must contain exactly two quadruples: [(i1,j1,low1,high1),(i2,j2,low2,high2)]")
 
+    def _resolve_index(value: Any, entry_idx: int, side_label: str) -> int:
+        if isinstance(value, (int, np.integer)):
+            idx_val = int(value)
+            if one_based:
+                idx_val -= 1
+            if idx_val < 0:
+                raise click.BadParameter(
+                    f"Negative atom index after base conversion: {idx_val} (0-based expected)."
+                )
+            return idx_val
+        if isinstance(value, str):
+            if not atom_meta:
+                raise click.BadParameter(
+                    f"--scan-list entry {entry_idx} ({side_label}) uses a string atom spec, "
+                    "but no PDB metadata is available."
+                )
+            try:
+                return resolve_atom_spec_index(value, atom_meta)
+            except ValueError as exc:
+                raise click.BadParameter(
+                    f"--scan-list entry {entry_idx} ({side_label}) {exc}"
+                )
+        raise click.BadParameter(
+            f"--scan-list entry {entry_idx} ({side_label}) must be an int index or atom spec string."
+        )
+
     parsed: List[Tuple[int, int, float, float]] = []
     for q in obj:
         if not (
             isinstance(q, (list, tuple)) and len(q) == 4
-            and isinstance(q[0], (int, np.integer))
-            and isinstance(q[1], (int, np.integer))
             and isinstance(q[2], (int, float, np.floating))
             and isinstance(q[3], (int, float, np.floating))
         ):
             raise click.BadParameter(f"--scan-list entry must be (i,j,low,high): got {q}")
 
-        i, j, low, high = int(q[0]), int(q[1]), float(q[2]), float(q[3])
-        if one_based:
-            i -= 1
-            j -= 1
-        if i < 0 or j < 0:
-            raise click.BadParameter(f"Negative atom index after base conversion: {(i, j)} (0-based expected).")
+        i = _resolve_index(q[0], len(parsed) + 1, "i")
+        j = _resolve_index(q[1], len(parsed) + 1, "j")
+        low, high = float(q[2]), float(q[3])
         if low <= 0.0 or high <= 0.0:
             raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
         parsed.append((i, j, low, high))
@@ -558,8 +584,12 @@ def cli(
         )
         click.echo(pretty_block("bias", echo_bias))
 
+        pdb_atom_meta: List[Dict[str, Any]] = []
+        if input_path.suffix.lower() == ".pdb":
+            pdb_atom_meta = load_pdb_atom_metadata(input_path)
+
         (i1, j1, low1, high1), (i2, j2, low2, high2) = _parse_scan_list(
-            scan_list_raw, one_based=one_based
+            scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
         )
         click.echo(
             pretty_block(
@@ -568,17 +598,14 @@ def cli(
             )
         )
 
-        pdb_atom_meta: List[Dict[str, Any]] = []
-        if input_path.suffix.lower() == ".pdb":
-            pdb_atom_meta = load_pdb_atom_metadata(input_path)
-            if pdb_atom_meta:
-                click.echo("[scan2d] PDB atom details for scanned pairs:")
-                legend = format_pdb_atom_metadata_header()
-                click.echo(f"        legend: {legend}")
-                click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
-                click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
+        if pdb_atom_meta:
+            click.echo("[scan2d] PDB atom details for scanned pairs:")
+            legend = format_pdb_atom_metadata_header()
+            click.echo(f"        legend: {legend}")
+            click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
+            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
+            click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
+            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
 
         # Temporary and grid directories
         tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
