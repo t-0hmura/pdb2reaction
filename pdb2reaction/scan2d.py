@@ -7,7 +7,7 @@ scan2d — Two-distance 2D scan with harmonic restraints
 Usage (CLI)
 -----------
     pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-m <multiplicity>] \
-        --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]" \
+        --scan-list '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]' \
         [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
@@ -27,11 +27,11 @@ Examples
 --------
     # Minimal example (two distance ranges)
     pdb2reaction scan2d -i input.pdb -q 0 \
-        --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]"
+        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
 
     # LBFGS with trajectory dumping and PNG + HTML plots
     pdb2reaction scan2d -i input.pdb -q 0 \
-        --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20)]" \
+        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20)]' \
         --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
         --preopt True --baseline min
 
@@ -41,7 +41,7 @@ Description
 - Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
-    ``"TYR,285,CA"`` or ``"MMT,309,C10"`` (resname, resseq, atom).
+    ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
@@ -377,7 +377,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     "scan_list_raw",
     type=str,
     required=True,
-    help='Python-like list with two quadruples: "[(i1,j1,low1,high1),(i2,j2,low2,high2)]".',
+    help="Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.",
 )
 @click.option(
     "--one-based",

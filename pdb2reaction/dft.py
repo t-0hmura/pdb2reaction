@@ -7,17 +7,17 @@ dft — Single-point DFT calculation
 Usage (CLI)
 -----------
     pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-m <multiplicity>] \
-        [--func-basis "FUNC/BASIS"] [--max-cycle <int>] [--conv-tol <hartree>] \
+        [--func-basis 'FUNC/BASIS'] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
         [--convert-files {True|False}] [--args-yaml <file>]
 
 Examples
 --------
     # Default GPU-first policy with an explicit functional/basis pair
-    pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis "wb97m-v/6-31g**"
+    pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis 'wb97m-v/6-31g**'
 
     # Tight SCF controls with a larger basis and CPU-only fallback
-    pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis "wb97m-v/def2-tzvpd" \
+    pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis 'wb97m-v/def2-tzvpd' \
         --max-cycle 150 --conv-tol 1e-9 --engine cpu
 
 Description
@@ -31,7 +31,7 @@ Description
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
   The geometry is written back unchanged as input_geometry.xyz.
-- Functional/basis specified as "FUNC/BASIS" via --func-basis (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-svp", "wb97m-v/def2-tzvpd").
+- Functional/basis specified as 'FUNC/BASIS' via --func-basis (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-svp', 'wb97m-v/def2-tzvpd').
   Names are case-insensitive in PySCF.
 - Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
   PySCF's default selection.
@@ -130,7 +130,7 @@ DFT_KW: Dict[str, Any] = {
 
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
-    Parse "FUNC/BASIS" into (xc, basis).
+    Parse 'FUNC/BASIS' into (xc, basis).
     Mixed case is accepted (PySCF is case-insensitive for common names).
     """
     if not s or "/" not in s:
@@ -396,7 +396,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     type=str,
     default=f"{DFT_DEFAULT_FUNC}/{DFT_DEFAULT_BASIS}",
     show_default=True,
-    help='Exchange–correlation functional and basis set as "FUNC/BASIS" (e.g., "wb97m-v/6-31g**", "wb97m-v/def2-tzvpd").',
+    help="Exchange–correlation functional and basis set as 'FUNC/BASIS' (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-tzvpd').",
 )
 @click.option("--max-cycle", type=int, default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
 @click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh).")

@@ -13,7 +13,7 @@ A Gaussian `.gjf` template seeds the charge/spin defaults and enables automatic 
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE -m MULT \
                  [--opt-mode light|heavy] [--freeze-links BOOL] \
-                 [--dist-freeze "[(i,j,target_A), ...]"] [--one-based {True|False}] \
+                 [--dist-freeze '[(i,j,target_A), ...]'] [--one-based {True|False}] \
                  [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
                  [--max-cycles N] [--thresh PRESET] [--args-yaml FILE] \
                  [--convert-files {True|False}]
