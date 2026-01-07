@@ -54,6 +54,8 @@ Description
 -----------
 Runs a one-shot pipeline centered on pocket models. The command is intentionally permissive about how
 ``-i/--input`` is given: it accepts repeated ``-i`` flags and the sloppy form ``-i A.pdb B.pdb C.pdb``.
+``--scan-lists`` accepts repeated flags or the sloppy form
+``--scan-lists "[(...)]" "[(...)]"`` to define sequential scan stages.
 
 Pipeline overview
 -----------------
@@ -2065,6 +2067,8 @@ def _irc_and_match(
         "when repeated, stages run **sequentially**, each starting from the prior stage's relaxed "
         "structure. "
         'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
+        "You may also pass a single --scan-lists followed by multiple values "
+        '(e.g., "--scan-lists \'[(12,45,1.35)]\' \'[(10,55,2.20)]\'"). '
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. Stage results feed into the MEP step (path_search or path_opt)."
     ),
@@ -2213,6 +2217,10 @@ def cli(
                 )
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
+
+    scan_vals = _collect_option_values(argv_all, ("--scan-lists",))
+    if scan_vals:
+        scan_lists_raw = tuple(scan_vals)
 
     is_single = len(input_paths) == 1
     has_scan = bool(scan_lists_raw)
