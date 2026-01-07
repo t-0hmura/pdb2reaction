@@ -12,7 +12,7 @@ points directly. A precomputed `surface.csv` can also be visualized without
 rerunning the scan.
 
 > If you want to adjust the plot for better visibility, we recommend adding the
-option to load the CSV after the scan finishes and changing `--zmax`.
+option to load the CSV after the scan finishes and changing `--zmin` and `--zmax`.
 
 ## Usage
 ```bash
@@ -36,7 +36,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d -i input.pdb -q 0 \
     --scan-list '[("TYR,285,CA",1.30,3.10),("MMT,309,C10",1.20,3.20),("TYR,285,CB",1.10,3.00)]' \
-    --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
+    --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
 
 ## Workflow
