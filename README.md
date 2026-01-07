@@ -207,20 +207,20 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
 ```
 
 Key points:
 
 - `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
-  - a 1‑based atom index **or** a PDB atom selector string like `'TYR,285,CA'` (delimiters: space/comma/slash/backtick/backslash),
+  - a 1‑based atom index **or** a PDB atom selector string like `'TYR,285,CA'` (delimiters can be: space/comma/slash/backtick/backslash `space` `,` `/` `` ` `` `\`),
   - automatically remapped to the cluster-model indices.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
