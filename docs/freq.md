@@ -50,7 +50,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
   atm is converted internally to Pa. When `--dump True`, a `thermoanalysis.yaml` snapshot is
   also written.
 - **Performance & exit behavior**: the implementation minimizes GPU memory usage by keeping
-  a single Hessian resident, preferring upper-triangular eigendecompositions (`UPLO="U"`).
+  a single Hessian resident, preferring upper-triangular eigendecompositions (`UPLO='U'`).
   Keyboard interrupts exit with code 130; other failures print a traceback and exit with code 1.
 
 ## CLI options

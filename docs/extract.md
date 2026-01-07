@@ -23,16 +23,16 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
 pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
 
 # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
 
 # Name-based substrate selection including all matches (WARNING is logged)
-pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
 
 # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge "GPP:-3,SAM:1"
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
 
 # Multi-structure to multi outputs with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb pocket2.pdb --ligand-charge "GPP:-3,SAM:1"
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --ligand-charge 'GPP:-3,SAM:1'
 ```
 
 ## Workflow
@@ -75,7 +75,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb po
 
 ### Substrate specification (`-c/--center`)
 - PDB path: the coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
-- Residue IDs: `"123,124"`, `"A:123,B:456"`, `"123A"`, `"A:123A"` (insertion codes supported).
+- Residue IDs: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes supported).
 - Residue names: comma-separated list (case insensitive). If multiple residues share a name, **all** matches are included and a warning is logged.
 
 ## CLI options
@@ -89,7 +89,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb po
 | `--include-H2O BOOL` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `true` |
 | `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `true` |
 | `--add-linkH BOOL` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `true` |
-| `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
+| `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `''` |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | `None` |
 | `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
 
@@ -102,7 +102,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb po
                # Output directories are not created automatically; ensure they exist
 ```
 - Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
-- Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
+- Programmatic use (`extract_api`) returns `{'outputs': [...], 'counts': [...], 'charge_summary': {...}}`.
 
 ## Notes
 - `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).

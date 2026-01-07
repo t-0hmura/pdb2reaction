@@ -197,8 +197,8 @@ from .freq import (
 
 # Normalization helper
 _OPT_MODE_ALIASES = (
-    (("light",), "light"),
-    (("heavy",), "heavy"),
+    (('light',), 'light'),
+    (('heavy',), 'heavy'),
 )
 
 
@@ -222,7 +222,7 @@ def _mw_projected_hessian_inplace(H_t: torch.Tensor,
             frozen = set(int(i) for i in freeze_idx if 0 <= int(i) < N)
             active_idx = [i for i in range(N) if i not in frozen]
             if len(active_idx) == 0:
-                raise RuntimeError("All atoms are frozen; no active DOF left for TR projection.")
+                raise RuntimeError('All atoms are frozen; no active DOF left for TR projection.')
             # mass-weight first
             H_t = _mass_weighted_hessian(H_t, masses_au_t)
             # take active DOF submatrix
@@ -252,7 +252,7 @@ def _mw_projected_hessian_inplace(H_t: torch.Tensor,
             QtHQ = QtH @ Q
             H_t.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
             del Q, Qt, QtH, QtHQ
-        if torch.cuda.is_available() and device.type == "cuda":
+        if torch.cuda.is_available() and device.type == 'cuda':
             torch.cuda.empty_cache()
         return H_t
 
@@ -302,11 +302,11 @@ def _mode_direction_by_root(H_t: torch.Tensor,
                 w, v_mw_sub = torch.lobpcg(Hmw_proj, k=1, largest=False)
                 u_mw_sub = v_mw_sub[:, 0]
             except Exception:
-                evals_f, evecs_f = torch.linalg.eigh(Hmw_proj, UPLO="U")
+                evals_f, evecs_f = torch.linalg.eigh(Hmw_proj, UPLO='U')
                 u_mw_sub = evecs_f[:, torch.argmin(evals_f)]
                 del evals_f, evecs_f
         else:
-            evals, evecs_mw = torch.linalg.eigh(Hmw_proj, UPLO="U")  # ascending
+            evals, evecs_mw = torch.linalg.eigh(Hmw_proj, UPLO='U')  # ascending
             neg = (evals < 0)
             neg_inds = torch.nonzero(neg, as_tuple=False).view(-1)
             if neg_inds.numel() == 0:
@@ -379,7 +379,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
         Hmw = _mw_projected_hessian_inplace(H_t, coords_bohr_t, masses_au_t, freeze_idx=freeze_idx)
 
         # eigensolve (upper triangle)
-        omega2, Vsub = torch.linalg.eigh(Hmw, UPLO="U")
+        omega2, Vsub = torch.linalg.eigh(Hmw, UPLO='U')
 
         sel = torch.abs(omega2) > tol
         omega2 = omega2[sel]
@@ -425,7 +425,7 @@ def _frequencies_cm_only(H_t: torch.Tensor,
         coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H_t.dtype, device=device)
 
         Hmw = _mw_projected_hessian_inplace(H_t, coords_bohr_t, masses_au_t, freeze_idx=freeze_idx)
-        omega2 = torch.linalg.eigvalsh(Hmw, UPLO="U")
+        omega2 = torch.linalg.eigvalsh(Hmw, UPLO='U')
 
         sel = torch.abs(omega2) > tol
         omega2 = omega2[sel]
@@ -526,7 +526,7 @@ def _frequencies_from_Hact(H_act: torch.Tensor,
                                         dtype=H_act.dtype, device=device)
         Hmw = H_act.clone()
         _mw_tr_project_active_inplace(Hmw, coords_act, masses_act_au)
-        omega2 = torch.linalg.eigvalsh(Hmw, UPLO="U")
+        omega2 = torch.linalg.eigvalsh(Hmw, UPLO='U')
         sel = torch.abs(omega2) > tol
         omega2 = omega2[sel]
         s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
@@ -558,7 +558,7 @@ def _modes_from_Hact_embedded(H_act: torch.Tensor,
                                         dtype=H_act.dtype, device=device)
         Hmw = H_act.clone()
         _mw_tr_project_active_inplace(Hmw, coords_act, masses_act_au)
-        omega2, Vsub = torch.linalg.eigh(Hmw, UPLO="U")
+        omega2, Vsub = torch.linalg.eigh(Hmw, UPLO='U')
         sel = torch.abs(omega2) > tol
         omega2 = omega2[sel]
         Vsub = Vsub[:, sel]  # (3N_act, nsel)
@@ -605,11 +605,11 @@ def _mode_direction_by_root_from_Hact(H_act: torch.Tensor,
                 w, V = torch.lobpcg(Hmw, k=1, largest=False)
                 u_mw = V[:, 0]
             except Exception:
-                vals, vecs = torch.linalg.eigh(Hmw, UPLO="U")
+                vals, vecs = torch.linalg.eigh(Hmw, UPLO='U')
                 u_mw = vecs[:, torch.argmin(vals)]
                 del vals, vecs
         else:
-            vals, vecs = torch.linalg.eigh(Hmw, UPLO="U")
+            vals, vecs = torch.linalg.eigh(Hmw, UPLO='U')
             neg = (vals < 0)
             neg_inds = torch.nonzero(neg, as_tuple=False).view(-1)
             if neg_inds.numel() == 0:
@@ -735,9 +735,9 @@ class HessianDimer:
 
     def __init__(self,
                  fn: str,
-                 out_dir: str = "./result_dimer",
-                 thresh_loose: str = "gau_loose",
-                 thresh: str = "gau",
+                 out_dir: str = './result_dimer',
+                 thresh_loose: str = 'gau_loose',
+                 thresh: str = 'gau',
                  update_interval_hessian: int = 100,
                  neg_freq_thresh_cm: float = 10.0,
                  flatten_amp_ang: float = 0.20,
@@ -745,7 +745,7 @@ class HessianDimer:
                  mem: int = 100000,
                  use_lobpcg: bool = True,  # deprecated; ignored
                  uma_kwargs: Optional[dict] = None,
-                 device: str = "auto",
+                 device: str = 'auto',
                  dump: bool = False,
                  #
                  root: int = 0,
@@ -764,8 +764,8 @@ class HessianDimer:
 
         self.fn = fn
         self.out_dir = Path(out_dir); self.out_dir.mkdir(parents=True, exist_ok=True)
-        self.vib_dir = self.out_dir / "vib"; self.vib_dir.mkdir(parents=True, exist_ok=True)
-        self.ref_pdb: Optional[Path] = Path(fn) if Path(fn).suffix.lower() == ".pdb" else None
+        self.vib_dir = self.out_dir / 'vib'; self.vib_dir.mkdir(parents=True, exist_ok=True)
+        self.ref_pdb: Optional[Path] = Path(fn) if Path(fn).suffix.lower() == '.pdb' else None
 
         self.thresh_loose = thresh_loose
         self.thresh = thresh
@@ -788,28 +788,28 @@ class HessianDimer:
         self._cycles_spent = 0
 
         # UMA settings
-        self.uma_kwargs = dict(charge=0, spin=1, model="uma-s-1p1",
-                               task_name="omol", device="auto") if uma_kwargs is None else dict(uma_kwargs)
+        self.uma_kwargs = dict(charge=0, spin=1, model='uma-s-1p1',
+                               task_name='omol', device='auto') if uma_kwargs is None else dict(uma_kwargs)
 
         # Geometry & masses (use provided geom kwargs so freeze_atoms etc. apply)
         gkw = dict(geom_kwargs or {})
-        coord_type = gkw.pop("coord_type", GEOM_KW_DEFAULT["coord_type"])
+        coord_type = gkw.pop('coord_type', GEOM_KW_DEFAULT['coord_type'])
         self.geom = geom_loader(fn, coord_type=coord_type, **gkw)
         self.masses_amu = np.array([atomic_masses[z] for z in self.geom.atomic_numbers])
         self.masses_au_t = torch.as_tensor(self.masses_amu * AMU2AU, dtype=torch.float32)
 
         # Preserve freeze list (for PHVA)
-        self.freeze_atoms: List[int] = list(gkw.get("freeze_atoms", [])) if "freeze_atoms" in gkw else []
+        self.freeze_atoms: List[int] = list(gkw.get('freeze_atoms', [])) if 'freeze_atoms' in gkw else []
 
         # Device
         self.device = _torch_device(device)
         self.masses_au_t = self.masses_au_t.to(self.device)
 
         # temp file for Dimer orientation (N_raw)
-        self.mode_path = self.out_dir / ".dimer_mode.dat"
+        self.mode_path = self.out_dir / '.dimer_mode.dat'
 
         self.dump = bool(dump)
-        self.optim_all_path = self.out_dir / "optimization_all.trj"
+        self.optim_all_path = self.out_dir / 'optimization_all.trj'
 
     # ----- One dimer segment for up to n_steps; returns (steps_done, converged) -----
     def _dimer_segment(self, threshold: str, n_steps: int) -> Tuple[int, bool]:
@@ -819,11 +819,11 @@ class HessianDimer:
         # Merge user dimer kwargs (but enforce N_raw & write_orientations)
         dimer_kwargs = dict(self.dimer_kwargs)
         dimer_kwargs.update({
-            "calculator": calc_sp,
-            "N_raw": str(self.mode_path),
-            "write_orientations": False,
-            "seed": 0,
-            "mem": self.mem,
+            'calculator': calc_sp,
+            'N_raw': str(self.mode_path),
+            'write_orientations': False,
+            'seed': 0,
+            'mem': self.mem,
         })
         dimer = Dimer(**dimer_kwargs)
 
@@ -832,10 +832,10 @@ class HessianDimer:
         # LBFGS kwargs: enforce thresh/max_cycles/out_dir/dump; allow others
         lbfgs_kwargs = dict(self.lbfgs_kwargs)
         lbfgs_kwargs.update({
-            "max_cycles": n_steps,
-            "thresh": threshold,
-            "out_dir": str(self.out_dir),
-            "dump": self.dump,
+            'max_cycles': n_steps,
+            'thresh': threshold,
+            'out_dir': str(self.out_dir),
+            'dump': self.dump,
         })
         opt = LBFGS(self.geom, **lbfgs_kwargs)
         opt.run()
@@ -845,10 +845,10 @@ class HessianDimer:
 
         # Append to concatenated trajectory if dump enabled
         if self.dump:
-            part_path = self.out_dir / "optimization.trj"
+            part_path = self.out_dir / 'optimization.trj'
             if part_path.exists():
-                with self.optim_all_path.open("a", encoding="utf-8") as f_all, \
-                     part_path.open("r", encoding="utf-8") as f_part:
+                with self.optim_all_path.open('a', encoding='utf-8') as f_all, \
+                     part_path.open('r', encoding='utf-8') as f_part:
                     f_all.write(f_part.read())
         return steps, converged
 
@@ -890,7 +890,7 @@ class HessianDimer:
                     H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                     self.masses_au_t, active_idx, self.device, root=self.root
                 )
-            np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
+            np.savetxt(self.mode_path, mode_xyz, fmt='%.12f')
             del H_t, coords_bohr_t, mode_xyz
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -1039,30 +1039,30 @@ class HessianDimer:
                                         dtype=H_t.dtype, device=H_t.device)
 
         if H_t.size(0) == 3 * N:
-            print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
+            print('[CHECK] TR-projection residual check skipped to conserve VRAM.')
             mode_xyz = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
-            print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+            print('[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.')
             mode_xyz = _mode_direction_by_root_from_Hact(
                 H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
-        np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
+        np.savetxt(self.mode_path, mode_xyz, fmt='%.12f')
         del mode_xyz, coords_bohr_t, H_t
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         # (2) Loose loop (or initial pass)
         if self.root != 0:
-            print("[WARNING] root != 0. Using this root only for the initial dimer loop.")
-            print(f"Dimer loop with initial direction from mode {self.root}...")
+            print('[WARNING] root != 0. Using this root only for the initial dimer loop.')
+            print(f'Dimer loop with initial direction from mode {self.root}...')
             self.root = 0
             self.thresh_loose = self.thresh
         else:
-            print("Loose dimer loop...")
+            print('Loose dimer loop...')
 
         self._dimer_loop(self.thresh_loose)
 
@@ -1071,27 +1071,27 @@ class HessianDimer:
         coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
         if H_t.size(0) == 3 * N:
-            print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
+            print('[CHECK] TR-projection residual check skipped to conserve VRAM.')
             mode_xyz = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
-            print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+            print('[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.')
             mode_xyz = _mode_direction_by_root_from_Hact(
                 H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
-        np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
+        np.savetxt(self.mode_path, mode_xyz, fmt='%.12f')
         del mode_xyz, coords_bohr_t, H_t
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        print("Normal dimer loop...")
+        print('Normal dimer loop...')
         self._dimer_loop(self.thresh)
 
         # (4) Flatten loop — exact Hessian each iteration & Bofill only for flatten
-        print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
+        print('Flatten loop with Bofill-updated active Hessian (flatten displacements only)...')
 
         # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
         H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
@@ -1117,7 +1117,7 @@ class HessianDimer:
             )
             n_imag = int(np.sum(freqs_cm_approx < -abs(self.neg_freq_thresh_cm)))
             approx_ims = [float(x) for x in freqs_cm_approx if x < -abs(self.neg_freq_thresh_cm)]
-            print(f"[IMAG~] n≈{n_imag}  (approx imag: {approx_ims})")
+            print(f'[IMAG~] n≈{n_imag}  (approx imag: {approx_ims})')
             if n_imag <= 1:
                 break
 
@@ -1144,7 +1144,7 @@ class HessianDimer:
                 H_act, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
-            np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
+            np.savetxt(self.mode_path, mode_xyz, fmt='%.12f')
 
             # (e) Re-optimize with Dimer (consumes global cycle budget)
             self._dimer_loop(self.thresh)
@@ -1160,7 +1160,7 @@ class HessianDimer:
                 torch.cuda.empty_cache()
 
         # (5) Final outputs
-        final_xyz = self.out_dir / "final_geometry.xyz"
+        final_xyz = self.out_dir / 'final_geometry.xyz'
         atoms_final = Atoms(self.geom.atoms, positions=(self.geom.cart_coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
         write(final_xyz, atoms_final)
 
@@ -1180,7 +1180,7 @@ class HessianDimer:
         del H_t
         neg_idx = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
         if len(neg_idx) == 0:
-            print("[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1)." % (freqs_cm.min(),))
+            print('[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1).' % (freqs_cm.min(),))
             del modes
         else:
             # primary (by root)
@@ -1193,15 +1193,15 @@ class HessianDimer:
             v_cart = (mode_mw / torch.sqrt(m3)).detach().cpu().numpy()
             v_cart = v_cart / np.linalg.norm(v_cart)
             del modes, masses_amu_t, m3
-            out_trj = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.trj"
-            out_pdb = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb"
+            out_trj = self.vib_dir / f'final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.trj'
+            out_pdb = self.vib_dir / f'final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb'
             _write_mode_trj_and_pdb(
                 self.geom,
                 v_cart,
                 out_trj,
                 amplitude_ang=0.8,
                 n_frames=20,
-                comment=f"imag {freqs_cm[primary_idx]:+.2f} cm-1",
+                comment=f'imag {freqs_cm[primary_idx]:+.2f} cm-1',
                 ref_pdb=self.ref_pdb,
                 write_pdb=self.ref_pdb is not None,
                 out_pdb=out_pdb,
@@ -1209,8 +1209,8 @@ class HessianDimer:
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        print(f"[DONE] Saved final geometry → {final_xyz}")
-        print(f"[DONE] Mode files → {self.vib_dir}")
+        print(f'[DONE] Saved final geometry → {final_xyz}')
+        print(f'[DONE] Mode files → {self.vib_dir}')
 
 
 # ===================================================================
@@ -1225,42 +1225,42 @@ CALC_KW = dict(_UMA_CALC_KW)
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
 OPT_BASE_KW = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
-    "out_dir": "./result_tsopt/",  # base output directory for TS optimization artifacts
+    'out_dir': './result_tsopt/',  # base output directory for TS optimization artifacts
 })
 
 DIMER_KW = {
     # --- Geometry / length ---
-    "length": 0.0189,                 # dimer half-length in Bohr (≈ 0.01 Å)
+    'length': 0.0189,                 # dimer half-length in Bohr (≈ 0.01 Å)
 
     # --- Rotation loop settings ---
-    "rotation_max_cycles": 15,        # max rotation cycles per update
-    "rotation_method": "fourier",     # "fourier" (robust) | "direct" (steepest-like)
-    "rotation_thresh": 1e-4,          # threshold on ||rot_force||
-    "rotation_tol": 1,                # degrees; skip rotation if |angle| < tol
-    "rotation_max_element": 0.001,    # max element for direct rotation step (Bohr)
-    "rotation_interpolate": True,     # interpolate f1 during rotation (Fourier method)
-    "rotation_disable": False,        # disable rotation (use given N as-is)
-    "rotation_disable_pos_curv": True,# if curvature positive after rotation, restore previous N
-    "rotation_remove_trans": True,    # remove net translation from N
+    'rotation_max_cycles': 15,        # max rotation cycles per update
+    'rotation_method': 'fourier',     # 'fourier' (robust) | 'direct' (steepest-like)
+    'rotation_thresh': 1e-4,          # threshold on ||rot_force||
+    'rotation_tol': 1,                # degrees; skip rotation if |angle| < tol
+    'rotation_max_element': 0.001,    # max element for direct rotation step (Bohr)
+    'rotation_interpolate': True,     # interpolate f1 during rotation (Fourier method)
+    'rotation_disable': False,        # disable rotation (use given N as-is)
+    'rotation_disable_pos_curv': True,# if curvature positive after rotation, restore previous N
+    'rotation_remove_trans': True,    # remove net translation from N
 
     # --- Translational part of projected force ---
-    "trans_force_f_perp": True,       # include perpendicular force into translational component when C<0
+    'trans_force_f_perp': True,       # include perpendicular force into translational component when C<0
 
     # --- Initial guess helpers (mutually exclusive) ---
-    "bonds": None,                    # Optional[List[Tuple[int,int]]], use weighted-bond mode as N_raw
-    "N_hessian": None,                # Optional[str], path to HDF5 Hessian; use 1st imag. mode as N_raw
+    'bonds': None,                    # Optional[List[Tuple[int,int]]], use weighted-bond mode as N_raw
+    'N_hessian': None,                # Optional[str], path to HDF5 Hessian; use 1st imag. mode as N_raw
 
     # --- Optional bias potentials for robustness ---
-    "bias_rotation": False,           # quadratic bias along initial N during rotation
-    "bias_translation": False,        # add Gaussians along the path to stabilize translation
-    "bias_gaussian_dot": 0.1,         # target dot product when tuning Gaussian height
+    'bias_rotation': False,           # quadratic bias along initial N during rotation
+    'bias_translation': False,        # add Gaussians along the path to stabilize translation
+    'bias_gaussian_dot': 0.1,         # target dot product when tuning Gaussian height
 
     # --- Stochastic control / IO ---
-    "seed": None,                     # RNG seed; Runner sets to 0 for determinism
-    "write_orientations": True,       # write N.trj each call; Runner overrides to False to reduce IO
+    'seed': None,                     # RNG seed; Runner sets to 0 for determinism
+    'write_orientations': True,       # write N.trj each call; Runner overrides to False to reduce IO
 
     # --- Hessian forwarding ---
-    "forward_hessian": True,          # allow forwarding get_hessian to wrapped calculator
+    'forward_hessian': True,          # allow forwarding get_hessian to wrapped calculator
 }
 
 # Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW
@@ -1268,37 +1268,37 @@ LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
-    "thresh_loose": "gau_loose",      # loose threshold preset for first pass
-    "thresh": "gau",                  # main threshold preset for TS search
-    "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
-    "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
-    "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 0,            # max flattening iterations
-    "flatten_sep_cutoff": 2.0,        # minimum distance between representative atoms (Å)
-    "flatten_k": 10,                  # number of representative atoms per mode
-    "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
-    "use_lobpcg": True,               # deprecated (ignored)
-    "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
-    "root": 0,                        # 0: follow the most negative mode
-    "dimer": {**DIMER_KW},            # default kwargs forwarded to Dimer (Runner may override some)
-    "lbfgs": {**LBFGS_TS_KW},         # default kwargs forwarded to inner LBFGS
+    'thresh_loose': 'gau_loose',      # loose threshold preset for first pass
+    'thresh': 'gau',                  # main threshold preset for TS search
+    'update_interval_hessian': 500,   # LBFGS cycles per Hessian refresh for direction
+    'neg_freq_thresh_cm': 5.0,        # treat ν < -this as imaginary (cm^-1)
+    'flatten_amp_ang': 0.10,          # mass-scaled displacement amplitude for flattening (Å)
+    'flatten_max_iter': 0,            # max flattening iterations
+    'flatten_sep_cutoff': 2.0,        # minimum distance between representative atoms (Å)
+    'flatten_k': 10,                  # number of representative atoms per mode
+    'mem': 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
+    'use_lobpcg': True,               # deprecated (ignored)
+    'device': 'auto',                 # 'cuda'|'cpu'|'auto' for torch-side ops
+    'root': 0,                        # 0: follow the most negative mode
+    'dimer': {**DIMER_KW},            # default kwargs forwarded to Dimer (Runner may override some)
+    'lbfgs': {**LBFGS_TS_KW},         # default kwargs forwarded to inner LBFGS
 }
 
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
 RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RSIRFO_KW.update({
-    "roots": [0],               # mode indices to follow uphill
-    "hessian_ref": None,        # reference Hessian file (HDF5)
-    "rx_modes": None,           # reaction-mode definitions for projection
-    "prim_coord": None,         # primary coordinates for monitoring
-    "rx_coords": None,          # reaction coordinates for monitoring
-    "hessian_update": "bofill", # override base "bfgs"
-    "hessian_recalc_reset": True,# reset recalc counter after exact Hessian
-    "max_micro_cycles": 50,     # micro-iterations per macro cycle
-    "augment_bonds": False,     # augment reaction path based on bond analysis
-    "min_line_search": True,    # enforce minimum line-search step
-    "max_line_search": True,    # enforce maximum line-search step
-    "assert_neg_eigval": False, # ensure a negative eigenvalue at convergence
+    'roots': [0],               # mode indices to follow uphill
+    'hessian_ref': None,        # reference Hessian file (HDF5)
+    'rx_modes': None,           # reaction-mode definitions for projection
+    'prim_coord': None,         # primary coordinates for monitoring
+    'rx_coords': None,          # reaction coordinates for monitoring
+    'hessian_update': 'bofill', # override base 'bfgs'
+    'hessian_recalc_reset': True,# reset recalc counter after exact Hessian
+    'max_micro_cycles': 50,     # micro-iterations per macro cycle
+    'augment_bonds': False,     # augment reaction path based on bond analysis
+    'min_line_search': True,    # enforce minimum line-search step
+    'max_line_search': True,    # enforce maximum line-search step
+    'assert_neg_eigval': False, # ensure a negative eigenvalue at convergence
 })
 
 
@@ -1307,79 +1307,79 @@ RSIRFO_KW.update({
 # ===================================================================
 
 @click.command(
-    help="Transition state optimization (Dimer or RS-I-RFO).",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    help='Transition state optimization (Dimer or RS-I-RFO).',
+    context_settings={'help_option_names': ['-h', '--help']},
 )
 @click.option(
-    "-i", "--input",
-    "input_path",
+    '-i', '--input',
+    'input_path',
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure (.pdb, .xyz, .trj, ...)",
+    help='Input structure (.pdb, .xyz, .trj, ...)',
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option('-q', '--charge', type=int, required=False, help='Charge of the ML region.')
 @click.option(
-    "--workers",
+    '--workers',
     type=int,
-    default=CALC_KW["workers"],
+    default=CALC_KW['workers'],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help='UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).',
 )
 @click.option(
-    "--workers-per-node",
-    "workers_per_node",
+    '--workers-per-node',
+    'workers_per_node',
     type=int,
-    default=CALC_KW["workers_per_node"],
+    default=CALC_KW['workers_per_node'],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help='Workers per node when using a parallel UMA predictor (workers>1).',
 )
 @click.option(
-    "--ligand-charge",
+    '--ligand-charge',
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help='Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.',
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
-@click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
-              help="Freeze parent atoms of link hydrogens (PDB only).")
+@click.option('-m', '--multiplicity', 'spin', type=int, default=1, show_default=True, help='Spin multiplicity (2S+1) for the ML region.')
+@click.option('--freeze-links', type=click.BOOL, default=True, show_default=True,
+              help='Freeze parent atoms of link hydrogens (PDB only).')
 @click.option(
-    "--convert-files",
-    "convert_files",
+    '--convert-files',
+    'convert_files',
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help='Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.',
 )
-@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
+@click.option('--max-cycles', type=int, default=10000, show_default=True, help='Max cycles / steps cap')
 @click.option(
-    "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    '--opt-mode',
+    type=click.Choice(['light', 'heavy'], case_sensitive=False),
+    default='light',
     show_default=True,
-    help="light (=Dimer) or heavy (=RSIRFO)",
+    help='light (=Dimer) or heavy (=RSIRFO)',
 )
-@click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump optimization trajectory")
-@click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory")
+@click.option('--dump', type=click.BOOL, default=False, show_default=True,
+              help='Dump optimization trajectory')
+@click.option('--out-dir', type=str, default='./result_tsopt/', show_default=True, help='Output directory')
 @click.option(
-    "--thresh",
+    '--thresh',
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset for the active optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help='Convergence preset for the active optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).',
 )
 @click.option(
-    "--args-yaml",
+    '--args-yaml',
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, opt, dimer, rsirfo).",
+    help='YAML with extra args (sections: geom, calc, opt, dimer, rsirfo).',
 )
 @click.option(
-    "--hessian-calc-mode",
-    type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
+    '--hessian-calc-mode',
+    type=click.Choice(['FiniteDifference', 'Analytical'], case_sensitive=False),
     default=None,
-    help="Choose UMA Hessian evaluation mode (overrides YAML/calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
+    help='Choose UMA Hessian evaluation mode (overrides YAML/calc.hessian_calc_mode). Defaults to "FiniteDifference".',
 )
 def cli(
     input_path: Path,
@@ -1407,7 +1407,7 @@ def cli(
         charge,
         spin,
         ligand_charge=ligand_charge,
-        prefix="[tsopt]",
+        prefix='[tsopt]',
     )
     time_start = time.perf_counter()
 
@@ -1422,69 +1422,69 @@ def cli(
     rsirfo_cfg = dict(RSIRFO_KW)
 
     # CLI overrides
-    calc_cfg["charge"] = int(charge)
-    calc_cfg["spin"]   = int(spin)
-    calc_cfg["workers"] = int(workers)
-    calc_cfg["workers_per_node"] = int(workers_per_node)
-    opt_cfg["max_cycles"] = int(max_cycles)
-    opt_cfg["dump"]       = bool(dump)
-    opt_cfg["out_dir"]    = out_dir
+    calc_cfg['charge'] = int(charge)
+    calc_cfg['spin']   = int(spin)
+    calc_cfg['workers'] = int(workers)
+    calc_cfg['workers_per_node'] = int(workers_per_node)
+    opt_cfg['max_cycles'] = int(max_cycles)
+    opt_cfg['dump']       = bool(dump)
+    opt_cfg['out_dir']    = out_dir
     if thresh is not None:
-        opt_cfg["thresh"] = str(thresh)
-        simple_cfg["thresh"] = str(thresh)
-        rsirfo_cfg["thresh"] = str(thresh)
+        opt_cfg['thresh'] = str(thresh)
+        simple_cfg['thresh'] = str(thresh)
+        rsirfo_cfg['thresh'] = str(thresh)
 
     # Hessian mode override from CLI
     if hessian_calc_mode is not None:
-        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+        calc_cfg['hessian_calc_mode'] = str(hessian_calc_mode)
 
     # YAML overrides (highest precedence)
     apply_yaml_overrides(
         yaml_cfg,
         [
-            (geom_cfg, (("geom",),)),
-            (calc_cfg, (("calc",),)),
-            (opt_cfg,  (("opt",),)),
-            (simple_cfg, (("hessian_dimer",),)),
-            (rsirfo_cfg, (("rsirfo",),)),
+            (geom_cfg, (('geom',),)),
+            (calc_cfg, (('calc',),)),
+            (opt_cfg,  (('opt',),)),
+            (simple_cfg, (('hessian_dimer',),)),
+            (rsirfo_cfg, (('rsirfo',),)),
         ],
     )
 
     # Freeze links (PDB only): merge with existing list
-    if freeze_links and source_path.suffix.lower() == ".pdb":
+    if freeze_links and source_path.suffix.lower() == '.pdb':
         try:
             detected = detect_freeze_links(source_path)
         except Exception as e:
-            click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
+            click.echo(f'[freeze-links] WARNING: Could not detect link parents: {e}', err=True)
             detected = []
         merged = merge_freeze_atom_indices(geom_cfg, detected)
         if merged:
-            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+            click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}')
 
     # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
-    if "freeze_atoms" in geom_cfg:
-        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+    if 'freeze_atoms' in geom_cfg:
+        calc_cfg['freeze_atoms'] = list(geom_cfg.get('freeze_atoms', []))
 
     kind = normalize_choice(
         opt_mode,
-        param="--opt-mode",
+        param='--opt-mode',
         alias_groups=_OPT_MODE_ALIASES,
-        allowed_hint="light|heavy",
+        allowed_hint='light|heavy',
     )
-    out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+    out_dir_path = Path(opt_cfg['out_dir']).resolve()
 
     # Pretty-print config summary
-    click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
-    click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
-    if kind == "light":
+    click.echo(pretty_block('geom', format_geom_for_echo(geom_cfg)))
+    click.echo(pretty_block('calc', format_freeze_atoms_for_echo(calc_cfg)))
+    click.echo(pretty_block('opt',  {**opt_cfg, 'out_dir': str(out_dir_path)}))
+    if kind == 'light':
         # Split out pass-through dicts for readability
         sd_cfg_for_echo = dict(simple_cfg)
-        sd_cfg_for_echo["dimer"] = dict(simple_cfg.get("dimer", {}))
-        sd_cfg_for_echo["lbfgs"] = dict(simple_cfg.get("lbfgs", {}))
-        click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
+        sd_cfg_for_echo['dimer'] = dict(simple_cfg.get('dimer', {}))
+        sd_cfg_for_echo['lbfgs'] = dict(simple_cfg.get('lbfgs', {}))
+        click.echo(pretty_block('hessian_dimer', sd_cfg_for_echo))
     else:
-        click.echo(pretty_block("rsirfo", rsirfo_cfg))
+        click.echo(pretty_block('rsirfo', rsirfo_cfg))
 
     # --------------------------
     # 2) Prepare geometry dir
@@ -1495,75 +1495,75 @@ def cli(
     # 3) Run
     # --------------------------
     try:
-        if kind == "light":
+        if kind == 'light':
             # HessianDimer runner construction
             uma_kwargs_for_sd = dict(calc_cfg)
             runner = HessianDimer(
                 fn=str(geom_input_path),
                 out_dir=str(out_dir_path),
-                thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
-                thresh=simple_cfg.get("thresh", "gau"),
-                update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 200)),
-                neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
-                flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
-                flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
-                mem=int(simple_cfg.get("mem", 100000)),
-                use_lobpcg=bool(simple_cfg.get("use_lobpcg", True)),  # deprecated; ignored
+                thresh_loose=simple_cfg.get('thresh_loose', 'gau_loose'),
+                thresh=simple_cfg.get('thresh', 'gau'),
+                update_interval_hessian=int(simple_cfg.get('update_interval_hessian', 200)),
+                neg_freq_thresh_cm=float(simple_cfg.get('neg_freq_thresh_cm', 5.0)),
+                flatten_amp_ang=float(simple_cfg.get('flatten_amp_ang', 0.10)),
+                flatten_max_iter=int(simple_cfg.get('flatten_max_iter', 0)),
+                mem=int(simple_cfg.get('mem', 100000)),
+                use_lobpcg=bool(simple_cfg.get('use_lobpcg', True)),  # deprecated; ignored
                 uma_kwargs=uma_kwargs_for_sd,
-                device=str(simple_cfg.get("device", calc_cfg.get("device", "auto"))),
-                dump=bool(opt_cfg["dump"]),
-                root=int(simple_cfg.get("root", 0)),
-                dimer_kwargs=dict(simple_cfg.get("dimer", {})),
-                lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
-                max_total_cycles=int(opt_cfg["max_cycles"]),
-                flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
-                flatten_k=int(simple_cfg.get("flatten_k", 10)),
+                device=str(simple_cfg.get('device', calc_cfg.get('device', 'auto'))),
+                dump=bool(opt_cfg['dump']),
+                root=int(simple_cfg.get('root', 0)),
+                dimer_kwargs=dict(simple_cfg.get('dimer', {})),
+                lbfgs_kwargs=dict(simple_cfg.get('lbfgs', {})),
+                max_total_cycles=int(opt_cfg['max_cycles']),
+                flatten_sep_cutoff=float(simple_cfg.get('flatten_sep_cutoff', 2.0)),
+                flatten_k=int(simple_cfg.get('flatten_k', 10)),
                 # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                 geom_kwargs=dict(geom_cfg),
             )
 
-            click.echo("\n=== TS optimization (Hessian Dimer) started ===\n")
+            click.echo('\n=== TS optimization (Hessian Dimer) started ===\n')
             runner.run()
-            click.echo("\n=== TS optimization (Hessian Dimer) finished ===\n")
+            click.echo('\n=== TS optimization (Hessian Dimer) finished ===\n')
 
-            needs_pdb = source_path.suffix.lower() == ".pdb"
+            needs_pdb = source_path.suffix.lower() == '.pdb'
             needs_gjf = prepared_input.is_gjf
             ref_pdb = source_path.resolve() if needs_pdb else None
-            final_xyz = out_dir_path / "final_geometry.xyz"
+            final_xyz = out_dir_path / 'final_geometry.xyz'
             try:
                 convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
-                    out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
+                    out_pdb_path=out_dir_path / 'final_geometry.pdb' if needs_pdb else None,
+                    out_gjf_path=out_dir_path / 'final_geometry.gjf' if needs_gjf else None,
                 )
-                click.echo("[convert] Wrote 'final_geometry' outputs.")
+                click.echo('[convert] Wrote "final_geometry" outputs.')
             except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
+                click.echo(f'[convert] WARNING: Failed to convert final geometry: {e}', err=True)
 
-            if bool(opt_cfg.get("dump", False)) and needs_pdb:
-                all_trj = out_dir_path / "optimization_all.trj"
+            if bool(opt_cfg.get('dump', False)) and needs_pdb:
+                all_trj = out_dir_path / 'optimization_all.trj'
                 if all_trj.exists():
                     try:
                         convert_xyz_like_outputs(
                             all_trj,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
-                            out_pdb_path=out_dir_path / "optimization_all.pdb" if needs_pdb else None,
+                            out_pdb_path=out_dir_path / 'optimization_all.pdb' if needs_pdb else None,
                         )
-                        click.echo("[convert] Wrote 'optimization_all' outputs.")
+                        click.echo('[convert] Wrote "optimization_all" outputs.')
                     except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+                        click.echo(f'[convert] WARNING: Failed to convert optimization trajectory: {e}', err=True)
                 else:
-                    click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
+                    click.echo('[convert] WARNING: "optimization_all.trj" not found; skipping conversion.', err=True)
 
         else:
             # RS-I-RFO (heavy)
             #  - Build geometry now and attach UMA calculator
-            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            coord_type = geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type'])
             coord_kwargs = dict(geom_cfg)
-            coord_kwargs.pop("coord_type", None)
+            coord_kwargs.pop('coord_type', None)
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
             calc_builder_or_instance = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
@@ -1575,32 +1575,32 @@ def cli(
             # Construct RSIRFO optimizer
             rs_args = dict(rsirfo_cfg)
             opt_base = dict(opt_cfg)
-            opt_base["out_dir"] = str(out_dir_path)
-            rs_args["out_dir"] = str(out_dir_path)
+            opt_base['out_dir'] = str(out_dir_path)
+            rs_args['out_dir'] = str(out_dir_path)
 
             # Normalize roots/root
-            roots = rs_args.get("roots", None)
-            root_single = rs_args.get("root", None)
+            roots = rs_args.get('roots', None)
+            root_single = rs_args.get('root', None)
             if roots is None and root_single is not None:
                 roots = [int(root_single)]
             if roots is None:
                 roots = [0]
-            rs_args["roots"] = [int(x) for x in roots]
-            if "root" in rs_args:
-                rs_args.pop("root")
+            rs_args['roots'] = [int(x) for x in roots]
+            if 'root' in rs_args:
+                rs_args.pop('root')
 
             rsirfo_kwargs = {**opt_base, **rs_args}
     
-            for diis_kw in ("gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func"):
+            for diis_kw in ('gediis', 'gdiis', 'gdiis_thresh', 'gediis_thresh', 'gdiis_test_direction', 'adapt_step_func'):
                 rsirfo_kwargs.pop(diis_kw, None)
 
             optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
 
-            click.echo("\n=== TS optimization (RS-I-RFO) started ===\n")
+            click.echo('\n=== TS optimization (RS-I-RFO) started ===\n')
             optimizer.run()
-            click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
+            click.echo('\n=== TS optimization (RS-I-RFO) finished ===\n')
 
-            needs_pdb = source_path.suffix.lower() == ".pdb"
+            needs_pdb = source_path.suffix.lower() == '.pdb'
             needs_gjf = prepared_input.is_gjf
             ref_pdb = source_path.resolve() if needs_pdb else None
             final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
@@ -1609,55 +1609,55 @@ def cli(
                     final_xyz_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
-                    out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
+                    out_pdb_path=out_dir_path / 'final_geometry.pdb' if needs_pdb else None,
+                    out_gjf_path=out_dir_path / 'final_geometry.gjf' if needs_gjf else None,
                 )
-                click.echo("[convert] Wrote 'final_geometry' outputs.")
+                click.echo('[convert] Wrote "final_geometry" outputs.')
             except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
+                click.echo(f'[convert] WARNING: Failed to convert final geometry: {e}', err=True)
 
-            if bool(opt_cfg.get("dump", False)) and needs_pdb:
-                trj_path = out_dir_path / "optimization.trj"
+            if bool(opt_cfg.get('dump', False)) and needs_pdb:
+                trj_path = out_dir_path / 'optimization.trj'
                 if trj_path.exists():
                     try:
                         convert_xyz_like_outputs(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
-                            out_pdb_path=out_dir_path / "optimization.pdb" if needs_pdb else None,
+                            out_pdb_path=out_dir_path / 'optimization.pdb' if needs_pdb else None,
                         )
-                        click.echo("[convert] Wrote 'optimization' outputs.")
+                        click.echo('[convert] Wrote "optimization" outputs.')
                     except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+                        click.echo(f'[convert] WARNING: Failed to convert optimization trajectory: {e}', err=True)
                 else:
-                    click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+                    click.echo('[convert] WARNING: "optimization.trj" not found; skipping conversion.', err=True)
 
             # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
             geometry.set_calculator(None)
             uma_kwargs_for_heavy = dict(calc_cfg)
-            uma_kwargs_for_heavy["out_hess_torch"] = True
-            device = _torch_device(calc_cfg.get("device", "auto"))
+            uma_kwargs_for_heavy['out_hess_torch'] = True
+            device = _torch_device(calc_cfg.get('device', 'auto'))
 
             H_t = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
             N = len(geometry.atomic_numbers)
             if H_t.size(0) == 3 * N:
                 freqs_cm, modes = _frequencies_cm_and_modes(
                     H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), device,
-                    freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
+                    freeze_idx=list(geom_cfg.get('freeze_atoms', [])) if len(geom_cfg.get('freeze_atoms', [])) > 0 else None
                 )
             else:
-                act_idx = _active_indices(N, list(geom_cfg.get("freeze_atoms", [])))
+                act_idx = _active_indices(N, list(geom_cfg.get('freeze_atoms', [])))
                 freqs_cm, modes = _modes_from_Hact_embedded(
                     H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), act_idx, device
                 )
 
             # Use configurable neg_freq_thresh_cm (same default as light mode)
-            neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
+            neg_freq_thresh_cm = float(simple_cfg.get('neg_freq_thresh_cm', 5.0))
             neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
             if len(neg_idx) == 0:
-                click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
+                click.echo('[INFO] No imaginary mode found at the end for RSIRFO.', err=True)
             else:
-                roots = rs_args.get("roots", [0])
+                roots = rs_args.get('roots', [0])
                 main_root = int(roots[0]) if roots else 0
                 order = np.argsort(freqs_cm[neg_idx])
                 pick_idx = neg_idx[order[max(0, min(main_root, len(order)-1))]]
@@ -1668,19 +1668,19 @@ def cli(
                 v_cart = (mode_mw / torch.sqrt(m3)).detach().cpu().numpy()
                 v_cart = v_cart / np.linalg.norm(v_cart)
 
-                vib_dir = out_dir_path / "vib"
+                vib_dir = out_dir_path / 'vib'
                 vib_dir.mkdir(parents=True, exist_ok=True)
-                out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj"
-                out_pdb = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb"
+                out_trj = vib_dir / f'final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj'
+                out_pdb = vib_dir / f'final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb'
 
-                ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
+                ref_pdb = source_path if source_path.suffix.lower() == '.pdb' else None
                 _write_mode_trj_and_pdb(
                     geometry,
                     v_cart,
                     out_trj,
                     amplitude_ang=0.8,
                     n_frames=20,
-                    comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1",
+                    comment=f'imag {freqs_cm[pick_idx]:+.2f} cm-1',
                     ref_pdb=ref_pdb,
                     write_pdb=ref_pdb is not None,
                     out_pdb=out_pdb,
@@ -1689,21 +1689,21 @@ def cli(
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-        click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
+        click.echo(format_elapsed('[time] Elapsed Time for TS Opt', time_start))
 
     except ZeroStepLength:
-        click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
+        click.echo('ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).', err=True)
         sys.exit(2)
     except OptimizationError as e:
-        click.echo(f"ERROR: Optimization failed — {e}", err=True)
+        click.echo(f'ERROR: Optimization failed — {e}', err=True)
         sys.exit(3)
     except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
+        click.echo('\nInterrupted by user.', err=True)
         sys.exit(130)
     except Exception as e:
         import traceback
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
+        tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        click.echo('Unhandled error during optimization:\n' + textwrap.indent(tb, '  '), err=True)
         sys.exit(1)
     finally:
         prepared_input.cleanup()

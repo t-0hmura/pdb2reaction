@@ -18,22 +18,22 @@ Usage (API)
 Examples
 --------
     >>> from pathlib import Path
-    >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
-    >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
-    >>> indices = detect_freeze_links(Path("pocket.pdb"))
+    >>> block = pretty_block('Geometry', {'freeze_atoms': [0, 1, 5]})
+    >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ['R', 'TS', 'P'])
+    >>> indices = detect_freeze_links(Path('pocket.pdb'))
 
 Description
 -----------
 - **Generic helpers**
   - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses
-    `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `"{}"`.
-  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"`
+    `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `'{}'`.
+  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `'freeze_atoms'`
     is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are
-    left unchanged. Empty iterables become `"[]"`.
+    left unchanged. Empty iterables become `'[]'`.
   - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given
     a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
   - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into
-    `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the
+    `geom_cfg['freeze_atoms']`. Preserve existing entries, de-duplicate, sort numerically, and return the
     updated list (in place).
   - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalize CLI-style string options
     using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when
@@ -65,7 +65,7 @@ Description
     path when conversion occurs, otherwise `None`.
 
 - **Plotly: Energy diagram builder**
-  - `build_energy_diagram(energies, labels, ylabel="ΔE", baseline=False, showgrid=False)`:
+  - `build_energy_diagram(energies, labels, ylabel='ΔE', baseline=False, showgrid=False)`:
     Render an energy diagram where each state is a thick horizontal segment and adjacent states are connected
     by dotted diagonals (right end of left state → left end of right state). Segment length shrinks as the
     number of states grows to keep gaps readable. X ticks are centered on states and labeled by `labels`.
@@ -141,10 +141,10 @@ def pretty_block(title: str, content: Dict[str, Any]) -> str:
     """
     Return a YAML-formatted block with an underlined title.
 
-    Empty mappings render as "{}".
+    Empty mappings render as '{}'.
     """
     body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
-    return f"{title}\n" + "-" * len(title) + "\n" + body + "\n"
+    return f'{title}\n' + '-' * len(title) + '\n' + body + '\n'
 
 
 def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -152,7 +152,7 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     Normalize geometry configuration for CLI echo output.
     """
     g = dict(geom_cfg)
-    freeze_atoms = g.get("freeze_atoms")
+    freeze_atoms = g.get('freeze_atoms')
     if freeze_atoms is None:
         return g
 
@@ -164,19 +164,19 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     except TypeError:
         return g
 
-    joined = ",".join(map(str, items))
-    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
+    joined = ','.join(map(str, items))
+    g['freeze_atoms'] = f'[{joined}]' if items else '[]'
     return g
 
 
 def format_freeze_atoms_for_echo(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """Return a copy of ``cfg`` with ``freeze_atoms`` flattened for logging."""
 
-    if "freeze_atoms" not in cfg:
+    if 'freeze_atoms' not in cfg:
         return dict(cfg)
 
     g = dict(cfg)
-    freeze_atoms = g.get("freeze_atoms")
+    freeze_atoms = g.get('freeze_atoms')
 
     if isinstance(freeze_atoms, str):
         return g
@@ -186,8 +186,8 @@ def format_freeze_atoms_for_echo(cfg: Dict[str, Any]) -> Dict[str, Any]:
     except TypeError:
         return g
 
-    joined = ",".join(map(str, items))
-    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
+    joined = ','.join(map(str, items))
+    g['freeze_atoms'] = f'[{joined}]' if items else '[]'
     return g
 
 
@@ -197,7 +197,7 @@ def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = N
     elapsed = max(0.0, finish - start_time)
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
-    return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+    return f'{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}'
 
 
 def merge_freeze_atom_indices(
@@ -210,7 +210,7 @@ def merge_freeze_atom_indices(
     The updated list is returned.
     """
     merged: set[int] = set()
-    base = geom_cfg.get("freeze_atoms", [])
+    base = geom_cfg.get('freeze_atoms', [])
     if isinstance(base, _Iterable):
         merged.update(int(i) for i in base)
     for seq in indices:
@@ -218,7 +218,7 @@ def merge_freeze_atom_indices(
             continue
         merged.update(int(i) for i in seq)
     result = sorted(merged)
-    geom_cfg["freeze_atoms"] = result
+    geom_cfg['freeze_atoms'] = result
     return result
 
 
@@ -230,14 +230,14 @@ def normalize_choice(
     allowed_hint: str,
 ) -> str:
     """Normalize *value* using alias groups and raise ``click.BadParameter`` on failure."""
-    key = (value or "").strip().lower()
+    key = (value or '').strip().lower()
     for aliases, canonical in alias_groups:
         if any(key == alias.lower() for alias in aliases):
             return canonical
 
     hint = allowed_hint.strip()
-    detail = f" Allowed: {hint}." if hint else ""
-    raise click.BadParameter(f"Unknown value for {param} '{value}'.{detail}")
+    detail = f' Allowed: {hint}.' if hint else ''
+    raise click.BadParameter(f'Unknown value for {param} "{value}".{detail}')
 
 
 def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -280,8 +280,8 @@ def apply_yaml_overrides(
             apply_yaml_overrides(
                 yaml_cfg,
                 [
-                    (geom_cfg, (("geom",),)),
-                    (lbfgs_cfg, (("sopt", "lbfgs"), ("lbfgs",))),
+                    (geom_cfg, (('geom',),)),
+                    (lbfgs_cfg, (('sopt', 'lbfgs'), ('lbfgs',))),
                 ],
             )
 
@@ -304,11 +304,11 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
     if not path:
         return {}
 
-    with open(path, "r") as f:
+    with open(path, 'r') as f:
         data = yaml.safe_load(f) or {}
 
     if not isinstance(data, dict):
-        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
+        raise ValueError(f'YAML root must be a mapping, got: {type(data)}')
 
     return data
 
@@ -319,7 +319,7 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
 def build_energy_diagram(
     energies: Sequence[float],
     labels: Sequence[str],
-    ylabel: str = "ΔE",
+    ylabel: str = 'ΔE',
     baseline: bool = False,
     showgrid: bool = False,
 ) -> go.Figure:
@@ -331,10 +331,10 @@ def build_energy_diagram(
     energies : Sequence[float]
         Energies for each state (same unit). Values are plotted without conversion.
     labels : Sequence[str]
-        Labels corresponding to each state (for example, ["R", "TS1", "IM1", "TS2", "P"]).
+        Labels corresponding to each state (for example, ['R', 'TS1', 'IM1', 'TS2', 'P']).
         Must be the same length as ``energies``.
     ylabel : str, optional
-        Y-axis label (for example, "ΔE" or "ΔG"). Defaults to ``"ΔE"``.
+        Y-axis label (for example, 'ΔE' or 'ΔG'). Defaults to ``'ΔE'``.
     baseline : bool, optional
         If ``True``, draw a dotted baseline at the energy of the first state across the plot.
     showgrid : bool, optional
@@ -355,9 +355,9 @@ def build_energy_diagram(
     - X-axis ticks are centered on each state and labeled using ``labels``.
     """
     if len(energies) == 0:
-        raise ValueError("`energies` must contain at least one value.")
+        raise ValueError('`energies` must contain at least one value.')
     if len(energies) != len(labels):
-        raise ValueError("`energies` and `labels` must have the same length.")
+        raise ValueError('`energies` and `labels` must have the same length.')
 
     n = len(energies)
     energies = [float(e) for e in energies]
@@ -370,8 +370,8 @@ def build_energy_diagram(
     AXIS_TITLE_SIZE = 20
     HLINE_WIDTH = 6           # Width of the horizontal state segments
     CONNECTOR_WIDTH = 2       # Width of the dotted connectors
-    LINE_COLOR = "#1C1C1C"
-    GRID_COLOR = "lightgrey"
+    LINE_COLOR = '#1C1C1C'
+    GRID_COLOR = 'lightgrey'
 
     # -----------------------------
     # Geometry along the X axis (centers and segment lengths)
@@ -398,9 +398,9 @@ def build_energy_diagram(
             go.Scatter(
                 x=[lefts[0], rights[-1]],
                 y=[energies[0], energies[0]],
-                mode="lines",
-                line=dict(color=GRID_COLOR, dash="dot", width=2),
-                hoverinfo="skip",
+                mode='lines',
+                line=dict(color=GRID_COLOR, dash='dot', width=2),
+                hoverinfo='skip',
                 showlegend=False,
             )
         )
@@ -411,9 +411,9 @@ def build_energy_diagram(
             go.Scatter(
                 x=[lefts[i], rights[i]],
                 y=[e, e],
-                mode="lines",
+                mode='lines',
                 line=dict(color=LINE_COLOR, width=HLINE_WIDTH),
-                hovertemplate=f"{lab}: %{{y:.6f}}<extra></extra>",
+                hovertemplate=f'{lab}: %{{y:.6f}}<extra></extra>',
                 showlegend=False,
             )
         )
@@ -424,9 +424,9 @@ def build_energy_diagram(
             go.Scatter(
                 x=[rights[i], lefts[i + 1]],
                 y=[energies[i], energies[i + 1]],
-                mode="lines",
-                line=dict(color=LINE_COLOR, width=CONNECTOR_WIDTH, dash="dot"),
-                hoverinfo="skip",
+                mode='lines',
+                line=dict(color=LINE_COLOR, width=CONNECTOR_WIDTH, dash='dot'),
+                hoverinfo='skip',
                 showlegend=False,
             )
         )
@@ -453,7 +453,7 @@ def build_energy_diagram(
         linewidth=AXIS_WIDTH,
         linecolor=LINE_COLOR,
         mirror=True,
-        ticks="inside",
+        ticks='inside',
         tickwidth=AXIS_WIDTH,
         tickcolor=LINE_COLOR,
         tickfont=dict(size=FONT_SIZE, color=LINE_COLOR),
@@ -461,10 +461,10 @@ def build_energy_diagram(
         gridcolor=GRID_COLOR,
         gridwidth=0.5,
         zeroline=False,
-        tickmode="array",
+        tickmode='array',
         tickvals=centers,
         ticktext=list(labels),
-        title=dict(text="", font=dict(size=AXIS_TITLE_SIZE, color=LINE_COLOR)),
+        title=dict(text='', font=dict(size=AXIS_TITLE_SIZE, color=LINE_COLOR)),
     )
 
     yaxis_config = dict(
@@ -473,7 +473,7 @@ def build_energy_diagram(
         linewidth=AXIS_WIDTH,
         linecolor=LINE_COLOR,
         mirror=True,
-        ticks="inside",
+        ticks='inside',
         tickwidth=AXIS_WIDTH,
         tickcolor=LINE_COLOR,
         tickfont=dict(size=FONT_SIZE, color=LINE_COLOR),
@@ -487,8 +487,8 @@ def build_energy_diagram(
     fig.update_layout(
         xaxis=xaxis_config,
         yaxis=yaxis_config,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor='white',
+        paper_bgcolor='white',
         margin=dict(l=80, r=40, t=40, b=80),
     )
 
@@ -515,9 +515,9 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
     if not _CONVERT_FILES_ENABLED:
         return
     ref_atoms = read(ref_pdb_path)  # Reference topology/ordering (single frame)
-    traj = read(xyz_path, index=":", format="xyz")  # Load all frames from the XYZ
+    traj = read(xyz_path, index=':', format='xyz')  # Load all frames from the XYZ
     if not traj:
-        raise ValueError(f"No frames found in {xyz_path}.")
+        raise ValueError(f'No frames found in {xyz_path}.')
 
     for step, frame in enumerate(traj):
         atoms = ref_atoms.copy()
@@ -532,19 +532,19 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
 # Gaussian input (.gjf) helpers
 # =============================================================================
 
-_FLOAT_PATTERN = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?"
+_FLOAT_PATTERN = r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?'
 _GJF_COORD_RE = re.compile(
-    rf"^(?P<prefix>.*?)(?P<sep0>\s*)(?P<x>{_FLOAT_PATTERN})(?P<sep1>\s+)"
-    rf"(?P<y>{_FLOAT_PATTERN})(?P<sep2>\s+)(?P<z>{_FLOAT_PATTERN})(?P<suffix>\s*)$"
+    rf'^(?P<prefix>.*?)(?P<sep0>\s*)(?P<x>{_FLOAT_PATTERN})(?P<sep1>\s+)'
+    rf'(?P<y>{_FLOAT_PATTERN})(?P<sep2>\s+)(?P<z>{_FLOAT_PATTERN})(?P<suffix>\s*)$'
 )
 
 
 def _count_decimals(token: str) -> int:
-    if "." not in token:
+    if '.' not in token:
         return 6
-    mantissa = token.split(".", 1)[1]
-    mantissa = mantissa.split("e", 1)[0].split("E", 1)[0]
-    mantissa = mantissa.split("d", 1)[0].split("D", 1)[0]
+    mantissa = token.split('.', 1)[1]
+    mantissa = mantissa.split('e', 1)[0].split('E', 1)[0]
+    mantissa = mantissa.split('d', 1)[0].split('D', 1)[0]
     return sum(ch.isdigit() for ch in mantissa)
 
 
@@ -552,21 +552,21 @@ def _format_like(template: str, value: float) -> str:
     stripped = template.strip()
     width = len(template)
     if not stripped:
-        formatted = f"{value:.10f}"
-    elif any(ch in stripped for ch in "eEdD"):
-        mantissa = stripped.replace("d", "e").replace("D", "E")
-        mantissa_only, _, _ = mantissa.partition("E")
+        formatted = f'{value:.10f}'
+    elif any(ch in stripped for ch in 'eEdD'):
+        mantissa = stripped.replace('d', 'e').replace('D', 'E')
+        mantissa_only, _, _ = mantissa.partition('E')
         decimals = _count_decimals(mantissa_only)
-        formatted = f"{value:.{decimals}E}"
-        if "d" in template:
-            formatted = formatted.replace("E", "d")
-        elif "D" in template:
-            formatted = formatted.replace("E", "D")
-        elif "e" in template:
-            formatted = formatted.replace("E", "e")
+        formatted = f'{value:.{decimals}E}'
+        if 'd' in template:
+            formatted = formatted.replace('E', 'd')
+        elif 'D' in template:
+            formatted = formatted.replace('E', 'D')
+        elif 'e' in template:
+            formatted = formatted.replace('E', 'e')
     else:
         decimals = _count_decimals(stripped)
-        formatted = f"{value:.{decimals}f}"
+        formatted = f'{value:.{decimals}f}'
     if len(formatted) < width:
         formatted = formatted.rjust(width)
     return formatted
@@ -575,20 +575,20 @@ def _format_like(template: str, value: float) -> str:
 def _token_to_symbol(text: str) -> str:
     stripped = text.strip()
     if not stripped:
-        raise ValueError("Empty atom token in Gaussian coordinate line.")
+        raise ValueError('Empty atom token in Gaussian coordinate line.')
     token = stripped.split()[0]
-    m = re.match(r"([A-Za-z]{1,2})", token)
+    m = re.match(r'([A-Za-z]{1,2})', token)
     if m:
         return m.group(1).title()
     if token.isdigit():
         z = int(token)
         if 0 <= z < len(chemical_symbols):
             return chemical_symbols[z]
-    raise ValueError(f"Could not determine element symbol from '{token}'.")
+    raise ValueError(f'Could not determine element symbol from "{token}".')
 
 
 def _convert_float(token: str) -> float:
-    return float(token.replace("D", "E").replace("d", "e"))
+    return float(token.replace('D', 'E').replace('d', 'e'))
 
 
 @dataclass
@@ -610,7 +610,7 @@ class GjfCoordinateLine:
         x_str = _format_like(self.x_template, coords[0])
         y_str = _format_like(self.y_template, coords[1])
         z_str = _format_like(self.z_template, coords[2])
-        return f"{self.prefix}{self.sep0}{x_str}{self.sep1}{y_str}{self.sep2}{z_str}{self.suffix}"
+        return f'{self.prefix}{self.sep0}{x_str}{self.sep1}{y_str}{self.sep2}{z_str}{self.suffix}'
 
 
 @dataclass
@@ -627,10 +627,10 @@ class GjfTemplate:
         return len(self.coord_lines)
 
     def as_xyz_string(self) -> str:
-        lines = [str(self.natoms), f"converted from {self.path.name}"]
+        lines = [str(self.natoms), f'converted from {self.path.name}']
         for atom in self.coord_lines:
-            lines.append(f"{atom.symbol}  {atom.x:.10f}  {atom.y:.10f}  {atom.z:.10f}")
-        return "\n".join(lines) + "\n"
+            lines.append(f'{atom.symbol}  {atom.x:.10f}  {atom.y:.10f}  {atom.z:.10f}')
+        return '\n'.join(lines) + '\n'
 
 
 @dataclass
@@ -651,7 +651,7 @@ class PreparedInputStructure:
             except FileNotFoundError:
                 pass
 
-    def __enter__(self) -> "PreparedInputStructure":
+    def __enter__(self) -> 'PreparedInputStructure':
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -661,16 +661,16 @@ class PreparedInputStructure:
 def _parse_coord_line(line: str) -> GjfCoordinateLine:
     match = _GJF_COORD_RE.match(line)
     if not match:
-        raise ValueError(f"Could not parse Gaussian coordinate line: '{line}'.")
-    prefix = match.group("prefix")
-    sep0 = match.group("sep0")
-    sep1 = match.group("sep1")
-    sep2 = match.group("sep2")
-    suffix = match.group("suffix")
-    x_token = match.group("x")
-    y_token = match.group("y")
-    z_token = match.group("z")
-    symbol = _token_to_symbol(f"{prefix}{sep0}")
+        raise ValueError(f'Could not parse Gaussian coordinate line: "{line}".')
+    prefix = match.group('prefix')
+    sep0 = match.group('sep0')
+    sep1 = match.group('sep1')
+    sep2 = match.group('sep2')
+    suffix = match.group('suffix')
+    x_token = match.group('x')
+    y_token = match.group('y')
+    z_token = match.group('z')
+    symbol = _token_to_symbol(f'{prefix}{sep0}')
     return GjfCoordinateLine(
         prefix=prefix,
         sep0=sep0,
@@ -712,7 +712,7 @@ def parse_gjf_template(path: Path) -> GjfTemplate:
         charge_line_idx = idx
         break
     if charge_line_idx is None or charge is None or spin is None:
-        raise ValueError(f"Failed to locate charge/multiplicity line in '{path}'.")
+        raise ValueError(f'Failed to locate charge/multiplicity line in "{path}".')
 
     coord_start = charge_line_idx + 1
     while coord_start < len(lines) and not lines[coord_start].strip():
@@ -728,7 +728,7 @@ def parse_gjf_template(path: Path) -> GjfTemplate:
         coord_lines_raw.append(line)
         idx += 1
     if not coord_lines_raw:
-        raise ValueError(f"No coordinates found in '{path}'.")
+        raise ValueError(f'No coordinates found in "{path}".')
     suffix_lines = lines[idx:]
 
     coord_lines = [_parse_coord_line(line) for line in coord_lines_raw]
@@ -743,10 +743,10 @@ def parse_gjf_template(path: Path) -> GjfTemplate:
 
 
 def prepare_input_structure(path: Path) -> PreparedInputStructure:
-    if path.suffix.lower() != ".gjf":
+    if path.suffix.lower() != '.gjf':
         return PreparedInputStructure(source_path=path, geom_path=path)
     template = parse_gjf_template(path)
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+    tmp = tempfile.NamedTemporaryFile('w+', suffix='.xyz', delete=False)
     try:
         tmp.write(template.as_xyz_string())
         tmp.flush()
@@ -776,11 +776,11 @@ def fill_charge_spin_from_gjf(
 
 def _round_charge_with_note(q: float, prefix: str) -> int:
     if not math.isfinite(q):
-        raise click.BadParameter(f"{prefix} Computed total charge is non-finite: {q!r}")
+        raise click.BadParameter(f'{prefix} Computed total charge is non-finite: {q!r}')
     q_int = int(round(q))
     if not math.isclose(q_int, q):
         click.echo(
-            f"{prefix} NOTE: extractor total charge = {q:+g} → rounded to integer {q_int:+d}."
+            f'{prefix} NOTE: extractor total charge = {q:+g} → rounded to integer {q_int:+d}.'
         )
     return q_int
 
@@ -799,24 +799,24 @@ def _derive_charge_from_ligand_charge(
         from .extract import compute_charge_summary, log_charge_summary
 
         parser = PDB.PDBParser(QUIET=True)
-        complex_struct = parser.get_structure("complex", str(prepared.source_path))
+        complex_struct = parser.get_structure('complex', str(prepared.source_path))
         selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
         summary = compute_charge_summary(complex_struct, selected_ids, set(), ligand_charge)
         log_charge_summary(prefix, summary)
-        q_total = float(summary.get("total_charge", 0.0))
+        q_total = float(summary.get('total_charge', 0.0))
         click.echo(
-            f"{prefix} Charge summary from full complex (--ligand-charge without extraction):"
+            f'{prefix} Charge summary from full complex (--ligand-charge without extraction):'
         )
         click.echo(
-            f"  Protein: {summary.get('protein_charge', 0.0):+g},  "
-            f"Ligand: {summary.get('ligand_total_charge', 0.0):+g},  "
-            f"Ions: {summary.get('ion_total_charge', 0.0):+g},  "
-            f"Total: {q_total:+g}"
+            f'  Protein: {summary.get('protein_charge', 0.0):+g},  '
+            f'Ligand: {summary.get('ligand_total_charge', 0.0):+g},  '
+            f'Ions: {summary.get('ion_total_charge', 0.0):+g},  '
+            f'Total: {q_total:+g}'
         )
         return _round_charge_with_note(q_total, prefix)
     except Exception as e:
         click.echo(
-            f"{prefix} NOTE: failed to derive total charge from --ligand-charge: {e}",
+            f'{prefix} NOTE: failed to derive total charge from --ligand-charge: {e}',
             err=True,
         )
         return None
@@ -830,7 +830,7 @@ def resolve_charge_spin_or_raise(
     spin_default: int = 1,
     charge_default: int = 0,
     ligand_charge: Optional[float | str | Dict[str, float]] = None,
-    prefix: str = "[charge]",
+    prefix: str = '[charge]',
 ) -> Tuple[int, int]:
     charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
     if charge is None and ligand_charge is not None:
@@ -843,7 +843,7 @@ def resolve_charge_spin_or_raise(
         else:
             prepared.cleanup()
             raise click.ClickException(
-                "-q/--charge is required unless the input is a .gjf template with charge metadata."
+                '-q/--charge is required unless the input is a .gjf template with charge metadata.'
             )
     if spin is None:
         spin = spin_default
@@ -875,25 +875,25 @@ def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) ->
 
     if not _CONVERT_FILES_ENABLED:
         return
-    traj = read(xyz_path, index=":", format="xyz")
+    traj = read(xyz_path, index=':', format='xyz')
     if not traj:
-        raise ValueError(f"No frames found in {xyz_path}.")
+        raise ValueError(f'No frames found in {xyz_path}.')
     new_lines: List[str] = list(template.prefix_lines)
     for frame_idx, atoms in enumerate(traj):
         if len(atoms) != template.natoms:
             raise ValueError(
-                f"Atom count mismatch for '{xyz_path}': xyz has {len(atoms)} atoms, "
-                f"but template has {template.natoms}."
+                f'Atom count mismatch for "{xyz_path}": xyz has {len(atoms)} atoms, '
+                f'but template has {template.natoms}.'
             )
         coords = atoms.get_positions()
         if frame_idx > 0:
-            new_lines.append("")  # Blank line between multiple geometries (QST-style)
+            new_lines.append('')  # Blank line between multiple geometries (QST-style)
         for idx, coord_line in enumerate(template.coord_lines):
             new_lines.append(coord_line.render(tuple(map(float, coords[idx]))))
     new_lines.extend(template.suffix_lines)
-    text = "\n".join(new_lines)
-    if not text.endswith("\n"):
-        text += "\n"
+    text = '\n'.join(new_lines)
+    if not text.endswith('\n'):
+        text += '\n'
     out_path.write_text(text)
 
 
@@ -904,7 +904,7 @@ def maybe_convert_xyz_to_gjf(
 ) -> Optional[Path]:
     if not _CONVERT_FILES_ENABLED or template is None or not xyz_path.exists():
         return None
-    target = out_path or xyz_path.with_suffix(".gjf")
+    target = out_path or xyz_path.with_suffix('.gjf')
     convert_xyz_to_gjf(xyz_path, template, target)
     return target
 
@@ -937,9 +937,9 @@ def convert_xyz_like_outputs(
         return
 
     source_suffix = prepared_input.source_path.suffix.lower()
-    needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
+    needs_pdb = source_suffix == '.pdb' and out_pdb_path is not None and ref_pdb_path is not None
     needs_gjf = (
-        xyz_path.suffix.lower() == ".xyz"
+        xyz_path.suffix.lower() == '.xyz'
         and prepared_input.is_gjf
         and prepared_input.gjf_template is not None
         and out_gjf_path is not None
@@ -969,13 +969,13 @@ def parse_pdb_coords(pdb_path):
         - Coordinates are read from standard PDB columns:
           X: columns 31–38, Y: 39–46, Z: 47–54 (1-based indexing).
     """
-    with open(pdb_path, "r") as f:
+    with open(pdb_path, 'r') as f:
         lines = f.readlines()
 
     others = []
     lkhs = []
     for line in lines:
-        if not (line.startswith("ATOM") or line.startswith("HETATM")):
+        if not (line.startswith('ATOM') or line.startswith('HETATM')):
             continue
         name    = line[12:16].strip()
         resname = line[17:20].strip()
@@ -986,7 +986,7 @@ def parse_pdb_coords(pdb_path):
         except ValueError:
             continue
 
-        if resname == "LKH" and name == "HL":
+        if resname == 'LKH' and name == 'HL':
             lkhs.append((x, y, z, line))
         else:
             others.append((x, y, z, line))
@@ -1007,7 +1007,7 @@ def nearest_index(point, pool):
     """
     x, y, z = point
     best_i = -1
-    best_d2 = float("inf")
+    best_d2 = float('inf')
     for i, (a, b, c, _) in enumerate(pool):
         d2 = (a - x) ** 2 + (b - y) ** 2 + (c - z) ** 2
         if d2 < best_d2:
@@ -1020,9 +1020,9 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
     """Return per-atom metadata (serial, name, resname, resseq, element) in file order."""
 
     atoms: List[Dict[str, Any]] = []
-    with open(pdb_path, "r") as f:
+    with open(pdb_path, 'r') as f:
         for line in f:
-            if not (line.startswith("ATOM") or line.startswith("HETATM")):
+            if not (line.startswith('ATOM') or line.startswith('HETATM')):
                 continue
 
             serial_txt = line[6:11].strip()
@@ -1030,7 +1030,7 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
             atom_name = line[12:16].strip()
             res_name = line[17:20].strip()
             element_txt = line[76:78].strip()
-            is_hetatm = line.startswith("HETATM")
+            is_hetatm = line.startswith('HETATM')
 
             try:
                 serial = int(serial_txt) if serial_txt else None
@@ -1043,15 +1043,15 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 
             if not element_txt:
                 inferred = guess_element(atom_name, res_name, is_hetatm)
-                element_txt = inferred or ""
+                element_txt = inferred or ''
 
             atoms.append(
                 {
-                    "serial": serial,
-                    "name": atom_name,
-                    "resname": res_name,
-                    "resseq": resseq,
-                    "element": element_txt,
+                    'serial': serial,
+                    'name': atom_name,
+                    'resname': res_name,
+                    'resseq': resseq,
+                    'element': element_txt,
                 }
             )
 
@@ -1059,7 +1059,7 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 
 
 def _split_atom_spec_tokens(spec: str) -> List[str]:
-    tokens = [t for t in re.split(r"[\s/`,\\]+", spec.strip()) if t]
+    tokens = [t for t in re.split(r'[\s/`,\\]+', spec.strip()) if t]
     return tokens
 
 
@@ -1075,15 +1075,15 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
     tokens = _split_atom_spec_tokens(spec)
     if len(tokens) != 3:
         raise ValueError(
-            f"Atom spec '{spec}' must have exactly 3 fields (resname, resseq, atomname)."
+            f'Atom spec "{spec}" must have exactly 3 fields (resname, resseq, atomname).'
         )
 
     tokens_upper = [t.upper() for t in tokens]
     matches: List[int] = []
     for idx, meta in enumerate(atom_meta):
-        resname = (meta.get("resname") or "").strip().upper()
-        resseq = meta.get("resseq")
-        atom = (meta.get("name") or "").strip().upper()
+        resname = (meta.get('resname') or '').strip().upper()
+        resseq = meta.get('resseq')
+        atom = (meta.get('name') or '').strip().upper()
         if resseq is None:
             continue
         fields = {resname, str(resseq), atom}
@@ -1094,37 +1094,37 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
         return matches[0]
     if len(matches) > 1:
         raise ValueError(
-            f"Atom spec '{spec}' matches {len(matches)} atoms; use an explicit atom index."
+            f'Atom spec "{spec}" matches {len(matches)} atoms; use an explicit atom index.'
         )
 
     resname, resseq_txt, atom = tokens_upper
     if not resseq_txt.isdigit():
         raise ValueError(
-            f"Atom spec '{spec}' could not be resolved and residue number '{tokens[1]}' is not numeric."
+            f'Atom spec "{spec}" could not be resolved and residue number "{tokens[1]}" is not numeric.'
         )
     resseq_int = int(resseq_txt)
     ordered_matches = [
         idx
         for idx, meta in enumerate(atom_meta)
-        if (meta.get("resname") or "").strip().upper() == resname
-        and meta.get("resseq") == resseq_int
-        and (meta.get("name") or "").strip().upper() == atom
+        if (meta.get('resname') or '').strip().upper() == resname
+        and meta.get('resseq') == resseq_int
+        and (meta.get('name') or '').strip().upper() == atom
     ]
     if len(ordered_matches) == 1:
         return ordered_matches[0]
     if len(ordered_matches) > 1:
         raise ValueError(
-            f"Atom spec '{spec}' matches {len(ordered_matches)} atoms after ordered fallback; "
-            "use an explicit atom index."
+            f'Atom spec "{spec}" matches {len(ordered_matches)} atoms after ordered fallback; '
+            'use an explicit atom index.'
         )
 
-    raise ValueError(f"Atom spec '{spec}' did not match any atom.")
+    raise ValueError(f'Atom spec "{spec}" did not match any atom.')
 
 
 def format_pdb_atom_metadata_header() -> str:
     """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
 
-    return f"{'id':>5} {'atom':<4} {'res':<4} {'resid':>4} {'el':<2}"
+    return f'{'id':>5} {'atom':<4} {'res':<4} {'resid':>4} {'el':<2}'
 
 
 def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
@@ -1132,17 +1132,17 @@ def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) ->
 
     fallback_serial = index + 1
     if index < 0 or index >= len(atom_meta):
-        return f"{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>4} {'?':<2}"
+        return f'{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>4} {'?':<2}'
 
     meta = atom_meta[index]
-    serial = meta.get("serial") or fallback_serial
-    name = meta.get("name") or "?"
-    resname = meta.get("resname") or "?"
-    resseq = meta.get("resseq")
-    resseq_txt = "?" if resseq is None else str(resseq)
-    element = (meta.get("element") or "?").strip() or "?"
+    serial = meta.get('serial') or fallback_serial
+    name = meta.get('name') or '?'
+    resname = meta.get('resname') or '?'
+    resseq = meta.get('resseq')
+    resseq_txt = '?' if resseq is None else str(resseq)
+    element = (meta.get('element') or '?').strip() or '?'
 
-    return f"{serial:>5} {name:<4} {resname:<4} {resseq_txt:>4} {element:<2}"
+    return f'{serial:>5} {name:<4} {resname:<4} {resseq_txt:>4} {element:<2}'
 
 
 def detect_freeze_links(pdb_path):
@@ -1155,7 +1155,7 @@ def detect_freeze_links(pdb_path):
         pdb_path: Path to the input PDB file.
 
     Returns:
-        List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
+        List of 0-based indices into the sequence of non-LKH atoms ('others') corresponding
         to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
         are present. When the input contains link hydrogens but no other atoms, the list
         will contain ``-1`` entries to indicate missing parents.
@@ -1178,7 +1178,7 @@ def detect_freeze_links_safe(pdb_path: Path) -> List[int]:
         return list(detect_freeze_links(pdb_path))
     except Exception as e:  # pragma: no cover - defensive logging helper
         click.echo(
-            f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}",
+            f'[freeze-links] WARNING: Could not detect link parents for "{pdb_path.name}": {e}',
             err=True,
         )
         return []

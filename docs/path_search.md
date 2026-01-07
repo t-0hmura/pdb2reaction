@@ -191,7 +191,7 @@ sopt:
     line_search: true          # enable line search
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
+    prefix: ''                 # filename prefix
     out_dir: ./result_path_search/   # output directory
     keep_last: 7               # history size for LBFGS buffers
     beta: 1.0                  # initial damping beta
@@ -217,7 +217,7 @@ sopt:
     line_search: true          # enable line search
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
+    prefix: ''                 # filename prefix
     out_dir: ./result_path_search/   # output directory
     trust_radius: 0.3          # trust-region radius
     trust_update: true         # enable trust-region updates

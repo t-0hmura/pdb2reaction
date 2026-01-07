@@ -10,7 +10,7 @@ Usage (API)
 
 Examples
 --------
-    >>> result = compare_structures(geom_reactant, geom_product, device="cpu")
+    >>> result = compare_structures(geom_reactant, geom_product, device='cpu')
     >>> print(summarize_changes(geom_product, result))
     Bond formed (1):
       - C1-O2 : 1.500 Å --> 1.360 Å
@@ -112,43 +112,43 @@ def _element_arrays(atoms: Iterable[str]) -> Tuple[List[str], np.ndarray]:
 
 
 def _resolve_device(device: str) -> torch.device:
-    dev_str = (device or "cpu").lower()
-    if dev_str.startswith("cuda"):
+    dev_str = (device or 'cpu').lower()
+    if dev_str.startswith('cuda'):
         if torch.cuda.is_available():
             try:
                 return torch.device(dev_str)
             except Exception:
                 warnings.warn(
-                    f"Requested device '{device}' is not available. Falling back to CPU.",
+                    f'Requested device "{device}" is not available. Falling back to CPU.',
                     RuntimeWarning,
                 )
-                return torch.device("cpu")
+                return torch.device('cpu')
         else:
             warnings.warn(
-                "CUDA is not available. Falling back to CPU.",
+                'CUDA is not available. Falling back to CPU.',
                 RuntimeWarning,
             )
-            return torch.device("cpu")
+            return torch.device('cpu')
     try:
         return torch.device(dev_str)
     except Exception:
         warnings.warn(
-            f"Requested device '{device}' is not recognized. Falling back to CPU.",
+            f'Requested device "{device}" is not recognized. Falling back to CPU.',
             RuntimeWarning,
         )
-        return torch.device("cpu")
+        return torch.device('cpu')
 
 
 @torch.no_grad()
 def compare_structures(
     geom1,
     geom2,
-    device: str = "cuda",
+    device: str = 'cuda',
     bond_factor: float = 1.20,
     margin_fraction: float = 0.05,
     delta_fraction: float = 0.05,
 ) -> BondChangeResult:
-    assert geom1.atoms == geom2.atoms, "Atom types and ordering must be identical."
+    assert geom1.atoms == geom2.atoms, 'Atom types and ordering must be identical.'
     N = len(geom1.atoms)
 
     _, cov_np = _element_arrays(geom1.atoms)
@@ -190,7 +190,7 @@ def compare_structures(
 def _bond_str(i: int, j: int, elems: List[str], one_based: bool = True) -> str:
     ii = i + 1 if one_based else i
     jj = j + 1 if one_based else j
-    return f"{elems[i]}{ii}-{elems[j]}{jj}"
+    return f'{elems[i]}{ii}-{elems[j]}{jj}'
 
 
 def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) -> str:
@@ -211,21 +211,21 @@ def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) ->
 
     def _len_str(i: int, j: int) -> str:
         if not have_lengths:
-            return ""
+            return ''
         # ``coords3d`` is given in Bohr; convert to Å
         d1 = float(D1[i, j]) * BOHR2ANG
         d2 = float(D2[i, j]) * BOHR2ANG
-        return f" : {d1:.3f} Å --> {d2:.3f} Å"
+        return f' : {d1:.3f} Å --> {d2:.3f} Å'
 
     def pairs_to_lines(title: str, pairs: Set[Pair]):
         if not pairs:
-            lines.append(f"{title}: None")
+            lines.append(f'{title}: None')
             return
-        lines.append(f"{title} ({len(pairs)}):")
+        lines.append(f'{title} ({len(pairs)}):')
         for i, j in sorted(pairs):
-            lines.append(f"  - {_bond_str(i, j, elems, one_based)}{_len_str(i, j)}")
+            lines.append(f'  - {_bond_str(i, j, elems, one_based)}{_len_str(i, j)}')
 
-    pairs_to_lines("Bond formed", result.formed_covalent)
-    pairs_to_lines("Bond broken", result.broken_covalent)
+    pairs_to_lines('Bond formed', result.formed_covalent)
+    pairs_to_lines('Bond broken', result.broken_covalent)
 
-    return "\n".join(lines)
+    return '\n'.join(lines)

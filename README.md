@@ -6,7 +6,7 @@
   
 Basically, you just need a **single command** such as  
 ```bash
-pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```  
 for modeling enzymatic reaction pathways.  
 
@@ -60,7 +60,7 @@ Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. Ei
 
 ```bash
 # Hugging Face CLI
-hf auth login --token "<YOUR_ACCESS_TOKEN>" --add-to-git-credential
+hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
 or
@@ -175,13 +175,13 @@ Use this when you already have several full PDB structures along a putative reac
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3"
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt True --thermo True --dft True
 ```
 
 Behavior:
@@ -207,20 +207,20 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]"
+pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]" --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
 ```
 
 Key points:
 
 - `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
-  - a 1‑based atom index **or** a PDB atom selector string like `"TYR,285,CA"` (delimiters: space/comma/slash/backtick/backslash),
+  - a 1‑based atom index **or** a PDB atom selector string like `'TYR,285,CA'` (delimiters: space/comma/slash/backtick/backslash),
   - automatically remapped to the cluster-model indices.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
@@ -239,13 +239,13 @@ Provide exactly one PDB and enable `--tsopt`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --tsopt True --thermo True --dft True --out-dir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True --out-dir ./result_tsopt_only
 ```
 
 Behavior:
@@ -280,13 +280,13 @@ Below are the most commonly used options across workflows.
 
   - PDB paths (the atoms in the given PDB define the center structure used during cluster extraction),
   - residue IDs, e.g. `A:123,B:456`,
-  - residue names, e.g. `"SAM,GPP"`.
+  - residue names, e.g. `'SAM,GPP'`.
 
 - `--ligand-charge TEXT`  
   Total charge information, either:
 
   - a single integer (total cluster-model charge), or
-  - a mapping, e.g. `"SAM:1,GPP:-3"`.
+  - a mapping, e.g. `'SAM:1,GPP:-3'`.
 
   The total charge of the first cluster model is summed and used for scan, GSM, and TS optimization runs.
 
@@ -306,7 +306,7 @@ Below are the most commonly used options across workflows.
   One or more Python‑style lists describing **staged scans** for single‑input runs. Example:
 
   ```bash
-  --scan-lists "[(10,55,2.20),(23,34,1.80)]"
+  --scan-lists '[(10,55,2.20),(23,34,1.80)]'
   ```
 
   Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model.

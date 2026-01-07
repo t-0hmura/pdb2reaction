@@ -8,11 +8,11 @@ class DefaultGroup(click.Group):
         self._default_cmd = default
 
     def parse_args(self, ctx, args):
-        if any(a in ("-h", "--help") for a in args):
+        if any(a in ('-h', '--help') for a in args):
             return super().parse_args(ctx, args)
 
         if self._default_cmd is not None:
-            if not args or args[0].startswith("-"):
+            if not args or args[0].startswith('-'):
                 args.insert(0, self._default_cmd)
         return super().parse_args(ctx, args)
 
@@ -34,21 +34,21 @@ from .scan3d import cli as scan3d_cmd
 
 @click.group(
     cls=DefaultGroup,
-    default="all",
-    help="pdb2reaction: Root command to execute each subcommands.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    default='all',
+    help='pdb2reaction: Root command to execute each subcommands.',
+    context_settings={'help_option_names': ['-h', '--help']},
 )
 def cli() -> None:
     pass
 
 
 @click.command(
-    name="extract",
-    help="Extract a binding pocket.",
+    name='extract',
+    help='Extract a binding pocket.',
     context_settings={
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
-        "help_option_names": [],
+        'ignore_unknown_options': True,
+        'allow_extra_args': True,
+        'help_option_names': [],
     },
 )
 @click.pass_context
@@ -60,26 +60,26 @@ def extract_cmd(ctx: click.Context) -> None:
     argv_backup = sys.argv[:]
     try:
         prog_base = (ctx.find_root().info_name or os.path.basename(sys.argv[0]))
-        sys.argv = [f"{prog_base} extract"] + list(ctx.args)
+        sys.argv = [f'{prog_base} extract'] + list(ctx.args)
         _extract_mod.extract()
     finally:
         sys.argv = argv_backup
 
 
-cli.add_command(all_cmd, name="all")
-cli.add_command(scan_cmd, name="scan")
-cli.add_command(opt_cmd, name="opt")
-cli.add_command(path_opt_cmd, name="path-opt")
-cli.add_command(path_search_cmd, name="path-search")
-cli.add_command(tsopt_cmd, name="tsopt")
-cli.add_command(freq_cmd, name="freq")
-cli.add_command(irc_cmd, name="irc")
-cli.add_command(extract_cmd, name="extract")
-cli.add_command(trj2fig_cmd, name="trj2fig")
-cli.add_command(add_elem_info_cmd, name="add-elem-info")
-cli.add_command(dft_cmd, name="dft")
-cli.add_command(scan2d_cmd, name="scan2d")
-cli.add_command(scan3d_cmd, name="scan3d")
+cli.add_command(all_cmd, name='all')
+cli.add_command(scan_cmd, name='scan')
+cli.add_command(opt_cmd, name='opt')
+cli.add_command(path_opt_cmd, name='path-opt')
+cli.add_command(path_search_cmd, name='path-search')
+cli.add_command(tsopt_cmd, name='tsopt')
+cli.add_command(freq_cmd, name='freq')
+cli.add_command(irc_cmd, name='irc')
+cli.add_command(extract_cmd, name='extract')
+cli.add_command(trj2fig_cmd, name='trj2fig')
+cli.add_command(add_elem_info_cmd, name='add-elem-info')
+cli.add_command(dft_cmd, name='dft')
+cli.add_command(scan2d_cmd, name='scan2d')
+cli.add_command(scan3d_cmd, name='scan3d')
 
 # Disable pysisyphus logging
 import logging
@@ -89,20 +89,20 @@ logging.disable(logging.CRITICAL)
 import warnings
 
 warnings.filterwarnings(
-    "ignore",
+    'ignore',
     category=UserWarning,
-    message=r"var\(\): degrees of freedom is <= 0\. Correction should be strictly less than the reduction factor.*",
-    module=r"fairchem\.core\.models\.uma\.escn_moe"
+    message=r'var\(\): degrees of freedom is <= 0\. Correction should be strictly less than the reduction factor.*',
+    module=r'fairchem\.core\.models\.uma\.escn_moe'
 )
 warnings.filterwarnings(
-    "ignore",
+    'ignore',
     category=UserWarning,
-    message=r"Sparse CSR tensor support is in beta state.*",
-    module=r"torch_dmf"
+    message=r'Sparse CSR tensor support is in beta state.*',
+    module=r'torch_dmf'
 )
 warnings.filterwarnings(
-    "ignore",
+    'ignore',
     category=UserWarning,
-    message=r"t_eval update skipped due to insufficient candidates",
-    module=r"torch_dmf"
+    message=r't_eval update skipped due to insufficient candidates',
+    module=r'torch_dmf'
 )

@@ -153,7 +153,7 @@ opt:
   line_search: true          # enable line search
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
+  prefix: ''                 # filename prefix
   out_dir: ./result_tsopt/   # output directory
 hessian_dimer:
   thresh_loose: gau_loose    # loose convergence preset
@@ -204,7 +204,7 @@ hessian_dimer:
     line_search: true          # enable line search
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
+    prefix: ''                 # filename prefix
     out_dir: ./result_opt/     # output directory
     keep_last: 7               # history size for LBFGS buffers
     beta: 1.0                  # initial damping beta
@@ -230,7 +230,7 @@ rsirfo:
   line_search: true          # enable line search
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
+  prefix: ''                 # filename prefix
   out_dir: ./result_opt/     # output directory
   roots: [0]                 # target root indices
   hessian_ref: null          # reference Hessian

@@ -6,7 +6,7 @@ Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySC
 ## Usage
 ```bash
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m MULTIPLICITY] \
-                 --func-basis "FUNC/BASIS" \
+                 --func-basis 'FUNC/BASIS' \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
                  [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True|False}] \
                  [--args-yaml FILE]
@@ -15,10 +15,10 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [-m MULTIPLICITY] \
 ### Examples
 ```bash
 # Default GPU-first policy with explicit functional/basis
-pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis "wb97m-v/6-31g**"
+pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis 'wb97m-v/6-31g**'
 
 # Tighter controls, larger basis, CPU-only backend
-pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis "wb97m-v/def2-tzvpd" --max-cycle 150 --conv-tol 1e-9 --engine cpu
+pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-cycle 150 --conv-tol 1e-9 --engine cpu
 ```
 
 ## Workflow
@@ -69,21 +69,21 @@ out_dir/ (default: ./result_dft/)
 Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
-- `func` (`"wb97m-v"`): Exchange–correlation functional.
-- `basis` (`"def2-tzvpd"`): Basis set name.
+- `func` (`'wb97m-v'`): Exchange–correlation functional.
+- `basis` (`'def2-tzvpd'`): Basis set name.
 - `func_basis` (_None_): Optional combined `FUNC/BASIS` string that overrides `func`/`basis` when provided.
 - `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
 - `grid_level` (`3`): PySCF `grids.level`.
 - `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
-- `out_dir` (`"./result_dft/"`): Output directory root.
+- `out_dir` (`'./result_dft/'`): Output directory root.
 
 _Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and spin to `1`. Set them explicitly for non-default states._
 
 ```yaml
 dft:
   func: wb97m-v         # exchange–correlation functional
-  basis: def2-tzvpd     # basis set name (alternatively use func_basis: "FUNC/BASIS")
+  basis: def2-tzvpd     # basis set name (alternatively use func_basis: 'FUNC/BASIS')
   conv_tol: 1.0e-09     # SCF convergence tolerance (Hartree)
   max_cycle: 100        # maximum SCF iterations
   grid_level: 3         # PySCF grid level
