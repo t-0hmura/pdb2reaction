@@ -9,7 +9,7 @@ Basically, you just need a **single command** such as
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```  
 for modeling enzymatic reaction pathways.  
-<br>
+<br><br>
 Furthermore, you can proceed MEP search --> TS refinement --> IRC --> thermochemistry analysis --> DFT single point calculation with **single command** such as  
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' **--tsopt True --thermo True --dft True**
