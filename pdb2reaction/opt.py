@@ -663,7 +663,9 @@ def cli(
                 detected = []
             merged = merge_freeze_atom_indices(geom_cfg, detected)
             if merged:
-                click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}')
+                click.echo(
+                    f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}"
+                )
 
         # Normalize and select optimizer kind
         kind = normalize_choice(

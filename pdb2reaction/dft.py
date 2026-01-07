@@ -659,7 +659,7 @@ def cli(
         (out_dir_path / 'result.yaml').write_text(
             yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True)
         )
-        click.echo(f'[write] Wrote "{out_dir_path / 'result.yaml'}".')
+        click.echo(f"[write] Wrote \"{out_dir_path / 'result.yaml'}\".")
 
         # --------------------------
         # 8) Final print: energies

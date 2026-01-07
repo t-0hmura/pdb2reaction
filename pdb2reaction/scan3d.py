@@ -709,7 +709,9 @@ def cli(
                 if detected:
                     freeze = merge_freeze_atom_indices(geom_cfg, detected)
                     if freeze:
-                        click.echo(f'[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}')
+                        click.echo(
+                            f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
+                        )
             coord_type = geom_cfg.get('coord_type', GEOM_KW_DEFAULT['coord_type'])
             geom_outer = geom_loader(
                 geom_input_path, coord_type=coord_type, freeze_atoms=freeze
@@ -819,9 +821,15 @@ def cli(
             )
 
             N1, N2, N3 = len(d1_values), len(d2_values), len(d3_values)
-            click.echo(f'[grid] d1 steps = {N1}  values(A)={list(map(lambda x: f'{x:.3f}', d1_values))}')
-            click.echo(f'[grid] d2 steps = {N2}  values(A)={list(map(lambda x: f'{x:.3f}', d2_values))}')
-            click.echo(f'[grid] d3 steps = {N3}  values(A)={list(map(lambda x: f'{x:.3f}', d3_values))}')
+            click.echo(
+                f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x: f'{x:.3f}', d1_values))}"
+            )
+            click.echo(
+                f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x: f'{x:.3f}', d2_values))}"
+            )
+            click.echo(
+                f"[grid] d3 steps = {N3}  values(A)={list(map(lambda x: f'{x:.3f}', d3_values))}"
+            )
             click.echo(f'[grid] total grid points = {N1 * N2 * N3}')
 
             max_step_bohr = float(max_step_size) * ANG2BOHR
