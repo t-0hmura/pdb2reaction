@@ -23,16 +23,16 @@ Examples
     pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
 
     # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
+    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
 
     # Name-based substrate selection including all matches (WARNING is logged)
-    pdb2reaction extract -i complex.pdb -c "GPP,SAM" -o pocket.pdb --ligand-charge "GPP:-3,SAM:1"
+    pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
 
     # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge "GPP:-3,SAM:1"
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
 
     # Multi-structure to multi outputs with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c "GPP,SAM" -o pocket1.pdb pocket2.pdb --ligand-charge "GPP:-3,SAM:1"
+    pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --ligand-charge 'GPP:-3,SAM:1'
 
 Description
 -----------
@@ -159,7 +159,7 @@ Residues are categorized as:
 ``--ligand-charge`` handling (applies only to **unknown** residues):
 - ``--ligand-charge <number>``: assign the given total charge equally across **unknown substrate residues**;
   if there are none, distribute across **all unknown residues** in the pocket.
-- ``--ligand-charge "RES1:Q1,RES2:Q2"``: per-resname charges for unknown residues; unspecified unknowns remain 0.
+- ``--ligand-charge 'RES1:Q1,RES2:Q2'``: per-resname charges for unknown residues; unspecified unknowns remain 0.
 
 The logged summary includes:
 - net protein charge, net unknown/ligand charge, ion list and net ion charge, and total pocket charge.
@@ -198,10 +198,10 @@ Substrate specification
   inputs by residue IDs (chain/resseq/icode), so numbering must be consistent across inputs.
 
 - a list of **residue IDs** (comma/space separated):
-  ``"123,124"``, ``"A:123,B:456"``, ``"123A"``, ``"A:123A"`` (insertion codes supported).
+  ``'123,124'``, ``'A:123,B:456'``, ``'123A'``, ``'A:123A'`` (insertion codes supported).
   Chain may be omitted (matches all chains); insertion code may be omitted (matches any insertion code for that resseq).
 
-- a list of **residue names** (comma/space separated, case-insensitive), e.g., ``"GPP,SAM"``.
+- a list of **residue names** (comma/space separated, case-insensitive), e.g., ``'GPP,SAM'``.
   If multiple residues share the same residue name, **all** matches are included and a WARNING is logged.
 
 Outputs (& Paths)
@@ -1292,7 +1292,7 @@ def compute_charge_summary(structure,
         Residues designated as substrate.
     ligand_charge : float | str | dict[str,float] | None
         - float: total charge to assign across **unknown residues** (preferring unknown substrate).
-        - str  : numeric string (total) or mapping like "GPP:-3,SAM:1" (per‑resname).
+        - str  : numeric string (total) or mapping like 'GPP:-3,SAM:1' (per‑resname).
         - dict : mapping {RESNAME: charge}. In mapping mode, other unknown residues remain 0.
 
     Returns

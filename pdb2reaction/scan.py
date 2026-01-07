@@ -7,7 +7,7 @@ scan — Bond‑length–driven staged scan with harmonic distance restraints an
 Usage (CLI)
 -----------
     pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q <charge>] \
-        [--scan-lists "[(I,J,TARGET_ANG), ...]" ...] [-m <spin>] \
+        [--scan-lists '[(I,J,TARGET_ANG), ...]' ...] [-m <spin>] \
         [--one-based {True|False}] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
@@ -18,12 +18,12 @@ Usage (CLI)
 Examples
 --------
     # Single-stage, minimal inputs (PDB)
-    pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
+    pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]'
 
     # Two stages, LBFGS, dumping trajectories
     pdb2reaction scan -i input.pdb -q 0 \
-        --scan-lists "[(12,45,1.35)]" \
-        --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+        --scan-lists '[(12,45,1.35)]' \
+        --scan-lists '[(10,55,2.20),(23,34,1.80)]' \
         --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode light \
         --preopt True --endopt True
 
@@ -34,7 +34,7 @@ Runs a staged, bond‑length–driven scan. At each step, harmonic distance well
 specified atom pairs and the full structure is relaxed. This implementation supports only
 the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead.
 For PDB inputs, scan tuples can use integer indices or selector strings such as
-``"TYR,285,CA"`` and ``"MMT,309,C10"`` to reference atoms (resname, resseq, atom).
+``'TYR,285,CA'`` and ``'MMT,309,C10'`` to reference atoms (resname, resseq, atom).
 
 Scheduling
   - For scan tuples [(i, j, target_Å)], compute the Å‑space displacement Δ = target − current_distance_Å.
@@ -221,7 +221,7 @@ def _parse_scan_lists(
 ) -> List[List[Tuple[int, int, float]]]:
     """
     Parse multiple Python-like list strings:
-      ["[(0,1,1.5), (2,3,2.0)]", "[(5,7,1.2)]", ...]
+      ['[(0,1,1.5), (2,3,2.0)]', '[(5,7,1.2)]', ...]
     Returns: [[(i,j,t), ...], [(i,j,t), ...], ...] with 0-based indices.
     """
     if not args:
@@ -405,8 +405,8 @@ def _snapshot_geometry(g) -> Any:
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,
-    help='Python-like list of (i,j,target) per stage. Repeatable. Example: '
-         '"[(0,1,1.50),(2,3,2.00)]" "[(5,7,1.20)]".',
+    help="Python-like list of (i,j,target) per stage. Repeatable. Example: "
+         "'[(0,1,1.50),(2,3,2.00)]' '[(5,7,1.20)]'.",
 )
 @click.option("--one-based", "one_based", type=click.BOOL, default=True, show_default=True,
               help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")

@@ -11,7 +11,7 @@ thermochemistry (freq), DFT single-points, and DFT//UMA diagrams.
 Usage (CLI)
 -----------
     pdb2reaction all -i INPUT1 [INPUT2 ...] [-c <substrate-spec>] \
-        [--ligand-charge <number|"RES:Q,...">] [-q/--charge <forced_net_charge>] [-m/--mult <2S+1>] \
+        [--ligand-charge <number|'RES:Q,...'>] [-q/--charge <forced_net_charge>] [-m/--mult <2S+1>] \
         [--freeze-links {True|False}] [--mep-mode {gsm|dmf}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--opt-mode {light|heavy}] [--dump {True|False}] \
         [--convert-files {True|False}] [--refine-path {True|False}] [--thresh <preset>] \
@@ -19,10 +19,10 @@ Usage (CLI)
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
         [--tsopt-max-cycles <int>] [--freq-* overrides] [--dft-* overrides] \
-        [--dft-engine {gpu|cpu|auto}] [--scan-lists "[(...)]" ...]
+        [--dft-engine {gpu|cpu|auto}] [--scan-lists '[(...)]' ...]
 
     # Single-structure scan builder (repeat --scan-lists to define sequential stages; works with or without extraction)
-    pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --scan-lists "[(...)]" [...]
+    pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --scan-lists '[(...)]' [...]
 
     # Single-structure TSOPT-only mode (no MEP search) when --scan-lists is omitted and --tsopt True
     pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --tsopt True [other options]
@@ -31,22 +31,22 @@ Usage (CLI)
 Examples
 --------
     # Minimal end-to-end run with explicit substrate and ligand charges (multi-structure)
-    pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
-        --ligand-charge "GPP:-3,MMT:-1"
+    pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
+        --ligand-charge 'GPP:-3,MMT:-1'
 
     # Full ensemble with an intermediate, residue-ID substrate spec, and full post-processing
-    pdb2reaction all -i A.pdb B.pdb C.pdb -c "308,309" --ligand-charge "-1" \
+    pdb2reaction all -i A.pdb B.pdb C.pdb -c '308,309' --ligand-charge '-1' \
         --mult 1 --freeze-links True --max-nodes 10 --max-cycles 100 --climb True \
         --opt-mode light --dump False --args-yaml params.yaml --preopt True \
         --out-dir result_all --tsopt True --thermo True --dft True
 
     # Single-structure + staged scan to build an ordered series before the MEP step + post-processing
-    pdb2reaction all -i A.pdb -c "308,309" \
-        --scan-lists "[(10,55,2.20),(23,34,1.80)]" --mult 1 --out-dir result_scan_all \
+    pdb2reaction all -i A.pdb -c '308,309' \
+        --scan-lists '[(10,55,2.20),(23,34,1.80)]' --mult 1 --out-dir result_scan_all \
         --tsopt True --thermo True --dft True
 
     # Single-structure TSOPT-only mode (skips the MEP step entirely)
-    pdb2reaction all -i A.pdb -c "GPP,MMT" --ligand-charge "GPP:-3,MMT:-1" \
+    pdb2reaction all -i A.pdb -c 'GPP,MMT' --ligand-charge 'GPP:-3,MMT:-1' \
         --tsopt True --thermo True --dft True --out-dir result_tsopt_only
 
 
@@ -55,7 +55,7 @@ Description
 Runs a one-shot pipeline centered on pocket models. The command is intentionally permissive about how
 ``-i/--input`` is given: it accepts repeated ``-i`` flags and the sloppy form ``-i A.pdb B.pdb C.pdb``.
 ``--scan-lists`` accepts repeated flags or the sloppy form
-``--scan-lists "[(...)]" "[(...)]"`` to define sequential scan stages.
+``--scan-lists '[(...)]' '[(...)]'`` to define sequential scan stages.
 
 Pipeline overview
 -----------------
@@ -67,8 +67,8 @@ Pipeline overview
 (1) **Active-site pocket extraction** *(enabled when ``-c/--center`` is provided)*
     - Define the substrate/center by:
         • a PDB path,
-        • residue IDs like ``"123,124"`` or ``"A:123,B:456"`` (insertion codes allowed: ``"123A"`` / ``"A:123A"``),
-        • residue names like ``"GPP,MMT"``.
+        • residue IDs like ``'123,124'`` or ``'A:123,B:456'`` (insertion codes allowed: ``'123A'`` / ``'A:123A'``),
+        • residue names like ``'GPP,MMT'``.
     - The extractor writes per-input pocket PDBs under ``<out-dir>/pockets/`` as ``pocket_<stem>.pdb``.
     - The extractor’s **model #1 total pocket charge** is used as the workflow charge for later stages,
       cast to the nearest integer; if rounding occurs a NOTE is printed.
@@ -76,7 +76,7 @@ Pipeline overview
       ``--exclude-backbone``, ``--add-linkH``, ``--selected_resn``, ``--verbose``.
     - ``--ligand-charge`` can be either:
         • a numeric total charge (distributed across unknown residues), or
-        • a residue-name mapping like ``"GPP:-3,MMT:-1"``.
+        • a residue-name mapping like ``'GPP:-3,MMT:-1'``.
 
 (1′) **Extraction skipped** *(when ``-c/--center`` is omitted)*
     - No pocket is built; the **full input structure(s)** are used directly as the “pocket inputs”.
@@ -92,7 +92,7 @@ Pipeline overview
       (**ATOM/HETATM file order**, 1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
       (chain/residue/atom name, etc.) with occurrence counting for duplicates.
     - For PDB inputs, each ``(i, j, target)`` entry can use integer indices or selector strings like
-      ``"TYR,285,CA"`` / ``"MMT,309,C10"`` (resname, resseq, atom).
+      ``'TYR,285,CA'`` / ``'MMT,309,C10'`` (resname, resseq, atom).
     - Stage endpoints are collected as ``scan/stage_XX/result.(pdb|xyz|gjf)`` and appended to the ordered
       input series for the MEP step:
       ``[initial pocket (or full input), stage_01/result.*, stage_02/result.*, ...]``.
@@ -2099,9 +2099,9 @@ def _irc_and_match(
         "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable; "
         "when repeated, stages run **sequentially**, each starting from the prior stage's relaxed "
         "structure. "
-        'Example: "[(12,45,1.35)]" "--scan-lists \'[(10,55,2.20),(23,34,1.80)]\'". '
+        "Example: '[(12,45,1.35)]' --scan-lists '[(10,55,2.20),(23,34,1.80)]'. "
         "You may also pass a single --scan-lists followed by multiple values "
-        '(e.g., "--scan-lists \'[(12,45,1.35)]\' \'[(10,55,2.20)]\'"). '
+        "(e.g., '--scan-lists \\'[(12,45,1.35)]\\' \\'[(10,55,2.20)]\\''). "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. Stage results feed into the MEP step (path_search or path_opt)."
     ),

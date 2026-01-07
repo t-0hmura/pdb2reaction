@@ -8,7 +8,7 @@ Usage (CLI)
 -----------
     pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dist-freeze "[(I,J,TARGET_A), ...]"] [--one-based {True|False}] \
+        [--dist-freeze '[(I,J,TARGET_A), ...]'] [--one-based {True|False}] \
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
         [--workers <int>] [--workers-per-node <int>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \

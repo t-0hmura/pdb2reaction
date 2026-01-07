@@ -137,8 +137,8 @@ def recompute_energies(
 def _parse_reference_spec(spec: str | None) -> str | int | None:
     """
     Normalize the reference specification:
-      - "init" (case-insensitive) -> "init"
-      - "none"/"null"             -> None
+      - 'init' (case-insensitive) -> 'init'
+      - 'none'/'null'             -> None
       - integer-like string       -> int
     """
     if spec is None:
@@ -153,7 +153,7 @@ def _parse_reference_spec(spec: str | None) -> str | int | None:
         return int(s)
     except ValueError:
         raise ValueError(
-            f'Invalid -r/--reference: {spec!r}. Use "init", "None", or an integer index.'
+            f"Invalid -r/--reference: {spec!r}. Use 'init', 'None', or an integer index."
         )
 
 
@@ -325,7 +325,7 @@ def parse_cli() -> argparse.Namespace:
         "-r",
         "--reference",
         default="init",
-        help='Reference: "init" (initial frame; last frame if --reverse-x), "None" (absolute E), or an integer index.',
+        help="Reference: 'init' (initial frame; last frame if --reverse-x), 'None' (absolute E), or an integer index.",
     )
     p.add_argument("-q", "--charge", type=int, required=False, help="Total charge (recompute energies when provided)")
     p.add_argument(
@@ -423,7 +423,7 @@ def main() -> None:
     "-r",
     "--reference",
     default="init",
-    help='Reference: "init" (initial frame; last frame if --reverse-x), "None" (absolute E), or an integer index.',
+    help="Reference: 'init' (initial frame; last frame if --reverse-x), 'None' (absolute E), or an integer index.",
 )
 @click.option(
     "-q",

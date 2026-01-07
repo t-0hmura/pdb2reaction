@@ -8,7 +8,7 @@ Usage (CLI)
 -----------
     pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} [-q CHARGE] \
         [-m MULTIPLICITY] \
-        --scan-list "[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]" \
+        --scan-list '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]' \
         [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
@@ -29,17 +29,17 @@ Examples
 --------
     # Minimal example (three distance ranges)
     pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]"
+        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'
 
     # LBFGS with inner-path trajectory dumping and 3D energy isosurface plot
     pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
+        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
         --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
         --preopt True --baseline min
 
     # Plot only from an existing surface.csv (skip new energy evaluation)
     pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list "[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]" \
+        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
         --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
 
 Description
@@ -50,7 +50,7 @@ Description
   via **--scan-list**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
-    ``"TYR,285,CA"`` or ``"MMT,309,C10"`` (resname, resseq, atom).
+    ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
@@ -435,8 +435,8 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     type=str,
     required=True,
     help=(
-        'Python-like list with three quadruples: '
-        '"[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3]".'
+        "Python-like list with three quadruples: "
+        "'[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]'."
     ),
 )
 @click.option(
