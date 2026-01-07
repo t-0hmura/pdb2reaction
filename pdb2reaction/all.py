@@ -91,6 +91,8 @@ Pipeline overview
     - When extraction is enabled, indices in ``--scan-lists`` refer to the **original full input PDB**
       (**ATOM/HETATM file order**, 1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
       (chain/residue/atom name, etc.) with occurrence counting for duplicates.
+    - For PDB inputs, each ``(i, j, target)`` entry can use integer indices or selector strings like
+      ``"TYR,285,CA"`` / ``"MMT,309,C10"`` (resname, resseq, atom).
     - Stage endpoints are collected as ``scan/stage_XX/result.(pdb|xyz|gjf)`` and appended to the ordered
       input series for the MEP step:
       ``[initial pocket (or full input), stage_01/result.*, stage_02/result.*, ...]``.

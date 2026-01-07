@@ -40,6 +40,8 @@ Description
 - A 2D grid scan driven by harmonic restraints on two inter-atomic distances (d1, d2).
 - Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
+  - For PDB inputs, each atom entry can be an integer index or a selector string such as
+    ``"TYR,285,CA"`` or ``"MMT,309,C10"`` (resname, resseq, atom).
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)

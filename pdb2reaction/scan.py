@@ -33,6 +33,8 @@ Description
 Runs a staged, bond‑length–driven scan. At each step, harmonic distance wells are applied to
 specified atom pairs and the full structure is relaxed. This implementation supports only
 the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead.
+For PDB inputs, scan tuples can use integer indices or selector strings such as
+``"TYR,285,CA"`` and ``"MMT,309,C10"`` to reference atoms (resname, resseq, atom).
 
 Scheduling
   - For scan tuples [(i, j, target_Å)], compute the Å‑space displacement Δ = target − current_distance_Å.

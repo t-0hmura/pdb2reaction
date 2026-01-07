@@ -49,6 +49,8 @@ Description
       [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
   via **--scan-list**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
+  - For PDB inputs, each atom entry can be an integer index or a selector string such as
+    ``"TYR,285,CA"`` or ``"MMT,309,C10"`` (resname, resseq, atom).
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
