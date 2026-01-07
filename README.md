@@ -51,7 +51,7 @@ Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust m
 # 2) Install pdb2reaction from GitHub
 # 3) Install a headless Chrome for Plotly figure export
 
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
+pip install torch --index-url https://download.pytorch.org/whl/cu129
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
@@ -117,7 +117,7 @@ If you prefer to build the environment piece by piece:
    For CUDA 12.9:
 
    ```bash
-   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
+   pip install torch --index-url https://download.pytorch.org/whl/cu129
    ```
 
    (You may use another compatible version if your cluster recommends it.)
@@ -207,13 +207,13 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",2.20),(\"TYR,285,CB\",\"MMT,309,C11\",1.80)]"
+pdb2reaction -i R.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]"
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",2.20),(\"TYR,285,CB\",\"MMT,309,C11\",1.80)]" --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c "SAM,GPP" --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]" --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
 ```
 
 Key points:
