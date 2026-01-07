@@ -142,6 +142,7 @@ from .utils import (
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
+    resolve_atom_spec_index,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -211,7 +212,11 @@ def _coords3d_to_xyz_string(geom, energy: Optional[float] = None) -> str:
     return s
 
 
-def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[int, int, float]]]:
+def _parse_scan_lists(
+    args: Sequence[str],
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+) -> List[List[Tuple[int, int, float]]]:
     """
     Parse multiple Python-like list strings:
       ["[(0,1,1.5), (2,3,2.0)]", "[(5,7,1.2)]", ...]
@@ -220,6 +225,32 @@ def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[i
     if not args:
         raise click.BadParameter("--scan-lists must be provided at least once.")
     stages: List[List[Tuple[int, int, float]]] = []
+    def _resolve_index(value: Any, stage_idx: int, side_label: str) -> int:
+        if isinstance(value, (int, np.integer)):
+            idx_val = int(value)
+            if one_based:
+                idx_val -= 1
+            if idx_val < 0:
+                raise click.BadParameter(
+                    f"Negative atom index in --scan-lists #{stage_idx}: {idx_val} (0-based expected)."
+                )
+            return idx_val
+        if isinstance(value, str):
+            if not atom_meta:
+                raise click.BadParameter(
+                    f"--scan-lists #{stage_idx} ({side_label}) uses a string atom spec, "
+                    "but no PDB metadata is available."
+                )
+            try:
+                return resolve_atom_spec_index(value, atom_meta)
+            except ValueError as exc:
+                raise click.BadParameter(
+                    f"--scan-lists #{stage_idx} ({side_label}) {exc}"
+                )
+        raise click.BadParameter(
+            f"--scan-lists #{stage_idx} ({side_label}) must be an int index or atom spec string."
+        )
+
     for idx, s in enumerate(args, start=1):
         try:
             obj = ast.literal_eval(s)
@@ -229,23 +260,17 @@ def _parse_scan_lists(args: Sequence[str], one_based: bool) -> List[List[Tuple[i
             raise click.BadParameter(f"--scan-lists #{idx} must be a list/tuple of (i,j,target).")
         tuples: List[Tuple[int, int, float]] = []
         for t in obj:
-            if (
+            if not (
                 isinstance(t, (list, tuple)) and len(t) == 3
-                and isinstance(t[0], (int, np.integer))
-                and isinstance(t[1], (int, np.integer))
                 and isinstance(t[2], (int, float, np.floating))
             ):
-                i, j, r = int(t[0]), int(t[1]), float(t[2])
-                if one_based:
-                    i -= 1
-                    j -= 1
-                if i < 0 or j < 0:
-                    raise click.BadParameter(f"Negative atom index in --scan-lists #{idx}: {(i,j,r)} (0-based expected).")
-                if r <= 0.0:
-                    raise click.BadParameter(f"Non-positive target length in --scan-lists #{idx}: {(i,j,r)}.")
-                tuples.append((i, j, r))
-            else:
                 raise click.BadParameter(f"--scan-lists #{idx} contains an invalid triple: {t}")
+            i = _resolve_index(t[0], idx, "i")
+            j = _resolve_index(t[1], idx, "j")
+            r = float(t[2])
+            if r <= 0.0:
+                raise click.BadParameter(f"Non-positive target length in --scan-lists #{idx}: {(i,j,r)}.")
+            tuples.append((i, j, r))
         stages.append(tuples)
     return stages
 
@@ -527,29 +552,32 @@ def cli(
         click.echo(pretty_block("bias", echo_bias))
         click.echo(pretty_block("bond", echo_bond))
 
-        # ------------------------------------------------------------------
-        # 2) Parse scan lists
-        # ------------------------------------------------------------------
-        stages = _parse_scan_lists(scan_lists_raw, one_based=one_based)
-        K = len(stages)
-        click.echo(f"[scan] Received {K} stage(s).")
-
         pdb_atom_meta: List[Dict[str, Any]] = []
         if input_path.suffix.lower() == ".pdb":
             pdb_atom_meta = load_pdb_atom_metadata(input_path)
-            if pdb_atom_meta:
-                click.echo("[scan] PDB atom details for scanned pairs:")
-                legend = format_pdb_atom_metadata_header()
-                click.echo(f"        legend: {legend}")
-                for stage_idx, tuples in enumerate(stages, start=1):
-                    click.echo(f"  Stage {stage_idx}:")
-                    for pair_idx, (i, j, _) in enumerate(tuples, start=1):
-                        click.echo(
-                            f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}"
-                        )
-                        click.echo(
-                            f"              j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
-                        )
+
+        # ------------------------------------------------------------------
+        # 2) Parse scan lists
+        # ------------------------------------------------------------------
+        stages = _parse_scan_lists(
+            scan_lists_raw, one_based=one_based, atom_meta=pdb_atom_meta
+        )
+        K = len(stages)
+        click.echo(f"[scan] Received {K} stage(s).")
+
+        if pdb_atom_meta:
+            click.echo("[scan] PDB atom details for scanned pairs:")
+            legend = format_pdb_atom_metadata_header()
+            click.echo(f"        legend: {legend}")
+            for stage_idx, tuples in enumerate(stages, start=1):
+                click.echo(f"  Stage {stage_idx}:")
+                for pair_idx, (i, j, _) in enumerate(tuples, start=1):
+                    click.echo(
+                        f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}"
+                    )
+                    click.echo(
+                        f"              j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
+                    )
 
         # Prepare end-of-run summary collector
         stages_summary: List[Dict[str, Any]] = []

@@ -348,6 +348,8 @@ from .utils import (
     resolve_charge_spin_or_raise,
     load_yaml_dict,
     apply_yaml_overrides,
+    load_pdb_atom_metadata,
+    resolve_atom_spec_index,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -544,7 +546,36 @@ def _format_atom_key_for_msg(key: AtomKey) -> str:
     return f"{res}:{atom}{alt_sfx}"
 
 
-def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple[int, int, float]]]:
+def _resolve_scan_list_index(
+    value: Any,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    stage_idx: int,
+    tuple_idx: int,
+    side_label: str,
+) -> int:
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, str):
+        if not atom_meta:
+            raise click.BadParameter(
+                f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) uses a string atom spec, "
+                "but no PDB metadata is available."
+            )
+        try:
+            return resolve_atom_spec_index(value, atom_meta) + 1
+        except ValueError as exc:
+            raise click.BadParameter(
+                f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) {exc}"
+            )
+    raise click.BadParameter(
+        f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) must be an int index or atom spec string."
+    )
+
+
+def _parse_scan_lists_literals(
+    scan_lists_raw: Sequence[str],
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+) -> List[List[Tuple[int, int, float]]]:
     """Parse ``--scan-lists`` literals without re-basing atom indices."""
     stages: List[List[Tuple[int, int, float]]] = []
     for idx_stage, literal in enumerate(scan_lists_raw, start=1):
@@ -557,19 +588,18 @@ def _parse_scan_lists_literals(scan_lists_raw: Sequence[str]) -> List[List[Tuple
                 f"--scan-lists #{idx_stage} must be a list/tuple of (i,j,target)."
             )
         tuples: List[Tuple[int, int, float]] = []
-        for t in obj:
-            if (
+        for tuple_idx, t in enumerate(obj, start=1):
+            if not (
                 isinstance(t, (list, tuple))
                 and len(t) == 3
-                and isinstance(t[0], (int, np.integer))
-                and isinstance(t[1], (int, np.integer))
                 and isinstance(t[2], (int, float, np.floating))
             ):
-                tuples.append((int(t[0]), int(t[1]), float(t[2])))
-            else:
                 raise click.BadParameter(
                     f"--scan-lists #{idx_stage} contains an invalid triple: {t}"
                 )
+            idx_i = _resolve_scan_list_index(t[0], atom_meta, idx_stage, tuple_idx, "i")
+            idx_j = _resolve_scan_list_index(t[1], atom_meta, idx_stage, tuple_idx, "j")
+            tuples.append((idx_i, idx_j, float(t[2])))
         if not tuples:
             raise click.BadParameter(
                 f"--scan-lists #{idx_stage} must contain at least one (i,j,target) triple."
@@ -598,7 +628,8 @@ def _convert_scan_lists_to_pocket_indices(
     if not scan_lists_raw:
         return []
 
-    stages = _parse_scan_lists_literals(scan_lists_raw)
+    full_atom_meta = load_pdb_atom_metadata(full_input_pdb)
+    stages = _parse_scan_lists_literals(scan_lists_raw, atom_meta=full_atom_meta)
 
     orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
     key_to_pocket_idx = _pocket_key_to_index(pocket_pdb)
@@ -2953,7 +2984,10 @@ def cli(
 
         if skip_extract:
             scan_input_pdb = Path(input_paths[0]).resolve()
-            converted_scan_stages = _parse_scan_lists_literals(scan_lists_raw)
+            scan_atom_meta = load_pdb_atom_metadata(scan_input_pdb)
+            converted_scan_stages = _parse_scan_lists_literals(
+                scan_lists_raw, atom_meta=scan_atom_meta
+            )
         else:
             scan_input_pdb = Path(pocket_outputs[0]).resolve()
             full_input_pdb = Path(input_paths[0]).resolve()

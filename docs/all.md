@@ -23,7 +23,7 @@ pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c "308,309" \
-    --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+    --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",2.20),(\"TYR,285,CB\",\"MMT,309,C11\",1.80)]" \
     --opt-mode heavy --tsopt True --thermo True --dft True
 
 # TSOPT-only workflow (no path search)
@@ -39,7 +39,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
    - The **first pocket’s total charge** is rounded to the nearest integer and propagated to scan/MEP/TSOPT (a console note appears when rounding occurs).
 
 2. **Optional staged scan (single-input only)**
-   - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering.
+   - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input PDB (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `"TYR,285,CA"`; selectors accept spaces/commas/slashes/backticks/backslashes as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
    - When `--scan-lists` is repeated, stages run **sequentially**: stage 1 relaxes the starting structure, stage 2 begins from stage 1's result, and so on.
    - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
@@ -115,7 +115,7 @@ pdb2reaction all -i reactant.pdb -c "GPP,MMT" \
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
-| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; indices come from the original input PDB (1-based) and are remapped internally. | _None_ |
+| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; `i`/`j` can be integer indices or PDB atom selectors like `"TYR,285,CA"` and are remapped internally. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan`). | _None_ |
 | `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |

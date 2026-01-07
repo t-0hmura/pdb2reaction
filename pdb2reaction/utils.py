@@ -1058,6 +1058,69 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
     return atoms
 
 
+def _split_atom_spec_tokens(spec: str) -> List[str]:
+    tokens = [t for t in re.split(r"[\\s/`,\\\\,]+", spec.strip()) if t]
+    return tokens
+
+
+def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> int:
+    """
+    Resolve an atom selector string into a 0-based atom index using PDB metadata.
+
+    The selector must contain three fields (resname, resseq, atomname) separated by
+    whitespace, comma, slash, backtick, or backslash. Field order is flexible; when
+    unordered matching fails, the ordered interpretation (resname, resseq, atomname)
+    is used as a fallback.
+    """
+    tokens = _split_atom_spec_tokens(spec)
+    if len(tokens) != 3:
+        raise ValueError(
+            f"Atom spec '{spec}' must have exactly 3 fields (resname, resseq, atomname)."
+        )
+
+    tokens_upper = [t.upper() for t in tokens]
+    matches: List[int] = []
+    for idx, meta in enumerate(atom_meta):
+        resname = (meta.get("resname") or "").strip().upper()
+        resseq = meta.get("resseq")
+        atom = (meta.get("name") or "").strip().upper()
+        if resseq is None:
+            continue
+        fields = {resname, str(resseq), atom}
+        if all(tok in fields for tok in tokens_upper):
+            matches.append(idx)
+
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            f"Atom spec '{spec}' matches {len(matches)} atoms; use an explicit atom index."
+        )
+
+    resname, resseq_txt, atom = tokens_upper
+    if not resseq_txt.isdigit():
+        raise ValueError(
+            f"Atom spec '{spec}' could not be resolved and residue number '{tokens[1]}' is not numeric."
+        )
+    resseq_int = int(resseq_txt)
+    ordered_matches = [
+        idx
+        for idx, meta in enumerate(atom_meta)
+        if (meta.get("resname") or "").strip().upper() == resname
+        and meta.get("resseq") == resseq_int
+        and (meta.get("name") or "").strip().upper() == atom
+    ]
+    if len(ordered_matches) == 1:
+        return ordered_matches[0]
+    if len(ordered_matches) > 1:
+        raise ValueError(
+            f"Atom spec '{spec}' matches {len(ordered_matches)} atoms after ordered fallback; "
+            "use an explicit atom index."
+        )
+
+    raise ValueError(f"Atom spec '{spec}' did not match any atom.")
+
+
 def format_pdb_atom_metadata_header() -> str:
     """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
 

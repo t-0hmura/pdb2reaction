@@ -19,12 +19,12 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
 ### Examples
 ```bash
 # Single-stage, minimal inputs (PDB)
-pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(12,45,1.35)]"
+pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]"
 
 # Two stages, LBFGS relaxations, and trajectory dumping
 pdb2reaction scan -i input.pdb -q 0 \
-    --scan-lists "[(12,45,1.35)]" \
-    --scan-lists "[(10,55,2.20),(23,34,1.80)]" \
+    --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]" \
+    --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",2.20),(\"TYR,285,CB\",\"MMT,309,C11\",1.80)]" \
     --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode light \
     --preopt True --endopt True
 ```
@@ -38,7 +38,11 @@ pdb2reaction scan -i input.pdb -q 0 \
 2. Optionally run an unbiased preoptimization (`--preopt True`) before any
    biasing so the starting point is relaxed.
 3. For each stage literal supplied via `--scan-lists`, parse and normalize the
-   `(i, j)` indices (1-based by default). Compute the per-bond displacement
+   `(i, j)` indices (1-based by default). When the input is a PDB, each entry
+   may be either an integer index or an atom selector string like `"TYR,285,CA"`;
+   selector fields can be separated by spaces, commas, slashes, backticks, or
+   backslashes and may be in any order (fallback assumes resname, resseq, atom).
+   Compute the per-bond displacement
    `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
    `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
 4. March through all steps, updating the temporary targets, applying the
@@ -58,7 +62,7 @@ pdb2reaction scan -i input.pdb -q 0 \
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
-| `--scan-lists TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. | Required |
+| `--scan-lists TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. `i`/`j` can be integer indices or PDB atom selectors like `"TYR,285,CA"`. | Required |
 | `--one-based {True|False}` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
@@ -107,7 +111,9 @@ out_dir/ (default: ./result_scan/)
 
 ## Notes
 - `--scan-lists` may be repeated; each literal becomes one stage. Tuples must
-  have positive targets. Atom indices are normalized to 0-based internally.
+  have positive targets. Atom indices are normalized to 0-based internally. For
+  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
+  (space/comma/slash/backtick/backslash) and unordered tokens.
 - `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
   atoms in PDB files so pockets stay rigid.
 - Charge and spin inherit Gaussian template metadata when available. If `-q` is
