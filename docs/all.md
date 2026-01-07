@@ -23,7 +23,7 @@ pdb2reaction all -i reactant.pdb product.pdb -c "GPP,MMT" \
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c "308,309" \
-    --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",2.20),(\"TYR,285,CB\",\"MMT,309,C11\",1.80)]" \
+    --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]" \
     --opt-mode heavy --tsopt True --thermo True --dft True
 
 # TSOPT-only workflow (no path search)

@@ -19,12 +19,12 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
 ### Examples
 ```bash
 # Single-stage, minimal inputs (PDB)
-pdb2reaction scan -i input.pdb -q 0 --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]"
+pdb2reaction scan -i input.pdb -q 0 --scan-lists "[('TYR,285,CA','MMT,309,C10',1.35)]"
 
 # Two stages, LBFGS relaxations, and trajectory dumping
 pdb2reaction scan -i input.pdb -q 0 \
-    --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]" \
-    --scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",2.20),(\"TYR,285,CB\",\"MMT,309,C11\",1.80)]" \
+    --scan-lists "[('TYR,285,CA','MMT,309,C10',1.35)]" \
+    --scan-lists "[('TYR,285,CA','MMT,309,C10',2.20),('TYR,285,CB','MMT,309,C11',1.80)]" \
     --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode light \
     --preopt True --endopt True
 ```
