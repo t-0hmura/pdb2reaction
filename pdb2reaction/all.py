@@ -310,6 +310,7 @@ from typing import List, Sequence, Optional, Tuple, Dict, Any
 
 import sys, os
 import math
+import tempfile
 import click
 from click.core import ParameterSource
 import time
@@ -761,7 +762,6 @@ def _freeze_atoms_for_log() -> List[int]:
 def _write_args_yaml_with_freeze_atoms(
     args_yaml: Optional[Path],
     freeze_atoms: Sequence[int],
-    tmp_dir: Path,
 ) -> Optional[Path]:
     """
     Merge ``freeze_atoms`` into a YAML config under ``geom`` and write a temporary YAML file.
@@ -782,7 +782,7 @@ def _write_args_yaml_with_freeze_atoms(
     merge_freeze_atom_indices(geom_cfg, freeze_atoms)
     cfg["geom"] = geom_cfg
 
-    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp_dir = Path(tempfile.mkdtemp(prefix="tmp_path_search_"))
     out_path = tmp_dir / "args_freeze_atoms.yaml"
     with out_path.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(cfg, fh, sort_keys=False, allow_unicode=True)
@@ -2567,7 +2567,6 @@ def cli(
     args_yaml = _write_args_yaml_with_freeze_atoms(
         args_yaml,
         _freeze_atoms_for_log(),
-        out_dir / "tmp",
     )
 
     calc_cfg_shared = _build_calc_cfg(
