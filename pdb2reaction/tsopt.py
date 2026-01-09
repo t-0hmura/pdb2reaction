@@ -147,7 +147,6 @@ import torch
 from ase import Atoms
 from ase.io import write
 from ase.data import atomic_masses
-import ase.units as units
 import yaml
 import time
 
@@ -155,7 +154,7 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
-from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AMU2AU, AU2EV
+from pysisyphus.constants import BOHR2ANG, AMU2AU
 from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-projected forces)
 
 # RS-I-RFO optimizer (transition state)
@@ -186,12 +185,12 @@ from .utils import (
 )
 from .freq import (
     _torch_device,
-    _build_tr_basis,
     _tr_orthonormal_basis,
     _mass_weighted_hessian,
     _calc_full_hessian_torch,
     _calc_energy,
     _write_mode_trj_and_pdb,
+    _frequencies_cm_and_modes,
 )
 
 
@@ -205,7 +204,6 @@ _OPT_MODE_ALIASES = (
 # ===================================================================
 #               Mass-weighted projection & vib analysis
 # ===================================================================
-
 def _mw_projected_hessian_inplace(H_t: torch.Tensor,
                                   coords_bohr_t: torch.Tensor,
                                   masses_au_t: torch.Tensor,
@@ -255,7 +253,6 @@ def _mw_projected_hessian_inplace(H_t: torch.Tensor,
         if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
         return H_t
-
 
 def _self_check_tr_projection(H_t: torch.Tensor,
                               coords_bohr_t: torch.Tensor,
@@ -356,91 +353,6 @@ def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
     return g
 
 
-def _frequencies_cm_and_modes(H_t: torch.Tensor,
-                              atomic_numbers: List[int],
-                              coords_bohr: np.ndarray,
-                              device: torch.device,
-                              tol: float = 1e-6,
-                              freeze_idx: Optional[List[int]] = None) -> Tuple[np.ndarray, torch.Tensor]:
-    """
-    In-place PHVA/TR projection (active-subspace if freeze_idx) and diagonalization.
-    Returns:
-      freqs_cm : (nmode,) numpy (negatives are imaginary)
-      modes    : (nmode, 3N) torch (mass-weighted eigenvectors embedded to full 3N)
-    """
-    with torch.no_grad():
-        Z = np.array(atomic_numbers, dtype=int)
-        N = int(len(Z))
-        masses_amu = np.array([atomic_masses[z] for z in Z])  # amu
-        masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=H_t.dtype, device=device)
-        coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H_t.dtype, device=device)
-
-        # in-place mass-weight + (active-subspace) TR projection
-        Hmw = _mw_projected_hessian_inplace(H_t, coords_bohr_t, masses_au_t, freeze_idx=freeze_idx)
-
-        # eigensolve (upper triangle)
-        omega2, Vsub = torch.linalg.eigh(Hmw, UPLO="U")
-
-        sel = torch.abs(omega2) > tol
-        omega2 = omega2[sel]
-        Vsub = Vsub[:, sel]  # (3N_act or 3N, nsel)
-
-        # embed modes to full 3N
-        if freeze_idx and len(freeze_idx) > 0:
-            frozen = set(int(i) for i in freeze_idx if 0 <= int(i) < N)
-            mask_dof = torch.ones(3 * N, dtype=torch.bool, device=Hmw.device)
-            for i in frozen:
-                mask_dof[3 * i:3 * i + 3] = False
-            modes = torch.zeros((Vsub.shape[1], 3 * N), dtype=Hmw.dtype, device=Hmw.device)
-            modes[:, mask_dof] = Vsub.T
-            del mask_dof, frozen
-        else:
-            modes = Vsub.T  # (nsel, 3N)
-
-        # convert to cm^-1
-        s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
-        hnu = s_new * torch.sqrt(torch.abs(omega2))
-        hnu = torch.where(omega2 < 0, -hnu, hnu)
-        freqs_cm = (hnu / units.invcm).detach().cpu().numpy()
-
-        del omega2, hnu, Vsub
-        if torch.cuda.is_available() and H_t.is_cuda:
-            torch.cuda.empty_cache()
-        return freqs_cm, modes
-
-
-def _frequencies_cm_only(H_t: torch.Tensor,
-                         atomic_numbers: List[int],
-                         coords_bohr: np.ndarray,
-                         device: torch.device,
-                         tol: float = 1e-6,
-                         freeze_idx: Optional[List[int]] = None) -> np.ndarray:
-    """
-    Frequencies only (PHVA/TR in-place; no eigenvectors) for quick checks.
-    """
-    with torch.no_grad():
-        Z = np.array(atomic_numbers, dtype=int)
-        masses_amu = np.array([atomic_masses[z] for z in Z])  # amu
-        masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=H_t.dtype, device=device)
-        coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H_t.dtype, device=device)
-
-        Hmw = _mw_projected_hessian_inplace(H_t, coords_bohr_t, masses_au_t, freeze_idx=freeze_idx)
-        omega2 = torch.linalg.eigvalsh(Hmw, UPLO="U")
-
-        sel = torch.abs(omega2) > tol
-        omega2 = omega2[sel]
-
-        s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
-        hnu = s_new * torch.sqrt(torch.abs(omega2))
-        hnu = torch.where(omega2 < 0, -hnu, hnu)
-        freqs_cm = (hnu / units.invcm).detach().cpu().numpy()
-
-        del omega2, hnu, sel
-        if torch.cuda.is_available() and H_t.is_cuda:
-            torch.cuda.empty_cache()
-        return freqs_cm
-
-
 # ===================================================================
 #            Active-subspace helpers & Bofill update
 # ===================================================================
@@ -510,74 +422,6 @@ def _mw_tr_project_active_inplace(H_act: torch.Tensor,
         return H_act
 
 
-def _frequencies_from_Hact(H_act: torch.Tensor,
-                           atomic_numbers: List[int],
-                           coords_bohr: np.ndarray,
-                           active_idx: List[int],
-                           device: torch.device,
-                           tol: float = 1e-6) -> np.ndarray:
-    """
-    Frequencies (cm^-1) computed from active-block Hessian with active-space TR projection.
-    """
-    with torch.no_grad():
-        coords_act = torch.as_tensor(coords_bohr.reshape(-1, 3)[active_idx, :], dtype=H_act.dtype, device=device)
-        masses_act_au = torch.as_tensor([atomic_masses[int(z)] * AMU2AU
-                                         for z in np.array(atomic_numbers, int)[active_idx]],
-                                        dtype=H_act.dtype, device=device)
-        Hmw = H_act.clone()
-        _mw_tr_project_active_inplace(Hmw, coords_act, masses_act_au)
-        omega2 = torch.linalg.eigvalsh(Hmw, UPLO="U")
-        sel = torch.abs(omega2) > tol
-        omega2 = omega2[sel]
-        s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
-        hnu = s_new * torch.sqrt(torch.abs(omega2))
-        hnu = torch.where(omega2 < 0, -hnu, hnu)
-        freqs_cm = (hnu / units.invcm).detach().cpu().numpy()
-        del coords_act, masses_act_au, Hmw, omega2, hnu, sel
-        if torch.cuda.is_available() and H_act.is_cuda:
-            torch.cuda.empty_cache()
-        return freqs_cm
-
-
-def _modes_from_Hact_embedded(H_act: torch.Tensor,
-                              atomic_numbers: List[int],
-                              coords_bohr: np.ndarray,
-                              active_idx: List[int],
-                              device: torch.device,
-                              tol: float = 1e-6) -> Tuple[np.ndarray, torch.Tensor]:
-    """
-    Diagonalize active-block Hessian with mass-weight/TR in active space and return:
-      freqs_cm : (nmode,)
-      modes    : (nmode, 3N) mass-weighted eigenvectors embedded to full 3N (torch)
-    """
-    with torch.no_grad():
-        N = len(atomic_numbers)
-        coords_act = torch.as_tensor(coords_bohr.reshape(-1, 3)[active_idx, :], dtype=H_act.dtype, device=device)
-        masses_act_au = torch.as_tensor([atomic_masses[int(z)] * AMU2AU
-                                         for z in np.array(atomic_numbers, int)[active_idx]],
-                                        dtype=H_act.dtype, device=device)
-        Hmw = H_act.clone()
-        _mw_tr_project_active_inplace(Hmw, coords_act, masses_act_au)
-        omega2, Vsub = torch.linalg.eigh(Hmw, UPLO="U")
-        sel = torch.abs(omega2) > tol
-        omega2 = omega2[sel]
-        Vsub = Vsub[:, sel]  # (3N_act, nsel)
-
-        # Embed to full 3N (mass-weighted eigenvectors)
-        modes_full = torch.zeros((Vsub.shape[1], 3 * N), dtype=Hmw.dtype, device=Hmw.device)
-        mask_dof = _active_mask_dof(N, list(set(range(N)) - set(active_idx)))
-        mask_t = torch.as_tensor(mask_dof, dtype=torch.bool, device=device)
-        modes_full[:, mask_t] = Vsub.T
-        # frequencies
-        s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
-        hnu = s_new * torch.sqrt(torch.abs(omega2))
-        hnu = torch.where(omega2 < 0, -hnu, hnu)
-        freqs_cm = (hnu / units.invcm).detach().cpu().numpy()
-
-        del coords_act, masses_act_au, Hmw, omega2, Vsub, mask_t
-        if torch.cuda.is_available() and H_act.is_cuda:
-            torch.cuda.empty_cache()
-        return freqs_cm, modes_full
 
 
 def _mode_direction_by_root_from_Hact(H_act: torch.Tensor,
@@ -1111,9 +955,12 @@ class HessianDimer:
                 break
 
             # (a) Frequencies & modes from the active Hessian
-            freqs_cm, modes_embedded = _modes_from_Hact_embedded(
-                H_act, self.geom.atomic_numbers,
-                self.geom.cart_coords.reshape(-1, 3), active_idx, self.device
+            freqs_cm, modes_embedded = _frequencies_cm_and_modes(
+                H_act,
+                self.geom.atomic_numbers,
+                self.geom.cart_coords.reshape(-1, 3),
+                self.device,
+                freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
             )
             n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
             ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
@@ -1166,16 +1013,13 @@ class HessianDimer:
 
         # Final Hessian → imaginary mode animation
         H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
-        if H_t.size(0) == 3 * N:
-            freqs_cm, modes = _frequencies_cm_and_modes(
-                H_t, self.geom.atomic_numbers, self.geom.cart_coords.reshape(-1, 3), self.device,
-                freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
-            )
-        else:
-            freqs_cm, modes = _modes_from_Hact_embedded(
-                H_t, self.geom.atomic_numbers, self.geom.cart_coords.reshape(-1, 3),
-                active_idx, self.device
-            )
+        freqs_cm, modes = _frequencies_cm_and_modes(
+            H_t,
+            self.geom.atomic_numbers,
+            self.geom.cart_coords.reshape(-1, 3),
+            self.device,
+            freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
+        )
 
         del H_t
         neg_idx = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
@@ -1651,17 +1495,13 @@ def cli(
             device = _torch_device(calc_cfg.get("device", "auto"))
 
             H_t = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
-            N = len(geometry.atomic_numbers)
-            if H_t.size(0) == 3 * N:
-                freqs_cm, modes = _frequencies_cm_and_modes(
-                    H_t, geometry.atomic_numbers, geometry.cart_coords.reshape(-1, 3), device,
-                    freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
-                )
-            else:
-                act_idx = _active_indices(N, list(geom_cfg.get("freeze_atoms", [])))
-                freqs_cm, modes = _modes_from_Hact_embedded(
-                    H_t, geometry.atomic_numbers, geometry.cart_coords.reshape(-1, 3), act_idx, device
-                )
+            freqs_cm, modes = _frequencies_cm_and_modes(
+                H_t,
+                geometry.atomic_numbers,
+                geometry.cart_coords.reshape(-1, 3),
+                device,
+                freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None,
+            )
 
             # Use configurable neg_freq_thresh_cm (same default as light mode)
             neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
