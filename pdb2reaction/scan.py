@@ -38,6 +38,7 @@ specified atom pairs and the full structure is relaxed. This implementation supp
 the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead.
 For PDB inputs, scan tuples can use integer indices or selector strings such as
 ``'TYR,285,CA'`` and ``'MMT,309,C10'`` to reference atoms (resname, resseq, atom).
+For non-PDB inputs, only integer indices are supported.
 If you pass one ``--scan-lists`` literal, the scan runs in a single stage; multiple
 literals are executed as sequential stages, each starting from the previous stage’s
 relaxed final structure.
@@ -249,7 +250,7 @@ def _parse_scan_lists(
             if not atom_meta:
                 raise click.BadParameter(
                     f"--scan-lists #{stage_idx} ({side_label}) uses a string atom spec, "
-                    "but no PDB metadata is available."
+                    "but no PDB metadata is available (non-PDB inputs require integer indices)."
                 )
             try:
                 return resolve_atom_spec_index(value, atom_meta)

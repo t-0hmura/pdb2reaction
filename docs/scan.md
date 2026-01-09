@@ -21,7 +21,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
 
 ### Examples
 ```bash
-# Single-stage, minimal inputs (PDB)
+# Single-stage, minimal inputs
 pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
 
 # Two stages, LBFGS relaxations, and trajectory dumping
