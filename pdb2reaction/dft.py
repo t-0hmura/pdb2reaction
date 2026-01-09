@@ -6,7 +6,7 @@ dft — Single-point DFT calculation
 
 Usage (CLI)
 -----------
-    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [-m <multiplicity>] \
+    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
         [--func-basis 'FUNC/BASIS'] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
         [--convert-files {True|False}] [--args-yaml <file>]

@@ -6,7 +6,7 @@ irc — IRC calculations with the EulerPC algorithm
 
 Usage (CLI)
 -----------
-    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
+    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
         [--freeze-links {True|False}] [--convert-files {True|False}] \

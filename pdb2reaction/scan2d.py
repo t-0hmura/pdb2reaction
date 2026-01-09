@@ -6,7 +6,7 @@ scan2d — Two-distance 2D scan with harmonic restraints
 
 Usage (CLI)
 -----------
-    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [-m <multiplicity>] \
+    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
         --scan-list '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]' \
         [--one-based {True|False}] \
         [--max-step-size FLOAT] \

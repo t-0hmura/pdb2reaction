@@ -15,7 +15,7 @@ companions and Gaussian templates receive multi-geometry `.gjf` exports.
 
 ## Usage
 ```bash
-pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
+pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
                     [--opt-mode light|heavy] \
                     [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
                     [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
