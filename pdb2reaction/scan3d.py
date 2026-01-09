@@ -397,8 +397,8 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     "-i", "--input",
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    required=True,
-    help="Input structure file (.pdb, .xyz, .trj, ...).",
+    required=False,
+    help="Input structure file (.pdb, .xyz, .trj, ...). Required unless --csv is provided.",
 )
 @click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
 @click.option(
@@ -433,7 +433,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "--scan-list", "scan_list_raw",
     type=str,
-    required=True,
+    required=False,
     help=(
         "Python-like list with three quadruples: "
         "'[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]'."
@@ -556,13 +556,13 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Upper bound of color scale for plots (kcal/mol).",
 )
 def cli(
-    input_path: Path,
+    input_path: Optional[Path],
     charge: Optional[int],
     ligand_charge: Optional[str],
     workers: int,
     workers_per_node: int,
     spin: Optional[int],
-    scan_list_raw: str,
+    scan_list_raw: Optional[str],
     one_based: bool,
     max_step_size: float,
     bias_k: float,
@@ -583,16 +583,23 @@ def cli(
     from .utils import load_yaml_dict, apply_yaml_overrides
 
     set_convert_file_enabled(convert_files)
-    prepared_input = prepare_input_structure(input_path)
-    geom_input_path = prepared_input.geom_path
+    prepared_input = None
+    geom_input_path = None
+    if csv_path is None:
+        if input_path is None:
+            raise click.ClickException("-i/--input is required unless --csv is provided.")
+        if scan_list_raw is None:
+            raise click.ClickException("--scan-list is required unless --csv is provided.")
+        prepared_input = prepare_input_structure(input_path)
+        geom_input_path = prepared_input.geom_path
 
-    charge, spin = resolve_charge_spin_or_raise(
-        prepared_input,
-        charge,
-        spin,
-        ligand_charge=ligand_charge,
-        prefix="[scan3d]",
-    )
+        charge, spin = resolve_charge_spin_or_raise(
+            prepared_input,
+            charge,
+            spin,
+            ligand_charge=ligand_charge,
+            prefix="[scan3d]",
+        )
 
     try:
         time_start = time.perf_counter()
@@ -607,8 +614,9 @@ def cli(
         bias_cfg = dict(BIAS_KW)
 
         # CLI overrides (defaults ← CLI)
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"] = int(spin)
+        if csv_path is None:
+            calc_cfg["charge"] = int(charge)
+            calc_cfg["spin"] = int(spin)
         calc_cfg["workers"] = int(workers)
         calc_cfg["workers_per_node"] = int(workers_per_node)
         opt_cfg["out_dir"] = out_dir
@@ -655,37 +663,40 @@ def cli(
         click.echo(pretty_block("bias", echo_bias))
 
         pdb_atom_meta: List[Dict[str, Any]] = []
-        if input_path.suffix.lower() == ".pdb":
-            pdb_atom_meta = load_pdb_atom_metadata(input_path)
+        if csv_path is None:
+            if input_path.suffix.lower() == ".pdb":
+                pdb_atom_meta = load_pdb_atom_metadata(input_path)
 
-        (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = _parse_scan_list(
-            scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
-        )
-        click.echo(
-            pretty_block(
-                "scan-list (0-based)",
-                {
-                    "d1": (i1, j1, low1, high1),
-                    "d2": (i2, j2, low2, high2),
-                    "d3": (i3, j3, low3, high3),
-                },
+            (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = _parse_scan_list(
+                scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
             )
-        )
+            click.echo(
+                pretty_block(
+                    "scan-list (0-based)",
+                    {
+                        "d1": (i1, j1, low1, high1),
+                        "d2": (i2, j2, low2, high2),
+                        "d3": (i3, j3, low3, high3),
+                    },
+                )
+            )
 
-        if pdb_atom_meta:
-            click.echo("[scan3d] PDB atom details for scanned pairs:")
-            legend = format_pdb_atom_metadata_header()
-            click.echo(f"        legend: {legend}")
-            click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
-            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
-            click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
-            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
-            click.echo(f"  d3 i: {format_pdb_atom_metadata(pdb_atom_meta, i3)}")
-            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j3)}")
+            if pdb_atom_meta:
+                click.echo("[scan3d] PDB atom details for scanned pairs:")
+                legend = format_pdb_atom_metadata_header()
+                click.echo(f"        legend: {legend}")
+                click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
+                click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
+                click.echo(f"  d3 i: {format_pdb_atom_metadata(pdb_atom_meta, i3)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j3)}")
 
         final_dir = out_dir_path
 
-        ref_pdb_path = input_path if input_path.suffix.lower() == ".pdb" else None
+        ref_pdb_path = None
+        if csv_path is None and input_path.suffix.lower() == ".pdb":
+            ref_pdb_path = input_path
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
