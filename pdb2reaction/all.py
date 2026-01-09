@@ -199,7 +199,7 @@ Inputs
       • A single structure when using ``--scan-lists`` (staged scan), or
       • A single structure when using ``--tsopt True`` (TSOPT-only mode).
   - When using extraction (``-c/--center``), inputs must be **PDB**.
-  - When using ``--scan-lists`` with extraction skipped, the single input must be a **PDB**.
+  - When using ``--scan-lists`` with extraction skipped, the single input may be **PDB/XYZ/GJF**.
   - When extraction is skipped, multi-structure runs accept **PDB/XYZ/GJF** inputs.
 
 Forwarded / relevant options
@@ -562,7 +562,7 @@ def _resolve_scan_list_index(
         if not atom_meta:
             raise click.BadParameter(
                 f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) uses a string atom spec, "
-                "but no PDB metadata is available."
+                "but no PDB metadata is available (non-PDB inputs require integer indices)."
             )
         try:
             return resolve_atom_spec_index(value, atom_meta) + 1
@@ -1732,7 +1732,8 @@ def _irc_and_match(
         "Two or more **full structures** (PDB/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
         "or a single **full structure** (with --scan-lists or with --tsopt True). "
         "Extraction (-c/--center) requires PDB inputs. When using --scan-lists without extraction, "
-        "the input must be a PDB. You may pass a single '-i' followed by multiple space-separated files "
+        "the input may be PDB/XYZ/GJF (integer indices only for non-PDB inputs). You may pass a single '-i' "
+        "followed by multiple space-separated files "
         "(e.g., '-i A.pdb B.pdb C.pdb')."
     ),
 )
@@ -2113,7 +2114,8 @@ def _irc_and_match(
         "You may also pass a single --scan-lists followed by multiple values "
         "(e.g., '--scan-lists \\'[(12,45,1.35)]\\' \\'[(10,55,2.20)]\\''). "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
-        "auto-mapped to the pocket after extraction. Stage results feed into the MEP step (path_search or path_opt)."
+        "auto-mapped to the pocket after extraction. For non-PDB single-structure scans, only integer "
+        "indices are supported (1-based by default). Stage results feed into the MEP step (path_search or path_opt)."
     ),
 )
 @click.option(
@@ -2986,19 +2988,15 @@ def cli(
     # Stage 1b: optional staged scan (single-structure)
     # -------------------------------------------------------------------------
     pockets_for_path: List[Path]
-    if is_single and has_scan and skip_extract and input_paths[0].suffix.lower() != ".pdb":
-        raise click.ClickException(
-            "[all] When using --scan-lists while skipping extraction, the input must be a PDB file. "
-            "Specify -c/--center to build a pocket PDB before running the scan."
-        )
-
     if is_single and has_scan:
         click.echo("\n=== [all] Stage 1b — Staged scan on input ===\n")
         _ensure_dir(scan_dir)
 
         if skip_extract:
             scan_input_pdb = Path(input_paths[0]).resolve()
-            scan_atom_meta = load_pdb_atom_metadata(scan_input_pdb)
+            scan_atom_meta = None
+            if scan_input_pdb.suffix.lower() == ".pdb":
+                scan_atom_meta = load_pdb_atom_metadata(scan_input_pdb)
             converted_scan_stages = _parse_scan_lists_literals(
                 scan_lists_raw, atom_meta=scan_atom_meta
             )
