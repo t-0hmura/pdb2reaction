@@ -342,6 +342,9 @@ Below are the most commonly used options across workflows.
 - `--opt-mode (If you have charge and multiplicity in .gjf input, -q and -m can be omitted) | heavy`
   Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Option `light` is recommended.  
 
+- `--hessian-calc-mode Analytical|FiniteDifference`
+  When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
+
 - `--mep-mode gsm | dmf`
   Switch MEP refinement between the Growing String Method (GSM) and Direct Max Flux (DMF).
 

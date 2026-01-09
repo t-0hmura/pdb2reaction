@@ -52,6 +52,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 - **UMA Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
   evaluations; both honor active (PHVA) subspaces. UMA may return only the active block when
   frozen atoms are present.
+  When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 - **Light mode details**:
   - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
     Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
