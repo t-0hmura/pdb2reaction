@@ -62,7 +62,7 @@ Recommended/common:
 
 Examples
 --------
-    # Minimal (pocket-only MEP; writes mep.trj or mep.pdb if inputs are PDB)
+    # Minimal (pocket-only MEP; always writes mep.trj and emits mep.pdb when inputs are PDB)
     pdb2reaction path-search -i reactant.pdb product.pdb -q 0
 
     # Multistep with intermediates, YAML overrides, and PDB merge to a full system
@@ -100,7 +100,7 @@ Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_path_search/)
   ├─ summary.yaml                    # Run-level summary (no exhaustive settings dump)
-  ├─ mep.trj                         # Final MEP as XYZ (written when inputs were XYZ/XYZ-like)
+  ├─ mep.trj                         # Final MEP as XYZ 
   ├─ mep.pdb                         # Final MEP as PDB (written when inputs were PDB)
   ├─ mep_w_ref.pdb                   # Full-system merged path (requires --ref-pdb and PDB pocket inputs)
   ├─ mep_w_ref_seg_XX.pdb            # Per-segment merged paths (bond-change segments; requires --ref-pdb)
@@ -2396,50 +2396,34 @@ def cli(
                     pass
 
         # Final MEP output rule:
-        # - If inputs are XYZ → write 'mep.trj'
-        # - If inputs are PDB → write **only** 'mep.pdb' (no 'mep.trj' kept)
+        # - Always write 'mep.trj' (XYZ) for intermediate handoff.
+        # - If reference PDBs are available, also emit 'mep.pdb' (and GJF when applicable).
         main_prepared = prepared_inputs[0]
         needs_pdb = ref_pdb_for_segments is not None
         needs_gjf = main_prepared.is_gjf
 
-        if not needs_pdb:
-            final_trj = out_dir_path / "mep.trj"
-            _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
-            click.echo(f"[write] Wrote '{final_trj}'.")
-            try:
-                run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
-                _close_matplotlib_figures()
-                click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
-            except Exception as e:
-                click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+        final_trj = out_dir_path / "mep.trj"
+        _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
+        click.echo(f"[write] Wrote '{final_trj}'.")
+        try:
+            run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
+            _close_matplotlib_figures()
+            click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
+        except Exception as e:
+            click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
-        else:
-            tmp_trj = tempfile.NamedTemporaryFile("w+", suffix=".trj", delete=False)
-            tmp_trj_path = Path(tmp_trj.name)
-            tmp_trj.close()
+        if needs_pdb or needs_gjf:
             try:
-                _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, tmp_trj_path)
-                try:
-                    run_trj2fig(tmp_trj_path, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
-                    _close_matplotlib_figures()
-                    click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
-                except Exception as e:
-                    click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
-                try:
-                    convert_xyz_like_outputs(
-                        tmp_trj_path,
-                        main_prepared,
-                        ref_pdb_path=ref_pdb_for_segments,
-                        out_pdb_path=out_dir_path / "mep.pdb",
-                    )
-                    click.echo("[convert] Wrote final MEP outputs.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
-            finally:
-                try:
-                    os.unlink(tmp_trj_path)
-                except Exception:
-                    pass
+                convert_xyz_like_outputs(
+                    final_trj,
+                    main_prepared,
+                    ref_pdb_path=ref_pdb_for_segments,
+                    out_pdb_path=out_dir_path / "mep.pdb" if needs_pdb else None,
+                    out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
+                )
+                click.echo("[convert] Wrote final MEP outputs.")
+            except Exception as e:
+                click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
 
         # Pocket‑only per‑segment trajectories & HEIs (bond‑change segments only)
         try:
