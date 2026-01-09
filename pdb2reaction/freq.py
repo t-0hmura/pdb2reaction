@@ -6,7 +6,7 @@ freq — Vibrational frequency analysis, mode export, and thermochemistry
 
 Usage (CLI)
 -----------
-    pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <spin>] \
+    pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <spin>] \
         [--freeze-links {True|False}] [--max-write <int>] \
         [--amplitude-ang <float>] [--n-frames <int>] [--sort {value|abs}] \
         [--out-dir <dir>] [--args-yaml <file>] [--temperature <K>] \

@@ -6,7 +6,7 @@ path_opt — Minimum-energy path (MEP) optimization via GSM or DMF with a UMA ca
 
 Usage (CLI)
 -----------
-    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} -q CHARGE -m MULT \
+    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] -m MULT \
                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                         [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
                         [--convert-files {True|False}] \

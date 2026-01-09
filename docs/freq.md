@@ -11,7 +11,7 @@ template can drive both standalone runs and workflows launched by other subcomma
 
 ## Usage
 ```bash
-pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1] \
+pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
                   [--freeze-links {True|False}] \
                   [--max-write N] [--amplitude-ang Å] [--n-frames N] \
                   [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \

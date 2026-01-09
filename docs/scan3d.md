@@ -16,7 +16,7 @@ option to load the CSV after the scan finishes and changing `--zmin` and `--zmax
 
 ## Usage
 ```bash
-pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
+pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                     --scan-list '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options] \
                     [--convert-files {True|False}]
 ```

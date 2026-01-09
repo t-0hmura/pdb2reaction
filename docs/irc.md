@@ -5,7 +5,7 @@ Run EulerPC-based Intrinsic Reaction Coordinate (IRC) integrations with UMA. The
 
 ## Usage
 ```bash
-pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-m 2S+1]
+pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1]
                  [--max-cycles N] [--step-size Δs] [--root k]
                  [--forward True|False] [--backward True|False]
                  [--freeze-links True|False]

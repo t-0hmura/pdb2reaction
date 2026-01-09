@@ -13,7 +13,7 @@ or RFOptimizer when `--opt-mode heavy`.
 
 ## Usage
 ```bash
-pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
+pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                     --scan-list '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options]
                     [--convert-files {True|False}]
 ```

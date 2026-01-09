@@ -6,7 +6,7 @@ tsopt — Transition-state optimization CLI
 
 Usage (CLI)
 -----------
-    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [-m <multiplicity>] \
+    pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
         [--opt-mode {light|heavy}] \
         [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
         [--out-dir <dir>] [--args-yaml <file>] \

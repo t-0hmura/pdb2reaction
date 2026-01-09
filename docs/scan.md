@@ -14,7 +14,7 @@ relaxed result.
 
 ## Usage
 ```bash
-pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
+pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                   --scan-lists '[(i,j,targetÅ), ...]' [options]
                   [--convert-files {True|False}]
 ```

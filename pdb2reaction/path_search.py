@@ -6,7 +6,7 @@ path_search — Recursive MEP segmentation (GSM/DMF) to build a continuous multi
 
 Usage (CLI)
 -----------
-    pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb -q CHARGE [--multiplicity 2S+1]
+    pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
                             [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
                             [--refine-mode peak|minima]
                             [--max-nodes N] [--max-cycles N] [--climb BOOL]
