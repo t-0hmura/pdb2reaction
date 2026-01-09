@@ -353,6 +353,7 @@ from .utils import (
     apply_yaml_overrides,
     load_pdb_atom_metadata,
     resolve_atom_spec_index,
+    merge_freeze_atom_indices,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -755,6 +756,37 @@ def _freeze_atoms_for_log() -> List[int]:
         return sorted({int(i) for i in (_FREEZE_ATOMS_GLOBAL or [])})
     except Exception:
         return []
+
+
+def _write_args_yaml_with_freeze_atoms(
+    args_yaml: Optional[Path],
+    freeze_atoms: Sequence[int],
+    tmp_dir: Path,
+) -> Optional[Path]:
+    """
+    Merge ``freeze_atoms`` into a YAML config under ``geom`` and write a temporary YAML file.
+    Returns the new YAML path, or the original ``args_yaml`` when no freeze atoms are provided.
+    """
+    if not freeze_atoms:
+        return args_yaml
+
+    cfg = load_yaml_dict(args_yaml)
+    if not isinstance(cfg, dict):
+        cfg = {}
+
+    geom_cfg = cfg.get("geom")
+    if not isinstance(geom_cfg, dict):
+        geom_cfg = {}
+    geom_cfg = dict(geom_cfg)
+
+    merge_freeze_atom_indices(geom_cfg, freeze_atoms)
+    cfg["geom"] = geom_cfg
+
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    out_path = tmp_dir / "args_freeze_atoms.yaml"
+    with out_path.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(cfg, fh, sort_keys=False, allow_unicode=True)
+    return out_path
 
 
 # ---------- Post-processing helpers ----------
@@ -2520,6 +2552,24 @@ def cli(
     else:
         q_int = int(q_from_flow) if q_from_flow is not None else 0
 
+    freeze_ref: Optional[Path] = None
+    if freeze_links_flag:
+        if not skip_extract and pocket_outputs:
+            freeze_ref = pocket_outputs[0]
+        else:
+            for p in input_paths:
+                if p.suffix.lower() == ".pdb":
+                    freeze_ref = p.resolve()
+                    break
+        if freeze_ref is not None:
+            _get_freeze_atoms(freeze_ref, freeze_links_flag)
+
+    args_yaml = _write_args_yaml_with_freeze_atoms(
+        args_yaml,
+        _freeze_atoms_for_log(),
+        out_dir / "tmp",
+    )
+
     calc_cfg_shared = _build_calc_cfg(
         q_int,
         spin,
@@ -2961,9 +3011,10 @@ def cli(
             )
 
         try:
-            if pT.suffix.lower() == ".pdb":
+            ts_pdb = pT.with_suffix(".pdb")
+            if ts_pdb.exists():
                 ts_copy = out_dir / "ts_seg_01.pdb"
-                shutil.copy2(pT, ts_copy)
+                shutil.copy2(ts_pdb, ts_copy)
             else:
                 ts_copy = out_dir / "ts_seg_01.xyz"
                 _path_search._write_xyz_trj_with_energy(
@@ -3084,7 +3135,7 @@ def cli(
 
         stage_results: List[Path] = []
         for st in sorted(scan_dir.glob("stage_*")):
-            res = _find_with_suffixes(st / "result", [".pdb", ".xyz", ".gjf"])
+            res = _find_with_suffixes(st / "result", [".xyz", ".pdb", ".gjf"])
             if res:
                 stage_results.append(res.resolve())
         if not stage_results:
@@ -3706,7 +3757,7 @@ def cli(
         post_segment_logs.append(segment_log)
 
         hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
-        hei_pocket_path = _find_with_suffixes(hei_base, [".pdb", ".xyz", ".gjf"])
+        hei_pocket_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
         if hei_pocket_path is None:
             click.echo(
                 f"[post] WARNING: HEI pocket file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
@@ -3839,9 +3890,10 @@ def cli(
             }
 
             try:
-                if pT.suffix.lower() == ".pdb":
+                ts_pdb = pT.with_suffix(".pdb")
+                if ts_pdb.exists():
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
-                    shutil.copy2(pT, ts_copy)
+                    shutil.copy2(ts_pdb, ts_copy)
                 else:
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
                     _path_search._write_xyz_trj_with_energy(
@@ -3858,7 +3910,7 @@ def cli(
 
         elif do_thermo or do_dft:
             seg_pocket_path = _find_with_suffixes(
-                seg_root / f"mep_seg_{seg_idx:02d}", [".pdb"]
+                seg_root / f"mep_seg_{seg_idx:02d}", [".xyz", ".pdb"]
             )
 
             # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
