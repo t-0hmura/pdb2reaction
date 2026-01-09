@@ -901,9 +901,9 @@ def _save_single_geom_as_pdb_for_tools(
     name: str,
 ) -> Path:
     """
-    Write a single-geometry XYZ trajectory with energy and convert to PDB using the pocket reference
-    when possible, for downstream CLI tools. Returns a path to the written structure (PDB when possible,
-    otherwise XYZ).
+    Write a single-geometry XYZ trajectory with energy for downstream CLI tools.
+    If a PDB reference is available, also write a PDB companion for visualization.
+    Returns the XYZ path to avoid passing rounded PDB coordinates between steps.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     xyz_trj = out_dir / f"{name}.xyz"
@@ -913,8 +913,6 @@ def _save_single_geom_as_pdb_for_tools(
         pdb_out = out_dir / f"{name}.pdb"
         try:
             _path_search._maybe_convert_to_pdb(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
-            if pdb_out.exists():
-                return pdb_out
         except Exception:
             pass
 
@@ -1458,7 +1456,8 @@ def _run_tsopt_on_hei(
     """
     Run tsopt CLI on a HEI pocket structure; return (final_geom_path, ts_geom).
 
-    Honor the input extension (.pdb/.xyz/.gjf) and pick the first available final_geometry.{pdb|xyz|gjf} output.
+    Prefer the XYZ output to preserve coordinate precision between workflow steps, while still writing
+    PDB/GJF companions when requested by the original input type.
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
@@ -1532,10 +1531,10 @@ def _run_tsopt_on_hei(
         except Exception as e:
             click.echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
 
-    if needs_pdb and ts_pdb.exists():
-        ts_geom_path = ts_pdb
-    elif ts_xyz.exists():
+    if ts_xyz.exists():
         ts_geom_path = ts_xyz
+    elif needs_pdb and ts_pdb.exists():
+        ts_geom_path = ts_pdb
     elif ts_pdb.exists():
         ts_geom_path = ts_pdb
     elif needs_gjf and ts_gjf.exists():
