@@ -1654,13 +1654,13 @@ def cli(
             N = len(geometry.atomic_numbers)
             if H_t.size(0) == 3 * N:
                 freqs_cm, modes = _frequencies_cm_and_modes(
-                    H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), device,
+                    H_t, geometry.atomic_numbers, geometry.cart_coords.reshape(-1, 3), device,
                     freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
                 )
             else:
                 act_idx = _active_indices(N, list(geom_cfg.get("freeze_atoms", [])))
                 freqs_cm, modes = _modes_from_Hact_embedded(
-                    H_t, geometry.atomic_numbers, geometry.coords.reshape(-1, 3), act_idx, device
+                    H_t, geometry.atomic_numbers, geometry.cart_coords.reshape(-1, 3), act_idx, device
                 )
 
             # Use configurable neg_freq_thresh_cm (same default as light mode)
