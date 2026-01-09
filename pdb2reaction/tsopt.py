@@ -1117,7 +1117,7 @@ class HessianDimer:
             )
             n_imag = int(np.sum(freqs_cm_approx < -abs(self.neg_freq_thresh_cm)))
             approx_ims = [float(x) for x in freqs_cm_approx if x < -abs(self.neg_freq_thresh_cm)]
-            print(f"[IMAG~] n≈{n_imag}  (approx imag: {approx_ims})")
+            print(f"[Imaginary modes] n={n_imag}  ({approx_ims})")
             if n_imag <= 1:
                 break
 
