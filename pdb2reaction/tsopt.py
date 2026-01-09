@@ -1353,6 +1353,14 @@ RSIRFO_KW.update({
 )
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
 @click.option(
+    "--flatten-imag-mode",
+    "flatten_imag_mode",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="Enable the extra-imaginary-mode flattening loop (sets flatten_max_iter; False forces 0).",
+)
+@click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
     default="light",
@@ -1391,6 +1399,7 @@ def cli(
     freeze_links: bool,
     convert_files: bool,
     max_cycles: int,
+    flatten_imag_mode: bool,
     opt_mode: str,
     dump: bool,
     out_dir: str,
@@ -1449,6 +1458,9 @@ def cli(
             (rsirfo_cfg, (("rsirfo",),)),
         ],
     )
+
+    if not flatten_imag_mode:
+        simple_cfg["flatten_max_iter"] = 0
 
     # Freeze links (PDB only): merge with existing list
     if freeze_links and source_path.suffix.lower() == ".pdb":

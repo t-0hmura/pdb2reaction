@@ -1460,6 +1460,7 @@ def _run_tsopt_on_hei(
     _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
     _append_cli_arg(ts_args, "--dump", overrides.get("dump"))
     _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
+    _append_cli_arg(ts_args, "--flatten-imag-mode", overrides.get("flatten_imag_mode"))
 
     hess_mode = overrides.get("hessian_calc_mode")
     if hess_mode:
@@ -2007,6 +2008,14 @@ def _irc_and_match(
     help="Override tsopt output subdirectory (relative paths are resolved against the default).",
 )
 @click.option(
+    "--flatten-imag-mode",
+    "flatten_imag_mode",
+    type=click.BOOL,
+    default=True,
+    show_default=True,
+    help="Enable the extra-imaginary-mode flattening loop in tsopt; False forces flatten_max_iter=0.",
+)
+@click.option(
     "--freq-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
@@ -2199,6 +2208,7 @@ def cli(
     scan_endopt_override: Optional[bool],
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
+    flatten_imag_mode: bool,
     freq_out_dir: Optional[Path],
     freq_max_write: Optional[int],
     freq_amplitude_ang: Optional[float],
@@ -2277,6 +2287,7 @@ def cli(
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
     if thresh is not None:
         tsopt_overrides["thresh"] = str(thresh)
+    tsopt_overrides["flatten_imag_mode"] = bool(flatten_imag_mode)
 
     freq_overrides: Dict[str, Any] = {}
     if freq_max_write is not None:
