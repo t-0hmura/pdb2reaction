@@ -22,11 +22,11 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
 ```bash
 # Minimal two-distance scan
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA",1.30,3.10),("MMT,309,C10",1.20,3.20)]'
+    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
 
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA",1.30,3.10),("MMT,309,C10",1.20,3.20)]' \
+    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
     --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
     --preopt True --baseline min
 ```

@@ -11,7 +11,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 for modeling enzymatic reaction pathways.  
 
 ---
-Furthermore, you can proceed **MEP search --> TS refinement --> IRC --> thermochemistry analysis --> DFT single point calculation** with single command such as  
+Furthermore, you can proceed **MEP search --> TS refinement --> IRC --> thermochemistry analysis --> DFT single point calculation** with single command with options `--tsopt True --thermo True --dft True` such as  
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
 ```
@@ -232,13 +232,13 @@ Key points:
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
 - With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
 
-This mode is useful for building approximate reaction paths starting from a single experimental structure.
+This mode is useful for building reaction paths starting from a single structure.
 
 ---
 
 ### 3.3 Single‑structure TSOPT‑only mode
 
-Use this when you already have a **transition state candidate** and only want to refine it, without running a full path search.
+Use this when you already have a **transition state candidate** and only want to refine it and procced following IRC calculation.
 
 Provide exactly one PDB and enable `--tsopt`:
 
@@ -279,20 +279,20 @@ Below are the most commonly used options across workflows.
   - **1 PDB + `--scan-lists`** → staged scan → GSM.
   - **1 PDB + `--tsopt True`** → TSOPT‑only mode.
 
-  If `--center/-c` is omitted, cluster extraction is skipped and the **full input structure** is used directly. In this mode, `.xyz` and `.gjf` inputs are also accepted; when using them, omit `--center/-c` and `--ligand-charge`.
+  If `--center/-c` is omitted, cluster extraction is skipped and the **full input structure** is used directly. In this mode, `.xyz` and `.gjf` inputs are also accepted; when using these file formats, omit `--center/-c` and `--ligand-charge`.
 
 - `-c, --center TEXT`  
   Defines the substrate / extraction center for cluster extraction. Supports:
 
-  - PDB paths (the atoms in the given PDB define the center structure used during cluster extraction),
-  - residue IDs, e.g. `A:123,B:456`,
   - residue names, e.g. `'SAM,GPP'`.
+  - residue IDs, e.g. `A:123,B:456`,
+  - PDB paths (the atoms in the given PDB define the center structure used during cluster extraction),
 
 - `--ligand-charge TEXT`  
-  Total charge information, either:
+  Information for calculating total charge, either:
 
-  - a single integer (total cluster-model charge), or
-  - a mapping, e.g. `'SAM:1,GPP:-3'`.
+  - a mapping, e.g. `'SAM:1,GPP:-3'`, or
+  - a single integer (total cluster-model charge).
 
   The total charge of the first cluster model is summed and used for scan, GSM, and TS optimization runs.
 
@@ -308,6 +308,8 @@ Below are the most commonly used options across workflows.
 - `--mult INT`  
   Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
 
+> If you have charge and multiplicity in .gjf input, -q and -m can be omitted.
+
 - `--scan-lists TEXT...`  
   One or more Python‑style lists describing **staged scans** for single‑input runs. A single literal runs one stage; multiple literals run sequential stages. Example:
 
@@ -316,7 +318,7 @@ Below are the most commonly used options across workflows.
   --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]'
   ```
 
-  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model. Supplying multiple literals after a single `--scan-lists` flag is the intended, easiest form.
+  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model. 
 
 - `--out-dir PATH`
   Top‑level output directory. All intermediate files, logs, and figures are placed here.
@@ -337,8 +339,8 @@ Below are the most commonly used options across workflows.
 
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
-- `--opt-mode light | heavy`
-  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms.
+- `--opt-mode (If you have charge and multiplicity in .gjf input, -q and -m can be omitted) | heavy`
+  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Option `light` is recommended.  
 
 - `--mep-mode gsm | dmf`
   Switch MEP refinement between the Growing String Method (GSM) and Direct Max Flux (DMF).

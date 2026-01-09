@@ -25,17 +25,17 @@ pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [-m MULT] \
 ```bash
 # Minimal three-distance scan
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA",1.30,3.10),("MMT,309,C10",1.20,3.20),("TYR,285,CB",1.10,3.00)]'
+    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
 
 # LBFGS relaxations, dumped inner trajectories, and HTML isosurface plot
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA",1.30,3.10),("MMT,309,C10",1.20,3.20),("TYR,285,CB",1.10,3.00)]' \
+    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
     --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
     --preopt True --baseline min
 
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA",1.30,3.10),("MMT,309,C10",1.20,3.20),("TYR,285,CB",1.10,3.00)]' \
+    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
     --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
 
