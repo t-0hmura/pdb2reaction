@@ -227,6 +227,7 @@ Key points:
 - Each tuple `(i, j, target_Å)` is:
   - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash `space` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,  
   - automatically remapped to the cluster-model indices.
+- Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. It’s simplest to pass multiple literals after a single `--scan-lists`.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
 - With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
@@ -308,14 +309,14 @@ Below are the most commonly used options across workflows.
   Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
 
 - `--scan-lists TEXT...`  
-  One or more Python‑style lists describing **staged scans** for single‑input runs. Example:
+  One or more Python‑style lists describing **staged scans** for single‑input runs. A single literal runs one stage; multiple literals run sequential stages. Example:
 
   ```bash
   --scan-lists '[(10,55,2.20),(23,34,1.80)]'
   --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]'
   ```
 
-  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model.
+  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model. Supplying multiple literals after a single `--scan-lists` flag is the intended, easiest form.
 
 - `--out-dir PATH`
   Top‑level output directory. All intermediate files, logs, and figures are placed here.

@@ -26,6 +26,9 @@ Examples
         --scan-lists '[(10,55,2.20),(23,34,1.80)]' \
         --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode light \
         --preopt True --endopt True
+    # (equivalent) pass multiple stage literals after a single --scan-lists
+    pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+        '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'
 
 
 Description
@@ -35,6 +38,9 @@ specified atom pairs and the full structure is relaxed. This implementation supp
 the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead.
 For PDB inputs, scan tuples can use integer indices or selector strings such as
 ``'TYR,285,CA'`` and ``'MMT,309,C10'`` to reference atoms (resname, resseq, atom).
+If you pass one ``--scan-lists`` literal, the scan runs in a single stage; multiple
+literals are executed as sequential stages, each starting from the previous stage’s
+relaxed final structure.
 
 Scheduling
   - For scan tuples [(i, j, target_Å)], compute the Å‑space displacement Δ = target − current_distance_Å.
@@ -85,6 +91,8 @@ Notes
 - Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
   `--convert-files {True|False}` toggle (default: enabled).
 - Indexing: (i, j) are 1‑based by default; use `--one-based False` if your tuples are 0‑based.
+- You may repeat ``--scan-lists`` or provide multiple literals after a single ``--scan-lists``.
+  The latter is the intended, most convenient way to define sequential stages.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
   k converted from eV/Å² to Hartree/Bohr².
 - Performance simplifications:
@@ -405,8 +413,9 @@ def _snapshot_geometry(g) -> Any:
 @click.option(
     "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,
-    help="Python-like list of (i,j,target) per stage. Repeatable. Example: "
-         "'[(0,1,1.50),(2,3,2.00)]' '[(5,7,1.20)]'.",
+    help="Python-like list of (i,j,target) per stage. One literal runs a single stage; "
+         "multiple literals run sequential stages. Prefer a single --scan-lists followed by "
+         "multiple values, e.g. '[(0,1,1.50),(2,3,2.00)]' '[(5,7,1.20)]'.",
 )
 @click.option("--one-based", "one_based", type=click.BOOL, default=True, show_default=True,
               help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
