@@ -225,7 +225,7 @@ Key points:
 
 - `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
-  - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash `space` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,  
+  - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,  
   - automatically remapped to the cluster-model indices.
 - Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. It’s simplest to pass multiple literals after a single `--scan-lists`.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
