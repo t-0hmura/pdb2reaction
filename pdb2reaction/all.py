@@ -55,7 +55,8 @@ Description
 Runs a one-shot pipeline centered on pocket models. The command is intentionally permissive about how
 ``-i/--input`` is given: it accepts repeated ``-i`` flags and the sloppy form ``-i A.pdb B.pdb C.pdb``.
 ``--scan-lists`` accepts repeated flags or the sloppy form
-``--scan-lists '[(...)]' '[(...)]'`` to define sequential scan stages.
+``--scan-lists '[(...)]' '[(...)]'`` to define sequential scan stages; a single literal yields a one-stage
+scan, while multiple literals yield chained stages (the multi-value form is the intended, most convenient one).
 
 Pipeline overview
 -----------------
@@ -86,7 +87,7 @@ Pipeline overview
 (1b) **Optional staged scan (single-structure only; requires ``--scan-lists``)**
     - Triggered only when **exactly one** input is given **and** ``--scan-lists`` is provided.
     - The scan is a staged, bond-length–driven scan using the UMA calculator:
-        • repeat ``--scan-lists`` to define sequential stages,
+        • a single literal runs one stage; multiple literals define sequential stages (usually passed after one ``--scan-lists``),
         • each stage starts from the previous stage’s relaxed final structure (stages are chained).
     - When extraction is enabled, indices in ``--scan-lists`` refer to the **original full input PDB**
       (**ATOM/HETATM file order**, 1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
@@ -2105,9 +2106,9 @@ def _irc_and_match(
     multiple=True,
     required=False,
     help=(
-        "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. Repeatable; "
-        "when repeated, stages run **sequentially**, each starting from the prior stage's relaxed "
-        "structure. "
+        "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. A single "
+        "literal runs one stage; multiple literals run **sequentially**, each starting from the "
+        "prior stage's relaxed structure. "
         "Example: '[(12,45,1.35)]' --scan-lists '[(10,55,2.20),(23,34,1.80)]'. "
         "You may also pass a single --scan-lists followed by multiple values "
         "(e.g., '--scan-lists \\'[(12,45,1.35)]\\' \\'[(10,55,2.20)]\\''). "

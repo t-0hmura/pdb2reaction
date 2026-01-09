@@ -8,6 +8,9 @@ are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light,
 or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
 run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
+When `--scan-lists` is supplied once the scan runs in a single stage; supplying
+multiple literals runs sequential stages, each starting from the previous stage’s
+relaxed result.
 
 ## Usage
 ```bash
@@ -27,6 +30,11 @@ pdb2reaction scan -i input.pdb -q 0 \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
     --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode light \
     --preopt True --endopt True
+
+# (equivalent) supply multiple stage literals after a single --scan-lists
+pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+    '[("TYR,285,CA","MMT,309,C10",1.35)]' \
+    '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
 ## Workflow
@@ -114,6 +122,8 @@ out_dir/ (default: ./result_scan/)
   have positive targets. Atom indices are normalized to 0-based internally. For
   PDB inputs, `i`/`j` can be selector strings with flexible delimiters
   (space/comma/slash/backtick/backslash) and unordered tokens.
+- You can provide multiple literals after a single `--scan-lists` flag (recommended)
+  instead of repeating the flag; both forms produce sequential stages.
 - `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
   atoms in PDB files so pockets stay rigid.
 - Charge and spin inherit Gaussian template metadata when available. If `-q` is
