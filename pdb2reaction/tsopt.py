@@ -1273,7 +1273,7 @@ hessian_dimer_KW = {
     "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 0,            # max flattening iterations
+    "flatten_max_iter": 50,           # max flattening iterations
     "flatten_sep_cutoff": 2.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
