@@ -312,6 +312,7 @@ Below are the most commonly used options across workflows.
 
   ```bash
   --scan-lists '[(10,55,2.20),(23,34,1.80)]'
+  --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]'
   ```
 
   Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model.
