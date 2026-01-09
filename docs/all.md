@@ -46,7 +46,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on pockets (recursive GSM/DMF)**
-   - Executes `path_search` by default using the extracted pockets (or the original structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - Executes `path_search` by default using the extracted pockets (or the original entire structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
    - Use `--refine-path False` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
    - For multi-input PDB runs, the full-system templates are automatically passed to `path_search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
@@ -63,13 +63,13 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
    - Skips the MEP/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
-- With extraction: pocket charge = rounded extractor charge; spin comes from `--mult` (default 1).
-- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge from the supplied substrate charge(s); otherwise the first `.gjf` supplies the charge or the default is 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
+- With extraction: pocket charge = inhereted extractor charge calculated from `--ligand-charge`; spin comes from `--mult` (default 1).
+- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge from the supplied substrate charge(s); otherwise the charge written in `.gjf` or the default is 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
 
 ### Input expectations
 - Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
-- Extraction skipped: inputs may be **PDB/XYZ/GJF**; no staged scan is available unless the input is PDB.
-- Multi-structure runs require ≥2 structures unless TSOPT-only mode is triggered as described above.
+- Extraction skipped: inputs may be **PDB/XYZ/GJF**.
+- Multi-structure runs require ≥2 structures.
 
 ## CLI options
 | Option | Description | Default |
@@ -83,10 +83,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--exclude-backbone BOOLEAN` | Remove backbone atoms on non-substrate amino acids. | `True` |
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
+| `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex. | `None` |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
 | `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |
 | `--max-nodes INT` | MEP internal nodes per segment (GSM string images or DMF images). | `10` |
@@ -109,15 +109,14 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
 | `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
 | `--freq-sort [value\|abs]` | Override freq mode sorting behavior. | _None_ |
-| `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | _None_ |
-| `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | _None_ |
+| `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | `298.15` |
+| `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | `1.0` |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
 | `--dft-func-basis TEXT` | Override `dft --func-basis`. | _None_ |
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
 | `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; a single literal runs one stage, multiple literals run sequential stages. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'` and are remapped internally. | _None_ |
-| `--scan-out-dir PATH` | Override the scan output directory (`<out-dir>/scan`). | _None_ |
 | `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
 | `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |
