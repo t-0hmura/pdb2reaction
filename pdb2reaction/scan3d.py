@@ -266,7 +266,12 @@ def _parse_scan_list(
     raw: str,
     one_based: bool,
     atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
-) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float], Tuple[int, int, float, float]]:
+) -> Tuple[
+    Tuple[int, int, float, float],
+    Tuple[int, int, float, float],
+    Tuple[int, int, float, float],
+    List[Tuple[Any, Any, float, float]],
+]:
     """
     Parse --scan-list into three quadruples and return them with 0-based indices.
 
@@ -334,7 +339,7 @@ def _parse_scan_list(
             raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
         parsed.append((i, j, low, high))
 
-    return parsed[0], parsed[1], parsed[2]
+    return parsed[0], parsed[1], parsed[2], list(obj)
 
 
 def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
@@ -345,6 +350,55 @@ def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
         return np.array([low], dtype=float)
     N = int(math.ceil(delta / h))
     return np.linspace(low, high, N + 1, dtype=float)
+
+
+def _atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
+    if index < 0 or index >= len(atom_meta):
+        return f"idx{index}"
+    meta = atom_meta[index]
+    resname = (meta.get("resname") or "?").strip() or "?"
+    resseq = meta.get("resseq")
+    resseq_txt = "?" if resseq is None else str(resseq)
+    atom = (meta.get("name") or "?").strip() or "?"
+    return f"{resname}-{resseq_txt}-{atom}"
+
+
+def _axis_label_csv(
+    axis_name: str,
+    i_idx: int,
+    j_idx: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+    pair_raw: Optional[Tuple[Any, Any, float, float]] = None,
+) -> str:
+    """Return a CSV-safe axis label without commas."""
+    if pair_raw and (isinstance(pair_raw[0], str) or isinstance(pair_raw[1], str)) and atom_meta:
+        i_label = _atom_label_from_meta(atom_meta, i_idx)
+        j_label = _atom_label_from_meta(atom_meta, j_idx)
+        return f"{axis_name}_{i_label}_{j_label}_A"
+    i_disp = i_idx + 1 if one_based else i_idx
+    j_disp = j_idx + 1 if one_based else j_idx
+    return f"{axis_name}_{i_disp}_{j_disp}_A"
+
+
+def _axis_label_html(label: str) -> str:
+    """Return a human-readable axis label for HTML output."""
+    parts = label.split("_")
+    if len(parts) >= 4 and parts[-1] == "A":
+        axis = parts[0]
+        i_disp = parts[1]
+        j_disp = parts[2]
+        return f"{axis} ({i_disp},{j_disp}) (Å)"
+    return label
+
+
+def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) -> Optional[str]:
+    if column not in df.columns:
+        return fallback
+    values = df[column].dropna()
+    if values.empty:
+        return fallback
+    return str(values.iloc[0])
 
 
 def _make_optimizer(
@@ -663,13 +717,22 @@ def cli(
         click.echo(pretty_block("bias", echo_bias))
 
         pdb_atom_meta: List[Dict[str, Any]] = []
+        d1_label_csv = None
+        d2_label_csv = None
+        d3_label_csv = None
         if csv_path is None:
             if input_path.suffix.lower() == ".pdb":
                 pdb_atom_meta = load_pdb_atom_metadata(input_path)
 
-            (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = _parse_scan_list(
-                scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
-            )
+            (
+                (i1, j1, low1, high1),
+                (i2, j2, low2, high2),
+                (i3, j3, low3, high3),
+                raw_pairs,
+            ) = _parse_scan_list(scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta)
+            d1_label_csv = _axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
+            d2_label_csv = _axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
+            d3_label_csv = _axis_label_csv("d3", i3, j3, one_based, pdb_atom_meta, raw_pairs[2])
             click.echo(
                 pretty_block(
                     "scan-list (0-based)",
@@ -1078,6 +1141,20 @@ def cli(
             click.echo("No grid records produced; aborting.", err=True)
             sys.exit(1)
 
+        d1_label_csv = _extract_axis_label(df, "d1_label", d1_label_csv)
+        d2_label_csv = _extract_axis_label(df, "d2_label", d2_label_csv)
+        d3_label_csv = _extract_axis_label(df, "d3_label", d3_label_csv)
+
+        if d1_label_csv is None or d2_label_csv is None or d3_label_csv is None:
+            click.echo(
+                "[plot] WARNING: axis label metadata is missing in CSV; using generic labels.",
+                err=True,
+            )
+
+        d1_label_html = _axis_label_html(d1_label_csv) if d1_label_csv else "d1 (Å)"
+        d2_label_html = _axis_label_html(d2_label_csv) if d2_label_csv else "d2 (Å)"
+        d3_label_html = _axis_label_html(d3_label_csv) if d3_label_csv else "d3 (Å)"
+
         # If energy_kcal is already present (e.g. loaded from existing CSV), reuse it.
         # Otherwise compute it from energy_hartree and baseline.
         if "energy_kcal" not in df.columns:
@@ -1106,6 +1183,9 @@ def cli(
         # Only write surface.csv when we actually performed the scan in this run
         if csv_path is None:
             surface_csv = final_dir / "surface.csv"
+            df["d1_label"] = d1_label_csv
+            df["d2_label"] = d2_label_csv
+            df["d3_label"] = d3_label_csv
             df.to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
@@ -1247,7 +1327,7 @@ def cli(
             scene=dict(
                 bgcolor="rgba(0,0,0,0)",
                 xaxis=dict(
-                    title=f"d1 ({i1 + 1 if one_based else i1},{j1 + 1 if one_based else j1}) (Å)",
+                    title=d1_label_html,
                     range=[x_min, x_max],
                     showline=True,
                     linewidth=4,
@@ -1261,7 +1341,7 @@ def cli(
                     showbackground=False,
                 ),
                 yaxis=dict(
-                    title=f"d2 ({i2 + 1 if one_based else i2},{j2 + 1 if one_based else j2}) (Å)",
+                    title=d2_label_html,
                     range=[y_min, y_max],
                     showline=True,
                     linewidth=4,
@@ -1275,7 +1355,7 @@ def cli(
                     showbackground=False,
                 ),
                 zaxis=dict(
-                    title=f"d3 ({i3 + 1 if one_based else i3},{j3 + 1 if one_based else j3}) (Å)",
+                    title=d3_label_html,
                     range=[z_min_val, z_max_val],
                     showline=True,
                     linewidth=4,
