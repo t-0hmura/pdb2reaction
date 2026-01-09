@@ -38,7 +38,7 @@ Transition-state optimization with two modes:
   stage, one exact Hessian is evaluated and its active (PHVA) block is kept and updated by
   Bofill (SR1/MS and PSB blend) between geometry updates in the flatten loop. Each
   flatten iteration:
-    * estimate approximate imaginary modes using the current active Hessian (mass-weighted,
+    * estimate imaginary modes using the current active Hessian (mass-weighted,
       TR-projected),
     * select only **spatially separated** extra imaginary modes (using representative atoms
       and a distance cutoff) and perform a mass-scaled flatten step in those modes,
@@ -83,7 +83,7 @@ Key behaviors and algorithmic notes
 
 - **Flatten loop (light mode)**: one exact active-subspace Hessian is evaluated at the start of
   the flatten loop. Each iteration:
-    * estimate approximate imaginary modes using the current active Hessian,
+    * estimate imaginary modes using the current active Hessian,
     * select only **spatially separated** extra imaginary modes (using representative atoms
       and a distance cutoff) and perform a mass-scaled flatten step in those modes,
     * apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
@@ -973,7 +973,7 @@ class HessianDimer:
 
     def _flatten_once_with_modes(self, freqs_cm: np.ndarray, modes: torch.Tensor) -> bool:
         """
-        Flatten using precomputed (approximate) modes (mass-weighted, embedded).
+        Flatten using precomputed modes (mass-weighted, embedded).
 
         Only spatially separated extra imaginary modes are used, following a
         greedy selection similar to the PartialHessianDimer implementation.
@@ -1105,27 +1105,27 @@ class HessianDimer:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # Flatten iterations with approximate Hessian updates
+        # Flatten iterations with Hessian updates
         for it in range(self.flatten_max_iter):
             if (self.max_total_cycles - self._cycles_spent) <= 0:
                 break
 
-            # (a) Approximate frequencies & modes from the active Hessian
-            freqs_cm_approx, modes_embedded = _modes_from_Hact_embedded(
+            # (a) Frequencies & modes from the active Hessian
+            freqs_cm, modes_embedded = _modes_from_Hact_embedded(
                 H_act, self.geom.atomic_numbers,
                 self.geom.cart_coords.reshape(-1, 3), active_idx, self.device
             )
-            n_imag = int(np.sum(freqs_cm_approx < -abs(self.neg_freq_thresh_cm)))
-            approx_ims = [float(x) for x in freqs_cm_approx if x < -abs(self.neg_freq_thresh_cm)]
-            print(f"[Imaginary modes] n={n_imag}  ({approx_ims})")
+            n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
+            ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
+            print(f"[Imaginary modes] n={n_imag}  ({ims})")
             if n_imag <= 1:
                 break
 
-            # (b) Flatten using the approximate modes
+            # (b) Flatten other imaginary modes
             x_before_flat = self.geom.cart_coords.copy().reshape(-1)
             g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
-            did_flatten = self._flatten_once_with_modes(freqs_cm_approx, modes_embedded)
+            did_flatten = self._flatten_once_with_modes(freqs_cm, modes_embedded)
             if not did_flatten:
                 break
 
