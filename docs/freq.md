@@ -36,6 +36,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
   `geom.freeze_atoms`; the merged list is echoed and propagated to UMA and PHVA.
 - **UMA calculator**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
   UMA may return a partial (active) Hessian block whenever atoms are frozen.
+  When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
   subspace with translation/rotation modes projected there. Both 3N×3N and active-block
   Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
