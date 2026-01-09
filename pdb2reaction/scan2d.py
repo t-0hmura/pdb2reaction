@@ -202,7 +202,7 @@ def _parse_scan_list(
     raw: str,
     one_based: bool,
     atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
-) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float]]:
+) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float], List[Tuple[Any, Any, float, float]]]:
     try:
         obj = ast.literal_eval(raw)
     except Exception as e:
@@ -252,7 +252,45 @@ def _parse_scan_list(
         if low <= 0.0 or high <= 0.0:
             raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
         parsed.append((i, j, low, high))
-    return parsed[0], parsed[1]
+    return parsed[0], parsed[1], list(obj)
+
+
+def _atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
+    if index < 0 or index >= len(atom_meta):
+        return f"idx{index}"
+    meta = atom_meta[index]
+    resname = (meta.get("resname") or "?").strip() or "?"
+    resseq = meta.get("resseq")
+    resseq_txt = "?" if resseq is None else str(resseq)
+    atom = (meta.get("name") or "?").strip() or "?"
+    return f"{resname}-{resseq_txt}-{atom}"
+
+
+def _axis_label_csv(
+    axis_name: str,
+    i_idx: int,
+    j_idx: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+    pair_raw: Optional[Tuple[Any, Any, float, float]] = None,
+) -> str:
+    if pair_raw and (isinstance(pair_raw[0], str) or isinstance(pair_raw[1], str)) and atom_meta:
+        i_label = _atom_label_from_meta(atom_meta, i_idx)
+        j_label = _atom_label_from_meta(atom_meta, j_idx)
+        return f"{axis_name}_{i_label}_{j_label}_A"
+    i_disp = i_idx + 1 if one_based else i_idx
+    j_disp = j_idx + 1 if one_based else j_idx
+    return f"{axis_name}_{i_disp}_{j_disp}_A"
+
+
+def _axis_label_html(label: str) -> str:
+    parts = label.split("_")
+    if len(parts) >= 4 and parts[-1] == "A":
+        axis = parts[0]
+        i_disp = parts[1]
+        j_disp = parts[2]
+        return f"{axis} ({i_disp},{j_disp}) (Å)"
+    return label
 
 
 def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
@@ -590,9 +628,13 @@ def cli(
         if input_path.suffix.lower() == ".pdb":
             pdb_atom_meta = load_pdb_atom_metadata(input_path)
 
-        (i1, j1, low1, high1), (i2, j2, low2, high2) = _parse_scan_list(
+        (i1, j1, low1, high1), (i2, j2, low2, high2), raw_pairs = _parse_scan_list(
             scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
         )
+        d1_label_csv = _axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
+        d2_label_csv = _axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
+        d1_label_html = _axis_label_html(d1_label_csv)
+        d2_label_html = _axis_label_html(d2_label_csv)
         click.echo(
             pretty_block(
                 "scan-list (0-based)",
@@ -953,6 +995,8 @@ def cli(
         else:
             ref = float(df["energy_hartree"].min())
         df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
+        df["d1_label"] = d1_label_csv
+        df["d2_label"] = d2_label_csv
 
         surface_csv = final_dir / "surface.csv"
         df.to_csv(surface_csv, index=False)
@@ -1049,8 +1093,8 @@ def cli(
         fig2d.update_layout(
             width=640,
             height=600,
-            xaxis_title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) distance (Å)",
-            yaxis_title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) distance (Å)",
+            xaxis_title=d1_label_html,
+            yaxis_title=d2_label_html,
             plot_bgcolor="white",
             xaxis=dict(
                 range=[x_min, x_max],
@@ -1156,7 +1200,7 @@ def cli(
             scene=dict(
                 bgcolor="rgba(0,0,0,0)",
                 xaxis=dict(
-                    title=f"d1 ({i1+1 if one_based else i1},{j1+1 if one_based else j1}) (Å)",
+                    title=d1_label_html,
                     range=[x_min, x_max],
                     showline=True,
                     linewidth=4,
@@ -1170,7 +1214,7 @@ def cli(
                     showbackground=False,
                 ),
                 yaxis=dict(
-                    title=f"d2 ({i2+1 if one_based else i2},{j2+1 if one_based else j2}) (Å)",
+                    title=d2_label_html,
                     range=[y_min, y_max],
                     showline=True,
                     linewidth=4,
