@@ -1213,7 +1213,7 @@ def cli(
         yi = np.linspace(y_min, y_max, _VOLUME_GRID_N)
         zi = np.linspace(z_min_val, z_max_val, _VOLUME_GRID_N)
 
-        click.echo("[plot] 3D RBF interpolation on a 50×50×50 grid (may be expensive) ...")
+        click.echo("[plot] 3D RBF interpolation on a 50×50×50 grid ...")
         rbf3d = Rbf(
             d1_points[mask],
             d2_points[mask],
@@ -1389,4 +1389,5 @@ def cli(
         click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
     finally:
-        prepared_input.cleanup()
+        if prepared_input:
+            prepared_input.cleanup()
