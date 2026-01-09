@@ -635,11 +635,13 @@ class uma_pysis(Calculator):
         energy0_eV = res0["energy"]
         F0 = res0["forces"]  # (N,3) eV/Å, native numpy dtype
 
-        # Assemble Hessian in the same dtype as the model forces.
+        # Assemble Hessian in the same dtype as the model forces unless
+        # hessian_double is requested.
         force_dtype = torch.from_numpy(F0).dtype
+        hessian_dtype = torch.float64 if self.hessian_double else force_dtype
 
         # Device-side Hessian storage (2D for easy column insertion)
-        H = torch.zeros((dof, dof), device=dev, dtype=force_dtype)
+        H = torch.zeros((dof, dof), device=dev, dtype=hessian_dtype)
 
         # Host-side work arrays for coordinate perturbations
         coord_plus = coord_ang.copy()
@@ -661,8 +663,8 @@ class uma_pysis(Calculator):
             Fm = res_m["forces"].reshape(-1)  # (3N,) eV/Å
 
             # Column on device
-            Fp_t = torch.from_numpy(Fp).to(dev, dtype=force_dtype)
-            Fm_t = torch.from_numpy(Fm).to(dev, dtype=force_dtype)
+            Fp_t = torch.from_numpy(Fp).to(dev, dtype=hessian_dtype)
+            Fm_t = torch.from_numpy(Fm).to(dev, dtype=hessian_dtype)
             col = -(Fp_t - Fm_t) / (2.0 * eps_ang)  # (3N,) eV/Å²
 
             H[:, k] = col
