@@ -581,7 +581,7 @@ class HessianDimer:
                  fn: str,
                  out_dir: str = "./result_dimer",
                  thresh_loose: str = "gau_loose",
-                 thresh: str = "gau",
+                 thresh: str = "baker",
                  update_interval_hessian: int = 100,
                  neg_freq_thresh_cm: float = 10.0,
                  flatten_amp_ang: float = 0.20,
@@ -1113,7 +1113,7 @@ LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
     "thresh_loose": "gau_loose",      # loose threshold preset for first pass
-    "thresh": "gau",                  # main threshold preset for TS search
+    "thresh": "baker",                # main threshold preset for TS search
     "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
@@ -1131,6 +1131,7 @@ hessian_dimer_KW = {
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
 RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RSIRFO_KW.update({
+    "thresh": "baker",
     "roots": [0],               # mode indices to follow uphill
     "hessian_ref": None,        # reference Hessian file (HDF5)
     "rx_modes": None,           # reaction-mode definitions for projection
@@ -1358,7 +1359,7 @@ def cli(
                 fn=str(geom_input_path),
                 out_dir=str(out_dir_path),
                 thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
-                thresh=simple_cfg.get("thresh", "gau"),
+                thresh=simple_cfg.get("thresh", "baker"),
                 update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 200)),
                 neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
                 flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),

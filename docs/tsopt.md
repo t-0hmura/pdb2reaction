@@ -84,7 +84,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
-| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
+| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` (if omitted) |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
@@ -139,7 +139,7 @@ calc:
   hessian_calc_mode: FiniteDifference   # Hessian mode selection
   return_partial_hessian: false         # full Hessian (avoids shape mismatches)
 opt:
-  thresh: gau                # convergence preset (Gaussian/Baker-style)
+  thresh: baker              # convergence preset (Gaussian/Baker-style)
   max_cycles: 10000          # optimizer cycle cap
   print_every: 100           # logging stride
   min_step_norm: 1.0e-08     # minimum norm for step acceptance
@@ -158,7 +158,7 @@ opt:
   out_dir: ./result_tsopt/   # output directory
 hessian_dimer:
   thresh_loose: gau_loose    # loose convergence preset
-  thresh: gau                # main convergence preset
+  thresh: baker              # main convergence preset
   update_interval_hessian: 500   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
@@ -190,7 +190,7 @@ hessian_dimer:
     write_orientations: true  # write rotation orientations
     forward_hessian: true     # propagate Hessian forward
   lbfgs:
-    thresh: gau                # LBFGS convergence preset
+    thresh: baker              # LBFGS convergence preset
     max_cycles: 10000          # iteration limit
     print_every: 100           # logging stride
     min_step_norm: 1.0e-08     # minimum accepted step norm
@@ -216,7 +216,7 @@ hessian_dimer:
     mu_reg: null               # regularization strength
     max_mu_reg_adaptions: 10   # cap on mu adaptations
 rsirfo:
-  thresh: gau                # RS-IRFO convergence preset
+  thresh: baker              # RS-IRFO convergence preset
   max_cycles: 10000          # iteration cap
   print_every: 100           # logging stride
   min_step_norm: 1.0e-08     # minimum accepted step norm
