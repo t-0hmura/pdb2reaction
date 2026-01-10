@@ -3037,6 +3037,7 @@ def cli(
     # Stage 1b: optional staged scan (single-structure)
     # -------------------------------------------------------------------------
     pockets_for_path: List[Path]
+    pocket_ref_pdbs: Optional[List[Path]] = None
     if is_single and has_scan:
         click.echo("\n=== [all] Stage 1b — Staged scan on input ===\n")
         _ensure_dir(scan_dir)
@@ -3146,6 +3147,28 @@ def cli(
             click.echo(f"  - {p}")
 
         pockets_for_path = [scan_input_pdb] + stage_results
+
+        if scan_input_pdb.suffix.lower() == ".pdb":
+            candidate_pdbs: List[Path] = [scan_input_pdb]
+            missing_pdb = False
+            for stage_path in stage_results:
+                if stage_path.suffix.lower() == ".pdb":
+                    candidate_pdbs.append(stage_path)
+                else:
+                    pdb_candidate = stage_path.with_suffix(".pdb")
+                    if pdb_candidate.exists():
+                        candidate_pdbs.append(pdb_candidate)
+                    else:
+                        missing_pdb = True
+                        break
+            if not missing_pdb:
+                pocket_ref_pdbs = candidate_pdbs
+            else:
+                click.echo(
+                    "[all] WARNING: pocket PDB snapshots for staged scan were not found; "
+                    "full-system merge will use input paths instead.",
+                    err=True,
+                )
     else:
         if skip_extract:
             pockets_for_path = [p.resolve() for p in inputs_for_extract]
@@ -3544,6 +3567,9 @@ def cli(
         if gave_ref_pdb:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):
                 ps_args.extend(["--ref-pdb", str(p)])
+            if pocket_ref_pdbs:
+                for p in pocket_ref_pdbs:
+                    ps_args.extend(["--pocket-ref-pdb", str(p)])
 
         click.echo("[all] Invoking path_search with arguments:")
         click.echo("  " + " ".join(ps_args))

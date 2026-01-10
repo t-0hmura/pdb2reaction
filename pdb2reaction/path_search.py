@@ -14,6 +14,7 @@ Usage (CLI)
                             [--convert-files {True|False}]
                             [--out-dir DIR] [--preopt BOOL]
                             [--align {True|False}] [--ref-pdb FILE ...]
+                            [--pocket-ref-pdb FILE ...]
                             [--args-yaml FILE]
 
 Core inputs (strongly recommended):
@@ -51,6 +52,8 @@ Recommended/common:
         (gau_loose|gau|gau_tight|gau_vtight|baker|never).
     --ref-pdb PATH [...]
         Full template PDB(s) for final merge (see Notes).
+    --pocket-ref-pdb PATH [...]
+        Pocket reference PDB(s) for the final merge when --input uses XYZ/GJF.
     --out-dir PATH
         Output directory; default ./result_path_search/
     --dump {True|False}
@@ -94,7 +97,7 @@ Workflow
    - If the interface itself shows covalent changes, insert a **new recursive segment** instead of a bridge.
 6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
    refine `freeze_atoms` to match the first input. If `--ref-pdb` is supplied, merge pocket trajectories
-   into full templates and annotate segments (requires PDB pocket inputs).
+   into full templates and annotate segments (requires PDB pocket inputs or `--pocket-ref-pdb`).
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -102,7 +105,7 @@ out_dir/ (default: ./result_path_search/)
   ├─ summary.yaml                    # Run-level summary (no exhaustive settings dump)
   ├─ mep.trj                         # Final MEP as XYZ 
   ├─ mep.pdb                         # Final MEP as PDB (written when inputs were PDB)
-  ├─ mep_w_ref.pdb                   # Full-system merged path (requires --ref-pdb and PDB pocket inputs)
+  ├─ mep_w_ref.pdb                   # Full-system merged path (requires --ref-pdb and pocket PDBs)
   ├─ mep_w_ref_seg_XX.pdb            # Per-segment merged paths (bond-change segments; requires --ref-pdb)
   ├─ mep_seg_XX.trj / mep_seg_XX.pdb # Pocket-only segment paths (bond-change segments; format follows input)
   ├─ hei_seg_XX.xyz / hei_seg_XX.pdb # Highest-energy image snapshots; hei_seg_XX.gjf when a template is available
@@ -1713,12 +1716,18 @@ def _merge_final_and_write(final_images: List[Any],
                            pocket_inputs: Sequence[Path],
                            ref_pdbs: Sequence[Path],
                            segments: List[SegmentReport],
-                           out_dir: Path) -> None:
+                           out_dir: Path,
+                           pocket_ref_pdbs: Optional[Sequence[Path]] = None) -> None:
     """
     Merge the entire pocket MEP into full templates (for all pairs) and write outputs.
     """
     if len(ref_pdbs) != len(pocket_inputs):
         raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
+
+    if pocket_ref_pdbs is None:
+        pocket_ref_pdbs = pocket_inputs
+    if len(pocket_ref_pdbs) != len(pocket_inputs):
+        raise click.BadParameter("--pocket-ref-pdb must match the number of --input after preprocessing.")
 
     structs, aligned_coords, _atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
@@ -1752,7 +1761,7 @@ def _merge_final_and_write(final_images: List[Any],
     wrote_indices = False
 
     for gi, (pi, imgs) in enumerate(groups):
-        pocket_ref = Path(pocket_inputs[pi])
+        pocket_ref = Path(pocket_ref_pdbs[pi])
         structA = structs[pi]
         structB = structs[pi+1]
         coordsA = aligned_coords[pi]
@@ -1799,7 +1808,7 @@ def _merge_final_and_write(final_images: List[Any],
         # Determine pair index for this segment (assume consistent within the segment)
         pi_vals = sorted({int(getattr(im, "pair_index", 0)) for im in seg_frames})
         pi = pi_vals[0]
-        pocket_ref = Path(pocket_inputs[pi])
+        pocket_ref = Path(pocket_ref_pdbs[pi])
         structA = structs[pi]
         structB = structs[pi+1]
         coordsA = aligned_coords[pi]
@@ -2014,6 +2023,16 @@ def _merge_final_and_write(final_images: List[Any],
           "With --align True, only the *first* provided reference PDB is used for all pairs "
           "in the final merge (you may pass just one).")
 )
+@click.option(
+    "--pocket-ref-pdb",
+    "pocket_ref_pdb_paths",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    multiple=True,
+    default=None,
+    help=("Pocket reference PDBs used only for the final full-system merge. "
+          "Useful when --input uses XYZ/GJF intermediates but PDB snapshots exist for merging. "
+          "Must match the number and order of --input.")
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -2038,6 +2057,7 @@ def cli(
     preopt: bool,
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
+    pocket_ref_pdb_paths: Optional[Sequence[Path]],
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_inputs: List[PreparedInputStructure] = []
@@ -2045,7 +2065,7 @@ def cli(
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
 
-    # Robustly accept both styles for -i/--input and --ref-pdb
+    # Robustly accept both styles for -i/--input, --ref-pdb, and --pocket-ref-pdb
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
         i = 0
@@ -2088,6 +2108,19 @@ def cli(
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
 
+    pocket_ref_vals = _collect_option_values(argv_all, ("--pocket-ref-pdb",))
+    if pocket_ref_vals:
+        pocket_ref_parsed: List[Path] = []
+        for tok in pocket_ref_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Pocket reference PDB path '{tok}' not found or is a directory. "
+                    f"When using '--pocket-ref-pdb', multiple files may follow a single option."
+                )
+            pocket_ref_parsed.append(p)
+        pocket_ref_pdb_paths = tuple(pocket_ref_parsed)
+
     time_start = time.perf_counter()
     freeze_atoms_for_log: List[int] = []
     try:
@@ -2110,6 +2143,8 @@ def cli(
                 if len(ref_pdb_paths) != len(input_paths):
                     raise click.BadParameter("--ref-pdb must be given for each --input (same count and order). "
                                              "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
+            if pocket_ref_pdb_paths and len(pocket_ref_pdb_paths) != len(input_paths):
+                raise click.BadParameter("--pocket-ref-pdb must be given for each --input (same count and order).")
 
         p_list = [Path(p) for p in input_paths]
         prepared_inputs = [prepare_input_structure(p) for p in p_list]
@@ -2503,7 +2538,8 @@ def cli(
                 pocket_inputs=[Path(p) for p in input_paths],
                 ref_pdbs=ref_list_for_merge,
                 segments=combined_all.segments,
-                out_dir=out_dir_path
+                out_dir=out_dir_path,
+                pocket_ref_pdbs=[Path(p) for p in pocket_ref_pdb_paths] if pocket_ref_pdb_paths else None,
             )
             click.echo("\n=== Full-system merge finished ===\n")
 
