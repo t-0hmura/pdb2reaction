@@ -807,7 +807,7 @@ def _write_args_yaml_with_freeze_atoms(
     if not freeze_atoms:
         return args_yaml
 
-    cfg = load_yaml_dict(args_yaml)
+    cfg = {} if args_yaml is None else load_yaml_dict(args_yaml)
     if not isinstance(cfg, dict):
         cfg = {}
 

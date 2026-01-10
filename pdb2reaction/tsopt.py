@@ -683,7 +683,7 @@ class HessianDimer:
         })
         opt = LBFGS(self.geom, **lbfgs_kwargs)
         opt.run()
-        steps = opt.cur_cycle
+        steps = opt.cur_cycle + 1
         converged = opt.is_converged
         self.geom.set_calculator(None)
 
@@ -1118,7 +1118,7 @@ hessian_dimer_KW = {
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
     "flatten_max_iter": 50,           # max flattening iterations
-    "flatten_sep_cutoff": 2.0,        # minimum distance between representative atoms (Å)
+    "flatten_sep_cutoff": 0.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
     "use_lobpcg": True,               # deprecated (ignored)
