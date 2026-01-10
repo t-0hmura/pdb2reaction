@@ -1070,6 +1070,7 @@ CALC_KW = dict(_UMA_CALC_KW)
 OPT_BASE_KW = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
     "out_dir": "./result_tsopt/",  # base output directory for TS optimization artifacts
+    "thresh": "baker",             # main threshold preset for TS search
 })
 
 DIMER_KW = {
@@ -1109,11 +1110,14 @@ DIMER_KW = {
 
 # Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW
 LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
+LBFGS_TS_KW.update({
+    "thresh": "baker",          # main threshold preset for TS search
+})
 
 # HessianDimer defaults (CLI-level)
 hessian_dimer_KW = {
     "thresh_loose": "gau_loose",      # loose threshold preset for first pass
-    "thresh": "gau",                  # main threshold preset for TS search
+    "thresh": "baker",                # main threshold preset for TS search
     "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
@@ -1131,6 +1135,7 @@ hessian_dimer_KW = {
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
 RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
 RSIRFO_KW.update({
+    "thresh": "baker",          # main threshold preset for TS search
     "roots": [0],               # mode indices to follow uphill
     "hessian_ref": None,        # reference Hessian file (HDF5)
     "rx_modes": None,           # reaction-mode definitions for projection
