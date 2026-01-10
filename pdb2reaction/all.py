@@ -313,6 +313,7 @@ from typing import List, Sequence, Optional, Tuple, Dict, Any
 import sys, os
 import math
 import tempfile
+import re
 import click
 from click.core import ParameterSource
 import time
@@ -721,6 +722,40 @@ def _pdb_needs_elem_fix(p: Path) -> bool:
 
 
 _FREEZE_ATOMS_GLOBAL: Optional[List[int]] = None
+_FREEZE_ATOMS_YAML: Optional[List[int]] = None
+
+
+def _normalize_freeze_atoms(raw: Any) -> List[int]:
+    """Normalize freeze_atoms values from YAML into a list of integers."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        tokens = re.findall(r"-?\d+", raw)
+        return [int(tok) for tok in tokens]
+    try:
+        return [int(i) for i in raw]
+    except Exception:
+        return []
+
+
+def _set_yaml_freeze_atoms(yaml_cfg: Optional[Dict[str, Any]]) -> None:
+    """Cache freeze_atoms from args-yaml for merging with freeze-links."""
+    global _FREEZE_ATOMS_YAML
+    if not isinstance(yaml_cfg, dict):
+        _FREEZE_ATOMS_YAML = []
+        return
+    geom_cfg = yaml_cfg.get("geom")
+    if not isinstance(geom_cfg, dict):
+        _FREEZE_ATOMS_YAML = []
+        return
+    _FREEZE_ATOMS_YAML = _normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
+
+
+def _merge_freeze_atoms(*groups: Sequence[int]) -> List[int]:
+    """Return a merged, sorted freeze_atoms list from multiple sources."""
+    geom_cfg: Dict[str, Any] = {}
+    merge_freeze_atom_indices(geom_cfg, *groups)
+    return list(geom_cfg.get("freeze_atoms", []))
 
 
 def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List[int]:
@@ -733,30 +768,30 @@ def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List
     the assumption that atom indexing is consistent across the trajectory.
     """
     global _FREEZE_ATOMS_GLOBAL
-    if not freeze_links_flag:
-        return []
-    if _FREEZE_ATOMS_GLOBAL is not None:
-        return _FREEZE_ATOMS_GLOBAL
-    if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
-        # No suitable PDB available yet to determine freeze atoms.
-        return []
-    try:
-        fa = detect_freeze_links_safe(pdb_path)
-        _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
-    except Exception as e:
-        click.echo(
-            f"[all] WARNING: detect_freeze_links_safe failed for {pdb_path}: {e}; no atoms will be frozen.",
-            err=True,
-        )
-        _FREEZE_ATOMS_GLOBAL = []
-    return _FREEZE_ATOMS_GLOBAL
+    if freeze_links_flag:
+        if _FREEZE_ATOMS_GLOBAL is not None:
+            return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
+        if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
+            # No suitable PDB available yet to determine freeze atoms.
+            return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
+        try:
+            fa = detect_freeze_links_safe(pdb_path)
+            _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
+        except Exception as e:
+            click.echo(
+                f"[all] WARNING: detect_freeze_links_safe failed for {pdb_path}: {e}; no atoms will be frozen.",
+                err=True,
+            )
+            _FREEZE_ATOMS_GLOBAL = []
+        return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
+    return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
 
 
 def _freeze_atoms_for_log() -> List[int]:
     """Return a sorted freeze_atoms list for summary logs (may be empty)."""
 
     try:
-        return sorted({int(i) for i in (_FREEZE_ATOMS_GLOBAL or [])})
+        return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL or [], _FREEZE_ATOMS_YAML or [])
     except Exception:
         return []
 
@@ -2370,6 +2405,7 @@ def cli(
     dft_func_basis_use = dft_func_basis or "wb97m-v/def2-tzvpd"
 
     yaml_cfg = load_yaml_dict(args_yaml)
+    _set_yaml_freeze_atoms(yaml_cfg)
 
     skip_extract = center_spec is None or str(center_spec).strip() == ""
 
