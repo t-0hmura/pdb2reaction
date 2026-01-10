@@ -15,6 +15,7 @@ Usage (CLI)
         [--freeze-links {True|False}] [--mep-mode {gsm|dmf}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--opt-mode {light|heavy}] [--dump {True|False}] \
         [--convert-files {True|False}] [--refine-path {True|False}] [--thresh <preset>] \
+        [--thresh-post <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
@@ -136,11 +137,12 @@ Pipeline overview
     ``summary.yaml``. For each such segment:
 
     - ``--tsopt True``:
-        • Optimize a TS starting from the segment HEI snapshot,
+        • Optimize a TS starting from the segment HEI snapshot (threshold preset via ``--thresh-post``),
         • Run **IRC (EulerPC)** from the optimized TS,
         • Map IRC endpoints onto the segment’s left/right MEP endpoints (bond-state matching first,
           RMSD fallback) to assign backward/forward consistently across segments,
-        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode``),
+        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode``; threshold preset
+          controlled by ``--thresh-post``, default ``baker``),
         • Use these optimized minima as the final R and P for downstream analyses.
         • Write per-segment UMA energy diagram: ``post_seg_XX/energy_diagram_UMA.png``.
         • Copy the TS structure to ``<out-dir>/ts_seg_XX.pdb`` (when a PDB representation is available)
@@ -1190,6 +1192,7 @@ def _optimize_endpoint_geom(
     out_dir: Path,
     tag: str,
     dump: bool,
+    thresh: Optional[str],
 ) -> Tuple[Any, Path]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
@@ -1200,6 +1203,7 @@ def _optimize_endpoint_geom(
         out_dir: base directory for the optimization outputs.
         tag: tag prefix for the subdirectory.
         dump: whether to dump optimizer trajectory.
+        thresh: optional convergence preset to override defaults.
 
     Returns:
         (optimized_geometry, final_xyz_path)
@@ -1223,6 +1227,9 @@ def _optimize_endpoint_geom(
     cfg["max_cycles"] = max_cycles
 
     geom.set_calculator(getattr(geom, "calculator", None))
+
+    if thresh is not None:
+        cfg["thresh"] = str(thresh)
 
     click.echo(f"[endpoint-opt] Optimizing '{tag}' with {sopt_kind.upper()} → {opt_dir}")
     opt = OptClass(geom, **cfg)
@@ -1973,6 +1980,16 @@ def _irc_and_match(
     help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
+    "--thresh-post",
+    type=str,
+    default="baker",
+    show_default=True,
+    help=(
+        "Convergence preset for post-IRC endpoint optimizations "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+    ),
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -2226,6 +2243,7 @@ def cli(
     convert_files: bool,
     refine_path: bool,
     thresh: Optional[str],
+    thresh_post: str,
     args_yaml: Optional[Path],
     preopt: bool,
     hessian_calc_mode: Optional[str],
@@ -2319,8 +2337,8 @@ def cli(
         tsopt_overrides["out_dir"] = tsopt_out_dir
     if hessian_calc_mode is not None:
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
-    if thresh is not None:
-        tsopt_overrides["thresh"] = str(thresh)
+    if thresh_post is not None:
+        tsopt_overrides["thresh"] = str(thresh_post)
     tsopt_overrides["flatten_imag_mode"] = bool(flatten_imag_mode)
 
     freq_overrides: Dict[str, Any] = {}
@@ -2651,6 +2669,7 @@ def cli(
                 endpoint_opt_dir,
                 "reactant",
                 dump=dump,
+                thresh=thresh_post,
             )
         except Exception as e:
             click.echo(
@@ -2665,6 +2684,7 @@ def cli(
                 endpoint_opt_dir,
                 "product",
                 dump=dump,
+                thresh=thresh_post,
             )
         except Exception as e:
             click.echo(
@@ -3855,6 +3875,7 @@ def cli(
                     endpoint_opt_dir,
                     f"seg_{seg_idx:02d}_reactant",
                     dump=dump,
+                    thresh=thresh_post,
                 )
             except Exception as e:
                 click.echo(
@@ -3869,6 +3890,7 @@ def cli(
                     endpoint_opt_dir,
                     f"seg_{seg_idx:02d}_product",
                     dump=dump,
+                    thresh=thresh_post,
                 )
             except Exception as e:
                 click.echo(
