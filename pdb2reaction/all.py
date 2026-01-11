@@ -358,6 +358,7 @@ from .utils import (
     load_pdb_atom_metadata,
     resolve_atom_spec_index,
     merge_freeze_atom_indices,
+    apply_ref_pdb_override,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -1297,6 +1298,7 @@ def _run_freq_for_state(
     out_dir: Path,
     args_yaml: Optional[Path],
     freeze_links: bool,
+    ref_pdb: Optional[Path],
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -1322,10 +1324,18 @@ def _run_freq_for_state(
         "-m",
         str(int(spin)),
         "--freeze-links",
-        "True" if freeze_use and (pdb_path.suffix.lower() == ".pdb") else "False",
+        "True"
+        if freeze_use
+        and (
+            pdb_path.suffix.lower() == ".pdb"
+            or (ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb")
+        )
+        else "False",
         "--out-dir",
         str(fdir),
     ]
+    if ref_pdb is not None:
+        args.extend(["--ref-pdb", str(ref_pdb)])
 
     _append_cli_arg(args, "--max-write", overrides.get("max_write"))
     _append_cli_arg(args, "--amplitude-ang", overrides.get("amplitude_ang"))
@@ -1408,6 +1418,7 @@ def _run_dft_for_state(
     func_basis: str = "wb97m-v/def2-tzvpd",
     overrides: Optional[Dict[str, Any]] = None,
     engine: str = "gpu",
+    ref_pdb: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
@@ -1430,6 +1441,8 @@ def _run_dft_for_state(
         "--out-dir",
         str(ddir),
     ]
+    if ref_pdb is not None:
+        args.extend(["--ref-pdb", str(ref_pdb)])
     if engine:
         args.extend(["--engine", str(engine)])
 
@@ -1466,6 +1479,7 @@ def _run_dft_sequence(
     func_basis: str,
     overrides: Optional[Dict[str, Any]],
     engine: str,
+    ref_pdb: Optional[Path],
 ) -> Dict[str, Dict[str, Any]]:
     """Run DFT on a sequence of states."""
     results: Dict[str, Dict[str, Any]] = {}
@@ -1479,6 +1493,7 @@ def _run_dft_sequence(
             func_basis=func_basis,
             overrides=overrides,
             engine=engine,
+            ref_pdb=ref_pdb,
         )
         results[label] = res
     return results
@@ -1493,6 +1508,7 @@ def _run_tsopt_on_hei(
     out_dir: Path,
     freeze_links: bool,
     opt_mode_default: str,
+    ref_pdb: Optional[Path],
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Path, Any]:
     """
@@ -1503,6 +1519,7 @@ def _run_tsopt_on_hei(
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
     needs_gjf = prepared_input.is_gjf
     ref_pdb = prepared_input.source_path if needs_pdb else None
@@ -1542,6 +1559,8 @@ def _run_tsopt_on_hei(
 
     if args_yaml is not None:
         ts_args.extend(["--args-yaml", str(args_yaml)])
+    if ref_pdb is not None:
+        ts_args.extend(["--ref-pdb", str(ref_pdb)])
 
     click.echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
     _saved = list(sys.argv)
@@ -1605,6 +1624,7 @@ def _irc_and_match(
     seg_dir: Path,
     ref_pdb_for_seg: Path,
     seg_pocket_pdb: Path,
+    ref_pdb_template: Optional[Path],
     g_ts: Any,
     q_int: int,
     spin: int,
@@ -1645,8 +1665,16 @@ def _irc_and_match(
         "--out-dir",
         str(irc_dir),
         "--freeze-links",
-        "True" if (freeze_links_flag and ref_pdb_for_seg.suffix.lower() == ".pdb") else "False",
+        "True"
+        if freeze_links_flag
+        and (
+            ref_pdb_for_seg.suffix.lower() == ".pdb"
+            or (ref_pdb_template is not None and ref_pdb_template.suffix.lower() == ".pdb")
+        )
+        else "False",
     ]
+    if ref_pdb_template is not None:
+        irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
 
     if args_yaml is not None:
         irc_args.extend(["--args-yaml", str(args_yaml)])
@@ -2653,6 +2681,7 @@ def cli(
             tsroot,
             freeze_links_flag,
             tsopt_opt_mode_default,
+            ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
             overrides=tsopt_overrides,
         )
 
@@ -2661,6 +2690,7 @@ def cli(
             seg_dir=tsroot,
             ref_pdb_for_seg=ts_pdb,
             seg_pocket_pdb=ts_initial_pdb,
+            ref_pdb_template=ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
             g_ts=g_ts,
             q_int=q_int,
             spin=spin,
@@ -2758,14 +2788,38 @@ def cli(
 
         if do_thermo:
             click.echo("[thermo] Single TSOPT: freq on R/TS/P")
+            ref_pdb_for_tsopt_only = (
+                ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
+            )
             tR = _run_freq_for_state(
-                pR, q_int, spin, freq_root / "R", args_yaml, freeze_links_flag, overrides=freq_overrides
+                pR,
+                q_int,
+                spin,
+                freq_root / "R",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb_for_tsopt_only,
+                overrides=freq_overrides,
             )
             tT = _run_freq_for_state(
-                pT, q_int, spin, freq_root / "TS", args_yaml, freeze_links_flag, overrides=freq_overrides
+                pT,
+                q_int,
+                spin,
+                freq_root / "TS",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb_for_tsopt_only,
+                overrides=freq_overrides,
             )
             tP = _run_freq_for_state(
-                pP, q_int, spin, freq_root / "P", args_yaml, freeze_links_flag, overrides=freq_overrides
+                pP,
+                q_int,
+                spin,
+                freq_root / "P",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb_for_tsopt_only,
+                overrides=freq_overrides,
             )
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
             try:
@@ -2805,6 +2859,7 @@ def cli(
                 dft_func_basis_use,
                 dft_overrides,
                 dft_engine,
+                ref_pdb_for_tsopt_only,
             )
             dR = dft_payloads.get("R")
             dT = dft_payloads.get("TS")
@@ -3153,6 +3208,8 @@ def cli(
             "--opt-mode",
             str(scan_opt_mode_use),
         ]
+        if scan_input_pdb.suffix.lower() == ".pdb":
+            scan_args.extend(["--ref-pdb", str(scan_input_pdb)])
 
         if dump_override_requested:
             scan_args.extend(
@@ -3625,7 +3682,7 @@ def cli(
                 ps_args.extend(["--ref-full-pdb", str(p)])
             if pocket_ref_pdbs:
                 for p in pocket_ref_pdbs:
-                    ps_args.extend(["--pocket-ref-pdb", str(p)])
+                    ps_args.extend(["--ref-pdb", str(p)])
 
         click.echo("[all] Invoking path_search with arguments:")
         click.echo("  " + " ".join(ps_args))
@@ -3844,6 +3901,13 @@ def cli(
                 err=True,
             )
             continue
+        ref_pdb_for_seg: Optional[Path] = None
+        if hei_pocket_path.suffix.lower() == ".pdb":
+            ref_pdb_for_seg = hei_pocket_path
+        else:
+            candidate_ref = hei_base.with_suffix(".pdb")
+            if candidate_ref.exists():
+                ref_pdb_for_seg = candidate_ref
 
         struct_dir = seg_dir / "structures"
         _ensure_dir(struct_dir)
@@ -3860,6 +3924,7 @@ def cli(
                 seg_dir,
                 freeze_links_flag,
                 tsopt_opt_mode_default,
+                ref_pdb_for_seg,
                 overrides=tsopt_overrides,
             )
 
@@ -3868,6 +3933,7 @@ def cli(
                 seg_dir=seg_dir,
                 ref_pdb_for_seg=ts_pdb,
                 seg_pocket_pdb=hei_pocket_path,
+                ref_pdb_template=ref_pdb_for_seg,
                 g_ts=g_ts,
                 q_int=q_int,
                 spin=spin,
@@ -3892,14 +3958,15 @@ def cli(
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
 
+            ref_struct_template = ref_pdb_for_seg or hei_pocket_path
             pL_irc = _save_single_geom_as_pdb_for_tools(
-                gL, hei_pocket_path, struct_dir, "reactant_irc"
+                gL, ref_struct_template, struct_dir, "reactant_irc"
             )
             pT = _save_single_geom_as_pdb_for_tools(
-                gT, hei_pocket_path, struct_dir, "ts"
+                gT, ref_struct_template, struct_dir, "ts"
             )
             pR_irc = _save_single_geom_as_pdb_for_tools(
-                gR, hei_pocket_path, struct_dir, "product_irc"
+                gR, ref_struct_template, struct_dir, "product_irc"
             )
 
             endpoint_opt_dir = seg_dir / "endpoint_opt"
@@ -3939,10 +4006,10 @@ def cli(
             click.echo(f"[endpoint-opt] Clean endpoint-opt working dir.") 
 
             pL = _save_single_geom_as_pdb_for_tools(
-                g_react_opt, hei_pocket_path, struct_dir, "reactant"
+                g_react_opt, ref_struct_template, struct_dir, "reactant"
             )
             pR = _save_single_geom_as_pdb_for_tools(
-                g_prod_opt, hei_pocket_path, struct_dir, "product"
+                g_prod_opt, ref_struct_template, struct_dir, "product"
             )
             state_structs = {"R": pL, "TS": pT, "P": pR}
 
@@ -3996,10 +4063,10 @@ def cli(
             )
 
             # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
-            freeze_ref: Optional[Path] = None
-            if seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
+            freeze_ref: Optional[Path] = ref_pdb_for_seg
+            if freeze_ref is None and seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
                 freeze_ref = seg_pocket_path
-            elif hei_pocket_path.suffix.lower() == ".pdb":
+            elif freeze_ref is None and hei_pocket_path.suffix.lower() == ".pdb":
                 freeze_ref = hei_pocket_path
 
             freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)
@@ -4042,7 +4109,7 @@ def cli(
             gR.set_calculator(calc)
             g_ts.set_calculator(calc)
 
-            ref_for_structs = seg_pocket_path if seg_pocket_path is not None else hei_pocket_path
+            ref_for_structs = ref_pdb_for_seg or (seg_pocket_path if seg_pocket_path is not None else hei_pocket_path)
             pL = _save_single_geom_as_pdb_for_tools(
                 gL, ref_for_structs, struct_dir, "reactant_mep"
             )
@@ -4086,6 +4153,7 @@ def cli(
                     freq_seg_root / "R",
                     args_yaml,
                     freeze_links_flag,
+                    ref_pdb_for_seg,
                     overrides=freq_overrides,
                 )
                 tT = _run_freq_for_state(
@@ -4095,6 +4163,7 @@ def cli(
                     freq_seg_root / "TS",
                     args_yaml,
                     freeze_links_flag,
+                    ref_pdb_for_seg,
                     overrides=freq_overrides,
                 )
                 tP = _run_freq_for_state(
@@ -4104,6 +4173,7 @@ def cli(
                     freq_seg_root / "P",
                     args_yaml,
                     freeze_links_flag,
+                    ref_pdb_for_seg,
                     overrides=freq_overrides,
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
@@ -4187,6 +4257,7 @@ def cli(
                     dft_func_basis_use,
                     dft_overrides,
                     dft_engine,
+                    ref_pdb_for_seg,
                 )
                 dR = dft_payloads.get("R")
                 dT = dft_payloads.get("TS")

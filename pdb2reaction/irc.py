@@ -104,6 +104,7 @@ from pdb2reaction.utils import (
     detect_freeze_links,
     merge_freeze_atom_indices,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
 )
@@ -231,6 +232,12 @@ def _echo_convert_trj_if_exists(
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
+@click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
 @click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
 @click.option(
     "--hessian-calc-mode",
@@ -258,13 +265,16 @@ def cli(
     backward: Optional[bool],
     freeze_links_flag: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     out_dir: str,
     hessian_calc_mode: Optional[str],
     args_yaml: Optional[Path],
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
+    source_path = prepared_input.source_path
     charge, spin = resolve_charge_spin_or_raise(
         prepared_input,
         charge,
@@ -317,9 +327,9 @@ def cli(
 
         # Normalize any existing freeze list and optionally augment with link parents
         merged_freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links_flag and input_path.suffix.lower() == ".pdb":
+        if freeze_links_flag and source_path.suffix.lower() == ".pdb":
             try:
-                detected = detect_freeze_links(input_path)
+                detected = detect_freeze_links(source_path)
             except Exception as e:
                 click.echo(
                     f"[freeze-links] WARNING: Could not detect link parents: {e}",
