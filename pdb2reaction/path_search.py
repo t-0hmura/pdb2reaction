@@ -13,7 +13,7 @@ Usage (CLI)
                             [--opt-mode light|heavy] [--dump BOOL]
                             [--convert-files {True|False}]
                             [--out-dir DIR] [--preopt BOOL]
-                            [--align {True|False}] [--ref-pdb FILE ...]
+                            [--align {True|False}] [--ref-full-pdb FILE ...]
                             [--pocket-ref-pdb FILE ...]
                             [--args-yaml FILE]
 
@@ -50,7 +50,7 @@ Recommended/common:
     --thresh STR
         Convergence preset for GSM and single optimizations
         (gau_loose|gau|gau_tight|gau_vtight|baker|never).
-    --ref-pdb PATH [...]
+    --ref-full-pdb PATH [...]
         Full template PDB(s) for final merge (see Notes).
     --pocket-ref-pdb PATH [...]
         Pocket reference PDB(s) for the final merge when --input uses XYZ/GJF.
@@ -70,7 +70,7 @@ Examples
 
     # Multistep with intermediates, YAML overrides, and PDB merge to a full system
     pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-        --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
+        --args-yaml params.yaml --ref-full-pdb holo_template.pdb --out-dir ./run_ps
 
 Description
 -----------
@@ -96,7 +96,7 @@ Workflow
    `search.bridge_rmsd_thresh`, insert a *bridge* MEP segment (GSM/DMF).
    - If the interface itself shows covalent changes, insert a **new recursive segment** instead of a bridge.
 6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
-   refine `freeze_atoms` to match the first input. If `--ref-pdb` is supplied, merge pocket trajectories
+   refine `freeze_atoms` to match the first input. If `--ref-full-pdb` is supplied, merge pocket trajectories
    into full templates and annotate segments (requires PDB pocket inputs or `--pocket-ref-pdb`).
 
 Outputs (& Directory Layout)
@@ -105,11 +105,11 @@ out_dir/ (default: ./result_path_search/)
   ├─ summary.yaml                    # Run-level summary (no exhaustive settings dump)
   ├─ mep.trj                         # Final MEP as XYZ 
   ├─ mep.pdb                         # Final MEP as PDB (written when inputs were PDB)
-  ├─ mep_w_ref.pdb                   # Full-system merged path (requires --ref-pdb and pocket PDBs)
-  ├─ mep_w_ref_seg_XX.pdb            # Per-segment merged paths (bond-change segments; requires --ref-pdb)
+  ├─ mep_w_ref.pdb                   # Full-system merged path (requires --ref-full-pdb and pocket PDBs)
+  ├─ mep_w_ref_seg_XX.pdb            # Per-segment merged paths (bond-change segments; requires --ref-full-pdb)
   ├─ mep_seg_XX.trj / mep_seg_XX.pdb # Pocket-only segment paths (bond-change segments; format follows input)
   ├─ hei_seg_XX.xyz / hei_seg_XX.pdb # Highest-energy image snapshots; hei_seg_XX.gjf when a template is available
-  ├─ hei_w_ref_seg_XX.pdb            # Merged HEI per bond-change segment (requires --ref-pdb)
+  ├─ hei_w_ref_seg_XX.pdb            # Merged HEI per bond-change segment (requires --ref-full-pdb)
   ├─ mep_plot.png                    # ΔE profile vs. image index (from trj2fig)
   ├─ energy_diagram_MEP.png          # PNG export of the diagram when kaleido is installed
   └─ segments/
@@ -142,7 +142,7 @@ Notes
   - A single UMA calculator (`uma_pysis`, default model "uma-s-1p1") is shared serially across all stages.
   - GSM employs pysisyphus `GrowingString` + `StringOptimizer`; DMF uses the Direct Max Flux interpolator.
     Single‑structure optimization uses LBFGS or RFO.
-- Final merge rule with `--align True`: when `--ref-pdb` is provided, the **first** reference PDB is used for *all* pairs
+- Final merge rule with `--align True`: when `--ref-full-pdb` is provided, the **first** reference PDB is used for *all* pairs
   in the final merge (passing one file is sufficient). Without `--align`, supply one reference PDB per input.
 - Console output prints the linear state sequence (e.g., `R --> TS1 --> IM1_1 -|--> IM1_2 --> ... --> P`) and the exact
   labels/energies used to build the energy diagram.
@@ -1531,7 +1531,7 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
             N_expected = coords.shape[0]
         else:
             if coords.shape[0] != N_expected:
-                raise click.BadParameter(f"[merge] Atom count mismatch among --ref-pdb templates: {N_expected} vs {coords.shape[0]}")
+                raise click.BadParameter(f"[merge] Atom count mismatch among --ref-full-pdb templates: {N_expected} vs {coords.shape[0]}")
         coords_list.append(coords)
         atoms_list.append(atoms)
         keymaps.append(key2idx)
@@ -1722,7 +1722,7 @@ def _merge_final_and_write(final_images: List[Any],
     Merge the entire pocket MEP into full templates (for all pairs) and write outputs.
     """
     if len(ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
+        raise click.BadParameter("--ref-full-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
 
     if pocket_ref_pdbs is None:
         pocket_ref_pdbs = pocket_inputs
@@ -2010,11 +2010,11 @@ def _merge_final_and_write(final_images: List[Any],
     default=True,
     show_default=True,
     help=("After preoptimization, align all inputs to the *first* input and match freeze_atoms "
-          "using the align_freeze_atoms API. When --align is True and --ref-pdb is provided, "
+          "using the align_freeze_atoms API. When --align is True and --ref-full-pdb is provided, "
           "the first reference PDB will be used for all pairs in the final merge.")
 )
 @click.option(
-    "--ref-pdb",
+    "--ref-full-pdb",
     "ref_pdb_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
@@ -2065,7 +2065,7 @@ def cli(
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
 
-    # Robustly accept both styles for -i/--input, --ref-pdb, and --pocket-ref-pdb
+    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --pocket-ref-pdb
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
         i = 0
@@ -2095,7 +2095,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    ref_vals = _collect_option_values(argv_all, ("--ref-pdb",))
+    ref_vals = _collect_option_values(argv_all, ("--ref-full-pdb",))
     if ref_vals:
         ref_parsed: List[Path] = []
         for tok in ref_vals:
@@ -2103,7 +2103,7 @@ def cli(
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
                     f"Reference PDB path '{tok}' not found or is a directory. "
-                    f"When using '--ref-pdb', multiple files may follow a single option."
+                    f"When using '--ref-full-pdb', multiple files may follow a single option."
                 )
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
@@ -2141,7 +2141,7 @@ def cli(
                 pass
             else:
                 if len(ref_pdb_paths) != len(input_paths):
-                    raise click.BadParameter("--ref-pdb must be given for each --input (same count and order). "
+                    raise click.BadParameter("--ref-full-pdb must be given for each --input (same count and order). "
                                              "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
             if pocket_ref_pdb_paths and len(pocket_ref_pdb_paths) != len(input_paths):
                 raise click.BadParameter("--pocket-ref-pdb must be given for each --input (same count and order).")
@@ -2527,7 +2527,7 @@ def cli(
             # With --align True, use only the first reference PDB for all pairs (replicate it).
             if align:
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:
-                    raise click.BadParameter("--ref-pdb must provide at least one file when performing final merge with --align True.")
+                    raise click.BadParameter("--ref-full-pdb must provide at least one file when performing final merge with --align True.")
                 first_ref = Path(ref_pdb_paths[0])
                 ref_list_for_merge = [first_ref for _ in input_paths]
             else:

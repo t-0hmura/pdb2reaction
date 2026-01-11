@@ -106,7 +106,7 @@ Pipeline overview
       - Runs the recursive ``path_search`` workflow on the ordered series.
       - ``--mep-mode`` selects the optimizer: Growing String Method (``gsm``) or Direct Max Flux (``dmf``).
       - When the original inputs are PDBs and extraction is enabled, the original **full-system** PDBs are
-        passed as merge templates (``--ref-pdb``) automatically:
+        passed as merge templates (``--ref-full-pdb``) automatically:
           • multi-input: one template per pocket input in reaction order,
           • single+scan: the same original template is reused for all scan-derived structures.
 
@@ -243,8 +243,8 @@ Outputs (& Directory Layout)
   │   ├─ summary.log                     # human-readable summary (also mirrored to <out-dir>/)
   │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment trajectories
   │   ├─ hei_seg_XX.(xyz|pdb|gjf)        # HEI snapshots per reactive segment
-  │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb / PDB input)
-  │   ├─ mep_w_ref_seg_XX.pdb            # merged per-segment trajectories (when --ref-pdb / PDB input; not mirrored)
+  │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-full-pdb / PDB input)
+  │   ├─ mep_w_ref_seg_XX.pdb            # merged per-segment trajectories (when --ref-full-pdb / PDB input; not mirrored)
   │   ├─ seg_XXX_~~~/ ...                # GSM/DMF internals / recursion tree
   │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
@@ -3241,21 +3241,21 @@ def cli(
 
     if skip_extract:
         click.echo(
-            "[all] NOTE: skipping --ref-pdb (no --center; inputs already represent full structures)."
+            "[all] NOTE: skipping --ref-full-pdb (no --center; inputs already represent full structures)."
         )
     elif is_single and has_scan:
         if _is_pdb(input_paths[0]):
             gave_ref_pdb = True
         else:
             click.echo(
-                "[all] NOTE: skipping --ref-pdb (single+scan: original input is not a PDB)."
+                "[all] NOTE: skipping --ref-full-pdb (single+scan: original input is not a PDB)."
             )
     else:
         if all(_is_pdb(p) for p in input_paths):
             gave_ref_pdb = True
         else:
             click.echo(
-                "[all] NOTE: skipping --ref-pdb (one or more original inputs are not PDB)."
+                "[all] NOTE: skipping --ref-full-pdb (one or more original inputs are not PDB)."
             )
 
     # -------------------------------------------------------------------------
@@ -3622,7 +3622,7 @@ def cli(
 
         if gave_ref_pdb:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):
-                ps_args.extend(["--ref-pdb", str(p)])
+                ps_args.extend(["--ref-full-pdb", str(p)])
             if pocket_ref_pdbs:
                 for p in pocket_ref_pdbs:
                     ps_args.extend(["--pocket-ref-pdb", str(p)])
@@ -3701,7 +3701,7 @@ def cli(
         )
     elif refine_path:
         click.echo(
-            "[all] --ref-pdb was not provided; full-system merged trajectories are not produced."
+            "[all] --ref-full-pdb was not provided; full-system merged trajectories are not produced."
         )
         click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
     else:
