@@ -58,9 +58,8 @@ The default is `light`.
 
 Configuration is driven by YAML overrides for sections: `geom`, `calc`, `opt`, `hessian_dimer`,
 and `rsirfo`. The `hessian_dimer` section accepts nested `dimer` and `lbfgs` dictionaries
-forwarded to the respective pysisyphus components. The optional key `use_lobpcg` in
-`hessian_dimer` is **deprecated and ignored**; the implementation always tries LOBPCG for the
-lowest eigenpair when `root == 0`, falling back to `torch.linalg.eigh` as needed.
+forwarded to the respective pysisyphus components. The implementation always tries LOBPCG for
+the lowest eigenpair when `root == 0`, falling back to `torch.linalg.eigh` as needed.
 
 Structures are loaded via `pysisyphus.helpers.geom_loader` (PDB/XYZ/TRJ/etc.). The UMA
 calculator (`pdb2reaction.uma_pysis`) provides energies, gradients, and Hessians. UMA may return
@@ -596,7 +595,6 @@ class HessianDimer:
       - UMA calculator kwargs accept `freeze_atoms` and `hessian_calc_mode` and
         default to returning a partial (active) Hessian when applicable.
 
-    Note: the `use_lobpcg` argument is deprecated and ignored.
     """
 
     def __init__(self,
@@ -609,7 +607,6 @@ class HessianDimer:
                  flatten_amp_ang: float = 0.20,
                  flatten_max_iter: int = 0,
                  mem: int = 100000,
-                 use_lobpcg: bool = True,  # deprecated; ignored
                  uma_kwargs: Optional[dict] = None,
                  device: str = "auto",
                  dump: bool = False,
@@ -622,6 +619,7 @@ class HessianDimer:
                  # Multi-mode flatten control
                  flatten_sep_cutoff: float = 1.0,
                  flatten_k: int = 5,
+                 flatten_loop_bolfill: bool = False,
                  #
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in light mode.
@@ -640,7 +638,6 @@ class HessianDimer:
         self.flatten_amp_ang = float(flatten_amp_ang)
         self.flatten_max_iter = int(flatten_max_iter)
         self.mem = int(mem)
-        self.use_lobpcg = bool(use_lobpcg)  # deprecated; ignored
         self.root = int(root)
         self.dimer_kwargs = dict(dimer_kwargs or {})
         self.lbfgs_kwargs = dict(lbfgs_kwargs or {})
@@ -649,6 +646,7 @@ class HessianDimer:
         # multi-mode flatten controls
         self.flatten_sep_cutoff = float(flatten_sep_cutoff)
         self.flatten_k = int(flatten_k)
+        self.flatten_loop_bolfill = bool(flatten_loop_bolfill)
 
         # Track total cycles globally across all loops/segments
         self._cycles_spent = 0
@@ -1012,13 +1010,14 @@ class HessianDimer:
             g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
             # (c) Bofill update using UMA gradients across the flatten displacement
-            delta_flat_full = x_after_flat - x_before_flat
-            delta_flat_act = delta_flat_full[mask_dof]
-            g_old_act = g_before_flat[mask_dof]
-            g_new_act = g_after_flat[mask_dof]
-            H_act = _bofill_update_active(H_act, delta_flat_act, g_new_act, g_old_act)
+            if self.flatten_loop_bolfill:
+                delta_flat_full = x_after_flat - x_before_flat
+                delta_flat_act = delta_flat_full[mask_dof]
+                g_old_act = g_before_flat[mask_dof]
+                g_new_act = g_after_flat[mask_dof]
+                H_act = _bofill_update_active(H_act, delta_flat_act, g_new_act, g_old_act)
 
-            # (d) Refresh dimer direction from updated active Hessian
+            # (d) Refresh dimer direction
             mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                 H_act, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
@@ -1157,8 +1156,8 @@ hessian_dimer_KW = {
     "flatten_max_iter": 50,           # max flattening iterations
     "flatten_sep_cutoff": 0.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
+    "flatten_loop_bolfill": False,    # use Bofill-updated Hessian for dimer direction in flatten loop
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
-    "use_lobpcg": True,               # deprecated (ignored)
     "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
     "root": 0,                        # 0: follow the most negative mode
     "dimer": {**DIMER_KW},            # default kwargs forwarded to Dimer (Runner may override some)
@@ -1410,7 +1409,6 @@ def cli(
                 flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
                 flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
                 mem=int(simple_cfg.get("mem", 100000)),
-                use_lobpcg=bool(simple_cfg.get("use_lobpcg", True)),  # deprecated; ignored
                 uma_kwargs=uma_kwargs_for_sd,
                 device=str(simple_cfg.get("device", calc_cfg.get("device", "auto"))),
                 dump=bool(opt_cfg["dump"]),
@@ -1420,6 +1418,7 @@ def cli(
                 max_total_cycles=int(opt_cfg["max_cycles"]),
                 flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
                 flatten_k=int(simple_cfg.get("flatten_k", 10)),
+                flatten_loop_bolfill=bool(simple_cfg.get("flatten_loop_bolfill", False)),
                 # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                 geom_kwargs=dict(geom_cfg),
             )
