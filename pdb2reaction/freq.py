@@ -103,6 +103,7 @@ from .utils import (
     format_elapsed,
     merge_freeze_atom_indices,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
 )
@@ -548,6 +549,12 @@ THERMO_KW = {
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.",
 )
+@click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
 @click.option("--max-write", type=int, default=10, show_default=True,
               help="How many modes to export (after sorting per --sort).")
 @click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
@@ -585,6 +592,7 @@ def cli(
     spin: Optional[int],
     freeze_links: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     max_write: int,
     amplitude_ang: float,
     n_frames: int,
@@ -601,7 +609,9 @@ def cli(
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
+    source_path = prepared_input.source_path
     charge, spin = resolve_charge_spin_or_raise(
         prepared_input,
         charge,
@@ -647,9 +657,9 @@ def cli(
     )
 
     # Freeze links (PDB only): merge with existing list
-    if freeze_links and input_path.suffix.lower() == ".pdb":
+    if freeze_links and source_path.suffix.lower() == ".pdb":
         try:
-            detected = detect_freeze_links(input_path)
+            detected = detect_freeze_links(source_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
@@ -720,7 +730,7 @@ def cli(
         click.echo(f"[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).")
 
         # Reference PDB (only when input is PDB)
-        ref_pdb = input_path if input_path.suffix.lower() == ".pdb" else None
+        ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
         write_pdb = ref_pdb is not None
 
         # write modes

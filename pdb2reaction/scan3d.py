@@ -163,6 +163,7 @@ from .utils import (
     merge_freeze_atom_indices,
     normalize_choice,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -552,6 +553,12 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
+@click.option(
     "--out-dir",
     type=str,
     default="./result_scan3d/",
@@ -625,6 +632,7 @@ def cli(
     freeze_links: bool,
     dump: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     out_dir: str,
     csv_path: Optional[Path],
     thresh: Optional[str],
@@ -639,13 +647,16 @@ def cli(
     set_convert_file_enabled(convert_files)
     prepared_input = None
     geom_input_path = None
+    source_path = None
     if csv_path is None:
         if input_path is None:
             raise click.ClickException("-i/--input is required unless --csv is provided.")
         if scan_list_raw is None:
             raise click.ClickException("--scan-list is required unless --csv is provided.")
         prepared_input = prepare_input_structure(input_path)
+        apply_ref_pdb_override(prepared_input, ref_pdb)
         geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
 
         charge, spin = resolve_charge_spin_or_raise(
             prepared_input,
@@ -721,8 +732,8 @@ def cli(
         d2_label_csv = None
         d3_label_csv = None
         if csv_path is None:
-            if input_path.suffix.lower() == ".pdb":
-                pdb_atom_meta = load_pdb_atom_metadata(input_path)
+            if source_path and source_path.suffix.lower() == ".pdb":
+                pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
             (
                 (i1, j1, low1, high1),
@@ -758,8 +769,8 @@ def cli(
         final_dir = out_dir_path
 
         ref_pdb_path = None
-        if csv_path is None and input_path.suffix.lower() == ".pdb":
-            ref_pdb_path = input_path
+        if csv_path is None and source_path and source_path.suffix.lower() == ".pdb":
+            ref_pdb_path = source_path
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
@@ -778,8 +789,8 @@ def cli(
             _ensure_dir(tmp_opt_dir)
 
             freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and input_path.suffix.lower() == ".pdb":
-                detected = detect_freeze_links_safe(input_path)
+            if freeze_links and source_path and source_path.suffix.lower() == ".pdb":
+                detected = detect_freeze_links_safe(source_path)
                 if detected:
                     freeze = merge_freeze_atom_indices(geom_cfg, detected)
                     if freeze:
