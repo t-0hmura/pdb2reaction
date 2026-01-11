@@ -869,6 +869,12 @@ def resolve_charge_spin_or_raise(
     prefix: str = "[charge]",
 ) -> Tuple[int, int]:
     charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
+    source_suffix = prepared.source_path.suffix.lower()
+    if ligand_charge is not None and source_suffix in {".xyz", ".gjf"}:
+        prepared.cleanup()
+        raise click.ClickException(
+            "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+        )
     if charge is None and ligand_charge is not None:
         charge = _derive_charge_from_ligand_charge(
             prepared, ligand_charge, prefix=prefix
