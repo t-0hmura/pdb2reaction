@@ -148,6 +148,7 @@ from .utils import (
     merge_freeze_atom_indices,
     normalize_choice,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
     load_pdb_atom_metadata,
@@ -445,6 +446,12 @@ def _snapshot_geometry(g) -> Any:
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
+@click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
 @click.option("--out-dir", type=str, default="./result_scan/", show_default=True,
               help="Base output directory.")
 @click.option(
@@ -480,6 +487,7 @@ def cli(
     freeze_links: bool,
     dump: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -488,7 +496,9 @@ def cli(
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
+    source_path = prepared_input.source_path
     charge, spin = resolve_charge_spin_or_raise(
         prepared_input,
         charge,
@@ -496,9 +506,9 @@ def cli(
         ligand_charge=ligand_charge,
         prefix="[scan]",
     )
-    needs_pdb = input_path.suffix.lower() == ".pdb"
+    needs_pdb = source_path.suffix.lower() == ".pdb"
     needs_gjf = prepared_input.is_gjf
-    ref_pdb = input_path.resolve() if needs_pdb else None
+    ref_pdb = source_path.resolve() if needs_pdb else None
     try:
         time_start = time.perf_counter()
 
@@ -565,8 +575,8 @@ def cli(
         click.echo(pretty_block("bond", echo_bond))
 
         pdb_atom_meta: List[Dict[str, Any]] = []
-        if input_path.suffix.lower() == ".pdb":
-            pdb_atom_meta = load_pdb_atom_metadata(input_path)
+        if source_path.suffix.lower() == ".pdb":
+            pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
         # ------------------------------------------------------------------
         # 2) Parse scan lists
@@ -601,8 +611,8 @@ def cli(
 
         # Load
         freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links and input_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(input_path)
+        if freeze_links and source_path.suffix.lower() == ".pdb":
+            detected = detect_freeze_links_safe(source_path)
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
                 if freeze:

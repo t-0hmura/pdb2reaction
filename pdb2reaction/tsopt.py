@@ -180,6 +180,7 @@ from .utils import (
     merge_freeze_atom_indices,
     normalize_choice,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -1225,6 +1226,12 @@ RSIRFO_KW.update({
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
+@click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
 @click.option(
     "--flatten-imag-mode",
@@ -1272,6 +1279,7 @@ def cli(
     spin: Optional[int],
     freeze_links: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     max_cycles: int,
     flatten_imag_mode: bool,
     opt_mode: str,
@@ -1283,6 +1291,7 @@ def cli(
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
     source_path = prepared_input.source_path
     charge, spin = resolve_charge_spin_or_raise(

@@ -14,7 +14,7 @@ Usage (CLI)
                             [--convert-files {True|False}]
                             [--out-dir DIR] [--preopt BOOL]
                             [--align {True|False}] [--ref-full-pdb FILE ...]
-                            [--pocket-ref-pdb FILE ...]
+                            [--ref-pdb FILE ...]
                             [--args-yaml FILE]
 
 Core inputs (strongly recommended):
@@ -52,7 +52,7 @@ Recommended/common:
         (gau_loose|gau|gau_tight|gau_vtight|baker|never).
     --ref-full-pdb PATH [...]
         Full template PDB(s) for final merge (see Notes).
-    --pocket-ref-pdb PATH [...]
+    --ref-pdb PATH [...]
         Pocket reference PDB(s) for the final merge when --input uses XYZ/GJF.
     --out-dir PATH
         Output directory; default ./result_path_search/
@@ -97,7 +97,7 @@ Workflow
    - If the interface itself shows covalent changes, insert a **new recursive segment** instead of a bridge.
 6) Optional alignment & merge: after pre‑opt, when `--align` (default), rigidly co‑align all inputs and
    refine `freeze_atoms` to match the first input. If `--ref-full-pdb` is supplied, merge pocket trajectories
-   into full templates and annotate segments (requires PDB pocket inputs or `--pocket-ref-pdb`).
+   into full templates and annotate segments (requires PDB pocket inputs or `--ref-pdb`).
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -1727,7 +1727,7 @@ def _merge_final_and_write(final_images: List[Any],
     if pocket_ref_pdbs is None:
         pocket_ref_pdbs = pocket_inputs
     if len(pocket_ref_pdbs) != len(pocket_inputs):
-        raise click.BadParameter("--pocket-ref-pdb must match the number of --input after preprocessing.")
+        raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing.")
 
     structs, aligned_coords, _atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
@@ -2024,7 +2024,7 @@ def _merge_final_and_write(final_images: List[Any],
           "in the final merge (you may pass just one).")
 )
 @click.option(
-    "--pocket-ref-pdb",
+    "--ref-pdb",
     "pocket_ref_pdb_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
@@ -2065,7 +2065,7 @@ def cli(
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
 
-    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --pocket-ref-pdb
+    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
     def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
         vals: List[str] = []
         i = 0
@@ -2108,7 +2108,7 @@ def cli(
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
 
-    pocket_ref_vals = _collect_option_values(argv_all, ("--pocket-ref-pdb",))
+    pocket_ref_vals = _collect_option_values(argv_all, ("--ref-pdb",))
     if pocket_ref_vals:
         pocket_ref_parsed: List[Path] = []
         for tok in pocket_ref_vals:
@@ -2116,7 +2116,7 @@ def cli(
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
                     f"Pocket reference PDB path '{tok}' not found or is a directory. "
-                    f"When using '--pocket-ref-pdb', multiple files may follow a single option."
+                    f"When using '--ref-pdb', multiple files may follow a single option."
                 )
             pocket_ref_parsed.append(p)
         pocket_ref_pdb_paths = tuple(pocket_ref_parsed)
@@ -2144,7 +2144,7 @@ def cli(
                     raise click.BadParameter("--ref-full-pdb must be given for each --input (same count and order). "
                                              "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
             if pocket_ref_pdb_paths and len(pocket_ref_pdb_paths) != len(input_paths):
-                raise click.BadParameter("--pocket-ref-pdb must be given for each --input (same count and order).")
+                raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
 
         p_list = [Path(p) for p in input_paths]
         prepared_inputs = [prepare_input_structure(p) for p in p_list]
