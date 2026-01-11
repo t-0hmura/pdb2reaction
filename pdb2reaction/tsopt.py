@@ -675,6 +675,52 @@ class HessianDimer:
         self.dump = bool(dump)
         self.optim_all_path = self.out_dir / "optimization_all.trj"
 
+        self._raw_hessian_cache_cpu: Optional[torch.Tensor] = None
+        self._raw_hessian_coords_cpu: Optional[np.ndarray] = None
+
+    def _cache_raw_hessian_cpu(self, H_t: torch.Tensor) -> None:
+        """
+        Cache the *raw* Hessian on CPU for the current geometry.
+        IMPORTANT:
+          - Must be called before any in-place mass-weight / TR projection happens.
+          - This cache is CPU-only by design (no persistent GPU cache).
+        """
+        self._raw_hessian_cache_cpu = H_t.detach().cpu().clone()
+        self._raw_hessian_coords_cpu = self.geom.cart_coords.copy()
+
+    def _reuse_cached_hessian(self) -> Optional[torch.Tensor]:
+        """
+        If the cached geometry matches the current geometry, return the cached *raw*
+        Hessian transferred to self.device. No persistent GPU caching is performed.
+
+        Note:
+          - On CPU, `.to('cpu')` can share storage; we clone to protect cache against
+            later in-place ops (e.g., mass-weight/TR projection).
+        """
+        if self._raw_hessian_cache_cpu is None or self._raw_hessian_coords_cpu is None:
+            return None
+        if not np.array_equal(self.geom.cart_coords, self._raw_hessian_coords_cpu):
+            return None
+        H_dev = self._raw_hessian_cache_cpu.to(self.device)
+        if self.device.type == "cpu":
+            H_dev = H_dev.clone()
+        return H_dev
+
+    def _calc_full_hessian_cached(self, allow_reuse: bool) -> torch.Tensor:
+        """
+        Compute an exact Hessian, caching a CPU copy of the *raw* Hessian.
+        If allow_reuse is True and the current geometry matches the cached one,
+        reuse the cached Hessian (CPU→device transfer) instead of recalculating.
+        """
+        if allow_reuse:
+            cached = self._reuse_cached_hessian()
+            if cached is not None:
+                print("[Hessian] Reusing cached raw Hessian (0-step convergence).")
+                return cached
+        H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+        self._cache_raw_hessian_cpu(H_t)
+        return H_t
+
     # ----- One dimer segment for up to n_steps; returns (steps_done, converged) -----
     def _dimer_segment(self, threshold: str, n_steps: int) -> Tuple[int, bool]:
         # Dimer calculator using current mode as initial N
@@ -717,27 +763,36 @@ class HessianDimer:
         return steps, converged
 
     # ----- Loop dimer segments, updating mode from Hessian every interval -----
-    def _dimer_loop(self, threshold: str) -> int:
+    def _dimer_loop(self, threshold: str) -> Tuple[int, bool]:
         """
         Run multiple LBFGS segments separated by periodic Hessian-based mode updates.
         Consumes from the global cycle budget self.max_total_cycles.
+
+        Returns:
+          (steps_in_this_call, zero_step_converged)
+        where `zero_step_converged` is True iff the loop terminated by convergence
+        without changing the geometry (i.e., 0-step convergence).
         """
         steps_in_this_call = 0
+        zero_step_converged = False
         while True:
             remaining_global = max(0, self.max_total_cycles - self._cycles_spent)
             if remaining_global == 0:
                 break
             steps_this = min(self.update_interval_hessian, remaining_global)
+            coords_before = self.geom.cart_coords.copy()
             steps, ok = self._dimer_segment(threshold, steps_this)
             self._cycles_spent += steps
             steps_in_this_call += steps
             if ok:
+                if np.array_equal(self.geom.cart_coords, coords_before):
+                    zero_step_converged = True
                 break
             # If budget exhausted after this segment, stop before doing a Hessian update
             if (self.max_total_cycles - self._cycles_spent) <= 0:
                 break
             # Update mode from Hessian (respect freeze atoms via PHVA)
-            H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+            H_t = self._calc_full_hessian_cached(allow_reuse=False)
             N = len(self.geom.atomic_numbers)
             coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                             dtype=H_t.dtype, device=H_t.device)
@@ -759,7 +814,7 @@ class HessianDimer:
             del H_t, coords_bohr_t, mode_xyz, mode_freq_cm
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        return steps_in_this_call
+        return steps_in_this_call, zero_step_converged
 
     # ----- helpers for flatten selection -----
     def _representative_atoms_for_mode(self, mode_vec: torch.Tensor) -> np.ndarray:
@@ -906,7 +961,7 @@ class HessianDimer:
         mask_dof = _active_mask_dof(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
 
         # (1) Initial Hessian → pick direction by `root`
-        H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+        H_t = self._calc_full_hessian_cached(allow_reuse=False)
         coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
 
@@ -937,10 +992,10 @@ class HessianDimer:
         else:
             print("Loose dimer loop...")
 
-        self._dimer_loop(self.thresh_loose)
+        _steps_loose, zero_step_loose = self._dimer_loop(self.thresh_loose)
 
         # (3) Update mode & normal loop
-        H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+        H_t = self._calc_full_hessian_cached(allow_reuse=zero_step_loose)
         coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
         if H_t.size(0) == 3 * N:
@@ -962,13 +1017,13 @@ class HessianDimer:
             torch.cuda.empty_cache()
 
         print("Normal dimer loop...")
-        self._dimer_loop(self.thresh)
+        _steps_normal, zero_step_normal = self._dimer_loop(self.thresh)
 
         # (4) Flatten loop — exact Hessian each iteration & Bofill only for flatten
         print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
 
         # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
-        H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+        H_any = self._calc_full_hessian_cached(allow_reuse=zero_step_normal)
         if H_any.size(0) == 3 * N:
             # full → extract active
             H_act = _extract_active_block(H_any, mask_dof)  # torch (3N_act,3N_act)
@@ -1026,10 +1081,10 @@ class HessianDimer:
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
 
             # (e) Re-optimize with Dimer (consumes global cycle budget)
-            self._dimer_loop(self.thresh)
+            _steps_flat, zero_step_flat = self._dimer_loop(self.thresh)
 
             # (f) After dimer optimization, recompute an exact Hessian for the next iteration
-            H_any = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+            H_any = self._calc_full_hessian_cached(allow_reuse=zero_step_flat)
             if H_any.size(0) == 3 * N:
                 H_act = _extract_active_block(H_any, mask_dof)
             else:
@@ -1044,7 +1099,7 @@ class HessianDimer:
         write(final_xyz, atoms_final)
 
         # Final Hessian → imaginary mode animation
-        H_t = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
+        H_t = self._calc_full_hessian_cached(allow_reuse=True)
         freqs_cm, modes = _frequencies_cm_and_modes(
             H_t,
             self.geom.atomic_numbers,
