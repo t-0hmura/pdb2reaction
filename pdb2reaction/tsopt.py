@@ -619,7 +619,7 @@ class HessianDimer:
                  # Multi-mode flatten control
                  flatten_sep_cutoff: float = 1.0,
                  flatten_k: int = 5,
-                 flatten_loop_bolfill: bool = False,
+                 flatten_loop_bofill: bool = False,
                  #
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in light mode.
@@ -646,7 +646,7 @@ class HessianDimer:
         # multi-mode flatten controls
         self.flatten_sep_cutoff = float(flatten_sep_cutoff)
         self.flatten_k = int(flatten_k)
-        self.flatten_loop_bolfill = bool(flatten_loop_bolfill)
+        self.flatten_loop_bofill = bool(flatten_loop_bofill)
 
         # Track total cycles globally across all loops/segments
         self._cycles_spent = 0
@@ -1010,7 +1010,7 @@ class HessianDimer:
             g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
             # (c) Bofill update using UMA gradients across the flatten displacement
-            if self.flatten_loop_bolfill:
+            if self.flatten_loop_bofill:
                 delta_flat_full = x_after_flat - x_before_flat
                 delta_flat_act = delta_flat_full[mask_dof]
                 g_old_act = g_before_flat[mask_dof]
@@ -1156,7 +1156,7 @@ hessian_dimer_KW = {
     "flatten_max_iter": 50,           # max flattening iterations
     "flatten_sep_cutoff": 0.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
-    "flatten_loop_bolfill": False,    # use Bofill-updated Hessian for dimer direction in flatten loop
+    "flatten_loop_bofill": False,    # use Bofill-updated Hessian for dimer direction in flatten loop
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
     "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
     "root": 0,                        # 0: follow the most negative mode
@@ -1418,7 +1418,7 @@ def cli(
                 max_total_cycles=int(opt_cfg["max_cycles"]),
                 flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
                 flatten_k=int(simple_cfg.get("flatten_k", 10)),
-                flatten_loop_bolfill=bool(simple_cfg.get("flatten_loop_bolfill", False)),
+                flatten_loop_bofill=bool(simple_cfg.get("flatten_loop_bofill", False)),
                 # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                 geom_kwargs=dict(geom_cfg),
             )
