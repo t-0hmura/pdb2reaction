@@ -861,7 +861,7 @@ class HessianDimer:
         amp_bohr = self.flatten_amp_ang / BOHR2ANG
 
         # ensure energy reference is set up
-        _ = _calc_energy(self.geom, self.uma_kwargs)
+        E_ref = _calc_energy(self.geom, self.uma_kwargs)
 
         # work in Bohr coordinates
         for idx in targets:
@@ -888,7 +888,11 @@ class HessianDimer:
             use_plus = E_plus <= E_minus
             self.geom.coords = (plus if use_plus else minus).reshape(-1)
             E_keep = E_plus if use_plus else E_minus
-            print(f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 E_disp={E_keep:.8f} Ha")
+            delta_e = E_keep - E_ref
+            print(
+                f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 "
+                f"E_disp={E_keep:.8f} Ha \u0394E={delta_e:+.8f} Ha"
+            )
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
