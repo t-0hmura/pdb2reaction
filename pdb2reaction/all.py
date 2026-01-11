@@ -939,19 +939,32 @@ def _save_single_geom_as_pdb_for_tools(
 ) -> Path:
     """
     Write a single-geometry XYZ trajectory with energy for downstream CLI tools.
-    If a PDB reference is available, also write a PDB companion for visualization.
+    If a PDB/GJF reference is available, also write a companion file for visualization.
     Returns the XYZ path to avoid passing rounded PDB coordinates between steps.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     xyz_trj = out_dir / f"{name}.xyz"
     _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
 
-    if ref_pdb.suffix.lower() == ".pdb":
-        pdb_out = out_dir / f"{name}.pdb"
+    prepared_input = prepare_input_structure(ref_pdb)
+    try:
+        ref_pdb_path: Optional[Path] = None
+        if prepared_input.source_path.suffix.lower() == ".pdb":
+            ref_pdb_path = prepared_input.source_path
+        out_pdb = out_dir / f"{name}.pdb" if ref_pdb_path is not None else None
+        out_gjf = out_dir / f"{name}.gjf" if prepared_input.is_gjf else None
         try:
-            _path_search._maybe_convert_to_pdb(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
+            convert_xyz_like_outputs(
+                xyz_trj,
+                prepared_input,
+                ref_pdb_path=ref_pdb_path,
+                out_pdb_path=out_pdb,
+                out_gjf_path=out_gjf,
+            )
         except Exception:
             pass
+    finally:
+        prepared_input.cleanup()
 
     return xyz_trj
 
@@ -3066,9 +3079,13 @@ def cli(
 
         try:
             ts_pdb = pT.with_suffix(".pdb")
+            ts_gjf = pT.with_suffix(".gjf")
             if ts_pdb.exists():
                 ts_copy = out_dir / "ts_seg_01.pdb"
                 shutil.copy2(ts_pdb, ts_copy)
+            elif ts_gjf.exists():
+                ts_copy = out_dir / "ts_seg_01.gjf"
+                shutil.copy2(ts_gjf, ts_copy)
             else:
                 ts_copy = out_dir / "ts_seg_01.xyz"
                 _path_search._write_xyz_trj_with_energy(
@@ -3973,9 +3990,13 @@ def cli(
 
             try:
                 ts_pdb = pT.with_suffix(".pdb")
+                ts_gjf = pT.with_suffix(".gjf")
                 if ts_pdb.exists():
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
                     shutil.copy2(ts_pdb, ts_copy)
+                elif ts_gjf.exists():
+                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.gjf"
+                    shutil.copy2(ts_gjf, ts_copy)
                 else:
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
                     _path_search._write_xyz_trj_with_energy(
