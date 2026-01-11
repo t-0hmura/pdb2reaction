@@ -910,18 +910,19 @@ class HessianDimer:
 
         if H_t.size(0) == 3 * N:
             print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
-            mode_xyz, _ = _mode_direction_by_root(
+            mode_xyz, mode_freq_cm = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
             print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
-            mode_xyz, _ = _mode_direction_by_root_from_Hact(
+            mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                 H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
+        print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
-        del mode_xyz, coords_bohr_t, H_t
+        del mode_xyz, coords_bohr_t, H_t, mode_freq_cm
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -942,18 +943,19 @@ class HessianDimer:
                                         dtype=H_t.dtype, device=H_t.device)
         if H_t.size(0) == 3 * N:
             print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
-            mode_xyz, _ = _mode_direction_by_root(
+            mode_xyz, mode_freq_cm = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
             print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
-            mode_xyz, _ = _mode_direction_by_root_from_Hact(
+            mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                 H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
+        print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
-        del mode_xyz, coords_bohr_t, H_t
+        del mode_xyz, coords_bohr_t, H_t, mode_freq_cm
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -1013,10 +1015,11 @@ class HessianDimer:
             H_act = _bofill_update_active(H_act, delta_flat_act, g_new_act, g_old_act)
 
             # (d) Refresh dimer direction from updated active Hessian
-            mode_xyz, _ = _mode_direction_by_root_from_Hact(
+            mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                 H_act, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
+            print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
 
             # (e) Re-optimize with Dimer (consumes global cycle budget)
