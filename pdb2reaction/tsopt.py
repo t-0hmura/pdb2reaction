@@ -966,7 +966,6 @@ class HessianDimer:
                                         dtype=H_t.dtype, device=H_t.device)
 
         if H_t.size(0) == 3 * N:
-            print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
             mode_xyz, mode_freq_cm = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
@@ -999,7 +998,6 @@ class HessianDimer:
         coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H_t.dtype, device=H_t.device)
         if H_t.size(0) == 3 * N:
-            print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
             mode_xyz, mode_freq_cm = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
