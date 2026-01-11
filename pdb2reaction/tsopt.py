@@ -147,6 +147,7 @@ import torch
 from ase import Atoms
 from ase.io import write
 from ase.data import atomic_masses
+import ase.units as units
 import yaml
 import time
 
@@ -154,7 +155,7 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
-from pysisyphus.constants import BOHR2ANG, AMU2AU
+from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
 from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-projected forces)
 
 # RS-I-RFO optimizer (transition state)
@@ -254,6 +255,16 @@ def _mw_projected_hessian_inplace(H_t: torch.Tensor,
             torch.cuda.empty_cache()
         return H_t
 
+
+def _omega2_to_freq_cm(omega2: torch.Tensor) -> float:
+    """
+    Convert a (possibly signed) omega^2 eigenvalue to cm^-1, matching freq.py.
+    """
+    s_new = (units._hbar * 1e10 / np.sqrt(units._e * units._amu) * np.sqrt(AU2EV) / BOHR2ANG)
+    hnu = s_new * torch.sqrt(torch.abs(omega2))
+    hnu = torch.where(omega2 < 0, -hnu, hnu)
+    return float((hnu / units.invcm).item())
+
 def _self_check_tr_projection(H_t: torch.Tensor,
                               coords_bohr_t: torch.Tensor,
                               masses_au_t: torch.Tensor,
@@ -282,7 +293,7 @@ def _mode_direction_by_root(H_t: torch.Tensor,
                             coords_bohr_t: torch.Tensor,
                             masses_au_t: torch.Tensor,
                             root: int = 0,
-                            freeze_idx: Optional[List[int]] = None) -> np.ndarray:
+                            freeze_idx: Optional[List[int]] = None) -> Tuple[np.ndarray, float]:
     """
     Get the eigenvector (Cartesian space) corresponding to the `root`-th most negative
     eigenvalue (root=0: most negative) of the mass-weighted, TR-projected Hessian.
@@ -298,9 +309,12 @@ def _mode_direction_by_root(H_t: torch.Tensor,
             try:
                 w, v_mw_sub = torch.lobpcg(Hmw_proj, k=1, largest=False)
                 u_mw_sub = v_mw_sub[:, 0]
+                omega2 = w[0]
             except Exception:
                 evals_f, evecs_f = torch.linalg.eigh(Hmw_proj, UPLO="U")
-                u_mw_sub = evecs_f[:, torch.argmin(evals_f)]
+                pick = int(torch.argmin(evals_f).item())
+                u_mw_sub = evecs_f[:, pick]
+                omega2 = evals_f[pick]
                 del evals_f, evecs_f
         else:
             evals, evecs_mw = torch.linalg.eigh(Hmw_proj, UPLO="U")  # ascending
@@ -312,6 +326,7 @@ def _mode_direction_by_root(H_t: torch.Tensor,
                 k = max(0, min(int(root), neg_inds.numel() - 1))
                 pick = int(neg_inds[k].item())
             u_mw_sub = evecs_mw[:, pick]
+            omega2 = evals[pick]
             del evals, evecs_mw
 
         # Embed back to full 3N (frozen DOF as zeros) if we solved in subspace
@@ -335,11 +350,12 @@ def _mode_direction_by_root(H_t: torch.Tensor,
         v = inv_sqrt_m * u_mw
         v = v / torch.linalg.norm(v)
         mode = v.reshape(-1, 3).detach().cpu().numpy()
+        freq_cm = _omega2_to_freq_cm(omega2)
 
-        del masses_amu_t, m3, inv_sqrt_m, v, u_mw, u_mw_sub
+        del masses_amu_t, m3, inv_sqrt_m, v, u_mw, u_mw_sub, omega2
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        return mode
+        return mode, freq_cm
 
 
 def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
@@ -430,7 +446,7 @@ def _mode_direction_by_root_from_Hact(H_act: torch.Tensor,
                                       masses_au_t: torch.Tensor,
                                       active_idx: List[int],
                                       device: torch.device,
-                                      root: int = 0) -> np.ndarray:
+                                      root: int = 0) -> Tuple[np.ndarray, float]:
     """
     TS direction from the *active* Hessian block. Mass-weighting/TR are done in the
     active space. Result is embedded back to full 3N in Cartesian space.
@@ -448,9 +464,12 @@ def _mode_direction_by_root_from_Hact(H_act: torch.Tensor,
             try:
                 w, V = torch.lobpcg(Hmw, k=1, largest=False)
                 u_mw = V[:, 0]
+                omega2 = w[0]
             except Exception:
                 vals, vecs = torch.linalg.eigh(Hmw, UPLO="U")
-                u_mw = vecs[:, torch.argmin(vals)]
+                pick = int(torch.argmin(vals).item())
+                u_mw = vecs[:, pick]
+                omega2 = vals[pick]
                 del vals, vecs
         else:
             vals, vecs = torch.linalg.eigh(Hmw, UPLO="U")
@@ -462,6 +481,7 @@ def _mode_direction_by_root_from_Hact(H_act: torch.Tensor,
                 k = max(0, min(int(root), neg_inds.numel() - 1))
                 pick = int(neg_inds[k].item())
             u_mw = vecs[:, pick]
+            omega2 = vals[pick]
             del vals, vecs
 
         # Mass un-weight to Cartesian in the active space, then embed to full 3N
@@ -475,11 +495,12 @@ def _mode_direction_by_root_from_Hact(H_act: torch.Tensor,
         mask_t = torch.as_tensor(mask_dof, dtype=torch.bool, device=device)
         full[mask_t] = v_cart_act
         mode = full.reshape(-1, 3).detach().cpu().numpy()
+        freq_cm = _omega2_to_freq_cm(omega2)
 
-        del coords_act, masses_act_au, masses_act_amu, m3, v_cart_act, full, mask_t, Hmw, u_mw
+        del coords_act, masses_act_au, masses_act_amu, m3, v_cart_act, full, mask_t, Hmw, u_mw, omega2
         if torch.cuda.is_available() and H_act.is_cuda:
             torch.cuda.empty_cache()
-        return mode
+        return mode, freq_cm
 
 
 def _bofill_update_active(H_act: torch.Tensor,
@@ -723,19 +744,20 @@ class HessianDimer:
                                             dtype=H_t.dtype, device=H_t.device)
             # full vs active-block Hessian
             if H_t.size(0) == 3 * N:
-                mode_xyz = _mode_direction_by_root(
+                mode_xyz, mode_freq_cm = _mode_direction_by_root(
                     H_t, coords_bohr_t, self.masses_au_t,
                     root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
                 )
             else:
                 # partial (active) Hessian returned by UMA
                 active_idx = _active_indices(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
-                mode_xyz = _mode_direction_by_root_from_Hact(
+                mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                     H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                     self.masses_au_t, active_idx, self.device, root=self.root
                 )
+            print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
-            del H_t, coords_bohr_t, mode_xyz
+            del H_t, coords_bohr_t, mode_xyz, mode_freq_cm
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         return steps_in_this_call
@@ -862,7 +884,10 @@ class HessianDimer:
             E_minus = _calc_energy(self.geom, self.uma_kwargs)
 
             # keep lower-energy side and continue from there
-            self.geom.coords = (plus if E_plus <= E_minus else minus).reshape(-1)
+            use_plus = E_plus <= E_minus
+            self.geom.coords = (plus if use_plus else minus).reshape(-1)
+            E_keep = E_plus if use_plus else E_minus
+            print(f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 E_disp={E_keep:.8f} Ha")
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -884,13 +909,13 @@ class HessianDimer:
 
         if H_t.size(0) == 3 * N:
             print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
-            mode_xyz = _mode_direction_by_root(
+            mode_xyz, _ = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
             print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
-            mode_xyz = _mode_direction_by_root_from_Hact(
+            mode_xyz, _ = _mode_direction_by_root_from_Hact(
                 H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
@@ -916,13 +941,13 @@ class HessianDimer:
                                         dtype=H_t.dtype, device=H_t.device)
         if H_t.size(0) == 3 * N:
             print("[CHECK] TR-projection residual check skipped to conserve VRAM.")
-            mode_xyz = _mode_direction_by_root(
+            mode_xyz, _ = _mode_direction_by_root(
                 H_t, coords_bohr_t, self.masses_au_t,
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
             print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
-            mode_xyz = _mode_direction_by_root_from_Hact(
+            mode_xyz, _ = _mode_direction_by_root_from_Hact(
                 H_t, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
@@ -987,7 +1012,7 @@ class HessianDimer:
             H_act = _bofill_update_active(H_act, delta_flat_act, g_new_act, g_old_act)
 
             # (d) Refresh dimer direction from updated active Hessian
-            mode_xyz = _mode_direction_by_root_from_Hact(
+            mode_xyz, _ = _mode_direction_by_root_from_Hact(
                 H_act, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
