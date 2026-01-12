@@ -3,9 +3,9 @@
 ## Overview
 `pdb2reaction tsopt` optimizes transition states using two complementary workflows:
 
-- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, a
-  memory-conscious flatten loop to remove surplus imaginary modes, and PHVA-aware
-  Hessian updates for the active degrees of freedom.
+- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
+  optional memory-conscious flatten loop (disabled by default) to remove surplus
+  imaginary modes, and PHVA-aware Hessian updates for the active degrees of freedom.
 - **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards.
 
 Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
@@ -57,11 +57,12 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
   - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
     Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
     eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
-  - A flatten loop updates the stored active Hessian via Bofill (SR1/MS ↔ PSB blend) using
+  - When enabled (`--flatten-imag-mode`), the flatten loop updates the stored active Hessian via
+    Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
     displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
-    once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and performs a final
-    Bofill update. Once only one imaginary mode remains, a final exact Hessian is computed for
-    frequency analysis.
+    once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
+    performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
+    computed for frequency analysis.
   - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
     follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
@@ -85,6 +86,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` (if omitted) |
+| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
@@ -165,6 +167,7 @@ hessian_dimer:
   flatten_max_iter: 0        # flattening iteration cap (default: Disabled)
   flatten_sep_cutoff: 2.0    # minimum distance between representative atoms (Å)
   flatten_k: 10              # representative atoms sampled per mode
+  flatten_loop_bofill: true  # Bofill update for flatten displacements
   mem: 100000                # memory limit for solver
   use_lobpcg: true           # enable LOBPCG eigen solver
   device: auto               # device selection for eigensolver
