@@ -598,7 +598,7 @@ def cli(
                         f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}"
                     )
                     click.echo(
-                        f"              j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
+                        f"           j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
                     )
 
         # Prepare end-of-run summary collector
