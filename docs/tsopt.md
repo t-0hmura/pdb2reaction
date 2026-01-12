@@ -3,9 +3,9 @@
 ## Overview
 `pdb2reaction tsopt` optimizes transition states using two complementary workflows:
 
-- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, a
-  memory-conscious flatten loop to remove surplus imaginary modes, and PHVA-aware
-  Hessian updates for the active degrees of freedom.
+- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
+  optional memory-conscious flatten loop (disabled by default) to remove surplus
+  imaginary modes, and PHVA-aware Hessian updates for the active degrees of freedom.
 - **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards.
 
 Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
@@ -57,11 +57,12 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
   - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
     Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
     eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
-  - A flatten loop updates the stored active Hessian via Bofill (SR1/MS ↔ PSB blend) using
+  - When enabled (`--flatten-imag-mode`), the flatten loop updates the stored active Hessian via
+    Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
     displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
-    once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and performs a final
-    Bofill update. Once only one imaginary mode remains, a final exact Hessian is computed for
-    frequency analysis.
+    once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
+    performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
+    computed for frequency analysis.
   - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
     follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
@@ -84,7 +85,8 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
-| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
+| `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
+| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). | `True` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
@@ -139,7 +141,7 @@ calc:
   hessian_calc_mode: FiniteDifference   # Hessian mode selection
   return_partial_hessian: false         # full Hessian (avoids shape mismatches)
 opt:
-  thresh: gau                # convergence preset (Gaussian/Baker-style)
+  thresh: baker              # convergence preset (Gaussian/Baker-style)
   max_cycles: 10000          # optimizer cycle cap
   print_every: 100           # logging stride
   min_step_norm: 1.0e-08     # minimum norm for step acceptance
@@ -158,15 +160,15 @@ opt:
   out_dir: ./result_tsopt/   # output directory
 hessian_dimer:
   thresh_loose: gau_loose    # loose convergence preset
-  thresh: gau                # main convergence preset
+  thresh: baker              # main convergence preset
   update_interval_hessian: 500   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
-  flatten_max_iter: 0        # flattening iteration cap (default: Disabled)
-  flatten_sep_cutoff: 2.0    # minimum distance between representative atoms (Å)
+  flatten_max_iter: 50       # flattening iteration cap (default: Disabled)
+  flatten_sep_cutoff: 0.0    # minimum distance between representative atoms (Å)
   flatten_k: 10              # representative atoms sampled per mode
+  flatten_loop_bofill: false # Bofill update for flatten displacements
   mem: 100000                # memory limit for solver
-  use_lobpcg: true           # enable LOBPCG eigen solver
   device: auto               # device selection for eigensolver
   root: 0                    # targeted TS root index
   dimer:
@@ -190,7 +192,7 @@ hessian_dimer:
     write_orientations: true  # write rotation orientations
     forward_hessian: true     # propagate Hessian forward
   lbfgs:
-    thresh: gau                # LBFGS convergence preset
+    thresh: baker              # LBFGS convergence preset
     max_cycles: 10000          # iteration limit
     print_every: 100           # logging stride
     min_step_norm: 1.0e-08     # minimum accepted step norm
@@ -216,7 +218,7 @@ hessian_dimer:
     mu_reg: null               # regularization strength
     max_mu_reg_adaptions: 10   # cap on mu adaptations
 rsirfo:
-  thresh: gau                # RS-IRFO convergence preset
+  thresh: baker              # RS-IRFO convergence preset
   max_cycles: 10000          # iteration cap
   print_every: 100           # logging stride
   min_step_norm: 1.0e-08     # minimum accepted step norm

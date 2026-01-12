@@ -761,6 +761,38 @@ def prepare_input_structure(path: Path) -> PreparedInputStructure:
     )
 
 
+def _read_atom_count(path: Path) -> int:
+    try:
+        atoms = read(path, index=0)
+    except Exception as e:
+        raise click.ClickException(f"Failed to read '{path}' for --ref-pdb validation: {e}")
+    return len(atoms)
+
+
+def _validate_ref_pdb_atom_count(geom_path: Path, ref_pdb_path: Path) -> None:
+    geom_count = _read_atom_count(geom_path)
+    ref_count = _read_atom_count(ref_pdb_path)
+    if geom_count != ref_count:
+        raise click.ClickException(
+            f"--ref-pdb atom count ({ref_count}) does not match input ({geom_count})."
+        )
+
+
+def apply_ref_pdb_override(
+    prepared_input: PreparedInputStructure,
+    ref_pdb: Optional[Path],
+) -> Optional[Path]:
+    """Use a reference PDB topology while keeping XYZ coordinates for geometry loading."""
+    if ref_pdb is None:
+        return None
+    ref_pdb = Path(ref_pdb).resolve()
+    if ref_pdb.suffix.lower() != ".pdb":
+        raise click.BadParameter("--ref-pdb must be a .pdb file.")
+    _validate_ref_pdb_atom_count(prepared_input.geom_path, ref_pdb)
+    prepared_input.source_path = ref_pdb
+    return ref_pdb
+
+
 def fill_charge_spin_from_gjf(
     charge: Optional[int],
     spin: Optional[int],
@@ -833,6 +865,12 @@ def resolve_charge_spin_or_raise(
     prefix: str = "[charge]",
 ) -> Tuple[int, int]:
     charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
+    source_suffix = prepared.source_path.suffix.lower()
+    if ligand_charge is not None and source_suffix in {".xyz", ".gjf"}:
+        prepared.cleanup()
+        raise click.ClickException(
+            "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+        )
     if charge is None and ligand_charge is not None:
         charge = _derive_charge_from_ligand_charge(
             prepared, ligand_charge, prefix=prefix

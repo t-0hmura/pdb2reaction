@@ -11,7 +11,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--opt-mode light|heavy] [--dump BOOL]
                          [--out-dir DIR] [--preopt BOOL]
-                         [--align {True|False}] [--ref-pdb FILE ...]
+                         [--align {True|False}] [--ref-full-pdb FILE ...]
                          [--convert-files {True|False}]
                          [--args-yaml FILE]
 ```
@@ -25,7 +25,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
   ```bash
   pdb2reaction path-search \
       -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-      --args-yaml params.yaml --ref-pdb holo_template.pdb --out-dir ./run_ps
+      --args-yaml params.yaml --ref-full-pdb holo_template.pdb --out-dir ./run_ps
   ```
 
 ## CLI options
@@ -50,7 +50,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 | `--preopt BOOL` | Explicit `True`/`False`. Pre-optimize each endpoint before MEP search (recommended). | `True` |
 | `--align {True|False}` | Align all inputs to the first structure before searching. | `True` |
-| `--ref-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
+| `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 
 ## Workflow
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
@@ -60,7 +60,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
    - Otherwise, launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
 4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
 5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a bridge MEP segment (GSM/DMF). When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
-6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-pdb` to merge pocket trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
+6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-full-pdb` to merge pocket trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
 
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. UMA calculators are constructed once and shared across all structures for efficiency.
 
@@ -81,7 +81,7 @@ out_dir/ (default: ./result_path_search/)
 
 ## Notes
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
-- `--ref-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
+- `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories and restart YAML files.
 - Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to 0 and multiplicity to `1`.

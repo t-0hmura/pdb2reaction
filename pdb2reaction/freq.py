@@ -103,6 +103,7 @@ from .utils import (
     format_elapsed,
     merge_freeze_atom_indices,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
 )
@@ -155,17 +156,17 @@ def _tr_orthonormal_basis(coords_bohr_t: torch.Tensor,
     return Q, r
 
 
-def _mw_projected_hessian(H_t: torch.Tensor,
+def _mw_projected_hessian(H: torch.Tensor,
                           coords_bohr_t: torch.Tensor,
                           masses_au_t: torch.Tensor) -> torch.Tensor:
     """
     Project out translations/rotations in mass-weighted space:
     Hmw = M^{-1/2} H M^{-1/2};  P = I - QQ^T;  Hmw_proj = P Hmw P
 
-    To save memory, update **H_t in-place** (no clone) and return it.
+    To save memory, update **H in-place** (no clone) and return it.
     No explicit symmetrization. The eigen-decomposition uses only the upper triangle (UPLO="U").
     """
-    dtype, device = H_t.dtype, H_t.device
+    dtype, device = H.dtype, H.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
         m3 = torch.repeat_interleave(masses_amu_t, 3)
@@ -173,50 +174,50 @@ def _mw_projected_hessian(H_t: torch.Tensor,
         inv_sqrt_m_col = inv_sqrt_m.view(1, -1)
         inv_sqrt_m_row = inv_sqrt_m.view(-1, 1)
 
-        H_t.mul_(inv_sqrt_m_row)
-        H_t.mul_(inv_sqrt_m_col)
+        H.mul_(inv_sqrt_m_row)
+        H.mul_(inv_sqrt_m_col)
 
         Q, _ = _tr_orthonormal_basis(coords_bohr_t, masses_au_t)
         Qt = Q.T
 
-        QtH = Qt @ H_t
-        H_t.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
+        QtH = Qt @ H
+        H.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
 
         HQ = QtH.T
-        H_t.addmm_(HQ, Qt, beta=1.0, alpha=-1.0)
+        H.addmm_(HQ, Qt, beta=1.0, alpha=-1.0)
 
         QtHQ = QtH @ Q
         tmp = Q @ QtHQ
-        H_t.addmm_(tmp, Qt, beta=1.0, alpha=1.0)
+        H.addmm_(tmp, Qt, beta=1.0, alpha=1.0)
 
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
         del Q, Qt, QtH, HQ, QtHQ, tmp
 
         if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
-        return H_t
+        return H
 
 
 # PHVA helper: mass-weighted Hessian without TR projection (for active subspace)
-def _mass_weighted_hessian(H_t: torch.Tensor,
+def _mass_weighted_hessian(H: torch.Tensor,
                            masses_au_t: torch.Tensor) -> torch.Tensor:
     """
     Return Hmw = M^{-1/2} H M^{-1/2} (no symmetrization/TR projection; in-place).
     """
-    dtype, device = H_t.dtype, H_t.device
+    dtype, device = H.dtype, H.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
         m3 = torch.repeat_interleave(masses_amu_t, 3)
         inv_sqrt_m = torch.sqrt(1.0 / m3)
         inv_sqrt_m_col = inv_sqrt_m.view(1, -1)
         inv_sqrt_m_row = inv_sqrt_m.view(-1, 1)
-        H_t.mul_(inv_sqrt_m_row)
-        H_t.mul_(inv_sqrt_m_col)
+        H.mul_(inv_sqrt_m_row)
+        H.mul_(inv_sqrt_m_col)
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
-        return H_t
+        return H
 
 
-def _frequencies_cm_and_modes(H_t: torch.Tensor,
+def _frequencies_cm_and_modes(H: torch.Tensor,
                               atomic_numbers: List[int],
                               coords_bohr: np.ndarray,
                               device: torch.device,
@@ -248,8 +249,8 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
         Z = np.array(atomic_numbers, dtype=int)
         N = int(len(Z))
         masses_amu = np.array([atomic_masses[z] for z in Z])
-        masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=H_t.dtype, device=device)
-        coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H_t.dtype, device=device)
+        masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=H.dtype, device=device)
+        coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H.dtype, device=device)
 
         if freeze_idx is not None and len(freeze_idx) > 0:
             frozen_set = set(int(i) for i in freeze_idx if 0 <= int(i) < N)
@@ -257,17 +258,17 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
             n_active = len(active_idx)
             if n_active == 0:
                 freqs_cm = np.zeros((0,), dtype=float)
-                modes = torch.zeros((0, 3 * N), dtype=H_t.dtype, device=H_t.device)
+                modes = torch.zeros((0, 3 * N), dtype=H.dtype, device=H.device)
                 return freqs_cm, modes
 
             expected_act_dim = 3 * n_active
-            is_partial = (H_t.shape[0] == expected_act_dim and H_t.shape[1] == expected_act_dim)
+            is_partial = (H.shape[0] == expected_act_dim and H.shape[1] == expected_act_dim)
 
             if is_partial:
                 masses_act = masses_au_t[active_idx]
                 coords_act = coords_bohr_t[active_idx, :]
 
-                Hmw_act = _mass_weighted_hessian(H_t, masses_act)
+                Hmw_act = _mass_weighted_hessian(H, masses_act)
 
                 Q, _ = _tr_orthonormal_basis(coords_act, masses_act)
                 Qt = Q.T
@@ -280,7 +281,7 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="U")
 
                 del Hmw_act
-                del H_t
+                del H
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
@@ -296,35 +297,32 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 del Q, Qt, QtH, QtHQ, mask_dof
 
             else:
-                H_t = _mass_weighted_hessian(H_t, masses_au_t)
+                H = _mass_weighted_hessian(H, masses_au_t)
 
-                mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H_t.device)
+                mask_dof = torch.ones(3 * N, dtype=torch.bool, device=H.device)
                 for i in frozen_set:
                     mask_dof[3 * i:3 * i + 3] = False
 
-                H_act = H_t[mask_dof][:, mask_dof]
-                del H_t
+                H = H[mask_dof][:, mask_dof]
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                H_t = H_act
-                del H_act
 
                 coords_act = coords_bohr_t[active_idx, :]
                 masses_act = masses_au_t[active_idx]
                 Q, _ = _tr_orthonormal_basis(coords_act, masses_act)
                 Qt = Q.T
 
-                QtH = Qt @ H_t
-                H_t.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
+                QtH = Qt @ H
+                H.addmm_(Q, QtH, beta=1.0, alpha=-1.0)
 
-                H_t.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
+                H.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
 
                 QtH = QtH @ Q
-                H_t.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
+                H.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
 
-                omega2, Vsub = torch.linalg.eigh(H_t, UPLO="U")
+                omega2, Vsub = torch.linalg.eigh(H, UPLO="U")
 
-                del H_t
+                del H
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
@@ -337,10 +335,10 @@ def _frequencies_cm_and_modes(H_t: torch.Tensor,
                 del Vsub, mask_dof, Q, Qt, QtH
 
         else:
-            H_t = _mw_projected_hessian(H_t, coords_bohr_t, masses_au_t)
-            omega2, V = torch.linalg.eigh(H_t, UPLO="U")
+            H = _mw_projected_hessian(H, coords_bohr_t, masses_au_t)
+            omega2, V = torch.linalg.eigh(H, UPLO="U")
 
-            del H_t
+            del H
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
@@ -382,8 +380,8 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
     kw = dict(uma_kwargs or {})
     kw["out_hess_torch"] = True
     calc = uma_pysis(**kw)
-    H_t = calc.get_hessian(geom.atoms, geom.cart_coords)["hessian"].to(device=device)
-    return H_t
+    H = calc.get_hessian(geom.atoms, geom.cart_coords)["hessian"].to(device=device)
+    return H
 
 
 def _calc_energy(geom, uma_kwargs: dict) -> float:
@@ -548,6 +546,12 @@ THERMO_KW = {
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.",
 )
+@click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
 @click.option("--max-write", type=int, default=10, show_default=True,
               help="How many modes to export (after sorting per --sort).")
 @click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
@@ -585,6 +589,7 @@ def cli(
     spin: Optional[int],
     freeze_links: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     max_write: int,
     amplitude_ang: float,
     n_frames: int,
@@ -601,7 +606,9 @@ def cli(
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
+    source_path = prepared_input.source_path
     charge, spin = resolve_charge_spin_or_raise(
         prepared_input,
         charge,
@@ -647,9 +654,9 @@ def cli(
     )
 
     # Freeze links (PDB only): merge with existing list
-    if freeze_links and input_path.suffix.lower() == ".pdb":
+    if freeze_links and source_path.suffix.lower() == ".pdb":
         try:
-            detected = detect_freeze_links(input_path)
+            detected = detect_freeze_links(source_path)
         except Exception as e:
             click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
             detected = []
@@ -695,19 +702,19 @@ def cli(
         calc_cfg["freeze_atoms"] = freeze_list
         calc_cfg.setdefault("return_partial_hessian", True)
 
-        H_t = _calc_full_hessian_torch(geometry, calc_cfg, device)
+        H = _calc_full_hessian_torch(geometry, calc_cfg, device)
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
 
         # PHVA: use the freeze list to carve out the active subspace and apply TR projection there.
         freqs_cm, modes_mw = _frequencies_cm_and_modes(
-            H_t,
+            H,
             geometry.atomic_numbers,
             coords_bohr,
             device,
             freeze_idx=freeze_list if len(freeze_list) > 0 else None
         )
 
-        del H_t
+        del H
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -720,7 +727,7 @@ def cli(
         click.echo(f"[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).")
 
         # Reference PDB (only when input is PDB)
-        ref_pdb = input_path if input_path.suffix.lower() == ".pdb" else None
+        ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
         write_pdb = ref_pdb is not None
 
         # write modes

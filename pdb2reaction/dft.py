@@ -100,6 +100,7 @@ from .utils import (
     format_geom_for_echo,
     format_elapsed,
     prepare_input_structure,
+    apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
 )
@@ -391,6 +392,12 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
+@click.option(
     "--func-basis",
     "func_basis",
     type=str,
@@ -421,6 +428,7 @@ def cli(
     ligand_charge: Optional[str],
     spin: Optional[int],
     convert_files: bool,
+    ref_pdb: Optional[Path],
     func_basis: str,
     max_cycle: int,
     conv_tol: float,
@@ -431,6 +439,7 @@ def cli(
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
     charge, spin = resolve_charge_spin_or_raise(
         prepared_input,

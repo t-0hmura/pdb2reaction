@@ -15,6 +15,7 @@ Usage (CLI)
         [--freeze-links {True|False}] [--mep-mode {gsm|dmf}] [--max-nodes <int>] [--max-cycles <int>] \
         [--climb {True|False}] [--opt-mode {light|heavy}] [--dump {True|False}] \
         [--convert-files {True|False}] [--refine-path {True|False}] [--thresh <preset>] \
+        [--thresh-post <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
@@ -105,7 +106,7 @@ Pipeline overview
       - Runs the recursive ``path_search`` workflow on the ordered series.
       - ``--mep-mode`` selects the optimizer: Growing String Method (``gsm``) or Direct Max Flux (``dmf``).
       - When the original inputs are PDBs and extraction is enabled, the original **full-system** PDBs are
-        passed as merge templates (``--ref-pdb``) automatically:
+        passed as merge templates (``--ref-full-pdb``) automatically:
           • multi-input: one template per pocket input in reaction order,
           • single+scan: the same original template is reused for all scan-derived structures.
 
@@ -136,11 +137,12 @@ Pipeline overview
     ``summary.yaml``. For each such segment:
 
     - ``--tsopt True``:
-        • Optimize a TS starting from the segment HEI snapshot,
+        • Optimize a TS starting from the segment HEI snapshot (threshold preset via ``--thresh-post``),
         • Run **IRC (EulerPC)** from the optimized TS,
         • Map IRC endpoints onto the segment’s left/right MEP endpoints (bond-state matching first,
           RMSD fallback) to assign backward/forward consistently across segments,
-        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode``),
+        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode``; threshold preset
+          controlled by ``--thresh-post``, default ``baker``),
         • Use these optimized minima as the final R and P for downstream analyses.
         • Write per-segment UMA energy diagram: ``post_seg_XX/energy_diagram_UMA.png``.
         • Copy the TS structure to ``<out-dir>/ts_seg_XX.pdb`` (when a PDB representation is available)
@@ -241,8 +243,8 @@ Outputs (& Directory Layout)
   │   ├─ summary.log                     # human-readable summary (also mirrored to <out-dir>/)
   │   ├─ mep_seg_XX.(trj|pdb)            # pocket-only segment trajectories
   │   ├─ hei_seg_XX.(xyz|pdb|gjf)        # HEI snapshots per reactive segment
-  │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-pdb / PDB input)
-  │   ├─ mep_w_ref_seg_XX.pdb            # merged per-segment trajectories (when --ref-pdb / PDB input; not mirrored)
+  │   ├─ hei_w_ref_seg_XX.pdb            # merged HEI per segment (when --ref-full-pdb / PDB input)
+  │   ├─ mep_w_ref_seg_XX.pdb            # merged per-segment trajectories (when --ref-full-pdb / PDB input; not mirrored)
   │   ├─ seg_XXX_~~~/ ...                # GSM/DMF internals / recursion tree
   │   └─ post_seg_XX/                    # created when downstream post-processing runs
   │       ├─ ts/ ...
@@ -311,6 +313,7 @@ from typing import List, Sequence, Optional, Tuple, Dict, Any
 import sys, os
 import math
 import tempfile
+import re
 import click
 from click.core import ParameterSource
 import time
@@ -355,6 +358,7 @@ from .utils import (
     load_pdb_atom_metadata,
     resolve_atom_spec_index,
     merge_freeze_atom_indices,
+    apply_ref_pdb_override,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -719,6 +723,40 @@ def _pdb_needs_elem_fix(p: Path) -> bool:
 
 
 _FREEZE_ATOMS_GLOBAL: Optional[List[int]] = None
+_FREEZE_ATOMS_YAML: Optional[List[int]] = None
+
+
+def _normalize_freeze_atoms(raw: Any) -> List[int]:
+    """Normalize freeze_atoms values from YAML into a list of integers."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        tokens = re.findall(r"-?\d+", raw)
+        return [int(tok) for tok in tokens]
+    try:
+        return [int(i) for i in raw]
+    except Exception:
+        return []
+
+
+def _set_yaml_freeze_atoms(yaml_cfg: Optional[Dict[str, Any]]) -> None:
+    """Cache freeze_atoms from args-yaml for merging with freeze-links."""
+    global _FREEZE_ATOMS_YAML
+    if not isinstance(yaml_cfg, dict):
+        _FREEZE_ATOMS_YAML = []
+        return
+    geom_cfg = yaml_cfg.get("geom")
+    if not isinstance(geom_cfg, dict):
+        _FREEZE_ATOMS_YAML = []
+        return
+    _FREEZE_ATOMS_YAML = _normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
+
+
+def _merge_freeze_atoms(*groups: Sequence[int]) -> List[int]:
+    """Return a merged, sorted freeze_atoms list from multiple sources."""
+    geom_cfg: Dict[str, Any] = {}
+    merge_freeze_atom_indices(geom_cfg, *groups)
+    return list(geom_cfg.get("freeze_atoms", []))
 
 
 def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List[int]:
@@ -731,30 +769,30 @@ def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List
     the assumption that atom indexing is consistent across the trajectory.
     """
     global _FREEZE_ATOMS_GLOBAL
-    if not freeze_links_flag:
-        return []
-    if _FREEZE_ATOMS_GLOBAL is not None:
-        return _FREEZE_ATOMS_GLOBAL
-    if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
-        # No suitable PDB available yet to determine freeze atoms.
-        return []
-    try:
-        fa = detect_freeze_links_safe(pdb_path)
-        _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
-    except Exception as e:
-        click.echo(
-            f"[all] WARNING: detect_freeze_links_safe failed for {pdb_path}: {e}; no atoms will be frozen.",
-            err=True,
-        )
-        _FREEZE_ATOMS_GLOBAL = []
-    return _FREEZE_ATOMS_GLOBAL
+    if freeze_links_flag:
+        if _FREEZE_ATOMS_GLOBAL is not None:
+            return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
+        if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
+            # No suitable PDB available yet to determine freeze atoms.
+            return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
+        try:
+            fa = detect_freeze_links_safe(pdb_path)
+            _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
+        except Exception as e:
+            click.echo(
+                f"[all] WARNING: detect_freeze_links_safe failed for {pdb_path}: {e}; no atoms will be frozen.",
+                err=True,
+            )
+            _FREEZE_ATOMS_GLOBAL = []
+        return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
+    return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
 
 
 def _freeze_atoms_for_log() -> List[int]:
     """Return a sorted freeze_atoms list for summary logs (may be empty)."""
 
     try:
-        return sorted({int(i) for i in (_FREEZE_ATOMS_GLOBAL or [])})
+        return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL or [], _FREEZE_ATOMS_YAML or [])
     except Exception:
         return []
 
@@ -770,7 +808,7 @@ def _write_args_yaml_with_freeze_atoms(
     if not freeze_atoms:
         return args_yaml
 
-    cfg = load_yaml_dict(args_yaml)
+    cfg = {} if args_yaml is None else load_yaml_dict(args_yaml)
     if not isinstance(cfg, dict):
         cfg = {}
 
@@ -1190,6 +1228,7 @@ def _optimize_endpoint_geom(
     out_dir: Path,
     tag: str,
     dump: bool,
+    thresh: Optional[str],
 ) -> Tuple[Any, Path]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
@@ -1200,6 +1239,7 @@ def _optimize_endpoint_geom(
         out_dir: base directory for the optimization outputs.
         tag: tag prefix for the subdirectory.
         dump: whether to dump optimizer trajectory.
+        thresh: optional convergence preset to override defaults.
 
     Returns:
         (optimized_geometry, final_xyz_path)
@@ -1223,6 +1263,9 @@ def _optimize_endpoint_geom(
     cfg["max_cycles"] = max_cycles
 
     geom.set_calculator(getattr(geom, "calculator", None))
+
+    if thresh is not None:
+        cfg["thresh"] = str(thresh)
 
     click.echo(f"[endpoint-opt] Optimizing '{tag}' with {sopt_kind.upper()} → {opt_dir}")
     opt = OptClass(geom, **cfg)
@@ -1255,6 +1298,7 @@ def _run_freq_for_state(
     out_dir: Path,
     args_yaml: Optional[Path],
     freeze_links: bool,
+    ref_pdb: Optional[Path],
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -1280,10 +1324,18 @@ def _run_freq_for_state(
         "-m",
         str(int(spin)),
         "--freeze-links",
-        "True" if freeze_use and (pdb_path.suffix.lower() == ".pdb") else "False",
+        "True"
+        if freeze_use
+        and (
+            pdb_path.suffix.lower() == ".pdb"
+            or (ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb")
+        )
+        else "False",
         "--out-dir",
         str(fdir),
     ]
+    if ref_pdb is not None:
+        args.extend(["--ref-pdb", str(ref_pdb)])
 
     _append_cli_arg(args, "--max-write", overrides.get("max_write"))
     _append_cli_arg(args, "--amplitude-ang", overrides.get("amplitude_ang"))
@@ -1366,6 +1418,7 @@ def _run_dft_for_state(
     func_basis: str = "wb97m-v/def2-tzvpd",
     overrides: Optional[Dict[str, Any]] = None,
     engine: str = "gpu",
+    ref_pdb: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
@@ -1388,6 +1441,8 @@ def _run_dft_for_state(
         "--out-dir",
         str(ddir),
     ]
+    if ref_pdb is not None:
+        args.extend(["--ref-pdb", str(ref_pdb)])
     if engine:
         args.extend(["--engine", str(engine)])
 
@@ -1424,6 +1479,7 @@ def _run_dft_sequence(
     func_basis: str,
     overrides: Optional[Dict[str, Any]],
     engine: str,
+    ref_pdb: Optional[Path],
 ) -> Dict[str, Dict[str, Any]]:
     """Run DFT on a sequence of states."""
     results: Dict[str, Dict[str, Any]] = {}
@@ -1437,6 +1493,7 @@ def _run_dft_sequence(
             func_basis=func_basis,
             overrides=overrides,
             engine=engine,
+            ref_pdb=ref_pdb,
         )
         results[label] = res
     return results
@@ -1451,6 +1508,7 @@ def _run_tsopt_on_hei(
     out_dir: Path,
     freeze_links: bool,
     opt_mode_default: str,
+    ref_pdb: Optional[Path],
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Path, Any]:
     """
@@ -1461,6 +1519,7 @@ def _run_tsopt_on_hei(
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
+    apply_ref_pdb_override(prepared_input, ref_pdb)
     needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
     needs_gjf = prepared_input.is_gjf
     ref_pdb = prepared_input.source_path if needs_pdb else None
@@ -1500,6 +1559,8 @@ def _run_tsopt_on_hei(
 
     if args_yaml is not None:
         ts_args.extend(["--args-yaml", str(args_yaml)])
+    if ref_pdb is not None:
+        ts_args.extend(["--ref-pdb", str(ref_pdb)])
 
     click.echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
     _saved = list(sys.argv)
@@ -1563,6 +1624,7 @@ def _irc_and_match(
     seg_dir: Path,
     ref_pdb_for_seg: Path,
     seg_pocket_pdb: Path,
+    ref_pdb_template: Optional[Path],
     g_ts: Any,
     q_int: int,
     spin: int,
@@ -1603,8 +1665,16 @@ def _irc_and_match(
         "--out-dir",
         str(irc_dir),
         "--freeze-links",
-        "True" if (freeze_links_flag and ref_pdb_for_seg.suffix.lower() == ".pdb") else "False",
+        "True"
+        if freeze_links_flag
+        and (
+            ref_pdb_for_seg.suffix.lower() == ".pdb"
+            or (ref_pdb_template is not None and ref_pdb_template.suffix.lower() == ".pdb")
+        )
+        else "False",
     ]
+    if ref_pdb_template is not None:
+        irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
 
     if args_yaml is not None:
         irc_args.extend(["--args-yaml", str(args_yaml)])
@@ -1973,6 +2043,16 @@ def _irc_and_match(
     help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
 )
 @click.option(
+    "--thresh-post",
+    type=str,
+    default="baker",
+    show_default=True,
+    help=(
+        "Convergence preset for post-IRC endpoint optimizations "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+    ),
+)
+@click.option(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -2226,6 +2306,7 @@ def cli(
     convert_files: bool,
     refine_path: bool,
     thresh: Optional[str],
+    thresh_post: str,
     args_yaml: Optional[Path],
     preopt: bool,
     hessian_calc_mode: Optional[str],
@@ -2319,8 +2400,8 @@ def cli(
         tsopt_overrides["out_dir"] = tsopt_out_dir
     if hessian_calc_mode is not None:
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
-    if thresh is not None:
-        tsopt_overrides["thresh"] = str(thresh)
+    if thresh_post is not None:
+        tsopt_overrides["thresh"] = str(thresh_post)
     tsopt_overrides["flatten_imag_mode"] = bool(flatten_imag_mode)
 
     freq_overrides: Dict[str, Any] = {}
@@ -2352,6 +2433,7 @@ def cli(
     dft_func_basis_use = dft_func_basis or "wb97m-v/def2-tzvpd"
 
     yaml_cfg = load_yaml_dict(args_yaml)
+    _set_yaml_freeze_atoms(yaml_cfg)
 
     skip_extract = center_spec is None or str(center_spec).strip() == ""
 
@@ -2599,6 +2681,7 @@ def cli(
             tsroot,
             freeze_links_flag,
             tsopt_opt_mode_default,
+            ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
             overrides=tsopt_overrides,
         )
 
@@ -2607,6 +2690,7 @@ def cli(
             seg_dir=tsroot,
             ref_pdb_for_seg=ts_pdb,
             seg_pocket_pdb=ts_initial_pdb,
+            ref_pdb_template=ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
             g_ts=g_ts,
             q_int=q_int,
             spin=spin,
@@ -2651,6 +2735,7 @@ def cli(
                 endpoint_opt_dir,
                 "reactant",
                 dump=dump,
+                thresh=thresh_post,
             )
         except Exception as e:
             click.echo(
@@ -2665,6 +2750,7 @@ def cli(
                 endpoint_opt_dir,
                 "product",
                 dump=dump,
+                thresh=thresh_post,
             )
         except Exception as e:
             click.echo(
@@ -2702,14 +2788,38 @@ def cli(
 
         if do_thermo:
             click.echo("[thermo] Single TSOPT: freq on R/TS/P")
+            ref_pdb_for_tsopt_only = (
+                ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
+            )
             tR = _run_freq_for_state(
-                pR, q_int, spin, freq_root / "R", args_yaml, freeze_links_flag, overrides=freq_overrides
+                pR,
+                q_int,
+                spin,
+                freq_root / "R",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb_for_tsopt_only,
+                overrides=freq_overrides,
             )
             tT = _run_freq_for_state(
-                pT, q_int, spin, freq_root / "TS", args_yaml, freeze_links_flag, overrides=freq_overrides
+                pT,
+                q_int,
+                spin,
+                freq_root / "TS",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb_for_tsopt_only,
+                overrides=freq_overrides,
             )
             tP = _run_freq_for_state(
-                pP, q_int, spin, freq_root / "P", args_yaml, freeze_links_flag, overrides=freq_overrides
+                pP,
+                q_int,
+                spin,
+                freq_root / "P",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb_for_tsopt_only,
+                overrides=freq_overrides,
             )
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
             try:
@@ -2749,6 +2859,7 @@ def cli(
                 dft_func_basis_use,
                 dft_overrides,
                 dft_engine,
+                ref_pdb_for_tsopt_only,
             )
             dR = dft_payloads.get("R")
             dT = dft_payloads.get("TS")
@@ -3097,6 +3208,8 @@ def cli(
             "--opt-mode",
             str(scan_opt_mode_use),
         ]
+        if scan_input_pdb.suffix.lower() == ".pdb":
+            scan_args.extend(["--ref-pdb", str(scan_input_pdb)])
 
         if dump_override_requested:
             scan_args.extend(
@@ -3185,21 +3298,21 @@ def cli(
 
     if skip_extract:
         click.echo(
-            "[all] NOTE: skipping --ref-pdb (no --center; inputs already represent full structures)."
+            "[all] NOTE: skipping --ref-full-pdb (no --center; inputs already represent full structures)."
         )
     elif is_single and has_scan:
         if _is_pdb(input_paths[0]):
             gave_ref_pdb = True
         else:
             click.echo(
-                "[all] NOTE: skipping --ref-pdb (single+scan: original input is not a PDB)."
+                "[all] NOTE: skipping --ref-full-pdb (single+scan: original input is not a PDB)."
             )
     else:
         if all(_is_pdb(p) for p in input_paths):
             gave_ref_pdb = True
         else:
             click.echo(
-                "[all] NOTE: skipping --ref-pdb (one or more original inputs are not PDB)."
+                "[all] NOTE: skipping --ref-full-pdb (one or more original inputs are not PDB)."
             )
 
     # -------------------------------------------------------------------------
@@ -3566,10 +3679,10 @@ def cli(
 
         if gave_ref_pdb:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):
-                ps_args.extend(["--ref-pdb", str(p)])
+                ps_args.extend(["--ref-full-pdb", str(p)])
             if pocket_ref_pdbs:
                 for p in pocket_ref_pdbs:
-                    ps_args.extend(["--pocket-ref-pdb", str(p)])
+                    ps_args.extend(["--ref-pdb", str(p)])
 
         click.echo("[all] Invoking path_search with arguments:")
         click.echo("  " + " ".join(ps_args))
@@ -3645,7 +3758,7 @@ def cli(
         )
     elif refine_path:
         click.echo(
-            "[all] --ref-pdb was not provided; full-system merged trajectories are not produced."
+            "[all] --ref-full-pdb was not provided; full-system merged trajectories are not produced."
         )
         click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
     else:
@@ -3788,6 +3901,13 @@ def cli(
                 err=True,
             )
             continue
+        ref_pdb_for_seg: Optional[Path] = None
+        if hei_pocket_path.suffix.lower() == ".pdb":
+            ref_pdb_for_seg = hei_pocket_path
+        else:
+            candidate_ref = hei_base.with_suffix(".pdb")
+            if candidate_ref.exists():
+                ref_pdb_for_seg = candidate_ref
 
         struct_dir = seg_dir / "structures"
         _ensure_dir(struct_dir)
@@ -3804,6 +3924,7 @@ def cli(
                 seg_dir,
                 freeze_links_flag,
                 tsopt_opt_mode_default,
+                ref_pdb_for_seg,
                 overrides=tsopt_overrides,
             )
 
@@ -3812,6 +3933,7 @@ def cli(
                 seg_dir=seg_dir,
                 ref_pdb_for_seg=ts_pdb,
                 seg_pocket_pdb=hei_pocket_path,
+                ref_pdb_template=ref_pdb_for_seg,
                 g_ts=g_ts,
                 q_int=q_int,
                 spin=spin,
@@ -3836,14 +3958,15 @@ def cli(
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
 
+            ref_struct_template = ref_pdb_for_seg or hei_pocket_path
             pL_irc = _save_single_geom_as_pdb_for_tools(
-                gL, hei_pocket_path, struct_dir, "reactant_irc"
+                gL, ref_struct_template, struct_dir, "reactant_irc"
             )
             pT = _save_single_geom_as_pdb_for_tools(
-                gT, hei_pocket_path, struct_dir, "ts"
+                gT, ref_struct_template, struct_dir, "ts"
             )
             pR_irc = _save_single_geom_as_pdb_for_tools(
-                gR, hei_pocket_path, struct_dir, "product_irc"
+                gR, ref_struct_template, struct_dir, "product_irc"
             )
 
             endpoint_opt_dir = seg_dir / "endpoint_opt"
@@ -3855,6 +3978,7 @@ def cli(
                     endpoint_opt_dir,
                     f"seg_{seg_idx:02d}_reactant",
                     dump=dump,
+                    thresh=thresh_post,
                 )
             except Exception as e:
                 click.echo(
@@ -3869,6 +3993,7 @@ def cli(
                     endpoint_opt_dir,
                     f"seg_{seg_idx:02d}_product",
                     dump=dump,
+                    thresh=thresh_post,
                 )
             except Exception as e:
                 click.echo(
@@ -3881,10 +4006,10 @@ def cli(
             click.echo(f"[endpoint-opt] Clean endpoint-opt working dir.") 
 
             pL = _save_single_geom_as_pdb_for_tools(
-                g_react_opt, hei_pocket_path, struct_dir, "reactant"
+                g_react_opt, ref_struct_template, struct_dir, "reactant"
             )
             pR = _save_single_geom_as_pdb_for_tools(
-                g_prod_opt, hei_pocket_path, struct_dir, "product"
+                g_prod_opt, ref_struct_template, struct_dir, "product"
             )
             state_structs = {"R": pL, "TS": pT, "P": pR}
 
@@ -3938,10 +4063,10 @@ def cli(
             )
 
             # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
-            freeze_ref: Optional[Path] = None
-            if seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
+            freeze_ref: Optional[Path] = ref_pdb_for_seg
+            if freeze_ref is None and seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
                 freeze_ref = seg_pocket_path
-            elif hei_pocket_path.suffix.lower() == ".pdb":
+            elif freeze_ref is None and hei_pocket_path.suffix.lower() == ".pdb":
                 freeze_ref = hei_pocket_path
 
             freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)
@@ -3984,7 +4109,7 @@ def cli(
             gR.set_calculator(calc)
             g_ts.set_calculator(calc)
 
-            ref_for_structs = seg_pocket_path if seg_pocket_path is not None else hei_pocket_path
+            ref_for_structs = ref_pdb_for_seg or (seg_pocket_path if seg_pocket_path is not None else hei_pocket_path)
             pL = _save_single_geom_as_pdb_for_tools(
                 gL, ref_for_structs, struct_dir, "reactant_mep"
             )
@@ -4028,6 +4153,7 @@ def cli(
                     freq_seg_root / "R",
                     args_yaml,
                     freeze_links_flag,
+                    ref_pdb_for_seg,
                     overrides=freq_overrides,
                 )
                 tT = _run_freq_for_state(
@@ -4037,6 +4163,7 @@ def cli(
                     freq_seg_root / "TS",
                     args_yaml,
                     freeze_links_flag,
+                    ref_pdb_for_seg,
                     overrides=freq_overrides,
                 )
                 tP = _run_freq_for_state(
@@ -4046,6 +4173,7 @@ def cli(
                     freq_seg_root / "P",
                     args_yaml,
                     freeze_links_flag,
+                    ref_pdb_for_seg,
                     overrides=freq_overrides,
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
@@ -4129,6 +4257,7 @@ def cli(
                     dft_func_basis_use,
                     dft_overrides,
                     dft_engine,
+                    ref_pdb_for_seg,
                 )
                 dR = dft_payloads.get("R")
                 dT = dft_payloads.get("TS")
