@@ -86,7 +86,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` (if omitted) |
-| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). | `False` |
+| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). | `True` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
@@ -164,12 +164,11 @@ hessian_dimer:
   update_interval_hessian: 500   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
-  flatten_max_iter: 0        # flattening iteration cap (default: Disabled)
-  flatten_sep_cutoff: 2.0    # minimum distance between representative atoms (Å)
+  flatten_max_iter: 50       # flattening iteration cap (default: Disabled)
+  flatten_sep_cutoff: 0.0    # minimum distance between representative atoms (Å)
   flatten_k: 10              # representative atoms sampled per mode
-  flatten_loop_bofill: true  # Bofill update for flatten displacements
+  flatten_loop_bofill: false # Bofill update for flatten displacements
   mem: 100000                # memory limit for solver
-  use_lobpcg: true           # enable LOBPCG eigen solver
   device: auto               # device selection for eigensolver
   root: 0                    # targeted TS root index
   dimer:

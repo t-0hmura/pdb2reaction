@@ -1205,10 +1205,10 @@ hessian_dimer_KW = {
     "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 0,            # max flattening iterations (0 disables loop)
+    "flatten_max_iter": 50,           # max flattening iterations (0 disables loop)
     "flatten_sep_cutoff": 0.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
-    "flatten_loop_bofill": True,     # use Bofill-updated Hessian for dimer direction in flatten loop
+    "flatten_loop_bofill": False,     # use Bofill-updated Hessian for dimer direction in flatten loop
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
     "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
     "root": 0,                        # 0: follow the most negative mode
@@ -1295,9 +1295,9 @@ RSIRFO_KW.update({
     "--flatten-imag-mode",
     "flatten_imag_mode",
     type=click.BOOL,
-    default=False,
+    default=True,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop (sets flatten_max_iter; False forces 0).",
+    help="Enable the extra-imaginary-mode flattening loop in --opt-mode light (sets flatten_max_iter; False forces 0).",
 )
 @click.option(
     "--opt-mode",
