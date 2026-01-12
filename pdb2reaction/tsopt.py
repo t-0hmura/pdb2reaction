@@ -1295,7 +1295,7 @@ RSIRFO_KW.update({
     "--flatten-imag-mode",
     "flatten_imag_mode",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
     help="Enable the extra-imaginary-mode flattening loop in --opt-mode light (sets flatten_max_iter; False forces 0).",
 )
