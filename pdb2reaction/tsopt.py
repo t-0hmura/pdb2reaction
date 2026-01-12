@@ -33,16 +33,18 @@ Description
 -----------
 Transition-state optimization with two modes:
 
-- **light**: Hessian Dimer TS search with periodic Hessian-based direction refresh and a
-  memory-efficient flatten loop to eliminate excess imaginary modes. After the initial dimer
-  stage, one exact Hessian is evaluated and its active (PHVA) block is kept and updated by
-  Bofill (SR1/MS and PSB blend) between geometry updates in the flatten loop. Each
+-- **light**: Hessian Dimer TS search with periodic Hessian-based direction refresh and an
+  optional memory-efficient flatten loop (enable with `--flatten-imag-mode`) to eliminate
+  excess imaginary modes. After the initial dimer
+  stage, one exact Hessian is evaluated and its active (PHVA) block can be updated by
+  Bofill (SR1/MS and PSB blend) between geometry updates in the flatten loop (toggle with
+  `hessian_dimer.flatten_loop_bofill`). Each
   flatten iteration:
     * estimate imaginary modes using the current active Hessian (mass-weighted,
       TR-projected),
     * select only **spatially separated** extra imaginary modes (using representative atoms
       and a distance cutoff) and perform a mass-scaled flatten step in those modes,
-    * apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
+    * optionally apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
     * refresh the dimer direction from the updated active Hessian,
     * run a dimer–LBFGS segment (consuming the global cycle budget),
     * recompute an exact Hessian at the end of the dimer segment for the next iteration.
@@ -80,12 +82,12 @@ Key behaviors and algorithmic notes
   rotation (TR) projection reduces GPU memory use. This respects `freeze_atoms`. A heavy
   clone-based TR self-check is disabled to conserve VRAM.
 
-- **Flatten loop (light mode)**: one exact active-subspace Hessian is evaluated at the start of
-  the flatten loop. Each iteration:
+- **Flatten loop (light mode)**: when enabled (``--flatten-imag-mode``), one exact active-subspace
+  Hessian is evaluated at the start of the flatten loop. Each iteration:
     * estimate imaginary modes using the current active Hessian,
     * select only **spatially separated** extra imaginary modes (using representative atoms
       and a distance cutoff) and perform a mass-scaled flatten step in those modes,
-    * apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
+    * optionally apply a Bofill update **only for the flatten displacement** (no update for the dimer step),
     * refresh the dimer direction from the updated active Hessian,
     * run a dimer–LBFGS segment,
     * recompute an exact Hessian at the end of the dimer segment for the next iteration.
@@ -586,9 +588,10 @@ class HessianDimer:
       - Hard cap on total LBFGS steps across segments: `max_total_cycles`.
       - PHVA (active DOF subspace) + TR projection for mode picking,
         respecting `freeze_atoms`. For `root == 0` the implementation prefers LOBPCG.
-      - The flatten loop uses a Bofill-updated active Hessian block in the active DOF
-        subspace, but Bofill is applied *only* for the flatten displacements; after
-        each dimer segment in the flatten loop, a fresh exact Hessian is recomputed.
+      - The flatten loop can optionally use a Bofill-updated active Hessian block in the
+        active DOF subspace (controlled by `flatten_loop_bofill`), but Bofill is applied
+        *only* for the flatten displacements; after each dimer segment in the flatten
+        loop, a fresh exact Hessian is recomputed.
       - Only **spatially separated** extra imaginary modes (based on representative
         atoms and a distance cutoff) are used for flattening to avoid overly large
         displacements when clustered imaginary modes are present.
@@ -619,7 +622,7 @@ class HessianDimer:
                  # Multi-mode flatten control
                  flatten_sep_cutoff: float = 1.0,
                  flatten_k: int = 5,
-                 flatten_loop_bofill: bool = False,
+                 flatten_loop_bofill: bool = True,
                  #
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in light mode.
@@ -1017,8 +1020,11 @@ class HessianDimer:
         print("Normal dimer loop...")
         _steps_normal, zero_step_normal = self._dimer_loop(self.thresh)
 
-        # (4) Flatten loop — exact Hessian each iteration & Bofill only for flatten
-        print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
+        # (4) Flatten loop — exact Hessian each iteration & optional Bofill update
+        if self.flatten_loop_bofill:
+            print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
+        else:
+            print("Flatten loop without Bofill updates (flatten displacements only)...")
 
         # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
         H = self._calc_full_hessian_cached(allow_reuse=zero_step_normal)
@@ -1199,10 +1205,10 @@ hessian_dimer_KW = {
     "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
     "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
     "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 50,           # max flattening iterations
+    "flatten_max_iter": 0,            # max flattening iterations (0 disables loop)
     "flatten_sep_cutoff": 0.0,        # minimum distance between representative atoms (Å)
     "flatten_k": 10,                  # number of representative atoms per mode
-    "flatten_loop_bofill": False,    # use Bofill-updated Hessian for dimer direction in flatten loop
+    "flatten_loop_bofill": True,     # use Bofill-updated Hessian for dimer direction in flatten loop
     "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
     "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
     "root": 0,                        # 0: follow the most negative mode
@@ -1314,7 +1320,7 @@ RSIRFO_KW.update({
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, opt, dimer, rsirfo).",
+    help="YAML with extra args (sections: geom, calc, opt, hessian_dimer, rsirfo).",
 )
 @click.option(
     "--hessian-calc-mode",
