@@ -537,6 +537,7 @@ class uma_pysis(Calculator):
         """
         n = H.size(0)
         H = H.view(n * 3, n * 3)
+        H = 0.5 * (H + H.T)
 
         # Unit conversion
         H = H * H_EVAA_2_AU

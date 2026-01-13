@@ -63,7 +63,7 @@ Notes
   - Requires the optional ``thermoanalysis`` package; if absent, the summary is skipped with a warning.
   - Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
 - Performance and numerical details:
-  - GPU memory usage is minimized by keeping only one Hessian in memory, using upper‑triangular eigendecompositions (``UPLO="U"``), and avoiding redundant allocations.
+  - GPU memory usage is minimized by keeping only one Hessian in memory and avoiding redundant allocations.
 - Exit behavior:
   - On keyboard interrupt, exits with code 130; on errors during frequency analysis, prints a traceback and exits with code 1.
     Errors during the optional thermochemistry summary are reported but do not abort the run.
@@ -164,8 +164,10 @@ def _mw_projected_hessian(H: torch.Tensor,
     Hmw = M^{-1/2} H M^{-1/2};  P = I - QQ^T;  Hmw_proj = P Hmw P
 
     To save memory, update **H in-place** (no clone) and return it.
-    No explicit symmetrization. The eigen-decomposition uses only the upper triangle (UPLO="U").
+    The output is explicitly symmetrized after TR projection.
     """
+    if H.dtype != torch.float64:
+        H = H.to(dtype=torch.float64)
     dtype, device = H.dtype, H.device
     with torch.no_grad():
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=dtype, device=device)
@@ -189,6 +191,8 @@ def _mw_projected_hessian(H: torch.Tensor,
         QtHQ = QtH @ Q
         tmp = Q @ QtHQ
         H.addmm_(tmp, Qt, beta=1.0, alpha=1.0)
+
+        H = 0.5 * (H + H.T)
 
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
         del Q, Qt, QtH, HQ, QtHQ, tmp
@@ -246,6 +250,8 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
       modes    : (nmode, 3N) torch (mass-weighted eigenvectors)
     """
     with torch.no_grad():
+        if H.dtype != torch.float64:
+            H = H.to(dtype=torch.float64)
         Z = np.array(atomic_numbers, dtype=int)
         N = int(len(Z))
         masses_amu = np.array([atomic_masses[z] for z in Z])
@@ -277,8 +283,9 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
                 Hmw_act.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
                 QtHQ = QtH @ Q
                 Hmw_act.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
+                Hmw_act = 0.5 * (Hmw_act + Hmw_act.T)
 
-                omega2, Vsub = torch.linalg.eigh(Hmw_act, UPLO="U")
+                omega2, Vsub = torch.linalg.eigh(Hmw_act)
 
                 del Hmw_act
                 del H
@@ -319,8 +326,9 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
 
                 QtH = QtH @ Q
                 H.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
+                H = 0.5 * (H + H.T)
 
-                omega2, Vsub = torch.linalg.eigh(H, UPLO="U")
+                omega2, Vsub = torch.linalg.eigh(H)
 
                 del H
                 if torch.cuda.is_available():
@@ -336,7 +344,7 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
 
         else:
             H = _mw_projected_hessian(H, coords_bohr_t, masses_au_t)
-            omega2, V = torch.linalg.eigh(H, UPLO="U")
+            omega2, V = torch.linalg.eigh(H)
 
             del H
             if torch.cuda.is_available():
