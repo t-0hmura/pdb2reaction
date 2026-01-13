@@ -2012,11 +2012,10 @@ def _irc_and_match(
 @click.option(
     "--opt-mode-post",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default=None,
-    show_default=False,
+    default="heavy",
+    show_default=True,
     help=(
-        "Optimizer mode for post-processing TSOPT/endpoint optimizations. "
-        "If omitted, falls back to --opt-mode."
+        "Optimizer mode for post-processing TSOPT/endpoint optimizations."
     ),
 )
 @click.option(
@@ -2137,9 +2136,9 @@ def _irc_and_match(
     "--flatten-imag-mode",
     "flatten_imag_mode",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in tsopt; False forces flatten_max_iter=0.",
+    help="Enable the extra-imaginary-mode flattening loop in tsopt (--opt-mode light only); False forces flatten_max_iter=0.",
 )
 @click.option(
     "--freq-out-dir",
