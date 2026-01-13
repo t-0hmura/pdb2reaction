@@ -1308,7 +1308,7 @@ RSIRFO_KW.update({
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="light (=Dimer) or heavy (=RSIRFO)",
 )
