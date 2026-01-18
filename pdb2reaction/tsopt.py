@@ -213,9 +213,11 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
                                   freeze_idx: Optional[List[int]] = None) -> torch.Tensor:
     """
     Mass-weight H in-place, optionally restrict to active DOF subspace (PHVA) and
-    project out TR motions (in that subspace), also in-place. No explicit symmetrization.
+    project out TR motions (in that subspace), also in-place. Symmetrizes after TR projection.
     Returns the (possibly reduced) Hessian to be diagonalized.
     """
+    if H.dtype != torch.float64:
+        H = H.to(dtype=torch.float64)
     dtype, device = H.dtype, H.device
     with torch.no_grad():
         N = coords_bohr_t.shape[0]
@@ -225,15 +227,15 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             if len(active_idx) == 0:
                 raise RuntimeError("All atoms are frozen; no active DOF left for TR projection.")
             # mass-weight first
-            H = _mass_weighted_hessian(H, masses_au_t)
+            H = _mass_weighted_hessian(H, masses_au_t.to(dtype=dtype, device=device))
             # take active DOF submatrix
             mask_dof = torch.ones(3 * N, dtype=torch.bool, device=device)
             for i in frozen:
                 mask_dof[3 * i:3 * i + 3] = False
             H = H[mask_dof][:, mask_dof]
             # TR basis and projection in active subspace (in-place)
-            coords_act = coords_bohr_t[active_idx, :]
-            masses_act = masses_au_t[active_idx]
+            coords_act = coords_bohr_t[active_idx, :].to(dtype=dtype, device=device)
+            masses_act = masses_au_t[active_idx].to(dtype=dtype, device=device)
             Q, _ = _tr_orthonormal_basis(coords_act, masses_act)  # (3N_act, r)
             Qt = Q.T
             QtH = Qt @ H
@@ -241,10 +243,13 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             H.addmm_((QtH.T), Qt, beta=1.0, alpha=-1.0)
             QtHQ = QtH @ Q
             H.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
+            H = 0.5 * (H + H.T)
             del Q, Qt, QtH, QtHQ, mask_dof, coords_act, masses_act, active_idx, frozen
         else:
             # Full DOF: mass-weight + TR projection in-place
-            H = _mass_weighted_hessian(H, masses_au_t)
+            H = _mass_weighted_hessian(H, masses_au_t.to(dtype=dtype, device=device))
+            coords_bohr_t = coords_bohr_t.to(dtype=dtype, device=device)
+            masses_au_t = masses_au_t.to(dtype=dtype, device=device)
             Q, _ = _tr_orthonormal_basis(coords_bohr_t, masses_au_t)  # (3N, r)
             Qt = Q.T
             QtH = Qt @ H
@@ -252,6 +257,7 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             H.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
             QtHQ = QtH @ Q
             H.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
+            H = 0.5 * (H + H.T)
             del Q, Qt, QtH, QtHQ
         if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
@@ -313,13 +319,13 @@ def _mode_direction_by_root(H: torch.Tensor,
                 u_mw_sub = v_mw_sub[:, 0]
                 omega2 = w[0]
             except Exception:
-                evals_f, evecs_f = torch.linalg.eigh(Hmw_proj, UPLO="U")
+                evals_f, evecs_f = torch.linalg.eigh(Hmw_proj)
                 pick = int(torch.argmin(evals_f).item())
                 u_mw_sub = evecs_f[:, pick]
                 omega2 = evals_f[pick]
                 del evals_f, evecs_f
         else:
-            evals, evecs_mw = torch.linalg.eigh(Hmw_proj, UPLO="U")  # ascending
+            evals, evecs_mw = torch.linalg.eigh(Hmw_proj)  # ascending
             neg = (evals < 0)
             neg_inds = torch.nonzero(neg, as_tuple=False).view(-1)
             if neg_inds.numel() == 0:
@@ -468,13 +474,13 @@ def _mode_direction_by_root_from_Hact(H: torch.Tensor,
                 u_mw = V[:, 0]
                 omega2 = w[0]
             except Exception:
-                vals, vecs = torch.linalg.eigh(Hmw, UPLO="U")
+                vals, vecs = torch.linalg.eigh(Hmw)
                 pick = int(torch.argmin(vals).item())
                 u_mw = vecs[:, pick]
                 omega2 = vals[pick]
                 del vals, vecs
         else:
-            vals, vecs = torch.linalg.eigh(Hmw, UPLO="U")
+            vals, vecs = torch.linalg.eigh(Hmw)
             neg = (vals < 0)
             neg_inds = torch.nonzero(neg, as_tuple=False).view(-1)
             if neg_inds.numel() == 0:
@@ -1302,7 +1308,7 @@ RSIRFO_KW.update({
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    default="heavy",
     show_default=True,
     help="light (=Dimer) or heavy (=RSIRFO)",
 )

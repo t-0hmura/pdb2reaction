@@ -13,7 +13,8 @@ Usage (CLI)
     pdb2reaction all -i INPUT1 [INPUT2 ...] [-c <substrate-spec>] \
         [--ligand-charge <number|'RES:Q,...'>] [-q/--charge <forced_net_charge>] [-m/--mult <2S+1>] \
         [--freeze-links {True|False}] [--mep-mode {gsm|dmf}] [--max-nodes <int>] [--max-cycles <int>] \
-        [--climb {True|False}] [--opt-mode {light|heavy}] [--dump {True|False}] \
+        [--climb {True|False}] [--opt-mode {light|heavy}] [--opt-mode-post {light|heavy}] \
+        [--dump {True|False}] \
         [--convert-files {True|False}] [--refine-path {True|False}] [--thresh <preset>] \
         [--thresh-post <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
@@ -141,8 +142,8 @@ Pipeline overview
         • Run **IRC (EulerPC)** from the optimized TS,
         • Map IRC endpoints onto the segment’s left/right MEP endpoints (bond-state matching first,
           RMSD fallback) to assign backward/forward consistently across segments,
-        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode``; threshold preset
-          controlled by ``--thresh-post``, default ``baker``),
+        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode-post`` if set,
+          otherwise ``--opt-mode``; threshold preset controlled by ``--thresh-post``, default ``baker``),
         • Use these optimized minima as the final R and P for downstream analyses.
         • Write per-segment UMA energy diagram: ``post_seg_XX/energy_diagram_UMA.png``.
         • Copy the TS structure to ``<out-dir>/ts_seg_XX.pdb`` (when a PDB representation is available)
@@ -207,13 +208,15 @@ Inputs
 Forwarded / relevant options
 ----------------------------
   - MEP search: ``--mult``, ``--freeze-links``, ``--mep-mode``, ``--max-nodes``, ``--max-cycles``,
-    ``--climb``, ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
+    ``--climb``, ``--opt-mode``, ``--opt-mode-post``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``,
+    ``--out-dir``.
   - File conversion: ``--convert-files {True|False}`` toggles conversion of XYZ/TRJ outputs into
     PDB/GJF companions when possible.
   - Scan (single-structure): inherits charge/spin and shared knobs; per-stage/scan overrides include
     ``--scan-out-dir``, ``--scan-one-based``, ``--scan-max-step-size``, ``--scan-bias-k``,
     ``--scan-relax-max-cycles``, ``--scan-preopt``, ``--scan-endopt``.
   - TS optimization / IRC: ``--tsopt``, ``--tsopt-max-cycles``, ``--tsopt-out-dir`` and shared knobs above.
+    ``--opt-mode-post`` (if set; otherwise ``--opt-mode``) controls TSOPT and post-IRC endpoint optimizers.
     ``--hessian-calc-mode`` is forwarded to TSOPT and freq.
   - Frequency analysis: ``--freq-out-dir``, ``--freq-max-write``, ``--freq-amplitude-ang``,
     ``--freq-n-frames``, ``--freq-sort``, ``--freq-temperature``, ``--freq-pressure`` plus shared knobs.
@@ -2007,6 +2010,15 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "--opt-mode-post",
+    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    default="heavy",
+    show_default=True,
+    help=(
+        "Optimizer mode for post-processing TSOPT/endpoint optimizations."
+    ),
+)
+@click.option(
     "--dump",
     type=click.BOOL,
     default=False,
@@ -2124,9 +2136,9 @@ def _irc_and_match(
     "--flatten-imag-mode",
     "flatten_imag_mode",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in tsopt; False forces flatten_max_iter=0.",
+    help="Enable the extra-imaginary-mode flattening loop in tsopt (--opt-mode light only); False forces flatten_max_iter=0.",
 )
 @click.option(
     "--freq-out-dir",
@@ -2302,6 +2314,7 @@ def cli(
     max_cycles: int,
     climb: bool,
     opt_mode: str,
+    opt_mode_post: Optional[str],
     dump: bool,
     convert_files: bool,
     refine_path: bool,
@@ -2390,7 +2403,8 @@ def cli(
             "or use a single structure with --scan-lists, or a single structure with --tsopt True."
         )
 
-    tsopt_opt_mode_default = opt_mode.lower()
+    opt_mode_post_use = opt_mode_post.lower() if opt_mode_post is not None else opt_mode.lower()
+    tsopt_opt_mode_default = opt_mode_post_use
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)
