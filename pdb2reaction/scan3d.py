@@ -171,6 +171,8 @@ from .utils import (
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
     resolve_atom_spec_index,
+    is_structure_path,
+    structure_output_suffix,
 )
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
@@ -732,7 +734,7 @@ def cli(
         d2_label_csv = None
         d3_label_csv = None
         if csv_path is None:
-            if source_path and source_path.suffix.lower() == ".pdb":
+            if source_path and is_structure_path(source_path):
                 pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
             (
@@ -769,8 +771,10 @@ def cli(
         final_dir = out_dir_path
 
         ref_pdb_path = None
-        if csv_path is None and source_path and source_path.suffix.lower() == ".pdb":
+        structure_ext = None
+        if csv_path is None and source_path and is_structure_path(source_path):
             ref_pdb_path = source_path
+            structure_ext = structure_output_suffix(source_path)
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
@@ -789,7 +793,7 @@ def cli(
             _ensure_dir(tmp_opt_dir)
 
             freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and source_path and source_path.suffix.lower() == ".pdb":
+            if freeze_links and source_path and is_structure_path(source_path):
                 detected = detect_freeze_links_safe(source_path)
                 if detected:
                     freeze = merge_freeze_atom_indices(geom_cfg, detected)
@@ -864,7 +868,11 @@ def cli(
                     preopt_xyz_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb_path,
-                    out_pdb_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.pdb",
+                    out_pdb_path=(
+                        grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}{structure_ext}"
+                        if structure_ext is not None
+                        else None
+                    ),
                     out_gjf_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.gjf",
                 )
             except Exception as e:
@@ -1091,7 +1099,11 @@ def cli(
                                     xyz_path,
                                     prepared_input,
                                     ref_pdb_path=ref_pdb_path,
-                                    out_pdb_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.pdb",
+                                    out_pdb_path=(
+                                        grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}{structure_ext}"
+                                        if structure_ext is not None
+                                        else None
+                                    ),
                                     out_gjf_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.gjf",
                                 )
                             except Exception as e:
@@ -1133,7 +1145,11 @@ def cli(
                                     trj_path,
                                     prepared_input,
                                     ref_pdb_path=ref_pdb_path,
-                                    out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.pdb",
+                                    out_pdb_path=(
+                                        grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}{structure_ext}"
+                                        if structure_ext is not None
+                                        else None
+                                    ),
                                 )
                             except Exception as e:
                                 click.echo(

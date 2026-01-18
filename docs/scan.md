@@ -10,11 +10,13 @@ run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
 When `--scan-lists` is supplied once the scan runs in a single stage; supplying
 multiple literals runs sequential stages, each starting from the previous stage’s
-relaxed result.
+relaxed result. PDB and mmCIF inputs (`.pdb`, `.cif`, `.mmcif`) are treated as
+structure-aware inputs; when the input is mmCIF the companion outputs are written
+as mmCIF instead of PDB so coordinates are preserved in the same format.
 
 ## Usage
 ```bash
-pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+pdb2reaction scan -i INPUT.{pdb|cif|mmcif|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                   --scan-lists '[(i,j,targetÅ), ...]' [options]
                   [--convert-files {True|False}]
 ```
@@ -76,9 +78,9 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Overrides `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
-| `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
+| `--freeze-links BOOL` | When the input is PDB/mmCIF, freeze the parents of link hydrogens. | `True` |
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/mmCIF companions for structure inputs and XYZ → GJF companions for Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
@@ -106,13 +108,16 @@ out_dir/ (default: ./result_scan/)
 ├─ preopt/                   # Present when --preopt is True
 │  ├─ result.xyz
 │  ├─ result.pdb             # PDB companion for PDB inputs when conversion is enabled
+│  ├─ result.cif             # mmCIF companion for mmCIF inputs when conversion is enabled
 │  └─ result.gjf             # When a Gaussian template exists and conversion is enabled
 └─ stage_XX/                 # One folder per stage
     ├─ result.xyz
     ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
+    ├─ result.cif             # mmCIF mirror of the final structure (conversion enabled)
     ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
     ├─ scan.trj               # Written when --dump is True
     ├─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
+    ├─ scan.cif               # Trajectory companion for mmCIF inputs when conversion is enabled
     └─ scan.gjf               # Trajectory companion when a Gaussian template exists and conversion is enabled
 ```
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.

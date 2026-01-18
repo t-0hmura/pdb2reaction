@@ -79,6 +79,10 @@ Description
     reference PDB and write to `out_pdb_path`. The first frame creates/overwrites; subsequent frames append
     using `MODEL`/`ENDMDL`. Implemented with ASE (`ase.io.read`/`write`). Raises `ValueError` if no frames
     are found in the XYZ.
+  - `convert_xyz_to_cif(xyz_path, ref_cif_path, out_cif_path)`:
+    Overlay coordinates onto an mmCIF template and write a `.cif` output.
+  - `convert_xyz_to_structure(...)`:
+    Dispatch to PDB or mmCIF conversion based on the reference suffix.
 
 - **Link-freezing helpers**
   - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from
@@ -498,6 +502,30 @@ def build_energy_diagram(
 # =============================================================================
 # Coordinate conversion utilities
 # =============================================================================
+PDB_SUFFIXES = {".pdb"}
+MMCIF_SUFFIXES = {".cif", ".mmcif"}
+
+
+def is_pdb_path(path: Path) -> bool:
+    return path.suffix.lower() in PDB_SUFFIXES
+
+
+def is_mmcif_path(path: Path) -> bool:
+    return path.suffix.lower() in MMCIF_SUFFIXES
+
+
+def is_structure_path(path: Path) -> bool:
+    return is_pdb_path(path) or is_mmcif_path(path)
+
+
+def structure_output_suffix(path: Path) -> Optional[str]:
+    if is_pdb_path(path):
+        return ".pdb"
+    if is_mmcif_path(path):
+        return path.suffix.lower()
+    return None
+
+
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
 
@@ -526,6 +554,37 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
             write(out_pdb_path, atoms)  # Create/overwrite on the first frame
         else:
             write(out_pdb_path, atoms, append=True)  # Append subsequent frames using MODEL/ENDMDL
+
+
+def convert_xyz_to_cif(xyz_path: Path, ref_cif_path: Path, out_cif_path: Path) -> None:
+    """Overlay coordinates from *xyz_path* onto the topology of *ref_cif_path* and write to *out_cif_path*."""
+    if not _CONVERT_FILES_ENABLED:
+        return
+    ref_atoms = read(ref_cif_path)
+    traj = read(xyz_path, index=":", format="xyz")
+    if not traj:
+        raise ValueError(f"No frames found in {xyz_path}.")
+
+    for step, frame in enumerate(traj):
+        atoms = ref_atoms.copy()
+        atoms.set_positions(frame.get_positions())
+        if step == 0:
+            write(out_cif_path, atoms, format="cif")
+        else:
+            write(out_cif_path, atoms, format="cif", append=True)
+
+
+def convert_xyz_to_structure(
+    xyz_path: Path, ref_structure_path: Path, out_structure_path: Path
+) -> None:
+    """Convert XYZ/TRJ coordinates to PDB or mmCIF based on the reference structure suffix."""
+    if is_pdb_path(ref_structure_path):
+        convert_xyz_to_pdb(xyz_path, ref_structure_path, out_structure_path)
+        return
+    if is_mmcif_path(ref_structure_path):
+        convert_xyz_to_cif(xyz_path, ref_structure_path, out_structure_path)
+        return
+    raise ValueError(f"Unsupported reference structure for conversion: {ref_structure_path}")
 
 
 # =============================================================================
@@ -782,12 +841,12 @@ def apply_ref_pdb_override(
     prepared_input: PreparedInputStructure,
     ref_pdb: Optional[Path],
 ) -> Optional[Path]:
-    """Use a reference PDB topology while keeping XYZ coordinates for geometry loading."""
+    """Use a reference PDB/mmCIF topology while keeping XYZ coordinates for geometry loading."""
     if ref_pdb is None:
         return None
     ref_pdb = Path(ref_pdb).resolve()
-    if ref_pdb.suffix.lower() != ".pdb":
-        raise click.BadParameter("--ref-pdb must be a .pdb file.")
+    if not is_structure_path(ref_pdb):
+        raise click.BadParameter("--ref-pdb must be a .pdb, .cif, or .mmcif file.")
     _validate_ref_pdb_atom_count(prepared_input.geom_path, ref_pdb)
     prepared_input.source_path = ref_pdb
     return ref_pdb
@@ -955,7 +1014,7 @@ def convert_xyz_like_outputs(
     out_pdb_path: Optional[Path] = None,
     out_gjf_path: Optional[Path] = None,
 ) -> None:
-    """Convert an XYZ/TRJ file to PDB outputs (and XYZ to GJF) based on the original input type.
+    """Convert an XYZ/TRJ file to PDB/mmCIF outputs (and XYZ to GJF) based on the original input type.
 
     Parameters
     ----------
@@ -964,7 +1023,7 @@ def convert_xyz_like_outputs(
     prepared_input:
         Prepared input structure returned by :func:`prepare_input_structure`.
     ref_pdb_path:
-        Reference PDB topology (required for PDB conversions).
+        Reference structure topology (required for PDB/mmCIF conversions).
     out_pdb_path / out_gjf_path:
         Targets for the converted files. Conversions are skipped when the
         corresponding output path is ``None`` or when the input type does not
@@ -975,7 +1034,16 @@ def convert_xyz_like_outputs(
         return
 
     source_suffix = prepared_input.source_path.suffix.lower()
-    needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
+    needs_pdb = (
+        source_suffix in PDB_SUFFIXES
+        and out_pdb_path is not None
+        and ref_pdb_path is not None
+    )
+    needs_cif = (
+        source_suffix in MMCIF_SUFFIXES
+        and out_pdb_path is not None
+        and ref_pdb_path is not None
+    )
     needs_gjf = (
         xyz_path.suffix.lower() == ".xyz"
         and prepared_input.is_gjf
@@ -983,8 +1051,8 @@ def convert_xyz_like_outputs(
         and out_gjf_path is not None
     )
 
-    if needs_pdb:
-        convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
+    if needs_pdb or needs_cif:
+        convert_xyz_to_structure(xyz_path, ref_pdb_path, out_pdb_path)
     if needs_gjf:
         convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
 
@@ -992,7 +1060,7 @@ def convert_xyz_like_outputs(
 # =============================================================================
 # Link-freezing helpers
 # =============================================================================
-def parse_pdb_coords(pdb_path):
+def parse_pdb_coords(pdb_path: Path):
     """Parse ATOM/HETATM records from *pdb_path* and separate link hydrogen (HL) atoms.
 
     Returns:
@@ -1031,6 +1099,33 @@ def parse_pdb_coords(pdb_path):
     return others, lkhs
 
 
+def parse_mmcif_coords(cif_path: Path):
+    """Parse mmCIF atom records and separate link hydrogen (HL) atoms."""
+    from Bio import PDB
+
+    parser = PDB.MMCIFParser(QUIET=True)
+    structure = parser.get_structure("mmcif", str(cif_path))
+    others = []
+    lkhs = []
+    for atom in structure.get_atoms():
+        res = atom.get_parent()
+        name = atom.get_name().strip()
+        resname = res.get_resname().strip()
+        x, y, z = map(float, atom.get_coord())
+        if resname == "LKH" and name == "HL":
+            lkhs.append((x, y, z, ""))
+        else:
+            others.append((x, y, z, ""))
+    return others, lkhs
+
+
+def parse_structure_coords(path: Path):
+    """Parse PDB or mmCIF coordinates and separate link hydrogens."""
+    if is_mmcif_path(path):
+        return parse_mmcif_coords(path)
+    return parse_pdb_coords(path)
+
+
 def nearest_index(point, pool):
     """Find the nearest point in *pool* to *point* using Euclidean distance.
 
@@ -1056,6 +1151,41 @@ def nearest_index(point, pool):
 
 def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
     """Return per-atom metadata (serial, name, resname, resseq, element) in file order."""
+
+    if is_mmcif_path(pdb_path):
+        from Bio import PDB
+
+        parser = PDB.MMCIFParser(QUIET=True)
+        structure = parser.get_structure("mmcif", str(pdb_path))
+        atoms: List[Dict[str, Any]] = []
+        for atom in structure.get_atoms():
+            res = atom.get_parent()
+            try:
+                serial = atom.get_serial_number()
+            except Exception:
+                serial = None
+            try:
+                resseq = int(res.get_id()[1])
+            except Exception:
+                resseq = None
+            atom_name = atom.get_name().strip()
+            res_name = res.get_resname().strip()
+            element_txt = (atom.element or "").strip()
+            hetflag = res.get_id()[0] if hasattr(res, "get_id") else " "
+            is_het = bool(hetflag and hetflag != " ")
+            if not element_txt:
+                inferred = guess_element(atom_name, res_name, is_het)
+                element_txt = inferred or ""
+            atoms.append(
+                {
+                    "serial": serial,
+                    "name": atom_name,
+                    "resname": res_name,
+                    "resseq": resseq,
+                    "element": element_txt,
+                }
+            )
+        return atoms
 
     atoms: List[Dict[str, Any]] = []
     with open(pdb_path, "r") as f:
@@ -1183,14 +1313,14 @@ def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) ->
     return f"{serial:>5} {name:<4} {resname:<4} {resseq_txt:>4} {element:<2}"
 
 
-def detect_freeze_links(pdb_path):
+def detect_freeze_links(pdb_path: Path):
     """Identify link-parent atom indices for 'LKH'/'HL' link hydrogens.
 
     For each 'HL' atom in residue 'LKH', find the nearest atom among all other
     ATOM/HETATM records and return the indices of those nearest neighbors.
 
     Args:
-        pdb_path: Path to the input PDB file.
+        pdb_path: Path to the input PDB/mmCIF file.
 
     Returns:
         List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
@@ -1198,7 +1328,7 @@ def detect_freeze_links(pdb_path):
         are present. When the input contains link hydrogens but no other atoms, the list
         will contain ``-1`` entries to indicate missing parents.
     """
-    others, lkhs = parse_pdb_coords(pdb_path)
+    others, lkhs = parse_structure_coords(pdb_path)
 
     if not lkhs:
         return []

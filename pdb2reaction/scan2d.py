@@ -139,6 +139,8 @@ from .utils import (
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
     resolve_atom_spec_index,
+    is_structure_path,
+    structure_output_suffix,
 )
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
@@ -635,7 +637,7 @@ def cli(
         click.echo(pretty_block("bias", echo_bias))
 
         pdb_atom_meta: List[Dict[str, Any]] = []
-        if source_path.suffix.lower() == ".pdb":
+        if is_structure_path(source_path):
             pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
         (i1, j1, low1, high1), (i2, j2, low2, high2), raw_pairs = _parse_scan_list(
@@ -671,7 +673,7 @@ def cli(
         final_dir = out_dir_path
 
         freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links and source_path.suffix.lower() == ".pdb":
+        if freeze_links and is_structure_path(source_path):
             detected = detect_freeze_links_safe(source_path)
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
@@ -696,7 +698,8 @@ def cli(
 
         # Records (including preopt) will be accumulated here
         records: List[Dict[str, Any]] = []
-        ref_pdb_path = source_path if source_path.suffix.lower() == ".pdb" else None
+        structure_ext = structure_output_suffix(source_path)
+        ref_pdb_path = source_path if structure_ext is not None else None
 
         # Reference distances from the (pre)optimized structure, used for scan ordering
         d1_ref: Optional[float] = None
@@ -748,7 +751,11 @@ def cli(
                         preopt_xyz_path,
                         prepared_input,
                         ref_pdb_path=ref_pdb_path,
-                        out_pdb_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.pdb",
+                        out_pdb_path=(
+                            grid_dir / f"preopt_i{d1_tag}_j{d2_tag}{structure_ext}"
+                            if structure_ext is not None
+                            else None
+                        ),
                         out_gjf_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf",
                     )
                 except Exception as e:
@@ -921,13 +928,17 @@ def cli(
                     with open(xyz_path, "w") as f:
                         f.write(s)
                     try:
-                        convert_xyz_like_outputs(
-                            xyz_path,
-                            prepared_input,
-                            ref_pdb_path=ref_pdb_path,
-                            out_pdb_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb",
-                            out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
-                        )
+                            convert_xyz_like_outputs(
+                                xyz_path,
+                                prepared_input,
+                                ref_pdb_path=ref_pdb_path,
+                                out_pdb_path=(
+                                    grid_dir / f"point_i{d1_tag}_j{d2_tag}{structure_ext}"
+                                    if structure_ext is not None
+                                    else None
+                                ),
+                                out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
+                            )
                     except Exception as e:
                         click.echo(
                             f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB/GJF: {e}",
@@ -980,7 +991,11 @@ def cli(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb_path,
-                            out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}.pdb",
+                            out_pdb_path=(
+                                grid_dir / f"inner_path_d1_{i_idx:03d}{structure_ext}"
+                                if structure_ext is not None
+                                else None
+                            ),
                         )
                     except Exception as e:
                         click.echo(
