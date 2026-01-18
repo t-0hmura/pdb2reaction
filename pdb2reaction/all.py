@@ -362,6 +362,8 @@ from .utils import (
     resolve_atom_spec_index,
     merge_freeze_atom_indices,
     apply_ref_pdb_override,
+    is_structure_path,
+    structure_output_suffix,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -950,10 +952,13 @@ def _save_single_geom_as_pdb_for_tools(
     xyz_trj = out_dir / f"{name}.xyz"
     _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
 
-    if ref_pdb.suffix.lower() == ".pdb":
-        pdb_out = out_dir / f"{name}.pdb"
+    structure_ext = structure_output_suffix(ref_pdb)
+    if structure_ext is not None:
+        pdb_out = out_dir / f"{name}{structure_ext}"
         try:
-            _path_search._maybe_convert_to_pdb(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
+            _path_search._maybe_convert_to_structure(
+                xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out
+            )
         except Exception:
             pass
 
@@ -1330,8 +1335,8 @@ def _run_freq_for_state(
         "True"
         if freeze_use
         and (
-            pdb_path.suffix.lower() == ".pdb"
-            or (ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb")
+            is_structure_path(pdb_path)
+            or (ref_pdb is not None and is_structure_path(ref_pdb))
         )
         else "False",
         "--out-dir",
@@ -1523,9 +1528,10 @@ def _run_tsopt_on_hei(
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
     apply_ref_pdb_override(prepared_input, ref_pdb)
-    needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
+    structure_ext = structure_output_suffix(prepared_input.source_path)
+    needs_structure = structure_ext is not None
     needs_gjf = prepared_input.is_gjf
-    ref_pdb = prepared_input.source_path if needs_pdb else None
+    ref_pdb = prepared_input.source_path if needs_structure else None
     ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
     _ensure_dir(ts_dir)
 
@@ -1577,7 +1583,7 @@ def _run_tsopt_on_hei(
     finally:
         sys.argv = _saved
 
-    ts_pdb = ts_dir / "final_geometry.pdb"
+    ts_pdb = ts_dir / f"final_geometry{structure_ext}" if structure_ext is not None else None
     ts_xyz = ts_dir / "final_geometry.xyz"
     ts_gjf = ts_dir / "final_geometry.gjf"
 
@@ -1589,7 +1595,7 @@ def _run_tsopt_on_hei(
                 ts_xyz,
                 prepared_input,
                 ref_pdb_path=ref_pdb,
-                out_pdb_path=ts_pdb if needs_pdb else None,
+                out_pdb_path=ts_pdb if needs_structure else None,
                 out_gjf_path=ts_gjf if needs_gjf else None,
             )
         except Exception as e:
@@ -1597,9 +1603,9 @@ def _run_tsopt_on_hei(
 
     if ts_xyz.exists():
         ts_geom_path = ts_xyz
-    elif needs_pdb and ts_pdb.exists():
+    elif needs_structure and ts_pdb is not None and ts_pdb.exists():
         ts_geom_path = ts_pdb
-    elif ts_pdb.exists():
+    elif ts_pdb is not None and ts_pdb.exists():
         ts_geom_path = ts_pdb
     elif needs_gjf and ts_gjf.exists():
         ts_geom_path = ts_gjf
@@ -1671,8 +1677,8 @@ def _irc_and_match(
         "True"
         if freeze_links_flag
         and (
-            ref_pdb_for_seg.suffix.lower() == ".pdb"
-            or (ref_pdb_template is not None and ref_pdb_template.suffix.lower() == ".pdb")
+            is_structure_path(ref_pdb_for_seg)
+            or (ref_pdb_template is not None and is_structure_path(ref_pdb_template))
         )
         else "False",
     ]
@@ -1693,20 +1699,25 @@ def _irc_and_match(
     finally:
         sys.argv = _saved_argv
 
-    finished_pdb = irc_dir / "finished_irc.pdb"
+    structure_ext = structure_output_suffix(ref_pdb_for_seg)
+    finished_pdb = (
+        irc_dir / f"finished_irc{structure_ext}" if structure_ext is not None else None
+    )
     finished_trj = irc_dir / "finished_irc.trj"
     irc_plot = irc_dir / "irc_plot.png"
 
     # Ensure we have a PDB for visualization if possible
     try:
-        if finished_trj.exists() and (not finished_pdb.exists()):
+        if finished_trj.exists() and (finished_pdb is not None) and (not finished_pdb.exists()):
             ref_for_conv: Optional[Path] = None
-            if seg_pocket_pdb.suffix.lower() == ".pdb":
+            if is_structure_path(seg_pocket_pdb):
                 ref_for_conv = seg_pocket_pdb
-            elif ref_pdb_for_seg.suffix.lower() == ".pdb":
+            elif is_structure_path(ref_pdb_for_seg):
                 ref_for_conv = ref_pdb_for_seg
             if ref_for_conv is not None:
-                _path_search._maybe_convert_to_pdb(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
+                _path_search._maybe_convert_to_structure(
+                    finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb
+                )
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
 
@@ -2653,7 +2664,7 @@ def cli(
             freeze_ref = pocket_outputs[0]
         else:
             for p in input_paths:
-                if p.suffix.lower() == ".pdb":
+                if is_structure_path(p):
                     freeze_ref = p.resolve()
                     break
         if freeze_ref is not None:
@@ -2695,7 +2706,7 @@ def cli(
             tsroot,
             freeze_links_flag,
             tsopt_opt_mode_default,
-            ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
+            ts_initial_pdb if is_structure_path(ts_initial_pdb) else None,
             overrides=tsopt_overrides,
         )
 
@@ -2704,7 +2715,7 @@ def cli(
             seg_dir=tsroot,
             ref_pdb_for_seg=ts_pdb,
             seg_pocket_pdb=ts_initial_pdb,
-            ref_pdb_template=ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
+            ref_pdb_template=ts_initial_pdb if is_structure_path(ts_initial_pdb) else None,
             g_ts=g_ts,
             q_int=q_int,
             spin=spin,
@@ -2803,7 +2814,7 @@ def cli(
         if do_thermo:
             click.echo("[thermo] Single TSOPT: freq on R/TS/P")
             ref_pdb_for_tsopt_only = (
-                ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
+                ts_initial_pdb if is_structure_path(ts_initial_pdb) else None
             )
             tR = _run_freq_for_state(
                 pR,
@@ -3170,7 +3181,7 @@ def cli(
         if skip_extract:
             scan_input_pdb = Path(input_paths[0]).resolve()
             scan_atom_meta = None
-            if scan_input_pdb.suffix.lower() == ".pdb":
+            if is_structure_path(scan_input_pdb):
                 scan_atom_meta = load_pdb_atom_metadata(scan_input_pdb)
             converted_scan_stages = _parse_scan_lists_literals(
                 scan_lists_raw, atom_meta=scan_atom_meta
@@ -3261,7 +3272,7 @@ def cli(
 
         stage_results: List[Path] = []
         for st in sorted(scan_dir.glob("stage_*")):
-            res = _find_with_suffixes(st / "result", [".xyz", ".pdb", ".gjf"])
+            res = _find_with_suffixes(st / "result", [".xyz", ".pdb", ".cif", ".mmcif", ".gjf"])
             if res:
                 stage_results.append(res.resolve())
         if not stage_results:
@@ -3304,7 +3315,7 @@ def cli(
 
     # Determine availability of full-system templates for downstream merge/copies
     def _is_pdb(path: Path) -> bool:
-        return path.suffix.lower() == ".pdb"
+        return is_structure_path(path)
 
     gave_ref_pdb = False
 
@@ -3417,11 +3428,12 @@ def cli(
             try:
                 seg_mep_trj = path_dir / f"mep_seg_{idx:02d}.trj"
                 shutil.copy2(seg_trj, seg_mep_trj)
-                if pockets_for_path[0].suffix.lower() == ".pdb":
-                    _path_search._maybe_convert_to_pdb(
+                structure_ext = structure_output_suffix(pockets_for_path[0])
+                if structure_ext is not None:
+                    _path_search._maybe_convert_to_structure(
                         seg_mep_trj,
                         ref_pdb_path=pockets_for_path[0],
-                        out_path=path_dir / f"mep_seg_{idx:02d}.pdb",
+                        out_path=path_dir / f"mep_seg_{idx:02d}{structure_ext}",
                     )
             except Exception as e:
                 click.echo(
@@ -3433,9 +3445,10 @@ def cli(
             if hei_src.exists():
                 try:
                     shutil.copy2(hei_src, path_dir / f"hei_seg_{idx:02d}.xyz")
-                    hei_pdb_src = seg_dir / "hei.pdb"
-                    if hei_pdb_src.exists():
-                        shutil.copy2(hei_pdb_src, path_dir / f"hei_seg_{idx:02d}.pdb")
+                    if structure_ext is not None:
+                        hei_pdb_src = seg_dir / f"hei{structure_ext}"
+                        if hei_pdb_src.exists():
+                            shutil.copy2(hei_pdb_src, path_dir / f"hei_seg_{idx:02d}{structure_ext}")
                     hei_gjf_src = seg_dir / "hei.gjf"
                     if hei_gjf_src.exists():
                         shutil.copy2(hei_gjf_src, path_dir / f"hei_seg_{idx:02d}.gjf")
@@ -3488,14 +3501,17 @@ def cli(
             click.echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
         try:
-            if pockets_for_path[0].suffix.lower() == ".pdb":
-                mep_pdb = _path_search._maybe_convert_to_pdb(
-                    final_trj, ref_pdb_path=pockets_for_path[0], out_path=path_dir / "mep.pdb"
+            structure_ext = structure_output_suffix(pockets_for_path[0])
+            if structure_ext is not None:
+                mep_path = _path_search._maybe_convert_to_structure(
+                    final_trj,
+                    ref_pdb_path=pockets_for_path[0],
+                    out_path=path_dir / f"mep{structure_ext}",
                 )
-                if mep_pdb and mep_pdb.exists():
-                    dst = out_dir / mep_pdb.name
-                    shutil.copy2(mep_pdb, dst)
-                    click.echo(f"[all] Copied concatenated MEP PDB → {dst}")
+                if mep_path and mep_path.exists():
+                    dst = out_dir / mep_path.name
+                    shutil.copy2(mep_path, dst)
+                    click.echo(f"[all] Copied concatenated MEP structure → {dst}")
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to convert/copy concatenated MEP to PDB: {e}", err=True
@@ -3908,7 +3924,7 @@ def cli(
         post_segment_logs.append(segment_log)
 
         hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
-        hei_pocket_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
+        hei_pocket_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".cif", ".mmcif", ".gjf"])
         if hei_pocket_path is None:
             click.echo(
                 f"[post] WARNING: HEI pocket file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
@@ -3916,12 +3932,14 @@ def cli(
             )
             continue
         ref_pdb_for_seg: Optional[Path] = None
-        if hei_pocket_path.suffix.lower() == ".pdb":
+        if is_structure_path(hei_pocket_path):
             ref_pdb_for_seg = hei_pocket_path
         else:
-            candidate_ref = hei_base.with_suffix(".pdb")
-            if candidate_ref.exists():
-                ref_pdb_for_seg = candidate_ref
+            for ext in (".pdb", ".cif", ".mmcif"):
+                candidate_ref = hei_base.with_suffix(ext)
+                if candidate_ref.exists():
+                    ref_pdb_for_seg = candidate_ref
+                    break
 
         struct_dir = seg_dir / "structures"
         _ensure_dir(struct_dir)
@@ -4053,10 +4071,16 @@ def cli(
             }
 
             try:
-                ts_pdb = pT.with_suffix(".pdb")
-                if ts_pdb.exists():
-                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
-                    shutil.copy2(ts_pdb, ts_copy)
+                ts_struct: Optional[Path] = None
+                if is_structure_path(pT):
+                    ts_struct = pT
+                else:
+                    ts_struct = _find_with_suffixes(
+                        pT.with_suffix(""), [".pdb", ".cif", ".mmcif"]
+                    )
+                if ts_struct is not None and ts_struct.exists():
+                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}{ts_struct.suffix.lower()}"
+                    shutil.copy2(ts_struct, ts_copy)
                 else:
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
                     _path_search._write_xyz_trj_with_energy(
@@ -4073,14 +4097,14 @@ def cli(
 
         elif do_thermo or do_dft:
             seg_pocket_path = _find_with_suffixes(
-                seg_root / f"mep_seg_{seg_idx:02d}", [".xyz", ".pdb"]
+                seg_root / f"mep_seg_{seg_idx:02d}", [".xyz", ".pdb", ".cif", ".mmcif"]
             )
 
             # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
             freeze_ref: Optional[Path] = ref_pdb_for_seg
-            if freeze_ref is None and seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
+            if freeze_ref is None and seg_pocket_path is not None and is_structure_path(seg_pocket_path):
                 freeze_ref = seg_pocket_path
-            elif freeze_ref is None and hei_pocket_path.suffix.lower() == ".pdb":
+            elif freeze_ref is None and is_structure_path(hei_pocket_path):
                 freeze_ref = hei_pocket_path
 
             freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)

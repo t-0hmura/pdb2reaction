@@ -139,7 +139,6 @@ from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
-    convert_xyz_to_pdb,
     detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -154,6 +153,8 @@ from .utils import (
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
+    is_structure_path,
+    structure_output_suffix,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -417,13 +418,14 @@ def _maybe_convert_outputs(
     get_trj_fn,
     final_xyz_path: Path,
 ) -> None:
-    """Convert outputs (final geometry and trajectory) to PDB/GJF when requested by the input type."""
-    needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
+    """Convert outputs (final geometry and trajectory) to PDB/mmCIF/GJF when requested."""
+    structure_ext = structure_output_suffix(prepared_input.source_path)
+    needs_structure = structure_ext is not None
     needs_gjf = prepared_input.is_gjf
-    if not (needs_pdb or needs_gjf):
+    if not (needs_structure or needs_gjf):
         return
 
-    ref_pdb = prepared_input.source_path.resolve() if needs_pdb else None
+    ref_pdb = prepared_input.source_path.resolve() if needs_structure else None
 
     # final_geometry.xyz → final_geometry.{pdb|gjf}
     try:
@@ -431,7 +433,11 @@ def _maybe_convert_outputs(
             final_xyz_path,
             prepared_input,
             ref_pdb_path=ref_pdb,
-            out_pdb_path=out_dir / "final_geometry.pdb" if needs_pdb else None,
+            out_pdb_path=(
+                out_dir / f"final_geometry{structure_ext}"
+                if structure_ext is not None
+                else None
+            ),
             out_gjf_path=out_dir / "final_geometry.gjf" if needs_gjf else None,
         )
         click.echo("[convert] Wrote 'final_geometry' outputs.")
@@ -439,7 +445,7 @@ def _maybe_convert_outputs(
         click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
     # optimization.trj → optimization.pdb (if dump)
-    if dump and needs_pdb:
+    if dump and needs_structure:
         try:
             trj_path = get_trj_fn("optimization.trj")
             if trj_path.exists():
@@ -447,7 +453,11 @@ def _maybe_convert_outputs(
                     trj_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=out_dir / "optimization.pdb" if needs_pdb else None,
+                    out_pdb_path=(
+                        out_dir / f"optimization{structure_ext}"
+                        if structure_ext is not None
+                        else None
+                    ),
                 )
                 click.echo("[convert] Wrote 'optimization' outputs.")
             else:
@@ -664,8 +674,8 @@ def cli(
             ],
         )
 
-        # Optionally infer "freeze_atoms" from link hydrogens in PDB
-        if freeze_links and source_path.suffix.lower() == ".pdb":
+        # Optionally infer "freeze_atoms" from link hydrogens in PDB/mmCIF
+        if freeze_links and is_structure_path(source_path):
             try:
                 detected = detect_freeze_links(source_path)
             except Exception as e:

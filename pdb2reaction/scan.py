@@ -155,6 +155,8 @@ from .utils import (
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
     resolve_atom_spec_index,
+    is_structure_path,
+    structure_output_suffix,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -506,9 +508,10 @@ def cli(
         ligand_charge=ligand_charge,
         prefix="[scan]",
     )
-    needs_pdb = source_path.suffix.lower() == ".pdb"
+    structure_ext = structure_output_suffix(source_path)
+    needs_structure = structure_ext is not None
     needs_gjf = prepared_input.is_gjf
-    ref_pdb = source_path.resolve() if needs_pdb else None
+    ref_pdb = source_path.resolve() if needs_structure else None
     try:
         time_start = time.perf_counter()
 
@@ -575,7 +578,7 @@ def cli(
         click.echo(pretty_block("bond", echo_bond))
 
         pdb_atom_meta: List[Dict[str, Any]] = []
-        if source_path.suffix.lower() == ".pdb":
+        if is_structure_path(source_path):
             pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
         # ------------------------------------------------------------------
@@ -611,7 +614,7 @@ def cli(
 
         # Load
         freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links and source_path.suffix.lower() == ".pdb":
+        if freeze_links and is_structure_path(source_path):
             detected = detect_freeze_links_safe(source_path)
             if detected:
                 freeze = merge_freeze_atom_indices(geom_cfg, detected)
@@ -675,13 +678,13 @@ def cli(
                     pre_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=pre_dir / "result.pdb" if needs_pdb else None,
+                    out_pdb_path=pre_dir / f"result{structure_ext}" if needs_structure else None,
                     out_gjf_path=pre_dir / "result.gjf" if needs_gjf else None,
                 )
-                if needs_pdb or needs_gjf:
+                if needs_structure or needs_gjf:
                     written = []
-                    if needs_pdb:
-                        written.append("'result.pdb'")
+                    if needs_structure:
+                        written.append(f"'result{structure_ext}'")
                     if needs_gjf:
                         written.append("'result.gjf'")
                     click.echo(f"[convert] Wrote {', '.join(written)}.")
@@ -765,13 +768,13 @@ def cli(
                         final_xyz,
                         prepared_input,
                         ref_pdb_path=ref_pdb,
-                        out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
+                        out_pdb_path=stage_dir / f"result{structure_ext}" if needs_structure else None,
                         out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
                     )
-                    if needs_pdb or needs_gjf:
+                    if needs_structure or needs_gjf:
                         written = []
-                        if needs_pdb:
-                            written.append("'result.pdb'")
+                        if needs_structure:
+                            written.append(f"'result{structure_ext}'")
                         if needs_gjf:
                             written.append("'result.gjf'")
                         click.echo(f"[convert] Wrote {', '.join(written)}.")
@@ -840,13 +843,13 @@ def cli(
                         trj_path,
                         prepared_input,
                         ref_pdb_path=ref_pdb,
-                        out_pdb_path=stage_dir / "scan.pdb" if needs_pdb else None,
+                        out_pdb_path=stage_dir / f"scan{structure_ext}" if needs_structure else None,
                         out_gjf_path=stage_dir / "scan.gjf" if needs_gjf else None,
                     )
-                    if needs_pdb or needs_gjf:
+                    if needs_structure or needs_gjf:
                         written = []
-                        if needs_pdb:
-                            written.append("'scan.pdb'")
+                        if needs_structure:
+                            written.append(f"'scan{structure_ext}'")
                         if needs_gjf:
                             written.append("'scan.gjf'")
                         click.echo(f"[convert] Wrote {', '.join(written)}.")
@@ -862,13 +865,13 @@ def cli(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
+                    out_pdb_path=stage_dir / f"result{structure_ext}" if needs_structure else None,
                     out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
                 )
-                if needs_pdb or needs_gjf:
+                if needs_structure or needs_gjf:
                     written = []
-                    if needs_pdb:
-                        written.append("'result.pdb'")
+                    if needs_structure:
+                        written.append(f"'result{structure_ext}'")
                     if needs_gjf:
                         written.append("'result.gjf'")
                     click.echo(f"[convert] Wrote {', '.join(written)}.")
