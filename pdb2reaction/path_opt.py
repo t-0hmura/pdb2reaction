@@ -83,7 +83,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_ase, uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 
 from .utils import (
     convert_xyz_to_structure,
@@ -326,11 +326,11 @@ def _run_dmf_mep(
         import torch
         from ase.io import read as ase_read
         from ase.io import write as ase_write
-        from fairchem.core import pretrained_mlip, FAIRChemCalculator
         from torch_dmf import DirectMaxFlux, interpolate_fbenm
     except Exception as e:
         raise RuntimeError(
-            "DMF mode requires torch, ase, fairchem, cyiopt, and torch_dmf to be installed."
+            "DMF mode requires torch, ase, fairchem (via uma_pysis), cyiopt, and torch_dmf "
+            "to be installed."
         ) from e
 
     def _geom_to_ase(g: Any):
@@ -360,14 +360,12 @@ def _run_dmf_mep(
         img.info["charge"] = charge
         img.info["spin"] = spin
 
-    predictor = pretrained_mlip.get_predict_unit(
-        calc_cfg.get("model", "uma-s-1p1"),
-        device=device,
-    )
-
-    calc_uma = FAIRChemCalculator(
-        predictor,
+    calc_uma = uma_ase(
+        model=str(calc_cfg.get("model", "uma-s-1p1")),
+        device=str(calc_cfg.get("device", "auto")),
         task_name=str(calc_cfg.get("task_name", "omol")),
+        workers=int(calc_cfg.get("workers", 1)),
+        workers_per_node=int(calc_cfg.get("workers_per_node", 1)),
     )
 
     dmf_cfg = deep_update(dict(DMF_KW), dmf_cfg)

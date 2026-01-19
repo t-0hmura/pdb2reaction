@@ -107,7 +107,7 @@ import torch
 import torch.nn as nn
 from ase import Atoms
 
-from fairchem.core import pretrained_mlip
+from fairchem.core import pretrained_mlip, FAIRChemCalculator
 from fairchem.core.datasets.atomic_data import AtomicData
 from fairchem.core.datasets import data_list_collater
 
@@ -778,6 +778,27 @@ class uma_pysis(Calculator):
             "forces": self._au_forces(res_forces_ev),
             "hessian": self._au_hessian(res["hessian"]),
         }
+
+
+class uma_ase(FAIRChemCalculator):
+    def __init__(
+        self,
+        *,
+        model: str = "uma-s-1p1",
+        device: str = "auto",
+        task_name: str = "omol",
+        workers: int = 1,
+        workers_per_node: int = 1,
+    ):
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        predictor = pretrained_mlip.get_predict_unit(
+            model,
+            device=device,
+            workers=int(workers),
+            workers_per_node=int(workers_per_node),
+        )
+        super().__init__(predictor, task_name=str(task_name))
 
 
 # ---------- CLI ----------------------------------------
