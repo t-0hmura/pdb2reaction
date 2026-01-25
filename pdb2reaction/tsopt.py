@@ -170,6 +170,7 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
+    convert_xyz_to_pdb,
     detect_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -184,8 +185,6 @@ from .utils import (
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
-    is_structure_path,
-    structure_output_suffix,
 )
 from .freq import (
     _torch_device,
@@ -639,8 +638,7 @@ class HessianDimer:
         self.fn = fn
         self.out_dir = Path(out_dir); self.out_dir.mkdir(parents=True, exist_ok=True)
         self.vib_dir = self.out_dir / "vib"; self.vib_dir.mkdir(parents=True, exist_ok=True)
-        self.structure_ext = structure_output_suffix(Path(fn))
-        self.ref_pdb: Optional[Path] = Path(fn) if self.structure_ext is not None else None
+        self.ref_pdb: Optional[Path] = Path(fn) if Path(fn).suffix.lower() == ".pdb" else None
 
         self.thresh_loose = thresh_loose
         self.thresh = thresh
@@ -1130,11 +1128,7 @@ class HessianDimer:
             v_cart = v_cart / np.linalg.norm(v_cart)
             del modes, masses_amu_t, m3
             out_trj = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.trj"
-            out_pdb = (
-                self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1{self.structure_ext}"
-                if self.structure_ext is not None
-                else None
-            )
+            out_pdb = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb"
             _write_mode_trj_and_pdb(
                 self.geom,
                 v_cart,
@@ -1415,8 +1409,8 @@ def cli(
     if not flatten_imag_mode:
         simple_cfg["flatten_max_iter"] = 0
 
-    # Freeze links (structure inputs only): merge with existing list
-    if freeze_links and is_structure_path(source_path):
+    # Freeze links (PDB only): merge with existing list
+    if freeze_links and source_path.suffix.lower() == ".pdb":
         try:
             detected = detect_freeze_links(source_path)
         except Exception as e:
@@ -1491,28 +1485,23 @@ def cli(
             runner.run()
             click.echo("\n=== TS optimization (Hessian Dimer) finished ===\n")
 
-            structure_ext = structure_output_suffix(source_path)
-            needs_structure = structure_ext is not None
+            needs_pdb = source_path.suffix.lower() == ".pdb"
             needs_gjf = prepared_input.is_gjf
-            ref_pdb = source_path.resolve() if needs_structure else None
+            ref_pdb = source_path.resolve() if needs_pdb else None
             final_xyz = out_dir_path / "final_geometry.xyz"
             try:
                 convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=(
-                        out_dir_path / f"final_geometry{structure_ext}"
-                        if structure_ext is not None
-                        else None
-                    ),
+                    out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
                 )
                 click.echo("[convert] Wrote 'final_geometry' outputs.")
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-            if bool(opt_cfg.get("dump", False)) and needs_structure:
+            if bool(opt_cfg.get("dump", False)) and needs_pdb:
                 all_trj = out_dir_path / "optimization_all.trj"
                 if all_trj.exists():
                     try:
@@ -1520,11 +1509,7 @@ def cli(
                             all_trj,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
-                            out_pdb_path=(
-                                out_dir_path / f"optimization_all{structure_ext}"
-                                if structure_ext is not None
-                                else None
-                            ),
+                            out_pdb_path=out_dir_path / "optimization_all.pdb" if needs_pdb else None,
                         )
                         click.echo("[convert] Wrote 'optimization_all' outputs.")
                     except Exception as e:
@@ -1574,28 +1559,23 @@ def cli(
             optimizer.run()
             click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
 
-            structure_ext = structure_output_suffix(source_path)
-            needs_structure = structure_ext is not None
+            needs_pdb = source_path.suffix.lower() == ".pdb"
             needs_gjf = prepared_input.is_gjf
-            ref_pdb = source_path.resolve() if needs_structure else None
+            ref_pdb = source_path.resolve() if needs_pdb else None
             final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
             try:
                 convert_xyz_like_outputs(
                     final_xyz_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=(
-                        out_dir_path / f"final_geometry{structure_ext}"
-                        if structure_ext is not None
-                        else None
-                    ),
+                    out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
                 )
                 click.echo("[convert] Wrote 'final_geometry' outputs.")
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
-            if bool(opt_cfg.get("dump", False)) and needs_structure:
+            if bool(opt_cfg.get("dump", False)) and needs_pdb:
                 trj_path = out_dir_path / "optimization.trj"
                 if trj_path.exists():
                     try:
@@ -1603,11 +1583,7 @@ def cli(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
-                            out_pdb_path=(
-                                out_dir_path / f"optimization{structure_ext}"
-                                if structure_ext is not None
-                                else None
-                            ),
+                            out_pdb_path=out_dir_path / "optimization.pdb" if needs_pdb else None,
                         )
                         click.echo("[convert] Wrote 'optimization' outputs.")
                     except Exception as e:
@@ -1650,13 +1626,9 @@ def cli(
                 vib_dir = out_dir_path / "vib"
                 vib_dir.mkdir(parents=True, exist_ok=True)
                 out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj"
-                out_pdb = (
-                    vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1{structure_ext}"
-                    if structure_ext is not None
-                    else None
-                )
+                out_pdb = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb"
 
-                ref_pdb = source_path if is_structure_path(source_path) else None
+                ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
                 _write_mode_trj_and_pdb(
                     geometry,
                     v_cart,

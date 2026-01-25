@@ -107,8 +107,6 @@ from pdb2reaction.utils import (
     apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
-    is_structure_path,
-    structure_output_suffix,
 )
 
 
@@ -156,11 +154,7 @@ def _echo_convert_trj_if_exists(
 ) -> None:
     if trj_path.exists():
         try:
-            ref_pdb = (
-                prepared_input.source_path
-                if is_structure_path(prepared_input.source_path)
-                else None
-            )
+            ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == ".pdb" else None
             convert_xyz_like_outputs(
                 trj_path,
                 prepared_input,
@@ -333,7 +327,7 @@ def cli(
 
         # Normalize any existing freeze list and optionally augment with link parents
         merged_freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links_flag and is_structure_path(source_path):
+        if freeze_links_flag and source_path.suffix.lower() == ".pdb":
             try:
                 detected = detect_freeze_links(source_path)
             except Exception as e:
@@ -393,33 +387,20 @@ def cli(
         # 4) Convert trajectories to PDB based on input type
         # --------------------------
         suffix_prefix = irc_cfg.get("prefix", "")
-        structure_ext = structure_output_suffix(prepared_input.source_path)
         _echo_convert_trj_if_exists(
             out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
             prepared_input,
-            out_pdb=(
-                out_dir_path / f"{suffix_prefix}finished_irc{structure_ext}"
-                if structure_ext is not None
-                else None
-            ),
+            out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
         )
         _echo_convert_trj_if_exists(
             out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
             prepared_input,
-            out_pdb=(
-                out_dir_path / f"{suffix_prefix}forward_irc{structure_ext}"
-                if structure_ext is not None
-                else None
-            ),
+            out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
         )
         _echo_convert_trj_if_exists(
             out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
             prepared_input,
-            out_pdb=(
-                out_dir_path / f"{suffix_prefix}backward_irc{structure_ext}"
-                if structure_ext is not None
-                else None
-            ),
+            out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
         )
 
         click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
