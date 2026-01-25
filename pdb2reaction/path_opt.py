@@ -86,7 +86,7 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from .uma_pysis import uma_ase, uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 
 from .utils import (
-    convert_xyz_to_structure,
+    convert_xyz_to_pdb,
     detect_freeze_links,
     detect_freeze_links_safe,
     load_yaml_dict,
@@ -104,8 +104,6 @@ from .utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     PreparedInputStructure,
-    is_structure_path,
-    structure_output_suffix,
 )
 from .opt import (
     LBFGS_KW as _LBFGS_KW,
@@ -216,7 +214,7 @@ def _load_two_endpoints(
         geom_path = prepared.geom_path
         src_path = prepared.source_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and is_structure_path(src_path):
+        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
@@ -232,15 +230,15 @@ def _load_two_endpoints(
     return geoms
 
 
-def _maybe_convert_to_structure(
+def _maybe_convert_to_pdb(
     src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
 ) -> Optional[Path]:
     """
-    Convert an XYZ/TRJ path to PDB/mmCIF using a reference topology when available.
+    Convert an XYZ/TRJ path to PDB using a reference topology when available.
 
     Returns the written path on success; otherwise None. Conversion is skipped when
-    the source does not exist, lacks an XYZ/TRJ suffix, or no reference structure
-    is provided.
+    the source does not exist, lacks an XYZ/TRJ suffix, or no reference PDB is
+    provided.
     """
     try:
         if ref_pdb_path is None:
@@ -249,18 +247,12 @@ def _maybe_convert_to_structure(
         if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
             return None
 
-        structure_ext = structure_output_suffix(ref_pdb_path)
-        if structure_ext is None:
-            return None
-        out_path = out_path if out_path is not None else src_path.with_suffix(structure_ext)
-        convert_xyz_to_structure(src_path, ref_pdb_path, out_path)
+        out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
+        convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)
         click.echo(f"[convert] Wrote '{out_path}'.")
         return out_path
     except Exception as e:
-        click.echo(
-            f"[convert] WARNING: Failed to convert '{src_path}' to structure: {e}",
-            err=True,
-        )
+        click.echo(f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}", err=True)
         return None
 
 
@@ -346,12 +338,12 @@ def _run_dmf_mep(
 
     ref_images = [_geom_to_ase(g) for g in geoms]
     primary_prepared = prepared_inputs[0] if prepared_inputs else None
-    ref_pdb = None
-    structure_ext = None
-    if primary_prepared and is_structure_path(primary_prepared.source_path):
-        ref_pdb = primary_prepared.source_path.resolve()
-        structure_ext = structure_output_suffix(primary_prepared.source_path)
-    needs_structure = ref_pdb is not None
+    ref_pdb = (
+        primary_prepared.source_path.resolve()
+        if primary_prepared and primary_prepared.source_path.suffix.lower() == ".pdb"
+        else None
+    )
+    needs_pdb = ref_pdb is not None
     needs_gjf = bool(primary_prepared and primary_prepared.is_gjf)
 
     charge = int(calc_cfg.get("charge", 0))
@@ -393,14 +385,12 @@ def _run_dmf_mep(
 
     initial_trj = out_dir_path / "dmf_initial.trj"
     ase_write(initial_trj, mxflx_fbenm.images, format="xyz")
-    if primary_prepared is not None and needs_structure:
+    if primary_prepared is not None and needs_pdb:
         convert_xyz_like_outputs(
             initial_trj,
             primary_prepared,
             ref_pdb_path=ref_pdb,
-            out_pdb_path=(
-                initial_trj.with_suffix(structure_ext) if structure_ext is not None else None
-            ),
+            out_pdb_path=initial_trj.with_suffix(".pdb") if needs_pdb else None,
         )
     coefs = mxflx_fbenm.coefs.copy()
 
@@ -448,25 +438,21 @@ def _run_dmf_mep(
 
     final_trj = out_dir_path / "final_geometries.trj"
     _write_ase_trj_with_energy(mxflx.images, energies, final_trj)
-    if primary_prepared is not None and needs_structure:
+    if primary_prepared is not None and needs_pdb:
         convert_xyz_like_outputs(
             final_trj,
             primary_prepared,
             ref_pdb_path=ref_pdb,
-            out_pdb_path=(
-                final_trj.with_suffix(structure_ext) if structure_ext is not None else None
-            ),
+            out_pdb_path=final_trj.with_suffix(".pdb") if needs_pdb else None,
         )
-    if primary_prepared is not None and (needs_structure or needs_gjf):
+    if primary_prepared is not None and (needs_pdb or needs_gjf):
         hei_tmp = out_dir_path / "hei.xyz"
         _write_ase_trj_with_energy([mxflx.images[hei_idx]], [energies[hei_idx]], hei_tmp)
         convert_xyz_like_outputs(
             hei_tmp,
             primary_prepared,
             ref_pdb_path=ref_pdb,
-            out_pdb_path=(
-                out_dir_path / f"hei{structure_ext}" if structure_ext is not None else None
-            ),
+            out_pdb_path=out_dir_path / "hei.pdb" if needs_pdb else None,
             out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
         )
 
@@ -504,23 +490,19 @@ def _optimize_single(
     try:
         final_xyz = Path(opt.final_fn)
         if prepared_input is not None:
-            ref_pdb = None
-            structure_ext = None
-            if is_structure_path(prepared_input.source_path):
-                ref_pdb = prepared_input.source_path.resolve()
-                structure_ext = structure_output_suffix(prepared_input.source_path)
-            needs_structure = ref_pdb is not None
+            ref_pdb = (
+                prepared_input.source_path.resolve()
+                if prepared_input.source_path.suffix.lower() == ".pdb"
+                else None
+            )
+            needs_pdb = ref_pdb is not None
             needs_gjf = prepared_input.is_gjf
-            if needs_structure or needs_gjf:
+            if needs_pdb or needs_gjf:
                 convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
-                    out_pdb_path=(
-                        final_xyz.with_suffix(structure_ext)
-                        if structure_ext is not None
-                        else None
-                    ),
+                    out_pdb_path=final_xyz.with_suffix(".pdb") if needs_pdb else None,
                     out_gjf_path=final_xyz.with_suffix(".gjf") if needs_gjf else None,
                 )
         g_final = geom_loader(final_xyz, coord_type=g.coord_type)
@@ -845,7 +827,7 @@ def cli(
             )
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
-                if is_structure_path(p):
+                if p.suffix.lower() == ".pdb":
                     ref_pdb_for_preopt = p.resolve()
                     break
 
@@ -933,24 +915,20 @@ def cli(
                 click.echo(f"[write] Wrote '{hei_xyz}'.")
                 main_prepared = prepared_inputs[0] if prepared_inputs else None
                 if main_prepared is not None:
-                    ref_pdb = None
-                    structure_ext = None
-                    if is_structure_path(main_prepared.source_path):
-                        ref_pdb = main_prepared.source_path.resolve()
-                        structure_ext = structure_output_suffix(main_prepared.source_path)
-                    needs_structure = ref_pdb is not None
+                    ref_pdb = (
+                        main_prepared.source_path.resolve()
+                        if main_prepared.source_path.suffix.lower() == ".pdb"
+                        else None
+                    )
+                    needs_pdb = ref_pdb is not None
                     needs_gjf = main_prepared.is_gjf
-                    if needs_structure or needs_gjf:
+                    if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
                                 hei_xyz,
                                 main_prepared,
                                 ref_pdb_path=ref_pdb,
-                                out_pdb_path=(
-                                    out_dir_path / f"hei{structure_ext}"
-                                    if structure_ext is not None
-                                    else None
-                                ),
+                                out_pdb_path=out_dir_path / "hei.pdb" if needs_pdb else None,
                                 out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
                             )
                             click.echo("[convert] Wrote 'hei' outputs.")
@@ -1024,24 +1002,16 @@ def cli(
                 click.echo(f"[write] Wrote '{final_trj}'.")
 
             main_prepared = prepared_inputs[0]
-            ref_pdb = None
-            structure_ext = None
-            if is_structure_path(main_prepared.source_path):
-                ref_pdb = main_prepared.source_path.resolve()
-                structure_ext = structure_output_suffix(main_prepared.source_path)
-            needs_structure = ref_pdb is not None
+            needs_pdb = main_prepared.source_path.suffix.lower() == ".pdb"
             needs_gjf = main_prepared.is_gjf
-            if needs_structure or needs_gjf:
+            ref_pdb = main_prepared.source_path.resolve() if needs_pdb else None
+            if needs_pdb or needs_gjf:
                 try:
                     convert_xyz_like_outputs(
                         final_trj,
                         main_prepared,
                         ref_pdb_path=ref_pdb,
-                        out_pdb_path=(
-                            out_dir_path / f"final_geometries{structure_ext}"
-                            if structure_ext is not None
-                            else None
-                        ),
+                        out_pdb_path=out_dir_path / "final_geometries.pdb" if needs_pdb else None,
                         out_gjf_path=out_dir_path / "final_geometries.gjf" if needs_gjf else None,
                     )
                     click.echo("[convert] Wrote 'final_geometries' outputs.")
@@ -1076,24 +1046,16 @@ def cli(
             click.echo(f"[write] Wrote '{hei_xyz}'.")
 
             main_prepared = prepared_inputs[0]
-            ref_pdb = None
-            structure_ext = None
-            if is_structure_path(main_prepared.source_path):
-                ref_pdb = main_prepared.source_path.resolve()
-                structure_ext = structure_output_suffix(main_prepared.source_path)
-            needs_structure = ref_pdb is not None
+            needs_pdb = main_prepared.source_path.suffix.lower() == ".pdb"
             needs_gjf = main_prepared.is_gjf
-            if needs_structure or needs_gjf:
+            ref_pdb = main_prepared.source_path.resolve() if needs_pdb else None
+            if needs_pdb or needs_gjf:
                 try:
                     convert_xyz_like_outputs(
                         hei_xyz,
                         main_prepared,
                         ref_pdb_path=ref_pdb,
-                        out_pdb_path=(
-                            out_dir_path / f"hei{structure_ext}"
-                            if structure_ext is not None
-                            else None
-                        ),
+                        out_pdb_path=out_dir_path / "hei.pdb" if needs_pdb else None,
                         out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
                     )
                     click.echo("[convert] Wrote 'hei' outputs.")

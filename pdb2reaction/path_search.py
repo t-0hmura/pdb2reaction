@@ -178,7 +178,7 @@ from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .path_opt import (
-    _maybe_convert_to_structure,
+    _maybe_convert_to_pdb,
     _optimize_single,
     _run_dmf_mep,
     _write_ase_trj_with_energy,
@@ -209,8 +209,6 @@ from .utils import (
     convert_xyz_like_outputs,
     PreparedInputStructure,
     GjfTemplate,
-    is_structure_path,
-    structure_output_suffix,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
@@ -365,7 +363,7 @@ def _load_two_endpoints(
     geoms = []
     for p in paths:
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and is_structure_path(p):
+        if auto_freeze_links and p.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(p)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
@@ -393,7 +391,7 @@ def _load_structures(
         geom_path = prepared.geom_path
         src_path = prepared.source_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and is_structure_path(src_path):
+        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
             detected = detect_freeze_links_safe(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
@@ -733,24 +731,19 @@ def _run_mep_between(
             geom_path=ref_for_conv,
         )
     if prepared_for_outputs is not None and ref_for_conv is None:
-        if is_structure_path(prepared_for_outputs.source_path):
+        if prepared_for_outputs.source_path.suffix.lower() == ".pdb":
             ref_for_conv = prepared_for_outputs.source_path.resolve()
 
-    structure_ext = structure_output_suffix(ref_for_conv) if ref_for_conv is not None else None
-    needs_structure = ref_for_conv is not None and structure_ext is not None
+    needs_pdb = ref_for_conv is not None
     needs_gjf = bool(prepared_for_outputs and prepared_for_outputs.is_gjf)
 
-    if prepared_for_outputs is not None and (needs_structure or needs_gjf):
+    if prepared_for_outputs is not None and (needs_pdb or needs_gjf):
         try:
             convert_xyz_like_outputs(
                 final_trj,
                 prepared_for_outputs,
                 ref_pdb_path=ref_for_conv,
-                out_pdb_path=(
-                    seg_dir / f"final_geometries{structure_ext}"
-                    if structure_ext is not None
-                    else None
-                ),
+                out_pdb_path=seg_dir / "final_geometries.pdb" if needs_pdb else None,
                 out_gjf_path=seg_dir / "final_geometries.gjf" if needs_gjf else None,
             )
         except Exception as e:
@@ -774,17 +767,13 @@ def _run_mep_between(
             f.write(s_out)
         click.echo(f"[{tag}] Wrote '{hei_xyz}'.")
 
-        if prepared_for_outputs is not None and (needs_structure or needs_gjf):
+        if prepared_for_outputs is not None and (needs_pdb or needs_gjf):
             try:
                 convert_xyz_like_outputs(
                     hei_xyz,
                     prepared_for_outputs,
                     ref_pdb_path=ref_for_conv,
-                    out_pdb_path=(
-                        seg_dir / f"hei{structure_ext}"
-                        if structure_ext is not None
-                        else None
-                    ),
+                    out_pdb_path=seg_dir / "hei.pdb" if needs_pdb else None,
                     out_gjf_path=seg_dir / "hei.gjf" if needs_gjf else None,
                 )
             except Exception as e:
@@ -870,7 +859,7 @@ def _run_dmf_between(
 
     final_trj = seg_dir / "final_geometries.trj"
     _write_ase_trj_with_energy(dmf_res.images, energies, final_trj)
-    _maybe_convert_to_structure(final_trj, ref_pdb_path)
+    _maybe_convert_to_pdb(final_trj, ref_pdb_path)
 
     try:
         run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
@@ -2301,10 +2290,10 @@ def cli(
         for g in geoms:
             g.set_calculator(shared_calc)
 
-        # If any input is a structure file, treat as "structure input" for final outputs.
+        # If any input is PDB, treat as "PDB input" for final output handling.
         ref_pdb_for_segments: Optional[Path] = None
         for p in p_list:
-            if is_structure_path(p):
+            if p.suffix.lower() == ".pdb":
                 ref_pdb_for_segments = p.resolve()
                 break
 
@@ -2445,10 +2434,7 @@ def cli(
         # - Always write 'mep.trj' (XYZ) for intermediate handoff.
         # - If reference PDBs are available, also emit 'mep.pdb' (and GJF when applicable).
         main_prepared = prepared_inputs[0]
-        structure_ext = (
-            structure_output_suffix(ref_pdb_for_segments) if ref_pdb_for_segments else None
-        )
-        needs_structure = structure_ext is not None
+        needs_pdb = ref_pdb_for_segments is not None
         needs_gjf = main_prepared.is_gjf
 
         final_trj = out_dir_path / "mep.trj"
@@ -2461,17 +2447,13 @@ def cli(
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
-        if needs_structure or needs_gjf:
+        if needs_pdb or needs_gjf:
             try:
                 convert_xyz_like_outputs(
                     final_trj,
                     main_prepared,
                     ref_pdb_path=ref_pdb_for_segments,
-                    out_pdb_path=(
-                        out_dir_path / f"mep{structure_ext}"
-                        if structure_ext is not None
-                        else None
-                    ),
+                    out_pdb_path=out_dir_path / "mep.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
                 )
                 click.echo("[convert] Wrote final MEP outputs.")
@@ -2499,17 +2481,13 @@ def cli(
                     seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}.trj"
                     _write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
                     click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
-                    if needs_structure or needs_gjf:
+                    if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
                                 seg_trj,
                                 main_prepared,
                                 ref_pdb_path=ref_pdb_for_segments,
-                                out_pdb_path=(
-                                    out_dir_path / f"mep_seg_{seg_idx:02d}{structure_ext}"
-                                    if structure_ext is not None
-                                    else None
-                                ),
+                                out_pdb_path=out_dir_path / f"mep_seg_{seg_idx:02d}.pdb" if needs_pdb else None,
                                 out_gjf_path=out_dir_path / f"mep_seg_{seg_idx:02d}.gjf" if needs_gjf else None,
                             )
                         except Exception as e:
@@ -2527,17 +2505,13 @@ def cli(
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
                     _write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
                     click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
-                    if needs_structure or needs_gjf:
+                    if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
                                 hei_trj,
                                 main_prepared,
                                 ref_pdb_path=ref_pdb_for_segments,
-                                out_pdb_path=(
-                                    out_dir_path / f"hei_seg_{seg_idx:02d}{structure_ext}"
-                                    if structure_ext is not None
-                                    else None
-                                ),
+                                out_pdb_path=out_dir_path / f"hei_seg_{seg_idx:02d}.pdb" if needs_pdb else None,
                                 out_gjf_path=out_dir_path / f"hei_seg_{seg_idx:02d}.gjf" if needs_gjf else None,
                             )
                         except Exception as e:

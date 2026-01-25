@@ -1,17 +1,17 @@
 # `opt` subcommand
 
 ## Overview
-`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.cif`, `.mmcif`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
+`pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
 
-When the starting structure is a PDB/mmCIF or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb`/`.cif` (structure inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True|False}` (enabled by default). PDB/mmCIF-specific conveniences include:
+When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True|False}` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
-- Output conversion produces `final_geometry.pdb` or `final_geometry.cif` (and the matching trajectory companion when dumping) using the input structure as the topology reference.
+- Output conversion produces `final_geometry.pdb` (and `optimization.pdb` when dumping trajectories) using the input PDB as the topology reference.
 
 A Gaussian `.gjf` template seeds the charge/spin defaults and enables automatic export of the optimized structure as `.gjf` when conversion is enabled.
 
 ## Usage
 ```bash
-pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] -m MULT \
+pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] -m MULT \
                  [--opt-mode light|heavy] [--freeze-links BOOL] \
                  [--dist-freeze '[(i,j,target_A), ...]'] [--one-based {True|False}] \
                  [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
@@ -38,11 +38,11 @@ pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|trj|...} -q CHARGE [--ligand-charge
 | `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_A)` tuples for harmonic restraints. | _None_ |
 | `--one-based {True|False}` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `True` |
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
-| `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB/mmCIF inputs only). | `True` |
+| `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
 | `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
-| `--convert-files {True|False}` | Enable or disable XYZ/TRJ → PDB/mmCIF companions for structure inputs and XYZ → GJF companions for Gaussian templates. | `True` |
+| `--convert-files {True|False}` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | Supply YAML overrides (sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`). | _None_ |
@@ -52,11 +52,9 @@ pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|trj|...} -q CHARGE [--ligand-charge
 out_dir/
 ├─ final_geometry.xyz          # Always written
 ├─ final_geometry.pdb          # Only when the input was a PDB and conversion is enabled
-├─ final_geometry.cif          # Only when the input was mmCIF and conversion is enabled
 ├─ final_geometry.gjf          # When a Gaussian template was detected and conversion is enabled
 ├─ optimization.trj            # Only if dumping is enabled
 ├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs, conversion enabled)
-├─ optimization.cif            # mmCIF conversion of the trajectory (mmCIF inputs, conversion enabled)
 └─ restart*.yml                # Optional restarts when opt.dump_restart is set
 ```
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
