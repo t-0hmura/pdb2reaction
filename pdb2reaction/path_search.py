@@ -544,9 +544,9 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
     assert A.shape == B.shape and A.shape[1] == 3, "Atom counts must match for interpolation."
     atoms = [a for a in gL.atoms]
     coord_type = gL.coord_type
-    faL = getattr(gL, "freeze_atoms", np.array([], dtype=int))
-    faR = getattr(gR, "freeze_atoms", np.array([], dtype=int))
-    freeze_union = sorted(set(map(int, faL)) | set(map(int, faR)))
+    faL = getattr(gL, "freeze_atoms", None)
+    faR = getattr(gR, "freeze_atoms", None)
+    freeze_union = sorted(set(map(int, faL or [])) | set(map(int, faR or [])))
     interps: List[Any] = []
     for k in range(1, n_internal + 1):
         t = k / (n_internal + 1.0)

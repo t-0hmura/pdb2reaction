@@ -124,6 +124,7 @@ from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
 
 import click
 import math
+import re
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
@@ -209,14 +210,30 @@ def merge_freeze_atom_indices(
     Existing entries are preserved, duplicates removed, and the result sorted.
     The updated list is returned.
     """
+
+    def _coerce_freeze_atoms(raw: Any) -> List[int]:
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            tokens = re.findall(r"-?\d+", raw)
+            return [int(tok) for tok in tokens]
+        try:
+            items = list(raw)
+        except TypeError:
+            return []
+        out: List[int] = []
+        for item in items:
+            try:
+                out.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        return out
+
     merged: set[int] = set()
-    base = geom_cfg.get("freeze_atoms", [])
-    if isinstance(base, _Iterable):
-        merged.update(int(i) for i in base)
+    base = geom_cfg.get("freeze_atoms", None)
+    merged.update(_coerce_freeze_atoms(base))
     for seq in indices:
-        if seq is None:
-            continue
-        merged.update(int(i) for i in seq)
+        merged.update(_coerce_freeze_atoms(seq))
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
@@ -1195,18 +1212,20 @@ def detect_freeze_links(pdb_path):
     Returns:
         List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
         to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
-        are present. When the input contains link hydrogens but no other atoms, the list
-        will contain ``-1`` entries to indicate missing parents.
+        are present or if link hydrogens exist without any other atoms.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
     if not lkhs:
         return []
+    if not others:
+        return []
 
     indices = []
     for (x, y, z, line) in lkhs:
         idx, dist = nearest_index((x, y, z), others)
-        indices.append(idx)
+        if idx >= 0:
+            indices.append(idx)
     return indices
 
 
