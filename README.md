@@ -17,7 +17,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 ```
 ---
 
-Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-list(s)`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
+Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
 
 - extracts an **active site** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
@@ -207,7 +207,7 @@ This is the recommended mode when you can generate reasonably spaced intermediat
 
 Use this when you only have **one PDB structure**, but you know which inter‑atomic distances should change along the reaction.
 
-Provide a single `-i` together with `--scan-list(s)`:
+Provide a single `-i` together with `--scan-lists`:
 
 **Minimal example**
 
@@ -223,11 +223,11 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
 
 Key points:
 
-- `--scan-list(s)` describes **staged distance scans** on the extracted cluster model.
+- `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
   - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,  
   - automatically remapped to the cluster-model indices.
-- Supplying one `--scan-list(s)` literal runs a single scan stage; multiple literals run sequential stages. It’s simplest to pass multiple literals after a single `--scan-list(s)`.
+- Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. It’s simplest to pass multiple literals after a single `--scan-lists`.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
 - With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
@@ -238,7 +238,7 @@ This mode is useful for building reaction paths starting from a single structure
 
 ### 3.3 Single‑structure TSOPT‑only mode
 
-Use this when you already have a **transition state candidate** and only want to refine it and proceed following IRC calculation.
+Use this when you already have a **transition state candidate** and only want to refine it and procced following IRC calculation.
 
 Provide exactly one PDB and enable `--tsopt`:
 
@@ -264,7 +264,7 @@ Behavior:
 
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
 
-> **Important:** Single‑input runs require **either** `--scan-list(s)` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
+> **Important:** Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 
 ---
 
@@ -276,7 +276,7 @@ Below are the most commonly used options across workflows.
   Input structures. Interpretation depends on how many you provide:
 
   - **≥ 2 PDBs** → MEP search (GSM by default, DMF with `--mep-mode dmf`) (reactant/intermediates/product).
-  - **1 PDB + `--scan-list(s)`** → staged scan → GSM.
+  - **1 PDB + `--scan-lists`** → staged scan → GSM.
   - **1 PDB + `--tsopt True`** → TSOPT‑only mode.
 
   If `--center/-c` is omitted, cluster extraction is skipped and the **full input structure** is used directly. In this mode, `.xyz` and `.gjf` inputs are also accepted; when using these file formats, omit `--center/-c` and `--ligand-charge`.
@@ -308,9 +308,9 @@ Below are the most commonly used options across workflows.
 - `--mult INT`  
   Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
 
-> If you have charge and multiplicity in a .gjf input, `-q` and `-m` can be omitted.
+> If you have charge and multiplicity in .gjf input, -q and -m can be omitted.
 
-- `--scan-list(s) TEXT...`  
+- `--scan-lists TEXT...`  
   One or more Python‑style lists describing **staged scans** for single‑input runs. A single literal runs one stage; multiple literals run sequential stages. Example:
 
   ```bash
@@ -339,10 +339,8 @@ Below are the most commonly used options across workflows.
 
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
-- `--opt-mode {light|heavy}` (default: light)
-  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Option `light` is recommended.
-- `--opt-mode-post {light|heavy}` (default: heavy)
-  Sets the post-IRC/TSOPT optimizer preset.
+- `--opt-mode (If you have charge and multiplicity in .gjf input, -q and -m can be omitted) | heavy`
+  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Option `light` is recommended.  
 
 - `--hessian-calc-mode Analytical|FiniteDifference`  
   **When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended in `all`, `tsopt`, `freq` and `irc`**

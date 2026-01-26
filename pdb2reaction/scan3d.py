@@ -47,15 +47,15 @@ Description
 - A 3D grid scan driven by harmonic restraints on three inter-atomic distances (d1, d2, d3).
 - Provide exactly one Python-like list
       [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
-  via **--scan-list/--scan-lists**.
+  via **--scan-list**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
     ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
-  always overrides any derived charge. `-m/--multiplicity` specifies the spin multiplicity (2S+1) and defaults to the
-  `.gjf` template value when available, otherwise `1`.
+  always overrides any derived charge.
+  `-m/--multiplicity` specifies the spin multiplicity (2S+1) and defaults to 1 if omitted.
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`, `N3 = ceil(|high3 - low3| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
@@ -157,7 +157,6 @@ from .opt import (
 from .utils import (
     detect_freeze_links_safe,
     pretty_block,
-    collect_option_values,
     format_geom_for_echo,
     format_freeze_atoms_for_echo,
     format_elapsed,
@@ -303,16 +302,11 @@ def _parse_scan_list(
         if isinstance(value, (int, np.integer)):
             idx_val = int(value)
             if one_based:
-                if idx_val < 1:
-                    raise click.BadParameter(
-                        "Atom index must be >= 1 in --scan-list; use --one-based False for 0-based indices."
-                    )
                 idx_val -= 1
-            else:
-                if idx_val < 0:
-                    raise click.BadParameter(
-                        "Atom index must be >= 0 in --scan-list for 0-based indices."
-                    )
+            if idx_val < 0:
+                raise click.BadParameter(
+                    f"Negative atom index after base conversion: {idx_val} (0-based expected)."
+                )
             return idx_val
         if isinstance(value, str):
             if not atom_meta:
@@ -452,7 +446,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 
 @click.command(
     help="3D distance scan with harmonic restraints.",
-    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
     "-i", "--input",
@@ -487,20 +481,17 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "-m", "--multiplicity", "spin",
     type=int,
-    default=None,
-    show_default="GJF template or 1",
+    default=1,
+    show_default=True,
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
-    "--scan-list",
-    "--scan-lists",
-    "scan_list_raw",
+    "--scan-list", "scan_list_raw",
     type=str,
     required=False,
     help=(
         "Python-like list with three quadruples: "
-        "'[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]'. "
-        "This subcommand accepts exactly one list value."
+        "'[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]'."
     ),
 )
 @click.option(
@@ -625,9 +616,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     show_default=False,
     help="Upper bound of color scale for plots (kcal/mol).",
 )
-@click.pass_context
 def cli(
-    ctx: click.Context,
     input_path: Optional[Path],
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -655,15 +644,6 @@ def cli(
 ) -> None:
     from .utils import load_yaml_dict, apply_yaml_overrides
 
-    scan_vals = collect_option_values(sys.argv[1:], ("--scan-list", "--scan-lists"))
-    if scan_vals:
-        scan_list_raw = scan_vals[0] if scan_vals else scan_list_raw
-    if ctx.args:
-        unexpected = [arg for arg in ctx.args if arg not in (scan_vals or [])]
-        if unexpected:
-            raise click.ClickException(f"Unexpected extra argument(s): {' '.join(unexpected)}")
-    if scan_vals and len(scan_vals) != 1:
-        raise click.BadParameter("--scan-list(s) must contain exactly one list for scan3d.")
     set_convert_file_enabled(convert_files)
     prepared_input = None
     geom_input_path = None
@@ -672,7 +652,7 @@ def cli(
         if input_path is None:
             raise click.ClickException("-i/--input is required unless --csv is provided.")
         if scan_list_raw is None:
-            raise click.ClickException("--scan-list(s) is required unless --csv is provided.")
+            raise click.ClickException("--scan-list is required unless --csv is provided.")
         prepared_input = prepare_input_structure(input_path)
         apply_ref_pdb_override(prepared_input, ref_pdb)
         geom_input_path = prepared_input.geom_path

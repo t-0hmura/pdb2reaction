@@ -72,7 +72,7 @@ Pipeline overview
         • a PDB path,
         • residue IDs like ``'123,124'`` or ``'A:123,B:456'`` (insertion codes allowed: ``'123A'`` / ``'A:123A'``),
         • residue names like ``'GPP,MMT'``.
-    - The extractor writes per-input pocket PDBs under ``<out-dir>/pockets/`` as ``pocket_XX_<stem>.pdb``.
+    - The extractor writes per-input pocket PDBs under ``<out-dir>/pockets/`` as ``pocket_<stem>.pdb``.
     - The extractor’s **model #1 total pocket charge** is used as the workflow charge for later stages,
       cast to the nearest integer; if rounding occurs a NOTE is printed.
     - Common extractor knobs: ``--radius``, ``--radius-het2het``, ``--include-H2O``,
@@ -233,8 +233,8 @@ Outputs (& Directory Layout)
   │   ├─ <input1>.pdb
   │   └─ ...
   ├─ pockets/                            # created when extraction (-c/--center) is used
-  │   ├─ pocket_01_<input1_stem>.pdb
-  │   ├─ pocket_02_<input2_stem>.pdb
+  │   ├─ pocket_<input1_stem>.pdb
+  │   ├─ pocket_<input2_stem>.pdb
   │   └─ ...
   ├─ scan/                               # present only in single-structure + scan mode
   │   ├─ stage_01/result.(pdb|xyz|gjf)
@@ -349,7 +349,6 @@ from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
 from .utils import (
     build_energy_diagram,
-    collect_option_values,
     convert_xyz_like_outputs,
     detect_freeze_links_safe,
     format_elapsed,
@@ -387,6 +386,26 @@ def _close_matplotlib_figures() -> None:
 
 def _ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
+
+
+def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
+    """
+    Robustly collect values following a flag that may appear **once** followed by multiple space-separated values,
+    e.g., "-i A B C". This mirrors the bauavior implemented in `path_search.cli`.
+    """
+    vals: List[str] = []
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                vals.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    return vals
 
 
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
@@ -1940,8 +1959,8 @@ def _irc_and_match(
     "--mult",
     "spin",
     type=int,
-    default=None,
-    show_default="GJF template or 1",
+    default=1,
+    show_default=True,
     help="Multiplicity (2S+1).",
 )
 @click.option(
@@ -1978,7 +1997,7 @@ def _irc_and_match(
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Enable transition-state climbing for all GSM segments (bridge segments excluded).",
+    help="Enable transition-state climbing after growth for the **first** segment in each pair.",
 )
 @click.option(
     "--opt-mode",
@@ -2025,7 +2044,7 @@ def _irc_and_match(
     show_default=True,
     help=(
         "If True, run recursive path_search on the full ordered series; if False, run a single-pass "
-        "path-opt GSM/DMF between each adjacent pair and concatenate the segments (no path_search)."
+        "path-opt GSM between each adjacent pair and concatenate the segments (no path_search)."
     ),
 )
 @click.option(
@@ -2206,7 +2225,6 @@ def _irc_and_match(
 )
 @click.option(
     "--scan-lists",
-    "--scan-list",
     "scan_lists_raw",
     type=str,
     multiple=True,
@@ -2215,9 +2233,9 @@ def _irc_and_match(
         "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. A single "
         "literal runs one stage; multiple literals run **sequentially**, each starting from the "
         "prior stage's relaxed structure. "
-        "Example: '[(12,45,1.35)]' --scan-list '[(10,55,2.20),(23,34,1.80)]'. "
-        "You may also pass a single --scan-list/--scan-lists followed by multiple values "
-        "(e.g., '--scan-list \\'[(12,45,1.35)]\\' \\'[(10,55,2.20)]\\''). "
+        "Example: '[(12,45,1.35)]' --scan-lists '[(10,55,2.20),(23,34,1.80)]'. "
+        "You may also pass a single --scan-lists followed by multiple values "
+        "(e.g., '--scan-lists \\'[(12,45,1.35)]\\' \\'[(10,55,2.20)]\\''). "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. For non-PDB single-structure scans, only integer "
         "indices are supported (1-based by default). Stage results feed into the MEP step (path_search or path_opt)."
@@ -2341,8 +2359,8 @@ def cli(
       - with --scan-lists: run staged scan and use stage results as inputs for path_search,
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
 
-    With ``--refine-path True``, the recursive ``path_search`` workflow is used. When ``False``,
-    a single-pass ``path-opt`` (GSM/DMF) is run between each adjacent pair of inputs and the segments are
+    With ``--refine-path True``, the recursive ``path_search`` workflow is used. When ``False`` (default),
+    a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
     set_convert_file_enabled(convert_files)
@@ -2358,7 +2376,7 @@ def cli(
         dump_override_requested = False
 
     argv_all = sys.argv[1:]
-    i_vals = collect_option_values(argv_all, ("-i", "--input"))
+    i_vals = _collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []
         for tok in i_vals:
@@ -2371,7 +2389,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = collect_option_values(argv_all, ("--scan-list", "--scan-lists"))
+    scan_vals = _collect_option_values(argv_all, ("--scan-lists",))
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
@@ -2480,8 +2498,8 @@ def cli(
 
     pocket_outputs: List[Path] = []
     if not skip_extract:
-        for idx, p in enumerate(extract_inputs, start=1):
-            pocket_outputs.append((pockets_dir / f"pocket_{idx:02d}_{p.stem}.pdb").resolve())
+        for p in extract_inputs:
+            pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
 
     q_from_flow: Optional[int] = None
 
@@ -2617,9 +2635,6 @@ def cli(
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
             click.echo(f"[all] Spin multiplicity set from GJF: {spin}")
-        if spin is None:
-            spin = 1
-            click.echo("[all] Spin multiplicity defaulting to 1.")
 
     if charge_override is not None:
         q_int = int(charge_override)
