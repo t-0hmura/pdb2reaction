@@ -483,6 +483,17 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     """
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(name, path)
+    models = list(structure.get_models())
+    if len(models) > 1:
+        logging.warning(
+            "Input '%s' contains %d MODELs; extract supports single-model PDBs only. "
+            "Using first model (%s) and ignoring the rest.",
+            path,
+            len(models),
+            models[0].id,
+        )
+        for model in models[1:]:
+            structure.detach_child(model.id)
     missing_elem = [a for a in structure.get_atoms() if not (getattr(a, "element", "") or "").strip()]
     if missing_elem:
         raise ValueError(
