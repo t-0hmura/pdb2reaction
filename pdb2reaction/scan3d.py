@@ -8,7 +8,7 @@ Usage (CLI)
 -----------
     pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
         [-m MULTIPLICITY] \
-        --scan-list '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]' \
+        --scan-list(s) '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]' \
         [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
@@ -29,17 +29,17 @@ Examples
 --------
     # Minimal example (three distance ranges)
     pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'
+        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'
 
     # LBFGS with inner-path trajectory dumping and 3D energy isosurface plot
     pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
+        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
         --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
         --preopt True --baseline min
 
     # Plot only from an existing surface.csv (skip new energy evaluation)
     pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
+        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
         --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
 
 Description
@@ -47,7 +47,7 @@ Description
 - A 3D grid scan driven by harmonic restraints on three inter-atomic distances (d1, d2, d3).
 - Provide exactly one Python-like list
       [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
-  via **--scan-list**.
+  via **--scan-list(s)**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
     ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
@@ -486,7 +486,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
-    "--scan-list", "scan_list_raw",
+    "--scan-list",
+    "--scan-lists",
+    "scan_list_raw",
     type=str,
     required=False,
     help=(

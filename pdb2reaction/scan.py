@@ -7,7 +7,7 @@ scan — Bond‑length–driven staged scan with harmonic distance restraints an
 Usage (CLI)
 -----------
     pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] \
-        [--scan-lists '[(I,J,TARGET_ANG), ...]' ...] [-m <spin>] \
+        [--scan-list(s) '[(I,J,TARGET_ANG), ...]' ...] [-m <spin>] \
         [--one-based {True|False}] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
@@ -21,14 +21,10 @@ Examples
     pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]'
 
     # Two stages, LBFGS, dumping trajectories
-    pdb2reaction scan -i input.pdb -q 0 \
-        --scan-lists '[(12,45,1.35)]' \
-        --scan-lists '[(10,55,2.20),(23,34,1.80)]' \
+    pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+        '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]' \
         --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode light \
         --preopt True --endopt True
-    # (equivalent) pass multiple stage literals after a single --scan-lists
-    pdb2reaction scan -i input.pdb -q 0 --scan-lists \
-        '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'
 
 
 Description
@@ -39,7 +35,7 @@ the UMA calculator via `uma_pysis` and removes general-purpose handling to reduc
 For PDB inputs, scan tuples can use integer indices or selector strings such as
 ``'TYR,285,CA'`` and ``'MMT,309,C10'`` to reference atoms (resname, resseq, atom).
 For non-PDB inputs, only integer indices are supported.
-If you pass one ``--scan-lists`` literal, the scan runs in a single stage; multiple
+If you pass one ``--scan-list(s)`` literal, the scan runs in a single stage; multiple
 literals are executed as sequential stages, each starting from the previous stage’s
 relaxed final structure.
 
@@ -92,8 +88,7 @@ Notes
 - Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
   `--convert-files {True|False}` toggle (default: enabled).
 - Indexing: (i, j) are 1‑based by default; use `--one-based False` if your tuples are 0‑based.
-- You may repeat ``--scan-lists`` or provide multiple literals after a single ``--scan-lists``.
-  The latter is the intended, most convenient way to define sequential stages.
+- Provide multiple literals after a single ``--scan-list(s)`` to define sequential stages.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
   k converted from eV/Å² to Hartree/Bohr².
 - Performance simplifications:
@@ -287,6 +282,25 @@ def _parse_scan_lists(
     return stages
 
 
+def _collect_scan_list_values(argv: Sequence[str], names: Sequence[str]) -> Tuple[List[str], int]:
+    """Return scan-list literals following a single flag and the number of flag occurrences."""
+    values: List[str] = []
+    flag_count = 0
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            flag_count += 1
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                values.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    return values, flag_count
+
+
 def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
     """
     coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs.
@@ -379,7 +393,7 @@ def _snapshot_geometry(g) -> Any:
 
 @click.command(
     help="Bond-length driven scan with staged harmonic restraints and relaxation.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
 )
 @click.option(
     "-i", "--input",
@@ -413,11 +427,14 @@ def _snapshot_geometry(g) -> Any:
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
-    "--scan-lists", "scan_lists_raw",
-    type=str, multiple=True, required=True,
-    help="Python-like list of (i,j,target) per stage. One literal runs a single stage; "
-         "multiple literals run sequential stages. Prefer a single --scan-lists followed by "
-         "multiple values, e.g. '[(0,1,1.50),(2,3,2.00)]' '[(5,7,1.20)]'.",
+    "--scan-lists",
+    "--scan-list",
+    "scan_lists_raw",
+    type=str,
+    multiple=True,
+    required=False,
+    help="Python-like list of (i,j,target) per stage. Pass a single --scan-list(s) followed by "
+         "multiple literals to run sequential stages, e.g. --scan-lists '[(0,1,1.50)]' '[(5,7,1.20)]'.",
 )
 @click.option("--one-based", "one_based", type=click.BOOL, default=True, show_default=True,
               help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
@@ -471,7 +488,9 @@ def _snapshot_geometry(g) -> Any:
               help="Preoptimize initial structure without bias before the scan.")
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -581,8 +600,19 @@ def cli(
         # ------------------------------------------------------------------
         # 2) Parse scan lists
         # ------------------------------------------------------------------
+        argv_scan = sys.argv[1:]
+        scan_lists_raw_final, scan_flag_count = _collect_scan_list_values(
+            argv_scan, ("--scan-lists", "--scan-list")
+        )
+        if scan_flag_count > 1:
+            raise click.BadParameter(
+                "Use a single --scan-list/--scan-lists followed by multiple stage literals; "
+                "repeated flags are not accepted."
+            )
+        if not scan_lists_raw_final:
+            raise click.BadParameter("--scan-list(s) must be provided at least once.")
         stages = _parse_scan_lists(
-            scan_lists_raw, one_based=one_based, atom_meta=pdb_atom_meta
+            scan_lists_raw_final, one_based=one_based, atom_meta=pdb_atom_meta
         )
         K = len(stages)
         click.echo(f"[scan] Received {K} stage(s).")

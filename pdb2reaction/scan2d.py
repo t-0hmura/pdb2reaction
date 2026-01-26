@@ -7,7 +7,7 @@ scan2d — Two-distance 2D scan with harmonic restraints
 Usage (CLI)
 -----------
     pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
-        --scan-list '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]' \
+        --scan-list(s) '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]' \
         [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
@@ -27,18 +27,18 @@ Examples
 --------
     # Minimal example (two distance ranges)
     pdb2reaction scan2d -i input.pdb -q 0 \
-        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
+        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
 
     # LBFGS with trajectory dumping and PNG + HTML plots
     pdb2reaction scan2d -i input.pdb -q 0 \
-        --scan-list '[(12,45,1.30,3.10),(10,55,1.20,3.20)]' \
+        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20)]' \
         --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
         --preopt True --baseline min
 
 Description
 -----------
 - A 2D grid scan driven by harmonic restraints on two inter-atomic distances (d1, d2).
-- Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
+- Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list(s)**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
     ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
@@ -413,6 +413,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 )
 @click.option(
     "--scan-list",
+    "--scan-lists",
     "scan_list_raw",
     type=str,
     required=True,
