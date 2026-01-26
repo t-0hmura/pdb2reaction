@@ -255,9 +255,9 @@ def _freeze_union(g_ref, g_mob, n_atoms: Optional[int] = None) -> List[int]:
     Union of `freeze_atoms` from `g_ref` and `g_mob` (0-based).
     If `n_atoms` is given, out-of-range indices are removed. Returns [] if empty.
     """
-    fa0 = getattr(g_ref, "freeze_atoms", np.array([], int))
-    fa1 = getattr(g_mob, "freeze_atoms", np.array([], int))
-    cand = sorted(set(int(i) for i in list(fa0) + list(fa1)))
+    fa0 = getattr(g_ref, "freeze_atoms", None)
+    fa1 = getattr(g_mob, "freeze_atoms", None)
+    cand = sorted(set(int(i) for i in list(fa0 or []) + list(fa1 or [])))
     if n_atoms is None:
         return cand
     good = [i for i in cand if 0 <= i < int(n_atoms)]
