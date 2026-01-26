@@ -33,14 +33,14 @@ Description
 - Charge/spin defaults: `-q/--charge` and `-m/--multiplicity` inherit values from `.gjf` templates when provided. For non-`.gjf`
   inputs, omitting `-q/--charge` is allowed only when ``--ligand-charge`` is set: the full complex is treated as an
   enzyme–substrate system and its total charge is derived with ``extract.py``’s residue-aware logic. Otherwise the CLI aborts;
-  spin defaults to 1 when no template is present, and an explicit `-q` overrides any derived charge.
+  multiplicity still defaults to 1 when unspecified, and an explicit `-q` overrides any derived charge.
 
 CLI options
 -----------
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
   - `-q/--charge INT`: Total charge; sets `calc.charge`. Required for non-`.gjf` inputs; `.gjf` templates
     supply defaults when available.
-  - `-m/--multiplicity INT`: Spin multiplicity (2S+1); sets `calc.spin` and defaults to the template multiplicity or `1`.
+  - `-m/--multiplicity INT` (default 1): Spin multiplicity (2S+1); sets `calc.spin` and defaults to the template multiplicity or `1`.
   - `--max-cycles INT`: Max number of IRC steps; sets `irc.max_cycles`.
   - `--step-size FLOAT`: Step length in mass-weighted coordinates; sets `irc.step_length`.
   - `--root INT`: Imaginary mode index for the initial displacement; sets `irc.root`.
@@ -210,15 +210,7 @@ def _echo_convert_trj_if_exists(
     show_default=False,
     help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option(
-    "-m",
-    "--multiplicity",
-    "spin",
-    type=int,
-    default=None,
-    show_default="GJF template or 1",
-    help="Spin multiplicity (2S+1) for the ML region.",
-)
+@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
 @click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
 @click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")

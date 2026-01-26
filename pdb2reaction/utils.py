@@ -123,6 +123,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
 
 import click
+import math
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
@@ -199,29 +200,9 @@ def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = N
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
 
 
-def collect_option_values(argv: _Sequence[str], names: _Sequence[str]) -> List[str]:
-    """
-    Collect values following a flag that may appear once with multiple space-separated values,
-    e.g., ``-i A B C``. Mirrors the sloppy-form behavior used in several CLI entry points.
-    """
-    vals: List[str] = []
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok in names:
-            j = i + 1
-            while j < len(argv) and not argv[j].startswith("-"):
-                vals.append(argv[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return vals
-
-
 def merge_freeze_atom_indices(
     geom_cfg: Dict[str, Any],
-    *indices: _Iterable[int] | str | bytes | None,
+    *indices: _Iterable[int],
 ) -> List[int]:
     """Merge one or more iterables of indices into ``geom_cfg['freeze_atoms']``.
 
@@ -230,19 +211,12 @@ def merge_freeze_atom_indices(
     """
     merged: set[int] = set()
     base = geom_cfg.get("freeze_atoms", [])
-    if isinstance(base, (str, bytes)):
-        text = base.decode() if isinstance(base, bytes) else base
-        merged.update(int(i) for i in re.findall(r"-?\d+", text))
-    elif isinstance(base, _Iterable):
+    if isinstance(base, _Iterable):
         merged.update(int(i) for i in base)
     for seq in indices:
         if seq is None:
             continue
-        if isinstance(seq, (str, bytes)):
-            text = seq.decode() if isinstance(seq, bytes) else seq
-            merged.update(int(i) for i in re.findall(r"-?\d+", text))
-        else:
-            merged.update(int(i) for i in seq)
+        merged.update(int(i) for i in seq)
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
@@ -1221,7 +1195,8 @@ def detect_freeze_links(pdb_path):
     Returns:
         List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
         to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
-        are present. Missing parents are omitted rather than returned as negative indices.
+        are present. When the input contains link hydrogens but no other atoms, the list
+        will contain ``-1`` entries to indicate missing parents.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
@@ -1231,8 +1206,7 @@ def detect_freeze_links(pdb_path):
     indices = []
     for (x, y, z, line) in lkhs:
         idx, dist = nearest_index((x, y, z), others)
-        if idx >= 0:
-            indices.append(idx)
+        indices.append(idx)
     return indices
 
 
