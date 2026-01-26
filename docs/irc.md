@@ -1,7 +1,7 @@
 # `irc` subcommand
 
 ## Overview
-Run EulerPC-based Intrinsic Reaction Coordinate (IRC) integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible.
+Run EulerPC-based Intrinsic Reaction Coordinate (IRC) integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
@@ -10,7 +10,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
                  [--forward True|False] [--backward True|False]
                  [--freeze-links True|False]
                  [--out-dir DIR]
-                 [--convert-files {True|False}]
+                 [--convert-files {True|False}] [--ref-pdb FILE]
                  [--hessian-calc-mode Analytical|FiniteDifference]
                  [--args-yaml FILE]
 ```
@@ -47,6 +47,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--freeze-links BOOL` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | `FiniteDifference` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

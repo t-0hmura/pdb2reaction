@@ -1,7 +1,7 @@
 # `path-search` subcommand
 
 ## Overview
-Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist.
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling PDB/GJF companion generation and full-template merges.
 
 ## Usage
 ```bash
@@ -11,7 +11,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
                          [--opt-mode light|heavy] [--dump BOOL]
                          [--out-dir DIR] [--preopt BOOL]
-                         [--align {True|False}] [--ref-full-pdb FILE ...]
+                         [--align {True|False}] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
                          [--convert-files {True|False}]
                          [--args-yaml FILE]
 ```
@@ -51,6 +51,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--preopt BOOL` | Explicit `True`/`False`. Pre-optimize each endpoint before MEP search (recommended). | `True` |
 | `--align {True|False}` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
+| `--ref-pdb PATH...` | Pocket reference PDBs to use when inputs are XYZ/GJF (one per input; keeps XYZ coordinates). | _None_ |
 
 ## Workflow
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).

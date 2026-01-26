@@ -10,7 +10,7 @@ Usage (CLI)
         [--opt-mode {light|heavy}] \
         [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
         [--out-dir <dir>] [--args-yaml <file>] \
-        [--hessian-calc-mode {Analytical|FiniteDifference}]
+        [--hessian-calc-mode {Analytical|FiniteDifference}] [--ref-pdb <file>]
 
 Examples
 --------
@@ -70,6 +70,8 @@ an active-subspace (partial) Hessian block when `freeze_atoms` are present; fini
 Hessians honor the active subspace. `--hessian-calc-mode` selects Analytical or FiniteDifference.
 
 For PDB inputs, optimization trajectories and the final geometry are also converted to PDB.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
+format-aware PDB/GJF output conversion.
 The final imaginary mode is written as `.pdb` only when the input is PDB (the `.trj` is always written).
 
 Key behaviors and algorithmic notes

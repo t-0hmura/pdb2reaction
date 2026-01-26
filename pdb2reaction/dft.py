@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
         [--func-basis 'FUNC/BASIS'] [--max-cycle <int>] [--conv-tol <hartree>] \
         [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
-        [--convert-files {True|False}] [--args-yaml <file>]
+        [--convert-files {True|False}] [--ref-pdb <file>] [--args-yaml <file>]
 
 Examples
 --------
@@ -31,6 +31,8 @@ Description
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
   The geometry is written back unchanged as input_geometry.xyz.
+- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
+  format-aware PDB/GJF output conversion.
 - Functional/basis specified as 'FUNC/BASIS' via --func-basis (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-svp', 'wb97m-v/def2-tzvpd').
   Names are case-insensitive in PySCF.
 - Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to

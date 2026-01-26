@@ -12,7 +12,7 @@ Usage (CLI)
         [--out-dir <dir>] [--args-yaml <file>] [--temperature <K>] \
         [--pressure <atm>] [--dump {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] \
-        [--convert-files {True|False}]
+        [--convert-files {True|False}] [--ref-pdb <file>]
 
 Examples
 --------
@@ -27,6 +27,8 @@ Description
 - Computes vibrational frequencies and normal modes using the UMA calculator.
 - Supports Partial Hessian Vibrational Analysis (PHVA) when atoms are frozen.
 - Exports animated modes (.trj; and, for PDB inputs, optionally .pdb animations when ``--convert-files`` is enabled) and prints a Gaussian-style thermochemistry summary.
+- For XYZ/GJF inputs, ``--ref-pdb`` supplies a reference PDB topology while keeping XYZ coordinates, enabling
+  format-aware PDB/GJF output conversion.
 - Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); YAML values override CLI.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.

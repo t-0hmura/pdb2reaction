@@ -16,7 +16,7 @@ Usage (CLI)
         [--opt-mode {light,heavy}] \
         [--freeze-links {True|False}] \
         [--dump {True|False}] \
-        [--convert-files {True|False}] \
+        [--convert-files {True|False}] [--ref-pdb FILE] \
         [--out-dir PATH] \
         [--csv PATH] \
         [--args-yaml FILE] \
@@ -51,6 +51,8 @@ Description
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
     ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
+  - For XYZ/GJF inputs, ``--ref-pdb`` supplies a reference PDB topology while keeping the XYZ coordinates,
+    enabling format-aware PDB/GJF output conversion.
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``

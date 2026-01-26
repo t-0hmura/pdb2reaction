@@ -6,6 +6,8 @@
 When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True|False}` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
 - Output conversion produces `final_geometry.pdb` (and `optimization.pdb` when dumping trajectories) using the input PDB as the topology reference.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
+enabling format-aware PDB/GJF output conversion.
 
 A Gaussian `.gjf` template seeds the charge/spin defaults and enables automatic export of the optimized structure as `.gjf` when conversion is enabled.
 
@@ -16,7 +18,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'
                  [--dist-freeze '[(i,j,target_A), ...]'] [--one-based {True|False}] \
                  [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
                  [--max-cycles N] [--thresh PRESET] [--args-yaml FILE] \
-                 [--convert-files {True|False}]
+                 [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ## Workflow
@@ -43,6 +45,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'
 | `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
 | `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
 | `--convert-files {True|False}` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | Supply YAML overrides (sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`). | _None_ |

@@ -10,6 +10,8 @@ with `--max-step-size`, reorders the values so that those nearest to the
 appropriate restraints active; unbiased energies are recorded so you can compare
 points directly. A precomputed `surface.csv` can also be visualized without
 rerunning the scan.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
+enabling format-aware PDB/GJF output conversion.
 
 > If you want to adjust the plot for better visibility, we recommend adding the
 option to load the CSV after the scan finishes and changing `--zmin` and `--zmax`.
@@ -18,7 +20,7 @@ option to load the CSV after the scan finishes and changing `--zmin` and `--zmax
 ```bash
 pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                     --scan-list(s) '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options] \
-                    [--convert-files {True|False}]
+                    [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -82,6 +84,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
 | `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). | _None_ |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |

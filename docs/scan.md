@@ -11,12 +11,14 @@ to disk.
 When `--scan-list(s)` is supplied once the scan runs in a single stage; supplying
 multiple literals runs sequential stages, each starting from the previous stage’s
 relaxed result.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
+enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                   --scan-list(s) '[(i,j,targetÅ), ...]' [options]
-                  [--convert-files {True|False}]
+                  [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -79,6 +81,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
