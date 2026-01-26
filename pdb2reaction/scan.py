@@ -11,7 +11,7 @@ Usage (CLI)
         [--one-based {True|False}] [--max-step-size <float>] \
         [--bias-k <float>] [--relax-max-cycles <int>] \
         [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dump {True|False}] [--convert-files {True|False}] \
+        [--dump {True|False}] [--convert-files {True|False}] [--ref-pdb <file>] \
         [--out-dir <dir>] [--thresh <preset>] [--args-yaml <file>] \
         [--preopt {True|False}] [--endopt {True|False}]
 
@@ -38,6 +38,8 @@ For non-PDB inputs, only integer indices are supported.
 If you pass one ``--scan-list(s)`` literal, the scan runs in a single stage; multiple
 literals are executed as sequential stages, each starting from the previous stage’s
 relaxed final structure.
+Use ``--ref-pdb`` with XYZ/GJF inputs to load a reference PDB topology while keeping
+the XYZ coordinates, enabling format-aware PDB/GJF output conversions.
 
 Scheduling
   - For scan tuples [(i, j, target_Å)], compute the Å‑space displacement Δ = target − current_distance_Å.

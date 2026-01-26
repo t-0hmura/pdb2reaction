@@ -10,12 +10,14 @@ and written alongside a ready-to-plot CSV/figure bundle. Energies reported in
 `surface.csv` are always evaluated **without bias** so you can compare grid
 points directly. Optimizations use LBFGS when `--opt-mode light` (default)
 or RFOptimizer when `--opt-mode heavy`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
+enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                     --scan-list(s) '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options]
-                    [--convert-files {True|False}]
+                    [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -79,6 +81,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump BOOL` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |

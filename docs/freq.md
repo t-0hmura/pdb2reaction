@@ -8,6 +8,8 @@ when the optional `thermoanalysis` package is installed, and can emit a YAML sum
 `--dump True`. Configuration starts from defaults, applies CLI switches, and finally
 applies YAML overrides (`geom`, `calc`, `freq`) with highest precedence, so the same
 template can drive both standalone runs and workflows launched by other subcommands.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
+enabling format-aware PDB output conversion.
 
 ## Usage
 ```bash
@@ -17,7 +19,7 @@ pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numbe
                   [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \
                   [--temperature K] [--pressure atm] [--dump {True|False}] \
                   [--hessian-calc-mode Analytical|FiniteDifference] \
-                  [--convert-files {True|False}]
+                  [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -73,6 +75,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
 
 ## Outputs

@@ -13,6 +13,8 @@ Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom
 settings from YAML, and always write the final imaginary mode in `.trj`. When
 `--convert-files` is enabled (default), PDB inputs mirror trajectories into `.pdb`
 companions and Gaussian templates receive multi-geometry `.gjf` exports.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
+enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
@@ -21,7 +23,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numb
                     [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
                     [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference] \
-                    [--convert-files {True|False}]
+                    [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -93,6 +95,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to both light (dimer loop) and heavy (post-RSIRFO) modes. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
 
 ## Outputs (& directory layout)

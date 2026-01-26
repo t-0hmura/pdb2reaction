@@ -9,7 +9,7 @@ Usage (CLI)
     pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
-        [--freeze-links {True|False}] [--convert-files {True|False}] \
+        [--freeze-links {True|False}] [--convert-files {True|False}] [--ref-pdb <file>] \
         [--out-dir <dir>] [--hessian-calc-mode {Analytical|FiniteDifference}] \
         [--args-yaml <file>]
 
@@ -27,6 +27,8 @@ Description
 - Purpose: Run Intrinsic Reaction Coordinate (IRC) calculations using the EulerPC predictor–corrector integrator.
 - Inputs: Any structure readable by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, ...).
   If the input is `.pdb`, trajectory files written by the run are additionally converted to PDB (when conversion is enabled).
+- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
+  format-aware PDB/GJF output conversion.
 - Configuration model: Only the CLI options listed above are accepted. All other parameters
   (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
   Final configuration precedence: built-in defaults → CLI → YAML.
@@ -48,6 +50,7 @@ CLI options
   - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); sets `irc.backward`.
   - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
   - `--convert-files {True|False}` (default `True`): Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.
+  - `--ref-pdb PATH`: Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).
   - `--out-dir STR` (default `./result_irc/`): Output directory; sets `irc.out_dir`.
   - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; sets `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.

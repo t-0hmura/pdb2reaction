@@ -12,7 +12,7 @@ Usage (CLI)
         [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
         [--workers <int>] [--workers-per-node <int>] \
         [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
-        [--convert-files {True|False}]
+        [--convert-files {True|False}] [--ref-pdb <file>]
 
 Examples
 --------
@@ -31,6 +31,8 @@ Description
 - Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest). (If the same key is set in both `opt` and `lbfgs`/`rfo`, the `opt` value takes precedence.)
 - PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
   `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
+- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
+  format-aware PDB/GJF output conversion.
 - Format mirroring can be toggled with `--convert-files {True|False}` (default: enabled); when a Gaussian template
   is present, `.gjf` companions are emitted alongside `.xyz` and `.pdb` outputs.
 - Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those
