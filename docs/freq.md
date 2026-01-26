@@ -89,10 +89,11 @@ out_dir/ (default: ./result_freq/)
 - Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
   and dumps details when `--dump True`.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
-- Charge/spin inherit `.gjf` metadata when available. If `-q` is omitted but
-  `--ligand-charge` is provided, the input is treated as an enzyme–substrate
-  complex and `extract.py`’s charge summary computes the total charge; explicit
-  `-q` still overrides. Otherwise charge defaults to `0` and multiplicity to `1`.
+- Charge/spin inherit `.gjf` metadata when available. For non-`.gjf` inputs,
+  `-q` is required unless `--ligand-charge` is provided; when `--ligand-charge`
+  is set, the input is treated as an enzyme–substrate complex and `extract.py`’s
+  charge summary computes the total charge; explicit `-q` still overrides. When a
+  `.gjf` template omits charge/spin, defaults are `0` and `1` respectively.
   Override them explicitly to ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)

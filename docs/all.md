@@ -64,8 +64,8 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
    - Skips the MEP/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
-- With extraction: pocket charge = inhereted extractor charge calculated from `--ligand-charge`; spin comes from `--mult` (default 1).
-- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge from the supplied substrate charge(s); otherwise the charge written in `.gjf` or the default is 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
+- With extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the pocket charge is derived from extractor logic. When a `.gjf` template is available, charge/spin inherit from it; otherwise non-`.gjf` inputs require `-q`. Spin precedence is explicit `--mult`, then `.gjf`, then 1.
+- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge from the supplied substrate charge(s). Otherwise non-`.gjf` inputs require `-q`, while `.gjf` templates may supply charge/spin. Spin precedence is explicit `--mult`, then `.gjf`, then 1.
 
 ### Input expectations
 - Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
@@ -88,11 +88,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex. | `None` |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
+| `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | GJF template or `1` |
 | `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs (reused by scan/tsopt/freq). | `True` |
 | `--max-nodes INT` | MEP internal nodes per segment (GSM string images or DMF images). | `10` |
 | `--max-cycles INT` | MEP maximum optimization cycles (GSM/DMF). | `300` |
-| `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
+| `--climb BOOLEAN` | Enable climb for all GSM segments (bridge segments excluded). | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--dump BOOLEAN` | Dump MEP (GSM/DMF) and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
 | `--convert-files {True|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
@@ -104,20 +104,20 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy + optional DFT//UMA diagrams. | `False` |
 | `--dft-engine [gpu\|cpu\|auto]` | Preferred backend for the DFT stage (`auto` tries GPU then CPU). | `gpu` |
 | `--tsopt-max-cycles INT` | Override `tsopt --max-cycles` for each refinement. | _None_ |
-| `--tsopt-out-dir PATH` | Custom tsopt subdirectory (resolved against `<out-dir>` when relative). | _None_ |
+| `--tsopt-out-dir PATH` | Custom tsopt subdirectory (resolved against the default stage directory when relative). | _None_ |
 | `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
 | `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
 | `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
 | `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
 | `--freq-sort [value\|abs]` | Override freq mode sorting behavior. | _None_ |
-| `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | `298.15` |
-| `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | `1.0` |
+| `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | _None_ (uses freq default: `298.15` K) |
+| `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | _None_ (uses freq default: `1.0` atm) |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
 | `--dft-func-basis TEXT` | Override `dft --func-basis`. | _None_ |
 | `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
-| `--scan-lists TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; a single literal runs one stage, multiple literals run sequential stages. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'` and are remapped internally. | _None_ |
+| `--scan-list(s) TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; a single literal runs one stage, multiple literals run sequential stages. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'` and are remapped internally. | _None_ |
 | `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
 | `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |

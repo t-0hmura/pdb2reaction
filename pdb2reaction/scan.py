@@ -68,8 +68,8 @@ Optional optimizations
 Charge/spin resolution
   - `-q/--charge` is required unless the input is a `.gjf` template **or** ``--ligand-charge`` is provided.
     When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate
-    system and the total charge is inferred using ``extract.py``’s residue-aware logic. Multiplicity defaults to 1
-    when omitted, and an explicit `-q` overrides any derived charge.
+    system and the total charge is inferred using ``extract.py``’s residue-aware logic. Multiplicity inherits from
+    the `.gjf` template when available, otherwise defaults to 1, and an explicit `-q` overrides any derived charge.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -157,6 +157,7 @@ from .utils import (
     resolve_atom_spec_index,
 )
 from .bond_changes import compare_structures, summarize_changes
+from .cli_utils import collect_option_values
 
 
 # --------------------------------------------------------------------------------------
@@ -231,7 +232,7 @@ def _parse_scan_lists(
 ) -> List[List[Tuple[int, int, float]]]:
     """
     Parse multiple Python-like list strings:
-      ['[(0,1,1.5), (2,3,2.0)]', '[(5,7,1.2)]', ...]
+      ['[(1,2,1.5), (3,4,2.0)]', '[(6,8,1.2)]', ...]
     Returns: [[(i,j,t), ...], [(i,j,t), ...], ...] with 0-based indices.
     """
     if not args:
@@ -243,8 +244,13 @@ def _parse_scan_lists(
             if one_based:
                 idx_val -= 1
             if idx_val < 0:
+                if one_based:
+                    raise click.BadParameter(
+                        f"Atom index must be >= 1 in --scan-lists #{stage_idx}. "
+                        "Use --one-based False for 0-based indices."
+                    )
                 raise click.BadParameter(
-                    f"Negative atom index in --scan-lists #{stage_idx}: {idx_val} (0-based expected)."
+                    f"Atom index must be >= 0 in --scan-lists #{stage_idx}."
                 )
             return idx_val
         if isinstance(value, str):
@@ -379,7 +385,7 @@ def _snapshot_geometry(g) -> Any:
 
 @click.command(
     help="Bond-length driven scan with staged harmonic restraints and relaxation.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
 )
 @click.option(
     "-i", "--input",
@@ -411,13 +417,19 @@ def _snapshot_geometry(g) -> Any:
     show_default=False,
     help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
-    "--scan-lists", "scan_lists_raw",
+    "-m", "--multiplicity", "spin",
+    type=int,
+    default=None,
+    show_default="GJF template or 1",
+    help="Spin multiplicity (2S+1) for the ML region.",
+)
+@click.option(
+    "--scan-list", "--scan-lists", "scan_lists_raw",
     type=str, multiple=True, required=True,
     help="Python-like list of (i,j,target) per stage. One literal runs a single stage; "
          "multiple literals run sequential stages. Prefer a single --scan-lists followed by "
-         "multiple values, e.g. '[(0,1,1.50),(2,3,2.00)]' '[(5,7,1.20)]'.",
+         "multiple values, e.g. '[(1,2,1.50),(3,4,2.00)]' '[(6,8,1.20)]'.",
 )
 @click.option("--one-based", "one_based", type=click.BOOL, default=True, show_default=True,
               help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
@@ -471,7 +483,9 @@ def _snapshot_geometry(g) -> Any:
               help="Preoptimize initial structure without bias before the scan.")
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -494,6 +508,14 @@ def cli(
     preopt: bool,
     endopt: bool,
 ) -> None:
+    argv_all = sys.argv[1:]
+    scan_vals = collect_option_values(argv_all, ("--scan-list", "--scan-lists"))
+    if scan_vals:
+        scan_lists_raw = tuple(scan_vals)
+    if ctx.args:
+        if not scan_vals or any(arg not in scan_vals for arg in ctx.args):
+            raise click.BadParameter(f"Unexpected extra arguments: {' '.join(ctx.args)}")
+
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     apply_ref_pdb_override(prepared_input, ref_pdb)

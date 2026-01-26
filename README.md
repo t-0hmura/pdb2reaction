@@ -238,7 +238,7 @@ This mode is useful for building reaction paths starting from a single structure
 
 ### 3.3 Single‑structure TSOPT‑only mode
 
-Use this when you already have a **transition state candidate** and only want to refine it and procced following IRC calculation.
+Use this when you already have a **transition state candidate** and only want to refine it and proceed following IRC calculation.
 
 Provide exactly one PDB and enable `--tsopt`:
 
@@ -308,7 +308,7 @@ Below are the most commonly used options across workflows.
 - `--mult INT`  
   Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
 
-> If you have charge and multiplicity in .gjf input, -q and -m can be omitted.
+> If the `.gjf` input already includes charge and multiplicity, you can omit `-q` and `-m`.
 
 - `--scan-lists TEXT...`  
   One or more Python‑style lists describing **staged scans** for single‑input runs. A single literal runs one stage; multiple literals run sequential stages. Example:
@@ -339,8 +339,11 @@ Below are the most commonly used options across workflows.
 
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
-- `--opt-mode (If you have charge and multiplicity in .gjf input, -q and -m can be omitted) | heavy`
+- `--opt-mode {light|heavy}` (default: light)  
   Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Option `light` is recommended.  
+
+- `--opt-mode-post {light|heavy}` (default: heavy)  
+  Post-processing optimizer for downstream TS/MEP refinement stages.
 
 - `--hessian-calc-mode Analytical|FiniteDifference`  
   **When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended in `all`, `tsopt`, `freq` and `irc`**

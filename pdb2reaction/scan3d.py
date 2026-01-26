@@ -55,7 +55,8 @@ Description
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
   always overrides any derived charge.
-  `-m/--multiplicity` specifies the spin multiplicity (2S+1) and defaults to 1 if omitted.
+  `-m/--multiplicity` specifies the spin multiplicity (2S+1) and inherits from a `.gjf`
+  template when available, otherwise defaults to 1.
 - Step schedule (h = `--max-step-size` in Å):
   - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`, `N3 = ceil(|high3 - low3| / h)`.
   - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
@@ -154,6 +155,7 @@ from .opt import (
     LBFGS_KW as _LBFGS_KW,
     RFO_KW as _RFO_KW,
 )
+from .cli_utils import collect_option_values
 from .utils import (
     detect_freeze_links_safe,
     pretty_block,
@@ -304,9 +306,11 @@ def _parse_scan_list(
             if one_based:
                 idx_val -= 1
             if idx_val < 0:
-                raise click.BadParameter(
-                    f"Negative atom index after base conversion: {idx_val} (0-based expected)."
-                )
+                if one_based:
+                    raise click.BadParameter(
+                        "Atom index must be >= 1 in --scan-list. Use --one-based False for 0-based indices."
+                    )
+                raise click.BadParameter("Atom index must be >= 0 in --scan-list.")
             return idx_val
         if isinstance(value, str):
             if not atom_meta:
@@ -446,7 +450,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 
 @click.command(
     help="3D distance scan with harmonic restraints.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
 )
 @click.option(
     "-i", "--input",
@@ -481,12 +485,12 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 @click.option(
     "-m", "--multiplicity", "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default="GJF template or 1",
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
-    "--scan-list", "scan_list_raw",
+    "--scan-list", "--scan-lists", "scan_list_raw",
     type=str,
     required=False,
     help=(
@@ -616,7 +620,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     show_default=False,
     help="Upper bound of color scale for plots (kcal/mol).",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Optional[Path],
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -642,6 +648,16 @@ def cli(
     zmin: Optional[float],
     zmax: Optional[float],
 ) -> None:
+    argv_all = sys.argv[1:]
+    scan_vals = collect_option_values(argv_all, ("--scan-list", "--scan-lists"))
+    if scan_vals:
+        scan_list_raw = scan_vals[0]
+        if len(scan_vals) != 1:
+            raise click.BadParameter("--scan-list(s) must contain exactly one scan definition for scan3d.")
+    if ctx.args:
+        if not scan_vals or any(arg not in scan_vals for arg in ctx.args):
+            raise click.BadParameter(f"Unexpected extra arguments: {' '.join(ctx.args)}")
+
     from .utils import load_yaml_dict, apply_yaml_overrides
 
     set_convert_file_enabled(convert_files)

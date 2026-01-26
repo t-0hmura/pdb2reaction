@@ -64,8 +64,8 @@ Notes
 - Charge/spin resolution: -q/--charge and -m/--multiplicity may inherit values from .gjf templates when present.
   For non-.gjf inputs, omitting -q/--charge is allowed only when ``--ligand-charge`` is supplied; the full complex
   is treated as an enzyme–substrate system and the total charge is derived with the same logic as ``extract.py``.
-  Otherwise the CLI aborts. Explicit ``-q`` overrides any derived charge.
-  Spin defaults to 1 when unspecified. Provide explicit values whenever possible to enforce the intended state
+  Otherwise the CLI aborts. Explicit ``-q`` overrides any derived charge. When a `.gjf` template omits charge/spin,
+  defaults are `0` and `1`. Provide explicit values whenever possible to enforce the intended state
   (multiplicity > 1 selects UKS).
 - YAML overrides: --args-yaml points to a file with top-level keys "dft" (func, basis, conv_tol,
   max_cycle, grid_level, verbose, out_dir, or combined func_basis) and "geom" (passed to
@@ -382,7 +382,15 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     show_default=False,
     help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
+@click.option(
+    "-m",
+    "--multiplicity",
+    "spin",
+    type=int,
+    default=None,
+    show_default="GJF template or 1",
+    help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).",
+)
 @click.option(
     "--convert-files",
     "convert_files",

@@ -44,7 +44,7 @@ Key options (YAML keys → meaning; defaults)
   - `freeze_atoms`: list[int], 0‑based indices to freeze (default: []).
 
 - Calculator (`calc`, UMA via `uma_pysis`):
-  - `charge` / `spin`: by default taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity` (default `1`)
+  - `charge` / `spin`: by default taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity`
     and reconciled with any `.gjf` template via `resolve_charge_spin_or_raise`.
   - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
   - `device`: "auto" (GPU if available) | "cuda" | "cpu".
@@ -499,8 +499,8 @@ def _maybe_convert_outputs(
     "--multiplicity",
     "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default="GJF template or 1",
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(

@@ -41,10 +41,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 
 ## Workflow
 - **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
-  template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
-  treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
-  charge; explicit `-q` still overrides. Otherwise `-q/--charge` is required and multiplicity
-  defaults to `1`. Override them explicitly to ensure UMA runs on the intended state.
+  template values. For non-`.gjf` inputs, `-q` is required unless `--ligand-charge` is provided;
+  when `--ligand-charge` is set, the structure is treated as an enzyme–substrate complex and
+  `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. When a
+  `.gjf` template omits charge/spin, defaults are `0` and `1` respectively. Override them explicitly
+  to ensure UMA runs on the intended state.
 - **Geometry loading & freeze-links**: structures are read via
   `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links True` finds link hydrogens
   and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
@@ -76,7 +77,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata or `--ligand-charge` supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/`--ligand-charge` |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |

@@ -48,7 +48,8 @@ Outputs
 Notes
 -----
 - Only element columns are modified; coordinates, occupancies, B-factors, charges, altlocs,
-  insertion codes, and record ordering stay untouched.
+  and insertion codes are preserved. In practice record ordering is usually retained, but
+  Biopython reserialization may reformat or reorder records in some cases.
 - Supports ATOM and HETATM records across all models/chains/residues.
 - Depends on Biopython (`Bio.PDB`) and Click; deuterium labels map to hydrogen; selenium (`SE*`) and
   halogens are recognized automatically.

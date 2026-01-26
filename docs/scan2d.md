@@ -66,11 +66,11 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template > 0). Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `-q, --charge INT` | Total charge. Overrides `--ligand-charge` when both are set. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
-| `--scan-list TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `--scan-list(s) TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
@@ -113,13 +113,15 @@ out_dir/ (default: ./result_scan2d/)
   trust radii; Optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
   `surface.csv` in downstream fitting or visualization scripts.
+- `--scan-list` and `--scan-lists` are accepted as aliases, but scan2d requires
+  exactly one scan definition (multiple values are rejected).
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
   PDB inputs, keeping extracted pockets rigid.
-- Charge inherits Gaussian template metadata when available. If `-q` is omitted
-  but `--ligand-charge` is provided, the full structure is treated as an
-  enzyme–substrate complex and `extract.py`’s charge summary computes the total
-  charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and
-  spin to `1`.
+- Charge inherits Gaussian template metadata when available. For non-`.gjf`
+  inputs, `-q` is required unless `--ligand-charge` is provided; when `--ligand-charge`
+  is set, the full structure is treated as an enzyme–substrate complex and `extract.py`’s
+  charge summary computes the total charge; explicit `-q` still overrides. When a `.gjf`
+  template omits charge/spin, defaults are `0` and `1` respectively.
 
 ## YAML configuration (`--args-yaml`)
 A minimal example (extend with the same keys documented in [`opt`](opt.md#yaml-

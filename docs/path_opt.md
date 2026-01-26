@@ -1,7 +1,7 @@
 # `path-opt` subcommand
 
 ## Overview
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
 
 ## Usage
 ```bash
@@ -23,7 +23,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
-- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. When both are omitted, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
+- **Charge/spin**: CLI overrides `.gjf` template metadata. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided; when `--ligand-charge` is set, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge (explicit `-q` still overrides). When a `.gjf` template is used, charge/multiplicity inherit from it when present; otherwise charge defaults to `0` and spin defaults to `1`. Always set them explicitly for correct states.
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
 - **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.

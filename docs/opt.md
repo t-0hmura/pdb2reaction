@@ -31,7 +31,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template that already encodes charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template that already encodes charge or `--ligand-charge` supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/`--ligand-charge` |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |

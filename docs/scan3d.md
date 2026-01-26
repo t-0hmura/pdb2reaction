@@ -42,9 +42,10 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 ## Workflow
 1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
    embedded Gaussian templates, and optionally run an unbiased preoptimization
-   when `--preopt True`. If `-q` is omitted but `--ligand-charge` is provided, the
-   structure is treated as an enzyme–substrate complex and `extract.py`’s charge
-   summary derives the total charge before scanning.
+   when `--preopt True`. For non-`.gjf` inputs, `-q` is required unless
+   `--ligand-charge` is provided; when `--ligand-charge` is set, the structure is
+   treated as an enzyme–substrate complex and `extract.py`’s charge summary
+   derives the total charge before scanning.
 2. Parse the single `--scan-list` literal (default 1-based indices unless
    `--one-based False` is passed) into three quadruples. For PDB inputs, each
    atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
@@ -69,11 +70,11 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template > 0). Overrides `--ligand-charge` when both are set. | Required when not in template |
+| `-q, --charge INT` | Total charge. Overrides `--ligand-charge` when both are set. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
-| `--scan-list TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `.gjf` template value or `1` |
+| `--scan-list(s) TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
@@ -148,6 +149,8 @@ out_dir/ (default: ./result_scan3d/)
   `HarmonicBiasCalculator` as the 1D/2D scans.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
   trust radii; optimizer scratch files live under temporary directories.
+- `--scan-list` and `--scan-lists` are accepted as aliases, but scan3d requires
+  exactly one scan definition (multiple values are rejected).
 - `--baseline` defaults to the global minimum; `--baseline first` anchors the
   `(i,j,k)=(0,0,0)` grid point when present.
 - 3D visualization uses RBF interpolation on a 50×50×50 grid with

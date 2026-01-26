@@ -113,7 +113,7 @@ out_dir/ (default: ./result_tsopt/)
 
 Notes
 -----
-- **Charge/spin**: `-q/--charge` and `-m/--mult` inherit `.gjf` template values when the input
+- **Charge/spin**: `-q/--charge` and `-m/--multiplicity` inherit `.gjf` template values when the input
   is `.gjf`; for non-`.gjf` inputs, omitting `-q/--charge` is allowed only when ``--ligand-charge`` is
   provided. In that case the full complex is treated as an enzyme–substrate system and the total charge is
   inferred using ``extract.py``’s residue-aware logic. Otherwise the CLI aborts. Multiplicity still defaults
@@ -1279,7 +1279,15 @@ RSIRFO_KW.update({
     show_default=False,
     help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option(
+    "-m",
+    "--multiplicity",
+    "spin",
+    type=int,
+    default=None,
+    show_default="GJF template or 1",
+    help="Spin multiplicity (2S+1) for the ML region.",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(

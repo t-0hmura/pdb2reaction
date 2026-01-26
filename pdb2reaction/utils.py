@@ -123,7 +123,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
 
 import click
-import math
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
@@ -209,14 +208,25 @@ def merge_freeze_atom_indices(
     Existing entries are preserved, duplicates removed, and the result sorted.
     The updated list is returned.
     """
+    def _iter_indices(value: Any) -> List[int]:
+        if value is None:
+            return []
+        if isinstance(value, (str, bytes)):
+            text = value.decode() if isinstance(value, bytes) else value
+            return [int(m) for m in re.findall(r"-?\d+", text)]
+        try:
+            items = list(value)
+        except TypeError:
+            return []
+        return [int(i) for i in items]
+
     merged: set[int] = set()
     base = geom_cfg.get("freeze_atoms", [])
-    if isinstance(base, _Iterable):
-        merged.update(int(i) for i in base)
+    for idx in _iter_indices(base):
+        merged.add(idx)
     for seq in indices:
-        if seq is None:
-            continue
-        merged.update(int(i) for i in seq)
+        for idx in _iter_indices(seq):
+            merged.add(idx)
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
@@ -1195,8 +1205,7 @@ def detect_freeze_links(pdb_path):
     Returns:
         List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
         to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
-        are present. When the input contains link hydrogens but no other atoms, the list
-        will contain ``-1`` entries to indicate missing parents.
+        are present. Missing parents are skipped rather than returning negative indices.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
@@ -1206,7 +1215,8 @@ def detect_freeze_links(pdb_path):
     indices = []
     for (x, y, z, line) in lkhs:
         idx, dist = nearest_index((x, y, z), others)
-        indices.append(idx)
+        if idx >= 0:
+            indices.append(idx)
     return indices
 
 

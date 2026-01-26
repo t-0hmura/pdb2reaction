@@ -72,7 +72,8 @@ Pipeline overview
         • a PDB path,
         • residue IDs like ``'123,124'`` or ``'A:123,B:456'`` (insertion codes allowed: ``'123A'`` / ``'A:123A'``),
         • residue names like ``'GPP,MMT'``.
-    - The extractor writes per-input pocket PDBs under ``<out-dir>/pockets/`` as ``pocket_<stem>.pdb``.
+    - The extractor writes per-input pocket PDBs under ``<out-dir>/pockets/`` as
+      ``pocket_<index>_<stem>.pdb`` to avoid name collisions.
     - The extractor’s **model #1 total pocket charge** is used as the workflow charge for later stages,
       cast to the nearest integer; if rounding occurs a NOTE is printed.
     - Common extractor knobs: ``--radius``, ``--radius-het2het``, ``--include-H2O``,
@@ -190,10 +191,10 @@ Charge handling
       1) if ``--ligand-charge`` is provided **and** ``-q`` is omitted, the full input is treated as an
          enzyme–substrate complex and the total system charge is inferred using the same residue-aware
          logic as ``extract.py`` (``--ligand-charge`` may be numeric or a residue→charge mapping);
-      2) else, if the first input is ``.gjf``, its charge is used;
-      3) else default is **0**.
+      2) else, if the first input is ``.gjf``, its charge is used (defaulting to **0** if omitted in the template);
+      3) else, ``-q`` is required for non-``.gjf`` inputs.
   - Spin precedence when extraction is skipped:
-      explicit ``--mult`` > GJF multiplicity (if available) > default.
+      explicit ``--mult`` > GJF multiplicity (if available) > default (1).
 
 Inputs
 ------
@@ -233,8 +234,8 @@ Outputs (& Directory Layout)
   │   ├─ <input1>.pdb
   │   └─ ...
   ├─ pockets/                            # created when extraction (-c/--center) is used
-  │   ├─ pocket_<input1_stem>.pdb
-  │   ├─ pocket_<input2_stem>.pdb
+  │   ├─ pocket_<index>_<input1_stem>.pdb
+  │   ├─ pocket_<index>_<input2_stem>.pdb
   │   └─ ...
   ├─ scan/                               # present only in single-structure + scan mode
   │   ├─ stage_01/result.(pdb|xyz|gjf)
@@ -366,6 +367,7 @@ from .utils import (
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
 from . import irc as _irc_cli
+from .cli_utils import collect_option_values
 
 
 # -----------------------------
@@ -388,24 +390,6 @@ def _ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
 
-def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
-    """
-    Robustly collect values following a flag that may appear **once** followed by multiple space-separated values,
-    e.g., "-i A B C". This mirrors the bauavior implemented in `path_search.cli`.
-    """
-    vals: List[str] = []
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok in names:
-            j = i + 1
-            while j < len(argv) and not argv[j].startswith("-"):
-                vals.append(argv[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return vals
 
 
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
@@ -1959,8 +1943,8 @@ def _irc_and_match(
     "--mult",
     "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default="GJF template or 1",
     help="Multiplicity (2S+1).",
 )
 @click.option(
@@ -1997,7 +1981,7 @@ def _irc_and_match(
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Enable transition-state climbing after growth for the **first** segment in each pair.",
+    help="Enable climb for all GSM segments (bridge segments excluded).",
 )
 @click.option(
     "--opt-mode",
@@ -2224,6 +2208,7 @@ def _irc_and_match(
     help="Preferred DFT backend: GPU (default), CPU, or auto (try GPU then CPU).",
 )
 @click.option(
+    "--scan-list",
     "--scan-lists",
     "scan_lists_raw",
     type=str,
@@ -2359,8 +2344,8 @@ def cli(
       - with --scan-lists: run staged scan and use stage results as inputs for path_search,
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
 
-    With ``--refine-path True``, the recursive ``path_search`` workflow is used. When ``False`` (default),
-    a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
+    With ``--refine-path True`` (default), the recursive ``path_search`` workflow is used. When ``False``,
+    a single-pass ``path-opt`` (GSM/DMF) is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
     set_convert_file_enabled(convert_files)
@@ -2376,7 +2361,7 @@ def cli(
         dump_override_requested = False
 
     argv_all = sys.argv[1:]
-    i_vals = _collect_option_values(argv_all, ("-i", "--input"))
+    i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []
         for tok in i_vals:
@@ -2389,7 +2374,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = _collect_option_values(argv_all, ("--scan-lists",))
+    scan_vals = collect_option_values(argv_all, ("--scan-list", "--scan-lists"))
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
@@ -2498,8 +2483,8 @@ def cli(
 
     pocket_outputs: List[Path] = []
     if not skip_extract:
-        for p in extract_inputs:
-            pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
+        for idx, p in enumerate(extract_inputs, start=1):
+            pocket_outputs.append((pockets_dir / f"pocket_{idx}_{p.stem}.pdb").resolve())
 
     q_from_flow: Optional[int] = None
 
