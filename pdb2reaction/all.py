@@ -2138,7 +2138,7 @@ def _irc_and_match(
     type=click.BOOL,
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in tsopt (--opt-mode light only); False forces flatten_max_iter=0.",
+    help="Enable the extra-imaginary-mode flattening loop in tsopt (light: dimer loop, heavy: post-RSIRFO); False forces flatten_max_iter=0.",
 )
 @click.option(
     "--freq-out-dir",
