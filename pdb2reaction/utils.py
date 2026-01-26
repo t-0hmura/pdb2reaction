@@ -81,14 +81,16 @@ Description
     are found in the XYZ.
 
 - **Link-freezing helpers**
-  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from
-    link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns
-    (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
+  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating non‑`LKH` atoms (as “others”)
+    from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns
+    (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` where `others` includes the 0‑based atom
+    index for the first MODEL (or full file if no MODEL records are present).
   - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`;
-    returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf`).
-  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/
-    `HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms
-    (“others”). Returns an empty list if no link hydrogens are present.
+    returns `(index, distance)` where `index` is the full 0‑based atom index or `-1` if `pool` is empty
+    (distance will be `inf`).
+  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other
+    `ATOM`/`HETATM` records and return the corresponding 0‑based indices in the full atom order (matching
+    geom loading). Returns an empty list if no link hydrogens are present.
   - `detect_freeze_links_safe(pdb_path)`: Wrapper that catches unexpected parser failures, prints a
     `[freeze-links]` warning, and always returns a list (possibly empty).
 
@@ -1014,25 +1016,49 @@ def parse_pdb_coords(pdb_path):
 
     Returns:
         A tuple (others, lkhs) where:
-            - others: list of tuples (x, y, z, line) for all atoms except the 'HL' atom
-              of residue 'LKH'.
-            - lkhs: list of tuples (x, y, z, line) for atoms where residue name is 'LKH'
-              and atom name is 'HL'.
+            - others: list of tuples (index, x, y, z, line) for all atoms except the
+              'HL' atom of residue 'LKH'. ``index`` is the 0-based position in the
+              atom sequence as loaded from the *first* MODEL (or the full file if no
+              MODEL records are present).
+            - lkhs: list of tuples (x, y, z, line) for atoms where residue name is
+              'LKH' and atom name is 'HL' in the same MODEL selection.
 
     Notes
     -----
         - Coordinates are read from standard PDB columns:
           X: columns 31–38, Y: 39–46, Z: 47–54 (1-based indexing).
+        - If multiple MODEL blocks are present, only the first model is considered,
+          matching typical geom_loader behavior.
     """
     with open(pdb_path, "r") as f:
         lines = f.readlines()
 
     others = []
     lkhs = []
+    model_seen = False
+    in_first_model = True
+    atom_index = 0
     for line in lines:
+        if line.startswith("MODEL"):
+            if not model_seen:
+                model_seen = True
+                in_first_model = True
+            else:
+                in_first_model = False
+            continue
+        if line.startswith("ENDMDL"):
+            if model_seen and in_first_model:
+                break
+            continue
+        if model_seen and not in_first_model:
+            continue
         if not (line.startswith("ATOM") or line.startswith("HETATM")):
             continue
-        name    = line[12:16].strip()
+
+        current_index = atom_index
+        atom_index += 1
+
+        name = line[12:16].strip()
         resname = line[17:20].strip()
         try:
             x = float(line[30:38])
@@ -1044,7 +1070,7 @@ def parse_pdb_coords(pdb_path):
         if resname == "LKH" and name == "HL":
             lkhs.append((x, y, z, line))
         else:
-            others.append((x, y, z, line))
+            others.append((current_index, x, y, z, line))
     return others, lkhs
 
 
@@ -1053,7 +1079,7 @@ def nearest_index(point, pool):
 
     Args:
         point: Tuple (x, y, z) representing the query coordinate.
-        pool: Iterable of tuples (x, y, z, line) to search.
+        pool: Iterable of tuples (index, x, y, z, line) to search.
 
     Returns:
         A tuple (index, distance) where:
@@ -1063,11 +1089,11 @@ def nearest_index(point, pool):
     x, y, z = point
     best_i = -1
     best_d2 = float("inf")
-    for i, (a, b, c, _) in enumerate(pool):
+    for atom_index, a, b, c, _ in pool:
         d2 = (a - x) ** 2 + (b - y) ** 2 + (c - z) ** 2
         if d2 < best_d2:
             best_d2 = d2
-            best_i = i
+            best_i = atom_index
     return best_i, math.sqrt(best_d2)
 
 
@@ -1204,15 +1230,16 @@ def detect_freeze_links(pdb_path):
     """Identify link-parent atom indices for 'LKH'/'HL' link hydrogens.
 
     For each 'HL' atom in residue 'LKH', find the nearest atom among all other
-    ATOM/HETATM records and return the indices of those nearest neighbors.
+    ATOM/HETATM records and return the indices of those nearest neighbors in the
+    same atom ordering used by geometry loading (first MODEL if present).
 
     Args:
         pdb_path: Path to the input PDB file.
 
     Returns:
-        List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
-        to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
-        are present or if link hydrogens exist without any other atoms.
+        List of 0-based indices into the full atom sequence (including any link H atoms)
+        corresponding to the nearest neighbors (link parents). Returns an empty list if
+        no LKH/HL atoms are present or if link hydrogens exist without any other atoms.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
