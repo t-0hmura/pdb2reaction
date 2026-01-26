@@ -41,10 +41,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 
 ## Workflow
 - **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
-  template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
-  treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
-  charge; explicit `-q` still overrides. Otherwise `-q/--charge` is required and multiplicity
-  defaults to `1`. Override them explicitly to ensure UMA runs on the intended state.
+  template values. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge`
+  is provided (then `extract.py` derives the total charge); explicit `-q` still overrides.
+  Spin defaults to `1` when no template is present. Override them explicitly to ensure UMA
+  runs on the intended state.
 - **Geometry loading & freeze-links**: structures are read via
   `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links True` finds link hydrogens
   and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
@@ -79,7 +79,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. Overrides `--ligand-charge` when both are set. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | GJF template or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |

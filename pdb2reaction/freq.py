@@ -543,7 +543,15 @@ THERMO_KW = {
     show_default=False,
     help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option(
+    "-m",
+    "--multiplicity",
+    "spin",
+    type=int,
+    default=None,
+    show_default="GJF template or 1",
+    help="Spin multiplicity (2S+1) for the ML region.",
+)
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(

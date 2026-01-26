@@ -27,7 +27,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## Workflow
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. If the source is `.pdb`, EulerPC trajectories are automatically converted to PDB using the original topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens.
-2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the structure is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and multiplicity to `1`. Always set them explicitly to remain on the intended PES.
+2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (in which case `extract.py`’s charge summary derives the total charge); explicit `-q` still overrides. Spin defaults to `1` when no template is present. Always set them explicitly to remain on the intended PES.
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
 4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, for PDB inputs, mirrored to `.pdb`. Optional HDF5 dumps capture per-step frames when `dump_every` > 0.
 
@@ -38,7 +38,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `-q, --charge INT` | Total charge; overrides `calc.charge`. Required unless the input is a `.gjf` template with charge metadata. Overrides `--ligand-charge` when both are set. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | GJF template or `1` |
 | `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | _None_ (use YAML/default `125`) |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | _None_ (default `0.10`) |
 | `--root INT` | Imaginary-mode index for the initial displacement; overrides `irc.root`. | _None_ (default `0`) |
@@ -65,7 +65,7 @@ out_dir/ (default: ./result_irc/)
 - CLI booleans (`--forward`, `--backward`) must be spelled out (`True`/`False`) to be merged into YAML when desired.
 - UMA is reused throughout the IRC; aggressive `step_length` values can destabilise EulerPC.
 - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
-- Charge/spin inherit `.gjf` metadata when possible. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and multiplicity to `1`. Override them explicitly for non-standard states.
+- Charge/spin inherit `.gjf` metadata when possible. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (then `extract.py` derives the total charge); explicit `-q` still overrides. Spin defaults to `1` when no template is present. Override them explicitly for non-standard states.
 - `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
 
 ## YAML configuration (`--args-yaml`)

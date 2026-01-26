@@ -58,10 +58,10 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
+| `-q, --charge INT` | Total charge. Required unless a `.gjf` template or `--ligand-charge` supplies it. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | GJF template or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
 | `--max-write INT` | Number of modes to export. | `10` |
 | `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
@@ -89,11 +89,11 @@ out_dir/ (default: ./result_freq/)
 - Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
   and dumps details when `--dump True`.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
-- Charge/spin inherit `.gjf` metadata when available. If `-q` is omitted but
-  `--ligand-charge` is provided, the input is treated as an enzyme–substrate
-  complex and `extract.py`’s charge summary computes the total charge; explicit
-  `-q` still overrides. Otherwise charge defaults to `0` and multiplicity to `1`.
-  Override them explicitly to ensure the intended state.
+- Charge/spin inherit `.gjf` metadata when available. For non-`.gjf` inputs,
+  `-q/--charge` is required unless `--ligand-charge` is provided (then
+  `extract.py` derives the total charge); explicit `-q` still overrides. Spin
+  defaults to `1` when no template is present. Override them explicitly to
+  ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; YAML values override both defaults and CLI switches (highest

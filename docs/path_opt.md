@@ -1,7 +1,7 @@
 # `path-opt` subcommand
 
 ## Overview
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
 
 ## Usage
 ```bash
@@ -23,7 +23,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
-- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. When both are omitted, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
+- **Charge/spin**: CLI overrides `.gjf` template metadata. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (in which case `extract.py`’s charge summary derives the total charge). Explicit `-q` still overrides. Spin uses the `.gjf` template when present; otherwise it defaults to `1`.
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
 - **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.
@@ -36,7 +36,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `-q, --charge INT` | Total charge (`calc.charge`). Required unless the input is a `.gjf` template that already encodes charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex even without pocket extraction. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
+| `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | GJF template or `1` |
 | `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
 | `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |

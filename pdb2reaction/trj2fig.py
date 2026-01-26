@@ -88,7 +88,7 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
     Extract Hartree energies from the second-line comment of each XYZ frame.
 
     The first decimal number found on the comment line is used
-    (scientific notation/exponents are not parsed).
+    (supports scientific notation with E/D exponents).
     """
     energies: List[float] = []
     with open(fname, encoding="utf-8") as fh:
@@ -98,10 +98,10 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
             except ValueError:  # reached a non-XYZ header
                 break
             comment = fh.readline().strip()
-            m = re.search(r"(-?\d+(?:\.\d+)?)", comment)
+            m = re.search(r"(-?\d+(?:\.\d+)?(?:[eEdD][+-]?\d+)?)", comment)
             if not m:
                 raise RuntimeError(f"Energy not found in comment: {comment}")
-            energies.append(float(m.group(1)))
+            energies.append(float(m.group(1).replace("D", "E").replace("d", "E")))
             for _ in range(nat):  # skip coordinates
                 fh.readline()
     if not energies:
