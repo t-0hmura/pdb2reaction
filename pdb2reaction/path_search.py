@@ -1649,9 +1649,7 @@ def _merge_pair_to_full(pair_images: List[Any],
     else:
         seg_idx_seq = [0] * (M - start_k)
 
-    for kk, k in enumerate(range(M)):
-        if k < start_k:
-            continue
+    for kk, k in enumerate(range(start_k, M)):
         tfrac = 0.0 if M == 1 else (k / (M - 1.0))
 
         C = (1.0 - tfrac) * coordsA_aligned + tfrac * coordsB_aligned
