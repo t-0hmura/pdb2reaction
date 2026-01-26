@@ -52,7 +52,8 @@ Transition-state optimization with two modes:
   *If `root != 0`, the specified root is used only to seed the initial dimer direction; the
   algorithm then follows the most negative mode (`root = 0`) on subsequent updates.*
 
-- **heavy**: RS-I-RFO Hessian-based TS optimizer.
+- **heavy**: RS-I-RFO Hessian-based TS optimizer with an optional post-optimization
+  flatten loop when extra imaginary modes are detected.
 
 The CLI `--opt-mode` accepts two modes:
 `light` maps to the Hessian Dimer workflow, and `heavy` selects RS-I-RFO.
@@ -82,8 +83,8 @@ Key behaviors and algorithmic notes
   rotation (TR) projection reduces GPU memory use. This respects `freeze_atoms`. A heavy
   clone-based TR self-check is disabled to conserve VRAM.
 
-- **Flatten loop (light mode)**: when enabled (``--flatten-imag-mode``), one exact active-subspace
-  Hessian is evaluated at the start of the flatten loop. Each iteration:
+  - **Flatten loop (light mode)**: when enabled (``--flatten-imag-mode``), one exact active-subspace
+    Hessian is evaluated at the start of the flatten loop. Each iteration:
     * estimate imaginary modes using the current active Hessian,
     * select only **spatially separated** extra imaginary modes (using representative atoms
       and a distance cutoff) and perform a mass-scaled flatten step in those modes,
@@ -93,6 +94,10 @@ Key behaviors and algorithmic notes
     * recompute an exact Hessian at the end of the dimer segment for the next iteration.
   Continue until only one imaginary mode remains, then compute a final exact Hessian for
   frequency analysis.
+
+- **Flatten loop (heavy mode)**: when enabled (``--flatten-imag-mode``) and more than one
+  imaginary mode remains after RS-I-RFO convergence, additional flatten iterations are
+  applied with RS-I-RFO re-optimization between flatten steps.
 
 - **UMA integration**: `freeze_atoms` are propagated to UMA. Finite-difference Hessians honor
   the active subspace. UMA defaults to returning a partial (active) Hessian when applicable.
@@ -418,6 +423,144 @@ def _embed_active_vector(vec_act: torch.Tensor,
     m = torch.as_tensor(mask_dof, device=device, dtype=torch.bool)
     full[m] = vec_act
     return full
+
+
+def _representative_atoms_for_mode(mode_vec: torch.Tensor, flatten_k: int) -> np.ndarray:
+    """
+    Return indices of atoms with the largest displacements for a given mode.
+    """
+    vec = mode_vec.view(-1, 3)
+    norms = torch.linalg.norm(vec, dim=1)
+    k = min(int(flatten_k), vec.shape[0])
+    if k <= 0:
+        return np.zeros(0, dtype=int)
+    topk = torch.topk(norms, k=k, largest=True)
+    return topk.indices.detach().cpu().numpy()
+
+
+def _select_flatten_targets_for_geom(
+    freqs_cm: np.ndarray,
+    modes: torch.Tensor,
+    coords_bohr: np.ndarray,
+    neg_freq_thresh_cm: float,
+    root: int,
+    flatten_sep_cutoff: float,
+    flatten_k: int,
+) -> List[int]:
+    """
+    Select a subset of imaginary modes to flatten for a geometry.
+    """
+    neg_idx_all = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
+    if len(neg_idx_all) <= 1:
+        return []
+
+    order = np.argsort(freqs_cm[neg_idx_all])
+    sorted_neg = neg_idx_all[order]
+    root_clamped = max(0, min(int(root), len(order) - 1))
+    primary_idx = sorted_neg[root_clamped]
+    candidates = [int(i) for i in sorted_neg if int(i) != int(primary_idx)]
+    if not candidates:
+        return []
+
+    coords_ang = torch.as_tensor(
+        coords_bohr.reshape(-1, 3) * BOHR2ANG,
+        dtype=modes.dtype,
+        device=modes.device,
+    )
+
+    targets: List[int] = []
+    reps_list: List[np.ndarray] = []
+
+    for idx in candidates:
+        rep = _representative_atoms_for_mode(modes[idx], flatten_k)
+        if rep.size == 0:
+            continue
+        rep_coords = coords_ang[rep]
+        if not reps_list:
+            targets.append(idx)
+            reps_list.append(rep)
+            continue
+
+        accept = True
+        for prev_rep in reps_list:
+            prev_coords = coords_ang[prev_rep]
+            dmat = torch.cdist(rep_coords, prev_coords)
+            min_dist = float(torch.min(dmat).item())
+            if min_dist < float(flatten_sep_cutoff):
+                accept = False
+                break
+        if accept:
+            targets.append(idx)
+            reps_list.append(rep)
+
+    return targets
+
+
+def _flatten_once_with_modes_for_geom(
+    geom,
+    masses_amu: np.ndarray,
+    uma_kwargs: dict,
+    freqs_cm: np.ndarray,
+    modes: torch.Tensor,
+    neg_freq_thresh_cm: float,
+    flatten_amp_ang: float,
+    flatten_sep_cutoff: float,
+    flatten_k: int,
+    root: int,
+) -> bool:
+    """
+    Flatten extra imaginary modes for a geometry (single pass).
+    """
+    neg_idx_all = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
+    if len(neg_idx_all) <= 1:
+        return False
+
+    targets = _select_flatten_targets_for_geom(
+        freqs_cm,
+        modes,
+        geom.cart_coords,
+        neg_freq_thresh_cm,
+        root,
+        flatten_sep_cutoff,
+        flatten_k,
+    )
+    if not targets:
+        return False
+
+    mass_scale = np.sqrt(12.011 / masses_amu)[:, None]
+    amp_bohr = float(flatten_amp_ang) / BOHR2ANG
+    E_ref = _calc_energy(geom, uma_kwargs)
+
+    for idx in targets:
+        v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)
+        m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
+        v_cart = v_mw / np.sqrt(m3)
+        v_cart /= np.linalg.norm(v_cart)
+
+        disp = amp_bohr * mass_scale * v_cart
+        ref = geom.cart_coords.reshape(-1, 3)
+
+        plus = ref + disp
+        minus = ref - disp
+
+        geom.coords = plus.reshape(-1)
+        E_plus = _calc_energy(geom, uma_kwargs)
+
+        geom.coords = minus.reshape(-1)
+        E_minus = _calc_energy(geom, uma_kwargs)
+
+        use_plus = E_plus <= E_minus
+        geom.coords = (plus if use_plus else minus).reshape(-1)
+        E_keep = E_plus if use_plus else E_minus
+        delta_e = E_keep - E_ref
+        print(
+            f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 "
+            f"E_disp={E_keep:.8f} Ha \u0394E={delta_e:+.8f} Ha"
+        )
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return True
 
 
 def _mw_tr_project_active_inplace(H: torch.Tensor,
@@ -1303,7 +1446,7 @@ RSIRFO_KW.update({
     type=click.BOOL,
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in --opt-mode light (sets flatten_max_iter; False forces 0).",
+    help="Enable the extra-imaginary-mode flattening loop (light: dimer loop, heavy: post-RSIRFO; False forces flatten_max_iter=0).",
 )
 @click.option(
     "--opt-mode",
@@ -1558,11 +1701,84 @@ def cli(
             click.echo("\n=== TS optimization (RS-I-RFO) started ===\n")
             optimizer.run()
             click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
+            last_optimizer = optimizer
+
+            # --- RSIRFO: count imaginary modes and optional flatten loop ---
+            geometry.set_calculator(None)
+            uma_kwargs_for_heavy = dict(calc_cfg)
+            uma_kwargs_for_heavy["out_hess_torch"] = True
+            device = _torch_device(calc_cfg.get("device", "auto"))
+
+            def _attach_rsirfo_calc() -> None:
+                try:
+                    geometry.set_calculator(calc_builder_or_instance())
+                except TypeError:
+                    geometry.set_calculator(calc_builder_or_instance)
+
+            def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
+                H = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
+                freqs_local, modes_local = _frequencies_cm_and_modes(
+                    H,
+                    geometry.atomic_numbers,
+                    geometry.cart_coords.reshape(-1, 3),
+                    device,
+                    freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None,
+                )
+                del H
+                return freqs_local, modes_local
+
+            freqs_cm, modes = _calc_freqs_and_modes()
+
+            neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
+            neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
+            n_imag = int(np.sum(neg_mask))
+            ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
+            click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
+
+            flatten_max_iter = int(simple_cfg.get("flatten_max_iter", 0))
+            if flatten_max_iter > 0 and n_imag > 1:
+                click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
+                masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
+                roots = rs_args.get("roots", [0])
+                main_root = int(roots[0]) if roots else 0
+                for it in range(flatten_max_iter):
+                    click.echo(f"[flatten] RSIRFO iteration {it + 1}/{flatten_max_iter}")
+                    did_flatten = _flatten_once_with_modes_for_geom(
+                        geometry,
+                        masses_amu,
+                        uma_kwargs_for_heavy,
+                        freqs_cm,
+                        modes,
+                        neg_freq_thresh_cm,
+                        float(simple_cfg.get("flatten_amp_ang", 0.10)),
+                        float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
+                        int(simple_cfg.get("flatten_k", 10)),
+                        main_root,
+                    )
+                    if not did_flatten:
+                        click.echo("[flatten] No eligible modes to flatten; stopping.")
+                        break
+
+                    _attach_rsirfo_calc()
+                    optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
+                    click.echo("\n=== TS optimization (RS-I-RFO) restarted ===\n")
+                    optimizer.run()
+                    click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
+                    last_optimizer = optimizer
+                    geometry.set_calculator(None)
+
+                    freqs_cm, modes = _calc_freqs_and_modes()
+                    neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
+                    n_imag = int(np.sum(neg_mask))
+                    ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
+                    click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
+                    if n_imag <= 1:
+                        break
 
             needs_pdb = source_path.suffix.lower() == ".pdb"
             needs_gjf = prepared_input.is_gjf
             ref_pdb = source_path.resolve() if needs_pdb else None
-            final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
+            final_xyz_path = last_optimizer.final_fn if isinstance(last_optimizer.final_fn, Path) else Path(last_optimizer.final_fn)
             try:
                 convert_xyz_like_outputs(
                     final_xyz_path,
@@ -1592,22 +1808,6 @@ def cli(
                     click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
 
             # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
-            geometry.set_calculator(None)
-            uma_kwargs_for_heavy = dict(calc_cfg)
-            uma_kwargs_for_heavy["out_hess_torch"] = True
-            device = _torch_device(calc_cfg.get("device", "auto"))
-
-            H = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
-            freqs_cm, modes = _frequencies_cm_and_modes(
-                H,
-                geometry.atomic_numbers,
-                geometry.cart_coords.reshape(-1, 3),
-                device,
-                freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None,
-            )
-
-            # Use configurable neg_freq_thresh_cm (same default as light mode)
-            neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
             neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
             if len(neg_idx) == 0:
                 click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)

@@ -6,7 +6,8 @@
 - **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
   optional memory-conscious flatten loop (disabled by default) to remove surplus
   imaginary modes, and PHVA-aware Hessian updates for the active degrees of freedom.
-- **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards.
+- **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards, plus an
+  optional post-optimization flatten loop when extra imaginary modes remain.
 
 Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
 settings from YAML, and always write the final imaginary mode in `.trj`. When
@@ -67,6 +68,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
     follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
   R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
+  When `--flatten-imag-mode` is enabled and more than one imaginary mode remains after
+  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
+  imaginary mode remains or the flatten iteration cap is reached.
 - **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
   and mirrored to `.pdb`/`.gjf` when conversion is enabled. When the input was PDB, the optimization
   trajectory and final geometry are also converted to PDB via the input template; Gaussian templates
@@ -86,7 +90,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). | `True` |
+| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to both light (dimer loop) and heavy (post-RSIRFO) modes. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
