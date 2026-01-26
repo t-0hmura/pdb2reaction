@@ -49,7 +49,7 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` (recommended for non-`.gjf` inputs; otherwise defaults to 0) and `-m/--multiplicity`
+- Charge/spin: `-q/--charge` (required unless the input is `.gjf` or `--ligand-charge` is supplied) and `-m/--multiplicity`
   are reconciled with any `.gjf` template values: explicit CLI options win. When ``-q`` is omitted but ``--ligand-charge`` is set,
   the full complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware
   logic. If neither `-q` nor `--ligand-charge` is supplied, the charge falls back to 0; set it explicitly to avoid unphysical
@@ -567,8 +567,8 @@ def _optimize_single(
     "--multiplicity",
     "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default="GJF template or 1",
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(

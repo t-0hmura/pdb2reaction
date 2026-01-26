@@ -8,14 +8,14 @@ are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light,
 or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
 run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
-When `--scan-lists` is supplied once the scan runs in a single stage; supplying
+When `--scan-list(s)` is supplied once the scan runs in a single stage; supplying
 multiple literals runs sequential stages, each starting from the previous stage’s
 relaxed result.
 
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                  --scan-lists '[(i,j,targetÅ), ...]' [options]
+                  --scan-list(s) '[(i,j,targetÅ), ...]' [options]
                   [--convert-files {True|False}]
 ```
 
@@ -39,13 +39,13 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 
 ## Workflow
 1. Load the structure through `geom_loader`, resolving charge/spin from the CLI
-   overrides, the embedded Gaussian template (if present), or defaults. If `-q`
-   is omitted but `--ligand-charge` is provided, the input is treated as an
-   enzyme–substrate complex and `extract.py`’s charge summary derives the total
-   charge before any scans.
+   overrides and the embedded Gaussian template (if present). For non-`.gjf`
+   inputs, `-q/--charge` is required unless `--ligand-charge` is provided (then
+   `extract.py` derives the total charge). Spin defaults to `1` when no template
+   is present.
 2. Optionally run an unbiased preoptimization (`--preopt True`) before any
    biasing so the starting point is relaxed.
-3. For each stage literal supplied via `--scan-lists`, parse and normalize the
+3. For each stage literal supplied via `--scan-list(s)`, parse and normalize the
    `(i, j)` indices (1-based by default). When the input is a PDB, each entry
    may be either an integer index or an atom selector string like `'TYR,285,CA'`;
    selector fields can be separated by spaces, commas, slashes, backticks, or
@@ -66,11 +66,11 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template > 0). When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
+| `-q, --charge INT` | Total charge. Required unless a `.gjf` template or `--ligand-charge` supplies it. | Required when not in template |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
-| `--scan-lists TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1. | GJF template or `1` |
+| `--scan-list(s) TEXT` | Repeatable Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True|False}` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
@@ -118,19 +118,18 @@ out_dir/ (default: ./result_scan/)
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
-- `--scan-lists` may be repeated; each literal becomes one stage. Tuples must
+- `--scan-list(s)` may be repeated; each literal becomes one stage. Tuples must
   have positive targets. Atom indices are normalized to 0-based internally. For
   PDB inputs, `i`/`j` can be selector strings with flexible delimiters
   (space/comma/slash/backtick/backslash) and unordered tokens.
-- You can provide multiple literals after a single `--scan-lists` flag (recommended)
+- You can provide multiple literals after a single `--scan-list(s)` flag (recommended)
   instead of repeating the flag; both forms produce sequential stages.
 - `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
   atoms in PDB files so pockets stay rigid.
-- Charge and spin inherit Gaussian template metadata when available. If `-q` is
-  omitted but `--ligand-charge` is provided, the full structure is treated as an
-  enzyme–substrate complex and `extract.py`’s charge summary computes the total
-  charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and
-  spin to `1`.
+- Charge and spin inherit Gaussian template metadata when available. For non-`.gjf`
+  inputs, `-q/--charge` is required unless `--ligand-charge` is provided (then
+  `extract.py` derives the total charge); explicit `-q` still overrides. Spin
+  defaults to `1` when no template is present.
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are written
   regardless of `--dump`; trajectories are written only when `--dump` is `True`
   and converted to `scan.pdb`/`scan.gjf` when conversion is enabled.

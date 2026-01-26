@@ -28,7 +28,7 @@ Core inputs (strongly recommended):
         charge.
 
 Recommended/common:
-    -m/--mult
+    -m/--multiplicity
         Spin multiplicity (2S+1); defaults to a .gjf template value when available,
         otherwise 1 when omitted.
     --opt-mode
@@ -1953,7 +1953,7 @@ def _merge_final_and_write(final_images: List[Any],
     "spin",
     type=int,
     default=None,
-    show_default=False,
+    show_default="GJF template or 1",
     help="Spin multiplicity (2S+1) for the ML region (defaults from a .gjf template when available, otherwise 1).",
 )
 @click.option("--freeze-links", "freeze_links_flag", type=click.BOOL, default=True, show_default=True,

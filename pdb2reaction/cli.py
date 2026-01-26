@@ -2,10 +2,12 @@
 
 import click
 
+
 class DefaultGroup(click.Group):
-    def __init__(self, *args, default: str | None = None, **kwargs):
+    def __init__(self, *args, default: str | None = None, command_loaders=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._default_cmd = default
+        self._command_loaders = command_loaders or {}
 
     def parse_args(self, ctx, args):
         if any(a in ("-h", "--help") for a in args):
@@ -16,20 +18,94 @@ class DefaultGroup(click.Group):
                 args.insert(0, self._default_cmd)
         return super().parse_args(ctx, args)
 
+    def get_command(self, ctx, cmd_name):
+        if cmd_name in self._command_loaders:
+            cmd = self._command_loaders[cmd_name]()
+            self.add_command(cmd, name=cmd_name)
+            return cmd
+        return super().get_command(ctx, cmd_name)
 
-from .all import cli as all_cmd
-from .scan import cli as scan_cmd
-from .opt import cli as opt_cmd
-from .path_opt import cli as path_opt_cmd
-from .path_search import cli as path_search_cmd
-from .tsopt import cli as tsopt_cmd
-from .freq import cli as freq_cmd
-from .irc import cli as irc_cmd
-from .trj2fig import cli as trj2fig_cmd
-from .add_elem_info import cli as add_elem_info_cmd
-from .dft import cli as dft_cmd
-from .scan2d import cli as scan2d_cmd
-from .scan3d import cli as scan3d_cmd
+
+def _load_all():
+    from .all import cli as cmd
+    return cmd
+
+
+def _load_scan():
+    from .scan import cli as cmd
+    return cmd
+
+
+def _load_opt():
+    from .opt import cli as cmd
+    return cmd
+
+
+def _load_path_opt():
+    from .path_opt import cli as cmd
+    return cmd
+
+
+def _load_path_search():
+    from .path_search import cli as cmd
+    return cmd
+
+
+def _load_tsopt():
+    from .tsopt import cli as cmd
+    return cmd
+
+
+def _load_freq():
+    from .freq import cli as cmd
+    return cmd
+
+
+def _load_irc():
+    from .irc import cli as cmd
+    return cmd
+
+
+def _load_trj2fig():
+    from .trj2fig import cli as cmd
+    return cmd
+
+
+def _load_add_elem_info():
+    from .add_elem_info import cli as cmd
+    return cmd
+
+
+def _load_dft():
+    from .dft import cli as cmd
+    return cmd
+
+
+def _load_scan2d():
+    from .scan2d import cli as cmd
+    return cmd
+
+
+def _load_scan3d():
+    from .scan3d import cli as cmd
+    return cmd
+
+
+COMMAND_LOADERS = {
+    "all": _load_all,
+    "scan": _load_scan,
+    "opt": _load_opt,
+    "path-opt": _load_path_opt,
+    "path-search": _load_path_search,
+    "tsopt": _load_tsopt,
+    "freq": _load_freq,
+    "irc": _load_irc,
+    "trj2fig": _load_trj2fig,
+    "add-elem-info": _load_add_elem_info,
+    "dft": _load_dft,
+    "scan2d": _load_scan2d,
+    "scan3d": _load_scan3d,
+}
 
 
 @click.group(
@@ -37,6 +113,7 @@ from .scan3d import cli as scan3d_cmd
     default="all",
     help="pdb2reaction: Root command to execute each subcommands.",
     context_settings={"help_option_names": ["-h", "--help"]},
+    command_loaders=COMMAND_LOADERS,
 )
 def cli() -> None:
     pass
@@ -66,20 +143,7 @@ def extract_cmd(ctx: click.Context) -> None:
         sys.argv = argv_backup
 
 
-cli.add_command(all_cmd, name="all")
-cli.add_command(scan_cmd, name="scan")
-cli.add_command(opt_cmd, name="opt")
-cli.add_command(path_opt_cmd, name="path-opt")
-cli.add_command(path_search_cmd, name="path-search")
-cli.add_command(tsopt_cmd, name="tsopt")
-cli.add_command(freq_cmd, name="freq")
-cli.add_command(irc_cmd, name="irc")
 cli.add_command(extract_cmd, name="extract")
-cli.add_command(trj2fig_cmd, name="trj2fig")
-cli.add_command(add_elem_info_cmd, name="add-elem-info")
-cli.add_command(dft_cmd, name="dft")
-cli.add_command(scan2d_cmd, name="scan2d")
-cli.add_command(scan3d_cmd, name="scan3d")
 
 # Disable pysisyphus logging
 import logging

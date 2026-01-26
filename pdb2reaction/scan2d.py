@@ -38,7 +38,8 @@ Examples
 Description
 -----------
 - A 2D grid scan driven by harmonic restraints on two inter-atomic distances (d1, d2).
-- Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list**.
+- Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via
+  **--scan-list/--scan-lists**.
   - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
   - For PDB inputs, each atom entry can be an integer index or a selector string such as
     ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
@@ -78,7 +79,8 @@ Notes
 - UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D scan.
 - Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO; default: light).
 - Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
-- The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
+- The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region and defaults to
+  the `.gjf` template value when available, otherwise `1`.
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
   charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
   enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
@@ -125,6 +127,7 @@ from .opt import (
 from .utils import (
     detect_freeze_links_safe,
     pretty_block,
+    collect_option_values,
     format_geom_for_echo,
     format_freeze_atoms_for_echo,
     format_elapsed,
@@ -216,11 +219,16 @@ def _parse_scan_list(
         if isinstance(value, (int, np.integer)):
             idx_val = int(value)
             if one_based:
+                if idx_val < 1:
+                    raise click.BadParameter(
+                        "Atom index must be >= 1 in --scan-list; use --one-based False for 0-based indices."
+                    )
                 idx_val -= 1
-            if idx_val < 0:
-                raise click.BadParameter(
-                    f"Negative atom index after base conversion: {idx_val} (0-based expected)."
-                )
+            else:
+                if idx_val < 0:
+                    raise click.BadParameter(
+                        "Atom index must be >= 0 in --scan-list for 0-based indices."
+                    )
             return idx_val
         if isinstance(value, str):
             if not atom_meta:
@@ -369,7 +377,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
 
 @click.command(
     help="2D distance scan with harmonic restraints.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
 )
 @click.option(
     "-i",
@@ -407,16 +415,20 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     "--multiplicity",
     "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default="GJF template or 1",
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
     "--scan-list",
+    "--scan-lists",
     "scan_list_raw",
     type=str,
-    required=True,
-    help="Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.",
+    required=False,
+    help=(
+        "Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'. "
+        "This subcommand accepts exactly one list value."
+    ),
 )
 @click.option(
     "--one-based",
@@ -530,7 +542,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     show_default=False,
     help="Upper bound of color scale for plots (kcal/mol).",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -558,6 +572,17 @@ def cli(
 
     from .utils import load_yaml_dict, apply_yaml_overrides
 
+    scan_vals = collect_option_values(sys.argv[1:], ("--scan-list", "--scan-lists"))
+    if scan_vals:
+        scan_list_raw = scan_vals[0] if scan_vals else scan_list_raw
+    if ctx.args:
+        unexpected = [arg for arg in ctx.args if arg not in (scan_vals or [])]
+        if unexpected:
+            raise click.ClickException(f"Unexpected extra argument(s): {' '.join(unexpected)}")
+    if scan_vals and len(scan_vals) != 1:
+        raise click.BadParameter("--scan-list(s) must contain exactly one list for scan2d.")
+    if not scan_list_raw:
+        raise click.BadParameter("--scan-list(s) is required for scan2d.")
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
     apply_ref_pdb_override(prepared_input, ref_pdb)
