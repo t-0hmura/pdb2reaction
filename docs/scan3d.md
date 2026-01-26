@@ -2,7 +2,7 @@
 
 ## Overview
 `scan3d` performs a three-distance grid scan with harmonic restraints using the
-UMA calculator. You provide exactly one `--scan-list` literal containing three
+UMA calculator. You provide exactly one `--scan-list(s)` literal containing three
 quadruples `(i, j, lowÅ, highÅ)`. The tool builds linear grids for each distance
 with `--max-step-size`, reorders the values so that those nearest to the
 (pre‑optimized) starting structure are visited first, and then nests the loops
@@ -17,7 +17,7 @@ option to load the CSV after the scan finishes and changing `--zmin` and `--zmax
 ## Usage
 ```bash
 pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    --scan-list '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options] \
+                    --scan-list(s) '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options] \
                     [--convert-files {True|False}]
 ```
 
@@ -25,17 +25,17 @@ pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <numbe
 ```bash
 # Minimal three-distance scan
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
+    --scan-list(s) '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
 
 # LBFGS relaxations, dumped inner trajectories, and HTML isosurface plot
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
+    --scan-list(s) '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
     --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
     --preopt True --baseline min
 
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
+    --scan-list(s) '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
     --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
 
@@ -45,7 +45,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
    when `--preopt True`. If `-q` is omitted but `--ligand-charge` is provided, the
    structure is treated as an enzyme–substrate complex and `extract.py`’s charge
    summary derives the total charge before scanning.
-2. Parse the single `--scan-list` literal (default 1-based indices unless
+2. Parse the single `--scan-list(s)` literal (default 1-based indices unless
    `--one-based False` is passed) into three quadruples. For PDB inputs, each
    atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
    delimiters may be spaces, commas, slashes, backticks, or backslashes, and
@@ -73,7 +73,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
-| `--scan-list TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `--scan-list(s) TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |

@@ -21,10 +21,10 @@ Usage (CLI)
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
         [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
         [--tsopt-max-cycles <int>] [--freq-* overrides] [--dft-* overrides] \
-        [--dft-engine {gpu|cpu|auto}] [--scan-lists '[(...)]' ...]
+        [--dft-engine {gpu|cpu|auto}] [--scan-list(s) '[(...)]' ...]
 
-    # Single-structure scan builder (repeat --scan-lists to define sequential stages; works with or without extraction)
-    pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --scan-lists '[(...)]' [...]
+    # Single-structure scan builder (single --scan-list(s) with multiple stage literals; works with or without extraction)
+    pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --scan-lists '[(...)]' '[(...)]' [...]
 
     # Single-structure TSOPT-only mode (no MEP search) when --scan-lists is omitted and --tsopt True
     pdb2reaction all -i INPUT.pdb [-c <substrate-spec>] --tsopt True [other options]
@@ -56,9 +56,9 @@ Description
 -----------
 Runs a one-shot pipeline centered on pocket models. The command is intentionally permissive about how
 ``-i/--input`` is given: it accepts repeated ``-i`` flags and the sloppy form ``-i A.pdb B.pdb C.pdb``.
-``--scan-lists`` accepts repeated flags or the sloppy form
-``--scan-lists '[(...)]' '[(...)]'`` to define sequential scan stages; a single literal yields a one-stage
-scan, while multiple literals yield chained stages (the multi-value form is the intended, most convenient one).
+``--scan-lists`` accepts multiple literals after a **single** flag, e.g.
+``--scan-lists '[(...)]' '[(...)]'`` to define sequential scan stages. A single literal yields a one-stage
+scan, while multiple literals yield chained stages (repeated flags are not accepted).
 
 Pipeline overview
 -----------------
@@ -89,7 +89,7 @@ Pipeline overview
 (1b) **Optional staged scan (single-structure only; requires ``--scan-lists``)**
     - Triggered only when **exactly one** input is given **and** ``--scan-lists`` is provided.
     - The scan is a staged, bond-length–driven scan using the UMA calculator:
-        • a single literal runs one stage; multiple literals define sequential stages (usually passed after one ``--scan-lists``),
+        • a single literal runs one stage; multiple literals define sequential stages (passed after one ``--scan-list(s)``),
         • each stage starts from the previous stage’s relaxed final structure (stages are chained).
     - When extraction is enabled, indices in ``--scan-lists`` refer to the **original full input PDB**
       (**ATOM/HETATM file order**, 1-based) and are **auto-mapped** onto the extracted pocket using structural atom identity
@@ -391,7 +391,7 @@ def _ensure_dir(p: Path) -> None:
 def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
     """
     Robustly collect values following a flag that may appear **once** followed by multiple space-separated values,
-    e.g., "-i A B C". This mirrors the bauavior implemented in `path_search.cli`.
+    e.g., "-i A B C". This mirrors the behavior implemented in `path_search.cli`.
     """
     vals: List[str] = []
     i = 0
@@ -405,6 +405,33 @@ def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[st
             i = j
         else:
             i += 1
+    return vals
+
+
+def _collect_single_option_values(
+    argv: Sequence[str],
+    names: Sequence[str],
+    label: str,
+) -> List[str]:
+    """Collect values following a flag that must appear at most once."""
+    vals: List[str] = []
+    seen = 0
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            seen += 1
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                vals.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    if seen > 1:
+        raise click.BadParameter(
+            f"Use a single {label} followed by multiple values; repeated flags are not accepted."
+        )
     return vals
 
 
@@ -2225,6 +2252,7 @@ def _irc_and_match(
 )
 @click.option(
     "--scan-lists",
+    "--scan-list",
     "scan_lists_raw",
     type=str,
     multiple=True,
@@ -2233,9 +2261,9 @@ def _irc_and_match(
         "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. A single "
         "literal runs one stage; multiple literals run **sequentially**, each starting from the "
         "prior stage's relaxed structure. "
-        "Example: '[(12,45,1.35)]' --scan-lists '[(10,55,2.20),(23,34,1.80)]'. "
-        "You may also pass a single --scan-lists followed by multiple values "
-        "(e.g., '--scan-lists \\'[(12,45,1.35)]\\' \\'[(10,55,2.20)]\\''). "
+        "Example: --scan-lists '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
+        "Pass a single --scan-list(s) followed by multiple values to define multiple stages "
+        "(repeated flags are not accepted). "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. For non-PDB single-structure scans, only integer "
         "indices are supported (1-based by default). Stage results feed into the MEP step (path_search or path_opt)."
@@ -2389,7 +2417,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = _collect_option_values(argv_all, ("--scan-lists",))
+    scan_vals = _collect_single_option_values(argv_all, ("--scan-lists", "--scan-list"), "--scan-list(s)")
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
