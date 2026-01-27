@@ -311,7 +311,7 @@ AMINO_ACIDS: Dict[str, int] = {
     "CYM": -1,   # deprotonated Cys
 
     # --- Lys variants / carboxylation ---
-    "MLY": +1, "LLP": +1, "DLY": +1,
+    "MLY": +1, "LLP": +1,
     "KCX": -1,   # Lysine Nz-Carboxylic Acid
 
     # --- D isomers (19 residues) ---
@@ -356,18 +356,18 @@ AMINO_ACIDS: Dict[str, int] = {
 ION: Dict[str, int] = {
     # +1
     "LI": +1, "NA": +1, "K": +1, "RB": +1, "CS": +1, "TL": +1, "AG": +1, "CU1": +1,
-    "Ag": +1, "K+": +1, "NA+": +1, "NH4": +1, "H3O+": +1, "TL": +1,
+    "Ag": +1, "K+": +1, "NA+": +1, "NH4": +1, "H3O+": +1,
 
     # +2
     "MG": +2, "CA": +2, "SR": +2, "BA": +2, "MN": +2, "FE2": +2, "CO": +2, "NI": +2,
     "CU": +2, "ZN": +2, "CD": +2, "HG": +2, "PB": +2, "BE": +2, "PD": +2, "PT": +2,
-    "SN": +2, "RA": +2, "YB2": +2, "V2+": +2, "CA": +2, "CO": +2, "CD": +2,
+    "SN": +2, "RA": +2, "YB2": +2, "V2+": +2, 
 
     # +3
     "FE": +3, "AU3": +3, "AL": +3, "GA": +3, "IN": +3,
     "CE": +3, "CR": +3, "DY": +3, "EU": +3, "EU3": +3, "ER": +3,
     "GD3": +3, "LA": +3, "LU": +3, "ND": +3, "PR": +3, "SM": +3, "TB": +3,
-    "TM": +3, "Y": +3, "PU": +3, "CE": +3,
+    "TM": +3, "Y": +3, "PU": +3, 
 
     # +4
     "U4+": +4, "TH": +4, "HF": +4, "ZR": +4,

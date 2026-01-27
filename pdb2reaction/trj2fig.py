@@ -71,8 +71,6 @@ from ase import Atoms
 from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
-from .uma_pysis import uma_pysis
-
 AXIS_WIDTH = 3         # axis and tick thickness
 FONT_SIZE = 18         # tick-label font size
 AXIS_TITLE_SIZE = 20   # axis-title font size
@@ -87,8 +85,8 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
     """
     Extract Hartree energies from the second-line comment of each XYZ frame.
 
-    The first decimal number found on the comment line is used
-    (scientific notation/exponents are not parsed).
+    The first numeric token found on the comment line is used, including
+    scientific notation (e.g., ``-1.23e-02``).
     """
     energies: List[float] = []
     with open(fname, encoding="utf-8") as fh:
@@ -98,7 +96,10 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
             except ValueError:  # reached a non-XYZ header
                 break
             comment = fh.readline().strip()
-            m = re.search(r"(-?\d+(?:\.\d+)?)", comment)
+            m = re.search(
+                r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
+                comment,
+            )
             if not m:
                 raise RuntimeError(f"Energy not found in comment: {comment}")
             energies.append(float(m.group(1)))
@@ -115,6 +116,8 @@ def recompute_energies(
     """
     Recalculate Hartree energies for every frame using uma_pysis.
     """
+    # Import lazily so comment-only mode does not require torch/UMA deps.
+    from .uma_pysis import uma_pysis
 
     frames_obj = read(traj_path, index=":", format="xyz")
     frames = [frames_obj] if isinstance(frames_obj, Atoms) else list(frames_obj)
