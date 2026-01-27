@@ -494,7 +494,14 @@ class uma_pysis(Calculator):
         )
         self.out_hess_torch = out_hess_torch
         self.hessian_calc_mode = hessian_calc_mode
-        self.freeze_atoms: List[int] = sorted(set(int(i) for i in (freeze_atoms or [])))
+        if freeze_atoms is None:
+            freeze_iter: List[int] = []
+        else:
+            try:
+                freeze_iter = [int(i) for i in list(freeze_atoms)]
+            except Exception:
+                freeze_iter = []
+        self.freeze_atoms = sorted(set(freeze_iter))
         self.return_partial_hessian = bool(return_partial_hessian)
         self.hessian_double = bool(hessian_double)
 

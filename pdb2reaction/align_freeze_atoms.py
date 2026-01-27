@@ -257,7 +257,16 @@ def _freeze_union(g_ref, g_mob, n_atoms: Optional[int] = None) -> List[int]:
     """
     fa0 = getattr(g_ref, "freeze_atoms", None)
     fa1 = getattr(g_mob, "freeze_atoms", None)
-    cand = sorted(set(int(i) for i in list(fa0 or []) + list(fa1 or [])))
+
+    def _as_list(raw: Any) -> List[Any]:
+        if raw is None:
+            return []
+        try:
+            return list(raw)
+        except Exception:
+            return []
+
+    cand = sorted(set(int(i) for i in (_as_list(fa0) + _as_list(fa1))))
     if n_atoms is None:
         return cand
     good = [i for i in cand if 0 <= i < int(n_atoms)]

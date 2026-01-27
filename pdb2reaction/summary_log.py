@@ -49,13 +49,19 @@ def _format_energy_rows(
     energies_kcal: Optional[Sequence[Optional[float]]],
 ) -> List[str]:
     rows: List[str] = []
-    energies_au = list(energies_au or [])
-    energies_kcal = list(energies_kcal or [])
-    base_e = energies_au[0] if energies_au else None
+    try:
+        energies_au_list = list(energies_au) if energies_au is not None else []
+    except Exception:
+        energies_au_list = []
+    try:
+        energies_kcal_list = list(energies_kcal) if energies_kcal is not None else []
+    except Exception:
+        energies_kcal_list = []
+    base_e = energies_au_list[0] if energies_au_list else None
 
     for i, lab in enumerate(labels):
-        abs_e = energies_au[i] if i < len(energies_au) else None
-        rel_e = energies_kcal[i] if i < len(energies_kcal) else None
+        abs_e = energies_au_list[i] if i < len(energies_au_list) else None
+        rel_e = energies_kcal_list[i] if i < len(energies_kcal_list) else None
         if rel_e is None and abs_e is not None and base_e is not None:
             rel_e = (abs_e - base_e) * AU2KCALPERMOL
 
@@ -285,9 +291,16 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
 
-    freeze_atoms_raw = payload.get("freeze_atoms") or []
+    freeze_atoms_raw = payload.get("freeze_atoms")
+    if freeze_atoms_raw is None:
+        freeze_atoms_iter: List[Any] = []
+    else:
+        try:
+            freeze_atoms_iter = list(freeze_atoms_raw)
+        except Exception:
+            freeze_atoms_iter = []
     try:
-        freeze_atoms_list = sorted({int(i) for i in freeze_atoms_raw})
+        freeze_atoms_list = sorted({int(i) for i in freeze_atoms_iter})
     except Exception:
         freeze_atoms_list = []
     if freeze_atoms_list:
@@ -494,8 +507,16 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             values = " ".join("---".rjust(col_width) for _ in states)
             return f"    {label:<{label_width}} {values}"
 
-        labels_map = {lab: i for i, lab in enumerate(diag.get("labels", []) or [])}
-        energies = list(diag.get("energies_kcal", []) or [])
+        try:
+            labels_iter = list(diag.get("labels", []))
+        except Exception:
+            labels_iter = []
+        labels_map = {lab: i for i, lab in enumerate(labels_iter)}
+        energies_raw = diag.get("energies_kcal", [])
+        try:
+            energies = list(energies_raw) if energies_raw is not None else []
+        except Exception:
+            energies = []
         row_vals: List[str] = []
         for st in states:
             idx = labels_map.get(st)

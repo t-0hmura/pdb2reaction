@@ -550,7 +550,18 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
     coord_type = gL.coord_type
     faL = getattr(gL, "freeze_atoms", None)
     faR = getattr(gR, "freeze_atoms", None)
-    freeze_union = sorted(set(map(int, faL or [])) | set(map(int, faR or [])))
+
+    def _as_list(raw: Any) -> List[Any]:
+        if raw is None:
+            return []
+        try:
+            return list(raw)
+        except Exception:
+            return []
+
+    freeze_union = sorted(
+        set(map(int, _as_list(faL))) | set(map(int, _as_list(faR)))
+    )
     interps: List[Any] = []
     for k in range(1, n_internal + 1):
         t = k / (n_internal + 1.0)
