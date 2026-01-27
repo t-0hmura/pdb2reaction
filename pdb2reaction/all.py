@@ -1335,6 +1335,7 @@ def _run_freq_for_state(
     args_yaml: Optional[Path],
     freeze_links: bool,
     ref_pdb: Optional[Path],
+    convert_files: bool,
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -1367,6 +1368,8 @@ def _run_freq_for_state(
             or (ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb")
         )
         else "False",
+        "--convert-files",
+        "True" if convert_files else "False",
         "--out-dir",
         str(fdir),
     ]
@@ -1455,6 +1458,7 @@ def _run_dft_for_state(
     overrides: Optional[Dict[str, Any]] = None,
     engine: str = "gpu",
     ref_pdb: Optional[Path] = None,
+    convert_files: bool = True,
 ) -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
@@ -1474,6 +1478,8 @@ def _run_dft_for_state(
         str(int(spin)),
         "--func-basis",
         str(func_basis_use),
+        "--convert-files",
+        "True" if convert_files else "False",
         "--out-dir",
         str(ddir),
     ]
@@ -1516,6 +1522,7 @@ def _run_dft_sequence(
     overrides: Optional[Dict[str, Any]],
     engine: str,
     ref_pdb: Optional[Path],
+    convert_files: bool,
 ) -> Dict[str, Dict[str, Any]]:
     """Run DFT on a sequence of states."""
     results: Dict[str, Dict[str, Any]] = {}
@@ -1530,6 +1537,7 @@ def _run_dft_sequence(
             overrides=overrides,
             engine=engine,
             ref_pdb=ref_pdb,
+            convert_files=convert_files,
         )
         results[label] = res
     return results
@@ -1545,6 +1553,7 @@ def _run_tsopt_on_hei(
     freeze_links: bool,
     opt_mode_default: str,
     ref_pdb: Optional[Path],
+    convert_files: bool,
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Path, Any]:
     """
@@ -1577,6 +1586,8 @@ def _run_tsopt_on_hei(
         str(int(spin)),
         "--freeze-links",
         "True" if freeze_use else "False",
+        "--convert-files",
+        "True" if convert_files else "False",
         "--out-dir",
         str(ts_dir),
     ]
@@ -1667,6 +1678,7 @@ def _irc_and_match(
     freeze_links_flag: bool,
     calc_cfg: Dict[str, Any],
     args_yaml: Optional[Path],
+    convert_files: bool,
     seg_tag: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
@@ -1708,6 +1720,8 @@ def _irc_and_match(
             or (ref_pdb_template is not None and ref_pdb_template.suffix.lower() == ".pdb")
         )
         else "False",
+        "--convert-files",
+        "True" if convert_files else "False",
     ]
     if ref_pdb_template is not None:
         irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
@@ -2737,6 +2751,7 @@ def cli(
             freeze_links_flag,
             tsopt_opt_mode_default,
             ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
+            convert_files,
             overrides=tsopt_overrides,
         )
 
@@ -2752,6 +2767,7 @@ def cli(
             freeze_links_flag=freeze_links_flag,
             calc_cfg=calc_cfg_shared,
             args_yaml=args_yaml,
+            convert_files=convert_files,
             seg_tag=None,
         )
         gL = irc_res["left_min_geom"]
@@ -2854,6 +2870,7 @@ def cli(
                 args_yaml,
                 freeze_links_flag,
                 ref_pdb_for_tsopt_only,
+                convert_files,
                 overrides=freq_overrides,
             )
             tT = _run_freq_for_state(
@@ -2864,6 +2881,7 @@ def cli(
                 args_yaml,
                 freeze_links_flag,
                 ref_pdb_for_tsopt_only,
+                convert_files,
                 overrides=freq_overrides,
             )
             tP = _run_freq_for_state(
@@ -2874,6 +2892,7 @@ def cli(
                 args_yaml,
                 freeze_links_flag,
                 ref_pdb_for_tsopt_only,
+                convert_files,
                 overrides=freq_overrides,
             )
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
@@ -2915,6 +2934,7 @@ def cli(
                 dft_overrides,
                 dft_engine,
                 ref_pdb_for_tsopt_only,
+                convert_files,
             )
             dR = dft_payloads.get("R")
             dT = dft_payloads.get("TS")
@@ -3226,9 +3246,15 @@ def cli(
                 "[all] Remapped --scan-lists indices from the full PDB to the pocket ordering."
             )
 
-        scan_one_based_effective = True if scan_one_based is None else bool(
-            scan_one_based
-        )
+        # For extracted pockets, scan stages are already 1-based and can be rebased
+        # to 0-based if the user explicitly requests it. For non-extracted inputs,
+        # keep indices as provided and let scan.py interpret them via --one-based.
+        if skip_extract:
+            scan_one_based_effective = True
+        else:
+            scan_one_based_effective = True if scan_one_based is None else bool(
+                scan_one_based
+            )
         scan_stage_literals: List[str] = []
         for stage in converted_scan_stages:
             if scan_one_based_effective:
@@ -3256,6 +3282,8 @@ def cli(
             str(scan_dir),
             "--freeze-links",
             "True" if freeze_links_flag else "False",
+            "--convert-files",
+            "True" if convert_files else "False",
             "--preopt",
             "True" if scan_preopt_use else "False",
             "--endopt",
@@ -3408,6 +3436,8 @@ def cli(
                 str(opt_mode),
                 "--dump",
                 "True" if dump else "False",
+                "--convert-files",
+                "True" if convert_files else "False",
                 "--out-dir",
                 str(seg_dir),
                 "--preopt",
@@ -3729,6 +3759,7 @@ def cli(
             ps_args.extend(["--thresh", str(thresh)])
         ps_args.extend(["--out-dir", str(path_dir)])
         ps_args.extend(["--preopt", "True" if preopt else "False"])
+        ps_args.extend(["--convert-files", "True" if convert_files else "False"])
         if args_yaml is not None:
             ps_args.extend(["--args-yaml", str(args_yaml)])
 
@@ -3980,6 +4011,7 @@ def cli(
                 freeze_links_flag,
                 tsopt_opt_mode_default,
                 ref_pdb_for_seg,
+                convert_files,
                 overrides=tsopt_overrides,
             )
 
@@ -3995,6 +4027,7 @@ def cli(
                 freeze_links_flag=freeze_links_flag,
                 calc_cfg=calc_cfg_shared,
                 args_yaml=args_yaml,
+                convert_files=convert_files,
                 seg_tag=str(seg_tag),
             )
 
@@ -4209,6 +4242,7 @@ def cli(
                     args_yaml,
                     freeze_links_flag,
                     ref_pdb_for_seg,
+                    convert_files,
                     overrides=freq_overrides,
                 )
                 tT = _run_freq_for_state(
@@ -4219,6 +4253,7 @@ def cli(
                     args_yaml,
                     freeze_links_flag,
                     ref_pdb_for_seg,
+                    convert_files,
                     overrides=freq_overrides,
                 )
                 tP = _run_freq_for_state(
@@ -4229,6 +4264,7 @@ def cli(
                     args_yaml,
                     freeze_links_flag,
                     ref_pdb_for_seg,
+                    convert_files,
                     overrides=freq_overrides,
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
@@ -4313,6 +4349,7 @@ def cli(
                     dft_overrides,
                     dft_engine,
                     ref_pdb_for_seg,
+                    convert_files,
                 )
                 dR = dft_payloads.get("R")
                 dT = dft_payloads.get("TS")
