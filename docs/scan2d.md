@@ -138,7 +138,7 @@ calc:
   model: uma-s-1p1           # UMA model tag
   device: auto               # UMA device selection
 opt:
-  thresh: gau                # convergence preset (Gaussian/Baker-style)
+  thresh: baker              # convergence preset (default: baker)
   max_cycles: 10000          # optimizer cycle cap
   dump: false                # trajectory dumping disabled (CLI controls dumping)
   out_dir: ./result_scan2d/  # output directory
@@ -146,10 +146,11 @@ lbfgs:
   max_step: 0.3              # maximum step length
   out_dir: ./result_scan2d/  # LBFGS-specific output directory
 rfo:
-  trust_radius: 0.3          # trust-region radius
+  trust_radius: 0.1          # trust-region radius
   out_dir: ./result_scan2d/  # RFO-specific output directory
 bias:
   k: 100.0                  # harmonic bias strength (eV·Å⁻²)
 ```
 
 More YAML options about `opt` are available in [docs/opt.md](opt.md).
+`--relax-max-cycles` overrides `opt.max_cycles` only when explicitly provided; otherwise YAML `opt.max_cycles` is honored (default `10000`).

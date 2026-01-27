@@ -42,7 +42,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 2. **Optional staged scan (single-input only)**
    - Each `--scan-list(s)` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
    - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals after a single flag (repeated flags are not accepted).
-   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--dump`, `--args-yaml`, and `--preopt`. Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
+   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--args-yaml`, and `--preopt`. The `--dump` flag is forwarded to scan only when explicitly set on this command; otherwise scan uses its own default (`False`). Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on pockets (recursive GSM/DMF)**
@@ -95,38 +95,40 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC endpoint optimization. | `heavy` |
-| `--dump BOOLEAN` | Dump MEP (GSM/DMF) and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
+| `--dump BOOLEAN` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path_search`/`path-opt`; scan/tsopt receive it only when explicitly set here. In this wrapper, the freq stage uses `dump=True` by default to write `thermoanalysis.yaml`; set `--dump False` explicitly to disable it. | `False` |
 | `--convert-files {True|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
+| `--thresh TEXT` | Convergence preset for MEP and single-structure optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
 | `--preopt BOOLEAN` | Pre-optimize pocket endpoints before MEP search (also the default for scan preopt). | `True` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | _None_ (uses YAML/default of `FiniteDifference`) |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine forwarded to tsopt and freq. | `FiniteDifference` |
 | `--tsopt BOOLEAN` | Run TS optimization + IRC per reactive segment, or enable TSOPT-only mode (single input). | `False` |
 | `--thermo BOOLEAN` | Run vibrational analysis (`freq`) on R/TS/P and build UMA Gibbs diagram. | `False` |
 | `--dft BOOLEAN` | Run single-point DFT on R/TS/P and build DFT energy + optional DFT//UMA diagrams. | `False` |
 | `--dft-engine [gpu\|cpu\|auto]` | Preferred backend for the DFT stage (`auto` tries GPU then CPU). | `gpu` |
-| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles` for each refinement. | _None_ |
+| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles` for each refinement. | `10000` |
 | `--tsopt-out-dir PATH` | Custom tsopt subdirectory (resolved against `<out-dir>` when relative). | _None_ |
 | `--flatten-imag-mode {True|False}` | Enable extra-imaginary-mode flattening in `tsopt` (light: dimer loop, heavy: post-RSIRFO). | `False` |
 | `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
-| `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
-| `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
-| `--freq-n-frames INT` | Override `freq --n-frames`. | _None_ |
-| `--freq-sort [value\|abs]` | Override freq mode sorting behavior. | _None_ |
+| `--freq-max-write INT` | Override `freq --max-write`. | `10` |
+| `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | `0.8` |
+| `--freq-n-frames INT` | Override `freq --n-frames`. | `20` |
+| `--freq-sort [value\|abs]` | Override freq mode sorting behavior. | `value` |
 | `--freq-temperature FLOAT` | Override freq thermochemistry temperature (K). | `298.15` |
 | `--freq-pressure FLOAT` | Override freq thermochemistry pressure (atm). | `1.0` |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
-| `--dft-func-basis TEXT` | Override `dft --func-basis`. | _None_ |
-| `--dft-max-cycle INT` | Override `dft --max-cycle`. | _None_ |
-| `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
-| `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
+| `--dft-func-basis TEXT` | Override `dft --func-basis`. | `wb97m-v/def2-tzvpd` |
+| `--dft-max-cycle INT` | Override `dft --max-cycle`. | `100` |
+| `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | `1e-9` |
+| `--dft-grid-level INT` | Override `dft --grid-level`. | `3` |
 | `--scan-list(s) TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; a single literal runs one stage, multiple literals run sequential stages. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'` and are remapped internally. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory (relative paths resolved against the default parent). | _None_ |
-| `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
-| `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
-| `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |
-| `--scan-relax-max-cycles INT` | Override scan relaxation max cycles per step. | _None_ |
-| `--scan-preopt BOOLEAN` | Override the scan preoptimization toggle (otherwise `--preopt` propagates). | _None_ |
-| `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimization toggle. | _None_ |
+| `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`). When omitted, scan uses its default (1-based). | `True` |
+| `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | `0.20` |
+| `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | `100` |
+| `--scan-relax-max-cycles INT` | Override scan relaxation max cycles per step. | `10000` |
+| `--scan-preopt BOOLEAN` | Override the scan preoptimization toggle. When omitted, this follows `--preopt` (default `True`). | `True` |
+| `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimization toggle. | `True` |
 
 ## Outputs
 ```
@@ -136,7 +138,7 @@ out_dir/ (default: ./result_all/)
 ├─ pockets/                  # Per-input pocket PDBs when extraction runs
 ├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/              # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
-├─ path_search/tsopt_seg_XX/ # Post-processing outputs (TS optimization, IRC, freq, DFT, diagrams)
+├─ path_search/post_seg_XX/  # Post-processing outputs (TS optimization, IRC, freq, DFT, diagrams)
 └─ tsopt_single/             # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
 ```
 - Console logs summarizing pocket charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
@@ -160,6 +162,8 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 ## Notes
 - Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/MEP/TSOPT/DFT.
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path_search` is intentionally hidden in this wrapper.
+- Convergence presets: `--thresh` defaults to `gau`; `--thresh-post` defaults to `baker`.
+- Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-list(s)` or `--tsopt True`.
 - `--args-yaml` lets you coordinate all calculators from a single configuration file. YAML values override CLI flags.
@@ -225,13 +229,13 @@ gs:
   scheduler: null            # optional scheduler backend
 opt:
   type: string               # optimizer type label
-  stop_in_when_full: 100     # early stop threshold when string is full
+  stop_in_when_full: 300     # early stop threshold when string is full
   align: false               # alignment toggle (kept off)
   scale_step: global         # step scaling mode
-  max_cycles: 100            # maximum optimization cycles
+  max_cycles: 300            # maximum optimization cycles
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
-  reparam_thresh: 0.001      # reparametrization threshold
+  reparam_thresh: 0.0        # reparametrization threshold
   coord_diff_thresh: 0.0     # coordinate difference threshold
   out_dir: ./result_path_search/   # output directory
   print_every: 10            # logging stride
@@ -280,25 +284,25 @@ sopt:
     dump_restart: false        # dump restart checkpoints
     prefix: ""                 # filename prefix
     out_dir: ./result_path_search/   # output directory
-    trust_radius: 0.3          # trust-region radius
+    trust_radius: 0.1          # trust-region radius
     trust_update: true         # enable trust-region updates
-    trust_min: 0.01            # minimum trust radius
-    trust_max: 0.3             # maximum trust radius
+    trust_min: 0.0             # minimum trust radius
+    trust_max: 0.1             # maximum trust radius
     max_energy_incr: null      # allowed energy increase per step
     hessian_update: bfgs       # Hessian update scheme
     hessian_init: calc         # Hessian initialization source
-    hessian_recalc: 100        # rebuild Hessian every N steps
-    hessian_recalc_adapt: 2.0  # adaptive Hessian rebuild factor
+    hessian_recalc: 200        # rebuild Hessian every N steps
+    hessian_recalc_adapt: null # adaptive Hessian rebuild factor
     small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
     alpha0: 1.0                # initial micro step
-    max_micro_cycles: 25       # micro-iteration limit
+    max_micro_cycles: 50       # micro-iteration limit
     rfo_overlaps: false        # enable RFO overlaps
     gediis: false              # enable GEDIIS
     gdiis: true                # enable GDIIS
     gdiis_thresh: 0.0025       # GDIIS acceptance threshold
     gediis_thresh: 0.01        # GEDIIS acceptance threshold
     gdiis_test_direction: true # test descent direction before DIIS
-    adapt_step_func: false     # adaptive step scaling toggle
+    adapt_step_func: true      # adaptive step scaling toggle
 bond:
   device: cuda                # UMA device for bond analysis
   bond_factor: 1.2            # covalent-radius scaling

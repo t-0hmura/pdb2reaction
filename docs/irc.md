@@ -40,11 +40,11 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
-| `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | _None_ (use YAML/default `125`) |
-| `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | _None_ (default `0.10`) |
-| `--root INT` | Imaginary-mode index for the initial displacement; overrides `irc.root`. | _None_ (default `0`) |
-| `--forward BOOL` | Run forward branch (`irc.forward`). Requires explicit `True`/`False`. | _None_ (default `True`) |
-| `--backward BOOL` | Run backward branch (`irc.backward`). Requires explicit `True`/`False`. | _None_ (default `True`) |
+| `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | `125` |
+| `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | `0.10` |
+| `--root INT` | Imaginary-mode index for the initial displacement; overrides `irc.root`. | `0` |
+| `--forward BOOL` | Run forward branch (`irc.forward`). Requires explicit `True`/`False`. | `True` |
+| `--backward BOOL` | Run backward branch (`irc.backward`). Requires explicit `True`/`False`. | `True` |
 | `--freeze-links BOOL` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `True` |

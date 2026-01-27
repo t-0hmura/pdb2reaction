@@ -34,7 +34,7 @@ Description
 - Path generator: `--mep-mode` accepts GSM or DMF, with GSM enabled by default to match the CLI default.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is enabled by default and follows the `--climb` flag; YAML can still override it.
-- `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
+- `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`). When omitted, the effective default is `gau`.
 - When `--fix-ends True` (default: False), both endpoint geometries are fixed during GSM (`fix_first=True`, `fix_last=True`).
 - After optimization, the highest-energy image (HEI) is identified as the highest-energy internal local maximum (preferring internal nodes). If none exist, the maximum among internal nodes is used; if there are no internal nodes, the global maximum is used. The selected HEI is exported.
 
@@ -647,7 +647,11 @@ def _optimize_single(
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset for the string optimizer, pre-alignment refinement, and endpoint preoptimization (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help=(
+        "Convergence preset for the string optimizer, pre-alignment refinement, "
+        "and endpoint preoptimization (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau' when not provided."
+    ),
 )
 @click.option(
     "--args-yaml",

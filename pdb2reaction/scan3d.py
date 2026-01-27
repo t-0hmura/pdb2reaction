@@ -113,6 +113,8 @@ Notes
 - UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D/2D scan.
 - Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (default: `light`).
   Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
+- Convergence preset: `--thresh` defaults to `baker` for this command (override with `--thresh` or YAML).
+- Cycle cap: `opt.max_cycles` defaults to `10000`; `--relax-max-cycles` overrides it only when explicitly set.
 - `--baseline min|first`:
   - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
   - `first` : shift so that the grid point with `(i,j,k) = (0,0,0)` is 0 kcal/mol;
@@ -140,6 +142,7 @@ import os
 import time
 
 import click
+from click.core import ParameterSource
 import numpy as np
 import pandas as pd
 from scipy.interpolate import Rbf
@@ -186,6 +189,7 @@ OPT_BASE_KW.update({
     "out_dir": "./result_scan3d/",  # base output directory for 3D scan artifacts
     "dump": False,                   # disable trajectory dumping by default
     "max_cycles": 10000,             # safety cap on optimization cycles
+    "thresh": "baker",              # default convergence preset for 3D scans
 })
 
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
@@ -414,6 +418,7 @@ def _make_optimizer(
     opt_cfg: Dict[str, Any],
     max_step_bohr: float,
     relax_max_cycles: int,
+    relax_override_requested: bool,
     out_dir: Path,
     prefix: str,
 ):
@@ -423,14 +428,16 @@ def _make_optimizer(
     if kind == "lbfgs":
         args = {**lbfgs_cfg, **common}
         args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
-        args["max_cycles"] = int(relax_max_cycles)
+        if relax_override_requested:
+            args["max_cycles"] = int(relax_max_cycles)
         return LBFGS(geom, **args)
     else:
         args = {**rfo_cfg, **common}
-        tr = float(rfo_cfg.get("trust_radius", 0.30))
+        tr = float(rfo_cfg.get("trust_radius", 0.10))
         args["trust_radius"] = min(tr, max_step_bohr)
-        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
-        args["max_cycles"] = int(relax_max_cycles)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
+        if relax_override_requested:
+            args["max_cycles"] = int(relax_max_cycles)
         return RFOptimizer(geom, **args)
 
 
@@ -539,7 +546,7 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     type=int,
     default=10000,
     show_default=True,
-    help="Maximum optimizer cycles per grid relaxation.",
+    help="Maximum optimizer cycles per grid relaxation. When explicitly provided, overrides opt.max_cycles from YAML.",
 )
 @click.option(
     "--opt-mode",
@@ -598,7 +605,10 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     type=str,
     default="baker",
     show_default=False,
-    help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help=(
+        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'baker'."
+    ),
 )
 @click.option(
     "--args-yaml",
@@ -634,7 +644,9 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     show_default=False,
     help="Upper bound of color scale for plots (kcal/mol).",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Optional[Path],
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -663,6 +675,14 @@ def cli(
     from .utils import load_yaml_dict, apply_yaml_overrides
 
     set_convert_file_enabled(convert_files)
+
+    relax_max_cycles_override_requested = False
+    try:
+        relax_cycles_source = ctx.get_parameter_source("relax_max_cycles")
+        relax_max_cycles_override_requested = relax_cycles_source not in (None, ParameterSource.DEFAULT)
+    except Exception:
+        relax_max_cycles_override_requested = True
+
     prepared_input = None
     geom_input_path = None
     source_path = None
@@ -840,6 +860,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr=max_step_bohr_local,
                     relax_max_cycles=relax_max_cycles,
+                    relax_override_requested=relax_max_cycles_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix="preopt_",
                 )
@@ -965,6 +986,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr=max_step_bohr,
                     relax_max_cycles=relax_max_cycles,
+                    relax_override_requested=relax_max_cycles_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}_",
                 )
@@ -1017,6 +1039,7 @@ def cli(
                         opt_cfg,
                         max_step_bohr=max_step_bohr,
                         relax_max_cycles=relax_max_cycles,
+                        relax_override_requested=relax_max_cycles_override_requested,
                         out_dir=tmp_opt_dir,
                         prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
                     )
@@ -1067,6 +1090,7 @@ def cli(
                             opt_cfg,
                             max_step_bohr=max_step_bohr,
                             relax_max_cycles=relax_max_cycles,
+                            relax_override_requested=relax_max_cycles_override_requested,
                             out_dir=tmp_opt_dir,
                             prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_d3_{k_idx:03d}_",
                         )

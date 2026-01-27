@@ -119,8 +119,9 @@ Pipeline overview
     Shared knobs for the MEP step:
       - ``--mult`` (multiplicity), ``--freeze-links``, ``--max-nodes``, ``--max-cycles``, ``--climb``,
         ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
-      - Note: ``--dump`` is always passed to the MEP step; for scan/tsopt/freq it is forwarded only when
-        explicitly set on this command (otherwise each subcommand’s defaults apply; ``freq`` defaults to ``dump=False``).
+      - Note: ``--dump`` is always passed to the MEP step; scan/tsopt receive it only when
+        explicitly set on this command. In this wrapper, the freq stage uses ``dump=True`` by default
+        to write ``thermoanalysis.yaml``; explicit ``--dump`` still overrides that behavior.
       - ``--convert-files {True|False}`` controls whether XYZ/TRJ outputs are converted into
         PDB/GJF companions when possible.
 
@@ -304,6 +305,8 @@ Notes
 -----
 - ``-c/--center`` is strongly recommended for meaningful pocket models; without it the full structure is used.
 - A **single-structure** run requires either ``--scan-lists`` (staged scan) or ``--tsopt True`` (TSOPT-only).
+- Convergence presets: ``--thresh`` defaults to ``gau``; ``--thresh-post`` defaults to ``baker``.
+- Extraction radii: passing ``0`` to ``--radius`` or ``--radius-het2het`` is clamped to ``0.001 Å`` internally.
 - Energies in diagrams are plotted relative to the first state in kcal/mol (converted from Hartree).
 - ``--convert-files False`` may suppress generation of PDB/GJF companion files from XYZ/TRJ outputs; the core
   numeric results and YAML summaries are unaffected.
@@ -1805,7 +1808,7 @@ def _irc_and_match(
                         )
             else:
                 click.echo(
-                    f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' under 'segments/'; "
+                    f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' in the segment directories; "
                     "using raw IRC orientation.",
                     err=True,
                 )
@@ -2055,8 +2058,9 @@ def _irc_and_match(
     default=False,
     show_default=True,
     help=(
-        "Dump GSM / single-structure trajectories during the run, forwarding the same flag "
-        "to scan/tsopt/freq."
+        "Dump GSM/MEP trajectories. Always forwarded to path_search/path-opt; "
+        "scan/tsopt receive it only when explicitly set here. "
+        "The freq stage uses dump=True by default; set --dump False explicitly to disable it."
     ),
 )
 @click.option(
@@ -2083,7 +2087,10 @@ def _irc_and_match(
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help=(
+        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau' when not provided."
+    ),
 )
 @click.option(
     "--thresh-post",
@@ -2156,7 +2163,7 @@ def _irc_and_match(
     "--tsopt-max-cycles",
     type=int,
     default=None,
-    help="Override tsopt --max-cycles value.",
+    help="Override tsopt --max-cycles value. Defaults to 10000 when not provided.",
 )
 @click.option(
     "--tsopt-out-dir",
@@ -2184,37 +2191,37 @@ def _irc_and_match(
     "--freq-max-write",
     type=int,
     default=None,
-    help="Override freq --max-write value.",
+    help="Override freq --max-write value. Defaults to 10.",
 )
 @click.option(
     "--freq-amplitude-ang",
     type=float,
     default=None,
-    help="Override freq --amplitude-ang (Å).",
+    help="Override freq --amplitude-ang (Å). Defaults to 0.8.",
 )
 @click.option(
     "--freq-n-frames",
     type=int,
     default=None,
-    help="Override freq --n-frames value.",
+    help="Override freq --n-frames value. Defaults to 20.",
 )
 @click.option(
     "--freq-sort",
     type=click.Choice(["value", "abs"], case_sensitive=False),
     default=None,
-    help="Override freq mode sorting.",
+    help="Override freq mode sorting. Defaults to 'value'.",
 )
 @click.option(
     "--freq-temperature",
     type=float,
     default=None,
-    help="Override freq thermochemistry temperature (K).",
+    help="Override freq thermochemistry temperature (K). Defaults to 298.15 K.",
 )
 @click.option(
     "--freq-pressure",
     type=float,
     default=None,
-    help="Override freq thermochemistry pressure (atm).",
+    help="Override freq thermochemistry pressure (atm). Defaults to 1.0 atm.",
 )
 @click.option(
     "--dft-out-dir",
@@ -2228,25 +2235,25 @@ def _irc_and_match(
     "--dft-func-basis",
     type=str,
     default=None,
-    help="Override dft --func-basis value.",
+    help="Override dft --func-basis value. Defaults to 'wb97m-v/def2-tzvpd'.",
 )
 @click.option(
     "--dft-max-cycle",
     type=int,
     default=None,
-    help="Override dft --max-cycle value.",
+    help="Override dft --max-cycle value. Defaults to 100.",
 )
 @click.option(
     "--dft-conv-tol",
     type=float,
     default=None,
-    help="Override dft --conv-tol value.",
+    help="Override dft --conv-tol value. Defaults to 1e-9.",
 )
 @click.option(
     "--dft-grid-level",
     type=int,
     default=None,
-    help="Override dft --grid-level value.",
+    help="Override dft --grid-level value. Defaults to 3.",
 )
 @click.option(
     "--dft-engine",
@@ -2288,40 +2295,41 @@ def _irc_and_match(
     type=click.BOOL,
     default=None,
     help=(
-        "Override the scan subcommand indexing interpretation (True = 1-based, False = 0-based)."
+        "Override the scan subcommand indexing interpretation (True = 1-based, False = 0-based). "
+        "Defaults to 1-based."
     ),
 )
 @click.option(
     "--scan-max-step-size",
     type=float,
     default=None,
-    help="Override scan --max-step-size (Å).",
+    help="Override scan --max-step-size (Å). Defaults to 0.20 Å.",
 )
 @click.option(
     "--scan-bias-k",
     type=float,
     default=None,
-    help="Override scan harmonic bias strength k (eV/Å^2).",
+    help="Override scan harmonic bias strength k (eV/Å^2). Defaults to 100.",
 )
 @click.option(
     "--scan-relax-max-cycles",
     type=int,
     default=None,
-    help="Override scan relaxation max cycles per step.",
+    help="Override scan relaxation max cycles per step. Defaults to 10000.",
 )
 @click.option(
     "--scan-preopt",
     "scan_preopt_override",
     type=click.BOOL,
     default=None,
-    help="Override scan --preopt flag.",
+    help="Override scan --preopt flag. When omitted, this follows --preopt (default True).",
 )
 @click.option(
     "--scan-endopt",
     "scan_endopt_override",
     type=click.BOOL,
     default=None,
-    help="Override scan --endopt flag.",
+    help="Override scan --endopt flag. Defaults to True.",
 )
 @click.pass_context
 def cli(

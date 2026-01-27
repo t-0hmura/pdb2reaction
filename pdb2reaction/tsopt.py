@@ -127,6 +127,7 @@ Notes
   provided. In that case the full complex is treated as an enzyme–substrate system and the total charge is
   inferred using ``extract.py``’s residue-aware logic. Otherwise the CLI aborts. Multiplicity still defaults
   to 1 when unspecified, and explicit CLI values override any template or derived metadata.
+- **Convergence preset**: when `--thresh` is omitted, the default preset is `baker`.
 
 - `--opt-mode light` runs Hessian Dimer with periodic Hessian-based direction refresh;
   `--opt-mode heavy` runs RS-I-RFO.
@@ -1479,7 +1480,11 @@ RSIRFO_KW.update({
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset for the active optimizer (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help=(
+        "Convergence preset for the active optimizer "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'baker' when not provided."
+    ),
 )
 @click.option(
     "--args-yaml",

@@ -87,6 +87,8 @@ Notes
 -----
 - Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
+- Convergence: when `--thresh` is omitted, the effective default comes from `opt.thresh = 'gau'`.
+- Cycle cap: `opt.max_cycles` defaults to `10000`; `--relax-max-cycles` overrides it only when explicitly set.
 - Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
   `--convert-files {True|False}` toggle (default: enabled). For stage trajectories (`scan.trj`),
   only PDB companions are produced; GJF companions are written for final `result.xyz` (and preopt outputs).
@@ -117,6 +119,7 @@ import tempfile
 import os
 
 import click
+from click.core import ParameterSource
 import numpy as np
 import yaml
 import time
@@ -169,7 +172,7 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 # Optimizer base (convergence, dumping, etc.)
 OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
 OPT_BASE_KW.update({
-    "max_cycles": 100,          # hard cap on optimization cycles per biased segment
+    "max_cycles": 10000,        # default cap on optimization cycles per biased segment
     "out_dir": "./result_scan/",  # output directory for scan artifacts
 })
 
@@ -458,7 +461,7 @@ def _snapshot_geometry(g) -> Any:
 @click.option("--bias-k", type=float, default=100, show_default=True,
               help="Harmonic well strength k [eV/Å^2].")
 @click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
-              help="Maximum optimizer cycles per relaxation (preopt, per-step, and end-of-stage).")
+              help="Maximum optimizer cycles per relaxation. When explicitly provided, overrides opt.max_cycles from YAML.")
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
@@ -491,7 +494,11 @@ def _snapshot_geometry(g) -> Any:
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset for relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help=(
+        "Convergence preset for relaxations "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau' when not provided."
+    ),
 )
 @click.option(
     "--args-yaml",
@@ -529,6 +536,14 @@ def cli(
     endopt: bool,
 ) -> None:
     set_convert_file_enabled(convert_files)
+
+    relax_max_cycles_override_requested = False
+    try:
+        relax_cycles_source = ctx.get_parameter_source("relax_max_cycles")
+        relax_max_cycles_override_requested = relax_cycles_source not in (None, ParameterSource.DEFAULT)
+    except Exception:
+        relax_max_cycles_override_requested = True
+
     prepared_input = prepare_input_structure(input_path)
     apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
@@ -672,15 +687,16 @@ def cli(
             common = dict(opt_cfg)
             common["out_dir"] = str(_out_dir)
             common["prefix"] = _prefix
-            common["max_cycles"] = int(relax_max_cycles)
+            if relax_max_cycles_override_requested:
+                common["max_cycles"] = int(relax_max_cycles)
             if kind_local == "lbfgs":
                 args = {**lbfgs_cfg, **common}
                 args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
                 return LBFGS(geom, **args)
             args = {**rfo_cfg, **common}
-            tr = float(rfo_cfg.get("trust_radius", 0.30))
+            tr = float(rfo_cfg.get("trust_radius", 0.10))
             args["trust_radius"] = min(tr, max_step_bohr)
-            args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.30)), max_step_bohr)
+            args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
             return RFOptimizer(geom, **args)
 
         # Merge freeze_atoms with link parents (PDB)

@@ -52,7 +52,7 @@ Recommended/common:
         YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search, dmf).
     --thresh STR
         Convergence preset for GSM and single optimizations
-        (gau_loose|gau|gau_tight|gau_vtight|baker|never).
+        (gau_loose|gau|gau_tight|gau_vtight|baker|never). When omitted, the effective default is `gau`.
     --ref-full-pdb PATH [...]
         Full template PDB(s) for final merge (see Notes).
     --ref-pdb PATH [...]
@@ -117,15 +117,14 @@ out_dir/ (default: ./result_path_search/)
   ├─ hei_w_ref_seg_XX.pdb            # Merged HEI per bond-change segment (requires --ref-full-pdb)
   ├─ mep_plot.png                    # ΔE profile vs. image index (from trj2fig)
   ├─ energy_diagram_MEP.png          # PNG export of the diagram when kaleido is installed
-  └─ segments/
-      ├─ seg_000_mep/ ...                # Initial GSM/DMF for each primary segment
-      ├─ seg_000_left_<lbfgs|rfo>_opt/   # HEI-1 single-structure optimization
-      ├─ seg_000_right_<lbfgs|rfo>_opt/  # HEI+1 single-structure optimization
-      ├─ seg_000_refine_mep/ ...         # Refinement GSM/DMF (bond-change segments)
-      ├─ seg_000_kink_...                # Kink interpolation optimizations (when applicable)
-      ├─ seg_000_seg_002_bridge_mep/ ... # Bridge GSM/DMF segments; path indicates bridged segments
-      ├─ seg_001_...                     # Left-side recursive substeps (if any)
-      └─ seg_002_...                     # Right-side recursive substeps (if any)
+  ├─ seg_000_mep/ ...                # Initial GSM/DMF for each primary segment
+  ├─ seg_000_left_<lbfgs|rfo>_opt/   # HEI-1 single-structure optimization
+  ├─ seg_000_right_<lbfgs|rfo>_opt/  # HEI+1 single-structure optimization
+  ├─ seg_000_refine_mep/ ...         # Refinement GSM/DMF (bond-change segments)
+  ├─ seg_000_kink_...                # Kink interpolation optimizations (when applicable)
+  ├─ seg_000_seg_002_bridge_mep/ ... # Bridge GSM/DMF segments; path indicates bridged segments
+  ├─ seg_001_...                     # Left-side recursive substeps (if any)
+  └─ seg_002_...                     # Right-side recursive substeps (if any)
 
 Notes
 -----
@@ -1996,7 +1995,11 @@ def _merge_final_and_write(final_images: List[Any],
     type=str,
     default=None,
     show_default=False,
-    help="Convergence preset for GSM and single optimizations (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+    help=(
+        "Convergence preset for GSM and single optimizations "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau' when not provided."
+    ),
 )
 @click.option(
     "--args-yaml",

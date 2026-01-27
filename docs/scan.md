@@ -83,7 +83,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--endopt BOOL` | Run an unbiased optimization after each stage. | `True` |
@@ -92,6 +92,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
   [`opt`](opt.md#yaml-configuration-args-yaml). `opt.dump` is internally forced
   to `False`; use `--dump` to control stage trajectories.
+- `--relax-max-cycles` overrides `opt.max_cycles` only when explicitly provided; otherwise YAML `opt.max_cycles` is honored (default `10000`).
 
 ### Section `bias`
 - `k` (`100`): Harmonic strength in eV·Å⁻².
@@ -217,25 +218,25 @@ rfo:
   dump_restart: false        # dump restart checkpoints
   prefix: ""                 # filename prefix
   out_dir: ./result_scan/    # output directory
-  trust_radius: 0.3          # trust-region radius
+  trust_radius: 0.1          # trust-region radius
   trust_update: true         # enable trust-region updates
-  trust_min: 0.01            # minimum trust radius
-  trust_max: 0.3             # maximum trust radius
+  trust_min: 0.0             # minimum trust radius
+  trust_max: 0.1             # maximum trust radius
   max_energy_incr: null      # allowed energy increase per step
   hessian_update: bfgs       # Hessian update scheme
   hessian_init: calc         # Hessian initialization source
-  hessian_recalc: 100        # rebuild Hessian every N steps
-  hessian_recalc_adapt: 2.0  # adaptive Hessian rebuild factor
+  hessian_recalc: 200        # rebuild Hessian every N steps
+  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
   small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
   alpha0: 1.0                # initial micro step
-  max_micro_cycles: 25       # micro-iteration limit
+  max_micro_cycles: 50       # micro-iteration limit
   rfo_overlaps: false        # enable RFO overlaps
   gediis: false              # enable GEDIIS
   gdiis: true                # enable GDIIS
   gdiis_thresh: 0.0025       # GDIIS acceptance threshold
   gediis_thresh: 0.01        # GEDIIS acceptance threshold
   gdiis_test_direction: true # test descent direction before DIIS
-  adapt_step_func: false     # adaptive step scaling toggle
+  adapt_step_func: true      # adaptive step scaling toggle
 bias:
   k: 100                    # harmonic bias strength (eV·Å⁻²)
 bond:

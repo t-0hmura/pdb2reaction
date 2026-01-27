@@ -45,16 +45,16 @@ CLI options
     supply defaults when available.
   - `--workers`, `--workers-per-node`: UMA predictor parallelism (workers > 1 disables analytic Hessians).
   - `-m/--multiplicity INT` (default 1): Spin multiplicity (2S+1); sets `calc.spin` and defaults to the template multiplicity or `1`.
-  - `--max-cycles INT`: Max number of IRC steps; sets `irc.max_cycles`.
-  - `--step-size FLOAT`: Step length in mass-weighted coordinates; sets `irc.step_length`.
-  - `--root INT`: Imaginary mode index for the initial displacement; sets `irc.root`.
-  - `--forward BOOL`: Run the forward IRC (explicit `True`/`False`); sets `irc.forward`.
-  - `--backward BOOL`: Run the backward IRC (explicit `True`/`False`); sets `irc.backward`.
+  - `--max-cycles INT` (default `125`): Max number of IRC steps; sets `irc.max_cycles`.
+  - `--step-size FLOAT` (default `0.10`): Step length in mass-weighted coordinates; sets `irc.step_length`.
+  - `--root INT` (default `0`): Imaginary mode index for the initial displacement; sets `irc.root`.
+  - `--forward BOOL` (default `True`): Run the forward IRC (explicit `True`/`False`); sets `irc.forward`.
+  - `--backward BOOL` (default `True`): Run the backward IRC (explicit `True`/`False`); sets `irc.backward`.
   - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
   - `--convert-files {True|False}` (default `True`): Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.
   - `--ref-pdb PATH`: Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).
   - `--out-dir STR` (default `./result_irc/`): Output directory; sets `irc.out_dir`.
-  - `--hessian-calc-mode {Analytical,FiniteDifference}`: How UMA builds the Hessian; sets `calc.hessian_calc_mode`.
+  - `--hessian-calc-mode {Analytical,FiniteDifference}` (default `FiniteDifference`): How UMA builds the Hessian; sets `calc.hessian_calc_mode`.
   - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
 
 Outputs (& Directory Layout)
@@ -228,11 +228,51 @@ def _echo_convert_trj_if_exists(
     ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
-@click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")
-@click.option("--step-size", type=float, default=None, help="Step length in mass-weighted coordinates; overrides irc.step_length from YAML.")
-@click.option("--root", type=int, default=None, help="Imaginary mode index used for the initial displacement; overrides irc.root from YAML.")
-@click.option("--forward", type=bool, default=None, help="Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly.")
-@click.option("--backward", type=bool, default=None, help="Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly.")
+@click.option(
+    "--max-cycles",
+    type=int,
+    default=None,
+    help=(
+        "Maximum number of IRC steps; overrides irc.max_cycles from YAML. "
+        "Defaults to 125 when not provided."
+    ),
+)
+@click.option(
+    "--step-size",
+    type=float,
+    default=None,
+    help=(
+        "Step length in mass-weighted coordinates; overrides irc.step_length from YAML. "
+        "Defaults to 0.10."
+    ),
+)
+@click.option(
+    "--root",
+    type=int,
+    default=None,
+    help=(
+        "Imaginary mode index used for the initial displacement; overrides irc.root from YAML. "
+        "Defaults to 0."
+    ),
+)
+@click.option(
+    "--forward",
+    type=bool,
+    default=None,
+    help=(
+        "Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly. "
+        "Defaults to True."
+    ),
+)
+@click.option(
+    "--backward",
+    type=bool,
+    default=None,
+    help=(
+        "Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly. "
+        "Defaults to True."
+    ),
+)
 @click.option(
     "--freeze-links",
     "freeze_links_flag",

@@ -493,6 +493,11 @@ def _write_mode_trj_and_pdb(geom,
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
 CALC_KW = dict(_UMA_CALC_KW)
+CALC_KW.update(
+    {
+        "return_partial_hessian": True,  # default to PHVA-friendly active-block Hessians when possible
+    }
+)
 
 # Freq writer defaults
 FREQ_KW = {
