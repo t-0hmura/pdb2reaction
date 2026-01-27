@@ -12,14 +12,16 @@
 Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
 settings from YAML, and always write the final imaginary mode in `.trj`. When
 `--convert-files` is enabled (default), PDB inputs mirror trajectories into `.pdb`
-companions and Gaussian templates receive multi-geometry `.gjf` exports.
+companions when `--dump True`, and Gaussian templates receive `.gjf` output for the
+final geometry (trajectories are not written as `.gjf`).
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
-enabling format-aware PDB/GJF output conversion.
+enabling format-aware PDB/GJF output conversion. The default `--opt-mode` is **heavy** (RS-I-RFO);
+switch to `--opt-mode light` to run the Hessian Dimer workflow.
 
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                    [--opt-mode light|heavy] \
+                    [--opt-mode light|heavy] [--flatten-imag-mode {True|False}] \
                     [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
                     [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference] \
@@ -46,8 +48,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 - **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
   template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
   treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
-  charge; explicit `-q` still overrides. Otherwise `-q/--charge` is required and multiplicity
-  defaults to `1`. Override them explicitly to ensure UMA runs on the intended state.
+  charge for PDB inputs (or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Otherwise
+  `-q/--charge` is required and multiplicity defaults to `1`. Override them explicitly to ensure
+  UMA runs on the intended state.
 - **Geometry loading & freeze-links**: structures are read via
   `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links True` finds link hydrogens
   and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
@@ -74,21 +77,21 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
   convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
   imaginary mode remains or the flatten iteration cap is reached.
 - **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
-  and mirrored to `.pdb`/`.gjf` when conversion is enabled. When the input was PDB, the optimization
-  trajectory and final geometry are also converted to PDB via the input template; Gaussian templates
-  receive multi-geometry `.gjf` companions.
+  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
+  trajectory and final geometry are also converted to PDB via the input template when `--dump True`;
+  Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. Overrides `--ligand-charge` when both are set. | Required when not in template |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `-q, --charge INT` | Total charge. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
+| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
 | `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
@@ -105,18 +108,18 @@ out_dir/ (default: ./result_tsopt/)
 ├─ final_geometry.pdb            # When the input was PDB (conversion enabled)
 ├─ final_geometry.gjf            # When the input was Gaussian (conversion enabled)
 ├─ optimization_all.trj          # Light-mode dump when --dump is True
-├─ optimization_all.pdb          # Light-mode companion for PDB inputs (conversion enabled)
-├─ optimization.trj              # Heavy-mode trajectory
-├─ optimization.pdb              # Heavy-mode PDB companion when conversion is enabled
+├─ optimization_all.pdb          # Light-mode companion for PDB inputs (conversion enabled, --dump True)
+├─ optimization.trj              # Heavy-mode trajectory when --dump is True
+├─ optimization.pdb              # Heavy-mode PDB companion when conversion is enabled and --dump is True
 ├─ vib/
 │  ├─ final_imag_mode_±XXXX.Xcm-1.trj
-│  └─ final_imag_mode_±XXXX.Xcm-1.pdb/.gjf
+│  └─ final_imag_mode_±XXXX.Xcm-1.pdb
 └─ .dimer_mode.dat               # Light-mode orientation seed
 ```
 
 ## Notes
 - `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
-  algorithm rather than adjusting YAML keys manually (default: `light`).
+  algorithm rather than adjusting YAML keys manually (default: `heavy`).
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
   `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
   exported when multiple remain.

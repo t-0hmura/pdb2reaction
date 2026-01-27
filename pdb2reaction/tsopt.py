@@ -7,10 +7,11 @@ tsopt — Transition-state optimization CLI
 Usage (CLI)
 -----------
     pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
-        [--opt-mode {light|heavy}] \
+        [--opt-mode {light|heavy}] [--thresh <preset>] [--flatten-imag-mode {True|False}] \
         [--freeze-links {True|False}] [--max-cycles <int>] [--dump {True|False}] \
         [--out-dir <dir>] [--args-yaml <file>] \
-        [--hessian-calc-mode {Analytical|FiniteDifference}] [--ref-pdb <file>]
+        [--hessian-calc-mode {Analytical|FiniteDifference}] \
+        [--convert-files {True|False}] [--ref-pdb <file>]
 
 Examples
 --------
@@ -57,7 +58,7 @@ Transition-state optimization with two modes:
 
 The CLI `--opt-mode` accepts two modes:
 `light` maps to the Hessian Dimer workflow, and `heavy` selects RS-I-RFO.
-The default is `light`.
+The default is `heavy`.
 
 Configuration is driven by YAML overrides for sections: `geom`, `calc`, `opt`, `hessian_dimer`,
 and `rsirfo`. The `hessian_dimer` section accepts nested `dimer` and `lbfgs` dictionaries
@@ -69,9 +70,9 @@ calculator (`pdb2reaction.uma_pysis`) provides energies, gradients, and Hessians
 an active-subspace (partial) Hessian block when `freeze_atoms` are present; finite-difference
 Hessians honor the active subspace. `--hessian-calc-mode` selects Analytical or FiniteDifference.
 
-For PDB inputs, optimization trajectories and the final geometry are also converted to PDB.
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
-format-aware PDB/GJF output conversion.
+For PDB inputs, the final geometry is converted to PDB and optimization trajectories are converted
+when `--dump True` is enabled. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while
+keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 The final imaginary mode is written as `.pdb` only when the input is PDB (the `.trj` is always written).
 
 Key behaviors and algorithmic notes
@@ -109,10 +110,11 @@ Outputs (& Directory Layout)
 out_dir/ (default: ./result_tsopt/)
   ├─ final_geometry.xyz              # Optimized TS in XYZ format
   ├─ final_geometry.pdb              # Written when the input was PDB
+  ├─ final_geometry.gjf              # Written when a Gaussian template is available (conversion enabled)
   ├─ optimization_all.trj            # Light-mode trajectory when --dump True
-  ├─ optimization_all.pdb            # PDB conversion of the above (PDB input)
-  ├─ optimization.trj                # Heavy-mode (RS-I-RFO) trajectory
-  ├─ optimization.pdb                # PDB conversion of the heavy-mode trajectory (PDB input)
+  ├─ optimization_all.pdb            # PDB conversion of the above (PDB input, --dump True)
+  ├─ optimization.trj                # Heavy-mode (RS-I-RFO) trajectory when --dump True
+  ├─ optimization.pdb                # PDB conversion of the heavy-mode trajectory (PDB input, --dump True)
   ├─ vib/
   │   ├─ final_imag_mode_±XXXX.Xcm-1.trj  # Final imaginary mode animation (.trj)
   │   └─ final_imag_mode_±XXXX.Xcm-1.pdb  # PDB animation (only when the input is PDB)
@@ -120,7 +122,7 @@ out_dir/ (default: ./result_tsopt/)
 
 Notes
 -----
-- **Charge/spin**: `-q/--charge` and `-m/--mult` inherit `.gjf` template values when the input
+- **Charge/spin**: `-q/--charge` and `-m/--multiplicity` inherit `.gjf` template values when the input
   is `.gjf`; for non-`.gjf` inputs, omitting `-q/--charge` is allowed only when ``--ligand-charge`` is
   provided. In that case the full complex is treated as an enzyme–substrate system and the total charge is
   inferred using ``extract.py``’s residue-aware logic. Otherwise the CLI aborts. Multiplicity still defaults
@@ -1401,7 +1403,16 @@ RSIRFO_KW.update({
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--workers",
     type=int,
@@ -1422,7 +1433,10 @@ RSIRFO_KW.update({
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,

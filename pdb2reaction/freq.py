@@ -7,6 +7,7 @@ freq — Vibrational frequency analysis, mode export, and thermochemistry
 Usage (CLI)
 -----------
     pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <spin>] \
+        [--workers <int>] [--workers-per-node <int>] \
         [--freeze-links {True|False}] [--max-write <int>] \
         [--amplitude-ang <float>] [--n-frames <int>] [--sort {value|abs}] \
         [--out-dir <dir>] [--args-yaml <file>] [--temperature <K>] \
@@ -29,7 +30,7 @@ Description
 - Exports animated modes (.trj; and, for PDB inputs, optionally .pdb animations when ``--convert-files`` is enabled) and prints a Gaussian-style thermochemistry summary.
 - For XYZ/GJF inputs, ``--ref-pdb`` supplies a reference PDB topology while keeping XYZ coordinates, enabling
   format-aware PDB/GJF output conversion.
-- Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``); YAML values override CLI.
+- Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``, ``thermo``); YAML values override CLI.
 - Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
 - The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
 - `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; when ``-q`` is omitted and
@@ -53,6 +54,8 @@ Notes
   - ``--hessian-calc-mode``: ``FiniteDifference`` (default) or ``Analytical``; may also be set in YAML.
   - ``return_partial_hessian`` defaults to True so PHVA can use a reduced active‑block Hessian when possible.
   - Device: ``auto`` selects CUDA if available; otherwise CPU.
+  - Parallelism: ``--workers``/``--workers-per-node`` configure UMA predictors; when ``workers>1``,
+    the parallel predictor disables analytical Hessians and always uses finite differences.
 - PHVA and projections:
   - With frozen atoms, eigenanalysis is performed in the active DOF subspace and translation/rotation (TR) modes are projected in that subspace.
   - Both full Hessians (3N×3N) and pre‑reduced active blocks (3N_act×3N_act) are accepted.
@@ -522,7 +525,16 @@ THERMO_KW = {
     required=True,
     help="Input structure (.pdb, .xyz, .trj, ...)",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--workers",
     type=int,
@@ -543,7 +555,10 @@ THERMO_KW = {
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
@@ -575,7 +590,7 @@ THERMO_KW = {
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, freq).",
+    help="YAML with extra args (sections: geom, calc, freq, thermo).",
 )
 # Thermochemistry options
 @click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,

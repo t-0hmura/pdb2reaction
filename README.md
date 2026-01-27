@@ -339,8 +339,14 @@ Below are the most commonly used options across workflows.
 
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
-- `--opt-mode (If you have charge and multiplicity in .gjf input, -q and -m can be omitted) | heavy`
-  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Option `light` is recommended.  
+- `--opt-mode light|heavy`  
+  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Default: `light`.  
+
+- `--opt-mode-post light|heavy`  
+  Optimizer preset for TSOPT and post-IRC endpoint optimization. Default: `heavy`.
+
+- `--flatten-imag-mode {True|False}`  
+  Enable extra-imaginary-mode flattening in `tsopt` (light: dimer loop, heavy: post-RSIRFO). Default: `False`.
 
 - `--hessian-calc-mode Analytical|FiniteDifference`  
   **When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended in `all`, `tsopt`, `freq` and `irc`**

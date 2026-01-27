@@ -31,8 +31,9 @@ Description
 - RKS/UKS is selected automatically from the spin multiplicity (2S+1).
 - Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
   The geometry is written back unchanged as input_geometry.xyz.
-- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
-  format-aware PDB/GJF output conversion.
+- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology (atom count validation) while keeping XYZ
+  coordinates. This primarily enables `--ligand-charge` derivation from a PDB template; the DFT stage itself
+  only writes `input_geometry.xyz` and `result.yaml` (no PDB/GJF output conversion is performed).
 - Functional/basis specified as 'FUNC/BASIS' via --func-basis (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-svp', 'wb97m-v/def2-tzvpd').
   Names are case-insensitive in PySCF.
 - Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
@@ -54,6 +55,7 @@ Description
 - Energies are reported in Hartree and kcal/mol; SCF convergence status and backend selection are recorded.
   Elapsed time is printed to stdout.
 - The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
+- `--convert-files` is accepted for interface consistency with other subcommands but does not create extra outputs here.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -376,13 +378,25 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.; loaded via pysisyphus.helpers.geom_loader).",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--ligand-charge",
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
@@ -391,7 +405,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Accepted for interface consistency; dft does not emit PDB/GJF outputs.",
 )
 @click.option(
     "--ref-pdb",
@@ -422,7 +436,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='Optional YAML overrides under key "dft" (func/basis, conv_tol, max_cycle, grid_level, verbose, out_dir).',
+    help='Optional YAML overrides under keys "dft" (func/basis, conv_tol, max_cycle, grid_level, verbose, out_dir) and "geom".',
 )
 def cli(
     input_path: Path,

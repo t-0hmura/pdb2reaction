@@ -6,7 +6,8 @@ irc — IRC calculations with the EulerPC algorithm
 
 Usage (CLI)
 -----------
-    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
+    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] \
+        [--workers <int>] [--workers-per-node <int>] [-m <multiplicity>] \
         [--max-cycles <int>] [--step-size <float>] [--root <int>] \
         [--forward {True|False}] [--backward {True|False}] \
         [--freeze-links {True|False}] [--convert-files {True|False}] [--ref-pdb <file>] \
@@ -42,6 +43,7 @@ CLI options
   - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
   - `-q/--charge INT`: Total charge; sets `calc.charge`. Required for non-`.gjf` inputs; `.gjf` templates
     supply defaults when available.
+  - `--workers`, `--workers-per-node`: UMA predictor parallelism (workers > 1 disables analytic Hessians).
   - `-m/--multiplicity INT` (default 1): Spin multiplicity (2S+1); sets `calc.spin` and defaults to the template multiplicity or `1`.
   - `--max-cycles INT`: Max number of IRC steps; sets `irc.max_cycles`.
   - `--step-size FLOAT`: Step length in mass-weighted coordinates; sets `irc.step_length`.
@@ -190,7 +192,16 @@ def _echo_convert_trj_if_exists(
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, etc.).",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--workers",
     type=int,
@@ -211,7 +222,10 @@ def _echo_convert_trj_if_exists(
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--max-cycles", type=int, default=None, help="Maximum number of IRC steps; overrides irc.max_cycles from YAML.")

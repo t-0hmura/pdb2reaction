@@ -381,7 +381,16 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--workers",
     type=int,
@@ -402,7 +411,10 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option(
     "-m",

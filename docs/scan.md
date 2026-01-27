@@ -16,7 +16,7 @@ enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
-pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                   --scan-list(s) '[(i,j,targetÅ), ...]' [options]
                   [--convert-files {True|False}] [--ref-pdb FILE]
 ```
@@ -69,7 +69,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template > 0). When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
 | `--scan-list(s) TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
@@ -80,7 +80,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
@@ -115,8 +115,7 @@ out_dir/ (default: ./result_scan/)
     ├─ result.pdb             # PDB mirror of the final structure (conversion enabled)
     ├─ result.gjf             # Gaussian mirror when templates exist and conversion is enabled
     ├─ scan.trj               # Written when --dump is True
-    ├─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled
-    └─ scan.gjf               # Trajectory companion when a Gaussian template exists and conversion is enabled
+    └─ scan.pdb               # Trajectory companion for PDB inputs when conversion is enabled (no scan.gjf is produced)
 ```
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
@@ -127,14 +126,13 @@ out_dir/ (default: ./result_scan/)
   (space/comma/slash/backtick/backslash) and unordered tokens.
 - `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
   atoms in PDB files so pockets stay rigid.
-- Charge and spin inherit Gaussian template metadata when available. If `-q` is
-  omitted but `--ligand-charge` is provided, the full structure is treated as an
-  enzyme–substrate complex and `extract.py`’s charge summary computes the total
-  charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and
-  spin to `1`.
+- Charge and spin inherit Gaussian template metadata when available. For non-`.gjf`
+  inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for
+  PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity
+  defaults to `1` when omitted.
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are written
   regardless of `--dump`; trajectories are written only when `--dump` is `True`
-  and converted to `scan.pdb`/`scan.gjf` when conversion is enabled.
+  and converted to `scan.pdb` (PDB inputs only) when conversion is enabled.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. YAML parameters override CLI. Shared sections

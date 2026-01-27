@@ -61,7 +61,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
@@ -76,7 +76,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`). | _None_ |
+| `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`, `thermo`). | _None_ |
 
 ## Outputs
 ```
@@ -92,15 +92,15 @@ out_dir/ (default: ./result_freq/)
 - Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
   and dumps details when `--dump True`.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
-- Charge/spin inherit `.gjf` metadata when available. If `-q` is omitted but
-  `--ligand-charge` is provided, the input is treated as an enzyme–substrate
-  complex and `extract.py`’s charge summary computes the total charge; explicit
-  `-q` still overrides. Otherwise charge defaults to `0` and multiplicity to `1`.
-  Override them explicitly to ensure the intended state.
+- Charge/spin inherit `.gjf` metadata when available. For non-`.gjf` inputs,
+  `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs
+  or XYZ/GJF with `--ref-pdb`). Explicit `-q` still overrides. Multiplicity defaults to `1`
+  when omitted. Override them explicitly to ensure the intended state.
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; YAML values override both defaults and CLI switches (highest
 precedence). Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
+An additional `thermo` section is supported for thermochemistry controls.
 
 ```yaml
 geom:
@@ -124,4 +124,8 @@ freq:
   n_frames: 20               # number of frames per mode
   max_write: 10              # maximum number of modes to write
   sort: value                # sort order: value vs abs
+thermo:
+  temperature: 298.15        # thermochemistry temperature (K)
+  pressure_atm: 1.0          # thermochemistry pressure (atm)
+  dump: false                # write thermoanalysis.yaml when true
 ```

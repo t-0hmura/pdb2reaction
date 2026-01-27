@@ -57,15 +57,15 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
    - `--tsopt True`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
    - `--thermo True`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
    - `--dft True`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo True`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
-   - Shared overrides include `--opt-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
+   - Shared overrides include `--opt-mode`, `--opt-mode-post` (default `heavy`), `--flatten-imag-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
    - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 
 6. **TSOPT-only mode** (single input, `--tsopt True`, no `--scan-lists`)
    - Skips the MEP/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
-- With extraction: pocket charge = inhereted extractor charge calculated from `--ligand-charge`; spin comes from `--mult` (default 1).
-- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge from the supplied substrate charge(s); otherwise the charge written in `.gjf` or the default is 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
+- With extraction: pocket charge = extractor model #1 total pocket charge (uses `--ligand-charge` when provided); spin comes from `--mult` (default 1).
+- Without extraction: explicit `-q/--charge` wins. If omitted but `--ligand-charge` is provided, the **full complex is treated as an enzyme–substrate adduct** and `extract.py`’s charge summary logic derives the total charge when the first input is a PDB; if that derivation fails but `--ligand-charge` is numeric, it is used as the total charge. Otherwise the charge written in `.gjf` or the default is 0. Spin precedence becomes explicit `--mult`, else `.gjf`, else 1.
 
 ### Input expectations
 - Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
@@ -85,7 +85,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
 | `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
 | `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
-| `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex. | `None` |
+| `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex for PDB inputs; numeric values also act as a total-charge fallback. | `None` |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
@@ -94,6 +94,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--max-cycles INT` | MEP maximum optimization cycles (GSM/DMF). | `300` |
 | `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
+| `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC endpoint optimization. | `heavy` |
 | `--dump BOOLEAN` | Dump MEP (GSM/DMF) and single-structure trajectories (propagates to scan/tsopt/freq). | `False` |
 | `--convert-files {True|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
 | `--args-yaml FILE` | YAML forwarded unchanged to `path_search`, `scan`, `tsopt`, `freq`, and `dft`. | _None_ |
@@ -105,6 +106,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--dft-engine [gpu\|cpu\|auto]` | Preferred backend for the DFT stage (`auto` tries GPU then CPU). | `gpu` |
 | `--tsopt-max-cycles INT` | Override `tsopt --max-cycles` for each refinement. | _None_ |
 | `--tsopt-out-dir PATH` | Custom tsopt subdirectory (resolved against `<out-dir>` when relative). | _None_ |
+| `--flatten-imag-mode {True|False}` | Enable extra-imaginary-mode flattening in `tsopt` (light: dimer loop, heavy: post-RSIRFO). | `False` |
 | `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
 | `--freq-max-write INT` | Override `freq --max-write`. | _None_ |
 | `--freq-amplitude-ang FLOAT` | Override `freq --amplitude-ang` (Å). | _None_ |
@@ -118,6 +120,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--dft-conv-tol FLOAT` | Override `dft --conv-tol`. | _None_ |
 | `--dft-grid-level INT` | Override `dft --grid-level`. | _None_ |
 | `--scan-list(s) TEXT...` | One or more Python-like lists describing staged scans on the extracted pocket (single-input runs only). Each element is `(i,j,target_Å)`; a single literal runs one stage, multiple literals run sequential stages. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'` and are remapped internally. | _None_ |
+| `--scan-out-dir PATH` | Override the scan output directory (relative paths resolved against the default parent). | _None_ |
 | `--scan-one-based BOOLEAN` | Force scan indexing to 1-based (`True`) or 0-based (`False`); `None` keeps the scan default (1-based). | _None_ |
 | `--scan-max-step-size FLOAT` | Override scan `--max-step-size` (Å). | _None_ |
 | `--scan-bias-k FLOAT` | Override the harmonic bias strength `k` (eV/Å²). | _None_ |

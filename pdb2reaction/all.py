@@ -19,7 +19,7 @@ Usage (CLI)
         [--thresh-post <preset>] \
         [--args-yaml <file>] [--preopt {True|False}] \
         [--hessian-calc-mode {Analytical|FiniteDifference}] [--out-dir <dir>] \
-        [--tsopt {True|False}] [--thermo {True|False}] [--dft {True|False}] \
+        [--tsopt {True|False}] [--flatten-imag-mode {True|False}] [--thermo {True|False}] [--dft {True|False}] \
         [--tsopt-max-cycles <int>] [--freq-* overrides] [--dft-* overrides] \
         [--dft-engine {gpu|cpu|auto}] [--scan-list(s) '[(...)]' ...]
 
@@ -120,7 +120,7 @@ Pipeline overview
       - ``--mult`` (multiplicity), ``--freeze-links``, ``--max-nodes``, ``--max-cycles``, ``--climb``,
         ``--opt-mode``, ``--dump``, ``--thresh``, ``--preopt``, ``--args-yaml``, ``--out-dir``.
       - Note: ``--dump`` is always passed to the MEP step; for scan/tsopt/freq it is forwarded only when
-        explicitly set on this command (otherwise each subcommand’s defaults apply; freq is run with dump=True by default).
+        explicitly set on this command (otherwise each subcommand’s defaults apply; ``freq`` defaults to ``dump=False``).
       - ``--convert-files {True|False}`` controls whether XYZ/TRJ outputs are converted into
         PDB/GJF companions when possible.
 
@@ -142,8 +142,8 @@ Pipeline overview
         • Run **IRC (EulerPC)** from the optimized TS,
         • Map IRC endpoints onto the segment’s left/right MEP endpoints (bond-state matching first,
           RMSD fallback) to assign backward/forward consistently across segments,
-        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode-post`` if set,
-          otherwise ``--opt-mode``; threshold preset controlled by ``--thresh-post``, default ``baker``),
+        • Optimize both IRC endpoints to minima (LBFGS/RFO depending on ``--opt-mode-post``; default ``heavy``,
+          threshold preset controlled by ``--thresh-post``, default ``baker``),
         • Use these optimized minima as the final R and P for downstream analyses.
         • Write per-segment UMA energy diagram: ``post_seg_XX/energy_diagram_UMA.png``.
         • Copy the TS structure to ``<out-dir>/ts_seg_XX.pdb`` (when a PDB representation is available)
@@ -185,11 +185,13 @@ Charge handling
   - ``-q/--charge`` **forces** the total system charge with a console **WARNING**, overriding
     extractor/GJF/``--ligand-charge``-derived values.
   - With extraction enabled (``-c/--center``):
-      • the extractor’s model #1 **total pocket charge** is used (rounded to an integer) unless overridden.
+      • the extractor’s model #1 **total pocket charge** is used (rounded to an integer) unless overridden
+        (the extractor uses ``--ligand-charge`` when provided).
   - With extraction skipped (no ``--center``):
       1) if ``--ligand-charge`` is provided **and** ``-q`` is omitted, the full input is treated as an
          enzyme–substrate complex and the total system charge is inferred using the same residue-aware
-         logic as ``extract.py`` (``--ligand-charge`` may be numeric or a residue→charge mapping);
+         logic as ``extract.py`` when the first input is a PDB; if that derivation fails but
+         ``--ligand-charge`` is numeric, it is used as the total system charge;
       2) else, if the first input is ``.gjf``, its charge is used;
       3) else default is **0**.
   - Spin precedence when extraction is skipped:
@@ -215,8 +217,9 @@ Forwarded / relevant options
   - Scan (single-structure): inherits charge/spin and shared knobs; per-stage/scan overrides include
     ``--scan-out-dir``, ``--scan-one-based``, ``--scan-max-step-size``, ``--scan-bias-k``,
     ``--scan-relax-max-cycles``, ``--scan-preopt``, ``--scan-endopt``.
-  - TS optimization / IRC: ``--tsopt``, ``--tsopt-max-cycles``, ``--tsopt-out-dir`` and shared knobs above.
-    ``--opt-mode-post`` (if set; otherwise ``--opt-mode``) controls TSOPT and post-IRC endpoint optimizers.
+  - TS optimization / IRC: ``--tsopt``, ``--tsopt-max-cycles``, ``--tsopt-out-dir``, ``--flatten-imag-mode`` and shared knobs above.
+    ``--opt-mode-post`` (default ``heavy``; overrides ``--opt-mode`` unless you explicitly change it) controls TSOPT
+    and post-IRC endpoint optimizers.
     ``--hessian-calc-mode`` is forwarded to TSOPT and freq.
   - Frequency analysis: ``--freq-out-dir``, ``--freq-max-write``, ``--freq-amplitude-ang``,
     ``--freq-n-frames``, ``--freq-sort``, ``--freq-temperature``, ``--freq-pressure`` plus shared knobs.
@@ -1944,8 +1947,9 @@ def _irc_and_match(
     type=str,
     default=None,
     help=(
-        "Either a total charge (number) to distribute across unknown residues "
-        "or a mapping like 'GPP:-3,MMT:-1'."
+        "Total charge (number) or per-resname mapping like 'GPP:-3,MMT:-1'. "
+        "Used for extractor charge summaries; when extraction is skipped, PDB inputs "
+        "derive the total charge and numeric values act as a total-charge fallback."
     ),
 )
 @click.option(
@@ -2096,7 +2100,8 @@ def _irc_and_match(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
-        "YAML with extra args for path_search (sections: geom, calc, gs, opt, sopt, bond, search)."
+        "YAML forwarded unchanged to downstream subcommands (path_search/path-opt/scan/tsopt/freq/dft); "
+        "include the sections those commands accept (e.g., geom, calc, gs, opt, sopt, bond, search, dmf, bias, freq, thermo, dft)."
     ),
 )
 @click.option(
@@ -2387,7 +2392,7 @@ def cli(
       - with --scan-lists: run staged scan and use stage results as inputs for path_search,
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
 
-    With ``--refine-path True``, the recursive ``path_search`` workflow is used. When ``False`` (default),
+    With ``--refine-path True`` (default), the recursive ``path_search`` workflow is used. When ``False``,
     a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """

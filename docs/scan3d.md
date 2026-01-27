@@ -18,10 +18,11 @@ option to load the CSV after the scan finishes and changing `--zmin` and `--zmax
 
 ## Usage
 ```bash
-pdb2reaction scan3d -i INPUT.{pdb|xyz|trj|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    --scan-list(s) '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options] \
-                    [--convert-files {True|False}] [--ref-pdb FILE]
+pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+                    [--scan-list(s) '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+                    [--convert-files {True|False}] [--ref-pdb FILE] [--csv PATH]
 ```
+Note: `-i/--input` and `--scan-list(s)` are required unless `--csv` is provided.
 
 ### Examples
 ```bash
@@ -36,9 +37,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
     --preopt True --baseline min
 
 # Plot only from an existing surface.csv (skip new energy evaluation)
-pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-list(s) '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
-    --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
+pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
 
 ## Workflow
@@ -46,7 +45,8 @@ pdb2reaction scan3d -i input.pdb -q 0 \
    embedded Gaussian templates, and optionally run an unbiased preoptimization
    when `--preopt True`. If `-q` is omitted but `--ligand-charge` is provided, the
    structure is treated as an enzyme–substrate complex and `extract.py`’s charge
-   summary derives the total charge before scanning.
+   summary derives the total charge before scanning (for PDB inputs, or XYZ/GJF
+   when `--ref-pdb` is supplied).
 2. Parse the single `--scan-list(s)` literal (default 1-based indices unless
    `--one-based False` is passed) into three quadruples. For PDB inputs, each
    atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
@@ -70,12 +70,12 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template > 0). Overrides `--ligand-charge` when both are set. | Required when not in template |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required unless `--csv` is provided |
+| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
-| `--scan-list(s) TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `--scan-list(s) TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
 | `--one-based {True|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
@@ -86,8 +86,8 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
-| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). | _None_ |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | _None_ |
+| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--scan-list(s)` become optional. | _None_ |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
 | `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or `(i,j,k)=(0,0,0)` is zero. | `min` |

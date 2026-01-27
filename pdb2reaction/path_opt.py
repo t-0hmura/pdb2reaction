@@ -6,9 +6,11 @@ path_opt — Minimum-energy path (MEP) optimization via GSM or DMF with a UMA ca
 
 Usage (CLI)
 -----------
-    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] -m MULT \
+    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+                        [--workers <int>] [--workers-per-node <int>] \
                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                         [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
+                        [--preopt BOOL] [--preopt-max-cycles N] [--opt-mode {light|heavy}] [--fix-ends BOOL] \
                         [--convert-files {True|False}] \
                         [--out-dir DIR] [--args-yaml FILE]
 
@@ -27,13 +29,13 @@ Description
 -----------
 - Optimizes a minimum-energy path between two endpoints using GSM (pysisyphus `GrowingString` + `StringOptimizer`) or DMF, with UMA as the calculator (via `uma_pysis`).
 - Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
-- Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: YAML > CLI > built-in defaults.
+- Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, `dmf`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: YAML > CLI > built-in defaults.
 - Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light", default) or RFO ("heavy") before alignment and MEP search. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
 - Path generator: `--mep-mode` accepts GSM or DMF, with GSM enabled by default to match the CLI default.
 - Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
 - With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is enabled by default and follows the `--climb` flag; YAML can still override it.
 - `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`).
-- `--fix-ends=True` fixes both endpoint geometries during GSM (`fix_first=True`, `fix_last=True`).
+- When `--fix-ends True` (default: False), both endpoint geometries are fixed during GSM (`fix_first=True`, `fix_last=True`).
 - After optimization, the highest-energy image (HEI) is identified as the highest-energy internal local maximum (preferring internal nodes). If none exist, the maximum among internal nodes is used; if there are no internal nodes, the global maximum is used. The selected HEI is exported.
 
 Outputs (& Directory Layout)
@@ -52,13 +54,14 @@ Notes
 - Charge/spin: `-q/--charge` (recommended for non-`.gjf` inputs; otherwise defaults to 0) and `-m/--multiplicity`
   are reconciled with any `.gjf` template values: explicit CLI options win. When ``-q`` is omitted but ``--ligand-charge`` is set,
   the full complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware
-  logic. If neither `-q` nor `--ligand-charge` is supplied, the charge falls back to 0; set it explicitly to avoid unphysical
-  conditions.
+  logic when the endpoints are PDBs. If the derivation fails (e.g., non-PDB inputs), or if neither `-q` nor `--ligand-charge` is
+  supplied, the charge falls back to 0; set it explicitly to avoid unphysical conditions.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
 - `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO, selected via `--opt-mode`) and does not affect `--max-cycles`.
-- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
+- Format-aware conversions respect the global `--convert-files {True|False}` toggle (default: enabled):
+  trajectories may emit PDB companions when references exist, and XYZ snapshots (e.g., HEI) may emit GJF companions when templates exist.
 """
 
 from __future__ import annotations
@@ -521,7 +524,7 @@ def _optimize_single(
 # -----------------------------------------------
 
 @click.command(
-    help="MEP optimization via the Growing String method.",
+    help="MEP optimization via GSM or DMF.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -539,7 +542,13 @@ def _optimize_single(
     show_default=True,
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help="Total charge. Optional; defaults to a .gjf template value or 0 when not provided.",
+)
 @click.option(
     "--workers",
     type=int,
@@ -560,7 +569,10 @@ def _optimize_single(
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (PDB inputs only; otherwise it may fall back to 0)."
+    ),
 )
 @click.option(
     "-m",
@@ -641,7 +653,7 @@ def _optimize_single(
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, gs, opt, sopt.lbfgs, sopt.rfo).",
+    help="YAML with extra args (sections: geom, calc, gs, opt, dmf, sopt.lbfgs, sopt.rfo).",
 )
 @click.option(
     "--preopt",
@@ -693,7 +705,7 @@ def cli(
         time_start = time.perf_counter()
 
         # --------------------------
-        # 1) Assemble final config (defaults ← YAML ← CLI)
+        # 1) Assemble final config (defaults ← CLI ← YAML)
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 

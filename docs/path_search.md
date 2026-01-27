@@ -1,11 +1,12 @@
 # `path-search` subcommand
 
 ## Overview
-Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. Format-aware conversions mirror trajectories and HEI snapshots into `.pdb` or multi-geometry `.gjf` companions when `--convert-files` is enabled (default) and matching templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling PDB/GJF companion generation and full-template merges.
+Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. Format-aware conversions mirror trajectories into `.pdb` companions when PDB references exist, and mirror XYZ snapshots (for example HEIs) into `.gjf` companions when Gaussian templates exist and `--convert-files` is enabled (default). For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling full-template merges when `--ref-full-pdb` is provided (XYZ/GJF inputs still do not produce PDB companions).
 
 ## Usage
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+                         [--workers N] [--workers-per-node N]
                          [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
                          [--refine-mode {peak|minima}]
                          [--max-nodes N] [--max-cycles N] [--climb BOOL]
@@ -32,14 +33,14 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
-| `-q, --charge INT` | Total charge. Required unless the first input is a `.gjf` template that already stores charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex even when pockets are skipped. | `None` |
+| `-q, --charge INT` | Total charge. Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds (PDB inputs). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
-| `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for the first segment in each pair (GSM only). | `True` |
+| `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
@@ -74,8 +75,7 @@ out_dir/ (default: ./result_path_search/)
 ├─ mep_w_ref_seg_XX.pdb     # Merged per-segment paths when covalent changes exist (requires ref PDB)
 ├─ summary.yaml             # Barrier and classification summary for every recursive segment
 ├─ mep_plot.png             # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
-├─ energy_diagram.html      # Plotly state-energy diagram (relative to reactant)
-├─ energy_diagram.png       # Static export of the energy diagram
+├─ energy_diagram_MEP.png   # Static export of the MEP state-energy diagram (relative to reactant)
 └─ segments/seg_000_*/      # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
 ```
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
@@ -85,7 +85,7 @@ out_dir/ (default: ./result_path_search/)
 - `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories and restart YAML files.
-- Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to 0 and multiplicity to `1`.
+- Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. For non-`.gjf` inputs without a usable `--ligand-charge`, the command aborts; multiplicity defaults to `1` when omitted.
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.

@@ -7,6 +7,7 @@ path_search — Recursive MEP segmentation (GSM/DMF) to build a continuous multi
 Usage (CLI)
 -----------
     pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+                            [--workers N] [--workers-per-node N]
                             [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
                             [--refine-mode peak|minima]
                             [--max-nodes N] [--max-cycles N] [--climb BOOL]
@@ -21,18 +22,20 @@ Core inputs (strongly recommended):
     -i/--input
         Two or more structures in reaction order (repeatable or space‑separated after a single -i).
     -q/--charge
-        Total system charge for the ML region (required for non-`.gjf` inputs **unless** ``--ligand-charge``
-        is supplied; `.gjf` templates supply defaults when available). When ``-q`` is omitted but
+        Total system charge for the ML region (required for non-`.gjf` inputs unless ``--ligand-charge``
+        derivation succeeds; `.gjf` templates supply defaults when available). When ``-q`` is omitted but
         ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the total
-        charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q`` overrides any derived
-        charge.
+        charge is inferred using ``extract.py``’s residue-aware logic when inputs are PDBs. Explicit ``-q``
+        overrides any derived charge; otherwise the run aborts for non-`.gjf` inputs.
 
 Recommended/common:
-    -m/--mult
+    -m/--multiplicity
         Spin multiplicity (2S+1); defaults to a .gjf template value when available,
         otherwise 1 when omitted.
     --opt-mode
         Single-structure optimizer: light (=LBFGS) or heavy (=RFO); default light.
+    --workers / --workers-per-node
+        UMA predictor parallelism (workers > 1 disables analytical Hessians).
     --mep-mode
         Segment generator: GSM (string) or DMF (direct max flux); default gsm.
     --max-nodes
@@ -40,13 +43,13 @@ Recommended/common:
     --max-cycles
         Max optimization cycles; default 300.
     --climb {True|False}
-        Enable TS search (GSM climbing) for all GSM segments; default True.
+        Enable TS search (GSM climbing) for standard GSM segments; bridge segments always run with climbing disabled.
     --preopt {True|False}
         Preoptimize endpoints; default True.
     --align {True|False}
         Rigidly co‑align all inputs after pre‑opt; default on.
     --args-yaml PATH
-        YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search).
+        YAML with overrides (sections: geom, calc, gs, opt, sopt, bond, search, dmf).
     --thresh STR
         Convergence preset for GSM and single optimizations
         (gau_loose|gau|gau_tight|gau_vtight|baker|never).
@@ -59,7 +62,9 @@ Recommended/common:
     --dump {True|False}
         Save optimizer dumps; default False.
     --convert-files {True|False}
-        Convert XYZ/TRJ outputs into format-aware PDB/GJF companions; default on.
+        Convert outputs into format-aware companions; PDB companions are produced for trajectories
+        when references exist, and GJF companions are produced for XYZ snapshots when templates exist;
+        default on.
     --freeze-links {True|False}
         Freeze parents of link hydrogens for PDB input; default True.
 
@@ -1879,7 +1884,7 @@ def _merge_final_and_write(final_images: List[Any],
 # -----------------------------------------------
 
 @click.command(
-    help="Multistep MEP search via recursive GSM segmentation.",
+    help="Multistep MEP search via recursive GSM/DMF segmentation.",
     context_settings={
         "help_option_names": ["-h", "--help"],
         # Allow a single '-i' followed by multiple paths (as extra args)
@@ -1921,7 +1926,10 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=None,
     show_default=False,
-    help="Charge of the ML region.",
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge derives it "
+        "from PDB inputs."
+    ),
 )
 @click.option(
     "--workers",
@@ -1943,7 +1951,10 @@ def _merge_final_and_write(final_images: List[Any],
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (PDB inputs only)."
+    ),
 )
 @click.option(
     "-m",
@@ -1961,7 +1972,7 @@ def _merge_final_and_write(final_images: List[Any],
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
 @click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option("--climb", type=click.BOOL, default=True, show_default=True,
-              help="Enable transition-state search after path growth.")
+              help="Enable climbing image for standard GSM segments (bridge segments always disable climbing).")
 @click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
@@ -1991,7 +2002,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--args-yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search)."
+    help="YAML with extra args (sections: geom, calc, gs, opt, sopt, bond, search, dmf)."
 )
 @click.option(
     "--preopt",

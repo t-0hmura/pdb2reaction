@@ -1,13 +1,15 @@
 # `path-opt` subcommand
 
 ## Overview
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **CLI > `--args-yaml` > defaults** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), outputs are mirrored to `.pdb` or multi-geometry `.gjf` companions when the endpoints originate from PDBs or Gaussian templates. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator, and single-structure optimizations default to the `light` (LBFGS) preset.
 
 ## Usage
 ```bash
-pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] -m MULT \
+pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+                      [--workers N] [--workers-per-node N] \
                       [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                       [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
+                      [--preopt BOOL] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends BOOL] \
                       [--out-dir DIR] [--args-yaml FILE] \
                       [--convert-files {True|False}]
 ```
@@ -23,7 +25,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
-- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. When both are omitted, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
+- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. When no template/derivation applies, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
 - **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.
@@ -33,8 +35,8 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
-| `-q, --charge INT` | Total charge (`calc.charge`). Required unless the input is a `.gjf` template that already encodes charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex even without pocket extraction. | `None` |
+| `-q, --charge INT` | Total charge (`calc.charge`). Optional; when omitted, `.gjf` templates or `--ligand-charge` (PDB inputs) may supply it, otherwise it falls back to `0`. Overrides `--ligand-charge` when both are set. | Template/`0` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs; otherwise the charge falls back to `0`. | `None` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
@@ -60,7 +62,7 @@ out_dir/
 ├─ hei.xyz                     # Highest-energy image with its energy on the comment line
 ├─ hei.pdb                     # HEI converted to PDB when the first endpoint was a PDB (conversion enabled)
 ├─ hei.gjf                     # HEI written using a detected Gaussian template (conversion enabled)
-├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created only when scan output exists)
+├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created when alignment runs)
 └─ <optimizer dumps/restarts>  # Present when dumping is enabled
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.

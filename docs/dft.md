@@ -5,8 +5,8 @@ Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySC
 
 ## Usage
 ```bash
-pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} -q CHARGE [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
-                 --func-basis 'FUNC/BASIS' \
+pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
+                 [--func-basis 'FUNC/BASIS'] \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
                  [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True|False}] \
                  [--ref-pdb FILE] [--args-yaml FILE]
@@ -22,8 +22,8 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 ```
 
 ## Workflow
-1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
-2. **Configuration merge** – Defaults → CLI → YAML (`dft` block). YAML overrides take precedence over CLI flags. Charge/multiplicity inherit `.gjf` metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the structure is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and multiplicity to `1`.
+1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
+2. **Configuration merge** – Defaults → CLI → YAML (`dft` block). YAML overrides take precedence over CLI flags. Charge/multiplicity inherit `.gjf` metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the structure is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted.
 3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
@@ -31,8 +31,8 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). Required unless the input is a `.gjf` template that already stores charge. Overrides `--ligand-charge` when both are set. | Required when not in template |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
 | `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
@@ -40,8 +40,8 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
-| `--convert-files {True|False}` | Toggle XYZ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
-| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
+| `--convert-files {True|False}` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
@@ -67,7 +67,7 @@ out_dir/ (default: ./result_dft/)
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
-Accepts a mapping with top-level key `dft`. YAML values override CLI values.
+Accepts a mapping with top-level key `dft` (and an optional `geom` section forwarded to `geom_loader`). YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
 - `func` (`"wb97m-v"`): Exchange–correlation functional.
@@ -79,9 +79,11 @@ Accepts a mapping with top-level key `dft`. YAML values override CLI values.
 - `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
 - `out_dir` (`"./result_dft/"`): Output directory root.
 
-_Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. Otherwise charge defaults to `0` and spin to `1`. Set them explicitly for non-default states._
+_Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted. Set them explicitly for non-default states._
 
 ```yaml
+geom:
+  coord_type: cart       # optional geom_loader settings
 dft:
   func: wb97m-v         # exchange–correlation functional
   basis: def2-tzvpd     # basis set name (alternatively use func_basis: "FUNC/BASIS")

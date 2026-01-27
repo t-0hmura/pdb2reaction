@@ -6,9 +6,9 @@ scan3d — Three-distance 3D scan with harmonic restraints
 
 Usage (CLI)
 -----------
-    pdb2reaction scan3d -i INPUT.{pdb,xyz,trj,...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
+    pdb2reaction scan3d [-i INPUT.{pdb,xyz,trj,...}] [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
         [-m MULTIPLICITY] \
-        --scan-list(s) '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]' \
+        [--scan-list(s) '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]'] \
         [--one-based {True|False}] \
         [--max-step-size FLOAT] \
         [--bias-k FLOAT] \
@@ -24,6 +24,8 @@ Usage (CLI)
         [--baseline {first|min}] \
         [--thresh {gau_loose|gau|gau_tight|gau_vtight|baker|never}] \
         [--zmin FLOAT] [--zmax FLOAT]
+
+    # Note: -i/--input and --scan-list(s) are required unless --csv is provided.
 
 Examples
 --------
@@ -457,7 +459,16 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     required=False,
     help="Input structure file (.pdb, .xyz, .trj, ...). Required unless --csv is provided.",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--workers",
     type=int,
@@ -478,7 +489,10 @@ def _unbiased_energy_hartree(geom, base_calc) -> float:
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option(
     "-m", "--multiplicity", "spin",

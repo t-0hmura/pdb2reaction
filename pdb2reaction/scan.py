@@ -88,7 +88,8 @@ Notes
 - Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
   Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
 - Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
-  `--convert-files {True|False}` toggle (default: enabled).
+  `--convert-files {True|False}` toggle (default: enabled). For stage trajectories (`scan.trj`),
+  only PDB companions are produced; GJF companions are written for final `result.xyz` (and preopt outputs).
 - Indexing: (i, j) are 1‑based by default; use `--one-based False` if your tuples are 0‑based.
 - Provide multiple literals after a single ``--scan-list(s)`` to define sequential stages.
 - Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
@@ -157,7 +158,7 @@ from .bond_changes import compare_structures, summarize_changes
 
 
 # --------------------------------------------------------------------------------------
-# Defaults (merge order: defaults ← YAML ← CLI)
+# Defaults (merge order: defaults ← CLI ← YAML)
 # --------------------------------------------------------------------------------------
 
 # Geometry handling (Cartesian recommended for scans)
@@ -404,7 +405,16 @@ def _snapshot_geometry(g) -> Any:
     required=True,
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
-@click.option("-q", "--charge", type=int, required=False, help="Charge of the ML region.")
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
 @click.option(
     "--workers",
     type=int,
@@ -425,7 +435,10 @@ def _snapshot_geometry(g) -> Any:
     type=str,
     default=None,
     show_default=False,
-    help="Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) for unknown residues.",
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
