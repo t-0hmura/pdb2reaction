@@ -8,12 +8,6 @@ from typing import Callable, Dict, Tuple, Any
 import click
 
 
-def _apply_options(func, options):
-    for opt in reversed(options):
-        func = opt(func)
-    return func
-
-
 def add_scan_common_options(
     *,
     workers_default: int,
@@ -209,7 +203,13 @@ def add_scan_common_options(
                 ),
             ]
         )
-    return lambda func: _apply_options(func, options)
+
+    def decorator(func):
+        for opt in reversed(options):
+            func = opt(func)
+        return func
+
+    return decorator
 
 
 def build_scan_defaults(

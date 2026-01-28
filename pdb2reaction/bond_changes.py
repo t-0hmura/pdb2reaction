@@ -1,81 +1,16 @@
 # pdb2reaction/bond_changes.py
 
-"""
-bond_changes — Bond-change detection and reporting utilities
-====================================================================
-
-Usage (API)
------------
-    from pdb2reaction.bond_changes import compare_structures, summarize_changes
-
-Examples
---------
-    >>> result = compare_structures(geom_reactant, geom_product, device="cpu")
-    >>> print(summarize_changes(geom_product, result))
-    Bond formed (1):
-      - C1-O2 : 1.500 Å --> 1.360 Å
-    Bond broken: None
-
-Description
------------
-This module compares two molecular geometries with identical atom types and ordering and reports covalent bonds that are formed
-or broken between the structures. Bond perception uses element-specific covalent radii and configurable tolerances; distances are computed with PyTorch on CPU or CUDA.
-
-Algorithm (core logic):
-- Inputs: `geom1`, `geom2` with attributes `atoms: Iterable[str]` and `coords3d: (N, 3) float` (in Bohr in pysisyphus). Atoms must match exactly (`assert geom1.atoms == geom2.atoms`).
-- Per-element radii: from `pysisyphus.elem_data.COVALENT_RADII`.
-- Threshold per pair (i, j): `T_cov = bond_factor * (r_i + r_j)`; conservative margin `eps = margin_fraction * T_cov`.
-- Bond adjacency in a geometry: `A = (D <= T_cov - eps)` evaluated only for `i < j` (upper triangle).
-- Change gating: only pairs with `|D2 - D1| >= delta_fraction * T_cov` are considered.
-- Classification:
-    - Formed: `(~A1) & A2 & need_change`
-    - Broken:  `A1 & (~A2) & need_change`
-- Distances: pairwise matrices `D1`, `D2` via `torch.cdist`.
+"""Bond-change detection using covalent radii and distance matrices.
 
 Public API:
-- `compare_structures(geom1, geom2, device='cuda', bond_factor=1.20, margin_fraction=0.05, delta_fraction=0.05) -> BondChangeResult`
-  Detects formed and broken covalent bonds. Returns sets of zero-based index pairs and the full distance matrices (`numpy.ndarray`) in the same units as the inputs (Bohr in pysisyphus).
-- `summarize_changes(geom, result, one_based: bool = True) -> str`
-  Builds a human-readable report:
-  - Sections: “Bond formed” and “Bond broken” (with counts).
-  - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).
-  - If `result.distances_1/2` are present, prints bond lengths as `: D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.
-- `has_bond_change(geom_start, geom_end, bond_cfg, one_based=True) -> (bool, str)`
-  Convenience wrapper that returns a boolean for bond changes and a summary string using the same thresholds as `compare_structures`.
+- compare_structures(geom1, geom2, **params) -> BondChangeResult
+- summarize_changes(geom, result, one_based=True) -> str
+- has_bond_change(geom_start, geom_end, bond_cfg, one_based=True) -> (bool, str)
 
-Helper utilities (internal):
-- `_resolve_device(device: str) -> torch.device`: chooses the requested device; falls back to CPU with a warning if unavailable.
-- `_element_arrays(atoms) -> (elems, cov_radii)`: normalizes element symbols and looks up covalent radii.
-- `_upper_pairs_from_mask(mask) -> Set[Tuple[int, int]]`: returns index pairs where `mask` is True (assumes an upper-triangular mask).
-- `_bond_str(i, j, elems, one_based=True) -> str`: formats `ElemI-ElemJ` labels.
-
-Data container:
-- `BondChangeResult`:
-  - `formed_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds formed.
-  - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.
-  - `distances_1: Optional[np.ndarray]`, `distances_2: Optional[np.ndarray]` — square distance matrices (shape N×N).
-
-Outputs (& Directory Layout)
-----------------------------
-In-memory results
-  ├─ ``compare_structures`` → ``BondChangeResult`` with formed/broken index pairs and optional distance matrices.
-  └─ ``summarize_changes`` → Multi-line string report (Bond formed/Bond broken sections with Å-length changes when available).
-
-This module does not create files or directories.
-
-
-Notes
------
-- Units: In pysisyphus, `coords3d` are in Bohr; the summary converts to Å with `BOHR2ANG`. If your inputs use different units, adjust accordingly.
-- Atom identity & ordering must be identical between structures; otherwise the comparison is invalid.
-- Only unique pairs with `i < j` are considered (upper triangle); indices in results are zero-based.
-- The three tolerances control sensitivity:
-  - `bond_factor` (default 1.20): global scaling of the covalent radii sum.
-  - `margin_fraction` (default 0.05): conservative shrinkage of the bond cutoff to avoid borderline matches.
-  - `delta_fraction` (default 0.05): minimum relative distance change required to count a bond event.
-- Device selection: pass `'cpu'`, `'cuda'`, or `'cuda:0'` etc. If the requested device is not available or invalid, the code falls back to CPU and issues a `RuntimeWarning`. Computations use `float64` for stability and run under `torch.no_grad()`.
-- The method detects binary bond formation/breakage; it does not estimate bond orders, angles, or multi-center bonding, and it ignores periodic boundary conditions.
-- Numerical caveats: near-threshold pairs may toggle with small geometry noise; tune tolerances to your system size and sampling noise.
+Notes:
+- Coordinates in Bohr (pysisyphus convention), reported in Å
+- Bond detection uses covalent radii with configurable tolerances
+- Returns zero-based indices; summary can display as 1-based
 """
 
 from __future__ import annotations
@@ -115,25 +50,13 @@ def _element_arrays(atoms: Iterable[str]) -> Tuple[List[str], np.ndarray]:
 
 def _resolve_device(device: str) -> torch.device:
     dev_str = (device or "cpu").lower()
-    if dev_str.startswith("cuda"):
-        if torch.cuda.is_available():
-            try:
-                return torch.device(dev_str)
-            except Exception:
-                warnings.warn(
-                    f"Requested device '{device}' is not available. Falling back to CPU.",
-                    RuntimeWarning,
-                )
-                return torch.device("cpu")
-        else:
-            warnings.warn(
-                "CUDA is not available. Falling back to CPU.",
-                RuntimeWarning,
-            )
-            return torch.device("cpu")
+    if dev_str.startswith("cuda") and not torch.cuda.is_available():
+        warnings.warn("CUDA is not available. Falling back to CPU.", RuntimeWarning)
+        return torch.device("cpu")
+
     try:
         return torch.device(dev_str)
-    except Exception:
+    except (RuntimeError, ValueError):
         warnings.warn(
             f"Requested device '{device}' is not recognized. Falling back to CPU.",
             RuntimeWarning,

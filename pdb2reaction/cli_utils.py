@@ -17,8 +17,6 @@ _FALSE_VALUES = {"false", "0", "no", "n", "f"}
 
 def parse_bool(value: Any) -> bool:
     """Parse common boolean strings into bool; raise ValueError on invalid input."""
-    if isinstance(value, bool):
-        return value
     if value is None:
         raise ValueError("Invalid boolean value: None. Use True/False.")
     text = str(value).strip().lower()

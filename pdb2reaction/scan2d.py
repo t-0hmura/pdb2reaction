@@ -343,7 +343,7 @@ def cli(
 
     set_convert_file_enabled(convert_files)
 
-    relax_max_cycles_override_requested = cli_param_overridden(ctx, "relax_max_cycles")
+    cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
     with prepared_cli_input(
         input_path,
@@ -388,7 +388,7 @@ def cli(
                 bias_k=float(bias_k),
                 opt_mode=opt_mode,
                 relax_max_cycles=relax_max_cycles,
-                relax_override_requested=relax_max_cycles_override_requested,
+                relax_override_requested=cycles_overridden,
                 max_step_size=max_step_size,
                 source_path=source_path,
                 freeze_links=freeze_links,
@@ -468,7 +468,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr=max_step_bohr_local,
                     relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=relax_max_cycles_override_requested,
+                    relax_override_requested=cycles_overridden,
                     out_dir=tmp_opt_dir,
                     prefix="preopt_",
                 )
@@ -562,7 +562,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr=max_step_bohr,
                     relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=relax_max_cycles_override_requested,
+                    relax_override_requested=cycles_overridden,
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}_",
                 )
@@ -639,7 +639,7 @@ def cli(
                         opt_cfg,
                         max_step_bohr=max_step_bohr,
                         relax_max_cycles=relax_max_cycles,
-                        relax_override_requested=relax_max_cycles_override_requested,
+                        relax_override_requested=cycles_overridden,
                         out_dir=tmp_opt_dir,
                         prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
                     )

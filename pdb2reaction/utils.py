@@ -127,6 +127,7 @@ Notes
 import ast
 import functools
 import math
+import os
 import re
 import tempfile
 import time
@@ -147,6 +148,7 @@ import plotly.graph_objs as go
 
 from .add_elem_info import guess_element
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
+from pysisyphus.helpers import geom_loader
 
 # =============================================================================
 # YAML helpers (shared representers)
@@ -161,19 +163,21 @@ class YamlFlowList(list):
     """List marker to force flow style when dumping YAML."""
 
 
-def _yaml_literal_representer(dumper, data):
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
-
-
-def _yaml_flow_list_representer(dumper, data):
-    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
-
-
 def register_yaml_representers() -> None:
     """Register shared YAML representers (literal strings and flow lists)."""
-    yaml.add_representer(YamlLiteralStr, _yaml_literal_representer)
-    yaml.add_representer(YamlLiteralStr, _yaml_literal_representer, Dumper=yaml.SafeDumper)
-    yaml.SafeDumper.add_representer(YamlFlowList, _yaml_flow_list_representer)
+    yaml.add_representer(
+        YamlLiteralStr,
+        lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    )
+    yaml.add_representer(
+        YamlLiteralStr,
+        lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|"),
+        Dumper=yaml.SafeDumper
+    )
+    yaml.SafeDumper.add_representer(
+        YamlFlowList,
+        lambda dumper, data: dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+    )
 
 
 register_yaml_representers()
@@ -217,8 +221,7 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
     """Return a formatted elapsed-time string with the provided ``prefix`` label."""
-    finish = end_time if end_time is not None else time.perf_counter()
-    elapsed = max(0.0, finish - start_time)
+    elapsed = max(0.0, (end_time or time.perf_counter()) - start_time)
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
@@ -324,8 +327,6 @@ def geom_from_xyz_string(
         tmp.write(s)
         tmp.flush()
         tmp.close()
-        from pysisyphus.helpers import geom_loader  # local import to avoid heavy import at module load
-        import numpy as np
 
         g = geom_loader(
             Path(tmp.name),
@@ -342,7 +343,6 @@ def geom_from_xyz_string(
         return g
     finally:
         try:
-            import os
             os.unlink(tmp.name)
         except Exception:
             pass
@@ -1777,9 +1777,7 @@ def values_from_bounds(low: float, high: float, h: float) -> "np.ndarray":
         raise click.BadParameter("--max-step-size must be > 0.")
     delta = abs(high - low)
     if delta < 1e-12:
-        import numpy as np
         return np.array([low], dtype=float)
-    import numpy as np
     N = int(math.ceil(delta / h))
     return np.linspace(low, high, N + 1, dtype=float)
 
@@ -2109,8 +2107,6 @@ def load_prepared_geometries(
             auto_freeze_links,
             prefix=f"{prefix} {src_path.name}:",
         )
-        from pysisyphus.helpers import geom_loader  # local import to avoid heavy import at module load
-        import numpy as np
 
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)

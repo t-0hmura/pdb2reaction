@@ -239,15 +239,9 @@ class UMAcore:
                 num_workers_per_node=self.workers_per_node,
             )
         else:
-            # Keep a defensive fallback if the installed fairchem build doesn't accept `workers`
-            try:
-                self.predict = pretrained_mlip.get_predict_unit(
-                    model, device=self.device_str, workers=self.workers
-                )
-            except TypeError:
-                self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
-                self.workers = 1
-                self.parallel_predict = False
+            self.predict = pretrained_mlip.get_predict_unit(
+                model, device=self.device_str, workers=self.workers
+            )
 
         # Detect whether we can access an underlying torch model
         self.has_torch_model = hasattr(self.predict, "model") and isinstance(
@@ -266,9 +260,9 @@ class UMAcore:
         self.spin = spin
         self.task_name = task_name
 
-        self._max_neigh_user = max_neigh
-        self._radius_user = radius
-        self._r_edges_user = r_edges
+        self._max_neigh = max_neigh
+        self._radius = radius
+        self._r_edges = r_edges
 
     # ----------------------------------------------------------------
     def _model_backbone(self):
@@ -303,9 +297,9 @@ class UMAcore:
         if default_radius is None:
             default_radius = 6.0
 
-        max_neigh = self._max_neigh_user if self._max_neigh_user is not None else default_max_neigh
-        radius = self._radius_user if self._radius_user is not None else default_radius
-        r_edges = self._r_edges_user
+        max_neigh = self._max_neigh if self._max_neigh is not None else default_max_neigh
+        radius = self._radius if self._radius is not None else default_radius
+        r_edges = self._r_edges
 
         atoms.info.update({"charge": self.charge, "spin": self.spin})
         data = self._AtomicData.from_ase(
@@ -508,15 +502,6 @@ class uma_pysis(Calculator):
         if self._core is None:
             self._core = UMAcore(elem, **self._core_kw)
 
-    @staticmethod
-    def _au_energy(E: float) -> float:
-        return E * EV2AU
-
-    @staticmethod
-    def _au_forces(F: np.ndarray) -> np.ndarray:
-        F64 = np.asarray(F, dtype=np.float64)
-        return (F64 * F_EVAA_2_AU).reshape(-1)
-
     def _au_hessian(self, H: torch.Tensor):
         """
         Convert Hessian from eV/Å² to Hartree/Bohr² and format the output.
@@ -695,7 +680,7 @@ class uma_pysis(Calculator):
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         res = self._core.compute(coord_ang, forces=False, hessian=False)
-        return {"energy": self._au_energy(res["energy"])}
+        return {"energy": res["energy"] * EV2AU}
 
     def get_forces(self, elem, coords):
         self._ensure_core(elem)
@@ -706,8 +691,8 @@ class uma_pysis(Calculator):
         F_ev = self._zero_frozen_forces_ev(res["forces"])
 
         return {
-            "energy": self._au_energy(res["energy"]),
-            "forces": self._au_forces(F_ev),
+            "energy": res["energy"] * EV2AU,
+            "forces": (np.asarray(F_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
         }
 
     def get_hessian(self, elem, coords):
@@ -767,8 +752,8 @@ class uma_pysis(Calculator):
             H = self._apply_analytical_active_trim(res["hessian"])
 
             return {
-                "energy": self._au_energy(res["energy"]),
-                "forces": self._au_forces(res_forces_ev),
+                "energy": res["energy"] * EV2AU,
+                "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
                 "hessian": self._au_hessian(H),
             }
 
@@ -779,8 +764,8 @@ class uma_pysis(Calculator):
         res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
 
         return {
-            "energy": self._au_energy(res["energy"]),
-            "forces": self._au_forces(res_forces_ev),
+            "energy": res["energy"] * EV2AU,
+            "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
             "hessian": self._au_hessian(res["hessian"]),
         }
 

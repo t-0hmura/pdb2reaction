@@ -211,19 +211,6 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
     return d
 
 
-def _fmt_target_value(x: float) -> str:
-    return f"{x:.3f}".rstrip("0").rstrip(".")
-
-
-def _targets_triplet_str(pairs_1based: List[Tuple[int, int]], targets: List[float]) -> str:
-    triples = [f"({i}, {j}, {_fmt_target_value(t)})" for (i, j), t in zip(pairs_1based, targets)]
-    return "[" + ", ".join(triples) + "]"
-
-
-def _list_of_str_3f(values: List[float]) -> str:
-    return "[" + ", ".join(f"'{v:.3f}'" for v in values) + "]"
-
-
 def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
     """Print a readable end-of-run summary."""
     click.echo("\nSummary")
@@ -239,10 +226,14 @@ def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
         changed = bool(bchg.get("changed"))
         summary_txt = (bchg.get("summary") or "").strip()
 
-        click.echo(f"[stage {idx}] Targets (i,j,target Å): { _targets_triplet_str(pairs_1b, rT) }")
-        click.echo(f"[stage {idx}] initial distances (Å) = { _list_of_str_3f(r0) }")
-        click.echo(f"[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }")
-        click.echo(f"[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }")
+        # Inline _targets_triplet_str and _fmt_target_value
+        triples = [f"({i}, {j}, {f'{t:.3f}'.rstrip('0').rstrip('.')})" for (i, j), t in zip(pairs_1b, rT)]
+        targets_str = "[" + ", ".join(triples) + "]"
+
+        click.echo(f"[stage {idx}] Targets (i,j,target Å): {targets_str}")
+        click.echo(f"[stage {idx}] initial distances (Å) = [" + ", ".join(f"'{v:.3f}'" for v in r0) + "]")
+        click.echo(f"[stage {idx}] target distances  (Å) = [" + ", ".join(f"'{v:.3f}'" for v in rT) + "]")
+        click.echo(f"[stage {idx}] per_pair_step     (Å) = [" + ", ".join(f"'{v:.3f}'" for v in dA) + "]")
         click.echo(f"[stage {idx}] steps N = {N}")
         click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
         if changed and summary_txt:
@@ -354,7 +345,7 @@ def cli(
 ) -> None:
     set_convert_file_enabled(convert_files)
 
-    relax_max_cycles_override_requested = cli_param_overridden(ctx, "relax_max_cycles")
+    cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
     with prepared_cli_input(
         input_path,
@@ -418,7 +409,7 @@ def cli(
             echo_geom = format_geom_for_echo(geom_cfg)
             echo_calc = format_geom_for_echo(calc_cfg)
             echo_opt  = dict(opt_cfg)
-            if relax_max_cycles_override_requested:
+            if cycles_overridden:
                 echo_opt["max_cycles"] = int(relax_max_cycles)
             echo_opt["out_dir"] = str(out_dir_path)
             echo_bias = dict(bias_cfg)
@@ -434,7 +425,7 @@ def cli(
                 opt_cfg,
                 max_step_bohr_for_log,
                 relax_max_cycles,
-                relax_max_cycles_override_requested,
+                cycles_overridden,
                 out_dir_path,
                 str(opt_cfg.get("prefix", "")),
             )
@@ -528,7 +519,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr,
                     relax_max_cycles,
-                    relax_max_cycles_override_requested,
+                    cycles_overridden,
                     pre_dir,
                     "preopt_",
                 )
@@ -615,7 +606,7 @@ def cli(
                                 opt_cfg,
                                 max_step_bohr,
                                 relax_max_cycles,
-                                relax_max_cycles_override_requested,
+                                cycles_overridden,
                                 stage_dir,
                                 "endopt_",
                             )
@@ -680,7 +671,7 @@ def cli(
                         opt_cfg,
                         max_step_bohr,
                         relax_max_cycles,
-                        relax_max_cycles_override_requested,
+                        cycles_overridden,
                         stage_dir,
                         prefix,
                     )
@@ -709,7 +700,7 @@ def cli(
                             opt_cfg,
                             max_step_bohr,
                             relax_max_cycles,
-                            relax_max_cycles_override_requested,
+                            cycles_overridden,
                             stage_dir,
                             "endopt_",
                         )
