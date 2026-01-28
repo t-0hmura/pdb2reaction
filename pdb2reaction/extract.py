@@ -249,7 +249,7 @@ import io as _io
 import os
 import re
 import sys
-from typing import Dict, List, Set, Tuple, Iterable, Any, Optional
+from typing import Dict, List, Set, Tuple, Iterable, Any, Optional, Sequence
 
 import click
 import numpy as np
@@ -396,7 +396,7 @@ def str2bool(v: str) -> bool:
     return v.lower() in {"true", "1", "yes", "y"}
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """
     Parse CLI arguments.
 
@@ -474,7 +474,7 @@ def parse_args() -> argparse.Namespace:
         help=("Enable INFO-level logging."
               " Default: True.")
     )
-    return p.parse_args()
+    return p.parse_args(args=argv)
 
 
 def load_structure(path: str, name: str) -> PDB.Structure.Structure:

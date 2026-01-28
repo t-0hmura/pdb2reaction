@@ -164,15 +164,13 @@ from .utils import (
     parse_scan_list_quads_checked,
     unbiased_energy_hartree,
     values_from_bounds,
-    merge_detected_freeze_links,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
     normalize_choice,
     prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs_logged,
+    convert_xyz_like_outputs,
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
@@ -181,25 +179,23 @@ from .utils import (
     build_scan_configs,
     cli_param_overridden,
     load_yaml_dict,
+    resolve_freeze_atoms,
+    distance_A_from_coords,
+    distance_tag,
 )
+from .scan_common import add_scan_common_options, build_scan_kw_defaults
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
-OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
-OPT_BASE_KW.update({
-    "out_dir": "./result_scan3d/",  # base output directory for 3D scan artifacts
-    "dump": False,                   # disable trajectory dumping by default
-    "max_cycles": 10000,             # safety cap on optimization cycles
-    "thresh": "baker",              # default convergence preset for 3D scans
-})
-
-LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_KW.update({"out_dir": "./result_scan3d/"})  # directory for LBFGS-specific files
-
-RFO_KW: Dict[str, Any] = dict(_RFO_KW)
-RFO_KW.update({"out_dir": "./result_scan3d/"})    # directory for RFO-specific files
+OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_kw_defaults(
+    opt_base_kw=_OPT_BASE_KW,
+    lbfgs_kw=_LBFGS_KW,
+    rfo_kw=_RFO_KW,
+    out_dir="./result_scan3d/",
+    thresh="baker",
+)
 
 BIAS_KW: Dict[str, Any] = {"k": 100.0}  # harmonic restraint strength (eV/Å^2)
 
@@ -212,36 +208,6 @@ _VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid
 
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
-
-
-def _format_distance_tag(d: float) -> str:
-    """
-    Format a distance in Å as an integer tag, e.g. 1.25 → '125'.
-
-    We multiply by 100 and round to the nearest integer, then pad to at
-    least three digits, so 1.25 Å → '125', 0.95 Å → '095'.
-    """
-    val = int(round(float(d) * 100.0))
-    return f"{val:03d}"
-
-
-def _measure_distances_A(
-    geom,
-    i1: int,
-    j1: int,
-    i2: int,
-    j2: int,
-    i3: int,
-    j3: int,
-) -> Tuple[float, float, float]:
-    """Measure the three bias distances (Å) for a given geometry."""
-    coords = np.asarray(getattr(geom, "coords"), dtype=float).reshape(-1, 3)
-
-    def dist(i: int, j: int) -> float:
-        v = coords[i] - coords[j]
-        return float(np.linalg.norm(v) / ANG2BOHR)
-
-    return dist(i1, j1), dist(i2, j2), dist(i3, j3)
 
 
 def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) -> Optional[str]:
@@ -265,48 +231,6 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     help="Input structure file (.pdb, .xyz, .trj, ...). Required unless --csv is provided.",
 )
 @click.option(
-    "-q",
-    "--charge",
-    type=int,
-    required=False,
-    help=(
-        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
-        "(PDB inputs or XYZ/GJF with --ref-pdb)."
-    ),
-)
-@click.option(
-    "--workers",
-    type=int,
-    default=CALC_KW["workers"],
-    show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
-)
-@click.option(
-    "--workers-per-node",
-    "workers_per_node",
-    type=int,
-    default=CALC_KW["workers_per_node"],
-    show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
-)
-@click.option(
-    "--ligand-charge",
-    type=str,
-    default=None,
-    show_default=False,
-    help=(
-        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (requires PDB input or --ref-pdb)."
-    ),
-)
-@click.option(
-    "-m", "--multiplicity", "spin",
-    type=int,
-    default=1,
-    show_default=True,
-    help="Spin multiplicity (2S+1) for the ML region.",
-)
-@click.option(
     "--scan-list",
     "--scan-lists",
     "scan_list_raw",
@@ -318,129 +242,22 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     ),
 )
 @click.option(
-    "--one-based",
-    "one_based",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
-)
-@click.option(
-    "--max-step-size",
-    type=float,
-    default=0.20,
-    show_default=True,
-    help="Maximum step size in each distance [Å].",
-)
-@click.option(
-    "--bias-k",
-    type=float,
-    default=100.0,
-    show_default=True,
-    help="Harmonic well strength k [eV/Å^2].",
-)
-@click.option(
-    "--relax-max-cycles",
-    type=int,
-    default=10000,
-    show_default=True,
-    help="Maximum optimizer cycles per grid relaxation. When explicitly provided, overrides opt.max_cycles from YAML.",
-)
-@click.option(
-    "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
-    show_default=True,
-    help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
-)
-@click.option(
-    "--freeze-links",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="If input is PDB, freeze parent atoms of link hydrogens.",
-)
-@click.option(
-    "--dump",
-    type=click.BOOL,
-    default=False,
-    show_default=True,
-    help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
-)
-@click.option(
-    "--convert-files",
-    "convert_files",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
-)
-@click.option(
-    "--ref-pdb",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
-)
-@click.option(
-    "--out-dir",
-    type=str,
-    default="./result_scan3d/",
-    show_default=True,
-    help="Base output directory.",
-)
-@click.option(
     "--csv",
     "csv_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
         "If provided, skip the 3D scan and read a precomputed surface.csv from this path. "
-        "Only plotting is performed."
+        "When used, -i/--input and --scan-list(s) are optional."
     ),
 )
-@click.option(
-    "--thresh",
-    type=str,
-    default="baker",
-    show_default=False,
-    help=(
-        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'baker'."
-    ),
-)
-@click.option(
-    "--args-yaml",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
-)
-@click.option(
-    "--preopt",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Pre-optimize the initial structure without bias before the scan.",
-)
-@click.option(
-    "--baseline",
-    type=click.Choice(["min", "first"]),
-    default="min",
-    show_default=True,
-    help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0,k=0).",
-)
-@click.option(
-    "--zmin",
-    type=float,
-    default=None,
-    show_default=False,
-    help="Lower bound of color scale for plots (kcal/mol).",
-)
-@click.option(
-    "--zmax",
-    type=float,
-    default=None,
-    show_default=False,
-    help="Upper bound of color scale for plots (kcal/mol).",
+@add_scan_common_options(
+    workers_default=CALC_KW["workers"],
+    workers_per_node_default=CALC_KW["workers_per_node"],
+    out_dir_default="./result_scan3d/",
+    baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0,k=0).",
+    dump_help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
+    max_step_help="Maximum step size in each distance [Å].",
 )
 @click.pass_context
 def cli(
@@ -520,9 +337,7 @@ def cli(
         # Resolve freeze list before logging so printed config matches runtime.
         freeze = None
         if csv_path is None:
-            freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and source and source.suffix.lower() == ".pdb":
-                freeze = merge_detected_freeze_links(geom_cfg, source)
+            freeze = resolve_freeze_atoms(geom_cfg, source, freeze_links)
 
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         ensure_dir(out_dir_path)
@@ -617,7 +432,7 @@ def cli(
             ensure_dir(tmp_opt_dir)
 
             if freeze is None:
-                freeze = merge_freeze_atom_indices(geom_cfg)
+                freeze = resolve_freeze_atoms(geom_cfg, source, freeze_links)
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
             geom_outer = geom_loader(
                 geom_input, coord_type=coord_type, freeze_atoms=freeze
@@ -658,9 +473,10 @@ def cli(
 
             # Measure the three bias distances on the starting structure
             # (pre-optimized when --preopt True, otherwise the input geometry)
-            d1_ref, d2_ref, d3_ref = _measure_distances_A(
-                geom_outer, i1, j1, i2, j2, i3, j3
-            )
+            coords_outer = np.asarray(getattr(geom_outer, "coords"), dtype=float).reshape(-1, 3)
+            d1_ref = distance_A_from_coords(coords_outer, i1, j1)
+            d2_ref = distance_A_from_coords(coords_outer, i2, j2)
+            d3_ref = distance_A_from_coords(coords_outer, i3, j3)
             click.echo(
                 pretty_block(
                     "preopt distances (Å)",
@@ -669,9 +485,9 @@ def cli(
             )
 
             # Save the starting structure (pre-optimized when requested) and prepare a record for plotting
-            preopt_tag_i = _format_distance_tag(d1_ref)
-            preopt_tag_j = _format_distance_tag(d2_ref)
-            preopt_tag_k = _format_distance_tag(d3_ref)
+            preopt_tag_i = distance_tag(d1_ref)
+            preopt_tag_j = distance_tag(d2_ref)
+            preopt_tag_k = distance_tag(d3_ref)
             preopt_xyz_path = grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.xyz"
             try:
                 s_pre = geom_outer.as_xyz()
@@ -683,7 +499,7 @@ def cli(
             except Exception as e:
                 click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
 
-            convert_xyz_like_outputs_logged(
+            convert_xyz_like_outputs(
                 preopt_xyz_path,
                 prepared_input,
                 ref_pdb_path=ref_pdb_path,
@@ -895,9 +711,9 @@ def cli(
 
                         E_h = unbiased_energy_hartree(geom_inner, base_calc)
 
-                        tag_i = _format_distance_tag(d1_target)
-                        tag_j = _format_distance_tag(d2_target)
-                        tag_k = _format_distance_tag(d3_target)
+                        tag_i = distance_tag(d1_target)
+                        tag_j = distance_tag(d2_target)
+                        tag_k = distance_tag(d3_target)
                         xyz_path = grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.xyz"
                         try:
                             s = geom_inner.as_xyz()
@@ -908,7 +724,7 @@ def cli(
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
                         else:
-                            convert_xyz_like_outputs_logged(
+                            convert_xyz_like_outputs(
                                 xyz_path,
                                 prepared_input,
                                 ref_pdb_path=ref_pdb_path,
@@ -945,7 +761,7 @@ def cli(
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
                         else:
-                            convert_xyz_like_outputs_logged(
+                            convert_xyz_like_outputs(
                                 trj_path,
                                 prepared_input,
                                 ref_pdb_path=ref_pdb_path,

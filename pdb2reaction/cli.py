@@ -53,17 +53,9 @@ def cli() -> None:
 )
 @click.pass_context
 def extract_cmd(ctx: click.Context) -> None:
-    import sys
-    import os
     from . import extract as _extract_mod
-
-    argv_backup = sys.argv[:]
-    try:
-        prog_base = (ctx.find_root().info_name or os.path.basename(sys.argv[0]))
-        sys.argv = [f"{prog_base} extract"] + list(ctx.args)
-        _extract_mod.extract()
-    finally:
-        sys.argv = argv_backup
+    args = _extract_mod.parse_args(list(ctx.args))
+    _extract_mod.extract(args)
 
 
 cli.add_command(all_cmd, name="all")

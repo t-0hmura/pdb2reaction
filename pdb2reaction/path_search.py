@@ -198,13 +198,11 @@ from .opt import (
 from .utils import (
     as_list,
     collect_option_values,
-    merge_detected_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
     build_energy_diagram,
     prepare_input_structure,
     fill_charge_spin_from_gjf,
@@ -213,8 +211,10 @@ from .utils import (
     convert_xyz_like_outputs,
     PreparedInputStructure,
     GjfTemplate,
-    convert_xyz_to_gjf_logged,
+    convert_xyz_to_gjf_if_enabled,
     close_matplotlib_figures,
+    xyz_string_with_energy,
+    resolve_freeze_atoms,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
@@ -358,14 +358,12 @@ def _load_two_endpoints(
     geoms = []
     for p in paths:
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and p.suffix.lower() == ".pdb":
-            freeze = merge_detected_freeze_links(
-                cfg,
-                p,
-                prefix=f"[freeze-links] {p.name}:",
-            )
-        else:
-            freeze = merge_freeze_atom_indices(cfg)
+        freeze = resolve_freeze_atoms(
+            cfg,
+            p,
+            auto_freeze_links,
+            prefix=f"[freeze-links] {p.name}:",
+        )
         g = geom_loader(p, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
@@ -387,14 +385,12 @@ def _load_structures(
         geom_path = prepared.geom_path
         src_path = prepared.source_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
-            freeze = merge_detected_freeze_links(
-                cfg,
-                src_path,
-                prefix=f"[freeze-links] {src_path.name}:",
-            )
-        else:
-            freeze = merge_freeze_atom_indices(cfg)
+        freeze = resolve_freeze_atoms(
+            cfg,
+            src_path,
+            auto_freeze_links,
+            prefix=f"[freeze-links] {src_path.name}:",
+        )
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
@@ -408,14 +404,7 @@ def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path
     blocks: List[str] = []
     E = np.array(energies, dtype=float)
     for geom, e in zip(images, E):
-        s = geom.as_xyz()
-        lines = s.splitlines()
-        if len(lines) >= 2 and lines[0].strip().isdigit():
-            lines[1] = f"{e:.12f}"
-        s_mod = "\n".join(lines)
-        if not s_mod.endswith("\n"):
-            s_mod += "\n"
-        blocks.append(s_mod)
+        blocks.append(xyz_string_with_energy(geom, energy=float(e)))
     with open(path, "w") as f:
         f.write("".join(blocks))
 
@@ -428,7 +417,7 @@ def _convert_to_gjf(
     """
     Convert XYZ to Gaussian input using a template, when available.
     """
-    target = convert_xyz_to_gjf_logged(
+    target = convert_xyz_to_gjf_if_enabled(
         xyz_path,
         template,
         out_path=out_path,
@@ -439,10 +428,8 @@ def _convert_to_gjf(
     return target
 
 
-def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """
-    RMSD between A and B (no rigid alignment; `align` is ignored). Optional subset selection via `indices`.
-    """
+def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, indices: Optional[Sequence[int]] = None) -> float:
+    """RMSD between A and B (no rigid alignment). Optional subset selection via `indices`."""
     assert A.shape == B.shape and A.shape[1] == 3
     if indices is not None and len(indices) > 0:
         idx = np.array(sorted({int(i) for i in indices if 0 <= int(i) < A.shape[0]}), dtype=int)
@@ -454,11 +441,9 @@ def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, align: bool = True, indices: Opti
     return float(np.sqrt((diff * diff).sum() / A.shape[0]))
 
 
-def _rmsd_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """
-    RMSD between two pysisyphus Geometries (no alignment; optional subset selection).
-    """
-    return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), align=False, indices=indices)
+def _rmsd_between(ga, gb, indices: Optional[Sequence[int]] = None) -> float:
+    """RMSD between two pysisyphus Geometries (no alignment; optional subset selection)."""
+    return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), indices=indices)
 
 
 def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
@@ -931,7 +916,7 @@ def _bridge_segments(
     """
     Run a bridge GSM if two segment endpoints are farther than the threshold.
     """
-    rmsd = _rmsd_between(tail_g, head_g, align=False)
+    rmsd = _rmsd_between(tail_g, head_g)
     if rmsd <= rmsd_thresh:
         return None
     click.echo(
@@ -1024,19 +1009,19 @@ def _stitch_paths(
             if segments_out is not None and getattr(sub, "segments", None):
                 segments_out.extend(sub.segments)
             if seg_imgs:
-                if _rmsd_between(all_imgs[-1], seg_imgs[0], align=False) <= stitch_rmsd_thresh:
+                if _rmsd_between(all_imgs[-1], seg_imgs[0]) <= stitch_rmsd_thresh:
                     seg_imgs = seg_imgs[1:]
                     seg_E = seg_E[1:]
                 all_imgs.extend(seg_imgs)
                 all_E.extend(seg_E)
-            if _rmsd_between(all_imgs[-1], imgs[0], align=False) <= stitch_rmsd_thresh:
+            if _rmsd_between(all_imgs[-1], imgs[0]) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
                 Es = Es[1:]
             all_imgs.extend(imgs)
             all_E.extend(Es)
             return
 
-        rmsd = _rmsd_between(tail, head, align=False)
+        rmsd = _rmsd_between(tail, head)
         if rmsd <= stitch_rmsd_thresh:
             all_imgs.extend(imgs[1:])
             all_E.extend(Es[1:])
@@ -1058,7 +1043,7 @@ def _stitch_paths(
                 _tag_images(br.images, mep_seg_tag=f"{bridge_name_base}_bridge", mep_seg_kind="bridge",
                             mep_has_bond_changes=False, pair_index=bridge_pair_index)
                 b_imgs, b_E = br.images, br.energies
-                if _rmsd_between(all_imgs[-1], b_imgs[0], align=False) <= stitch_rmsd_thresh:
+                if _rmsd_between(all_imgs[-1], b_imgs[0]) <= stitch_rmsd_thresh:
                     b_imgs = b_imgs[1:]
                     b_E = b_E[1:]
                 if b_imgs:
@@ -1092,7 +1077,7 @@ def _stitch_paths(
                     else:
                         segments_out.insert(insert_pos, bridge_report)
 
-            if _rmsd_between(all_imgs[-1], imgs[0], align=False) <= stitch_rmsd_thresh:
+            if _rmsd_between(all_imgs[-1], imgs[0]) <= stitch_rmsd_thresh:
                 imgs = imgs[1:]
                 Es = Es[1:]
             all_imgs.extend(imgs)

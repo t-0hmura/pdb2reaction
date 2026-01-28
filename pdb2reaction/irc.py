@@ -104,11 +104,10 @@ from pdb2reaction.utils import (
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
-    merge_detected_freeze_links,
+    resolve_freeze_atoms,
     prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs_logged,
+    convert_xyz_like_outputs,
 )
 
 
@@ -156,7 +155,7 @@ def _echo_convert_trj_if_exists(
 ) -> None:
     if trj_path.exists():
         ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == ".pdb" else None
-        if convert_xyz_like_outputs_logged(
+        if convert_xyz_like_outputs(
             trj_path,
             prepared_input,
             ref_pdb_path=ref_pdb,
@@ -373,10 +372,8 @@ def cli(
                 ],
             )
 
-            # Normalize any existing freeze list and optionally augment with link parents
-            merged_freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links_flag and source_path.suffix.lower() == ".pdb":
-                merge_detected_freeze_links(geom_cfg, source_path)
+            # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
+            resolve_freeze_atoms(geom_cfg, source_path, freeze_links_flag)
 
             # EulerPC currently only supports Cartesian coordinates
             geom_cfg["coord_type"] = "cart"

@@ -141,17 +141,17 @@ from .utils import (
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
-    merge_detected_freeze_links,
     normalize_choice,
     prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs_logged,
+    convert_xyz_like_outputs,
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
     resolve_scan_index,
     make_snapshot_geometry,
+    resolve_freeze_atoms,
+    xyz_string_with_energy,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -208,17 +208,6 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
     d = base / f"stage_{k:02d}"
     d.mkdir(parents=True, exist_ok=True)
     return d
-
-
-def _coords3d_to_xyz_string(geom, energy: Optional[float] = None) -> str:
-    s = geom.as_xyz()
-    lines = s.splitlines()
-    if energy is not None and len(lines) >= 2 and lines[0].strip().isdigit():
-        lines[1] = f"{energy:.12f}"
-        s = "\n".join(lines)
-    if not s.endswith("\n"):
-        s += "\n"
-    return s
 
 
 def _fmt_target_value(x: float) -> str:
@@ -589,9 +578,7 @@ def cli(
             )
 
             # Resolve freeze list before logging so printed config matches runtime.
-            freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and source_path.suffix.lower() == ".pdb":
-                freeze = merge_detected_freeze_links(geom_cfg, source_path)
+            freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
 
             # Present final config
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()
@@ -673,7 +660,6 @@ def cli(
 
             max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
 
-            # Merge freeze_atoms with link parents (PDB)
             # Attach freeze indices to Geometry for optimizer awareness
             if freeze:
                 try:
@@ -717,9 +703,9 @@ def cli(
                 # Write preopt result
                 pre_xyz = pre_dir / "result.xyz"
                 with open(pre_xyz, "w") as f:
-                    f.write(_coords3d_to_xyz_string(geom))
+                    f.write(xyz_string_with_energy(geom))
                 click.echo(f"[write] Wrote '{pre_xyz}'.")
-                if convert_xyz_like_outputs_logged(
+                if convert_xyz_like_outputs(
                     pre_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
@@ -816,9 +802,9 @@ def cli(
                     # Write current (possibly endopted) geometry as the stage result
                     final_xyz = stage_dir / "result.xyz"
                     with open(final_xyz, "w") as f:
-                        f.write(_coords3d_to_xyz_string(geom))
+                        f.write(xyz_string_with_energy(geom))
                     click.echo(f"[write] Wrote '{final_xyz}'.")
-                    if convert_xyz_like_outputs_logged(
+                    if convert_xyz_like_outputs(
                         final_xyz,
                         prepared_input,
                         ref_pdb_path=ref_pdb,
@@ -869,7 +855,7 @@ def cli(
 
                     # Record trajectory block only when requested (biased result)
                     if dump and trj_blocks is not None:
-                        trj_blocks.append(_coords3d_to_xyz_string(geom))
+                        trj_blocks.append(xyz_string_with_energy(geom))
 
                 # Optional end-of-stage UNBIASED optimization
                 if endopt:
@@ -913,7 +899,7 @@ def cli(
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
                     click.echo(f"[write] Wrote '{trj_path}'.")
-                    if convert_xyz_like_outputs_logged(
+                    if convert_xyz_like_outputs(
                         trj_path,
                         prepared_input,
                         ref_pdb_path=ref_pdb,
@@ -931,9 +917,9 @@ def cli(
 
                 final_xyz = stage_dir / "result.xyz"
                 with open(final_xyz, "w") as f:
-                    f.write(_coords3d_to_xyz_string(geom))
+                    f.write(xyz_string_with_energy(geom))
                 click.echo(f"[write] Wrote '{final_xyz}'.")
-                if convert_xyz_like_outputs_logged(
+                if convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,

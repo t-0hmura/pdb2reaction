@@ -93,14 +93,13 @@ from . import utils as _utils
 
 from .utils import (
     convert_xyz_to_pdb,
-    detect_freeze_links_logged,
     load_yaml_dict,
     apply_yaml_overrides,
     deep_update,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
+    resolve_freeze_atoms,
     prepare_input_structure,
     fill_charge_spin_from_gjf,
     _derive_charge_from_ligand_charge,
@@ -218,16 +217,12 @@ def _load_two_endpoints(
         geom_path = prepared.geom_path
         src_path = prepared.source_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        if auto_freeze_links and src_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_logged(src_path)
-            freeze = merge_freeze_atom_indices(cfg, detected)
-            if detected and freeze:
-                click.echo(
-                    f"[freeze-links] {src_path.name}: Freeze atoms (0-based): "
-                    f"{','.join(map(str, freeze))}"
-                )
-        else:
-            freeze = merge_freeze_atom_indices(cfg)
+        freeze = resolve_freeze_atoms(
+            cfg,
+            src_path,
+            auto_freeze_links,
+            prefix=f"[freeze-links] {src_path.name}:",
+        )
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)

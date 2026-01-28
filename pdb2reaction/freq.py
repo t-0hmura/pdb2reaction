@@ -98,17 +98,15 @@ from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
-    detect_freeze_links,
     convert_xyz_like_outputs,
     pretty_block,
     format_geom_for_echo,
-    format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
     prepare_input_structure,
     apply_ref_pdb_override,
     resolve_charge_spin_or_raise,
     set_convert_file_enabled,
+    resolve_freeze_atoms,
 )
 
 
@@ -677,16 +675,8 @@ def cli(
     thermo_yaml = yaml_cfg.get("thermo")
     thermo_yaml_dict = thermo_yaml if isinstance(thermo_yaml, dict) else None
 
-    # Freeze links (PDB only): merge with existing list
-    if freeze_links and source_path.suffix.lower() == ".pdb":
-        try:
-            detected = detect_freeze_links(source_path)
-        except Exception as e:
-            click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
-            detected = []
-        merged = merge_freeze_atom_indices(geom_cfg, detected)
-        if merged:
-            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+    # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
+    resolve_freeze_atoms(geom_cfg, source_path, freeze_links, on_error="warn")
 
     # Ensure calc config reflects the geometry freeze list used in the run.
     calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))

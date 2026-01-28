@@ -898,10 +898,58 @@ def _save_single_geom_as_pdb_for_tools(
         pdb_out = out_dir / f"{name}.pdb"
         try:
             _path_search._convert_to_pdb_logged(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
-        except Exception:
-            pass
+        except Exception as e:
+            click.echo(
+                f"[all] WARNING: failed to convert '{xyz_trj.name}' to PDB for {name}: {e}",
+                err=True,
+            )
 
     return xyz_trj
+
+
+def _parse_xyz_block(
+    block: Sequence[str],
+    *,
+    path: Path,
+    frame_idx: int,
+) -> Tuple[List[str], np.ndarray]:
+    if not block:
+        raise click.ClickException(f"[irc] Empty XYZ frame in {path}")
+    try:
+        nat = int(block[0].strip().split()[0])
+    except Exception:
+        raise click.ClickException(
+            f"[irc] Malformed XYZ/TRJ header in frame {frame_idx} of {path}"
+        )
+    if len(block) < 2 + nat:
+        raise click.ClickException(
+            f"[irc] Incomplete XYZ frame {frame_idx} in {path} (expected {nat} atoms)."
+        )
+    elems: List[str] = []
+    coords: List[List[float]] = []
+    for k in range(nat):
+        parts = block[2 + k].split()
+        if len(parts) < 4:
+            raise click.ClickException(
+                f"[irc] Malformed atom line in frame {frame_idx} of {path}"
+            )
+        elems.append(parts[0])
+        coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
+    return elems, np.array(coords, dtype=float)
+
+
+def _xyz_blocks_first_last(
+    blocks: Sequence[Sequence[str]],
+    *,
+    path: Path,
+) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    if not blocks:
+        raise click.ClickException(f"[irc] No frames found in {path}")
+    first_elems, first_coords = _parse_xyz_block(blocks[0], path=path, frame_idx=1)
+    last_elems, last_coords = _parse_xyz_block(blocks[-1], path=path, frame_idx=len(blocks))
+    if first_elems != last_elems:
+        raise click.ClickException(f"[irc] Element list changed across frames in {path}")
+    return first_elems, first_coords, last_coords
 
 
 def _read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
@@ -909,58 +957,16 @@ def _read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndar
     Lightweight XYZ trajectory reader: return (elements, first_coords[Å], last_coords[Å]).
     Assumes standard multi-frame XYZ: natoms line, comment line, natoms atom lines.
     """
-    try:
-        lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    except Exception as e:
-        raise click.ClickException(f"[irc] Failed to read XYZ/TRJ: {trj_path} ({e})")
-
-    i = 0
-    n = len(lines)
-    first_elems: Optional[List[str]] = None
-    first_coords: Optional[np.ndarray] = None
-    last_elems: Optional[List[str]] = None
-    last_coords: Optional[np.ndarray] = None
-
-    while i < n:
-        try:
-            nat = int(lines[i].strip().split()[0])
-        except Exception:
-            raise click.ClickException(f"[irc] Malformed XYZ/TRJ at line {i + 1}: {trj_path}")
-        i += 1
-        if i < n:
-            i += 1
-        if i + nat > n:
-            raise click.ClickException(f"[irc] Unexpected EOF while reading frame in {trj_path}")
-        elems: List[str] = []
-        coords: List[List[float]] = []
-        for k in range(nat):
-            parts = lines[i + k].split()
-            if len(parts) < 4:
-                raise click.ClickException(f"[irc] Malformed atom line at {i + k + 1} in {trj_path}")
-            elems.append(parts[0])
-            coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
-        i += nat
-        arr = np.array(coords, dtype=float)
-        if first_elems is None or first_coords is None:
-            first_elems = elems
-            first_coords = arr
-        last_elems = elems
-        last_coords = arr
-
-    if first_elems is None or first_coords is None or last_elems is None or last_coords is None:
-        raise click.ClickException(f"[irc] No frames found in {trj_path}")
-
-    if first_elems != last_elems:
-        raise click.ClickException(f"[irc] Element list changed across frames in {trj_path}")
-
-    return first_elems, first_coords, last_coords
+    blocks = _read_xyz_as_blocks(trj_path, strict=True)
+    return _xyz_blocks_first_last(blocks, path=trj_path)
 
 
-def _read_xyz_as_blocks(trj_path: Path) -> List[List[str]]:
+def _read_xyz_as_blocks(trj_path: Path, *, strict: bool = False) -> List[List[str]]:
     """
     Read a multi-frame XYZ/TRJ file and return a list of frames, each as a list of lines.
 
     Used for building a concatenated IRC trajectory without parsing coordinates/energies.
+    When *strict* is True, malformed headers or truncated frames raise a ClickException.
     """
     try:
         lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -979,6 +985,10 @@ def _read_xyz_as_blocks(trj_path: Path) -> List[List[str]]:
         try:
             nat = int(lines[i].split()[0])
         except Exception:
+            if strict:
+                raise click.ClickException(
+                    f"[irc] Malformed XYZ/TRJ header at line {i + 1} in {trj_path}"
+                )
             click.echo(
                 f"[irc_all] WARNING: Malformed XYZ/TRJ header at line {i + 1} in {trj_path}; stopping here.",
                 err=True,
@@ -989,6 +999,10 @@ def _read_xyz_as_blocks(trj_path: Path) -> List[List[str]]:
         if i < n:
             i += 1
         if i + nat > n:
+            if strict:
+                raise click.ClickException(
+                    f"[irc] Unexpected EOF while reading frame from {trj_path}"
+                )
             click.echo(
                 f"[irc_all] WARNING: Unexpected EOF while reading frame from {trj_path}; last frame skipped.",
                 err=True,
@@ -1312,7 +1326,7 @@ def _run_freq_for_state(
     return {}
 
 
-def _read_imaginary_frequency_info(freq_dir: Path) -> Optional[Dict[str, Any]]:
+def _read_imaginary_frequency(freq_dir: Path) -> Optional[Dict[str, Any]]:
     """Return diagnostic info about imaginary frequencies if present."""
 
     freq_file = freq_dir / "frequencies_cm-1.txt"
@@ -1341,13 +1355,6 @@ def _read_imaginary_frequency_info(freq_dir: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _read_imaginary_frequency(freq_dir: Path) -> Optional[float]:
-    """Return the most negative (imaginary) frequency from frequencies_cm-1.txt if present."""
-
-    diag = _read_imaginary_frequency_info(freq_dir)
-    if not diag:
-        return None
-    return diag.get("nu_imag_max_cm") or diag.get("min_freq_cm")
 
 
 def _run_dft_for_state(
@@ -1680,10 +1687,10 @@ def _irc_and_match(
                 if not matched_bond:
                     # Fallback: minimize total RMSD between (left,right) and (L_end,R_end)
                     try:
-                        d_LL = _path_search._rmsd_between(g_left, gL_end, align=True)
-                        d_LR = _path_search._rmsd_between(g_left, gR_end, align=True)
-                        d_RL = _path_search._rmsd_between(g_right, gL_end, align=True)
-                        d_RR = _path_search._rmsd_between(g_right, gR_end, align=True)
+                        d_LL = _path_search._rmsd_between(g_left, gL_end)
+                        d_LR = _path_search._rmsd_between(g_left, gR_end)
+                        d_RL = _path_search._rmsd_between(g_right, gL_end)
+                        d_RR = _path_search._rmsd_between(g_right, gR_end)
                         opt1 = d_LL + d_RR  # left->L_end, right->R_end
                         opt2 = d_LR + d_RL  # left->R_end, right->L_end
                         if opt2 < opt1:
@@ -2912,7 +2919,7 @@ def cli(
             _copy_logged(tsroot / "summary.yaml", out_dir / "summary.yaml", label="summary.yaml")
             try:
                 ts_freq_info = (
-                    _read_imaginary_frequency_info(freq_root / "TS") if do_thermo else None
+                    _read_imaginary_frequency(freq_root / "TS") if do_thermo else None
                 )
                 segment_log = {
                     "index": 1,
@@ -3360,7 +3367,8 @@ def cli(
                         err=True,
                     )
 
-            blocks = ["\n".join(b) + "\n" for b in _read_xyz_as_blocks(seg_trj)]
+            raw_blocks = _read_xyz_as_blocks(seg_trj, strict=True)
+            blocks = ["\n".join(b) + "\n" for b in raw_blocks]
             if not blocks:
                 raise click.ClickException(
                     f"[all] No frames read from path-opt segment {idx} trajectory: {seg_trj}"
@@ -3370,7 +3378,7 @@ def cli(
             combined_blocks.extend(blocks)
 
             energies_seg: List[float] = []
-            for blk in _read_xyz_as_blocks(seg_trj):
+            for blk in raw_blocks:
                 E = np.nan
                 if len(blk) >= 2:
                     try:
@@ -3379,12 +3387,22 @@ def cli(
                         E = np.nan
                 energies_seg.append(E)
 
+            first_last = None
+            try:
+                first_last = _xyz_blocks_first_last(raw_blocks, path=seg_trj)
+            except Exception as e:
+                click.echo(
+                    f"[all] WARNING: failed to parse first/last frames for segment {idx:02d}: {e}",
+                    err=True,
+                )
+
             path_opt_segments.append(
                 {
                     "tag": seg_tag,
                     "energies": energies_seg,
                     "traj": seg_trj,
                     "inputs": (pL, pR),
+                    "first_last": first_last,
                 }
             )
 
@@ -3450,7 +3468,11 @@ def cli(
             delta = (Es[-1] - Es[0]) * AU2KCALPERMOL
             bond_summary = ""
             try:
-                elems, c_first, c_last = _read_xyz_first_last(Path(info["traj"]))
+                first_last = info.get("first_last")
+                if first_last:
+                    elems, c_first, c_last = first_last
+                else:
+                    elems, c_first, c_last = _read_xyz_first_last(Path(info["traj"]))
                 freeze_atoms = _get_freeze_atoms(info["inputs"][0], freeze_links_flag)
                 gL = _geom_from_angstrom(elems, c_first, freeze_atoms)
                 gR = _geom_from_angstrom(elems, c_last, freeze_atoms)
@@ -4073,7 +4095,7 @@ def cli(
                     overrides=freq_overrides,
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-                ts_freq_info = _read_imaginary_frequency_info(freq_seg_root / "TS")
+                ts_freq_info = _read_imaginary_frequency(freq_seg_root / "TS")
                 if ts_freq_info is not None:
                     segment_log["ts_imag"] = ts_freq_info
                     if ts_freq_info.get("nu_imag_max_cm") is not None:

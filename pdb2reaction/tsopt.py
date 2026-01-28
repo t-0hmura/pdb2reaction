@@ -180,18 +180,16 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
-    convert_xyz_to_pdb,
-    merge_detected_freeze_links,
+    resolve_freeze_atoms,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
     normalize_choice,
     prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs_logged,
+    convert_xyz_like_outputs,
 )
 from .freq import (
     _torch_device,
@@ -1597,9 +1595,8 @@ def cli(
         if not flatten_imag_mode:
             simple_cfg["flatten_max_iter"] = 0
 
-        # Freeze links (PDB only): merge with existing list
-        if freeze_links and source_path.suffix.lower() == ".pdb":
-            merge_detected_freeze_links(geom_cfg, source_path)
+        # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
+        resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
 
         # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
         if "freeze_atoms" in geom_cfg:
@@ -1671,7 +1668,7 @@ def cli(
                 needs_gjf = prepared_input.is_gjf
                 ref_pdb = source_path.resolve() if needs_pdb else None
                 final_xyz = out_dir_path / "final_geometry.xyz"
-                if convert_xyz_like_outputs_logged(
+                if convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
@@ -1684,7 +1681,7 @@ def cli(
                 if bool(opt_cfg.get("dump", False)) and needs_pdb:
                     all_trj = out_dir_path / "optimization_all.trj"
                     if all_trj.exists():
-                        if convert_xyz_like_outputs_logged(
+                        if convert_xyz_like_outputs(
                             all_trj,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
@@ -1789,7 +1786,7 @@ def cli(
                 needs_gjf = prepared_input.is_gjf
                 ref_pdb = source_path.resolve() if needs_pdb else None
                 final_xyz_path = last_optimizer.final_fn if isinstance(last_optimizer.final_fn, Path) else Path(last_optimizer.final_fn)
-                if convert_xyz_like_outputs_logged(
+                if convert_xyz_like_outputs(
                     final_xyz_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
@@ -1802,7 +1799,7 @@ def cli(
                 if bool(opt_cfg.get("dump", False)) and needs_pdb:
                     trj_path = out_dir_path / "optimization.trj"
                     if trj_path.exists():
-                        if convert_xyz_like_outputs_logged(
+                        if convert_xyz_like_outputs(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb,

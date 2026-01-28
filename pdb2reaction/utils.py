@@ -13,6 +13,8 @@ Usage (API)
         merge_freeze_atom_indices,
         normalize_choice,
         pretty_block,
+        resolve_freeze_atoms,
+        xyz_string_with_energy,
     )
 
 Examples
@@ -41,6 +43,8 @@ Description
     updated list (in place).
   - `normalize_freeze_atoms(raw)`: Normalize a freeze_atoms value (string/list/iterable) into a list of ints.
   - `merge_freeze_atom_groups(*groups)`: Merge multiple freeze_atoms groups into a sorted list of ints.
+  - `resolve_freeze_atoms(geom_cfg, source_path, freeze_links, ...)`: Normalize freeze_atoms and optionally
+    merge link-parent indices for PDB inputs.
   - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalize CLI-style string options
     using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when
     no alias matches.
@@ -67,8 +71,8 @@ Description
     no `charge` was supplied on the CLI.
   - `convert_xyz_to_gjf(xyz_path, template, out_path)`: Render new coordinates into the given `.gjf` template
     while preserving formatting.
-  - `convert_xyz_to_gjf_optional(xyz_path, template, out_path=None)`: Convenience wrapper that returns the output
-    path when conversion occurs, otherwise `None`.
+  - `convert_xyz_to_gjf_if_enabled(...)`: Helper that respects the global conversion toggle and returns the
+    output path when conversion occurs, otherwise `None`.
 
 - **Plotly: Energy diagram builder**
   - `build_energy_diagram(energies, labels, ylabel="ΔE", baseline=False, showgrid=False)`:
@@ -106,7 +110,7 @@ General behavior
   ├─ Most helpers return Python objects or mutate dictionaries in place.
   └─ On-disk effects occur only when explicitly invoked:
         • ``convert_xyz_to_pdb`` writes to ``out_pdb_path`` (first frame overwrite, subsequent frames append MODEL/ENDMDL).
-        • ``convert_xyz_to_gjf`` / ``convert_xyz_to_gjf_optional`` render updated ``.gjf`` files.
+        • ``convert_xyz_to_gjf`` / ``convert_xyz_to_gjf_if_enabled`` render updated ``.gjf`` files.
         • ``prepare_input_structure`` emits a temporary ``.xyz`` for ``.gjf`` inputs and cleans it up at context exit.
         • ``build_energy_diagram`` returns a Plotly ``Figure``; saving/exporting is up to the caller.
 
@@ -131,17 +135,18 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from numbers import Real, Integral
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar, Iterator
+from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, Iterator
 
 import click
 from click.core import ParameterSource
+import numpy as np
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
 import plotly.graph_objs as go
 
 from .add_elem_info import guess_element
-from pysisyphus.constants import AU2KCALPERMOL
+from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 # =============================================================================
 # Generic helpers
@@ -187,6 +192,30 @@ def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = N
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+
+
+def xyz_string_with_energy(geom: Any, energy: Optional[float] = None) -> str:
+    """Return an XYZ string, optionally overwriting the comment line with an energy value."""
+    s = geom.as_xyz()
+    lines = s.splitlines()
+    if energy is not None and len(lines) >= 2 and lines[0].strip().isdigit():
+        lines[1] = f"{energy:.12f}"
+        s = "\n".join(lines)
+    if not s.endswith("\n"):
+        s += "\n"
+    return s
+
+
+def distance_A_from_coords(coords_bohr: "np.ndarray", i: int, j: int) -> float:
+    """Return interatomic distance in Å given coords in Bohr."""
+    diff = coords_bohr[i] - coords_bohr[j]
+    return float(np.linalg.norm(diff) / ANG2BOHR)
+
+
+def distance_tag(value_A: float, *, digits: int = 2, pad: int = 3) -> str:
+    """Format a distance in Å as a zero-padded integer tag (default: ×10^2)."""
+    scale = 10 ** digits
+    return f"{int(round(value_A * scale)):0{pad}d}"
 
 
 def as_list(raw: Any) -> List[Any]:
@@ -290,44 +319,6 @@ def make_snapshot_geometry(coord_type_default: str) -> Callable[[Any], Any]:
     return functools.partial(snapshot_geometry, coord_type_default=coord_type_default)
 
 
-def merge_freeze_atom_indices(
-    geom_cfg: Dict[str, Any],
-    *indices: _Iterable[int],
-) -> List[int]:
-    """Merge one or more iterables of indices into ``geom_cfg['freeze_atoms']``.
-
-    Existing entries are preserved, duplicates removed, and the result sorted.
-    The updated list is returned.
-    """
-
-    def _coerce_freeze_atoms(raw: Any) -> List[int]:
-        if raw is None:
-            return []
-        if isinstance(raw, str):
-            tokens = re.findall(r"-?\d+", raw)
-            return [int(tok) for tok in tokens]
-        try:
-            items = list(raw)
-        except TypeError:
-            return []
-        out: List[int] = []
-        for item in items:
-            try:
-                out.append(int(item))
-            except (TypeError, ValueError):
-                continue
-        return out
-
-    merged: set[int] = set()
-    base = geom_cfg.get("freeze_atoms", None)
-    merged.update(_coerce_freeze_atoms(base))
-    for seq in indices:
-        merged.update(_coerce_freeze_atoms(seq))
-    result = sorted(merged)
-    geom_cfg["freeze_atoms"] = result
-    return result
-
-
 def normalize_freeze_atoms(raw: Any) -> List[int]:
     """Normalize freeze_atoms values (string/list/iterable) into a list of integers."""
     if raw is None:
@@ -341,11 +332,31 @@ def normalize_freeze_atoms(raw: Any) -> List[int]:
         return []
 
 
+def merge_freeze_atom_indices(
+    geom_cfg: Dict[str, Any],
+    *indices: _Iterable[int],
+) -> List[int]:
+    """Merge one or more iterables of indices into ``geom_cfg['freeze_atoms']``.
+
+    Existing entries are preserved, duplicates removed, and the result sorted.
+    The updated list is returned.
+    """
+    merged: set[int] = set()
+    base = geom_cfg.get("freeze_atoms", None)
+    merged.update(normalize_freeze_atoms(base))
+    for seq in indices:
+        merged.update(normalize_freeze_atoms(seq))
+    result = sorted(merged)
+    geom_cfg["freeze_atoms"] = result
+    return result
+
+
 def merge_freeze_atom_groups(*groups: Sequence[int]) -> List[int]:
     """Merge multiple freeze_atoms groups into a sorted list of ints."""
-    geom_cfg: Dict[str, Any] = {}
-    merge_freeze_atom_indices(geom_cfg, *groups)
-    return list(geom_cfg.get("freeze_atoms", []))
+    merged: set[int] = set()
+    for group in groups:
+        merged.update(normalize_freeze_atoms(group))
+    return sorted(merged)
 
 
 def build_sopt_kwargs(
@@ -566,44 +577,28 @@ def build_scan_configs(
     return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
 
 
-def convert_xyz_like_outputs_logged(
-    xyz_path: Path,
-    prepared_input: "PreparedInputStructure",
-    *,
-    ref_pdb_path: Optional[Path],
-    out_pdb_path: Optional[Path] = None,
-    out_gjf_path: Optional[Path] = None,
-    context: str = "outputs",
-) -> bool:
-    """Convert XYZ/TRJ outputs and raise a user-facing error on failure; return success."""
-    try:
-        convert_xyz_like_outputs(
-            xyz_path,
-            prepared_input,
-            ref_pdb_path=ref_pdb_path,
-            out_pdb_path=out_pdb_path,
-            out_gjf_path=out_gjf_path,
-        )
-    except Exception as e:
-        raise click.ClickException(f"[convert] Failed to convert {context}: {e}") from e
-    return True
-
-
-def convert_xyz_to_gjf_logged(
+def convert_xyz_to_gjf_if_enabled(
     xyz_path: Path,
     template: Optional["GjfTemplate"],
     *,
     out_path: Optional[Path] = None,
     context: str = "GJF",
+    on_error: str = "raise",
 ) -> Optional[Path]:
-    """Convert XYZ to GJF and raise a user-facing error on failure; returns output path or None."""
+    """Convert XYZ to GJF when enabled; return output path or None."""
+    if not (_CONVERT_FILES_ENABLED and template is not None and xyz_path.exists()):
+        return None
+    target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
     try:
-        if template is None or (not xyz_path.exists()):
-            return None
-        target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
-        convert_xyz_to_gjf_optional(xyz_path, template, target)
+        convert_xyz_to_gjf(xyz_path, template, target)
         return target
     except Exception as e:
+        if on_error == "warn":
+            click.echo(
+                f"[convert] WARNING: Failed to convert '{xyz_path.name}' to {context}: {e}",
+                err=True,
+            )
+            return None
         raise click.ClickException(
             f"[convert] Failed to convert '{xyz_path.name}' to {context}: {e}"
         ) from e
@@ -808,8 +803,6 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         ref_pdb_path: Path to a reference PDB providing atom ordering/topology.
         out_pdb_path: Destination PDB file to write.
     """
-    if not _CONVERT_FILES_ENABLED:
-        return
     ref_atoms = read(ref_pdb_path)  # Reference topology/ordering (single frame)
     traj = read(xyz_path, index=":", format="xyz")  # Load all frames from the XYZ
     if not traj:
@@ -1150,6 +1143,51 @@ def _derive_charge_from_ligand_charge(
         return None
 
 
+def _resolve_charge_spin(
+    prepared_inputs: Sequence[PreparedInputStructure],
+    charge: Optional[int],
+    spin: Optional[int],
+    *,
+    spin_default: int,
+    charge_default: int,
+    ligand_charge: Optional[float | str | Dict[str, float]],
+    prefix: str,
+    cleanup_on_error: Optional[Callable[[], None]] = None,
+) -> Tuple[int, int]:
+    resolved_charge = charge
+    resolved_spin = spin
+    for prepared in prepared_inputs:
+        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
+            resolved_charge, resolved_spin, prepared.gjf_template
+        )
+
+    if ligand_charge is not None:
+        for prepared in prepared_inputs:
+            if prepared.source_path.suffix.lower() in {".xyz", ".gjf"}:
+                if cleanup_on_error:
+                    cleanup_on_error()
+                raise click.ClickException(
+                    "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+                )
+        if resolved_charge is None:
+            resolved_charge = _derive_charge_from_ligand_charge(
+                prepared_inputs[0], ligand_charge, prefix=prefix
+            )
+
+    if resolved_charge is None:
+        if any(not p.is_gjf for p in prepared_inputs):
+            if cleanup_on_error:
+                cleanup_on_error()
+            raise click.ClickException(
+                "-q/--charge is required unless the input is a .gjf template with charge metadata."
+            )
+        resolved_charge = charge_default
+
+    if resolved_spin is None:
+        resolved_spin = spin_default
+    return int(resolved_charge), int(resolved_spin)
+
+
 def resolve_charge_spin_or_raise(
     prepared: PreparedInputStructure,
     charge: Optional[int],
@@ -1160,28 +1198,16 @@ def resolve_charge_spin_or_raise(
     ligand_charge: Optional[float | str | Dict[str, float]] = None,
     prefix: str = "[charge]",
 ) -> Tuple[int, int]:
-    charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
-    source_suffix = prepared.source_path.suffix.lower()
-    if ligand_charge is not None and source_suffix in {".xyz", ".gjf"}:
-        prepared.cleanup()
-        raise click.ClickException(
-            "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
-        )
-    if charge is None and ligand_charge is not None:
-        charge = _derive_charge_from_ligand_charge(
-            prepared, ligand_charge, prefix=prefix
-        )
-    if charge is None:
-        if prepared.is_gjf:
-            charge = charge_default
-        else:
-            prepared.cleanup()
-            raise click.ClickException(
-                "-q/--charge is required unless the input is a .gjf template with charge metadata."
-            )
-    if spin is None:
-        spin = spin_default
-    return int(charge), int(spin)
+    return _resolve_charge_spin(
+        [prepared],
+        charge,
+        spin,
+        spin_default=spin_default,
+        charge_default=charge_default,
+        ligand_charge=ligand_charge,
+        prefix=prefix,
+        cleanup_on_error=prepared.cleanup,
+    )
 
 
 def resolve_charge_spin_multi(
@@ -1193,33 +1219,15 @@ def resolve_charge_spin_multi(
     prefix: str = "[charge]",
 ) -> Tuple[int, int]:
     """Resolve charge/spin for multi-endpoint workflows."""
-    resolved_charge = charge
-    resolved_spin = spin
-    for prepared in prepared_inputs:
-        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
-            resolved_charge, resolved_spin, prepared.gjf_template
-        )
-
-    if ligand_charge is not None:
-        for prepared in prepared_inputs:
-            if prepared.source_path.suffix.lower() in {".xyz", ".gjf"}:
-                raise click.ClickException(
-                    "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
-                )
-        if resolved_charge is None:
-            resolved_charge = _derive_charge_from_ligand_charge(
-                prepared_inputs[0], ligand_charge, prefix=prefix
-            )
-
-    if resolved_charge is None:
-        if any(not p.is_gjf for p in prepared_inputs):
-            raise click.ClickException(
-                "-q/--charge is required unless the input is a .gjf template with charge metadata."
-            )
-        resolved_charge = 0
-    if resolved_spin is None:
-        resolved_spin = 1
-    return int(resolved_charge), int(resolved_spin)
+    return _resolve_charge_spin(
+        prepared_inputs,
+        charge,
+        spin,
+        spin_default=1,
+        charge_default=0,
+        ligand_charge=ligand_charge,
+        prefix=prefix,
+    )
 
 
 @contextmanager
@@ -1263,13 +1271,9 @@ def set_convert_file_enabled(enabled: bool) -> None:
 def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) -> None:
     """Render single- or multi-frame XYZ/TRJ coordinates into a Gaussian template.
 
-    Respects the global conversion toggle (see :func:`set_convert_file_enabled`).
     Multi-frame trajectories are emitted as blank-separated geometries suitable
     for QST-style Gaussian inputs.
     """
-
-    if not _CONVERT_FILES_ENABLED:
-        return
     traj = read(xyz_path, index=":", format="xyz")
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
@@ -1292,18 +1296,6 @@ def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) ->
     out_path.write_text(text)
 
 
-def convert_xyz_to_gjf_optional(
-    xyz_path: Path,
-    template: Optional[GjfTemplate],
-    out_path: Optional[Path] = None,
-) -> Optional[Path]:
-    if not (_CONVERT_FILES_ENABLED and template is not None and xyz_path.exists()):
-        return None
-    target = out_path or xyz_path.with_suffix(".gjf")
-    convert_xyz_to_gjf(xyz_path, template, target)
-    return target
-
-
 def convert_xyz_like_outputs(
     xyz_path: Path,
     prepared_input: PreparedInputStructure,
@@ -1311,7 +1303,9 @@ def convert_xyz_like_outputs(
     ref_pdb_path: Optional[Path],
     out_pdb_path: Optional[Path] = None,
     out_gjf_path: Optional[Path] = None,
-) -> None:
+    context: str = "outputs",
+    on_error: str = "raise",
+) -> bool:
     """Convert an XYZ/TRJ file to PDB outputs (and XYZ to GJF) based on the original input type.
 
     Parameters
@@ -1326,10 +1320,11 @@ def convert_xyz_like_outputs(
         Targets for the converted files. Conversions are skipped when the
         corresponding output path is ``None`` or when the input type does not
         request that format.
+    Returns True when at least one conversion was attempted and succeeded; False otherwise.
     """
 
     if not _CONVERT_FILES_ENABLED:
-        return
+        return False
 
     source_suffix = prepared_input.source_path.suffix.lower()
     needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
@@ -1340,10 +1335,20 @@ def convert_xyz_like_outputs(
         and out_gjf_path is not None
     )
 
-    if needs_pdb:
-        convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
-    if needs_gjf:
-        convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
+    if not (needs_pdb or needs_gjf):
+        return False
+
+    try:
+        if needs_pdb:
+            convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
+        if needs_gjf:
+            convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
+    except Exception as e:
+        if on_error == "warn":
+            click.echo(f"[convert] WARNING: Failed to convert {context}: {e}", err=True)
+            return False
+        raise click.ClickException(f"[convert] Failed to convert {context}: {e}") from e
+    return True
 
 
 # =============================================================================
@@ -1838,3 +1843,24 @@ def merge_detected_freeze_links(
     if merged:
         click.echo(f"{prefix} Freeze atoms (0-based): {','.join(map(str, merged))}")
     return merged
+
+
+def resolve_freeze_atoms(
+    geom_cfg: Dict[str, Any],
+    source_path: Optional[Path],
+    freeze_links: bool,
+    *,
+    prefix: str = "[freeze-links]",
+    on_error: str = "raise",
+) -> List[int]:
+    """Normalize freeze_atoms and optionally merge detected link-parent atoms."""
+    merge_freeze_atom_indices(geom_cfg)
+    if not freeze_links or source_path is None or source_path.suffix.lower() != ".pdb":
+        return list(geom_cfg.get("freeze_atoms", []))
+    try:
+        return merge_detected_freeze_links(geom_cfg, source_path, prefix=prefix)
+    except Exception as e:
+        if on_error == "warn":
+            click.echo(f"{prefix} WARNING: Could not detect link parents: {e}", err=True)
+            return list(geom_cfg.get("freeze_atoms", []))
+        raise

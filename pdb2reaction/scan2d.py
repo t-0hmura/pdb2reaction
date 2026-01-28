@@ -130,11 +130,9 @@ from .utils import (
     parse_scan_list_quads_checked,
     unbiased_energy_hartree,
     values_from_bounds,
-    merge_detected_freeze_links,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
     normalize_choice,
     prepared_cli_input,
     set_convert_file_enabled,
@@ -143,29 +141,27 @@ from .utils import (
     format_pdb_atom_metadata_header,
     ensure_dir,
     make_snapshot_geometry,
-    convert_xyz_like_outputs_logged,
+    convert_xyz_like_outputs,
     build_scan_configs,
     cli_param_overridden,
     load_yaml_dict,
+    resolve_freeze_atoms,
+    distance_A_from_coords,
+    distance_tag,
 )
+from .scan_common import add_scan_common_options, build_scan_kw_defaults
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
-OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
-OPT_BASE_KW.update({
-    "out_dir": "./result_scan2d/",  # base output directory for 2D scan artifacts
-    "dump": False,                   # disable trajectory dumping by default
-    "max_cycles": 10000,             # safety cap on optimization cycles
-    "thresh": "baker",              # default convergence preset for 2D scans
-})
-
-LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_KW.update({"out_dir": "./result_scan2d/"})  # directory for LBFGS-specific files
-
-RFO_KW: Dict[str, Any] = dict(_RFO_KW)
-RFO_KW.update({"out_dir": "./result_scan2d/"})    # directory for RFO-specific files
+OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_kw_defaults(
+    opt_base_kw=_OPT_BASE_KW,
+    lbfgs_kw=_LBFGS_KW,
+    rfo_kw=_RFO_KW,
+    out_dir="./result_scan2d/",
+    thresh="baker",
+)
 
 BIAS_KW: Dict[str, Any] = {"k": 100.0}  # harmonic restraint strength (eV/Å^2)
 
@@ -175,18 +171,6 @@ _OPT_MODE_ALIASES = (
 )
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
-def _distance_A(geom, i: int, j: int) -> float:
-    """Compute interatomic distance (Å) between atoms i and j."""
-    coords = np.asarray(geom.coords, dtype=float).reshape(-1, 3)
-    # geom.coords are in Bohr; convert to Å
-    coords_A = coords / ANG2BOHR
-    diff = coords_A[i] - coords_A[j]
-    return float(np.linalg.norm(diff))
-
-
-def _dist_tag(value_A: float) -> str:
-    """Format distance (Å) as integer tag, 2 decimal digits -> ×100, zero-padded."""
-    return f"{int(round(value_A * 100.0)):03d}"
 
 
 def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.ndarray:
@@ -210,50 +194,6 @@ def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.nd
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option(
-    "-q",
-    "--charge",
-    type=int,
-    required=False,
-    help=(
-        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
-        "(PDB inputs or XYZ/GJF with --ref-pdb)."
-    ),
-)
-@click.option(
-    "--workers",
-    type=int,
-    default=CALC_KW["workers"],
-    show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
-)
-@click.option(
-    "--workers-per-node",
-    "workers_per_node",
-    type=int,
-    default=CALC_KW["workers_per_node"],
-    show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
-)
-@click.option(
-    "--ligand-charge",
-    type=str,
-    default=None,
-    show_default=False,
-    help=(
-        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (requires PDB input or --ref-pdb)."
-    ),
-)
-@click.option(
-    "-m",
-    "--multiplicity",
-    "spin",
-    type=int,
-    default=1,
-    show_default=True,
-    help="Spin multiplicity (2S+1) for the ML region.",
-)
-@click.option(
     "--scan-list",
     "--scan-lists",
     "scan_list_raw",
@@ -261,120 +201,12 @@ def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.nd
     required=True,
     help="Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.",
 )
-@click.option(
-    "--one-based",
-    "one_based",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
-)
-@click.option(
-    "--max-step-size",
-    type=float,
-    default=0.20,
-    show_default=True,
-    help="Maximum step size in either distance [Å].",
-)
-@click.option(
-    "--bias-k",
-    type=float,
-    default=100.0,
-    show_default=True,
-    help="Harmonic well strength k [eV/Å^2].",
-)
-@click.option(
-    "--relax-max-cycles",
-    type=int,
-    default=10000,
-    show_default=True,
-    help="Maximum optimizer cycles per grid relaxation. When explicitly provided, overrides opt.max_cycles from YAML.",
-)
-@click.option(
-    "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
-    show_default=True,
-    help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
-)
-@click.option(
-    "--freeze-links",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="If input is PDB, freeze parent atoms of link hydrogens.",
-)
-@click.option(
-    "--dump",
-    type=click.BOOL,
-    default=False,
-    show_default=True,
-    help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
-)
-@click.option(
-    "--convert-files",
-    "convert_files",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
-)
-@click.option(
-    "--ref-pdb",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
-)
-@click.option(
-    "--out-dir",
-    type=str,
-    default="./result_scan2d/",
-    show_default=True,
-    help="Base output directory.",
-)
-@click.option(
-    "--thresh",
-    type=str,
-    default="baker",
-    show_default=False,
-    help=(
-        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'baker'."
-    ),
-)
-@click.option(
-    "--args-yaml",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
-)
-@click.option(
-    "--preopt",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Pre-optimize the initial structure without bias before the scan.",
-)
-@click.option(
-    "--baseline",
-    type=click.Choice(["min", "first"]),
-    default="min",
-    show_default=True,
-    help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
-)
-@click.option(
-    "--zmin",
-    type=float,
-    default=None,
-    show_default=False,
-    help="Lower bound of color scale for plots (kcal/mol).",
-)
-@click.option(
-    "--zmax",
-    type=float,
-    default=None,
-    show_default=False,
-    help="Upper bound of color scale for plots (kcal/mol).",
+@add_scan_common_options(
+    workers_default=CALC_KW["workers"],
+    workers_per_node_default=CALC_KW["workers_per_node"],
+    out_dir_default="./result_scan2d/",
+    baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
+    dump_help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
 )
 @click.pass_context
 def cli(
@@ -456,9 +288,7 @@ def cli(
             )
 
             # Resolve freeze list before logging so printed config matches runtime.
-            freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and source_path.suffix.lower() == ".pdb":
-                freeze = merge_detected_freeze_links(geom_cfg, source_path)
+            freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
 
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()
             ensure_dir(out_dir_path)
@@ -585,11 +415,12 @@ def cli(
 
                 # Measure optimized distances and record preopt structure
                 try:
-                    d1_ref = _distance_A(geom_outer, i1, j1)
-                    d2_ref = _distance_A(geom_outer, i2, j2)
+                    coords_outer = np.asarray(getattr(geom_outer, "coords"), dtype=float).reshape(-1, 3)
+                    d1_ref = distance_A_from_coords(coords_outer, i1, j1)
+                    d2_ref = distance_A_from_coords(coords_outer, i2, j2)
 
-                    d1_tag = _dist_tag(d1_ref)
-                    d2_tag = _dist_tag(d2_ref)
+                    d1_tag = distance_tag(d1_ref)
+                    d2_tag = distance_tag(d2_ref)
 
                     preopt_xyz_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.xyz"
                     s = geom_outer.as_xyz()
@@ -598,7 +429,7 @@ def cli(
                     with open(preopt_xyz_path, "w") as f:
                         f.write(s)
 
-                    convert_xyz_like_outputs_logged(
+                    convert_xyz_like_outputs(
                         preopt_xyz_path,
                         prepared_input,
                         ref_pdb_path=ref_pdb_path,
@@ -683,8 +514,9 @@ def cli(
 
                 # Store the d1-relaxed structure as a candidate for nearest-start
                 try:
-                    d1_cur = _distance_A(geom_inner, i1, j1)
-                    d2_cur = _distance_A(geom_inner, i2, j2)
+                    coords_inner = np.asarray(getattr(geom_inner, "coords"), dtype=float).reshape(-1, 3)
+                    d1_cur = distance_A_from_coords(coords_inner, i1, j1)
+                    d2_cur = distance_A_from_coords(coords_inner, i2, j2)
                     visited_geoms.append(
                         (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
                     )
@@ -763,8 +595,8 @@ def cli(
                     E_h = unbiased_energy_hartree(geom_inner, base_calc)
 
                     # Write per-grid XYZ snapshots under result_scan2d/grid/
-                    d1_tag = _dist_tag(d1_target)
-                    d2_tag = _dist_tag(d2_target)
+                    d1_tag = distance_tag(d1_target)
+                    d2_tag = distance_tag(d2_target)
                     xyz_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.xyz"
                     try:
                         s = geom_inner.as_xyz()
@@ -772,7 +604,7 @@ def cli(
                             s += "\n"
                         with open(xyz_path, "w") as f:
                             f.write(s)
-                        convert_xyz_like_outputs_logged(
+                        convert_xyz_like_outputs(
                             xyz_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb_path,
@@ -788,8 +620,9 @@ def cli(
 
                     # Store this converged grid point for nearest-start initialization
                     try:
-                        d1_cur = _distance_A(geom_inner, i1, j1)
-                        d2_cur = _distance_A(geom_inner, i2, j2)
+                        coords_inner = np.asarray(getattr(geom_inner, "coords"), dtype=float).reshape(-1, 3)
+                        d1_cur = distance_A_from_coords(coords_inner, i1, j1)
+                        d2_cur = distance_A_from_coords(coords_inner, i2, j2)
                         visited_geoms.append(
                             (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
                         )
@@ -822,7 +655,7 @@ def cli(
                         with open(trj_path, "w") as f:
                             f.write("".join(trj_blocks))
                         click.echo(f"[write] Wrote '{trj_path}'.")
-                        convert_xyz_like_outputs_logged(
+                        convert_xyz_like_outputs(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb_path,

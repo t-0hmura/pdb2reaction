@@ -141,18 +141,16 @@ from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
-    convert_xyz_to_pdb,
-    merge_detected_freeze_links,
+    resolve_freeze_atoms,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    merge_freeze_atom_indices,
     normalize_choice,
     prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs_logged,
+    convert_xyz_like_outputs,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -425,7 +423,7 @@ def _convert_outputs(
     ref_pdb = prepared_input.source_path.resolve() if needs_pdb else None
 
     # final_geometry.xyz → final_geometry.{pdb|gjf}
-    if convert_xyz_like_outputs_logged(
+    if convert_xyz_like_outputs(
         final_xyz_path,
         prepared_input,
         ref_pdb_path=ref_pdb,
@@ -439,7 +437,7 @@ def _convert_outputs(
     if dump and needs_pdb:
         trj_path = get_trj_fn("optimization.trj")
         if trj_path.exists():
-            if convert_xyz_like_outputs_logged(
+            if convert_xyz_like_outputs(
                 trj_path,
                 prepared_input,
                 ref_pdb_path=ref_pdb,
@@ -668,9 +666,8 @@ def cli(
                 ],
             )
 
-            # Optionally infer "freeze_atoms" from link hydrogens in PDB
-            if freeze_links and source_path.suffix.lower() == ".pdb":
-                merge_detected_freeze_links(geom_cfg, source_path)
+            # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
+            resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
 
             # Normalize and select optimizer kind
             kind = normalize_choice(
