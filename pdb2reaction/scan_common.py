@@ -22,7 +22,7 @@ def add_scan_common_options(
     baseline_help: str,
     dump_help: str,
     max_step_help: str = "Maximum step size in either distance [Å].",
-    thresh_default: str = "baker",
+    thresh_default: str | None = "baker",
     max_step_size_default: float = 0.20,
     bias_k_default: float = 100.0,
     relax_max_cycles_default: int = 10000,
@@ -32,8 +32,11 @@ def add_scan_common_options(
     convert_files_default: bool = True,
     preopt_default: bool = True,
     one_based_default: bool = True,
+    include_baseline: bool = True,
+    include_zmin_zmax: bool = True,
 ) -> Callable[[Callable], Callable]:
     """Attach the shared scan2d/scan3d CLI options to a Click command."""
+    thresh_note = f" Defaults to '{thresh_default}'." if thresh_default is not None else ""
     options = [
         click.option(
             "-q",
@@ -160,7 +163,7 @@ def add_scan_common_options(
             show_default=False,
             help=(
                 "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-                f"Defaults to '{thresh_default}'."
+                f"{thresh_note}"
             ),
         ),
         click.option(
@@ -176,28 +179,36 @@ def add_scan_common_options(
             show_default=True,
             help="Pre-optimize the initial structure without bias before the scan.",
         ),
-        click.option(
-            "--baseline",
-            type=click.Choice(["min", "first"]),
-            default="min",
-            show_default=True,
-            help=baseline_help,
-        ),
-        click.option(
-            "--zmin",
-            type=float,
-            default=None,
-            show_default=False,
-            help="Lower bound of color scale for plots (kcal/mol).",
-        ),
-        click.option(
-            "--zmax",
-            type=float,
-            default=None,
-            show_default=False,
-            help="Upper bound of color scale for plots (kcal/mol).",
-        ),
     ]
+    if include_baseline:
+        options.append(
+            click.option(
+                "--baseline",
+                type=click.Choice(["min", "first"]),
+                default="min",
+                show_default=True,
+                help=baseline_help,
+            )
+        )
+    if include_zmin_zmax:
+        options.extend(
+            [
+                click.option(
+                    "--zmin",
+                    type=float,
+                    default=None,
+                    show_default=False,
+                    help="Lower bound of color scale for plots (kcal/mol).",
+                ),
+                click.option(
+                    "--zmax",
+                    type=float,
+                    default=None,
+                    show_default=False,
+                    help="Upper bound of color scale for plots (kcal/mol).",
+                ),
+            ]
+        )
     return lambda func: _apply_options(func, options)
 
 
@@ -224,3 +235,26 @@ def build_scan_kw_defaults(
     rfo_cfg = dict(rfo_kw)
     rfo_cfg.update({"out_dir": out_dir})
     return opt_cfg, lbfgs_cfg, rfo_cfg
+
+
+def build_scan_defaults(
+    *,
+    geom_kw_default: Dict[str, Any],
+    calc_kw_default: Dict[str, Any],
+    opt_base_kw: Dict[str, Any],
+    lbfgs_kw: Dict[str, Any],
+    rfo_kw: Dict[str, Any],
+    out_dir: str,
+    thresh: str = "baker",
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    """Return (geom_kw, calc_kw, opt_kw, lbfgs_kw, rfo_kw) with shared scan defaults applied."""
+    geom_kw = dict(geom_kw_default)
+    calc_kw = dict(calc_kw_default)
+    opt_cfg, lbfgs_cfg, rfo_cfg = build_scan_kw_defaults(
+        opt_base_kw=opt_base_kw,
+        lbfgs_kw=lbfgs_kw,
+        rfo_kw=rfo_kw,
+        out_dir=out_dir,
+        thresh=thresh,
+    )
+    return geom_kw, calc_kw, opt_cfg, lbfgs_cfg, rfo_cfg

@@ -280,11 +280,15 @@ def collect_single_option_values(
     return vals
 
 
-def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
-    """Create an independent pysisyphus Geometry snapshot from the given Geometry."""
-    s = geom.as_xyz()
-    if not s.endswith("\n"):
-        s += "\n"
+def geom_from_xyz_string(
+    xyz_text: str,
+    *,
+    coord_type: str,
+    freeze_atoms: Optional[Sequence[int]] = None,
+) -> Any:
+    """Load a pysisyphus Geometry from an XYZ text string (tempfile-backed)."""
+    s = xyz_text if xyz_text.endswith("\n") else (xyz_text + "\n")
+    freeze_atoms = list(freeze_atoms or [])
     tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
     try:
         tmp.write(s)
@@ -293,25 +297,35 @@ def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
         from pysisyphus.helpers import geom_loader  # local import to avoid heavy import at module load
         import numpy as np
 
-        snap = geom_loader(
+        g = geom_loader(
             Path(tmp.name),
-            coord_type=getattr(geom, "coord_type", coord_type_default),
-            freeze_atoms=getattr(geom, "freeze_atoms", []),
+            coord_type=coord_type,
+            freeze_atoms=freeze_atoms,
         )
         try:
-            snap.freeze_atoms = np.array(getattr(geom, "freeze_atoms", []), dtype=int)
+            g.freeze_atoms = np.array(sorted(set(map(int, freeze_atoms))), dtype=int)
         except Exception:
             click.echo(
-                "[snapshot] WARNING: Failed to propagate freeze_atoms to snapshot geometry.",
+                "[geom] WARNING: Failed to attach freeze_atoms to geometry.",
                 err=True,
             )
-        return snap
+        return g
     finally:
         try:
             import os
             os.unlink(tmp.name)
         except Exception:
             pass
+
+
+def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
+    """Create an independent pysisyphus Geometry snapshot from the given Geometry."""
+    s = geom.as_xyz()
+    return geom_from_xyz_string(
+        s,
+        coord_type=getattr(geom, "coord_type", coord_type_default),
+        freeze_atoms=getattr(geom, "freeze_atoms", []),
+    )
 
 
 def make_snapshot_geometry(coord_type_default: str) -> Callable[[Any], Any]:
@@ -1351,6 +1365,30 @@ def convert_xyz_like_outputs(
     return True
 
 
+def _convert_to_pdb_logged(
+    src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
+) -> Optional[Path]:
+    """Convert an XYZ/TRJ to PDB when conversion is enabled; return path or None."""
+    try:
+        if ref_pdb_path is None or not _CONVERT_FILES_ENABLED:
+            return None
+        src_path = Path(src_path)
+        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
+            return None
+        out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
+        convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)
+        if out_path.exists():
+            click.echo(f"[convert] Wrote '{out_path}'.")
+            return out_path
+        return None
+    except Exception as e:
+        click.echo(
+            f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}",
+            err=True,
+        )
+        return None
+
+
 # =============================================================================
 # Link-freezing helpers
 # =============================================================================
@@ -1864,3 +1902,32 @@ def resolve_freeze_atoms(
             click.echo(f"{prefix} WARNING: Could not detect link parents: {e}", err=True)
             return list(geom_cfg.get("freeze_atoms", []))
         raise
+
+
+def load_prepared_geometries(
+    prepared_inputs: Sequence["PreparedInputStructure"],
+    *,
+    coord_type: str,
+    base_freeze: Sequence[int],
+    auto_freeze_links: bool,
+    prefix: str = "[freeze-links]",
+) -> List[Any]:
+    """Load multiple PreparedInputStructure geometries and apply freeze atom logic."""
+    geoms: List[Any] = []
+    for prepared in prepared_inputs:
+        geom_path = prepared.geom_path
+        src_path = prepared.source_path
+        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
+        freeze = resolve_freeze_atoms(
+            cfg,
+            src_path,
+            auto_freeze_links,
+            prefix=f"{prefix} {src_path.name}:",
+        )
+        from pysisyphus.helpers import geom_loader  # local import to avoid heavy import at module load
+        import numpy as np
+
+        g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
+        g.freeze_atoms = np.array(freeze, dtype=int)
+        geoms.append(g)
+    return geoms

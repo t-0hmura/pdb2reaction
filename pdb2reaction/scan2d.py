@@ -149,13 +149,12 @@ from .utils import (
     distance_A_from_coords,
     distance_tag,
 )
-from .scan_common import add_scan_common_options, build_scan_kw_defaults
+from .scan_common import add_scan_common_options, build_scan_defaults
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
-GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
-
-OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_kw_defaults(
+GEOM_KW, CALC_KW, OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_defaults(
+    geom_kw_default=GEOM_KW_DEFAULT,
+    calc_kw_default=_UMA_CALC_KW,
     opt_base_kw=_OPT_BASE_KW,
     lbfgs_kw=_LBFGS_KW,
     rfo_kw=_RFO_KW,
@@ -179,6 +178,111 @@ def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.nd
         return values
     order = np.argsort(np.abs(values - ref))
     return values[order]
+
+
+def _build_scan_context(
+    *,
+    yaml_cfg: Dict[str, Any],
+    geom_kw: Dict[str, Any],
+    calc_kw: Dict[str, Any],
+    opt_kw: Dict[str, Any],
+    lbfgs_kw: Dict[str, Any],
+    rfo_kw: Dict[str, Any],
+    bias_kw: Dict[str, Any],
+    charge: Optional[int],
+    spin: Optional[int],
+    workers: int,
+    workers_per_node: int,
+    out_dir: str,
+    thresh: Optional[str],
+    bias_k: float,
+    opt_mode: str,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    max_step_size: float,
+    source_path: Optional[Path],
+    freeze_links: bool,
+    set_charge_spin: bool = True,
+) -> Tuple[
+    Dict[str, Any],
+    Dict[str, Any],
+    Dict[str, Any],
+    Dict[str, Any],
+    Dict[str, Any],
+    Dict[str, Any],
+    str,
+    List[int],
+    Path,
+]:
+    geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
+        yaml_cfg,
+        geom_kw=geom_kw,
+        calc_kw=calc_kw,
+        opt_kw=opt_kw,
+        lbfgs_kw=lbfgs_kw,
+        rfo_kw=rfo_kw,
+        bias_kw=bias_kw,
+        charge=charge,
+        spin=spin,
+        workers=workers,
+        workers_per_node=workers_per_node,
+        out_dir=out_dir,
+        thresh=thresh,
+        bias_k=bias_k,
+        set_charge_spin=set_charge_spin,
+    )
+
+    kind = normalize_choice(
+        opt_mode,
+        param="--opt-mode",
+        alias_groups=_OPT_MODE_ALIASES,
+        allowed_hint="light|heavy",
+    )
+
+    freeze: List[int] = []
+    if source_path is not None:
+        freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
+
+    out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+    ensure_dir(out_dir_path)
+    echo_geom = format_geom_for_echo(geom_cfg)
+    echo_calc = format_geom_for_echo(calc_cfg)
+    echo_opt = dict(opt_cfg)
+    if relax_override_requested:
+        echo_opt["max_cycles"] = int(relax_max_cycles)
+    echo_opt["out_dir"] = str(out_dir_path)
+    echo_bias = dict(bias_cfg)
+    click.echo(pretty_block("geom", echo_geom))
+    click.echo(pretty_block("calc", echo_calc))
+    click.echo(pretty_block("opt", echo_opt))
+    max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
+    echo_sopt = build_sopt_kwargs(
+        kind,
+        lbfgs_cfg,
+        rfo_cfg,
+        opt_cfg,
+        max_step_bohr_for_log,
+        relax_max_cycles,
+        relax_override_requested,
+        out_dir_path,
+        str(opt_cfg.get("prefix", "")),
+    )
+    click.echo(
+        pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt)
+    )
+    click.echo(pretty_block("bias", echo_bias))
+
+    return (
+        geom_cfg,
+        calc_cfg,
+        opt_cfg,
+        lbfgs_cfg,
+        rfo_cfg,
+        bias_cfg,
+        kind,
+        freeze,
+        out_dir_path,
+    )
 
 
 @click.command(
@@ -256,71 +360,38 @@ def cli(
 
             yaml_cfg = load_yaml_dict(args_yaml)
 
-            geom_cfg = dict(GEOM_KW)
-            calc_cfg = dict(CALC_KW)
-            opt_cfg = dict(OPT_BASE_KW)
-            lbfgs_cfg = dict(LBFGS_KW)
-            rfo_cfg = dict(RFO_KW)
-            bias_cfg = dict(BIAS_KW)
-
-            geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
-                yaml_cfg,
-                geom_kw=geom_cfg,
-                calc_kw=calc_cfg,
-                opt_kw=opt_cfg,
-                lbfgs_kw=lbfgs_cfg,
-                rfo_kw=rfo_cfg,
-                bias_kw=bias_cfg,
+            (
+                geom_cfg,
+                calc_cfg,
+                opt_cfg,
+                lbfgs_cfg,
+                rfo_cfg,
+                bias_cfg,
+                kind,
+                freeze,
+                out_dir_path,
+            ) = _build_scan_context(
+                yaml_cfg=yaml_cfg,
+                geom_kw=dict(GEOM_KW),
+                calc_kw=dict(CALC_KW),
+                opt_kw=dict(OPT_BASE_KW),
+                lbfgs_kw=dict(LBFGS_KW),
+                rfo_kw=dict(RFO_KW),
+                bias_kw=dict(BIAS_KW),
                 charge=charge,
                 spin=spin,
                 workers=workers,
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,
                 thresh=thresh,
-                bias_k=bias_k,
+                bias_k=float(bias_k),
+                opt_mode=opt_mode,
+                relax_max_cycles=relax_max_cycles,
+                relax_override_requested=relax_max_cycles_override_requested,
+                max_step_size=max_step_size,
+                source_path=source_path,
+                freeze_links=freeze_links,
             )
-
-            kind = normalize_choice(
-                opt_mode,
-                param="--opt-mode",
-                alias_groups=_OPT_MODE_ALIASES,
-                allowed_hint="light|heavy",
-            )
-
-            # Resolve freeze list before logging so printed config matches runtime.
-            freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
-
-            out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-            ensure_dir(out_dir_path)
-            echo_geom = format_geom_for_echo(geom_cfg)
-            echo_calc = format_geom_for_echo(calc_cfg)
-            echo_opt = dict(opt_cfg)
-            if relax_max_cycles_override_requested:
-                echo_opt["max_cycles"] = int(relax_max_cycles)
-            echo_opt["out_dir"] = str(out_dir_path)
-            echo_bias = dict(bias_cfg)
-            click.echo(pretty_block("geom", echo_geom))
-            click.echo(pretty_block("calc", echo_calc))
-            click.echo(pretty_block("opt", echo_opt))
-            max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
-            echo_sopt = build_sopt_kwargs(
-                kind,
-                lbfgs_cfg,
-                rfo_cfg,
-                opt_cfg,
-                max_step_bohr_for_log,
-                relax_max_cycles,
-                relax_max_cycles_override_requested,
-                out_dir_path,
-                str(opt_cfg.get("prefix", "")),
-            )
-            click.echo(
-                pretty_block(
-                    "lbfgs" if kind == "lbfgs" else "rfo",
-                    echo_sopt,
-                )
-            )
-            click.echo(pretty_block("bias", echo_bias))
 
             pdb_atom_meta: List[Dict[str, Any]] = []
             if source_path.suffix.lower() == ".pdb":

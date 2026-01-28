@@ -182,7 +182,6 @@ from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .path_opt import (
-    _convert_to_pdb_logged,
     _optimize_single,
     _run_dmf_mep,
     _write_ase_trj_with_energy,
@@ -209,16 +208,18 @@ from .utils import (
     _derive_charge_from_ligand_charge,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
+    _convert_to_pdb_logged,
     PreparedInputStructure,
     GjfTemplate,
     convert_xyz_to_gjf_if_enabled,
+    geom_from_xyz_string,
     close_matplotlib_figures,
     xyz_string_with_energy,
-    resolve_freeze_atoms,
+    load_prepared_geometries,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
-from .bond_changes import compare_structures, summarize_changes
+from .bond_changes import has_bond_change
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 
 # -----------------------------------------------------------------------------
@@ -346,31 +347,6 @@ SEARCH_KW: Dict[str, Any] = {
 }
 
 
-def _load_two_endpoints(
-    paths: Sequence[Path],
-    coord_type: str,
-    base_freeze: Sequence[int],
-    auto_freeze_links: bool,
-) -> Sequence:
-    """
-    Load two or more geometries and assign `freeze_atoms`; return pysisyphus geometries.
-    """
-    geoms = []
-    for p in paths:
-        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        freeze = resolve_freeze_atoms(
-            cfg,
-            p,
-            auto_freeze_links,
-            prefix=f"[freeze-links] {p.name}:",
-        )
-        g = geom_loader(p, coord_type=coord_type, freeze_atoms=freeze)
-        g.freeze_atoms = np.array(freeze, dtype=int)
-        geoms.append(g)
-    return geoms
-
-
-# Multi‑structure loader
 def _load_structures(
     inputs: Sequence[PreparedInputStructure],
     coord_type: str,
@@ -380,21 +356,12 @@ def _load_structures(
     """
     Load multiple geometries and assign `freeze_atoms`; return a list of geometries.
     """
-    geoms: List[Any] = []
-    for prepared in inputs:
-        geom_path = prepared.geom_path
-        src_path = prepared.source_path
-        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        freeze = resolve_freeze_atoms(
-            cfg,
-            src_path,
-            auto_freeze_links,
-            prefix=f"[freeze-links] {src_path.name}:",
-        )
-        g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
-        g.freeze_atoms = np.array(freeze, dtype=int)
-        geoms.append(g)
-    return geoms
+    return load_prepared_geometries(
+        inputs,
+        coord_type=coord_type,
+        base_freeze=base_freeze,
+        auto_freeze_links=auto_freeze_links,
+    )
 
 
 def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path: Path) -> None:
@@ -428,7 +395,7 @@ def _convert_to_gjf(
     return target
 
 
-def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, indices: Optional[Sequence[int]] = None) -> float:
+def _calc_rmsd(A: np.ndarray, B: np.ndarray, indices: Optional[Sequence[int]] = None) -> float:
     """RMSD between A and B (no rigid alignment). Optional subset selection via `indices`."""
     assert A.shape == B.shape and A.shape[1] == 3
     if indices is not None and len(indices) > 0:
@@ -443,24 +410,7 @@ def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, indices: Optional[Sequence[int]] 
 
 def _rmsd_between(ga, gb, indices: Optional[Sequence[int]] = None) -> float:
     """RMSD between two pysisyphus Geometries (no alignment; optional subset selection)."""
-    return _kabsch_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), indices=indices)
-
-
-def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """
-    Determine if covalent bonds form/break between `x` and `y`. Returns (changed?, summary_text).
-    """
-    res = compare_structures(
-        x, y,
-        device=bond_cfg.get("device", "cuda"),
-        bond_factor=float(bond_cfg.get("bond_factor", 1.20)),
-        margin_fraction=float(bond_cfg.get("margin_fraction", 0.05)),
-        delta_fraction=float(bond_cfg.get("delta_fraction", 0.05)),
-    )
-    formed = len(res.formed_covalent) > 0
-    broken = len(res.broken_covalent) > 0
-    summary = summarize_changes(x, res, one_based=True)
-    return (formed or broken), summary
+    return _calc_rmsd(np.array(ga.coords3d), np.array(gb.coords3d), indices=indices)
 
 
 def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, Any]:
@@ -477,10 +427,8 @@ def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, 
 # Kink detection & interpolation helpers
 # -----------------------------------------------
 
-def _max_displacement_between(ga, gb, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
-    """
-    Maximum per‑atom displacement (Å) between two structures (no alignment).
-    """
+def _max_displacement_between(ga, gb, indices: Optional[Sequence[int]] = None) -> float:
+    """Maximum per‑atom displacement (Å) between two structures (no alignment)."""
     A = np.asarray(ga.coords3d, dtype=float)
     B = np.asarray(gb.coords3d, dtype=float)
     if A.shape != B.shape or A.shape[1] != 3:
@@ -498,21 +446,7 @@ def _new_geom_from_coords(atoms: Sequence[str], coords: np.ndarray, coord_type: 
     for sym, (x, y, z) in zip(atoms, coords_ang):
         lines.append(f"{sym} {x:.15f} {y:.15f} {z:.15f}")
     s = "\n".join(lines) + "\n"
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
-    try:
-        tmp.write(s)
-        tmp.flush()
-        tmp.close()
-        g = geom_loader(
-            Path(tmp.name), coord_type=coord_type, freeze_atoms=freeze_atoms
-        )
-        g.freeze_atoms = np.array(sorted(set(map(int, freeze_atoms))), dtype=int)
-        return g
-    finally:
-        try:
-            os.unlink(tmp.name)
-        except Exception:
-            pass
+    return geom_from_xyz_string(s, coord_type=coord_type, freeze_atoms=freeze_atoms)
 
 
 def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
@@ -553,12 +487,18 @@ def _tag_images(images: Sequence[Any], **attrs: Any) -> None:
     """
     Attach arbitrary attributes to Geometry images.
     """
+    warned = False
     for im in images:
         for k, v in attrs.items():
             try:
                 setattr(im, k, v)
             except Exception:
-                pass
+                if not warned:
+                    click.echo(
+                        f"[tag] WARNING: Failed to set attribute '{k}' on an image.",
+                        err=True,
+                    )
+                    warned = True
 
 
 def _segment_base_id(tag: str) -> str:
@@ -996,7 +936,7 @@ def _stitch_paths(
         adj_changed, adj_summary = False, ""
         if segment_builder is not None and bond_cfg is not None:
             try:
-                adj_changed, adj_summary = _has_bond_change(tail, head, bond_cfg)
+                adj_changed, adj_summary = has_bond_change(tail, head, bond_cfg)
             except Exception:
                 adj_changed, adj_summary = False, ""
 
@@ -1181,7 +1121,7 @@ def _build_multistep_path(
         seg_counter[0] += 1
 
         try:
-            changed, step_summary = _has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
+            changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
             click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
             changed, step_summary = True, ""
@@ -1293,7 +1233,7 @@ def _build_multistep_path(
     )
 
     try:
-        lr_changed, lr_summary = _has_bond_change(left_end, right_end, bond_cfg)
+        lr_changed, lr_summary = has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
         click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
         lr_changed, lr_summary = True, ""
@@ -1345,12 +1285,12 @@ def _build_multistep_path(
 
     step_imgs, step_E = ref1.images, ref1.energies
 
-    _changed, step_summary = _has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
+    _changed, step_summary = has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
     _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind="seg",
                 mep_has_bond_changes=bool(_changed), pair_index=pair_index)
 
-    left_changed, left_summary = _has_bond_change(gA, left_end, bond_cfg)
-    right_changed, right_summary = _has_bond_change(right_end, gB, bond_cfg)
+    left_changed, left_summary = has_bond_change(gA, left_end, bond_cfg)
+    right_changed, right_summary = has_bond_change(right_end, gB, bond_cfg)
 
     click.echo(f"[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}")
     if left_changed:
@@ -2551,7 +2491,7 @@ def cli(
         # 5) Console summary
         # --------------------------
         try:
-            overall_changed, overall_summary = _has_bond_change(combined_all.images[0], combined_all.images[-1], bond_cfg)
+            overall_changed, overall_summary = has_bond_change(combined_all.images[0], combined_all.images[-1], bond_cfg)
         except Exception:
             overall_changed, overall_summary = False, ""
 

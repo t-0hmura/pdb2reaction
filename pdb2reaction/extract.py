@@ -391,9 +391,12 @@ def str2bool(v: str) -> bool:
     """
     Return a boolean for common truthy strings.
     """
-    if isinstance(v, bool):
-        return v
-    return v.lower() in {"true", "1", "yes", "y"}
+    from .cli_utils import parse_bool
+
+    try:
+        return parse_bool(v)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:

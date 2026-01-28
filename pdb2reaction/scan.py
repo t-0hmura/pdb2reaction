@@ -110,7 +110,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-import ast
 import math
 import sys
 import textwrap
@@ -137,23 +136,25 @@ from .utils import (
     make_sopt_optimizer,
     load_yaml_dict,
     build_scan_configs,
+    collect_single_option_values,
     cli_param_overridden,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
     normalize_choice,
+    parse_scan_list_triples,
     prepared_cli_input,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
-    resolve_scan_index,
     make_snapshot_geometry,
     resolve_freeze_atoms,
     xyz_string_with_energy,
 )
-from .bond_changes import compare_structures, summarize_changes
+from .bond_changes import has_bond_change
+from .scan_common import add_scan_common_options
 
 
 # --------------------------------------------------------------------------------------
@@ -251,73 +252,6 @@ def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
         click.echo("")  # blank line between stages
 
 
-def _parse_scan_lists(
-    args: Sequence[str],
-    one_based: bool,
-    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
-) -> List[List[Tuple[int, int, float]]]:
-    """
-    Parse multiple Python-like list strings:
-      ['[(0,1,1.5), (2,3,2.0)]', '[(5,7,1.2)]', ...]
-    Returns: [[(i,j,t), ...], [(i,j,t), ...], ...] with 0-based indices.
-    """
-    if not args:
-        raise click.BadParameter("--scan-lists must be provided at least once.")
-    stages: List[List[Tuple[int, int, float]]] = []
-
-    for idx, s in enumerate(args, start=1):
-        try:
-            obj = ast.literal_eval(s)
-        except Exception as e:
-            raise click.BadParameter(f"Invalid literal for --scan-lists #{idx}: {e}")
-        if not isinstance(obj, (list, tuple)):
-            raise click.BadParameter(f"--scan-lists #{idx} must be a list/tuple of (i,j,target).")
-        tuples: List[Tuple[int, int, float]] = []
-        for t in obj:
-            if not (
-                isinstance(t, (list, tuple)) and len(t) == 3
-                and isinstance(t[2], (int, float, np.floating))
-            ):
-                raise click.BadParameter(f"--scan-lists #{idx} contains an invalid triple: {t}")
-            i = resolve_scan_index(
-                t[0],
-                one_based=one_based,
-                atom_meta=atom_meta,
-                context=f"--scan-lists #{idx} (i)",
-            )
-            j = resolve_scan_index(
-                t[1],
-                one_based=one_based,
-                atom_meta=atom_meta,
-                context=f"--scan-lists #{idx} (j)",
-            )
-            r = float(t[2])
-            if r <= 0.0:
-                raise click.BadParameter(f"Non-positive target length in --scan-lists #{idx}: {(i,j,r)}.")
-            tuples.append((i, j, r))
-        stages.append(tuples)
-    return stages
-
-
-def _collect_scan_list_values(argv: Sequence[str], names: Sequence[str]) -> Tuple[List[str], int]:
-    """Return scan-list literals following a single flag and the number of flag occurrences."""
-    values: List[str] = []
-    flag_count = 0
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok in names:
-            flag_count += 1
-            j = i + 1
-            while j < len(argv) and not argv[j].startswith("-"):
-                values.append(argv[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return values, flag_count
-
-
 def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
     """
     coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs.
@@ -356,28 +290,6 @@ def _schedule_for_stage(
     return N, r0, rT, step_widths
 
 
-# --------------------------------------------------------------------------------------
-# Bond‑change helpers
-# --------------------------------------------------------------------------------------
-
-def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """
-    Return whether covalent bonds formed or broke between `x` and `y`,
-    and a one-based human-readable summary.
-    """
-    res = compare_structures(
-        x, y,
-        device=bond_cfg.get("device", "cuda"),
-        bond_factor=float(bond_cfg.get("bond_factor", 1.20)),
-        margin_fraction=float(bond_cfg.get("margin_fraction", 0.05)),
-        delta_fraction=float(bond_cfg.get("delta_fraction", 0.05)),
-    )
-    formed = len(getattr(res, "formed_covalent", [])) > 0
-    broken = len(getattr(res, "broken_covalent", [])) > 0
-    summary = summarize_changes(x, res, one_based=True)
-    return (formed or broken), summary
-
-
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 
 
@@ -393,42 +305,6 @@ _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option(
-    "-q",
-    "--charge",
-    type=int,
-    required=False,
-    help=(
-        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
-        "(PDB inputs or XYZ/GJF with --ref-pdb)."
-    ),
-)
-@click.option(
-    "--workers",
-    type=int,
-    default=CALC_KW["workers"],
-    show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
-)
-@click.option(
-    "--workers-per-node",
-    "workers_per_node",
-    type=int,
-    default=CALC_KW["workers_per_node"],
-    show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
-)
-@click.option(
-    "--ligand-charge",
-    type=str,
-    default=None,
-    show_default=False,
-    help=(
-        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (requires PDB input or --ref-pdb)."
-    ),
-)
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
-@click.option(
     "--scan-lists",
     "--scan-list",
     "scan_lists_raw",
@@ -438,60 +314,17 @@ _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
     help="Python-like list of (i,j,target) per stage. Pass a single --scan-list(s) followed by "
          "multiple literals to run sequential stages, e.g. --scan-lists '[(0,1,1.50)]' '[(5,7,1.20)]'.",
 )
-@click.option("--one-based", "one_based", type=click.BOOL, default=True, show_default=True,
-              help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.")
-@click.option("--max-step-size", type=float, default=0.20, show_default=True,
-              help="Maximum change in any scanned bond length per step [Å].")
-@click.option("--bias-k", type=float, default=100, show_default=True,
-              help="Harmonic well strength k [eV/Å^2].")
-@click.option("--relax-max-cycles", type=int, default=10000, show_default=True,
-              help="Maximum optimizer cycles per relaxation. When explicitly provided, overrides opt.max_cycles from YAML.")
-@click.option(
-    "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
-    show_default=True,
-    help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
+@add_scan_common_options(
+    workers_default=CALC_KW["workers"],
+    workers_per_node_default=CALC_KW["workers_per_node"],
+    out_dir_default="./result_scan/",
+    baseline_help="(unused)",
+    dump_help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).",
+    max_step_help="Maximum change in any scanned bond length per step [Å].",
+    thresh_default=None,
+    include_baseline=False,
+    include_zmin_zmax=False,
 )
-@click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
-              help="If input is PDB, freeze parent atoms of link hydrogens.")
-@click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).")
-@click.option(
-    "--convert-files",
-    "convert_files",
-    type=click.BOOL,
-    default=True,
-    show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
-)
-@click.option(
-    "--ref-pdb",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
-)
-@click.option("--out-dir", type=str, default="./result_scan/", show_default=True,
-              help="Base output directory.")
-@click.option(
-    "--thresh",
-    type=str,
-    default=None,
-    show_default=False,
-    help=(
-        "Convergence preset for relaxations "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau' when not provided."
-    ),
-)
-@click.option(
-    "--args-yaml",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias, bond).",
-)
-@click.option("--preopt", type=click.BOOL, default=True, show_default=True,
-              help="Preoptimize initial structure without bias before the scan.")
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
 @click.pass_context
@@ -616,19 +449,25 @@ def cli(
             # ------------------------------------------------------------------
             # 2) Parse scan lists
             # ------------------------------------------------------------------
-            scan_lists_raw, scan_flag_count = _collect_scan_list_values(
-                sys.argv[1:], ("--scan-lists", "--scan-list")
+            scan_lists_raw = collect_single_option_values(
+                sys.argv[1:], ("--scan-lists", "--scan-list"), "--scan-list/--scan-lists"
             )
-            if scan_flag_count > 1:
-                raise click.BadParameter(
-                    "Use a single --scan-list/--scan-lists followed by multiple stage literals; "
-                    "repeated flags are not accepted."
-                )
             if not scan_lists_raw:
                 raise click.BadParameter("--scan-list(s) must be provided at least once.")
-            stages = _parse_scan_lists(
-                scan_lists_raw, one_based=one_based, atom_meta=pdb_atom_meta
-            )
+            stages: List[List[Tuple[int, int, float]]] = []
+            for idx, raw in enumerate(scan_lists_raw, start=1):
+                parsed, _ = parse_scan_list_triples(
+                    raw,
+                    one_based=one_based,
+                    atom_meta=pdb_atom_meta,
+                    option_name=f"--scan-lists #{idx}",
+                )
+                for i, j, r in parsed:
+                    if r <= 0.0:
+                        raise click.BadParameter(
+                            f"Non-positive target length in --scan-lists #{idx}: {(i, j, r)}."
+                        )
+                stages.append(parsed)
             K = len(stages)
             click.echo(f"[scan] Received {K} stage(s).")
 
@@ -788,7 +627,7 @@ def cli(
 
                     # Bond changes: start vs final (possibly endopt)
                     try:
-                        changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
+                        changed, summary = has_bond_change(start_geom_for_stage, geom, bond_cfg)
                         click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
                         if changed and summary and summary.strip():
                             click.echo(textwrap.indent(summary.strip(), prefix="  "))
@@ -882,7 +721,7 @@ def cli(
 
                 # Bond changes: start vs final (possibly endopt)
                 try:
-                    changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
+                    changed, summary = has_bond_change(start_geom_for_stage, geom, bond_cfg)
                     click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
                     if changed and summary and summary.strip():
                         click.echo(textwrap.indent(summary.strip(), prefix="  "))

@@ -159,15 +159,12 @@ from .opt import (
 from .utils import (
     axis_label_csv,
     axis_label_html,
-    build_sopt_kwargs,
     make_sopt_optimizer,
     parse_scan_list_quads_checked,
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
-    format_geom_for_echo,
     format_elapsed,
-    normalize_choice,
     prepared_cli_input,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -176,20 +173,18 @@ from .utils import (
     format_pdb_atom_metadata_header,
     ensure_dir,
     make_snapshot_geometry,
-    build_scan_configs,
     cli_param_overridden,
     load_yaml_dict,
-    resolve_freeze_atoms,
     distance_A_from_coords,
     distance_tag,
 )
-from .scan_common import add_scan_common_options, build_scan_kw_defaults
+from .scan_common import add_scan_common_options, build_scan_defaults
+from .scan2d import _build_scan_context
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
-GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
-
-OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_kw_defaults(
+GEOM_KW, CALC_KW, OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_defaults(
+    geom_kw_default=GEOM_KW_DEFAULT,
+    calc_kw_default=_UMA_CALC_KW,
     opt_base_kw=_OPT_BASE_KW,
     lbfgs_kw=_LBFGS_KW,
     rfo_kw=_RFO_KW,
@@ -302,71 +297,39 @@ def cli(
 
         yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg = dict(GEOM_KW)
-        calc_cfg = dict(CALC_KW)
-        opt_cfg = dict(OPT_BASE_KW)
-        lbfgs_cfg = dict(LBFGS_KW)
-        rfo_cfg = dict(RFO_KW)
-        bias_cfg = dict(BIAS_KW)
-
-        geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
-            yaml_cfg,
-            geom_kw=geom_cfg,
-            calc_kw=calc_cfg,
-            opt_kw=opt_cfg,
-            lbfgs_kw=lbfgs_cfg,
-            rfo_kw=rfo_cfg,
-            bias_kw=bias_cfg,
+        (
+            geom_cfg,
+            calc_cfg,
+            opt_cfg,
+            lbfgs_cfg,
+            rfo_cfg,
+            bias_cfg,
+            kind,
+            freeze,
+            out_dir_path,
+        ) = _build_scan_context(
+            yaml_cfg=yaml_cfg,
+            geom_kw=dict(GEOM_KW),
+            calc_kw=dict(CALC_KW),
+            opt_kw=dict(OPT_BASE_KW),
+            lbfgs_kw=dict(LBFGS_KW),
+            rfo_kw=dict(RFO_KW),
+            bias_kw=dict(BIAS_KW),
             charge=charge_val,
             spin=spin_val,
             workers=workers,
             workers_per_node=workers_per_node,
             out_dir=out_dir,
             thresh=thresh,
-            bias_k=bias_k,
+            bias_k=float(bias_k),
+            opt_mode=opt_mode,
+            relax_max_cycles=relax_max_cycles,
+            relax_override_requested=relax_max_cycles_override_requested,
+            max_step_size=max_step_size,
+            source_path=source,
+            freeze_links=freeze_links,
             set_charge_spin=(csv_path is None),
         )
-
-        kind = normalize_choice(
-            opt_mode,
-            param="--opt-mode",
-            alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|heavy",
-        )
-
-        # Resolve freeze list before logging so printed config matches runtime.
-        freeze = None
-        if csv_path is None:
-            freeze = resolve_freeze_atoms(geom_cfg, source, freeze_links)
-
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        ensure_dir(out_dir_path)
-        echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = format_geom_for_echo(calc_cfg)
-        echo_opt = dict(opt_cfg)
-        if relax_max_cycles_override_requested:
-            echo_opt["max_cycles"] = int(relax_max_cycles)
-        echo_opt["out_dir"] = str(out_dir_path)
-        echo_bias = dict(bias_cfg)
-        click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("opt", echo_opt))
-        max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
-        echo_sopt = build_sopt_kwargs(
-            kind,
-            lbfgs_cfg,
-            rfo_cfg,
-            opt_cfg,
-            max_step_bohr_for_log,
-            relax_max_cycles,
-            relax_max_cycles_override_requested,
-            out_dir_path,
-            str(opt_cfg.get("prefix", "")),
-        )
-        click.echo(
-            pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt)
-        )
-        click.echo(pretty_block("bias", echo_bias))
 
         pdb_atom_meta: List[Dict[str, Any]] = []
         d1_label_csv = None
@@ -431,8 +394,6 @@ def cli(
             ensure_dir(grid_dir)
             ensure_dir(tmp_opt_dir)
 
-            if freeze is None:
-                freeze = resolve_freeze_atoms(geom_cfg, source, freeze_links)
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
             geom_outer = geom_loader(
                 geom_input, coord_type=coord_type, freeze_atoms=freeze

@@ -194,7 +194,7 @@ Charge handling
          logic as ``extract.py`` when the first input is a PDB; if that derivation fails but
          ``--ligand-charge`` is numeric, it is used as the total system charge;
       2) else, if the first input is ``.gjf``, its charge is used;
-      3) else default is **0**.
+      3) else: the workflow errors and requests an explicit total charge.
   - Spin precedence when extraction is skipped:
       explicit ``--mult`` > GJF multiplicity (if available) > default.
 
@@ -1664,7 +1664,7 @@ def _irc_and_match(
 
                 def _matches(x, y) -> bool:
                     try:
-                        changed, _ = _path_search._has_bond_change(x, y, bond_cfg)
+                        changed, _ = _path_search.has_bond_change(x, y, bond_cfg)
                         return not changed
                     except Exception:
                         return False
@@ -2545,20 +2545,11 @@ def cli(
                 click.echo(f"[all] Using total charge from first GJF: {charge_total:+g}")
                 resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
             else:
-                charge_total = 0.0
-                if ligand_charge is not None:
-                    click.echo(
-                        "[all] NOTE: failed to derive total charge from --ligand-charge; "
-                        "defaulting total charge to 0 (no GJF charge available).",
-                        err=True,
+                if charge_override is None:
+                    raise click.ClickException(
+                        "[all] Total charge could not be resolved. Provide -q/--charge, "
+                        "--ligand-charge, or a .gjf input with charge metadata."
                     )
-                else:
-                    if charge_override is None:
-                        click.echo(
-                            "[all] NOTE: No total charge provided; defaulting to 0. "
-                            "Supply '--ligand-charge <number>' to override."
-                        )
-                resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
@@ -2872,7 +2863,7 @@ def cli(
         bond_cfg = dict(_path_search.BOND_KW)
         bond_summary = ""
         try:
-            changed, bond_summary = _path_search._has_bond_change(
+            changed, bond_summary = _path_search.has_bond_change(
                 g_react_opt, g_prod_opt, bond_cfg
             )
             if not changed:
@@ -3476,7 +3467,7 @@ def cli(
                 freeze_atoms = _get_freeze_atoms(info["inputs"][0], freeze_links_flag)
                 gL = _geom_from_angstrom(elems, c_first, freeze_atoms)
                 gR = _geom_from_angstrom(elems, c_last, freeze_atoms)
-                changed, bond_summary = _path_search._has_bond_change(gL, gR, bond_cfg)
+                changed, bond_summary = _path_search.has_bond_change(gL, gR, bond_cfg)
                 if not changed:
                     bond_summary = "(no covalent changes detected)"
             except Exception as e:

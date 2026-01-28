@@ -51,11 +51,10 @@ out_dir/ (default: ./result_path_opt/)
 
 Notes
 -----
-- Charge/spin: `-q/--charge` (recommended for non-`.gjf` inputs; otherwise defaults to 0) and `-m/--multiplicity`
-  are reconciled with any `.gjf` template values: explicit CLI options win. When ``-q`` is omitted but ``--ligand-charge`` is set,
-  the full complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware
-  logic when the endpoints are PDBs. If the derivation fails (e.g., non-PDB inputs), or if neither `-q` nor `--ligand-charge` is
-  supplied, the charge falls back to 0; set it explicitly to avoid unphysical conditions.
+- Charge/spin: `-q/--charge` is required unless a `.gjf` template provides charge metadata or `--ligand-charge` is supplied
+  for PDB inputs. Explicit CLI options override template values. When ``-q`` is omitted but ``--ligand-charge`` is set, the full
+  complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic.
+  If the derivation is not possible (e.g., non-PDB inputs), the command errors and requests an explicit total charge.
 - Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
@@ -89,24 +88,20 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 from .uma_pysis import uma_ase, uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
-from . import utils as _utils
-
 from .utils import (
-    convert_xyz_to_pdb,
     load_yaml_dict,
     apply_yaml_overrides,
     deep_update,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
-    resolve_freeze_atoms,
     prepare_input_structure,
-    fill_charge_spin_from_gjf,
-    _derive_charge_from_ligand_charge,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     PreparedInputStructure,
     apply_ref_pdb_override,
+    resolve_charge_spin_multi,
+    load_prepared_geometries,
 )
 from .opt import (
     LBFGS_KW as _LBFGS_KW,
@@ -212,55 +207,12 @@ def _load_two_endpoints(
     """
     Load the two endpoint structures and set `freeze_atoms` as needed.
     """
-    geoms = []
-    for prepared in inputs:
-        geom_path = prepared.geom_path
-        src_path = prepared.source_path
-        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        freeze = resolve_freeze_atoms(
-            cfg,
-            src_path,
-            auto_freeze_links,
-            prefix=f"[freeze-links] {src_path.name}:",
-        )
-        g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
-        g.freeze_atoms = np.array(freeze, dtype=int)
-        geoms.append(g)
-    return geoms
-
-
-def _convert_to_pdb_logged(
-    src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
-) -> Optional[Path]:
-    """
-    Convert an XYZ/TRJ path to PDB using a reference topology when available.
-
-    Returns the written path on success; otherwise None. Conversion is skipped when
-    the source does not exist, lacks an XYZ/TRJ suffix, conversion is disabled, or
-    no reference PDB is provided.
-    """
-    try:
-        if ref_pdb_path is None or not _utils._CONVERT_FILES_ENABLED:
-            return None
-        src_path = Path(src_path)
-        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
-            return None
-
-        out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
-        convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)
-        if out_path.exists():
-            click.echo(f"[convert] Wrote '{out_path}'.")
-            return out_path
-        return None
-    except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}", err=True)
-        return None
-
-
-def _maybe_convert_to_pdb(
-    src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
-) -> Optional[Path]:
-    return _convert_to_pdb_logged(src_path, ref_pdb_path, out_path)
+    return load_prepared_geometries(
+        inputs,
+        coord_type=coord_type,
+        base_freeze=base_freeze,
+        auto_freeze_links=auto_freeze_links,
+    )
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
@@ -553,7 +505,7 @@ def _optimize_single(
     "--charge",
     type=int,
     required=False,
-    help="Total charge. Optional; defaults to a .gjf template value or 0 when not provided.",
+    help="Total charge. Required unless a .gjf template provides charge metadata or --ligand-charge is supplied for PDB inputs.",
 )
 @click.option(
     "--workers",
@@ -737,21 +689,14 @@ def cli(
         lbfgs_cfg = dict(_LBFGS_KW)
         rfo_cfg = dict(_RFO_KW)
 
-        # CLI overrides (defaults ← CLI)
-        resolved_charge = charge
-        resolved_spin = spin
-        for prepared in prepared_inputs:
-            resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
-                resolved_charge, resolved_spin, prepared.gjf_template
-            )
-        if resolved_charge is None and ligand_charge is not None:
-            resolved_charge = _derive_charge_from_ligand_charge(
-                prepared_inputs[0], ligand_charge, prefix="[path-opt]"
-            )
-        if resolved_charge is None:
-            resolved_charge = 0
-        if resolved_spin is None:
-            resolved_spin = 1
+        # Resolve charge/spin (defaults ← CLI/GJF/ligand-charge)
+        resolved_charge, resolved_spin = resolve_charge_spin_multi(
+            prepared_inputs,
+            charge=charge,
+            spin=spin,
+            ligand_charge=ligand_charge,
+            prefix="[path-opt]",
+        )
         calc_cfg["charge"] = int(resolved_charge)
         calc_cfg["spin"] = int(resolved_spin)
         calc_cfg["workers"] = int(workers)

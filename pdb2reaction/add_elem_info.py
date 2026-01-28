@@ -295,12 +295,12 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
 
 def _parse_bool(value: str) -> bool:
-    value_lower = value.strip().lower()
-    if value_lower in {"true", "1", "yes", "y", "t"}:
-        return True
-    if value_lower in {"false", "0", "no", "n", "f"}:
-        return False
-    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value!r}. Use True/False.")
+    from .cli_utils import parse_bool
+
+    try:
+        return parse_bool(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
 
 
 def main():

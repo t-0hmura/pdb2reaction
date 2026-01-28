@@ -40,6 +40,8 @@ Public API:
   - Sections: “Bond formed” and “Bond broken” (with counts).
   - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).
   - If `result.distances_1/2` are present, prints bond lengths as `: D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.
+- `has_bond_change(geom_start, geom_end, bond_cfg, one_based=True) -> (bool, str)`
+  Convenience wrapper that returns a boolean for bond changes and a summary string using the same thresholds as `compare_structures`.
 
 Helper utilities (internal):
 - `_resolve_device(device: str) -> torch.device`: chooses the requested device; falls back to CPU with a warning if unavailable.
@@ -78,7 +80,7 @@ Notes
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Iterable, Tuple, Set, List, Optional
+from typing import Iterable, Tuple, Set, List, Optional, Dict, Any
 
 import warnings
 import torch
@@ -229,3 +231,27 @@ def summarize_changes(geom, result: BondChangeResult, one_based: bool = True) ->
     pairs_to_lines("Bond broken", result.broken_covalent)
 
     return "\n".join(lines)
+
+
+def has_bond_change(
+    geom_start,
+    geom_end,
+    bond_cfg: Dict[str, Any],
+    *,
+    one_based: bool = True,
+) -> Tuple[bool, str]:
+    """
+    Return (changed?, summary_text) for covalent bond changes between two geometries.
+    """
+    res = compare_structures(
+        geom_start,
+        geom_end,
+        device=bond_cfg.get("device", "cuda"),
+        bond_factor=float(bond_cfg.get("bond_factor", 1.20)),
+        margin_fraction=float(bond_cfg.get("margin_fraction", 0.05)),
+        delta_fraction=float(bond_cfg.get("delta_fraction", 0.05)),
+    )
+    formed = len(getattr(res, "formed_covalent", [])) > 0
+    broken = len(getattr(res, "broken_covalent", [])) > 0
+    summary = summarize_changes(geom_start, res, one_based=one_based)
+    return (formed or broken), summary
