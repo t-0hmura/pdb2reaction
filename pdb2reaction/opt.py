@@ -1,122 +1,11 @@
 # pdb2reaction/opt.py
 
-"""
-opt — Single-structure geometry optimization (LBFGS or RFO)
-====================================================================
+"""Single-structure geometry optimization using LBFGS or RFO with UMA calculator.
 
-Usage (CLI)
------------
-    pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
-        [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dist-freeze '[(I,J,TARGET_A), ...]'] [--one-based {True|False}] \
-        [--bias-k <float>] [--dump {True|False}] [--out-dir <dir>] \
-        [--workers <int>] [--workers-per-node <int>] \
-        [--max-cycles <int>] [--thresh <preset>] [--args-yaml <file>] \
-        [--convert-files {True|False}] [--ref-pdb <file>]
+Example:
+    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode light
 
-Examples
---------
-    # Minimal geometry optimization with default LBFGS (light) settings
-    pdb2reaction opt -i input.pdb -q 0 -m 1
-
-    # RFO with trajectory dumps, extra UMA workers, and YAML overrides
-    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode heavy --dump True \
-        --workers 4 --workers-per-node 2 --out-dir ./result_opt/ --args-yaml ./args.yaml
-
-Description
------------
-- Single-structure geometry optimization using pysisyphus with a UMA calculator.
-- Input formats: .pdb, .xyz, .trj, etc., via pysisyphus `geom_loader`.
-- Optimizers: LBFGS ("light", default) or RFOptimizer ("heavy").
-- Configuration via YAML sections `geom`, `calc`, `opt`, `lbfgs`, `rfo`. **Precedence:** defaults → CLI overrides → YAML overrides (highest). (If the same key is set in both `opt` and `lbfgs`/`rfo`, the `opt` value takes precedence.)
-- PDB-aware post-processing: if the input is a PDB, convert `final_geometry.xyz` → `final_geometry.pdb` and, when
-  `--dump True`, `optimization.trj` → `optimization.pdb` using the input PDB as the topology reference.
-- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
-  format-aware PDB/GJF output conversion.
-- Format mirroring can be toggled with `--convert-files {True|False}` (default: enabled); when a Gaussian template
-  is present, `.gjf` companions are emitted alongside `.xyz` and `.pdb` outputs.
-- Optional link-atom handling for PDBs: `--freeze-links True` (default) detects link hydrogen parents and freezes those
-  (0‑based indices), merged with any `geom.freeze_atoms`.
-- Harmonic restraints: `--dist-freeze` accepts (i, j, target Å) tuples to apply harmonic wells during optimization.
-  Omitting the target restrains the distance to its initial value; strength is set via `--bias-k` (eV/Å²).
-
-Key options (YAML keys → meaning; defaults)
-- Geometry (`geom`):
-  - `coord_type`: "cart" (default) | "dlc" (often more stable for small molecules).
-  - `freeze_atoms`: list[int], 0‑based indices to freeze (default: []).
-
-- Calculator (`calc`, UMA via `uma_pysis`):
-  - `charge` / `spin`: by default taken from `-q/--charge` (required unless the input is `.gjf`) and `-m/--multiplicity` (default `1`)
-    and reconciled with any `.gjf` template via `resolve_charge_spin_or_raise`.
-  - `model`: "uma-s-1p1" (default) | "uma-m-1p1"; `task_name`: "omol".
-  - `device`: "auto" (GPU if available) | "cuda" | "cpu".
-  - `max_neigh`: Optional[int]; `radius`: Optional[float] (Å); `r_edges`: bool.
-  - `out_hess_torch`: bool; when True, provide a torch.Tensor Hessian (CUDA); else numpy on CPU.
-
-- Optimizer base (`opt`):
-  - `thresh` presets (forces in Hartree/bohr, steps in bohr):
-    - `gau_loose`: max|F| 2.5e-3, RMS(F) 1.7e-3, max|step| 1.0e-2, RMS(step) 6.7e-3.
-    - `gau` (default): max|F| 4.5e-4, RMS(F) 3.0e-4, max|step| 1.8e-3, RMS(step) 1.2e-3.
-    - `gau_tight`: max|F| 1.5e-5, RMS(F) 1.0e-5, max|step| 6.0e-5, RMS(step) 4.0e-5.
-    - `gau_vtight`: max|F| 2.0e-6, RMS(F) 1.0e-6, max|step| 6.0e-6, RMS(step) 4.0e-6.
-    - `baker`: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
-    - `never`: disable built-in convergence (for external stopping).
-  - `max_cycles` 10000; `print_every` 100; `min_step_norm` 1e-8 with `assert_min_step` True.
-  - Convergence toggles: `rms_force`, `rms_force_only`, `max_force_only`, `force_only`.
-  - Extras: `converge_to_geom_rms_thresh` (RMSD target), `overachieve_factor`, `check_eigval_structure` (TS checks).
-  - Line search: `line_search` True (polynomial line search).
-  - Bookkeeping: `dump` (`--dump True` writes `optimization.trj`), `dump_restart` (YAML every N cycles), `prefix`,
-    `out_dir` (default `./result_opt/`).
-
-- LBFGS-specific (`lbfgs`, used when `--opt-mode light`):
-  - Memory: `keep_last` 7.
-  - Scaling: `beta` 1.0; `gamma_mult` False.
-  - Step control: `max_step` 0.30; `control_step` True.
-  - Safeguards: `double_damp` True.
-  - Regularized L‑BFGS: `mu_reg`; `max_mu_reg_adaptions` 10.
-
-- RFO-specific (`rfo`, used when `--opt-mode heavy`):
-  - Trust region: `trust_radius` 0.10; `trust_update` True; bounds: `trust_min` 0.00, `trust_max` 0.10;
-    `max_energy_incr` Optional[float].
-  - Hessian: `hessian_update` "bfgs" | "bofill"; `hessian_init` "calc"; `hessian_recalc` 200;
-    `hessian_recalc_adapt` None.
-  - Numerics: `small_eigval_thresh` 1e-8.
-  - RFO/RS micro-iterations: `alpha0` 1.0; `max_micro_cycles` 50; `rfo_overlaps` False.
-  - DIIS helpers: `gdiis` True; `gediis` False; `gdiis_thresh` 2.5e-3 (vs RMS(step)); `gediis_thresh` 1.0e-2
-    (vs RMS(force)); `gdiis_test_direction` True.
-  - Step model: `adapt_step_func` True.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_opt/)
-  ├─ final_geometry.xyz          # Final optimized structure (always written)
-  ├─ final_geometry.pdb          # Written when the input was a PDB
-  ├─ final_geometry.gjf          # Emitted when a Gaussian template was supplied
-  ├─ optimization.trj            # Optimization trajectory (written when --dump True)
-  ├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs only, when --dump True)
-  └─ restart*.yml                # Optional restart dumps when opt.dump_restart is enabled
-
-Console output echoes the resolved geom/calc/opt/(lbfgs|rfo) blocks, per-print progress, and final wall-clock time.
-
-Notes
------
-- **Charge/spin handling & workers:** The CLI requires `-q/--charge` for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided;
-  when ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the
-  total charge is inferred using ``extract.py``’s residue-aware logic. `resolve_charge_spin_or_raise` reconciles CLI input with
-  `.gjf` templates when available, and explicit `-q` always overrides derived values. UMA parallelism can be tuned via
-  ``--workers``/``--workers-per-node``; analytic Hessians are automatically disabled when `workers>1`. Always provide physically
-  correct states.
-- **Input handling:** Supports .pdb/.xyz/.trj and other formats accepted by `geom_loader`. `geom.coord_type="dlc"` can
-  improve stability for small molecules.
-- **Freeze links (PDB only):** With `--freeze-links` (default), parent atoms of link hydrogens are detected and frozen;
-  indices are 0-based and merged with `geom.freeze_atoms`.
-- **PDB conversion caveat:** Conversions reuse the input PDB topology; ensure atom order/topology match the optimized
-  coordinates.
-- **Devices:** `calc.device="auto"` selects CUDA when available; otherwise CPU.
-- **Hessian form:** Set `calc.out_hess_torch=True` to receive a torch/CUDA Hessian; otherwise numpy/CPU.
-- **Stopping safeguards:** A `ZeroStepLength` triggers termination when the minimum step is below 1e-8. `max_energy_incr` (RFO)
-  aborts on large uphill steps.
-- **Precedence:** Settings are applied with the precedence **YAML > CLI > internal defaults**. If the same key is present in both `opt` and `lbfgs`/`rfo`, `opt` takes precedence.
+For detailed documentation, see: docs/opt.md
 """
 
 from pathlib import Path
@@ -137,7 +26,15 @@ from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .defaults import (
+    GEOM_KW_DEFAULT,
+    CALC_KW_DEFAULT,
+    OPT_BASE_KW as _OPT_BASE_KW,
+    LBFGS_KW as _LBFGS_KW,
+    RFO_KW as _RFO_KW,
+    OPT_MODE_ALIASES as _OPT_MODE_ALIASES,
+)
+from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
 from .utils import (
     resolve_freeze_atoms,
     load_yaml_dict,
@@ -159,124 +56,11 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 # Default settings (overridable via YAML/CLI)
 # -----------------------------------------------
 
-# Geometry options (YAML key: geom)
 GEOM_KW = dict(GEOM_KW_DEFAULT)
-
 CALC_KW = dict(_UMA_CALC_KW)
-
-# Optimizer base (common to LBFGS & RFO)  (YAML key: opt)
-OPT_BASE_KW = {
-    # Convergence threshold preset
-    "thresh": "gau",            # "gau_loose" | "gau" | "gau_tight" | "gau_vtight" | "baker" | "never"
-
-    # Convergence criteria (forces in Hartree/bohr, steps in bohr)
-    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # |  Preset    | Purpose                                                    | max|F|  | RMS(F) | max|step| | RMS(step)   |
-    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # | gau_loose  | Loose/quick preoptimization; rough path searches           | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
-    # | gau        | Standard "Gaussian-like" tightness for routine work        | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
-    # | gau_tight  | Tighter; better structures / freq / TS refinement          | 1.5e-5  | 1.0e-5 | 6.0e-5    | 4.0e-5      |
-    # | gau_vtight | Very tight; benchmarking/high-precision final structures   | 2.0e-6  | 1.0e-6 | 6.0e-6    | 4.0e-6      |
-    # | baker*     | Baker-style rule (special; see below)                      | 3.0e-4* |   —    | 3.0e-4*   |     —       |
-    # | never      | Disable built-in convergence (debug/external stopping)     |   —     |   —    |    —      |    —        |
-    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # * Baker rule in this tool: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
-
-    "max_cycles": 10000,         # hard cap on optimization cycles
-    "print_every": 100,          # progress print frequency in cycles
-
-    # Step-size safeguarding
-    "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength
-    "assert_min_step": True,     # enforce the min_step_norm check
-
-    # Convergence criteria toggles
-    "rms_force": None,           # Optional[float], if set, derive thresholds from this RMS(F)
-    "rms_force_only": False,     # only check RMS(force)
-    "max_force_only": False,     # only check max(|force|)
-    "force_only": False,         # check RMS(force) and max(|force|) only
-
-    # Extra convergence mechanisms
-    "converge_to_geom_rms_thresh": 0.05,  # RMSD to reference geometry (Growing-NT)
-    "overachieve_factor": 0.0,            # consider converged if forces < thresh/this_factor
-    "check_eigval_structure": False,      # TS search: require expected negative modes
-
-    # Line search
-    "line_search": True,         # enable polynomial line search
-
-    # Dumping / restart / bookkeeping
-    "dump": False,               # write optimization trajectory
-    "dump_restart": False,       # False | int, write restart YAML every N cycles (False disables)
-    "prefix": "",                # file name prefix
-    "out_dir": "./result_opt/",  # output directory
-}
-
-# LBFGS-specific (YAML key: lbfgs)
-LBFGS_KW = {
-    **OPT_BASE_KW,
-
-    # History / memory
-    "keep_last": 7,              # number of (s, y) pairs to retain
-
-    # Preconditioner / initial scaling
-    "beta": 1.0,                 # β in -(H + βI)^{-1} g
-    "gamma_mult": False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
-
-    # Step-size control
-    "max_step": 0.30,            # maximum allowed component-wise step
-    "control_step": True,        # scale step to satisfy |max component| <= max_step
-
-    # Safeguards
-    "double_damp": True,         # double-damping to enforce s·y > 0
-
-    # Regularized L-BFGS (μ_reg)
-    "mu_reg": None,              # initial regularization; enables regularized L-BFGS if set
-    "max_mu_reg_adaptions": 10,  # maximum trial steps for μ adaptation
-}
-
-# RFO-specific (YAML key: rfo)
-RFO_KW = {
-    **OPT_BASE_KW,
-
-    # Trust-region (step-size) control
-    "trust_radius": 0.10,        # initial trust radius (in working coordinates)
-    "trust_update": True,        # adapt the trust radius based on step quality
-    "trust_min": 0.00,           # lower bound for trust radius
-    "trust_max": 0.10,           # upper bound for trust radius
-    "max_energy_incr": None,     # abort if ΔE exceeds this after a bad step
-
-    # Hessian model / refresh
-    "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
-    "hessian_init": "calc",      # initial Hessian calculation
-    "hessian_recalc": 200,       # recompute exact Hessian every N cycles
-    "hessian_recalc_adapt": None,# heuristic: trigger exact Hessian recompute based on force norm
-
-    # Numerical hygiene & mode filtering
-    "small_eigval_thresh": 1e-8, # treat |λ| < threshold as zero / remove corresponding modes
-
-    # RFO/RS micro-iterations
-    "alpha0": 1.0,               # initial α for restricted-step RFO
-    "max_micro_cycles": 50,      # max inner iterations to hit the trust radius
-    "rfo_overlaps": False,       # mode following via eigenvector overlap across cycles
-
-    # Inter/Extrapolation helpers
-    "gediis": False,             # enable GEDIIS (energy-based DIIS)
-    "gdiis": True,               # enable GDIIS (gradient-based DIIS)
-
-    # Thresholds for enabling DIIS (semantics matter)
-    "gdiis_thresh": 2.5e-3,      # compared to RMS(step)  → enable GDIIS when small
-    "gediis_thresh": 1.0e-2,     # compared to RMS(force) → enable GEDIIS when small
-
-    "gdiis_test_direction": True,# compare DIIS step direction to the RFO step
-
-    # Choice of step model
-    "adapt_step_func": True,     # switch to shifted-Newton on trust when PD & gradient is small
-}
-
-# Normalization helpers
-_OPT_MODE_ALIASES = (
-    (("light",), "lbfgs"),
-    (("heavy",), "rfo"),
-)
+OPT_BASE_KW = dict(_OPT_BASE_KW)
+LBFGS_KW = dict(_LBFGS_KW)
+RFO_KW = dict(_RFO_KW)
 
 
 class HarmonicBiasCalculator:

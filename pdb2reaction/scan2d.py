@@ -1,96 +1,11 @@
 # pdb2reaction/scan2d.py
 
-"""
-scan2d — Two-distance 2D scan with harmonic restraints 
-==================================================================
+"""2D grid scan with harmonic restraints on two inter-atomic distances using UMA calculator.
 
-Usage (CLI)
------------
-    pdb2reaction scan2d -i INPUT.{pdb,xyz,trj,...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
-        --scan-list(s) '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2)]' \
-        [--one-based {True|False}] \
-        [--max-step-size FLOAT] \
-        [--bias-k FLOAT] \
-        [--relax-max-cycles INT] \
-        [--opt-mode {light,heavy}] \
-        [--freeze-links {True|False}] \
-        [--dump {True|False}] \
-        [--convert-files {True|False}] [--ref-pdb FILE] \
-        [--out-dir PATH] \
-        [--args-yaml FILE] \
-        [--preopt {True|False}] \
-        [--baseline {first|min}] \
-        [--thresh {gau_loose|gau|gau_tight|gau_vtight|baker|never}] \
-        [--zmin FLOAT] [--zmax FLOAT]
+Example:
+    pdb2reaction scan2d -i input.pdb -q 0 --scan-lists '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
 
-Examples
---------
-    # Minimal example (two distance ranges)
-    pdb2reaction scan2d -i input.pdb -q 0 \
-        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
-
-    # LBFGS with trajectory dumping and PNG + HTML plots
-    pdb2reaction scan2d -i input.pdb -q 0 \
-        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20)]' \
-        --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
-        --preopt True --baseline min
-
-Description
------------
-- A 2D grid scan driven by harmonic restraints on two inter-atomic distances (d1, d2).
-- Provide exactly one Python-like list `[(i1, j1, low1, high1), (i2, j2, low2, high2)]` via **--scan-list(s)**.
-  - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
-  - For PDB inputs, each atom entry can be an integer index or a selector string such as
-    ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
-  - For XYZ/GJF inputs, ``--ref-pdb`` supplies a reference PDB topology while keeping the XYZ coordinates,
-    enabling format-aware PDB/GJF output conversion.
-- Step schedule (h = `--max-step-size` in Å):
-  - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`.
-  - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
-    `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` if the span is ~0).
-- Optional pre-optimization:
-  - If `--preopt True` (default), the initial structure is first relaxed with the unbiased UMA calculator.
-    The resulting geometry is written as `preopt_i***_j***.*` in `grid/` and its energy is recorded.
-- Nested scan procedure (outer d1, inner d2):
-  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only) and store this minimum.
-  2) Each grid point `(d1[i], d2[j])` is then relaxed with **both d1 and d2 restraints active**, starting
-     from the previously converged structure whose `(d1, d2)` distances are closest to the current targets.
-     The **unbiased** single-point energy (harmonic bias removed for evaluation) is recorded for the surface.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_scan2d/)
-  ├─ surface.csv                  # Grid metadata: i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged
-  ├─ scan2d_map.png               # 2D contour/heatmap of the PES
-  ├─ scan2d_landscape.html        # 3D surface with a base-plane projection
-  └─ grid/
-      ├─ point_i125_j324.xyz      # Constrained, relaxed geometries; i/j tags are 100×distance in Å (rounded)
-      ├─ point_i125_j324.pdb      # Same, when the input was a PDB and conversion is enabled
-      ├─ point_i125_j324.gjf      # Same, when the input provided a GJF template and conversion is enabled
-      ├─ preopt_i126_j326.xyz     # Preoptimized unbiased structure; tags from its d1/d2 distances
-      ├─ preopt_i126_j326.pdb     # Optional PDB version (for PDB input and conversion enabled)
-      ├─ preopt_i126_j326.gjf     # Optional GJF version (for GJF input and conversion enabled)
-      ├─ inner_path_d1_###.trj    # Written only when --dump True; captures inner d2 trajectories per outer step
-      └─ inner_path_d1_###.pdb    # PDB conversion of inner_path_d1_###.trj when the input was a PDB and conversion is enabled
-
-Optimizer scratch artifacts live in temporary directories; only the files above persist under ``out_dir``.
-
-Notes
------
-- UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D scan.
-- Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (`light` = LBFGS, `heavy` = RFO; default: light).
-- Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
-- The `-m/--multiplicity` option sets the spin multiplicity (2S+1) for the ML region.
-- `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
-  charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
-  enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
-  always overrides any derived charge.
-- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
-- Convergence preset: `--thresh` defaults to `baker` for this command (override with `--thresh` or YAML).
-- Cycle cap: `opt.max_cycles` defaults to `10000`; `--relax-max-cycles` overrides it only when explicitly set.
-- `--baseline min|first`:
-  - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
-  - `first` : shift so that the first grid point (i=0, j=0) is 0 kcal/mol
+For detailed documentation, see: docs/scan2d.md
 """
 
 from __future__ import annotations
@@ -115,7 +30,12 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import ANG2BOHR, AU2KCALPERMOL
 
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .defaults import (
+    GEOM_KW_DEFAULT,
+    BIAS_KW as _BIAS_KW,
+    OPT_MODE_ALIASES,
+)
+from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
 from .opt import (
     HarmonicBiasCalculator,
     OPT_BASE_KW as _OPT_BASE_KW,
@@ -163,12 +83,7 @@ GEOM_KW, CALC_KW, OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_defaults(
     thresh="baker",
 )
 
-BIAS_KW: Dict[str, Any] = {"k": 100.0}  # harmonic restraint strength (eV/Å^2)
-
-_OPT_MODE_ALIASES = (
-    (("light",), "lbfgs"),
-    (("heavy",), "rfo"),
-)
+BIAS_KW: Dict[str, Any] = dict(_BIAS_KW)
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 

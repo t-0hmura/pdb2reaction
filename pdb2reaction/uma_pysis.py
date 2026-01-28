@@ -126,40 +126,14 @@ EV2AU          = 1.0 / AU2EV                     # eV → Hartree
 F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr⁻¹
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
-# Default for potential geometry loader integrations (kept for completeness)
-GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",       # coordinate representation (cart | dlc | redund (Cartesian, Delocalized Internal Coordinates, Z-matrix))
-    "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
-}
+# Import defaults from centralized configuration
+from .defaults import GEOM_KW_DEFAULT, CALC_KW_DEFAULT
 
-# UMA calculator defaults
+# UMA calculator defaults (extend from centralized defaults with UMA-specific keys)
 CALC_KW: Dict[str, Any] = {
-    # Charge and multiplicity
-    "charge": 0,              # int, total charge
-    "spin": 1,                # int, multiplicity (2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",     # str, UMA pretrained model ID
-    "task_name": "omol",      # str, dataset/task tag carried into UMA's AtomicData
-
-    # Device & graph construction
-    "device": "auto",         # str, "cuda" | "cpu" | "auto"
-    "workers": 1,             # int, predictor workers; if >1, ParallelMLIPPredictUnit is instantiated directly and Analytical Hessian is disabled
-    "workers_per_node": 1,   # int, num_workers_per_node passed to ParallelMLIPPredictUnit when workers>1
-    "max_neigh": None,        # Optional[int], override model's neighbor cap
-    "radius": None,           # Optional[float], cutoff radius (Å)
-    "r_edges": False,         # bool, store edge vectors in graph (UMA option)
+    **CALC_KW_DEFAULT,
     "out_hess_torch": True,   # bool, return Hessian as torch.Tensor
-
-    # Freeze atoms
     "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms
-
-    # Hessian interfaces to UMA
-    "hessian_calc_mode": "FiniteDifference",  # "Analytical" | "FiniteDifference" (default)
-    "return_partial_hessian": False,          # receive the full Hessian (safer for pysisyphus)
-
-    # Hessian precision (energy/forces are always returned as float64)
-    "hessian_double": True,                   # if True, assemble/return Hessian in float64
 }
 
 # ===================================================================

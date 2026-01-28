@@ -579,8 +579,8 @@ def _run_mep_between(
     # Write trajectory
     final_trj = seg_dir / "final_geometries.trj"
     wrote_with_energy = True
-    def _run() -> None:
-    write_xyz_trj_with_energy(images, energies, final_trj)
+    try:
+        write_xyz_trj_with_energy(images, energies, final_trj)
         click.echo(f"[{tag}] Wrote '{final_trj}'.")
     except Exception:
         wrote_with_energy = False
@@ -2003,7 +2003,8 @@ def cli(
 
     time_start = time.perf_counter()
     freeze_atoms_for_log: List[int] = []
-    try:
+
+    def _run() -> None:
         # --------------------------
         # 0) Input validation (multi‑structure)
         # --------------------------

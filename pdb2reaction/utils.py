@@ -963,7 +963,7 @@ class GjfTemplate:
         lines = [str(self.natoms), f"converted from {self.path.name}"]
         for atom in self.coord_lines:
             lines.append(f"{atom.symbol}  {atom.x:.10f}  {atom.y:.10f}  {atom.z:.10f}")
-    return "\n".join(lines) + "\n"
+        return "\n".join(lines) + "\n"
 
 
 def write_xyz_trj_with_energy(images: Sequence[Any], energies: Sequence[float], path: Path) -> None:
@@ -1342,26 +1342,37 @@ def _derive_charge_from_ligand_charge(
         return None
 
 
-def _resolve_charge_spin(
-    prepared_inputs: Sequence[PreparedInputStructure],
+def resolve_charge_spin(
+    prepared_inputs: PreparedInputStructure | Sequence[PreparedInputStructure],
     charge: Optional[int],
     spin: Optional[int],
     *,
-    spin_default: int,
-    charge_default: int,
-    ligand_charge: Optional[float | str | Dict[str, float]],
-    prefix: str,
+    spin_default: int = 1,
+    charge_default: int = 0,
+    ligand_charge: Optional[float | str | Dict[str, float]] = None,
+    prefix: str = "[charge]",
     cleanup_on_error: Optional[Callable[[], None]] = None,
 ) -> Tuple[int, int]:
+    """Resolve charge/spin from CLI args, GJF templates, and ligand metadata.
+
+    Accepts either a single PreparedInputStructure or a sequence of them.
+    """
+    # Normalize to sequence
+    if isinstance(prepared_inputs, PreparedInputStructure):
+        inputs = [prepared_inputs]
+        cleanup_on_error = cleanup_on_error or prepared_inputs.cleanup
+    else:
+        inputs = list(prepared_inputs)
+
     resolved_charge = charge
     resolved_spin = spin
-    for prepared in prepared_inputs:
+    for prepared in inputs:
         resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
             resolved_charge, resolved_spin, prepared.gjf_template
         )
 
     if ligand_charge is not None:
-        for prepared in prepared_inputs:
+        for prepared in inputs:
             if prepared.source_path.suffix.lower() in {".xyz", ".gjf"}:
                 if cleanup_on_error:
                     cleanup_on_error()
@@ -1370,11 +1381,11 @@ def _resolve_charge_spin(
                 )
         if resolved_charge is None:
             resolved_charge = _derive_charge_from_ligand_charge(
-                prepared_inputs[0], ligand_charge, prefix=prefix
+                inputs[0], ligand_charge, prefix=prefix
             )
 
     if resolved_charge is None:
-        if any(not p.is_gjf for p in prepared_inputs):
+        if any(not p.is_gjf for p in inputs):
             if cleanup_on_error:
                 cleanup_on_error()
             raise click.ClickException(
@@ -1387,46 +1398,9 @@ def _resolve_charge_spin(
     return int(resolved_charge), int(resolved_spin)
 
 
-def resolve_charge_spin_or_raise(
-    prepared: PreparedInputStructure,
-    charge: Optional[int],
-    spin: Optional[int],
-    *,
-    spin_default: int = 1,
-    charge_default: int = 0,
-    ligand_charge: Optional[float | str | Dict[str, float]] = None,
-    prefix: str = "[charge]",
-) -> Tuple[int, int]:
-    return _resolve_charge_spin(
-        [prepared],
-        charge,
-        spin,
-        spin_default=spin_default,
-        charge_default=charge_default,
-        ligand_charge=ligand_charge,
-        prefix=prefix,
-        cleanup_on_error=prepared.cleanup,
-    )
-
-
-def resolve_charge_spin_multi(
-    prepared_inputs: Sequence[PreparedInputStructure],
-    charge: Optional[int],
-    spin: Optional[int],
-    *,
-    ligand_charge: Optional[float | str | Dict[str, float]] = None,
-    prefix: str = "[charge]",
-) -> Tuple[int, int]:
-    """Resolve charge/spin for multi-endpoint workflows."""
-    return _resolve_charge_spin(
-        prepared_inputs,
-        charge,
-        spin,
-        spin_default=1,
-        charge_default=0,
-        ligand_charge=ligand_charge,
-        prefix=prefix,
-    )
+# Backwards compatibility aliases
+resolve_charge_spin_or_raise = resolve_charge_spin
+resolve_charge_spin_multi = resolve_charge_spin
 
 
 @contextmanager
@@ -1442,7 +1416,7 @@ def prepared_cli_input(
     """Context-managed input preparation with charge/spin resolution."""
     with prepare_input_structure(input_path) as prepared:
         apply_ref_pdb_override(prepared, ref_pdb)
-        charge_res, spin_res = resolve_charge_spin_or_raise(
+        charge_res, spin_res = resolve_charge_spin(
             prepared,
             charge,
             spin,

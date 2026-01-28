@@ -1,108 +1,11 @@
 # pdb2reaction/scan.py
 
-"""
-scan — Bond‑length–driven staged scan with harmonic distance restraints and full relaxation
-=====================================================================================================
+"""Staged bond-length scan with harmonic restraints and full relaxation using UMA calculator.
 
-Usage (CLI)
------------
-    pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] \
-        [--scan-list(s) '[(I,J,TARGET_ANG), ...]' ...] [-m <spin>] \
-        [--one-based {True|False}] [--max-step-size <float>] \
-        [--bias-k <float>] [--relax-max-cycles <int>] \
-        [--opt-mode {light|heavy}] [--freeze-links {True|False}] \
-        [--dump {True|False}] [--convert-files {True|False}] [--ref-pdb <file>] \
-        [--out-dir <dir>] [--thresh <preset>] [--args-yaml <file>] \
-        [--preopt {True|False}] [--endopt {True|False}]
+Example:
+    pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]' --preopt True --endopt True
 
-Examples
---------
-    # Single-stage, minimal inputs (PDB)
-    pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]'
-
-    # Two stages, LBFGS, dumping trajectories
-    pdb2reaction scan -i input.pdb -q 0 --scan-lists \
-        '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]' \
-        --max-step-size 0.2 --dump True --out-dir ./result_scan/ --opt-mode light \
-        --preopt True --endopt True
-
-
-Description
------------
-Runs a staged, bond‑length–driven scan. At each step, harmonic distance wells are applied to
-specified atom pairs and the full structure is relaxed. This implementation supports only
-the UMA calculator via `uma_pysis` and removes general-purpose handling to reduce overhead.
-For PDB inputs, scan tuples can use integer indices or selector strings such as
-``'TYR,285,CA'`` and ``'MMT,309,C10'`` to reference atoms (resname, resseq, atom).
-For non-PDB inputs, only integer indices are supported.
-If you pass one ``--scan-list(s)`` literal, the scan runs in a single stage; multiple
-literals are executed as sequential stages, each starting from the previous stage’s
-relaxed final structure.
-Use ``--ref-pdb`` with XYZ/GJF inputs to load a reference PDB topology while keeping
-the XYZ coordinates, enabling format-aware PDB/GJF output conversions.
-
-Scheduling
-  - For scan tuples [(i, j, target_Å)], compute the Å‑space displacement Δ = target − current_distance_Å.
-  - Let d_max = max(|Δ|). With --max-step-size = h (Å), set N = ceil(d_max / h).
-  - Per‑pair step width δ_k = Δ / N (Å).
-  - At step s (1..N), the temporary target is r_k(s) = r_k(0) + s · δ_k (Å).
-  - Relax the full structure under the harmonic wells for that step.
-
-Harmonic bias model
-  - E_bias = Σ ½ · k · (|r_i − r_j| − target_k)².
-  - k is provided in eV/Å² (CLI/YAML) and is converted once to Hartree/Bohr² by the bias wrapper.
-  - Coordinates are in Bohr; the UMA base returns energies in Hartree and forces in Hartree/Bohr.
-
-Optional optimizations
-  - --preopt: preoptimize the initial structure **without bias** before the scan; writes
-    `preopt/result.xyz` (and `.pdb` if the input was PDB), then continues from that geometry.
-  - --endopt: after **each stage** completes its biased stepping, perform an additional **unbiased**
-    optimization of that stage’s final structure before writing outputs.
-  - For each stage, covalent‑bond **formation/breaking** is reported between the stage’s first
-    structure and its final structure (the latter is the end‑of‑stage optimized result when
-    `--endopt True`).
-  - By default, both `--preopt` and `--endopt` are enabled.
-
-Charge/spin resolution
-  - `-q/--charge` is required unless the input is a `.gjf` template **or** ``--ligand-charge`` is provided.
-    When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate
-    system and the total charge is inferred using ``extract.py``’s residue-aware logic. Multiplicity defaults to 1
-    when omitted, and an explicit `-q` overrides any derived charge.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_scan/)
-  ├─ preopt/                      # Created when --preopt True; holds the unbiased starting optimization
-  │   ├─ result.xyz
-  │   ├─ result.gjf               # When a GJF template is available **and** conversion is enabled
-  │   └─ result.pdb               # When the input was PDB **and** conversion is enabled
-  └─ stage_{k:02d}/               # One directory per stage (k = 1..K)
-      ├─ result.xyz               # Final structure for the stage (after optional endopt)
-      ├─ result.gjf               # When a GJF template is available **and** conversion is enabled
-      ├─ result.pdb               # When the input was PDB **and** conversion is enabled
-      ├─ scan.trj                 # Written only when --dump True (concatenated biased frames)
-      └─ scan.pdb                 # Written only when --dump True, the input was PDB, and conversion is enabled
-
-Notes
------
-- Optimizers: `--opt-mode light` (default) selects LBFGS; `--opt-mode heavy` selects RFOptimizer.
-  Step/trust radii are capped in Bohr based on `--max-step-size` (Å).
-- Convergence: when `--thresh` is omitted, the effective default comes from `opt.thresh = 'gau'`.
-- Cycle cap: `opt.max_cycles` defaults to `10000`; `--relax-max-cycles` overrides it only when explicitly set.
-- Format-aware XYZ/TRJ → PDB/GJF conversions honor the global
-  `--convert-files {True|False}` toggle (default: enabled). For stage trajectories (`scan.trj`),
-  only PDB companions are produced; GJF companions are written for final `result.xyz` (and preopt outputs).
-- Indexing: (i, j) are 1‑based by default; use `--one-based False` if your tuples are 0‑based.
-- Provide multiple literals after a single ``--scan-list(s)`` to define sequential stages.
-- Units: Distances in CLI/YAML are Å; the bias is applied internally in a.u. (Hartree/Bohr) with
-  k converted from eV/Å² to Hartree/Bohr².
-- Performance simplifications:
-  - Trajectories are accumulated only when `--dump` is True.
-  - Energy is not re‑queried for per‑frame annotation during the scan to avoid extra calls.
-- PDB convenience: With `--freeze-links` (default True), parent atoms of link hydrogens
-  are detected and frozen for PDB inputs, and merged with any user‑specified frozen atoms.
-- YAML: Additional arguments can be supplied via `--args-yaml` under sections:
-  `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, and `bond`.
+For detailed documentation, see: docs/scan.md
 """
 
 from __future__ import annotations
@@ -123,13 +26,17 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
-from .opt import (
+from .defaults import (
+    GEOM_KW_DEFAULT,
     OPT_BASE_KW as _OPT_BASE_KW,
     LBFGS_KW as _LBFGS_KW,
     RFO_KW as _RFO_KW,
-    HarmonicBiasCalculator,
+    BIAS_KW as _BIAS_KW,
+    BOND_KW as _BOND_KW,
+    OPT_MODE_ALIASES as _OPT_MODE_ALIASES,
 )
+from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
+from .opt import HarmonicBiasCalculator
 from .utils import (
     build_sopt_kwargs,
     make_sopt_optimizer,
@@ -161,48 +68,19 @@ from .scan_common import add_scan_common_options
 # Defaults (merge order: defaults ← CLI ← YAML)
 # --------------------------------------------------------------------------------------
 
-# Geometry handling (Cartesian recommended for scans)
 GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
-
-# Optimizer base (convergence, dumping, etc.)
 OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
-OPT_BASE_KW.update({
-    "max_cycles": 10000,        # default cap on optimization cycles per biased segment
-    "out_dir": "./result_scan/",  # output directory for scan artifacts
-})
+OPT_BASE_KW["out_dir"] = "./result_scan/"
 
-# LBFGS specifics
 LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_KW.update({
-    "out_dir": "./result_scan/",  # location for LBFGS-specific outputs (restart, etc.)
-})
+LBFGS_KW["out_dir"] = "./result_scan/"
 
-# RFO specifics
 RFO_KW: Dict[str, Any] = dict(_RFO_KW)
-RFO_KW.update({
-    "out_dir": "./result_scan/",  # location for RFO-specific outputs (restart, etc.)
-})
+RFO_KW["out_dir"] = "./result_scan/"
 
-# Bias (harmonic well) defaults; can be overridden via YAML: section "bias"
-BIAS_KW: Dict[str, Any] = {
-    "k": 100,  # float, harmonic bias strength in eV/Å^2
-}
-
-# Bond-change detection (as in path_search)
-BOND_KW: Dict[str, Any] = {
-    "device": "cuda",            # str, device for UMA graph analysis during bond detection
-    "bond_factor": 1.20,         # float, scaling of covalent radii for bond cutoff
-    "margin_fraction": 0.05,     # float, fractional margin to tolerate small deviations
-    "delta_fraction": 0.05,      # float, change threshold to flag bond formation/breaking
-}
-
-# Normalization helper
-_OPT_MODE_ALIASES = (
-    (("light",), "lbfgs"),
-    (("heavy",), "rfo"),
-)
+BIAS_KW: Dict[str, Any] = dict(_BIAS_KW)
+BOND_KW: Dict[str, Any] = dict(_BOND_KW)
 
 
 def _ensure_stage_dir(base: Path, k: int) -> Path:

@@ -1,130 +1,11 @@
 # pdb2reaction/scan3d.py
 
-"""
-scan3d — Three-distance 3D scan with harmonic restraints 
-===================================================================
+"""3D grid scan with harmonic restraints on three inter-atomic distances using UMA calculator.
 
-Usage (CLI)
------------
-    pdb2reaction scan3d [-i INPUT.{pdb,xyz,trj,...}] [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
-        [-m MULTIPLICITY] \
-        [--scan-list(s) '[(I1,J1,LOW1,HIGH1),(I2,J2,LOW2,HIGH2),(I3,J3,LOW3,HIGH3)]'] \
-        [--one-based {True|False}] \
-        [--max-step-size FLOAT] \
-        [--bias-k FLOAT] \
-        [--relax-max-cycles INT] \
-        [--opt-mode {light,heavy}] \
-        [--freeze-links {True|False}] \
-        [--dump {True|False}] \
-        [--convert-files {True|False}] [--ref-pdb FILE] \
-        [--out-dir PATH] \
-        [--csv PATH] \
-        [--args-yaml FILE] \
-        [--preopt {True|False}] \
-        [--baseline {first|min}] \
-        [--thresh {gau_loose|gau|gau_tight|gau_vtight|baker|never}] \
-        [--zmin FLOAT] [--zmax FLOAT]
+Example:
+    pdb2reaction scan3d -i input.pdb -q 0 --scan-lists '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'
 
-    # Note: -i/--input and --scan-list(s) are required unless --csv is provided.
-
-Examples
---------
-    # Minimal example (three distance ranges)
-    pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'
-
-    # LBFGS with inner-path trajectory dumping and 3D energy isosurface plot
-    pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
-        --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
-        --preopt True --baseline min
-
-    # Plot only from an existing surface.csv (skip new energy evaluation)
-    pdb2reaction scan3d -i input.pdb -q 0 \
-        --scan-list(s) '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]' \
-        --csv ./result_scan3d/surface.csv --out-dir ./result_scan3d/
-
-Description
------------
-- A 3D grid scan driven by harmonic restraints on three inter-atomic distances (d1, d2, d3).
-- Provide exactly one Python-like list
-      [(i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3)]
-  via **--scan-list(s)**.
-  - Indices are **1-based by default**; pass **--one-based False** to interpret them as 0-based.
-  - For PDB inputs, each atom entry can be an integer index or a selector string such as
-    ``'TYR,285,CA'`` or ``'MMT,309,C10'`` (resname, resseq, atom).
-  - For XYZ/GJF inputs, ``--ref-pdb`` supplies a reference PDB topology while keeping the XYZ coordinates,
-    enabling format-aware PDB/GJF output conversion.
-- `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; `.gjf` templates supply
-  charge/spin when available. When ``-q`` is omitted but ``--ligand-charge`` is set, the full complex is treated as an
-  enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic. Explicit ``-q``
-  always overrides any derived charge.
-  `-m/--multiplicity` specifies the spin multiplicity (2S+1) and defaults to 1 if omitted.
-- Step schedule (h = `--max-step-size` in Å):
-  - `N1 = ceil(|high1 - low1| / h)`, `N2 = ceil(|high2 - low2| / h)`, `N3 = ceil(|high3 - low3| / h)`.
-  - `d1_values = linspace(low1, high1, N1 + 1)` (or `[low1]` if the span is ~0)
-    `d2_values = linspace(low2, high2, N2 + 1)` (or `[low2]` if the span is ~0)
-    `d3_values = linspace(low3, high3, N3 + 1)` (or `[low3]` if the span is ~0).
-  - Internally, these {d1,d2,d3} value lists are **reordered** so that the values
-    closest to the (optionally pre-optimized) starting structure are scanned first
-    along each axis.
-
-- Nested scan procedure (outer d1, middle d2, inner d3):
-  1) For each `d1[i]`, relax with **only the d1 restraint active** (d1 bias only),
-     starting from the previously scanned structure whose d1 value is closest.
-  2) Snapshot that minimum, then for each `d2[j]` relax with **d1 and d2 restraints**,
-     starting from the previously scanned structure at that d1 whose d2 value is closest.
-  3) Snapshot that (d1,d2) minimum, then for each `d3[k]` relax with **d1, d2, d3 restraints**
-     starting from the previously scanned structure at that (d1,d2) whose d3 value is closest.
-     The **unbiased** energy is recorded (harmonic bias removed for evaluation).
-
-- Plot-only mode:
-  - If **--csv PATH** is provided, the 3D scan and energy evaluation are skipped.
-  - The script reads the precomputed grid from the given CSV (surface.csv format)
-    and only performs the 3D RBF interpolation and HTML plot generation.
-  - If the CSV already has an `energy_kcal` column, it is used as-is.
-    Otherwise, `energy_kcal` is reconstructed from `energy_hartree` and `--baseline`.
-  - In this mode, the existing CSV is not overwritten and no new geometries are written;
-    only the HTML visualization is generated under `--out-dir`.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_scan3d/)
-  ├─ surface.csv                      # Grid metadata:
-  │                                   # i,j,k,d1_A,d2_A,d3_A,energy_hartree,energy_kcal,bias_converged;
-  │                                   # may also contain a reference row for the starting structure
-  │                                   # with i=j=k=-1 (pre-optimized when --preopt True).
-  ├─ scan3d_density.html              # 3D energy landscape (isosurface mesh only)
-  └─ grid/
-      ├─ point_iXXX_jYYY_kZZZ.xyz     # Constrained, relaxed geometries for each grid point
-      │                               # XXX,YYY,ZZZ = int(round(d(Å)*100)), e.g. d=1.25Å → "125"
-      ├─ point_iXXX_jYYY_kZZZ.pdb     # PDB companion when the input was PDB and conversion is enabled
-      ├─ point_iXXX_jYYY_kZZZ.gjf     # GJF companion when a template is available and conversion is enabled
-      ├─ preopt_iXXX_jYYY_kZZZ.xyz    # Starting structure used for the scan:
-      │                               # pre-optimized when --preopt True, otherwise the input structure;
-      │                               # same naming convention as above.
-      ├─ preopt_iXXX_jYYY_kZZZ.pdb    # PDB companion for the starting structure when conversion is enabled
-      ├─ preopt_iXXX_jYYY_kZZZ.gjf    # GJF companion for the starting structure when conversion is enabled
-      └─ inner_path_d1_###_d2_###.trj # When --dump True; captures inner d3 paths per (d1,d2)
-         inner_path_d1_###_d2_###.pdb  # PDB conversion of the inner-path trajectory when input was PDB and conversion enabled
-
-Notes
------
-- UMA only (`uma_pysis` calculator) and the same `HarmonicBiasCalculator` used in the 1D/2D scan.
-- Convergence is controlled by LBFGS or RFO depending on `--opt-mode` (default: `light`).
-  Ångström limits are converted to Bohr to cap LBFGS step and RFO trust radii.
-- Convergence preset: `--thresh` defaults to `baker` for this command (override with `--thresh` or YAML).
-- Cycle cap: `opt.max_cycles` defaults to `10000`; `--relax-max-cycles` overrides it only when explicitly set.
-- `--baseline min|first`:
-  - `min`   : shift PES so that the global minimum is 0 kcal/mol (**default**)
-  - `first` : shift so that the grid point with `(i,j,k) = (0,0,0)` is 0 kcal/mol;
-              if that point is missing, the global minimum is used instead.
-- Format-aware XYZ/TRJ → PDB/GJF conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
-- The 3D visualization:
-  - 3D RBF interpolation on a **50×50×50 grid** in (d1,d2,d3)-space.
-  - Several semi-transparent isosurfaces (mesh) at discrete energy levels with **step color bands**
-    (color is piecewise-constant in energy between contour levels).
-  - No XY/YZ/ZX planes are drawn; the view is isosurface-only for clarity.
+For detailed documentation, see: docs/scan3d.md
 """
 
 from __future__ import annotations
@@ -149,7 +30,12 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import ANG2BOHR, AU2KCALPERMOL
 
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .defaults import (
+    GEOM_KW_DEFAULT,
+    BIAS_KW as _BIAS_KW,
+    OPT_MODE_ALIASES,
+)
+from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
 from .opt import (
     HarmonicBiasCalculator,
     OPT_BASE_KW as _OPT_BASE_KW,
@@ -193,12 +79,7 @@ GEOM_KW, CALC_KW, OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_defaults(
     thresh="baker",
 )
 
-BIAS_KW: Dict[str, Any] = {"k": 100.0}  # harmonic restraint strength (eV/Å^2)
-
-_OPT_MODE_ALIASES = (
-    (("light",), "lbfgs"),
-    (("heavy",), "rfo"),
-)
+BIAS_KW: Dict[str, Any] = dict(_BIAS_KW)
 
 _VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid
 
