@@ -203,8 +203,15 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
             return sym
 
     # 3) Non-polymers (ligands / cofactors)
+    # H, C, N, O, P map directly by first letter (similar to polymers)
+    if name_u.startswith(("H", "D")):
+        return "H"
     if name_u.startswith("C") and not name_u.startswith("CL"):
         return "C"
+    if name_u.startswith("N"):
+        return "N"
+    if name_u.startswith("O"):
+        return "O"
     if name_u.startswith("P"):
         return "P"
 

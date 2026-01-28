@@ -2061,6 +2061,85 @@ def resolve_freeze_atoms(
         raise
 
 
+def _create_sorted_pdb_temp(pdb_path: Path) -> Optional[Path]:
+    """
+    Create a temporary PDB file with atoms sorted by residue number and atom name.
+    Returns the path to the temporary file, or None if sorting fails.
+    """
+    if pdb_path.suffix.lower() != ".pdb":
+        return None
+
+    try:
+        from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain as PDBChain
+
+        parser = PDBParser(QUIET=True)
+        structure = parser.get_structure("temp", pdb_path)
+
+        # Collect all atoms with their sorting keys
+        atoms_data = []
+        for model in structure:
+            for chain in model:
+                for residue in chain:
+                    res_id = residue.get_id()[1]  # residue number
+                    for atom in residue:
+                        atom_name = atom.get_name()
+                        atoms_data.append((res_id, atom_name, atom, residue, chain))
+            break  # Only use first model
+
+        # Sort by residue number and atom name
+        atoms_data.sort(key=lambda x: (x[0], x[1]))
+
+        # Create new structure with sorted atoms
+        new_structure = Structure.Structure("sorted")
+        new_model = Model.Model(0)
+        new_structure.add(new_model)
+
+        current_chain_id = None
+        current_chain = None
+        current_res_id = None
+        current_residue = None
+
+        for res_id, atom_name, atom, residue, chain in atoms_data:
+            chain_id = chain.get_id()
+
+            # Create new chain if needed
+            if chain_id != current_chain_id:
+                current_chain = PDBChain(chain_id)
+                new_model.add(current_chain)
+                current_chain_id = chain_id
+                current_res_id = None
+
+            # Create new residue if needed
+            if residue.get_id() != current_res_id:
+                # Make a copy of the residue
+                from Bio.PDB import Residue
+                new_residue = Residue.Residue(residue.get_id(), residue.get_resname(), residue.get_segid())
+                current_chain.add(new_residue)
+                current_residue = new_residue
+                current_res_id = residue.get_id()
+
+            # Add atom to the current residue
+            current_residue.add(atom.copy())
+
+        # Write to temporary file
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.pdb', delete=False)
+        tmp_path = Path(tmp.name)
+        tmp.close()
+
+        io = PDBIO()
+        io.set_structure(new_structure)
+        io.save(str(tmp_path))
+
+        return tmp_path
+    except Exception as e:
+        import sys
+        import traceback
+        print(f"Warning: Failed to create sorted PDB for {pdb_path.name}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return None
+
+
 def load_prepared_geometries(
     prepared_inputs: Sequence["PreparedInputStructure"],
     *,
@@ -2071,9 +2150,36 @@ def load_prepared_geometries(
 ) -> List[Any]:
     """Load multiple PreparedInputStructure geometries and apply freeze atom logic."""
     geoms: List[Any] = []
-    for prepared in prepared_inputs:
-        geom_path = prepared.geom_path
+    temp_files: List[Optional[Path]] = []
+
+    # First pass: create sorted PDB files if multiple PDBs are present
+    all_pdbs = all(prepared.source_path.suffix.lower() == ".pdb" for prepared in prepared_inputs)
+    use_sorted_pdbs = all_pdbs and len(prepared_inputs) > 1
+
+    if use_sorted_pdbs:
+        import sys
+        print(f"[DEBUG] Sorting {len(prepared_inputs)} PDB files to ensure consistent atom ordering", file=sys.stderr)
+
+    for idx, prepared in enumerate(prepared_inputs):
         src_path = prepared.source_path
+
+        # Create sorted temporary PDB if needed
+        if use_sorted_pdbs:
+            sorted_pdb = _create_sorted_pdb_temp(src_path)
+            temp_files.append(sorted_pdb)
+            if sorted_pdb is not None:
+                # Use the sorted PDB as the geometry path
+                geom_path = sorted_pdb
+                import sys
+                print(f"[DEBUG] Created sorted PDB for {src_path.name} -> {sorted_pdb}", file=sys.stderr)
+            else:
+                geom_path = prepared.geom_path
+                import sys
+                print(f"[DEBUG] Failed to create sorted PDB for {src_path.name}, using original", file=sys.stderr)
+        else:
+            geom_path = prepared.geom_path
+            temp_files.append(None)
+
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         freeze = resolve_freeze_atoms(
             cfg,
@@ -2085,4 +2191,13 @@ def load_prepared_geometries(
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
+
+    # Clean up temporary files
+    for tmp_file in temp_files:
+        if tmp_file is not None:
+            try:
+                tmp_file.unlink()
+            except:
+                pass
+
     return geoms
