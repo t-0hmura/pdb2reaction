@@ -197,6 +197,7 @@ from .opt import (
 )
 from .utils import (
     as_list,
+    collect_option_values,
     merge_detected_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -2074,24 +2075,9 @@ def cli(
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
 
-    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
-    def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
-        vals: List[str] = []
-        i = 0
-        while i < len(argv):
-            tok = argv[i]
-            if tok in names:
-                j = i + 1
-                while j < len(argv) and not argv[j].startswith("-"):
-                    vals.append(argv[j])
-                    j += 1
-                i = j
-            else:
-                i += 1
-        return vals
-
     argv_all = sys.argv[1:]
-    i_vals = _collect_option_values(argv_all, ("-i", "--input"))
+    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
+    i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []
         for tok in i_vals:
@@ -2104,7 +2090,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    ref_vals = _collect_option_values(argv_all, ("--ref-full-pdb",))
+    ref_vals = collect_option_values(argv_all, ("--ref-full-pdb",))
     if ref_vals:
         ref_parsed: List[Path] = []
         for tok in ref_vals:
@@ -2117,7 +2103,7 @@ def cli(
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
 
-    pocket_ref_vals = _collect_option_values(argv_all, ("--ref-pdb",))
+    pocket_ref_vals = collect_option_values(argv_all, ("--ref-pdb",))
     if pocket_ref_vals:
         pocket_ref_parsed: List[Path] = []
         for tok in pocket_ref_vals:

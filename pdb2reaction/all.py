@@ -355,16 +355,21 @@ from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
 from .utils import (
     build_energy_diagram,
+    collect_option_values,
+    collect_single_option_values,
     convert_xyz_like_outputs,
     detect_freeze_links_logged,
     format_elapsed,
+    merge_freeze_atom_groups,
     prepare_input_structure,
+    normalize_freeze_atoms,
     set_convert_file_enabled,
     resolve_charge_spin_or_raise,
     load_yaml_dict,
     apply_yaml_overrides,
     load_pdb_atom_metadata,
     merge_freeze_atom_indices,
+    _round_charge_with_note,
     apply_ref_pdb_override,
     ensure_dir,
     parse_scan_list_triples,
@@ -422,53 +427,6 @@ def _run_cli_main(
         click.echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
     finally:
         sys.argv = saved
-
-
-def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
-    """
-    Robustly collect values following a flag that may appear **once** followed by multiple space-separated values,
-    e.g., "-i A B C". This mirrors the behavior implemented in `path_search.cli`.
-    """
-    vals: List[str] = []
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok in names:
-            j = i + 1
-            while j < len(argv) and not argv[j].startswith("-"):
-                vals.append(argv[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return vals
-
-
-def _collect_single_option_values(
-    argv: Sequence[str],
-    names: Sequence[str],
-    label: str,
-) -> List[str]:
-    """Collect values following a flag that must appear at most once."""
-    vals: List[str] = []
-    seen = 0
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok in names:
-            seen += 1
-            j = i + 1
-            while j < len(argv) and not argv[j].startswith("-"):
-                vals.append(argv[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    if seen > 1:
-        raise click.BadParameter(
-            f"Use a single {label} followed by multiple values; repeated flags are not accepted."
-        )
-    return vals
 
 
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
@@ -719,23 +677,11 @@ def _convert_scan_lists_to_pocket_indices(
     return converted
 
 
-def _round_charge_with_note(q: float) -> int:
-    """
-    Cast the extractor's total charge (float) to an integer suitable for the path search.
-    If it is not already an integer within 1e-6, round to the nearest integer with a console note.
-    """
-    q_rounded = int(round(float(q)))
-    if not math.isfinite(q):
-        raise click.BadParameter(f"Computed total charge is non-finite: {q!r}")
-    if abs(float(q) - q_rounded) > 1e-6:
-        click.echo(f"[all] NOTE: extractor total charge = {q:g} → rounded to integer {q_rounded} for the path search.")
-    return q_rounded
-
-
 def _pdb_needs_elem_fix(p: Path) -> bool:
     """
     Return True if the file contains ATOM/HETATM records and at least one has an empty element field (cols 77–78).
     This is a light-weight check to decide whether to run add_elem_info.
+    Raises a ClickException if the file cannot be inspected.
     """
     try:
         with p.open("r", encoding="utf-8", errors="ignore") as fh:
@@ -744,25 +690,14 @@ def _pdb_needs_elem_fix(p: Path) -> bool:
                     if len(line) < 78 or not line[76:78].strip():
                         return True
         return False
-    except Exception:
-        return False
+    except Exception as e:
+        raise click.ClickException(
+            f"[all] Failed to inspect PDB element fields for '{p}': {e}"
+        ) from e
 
 
 _FREEZE_ATOMS_GLOBAL: Optional[List[int]] = None
 _FREEZE_ATOMS_YAML: Optional[List[int]] = None
-
-
-def _normalize_freeze_atoms(raw: Any) -> List[int]:
-    """Normalize freeze_atoms values from YAML into a list of integers."""
-    if raw is None:
-        return []
-    if isinstance(raw, str):
-        tokens = re.findall(r"-?\d+", raw)
-        return [int(tok) for tok in tokens]
-    try:
-        return [int(i) for i in raw]
-    except Exception:
-        return []
 
 
 def _set_yaml_freeze_atoms(yaml_cfg: Optional[Dict[str, Any]]) -> None:
@@ -775,14 +710,7 @@ def _set_yaml_freeze_atoms(yaml_cfg: Optional[Dict[str, Any]]) -> None:
     if not isinstance(geom_cfg, dict):
         _FREEZE_ATOMS_YAML = []
         return
-    _FREEZE_ATOMS_YAML = _normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
-
-
-def _merge_freeze_atoms(*groups: Sequence[int]) -> List[int]:
-    """Return a merged, sorted freeze_atoms list from multiple sources."""
-    geom_cfg: Dict[str, Any] = {}
-    merge_freeze_atom_indices(geom_cfg, *groups)
-    return list(geom_cfg.get("freeze_atoms", []))
+    _FREEZE_ATOMS_YAML = normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
 
 
 def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List[int]:
@@ -797,21 +725,21 @@ def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List
     global _FREEZE_ATOMS_GLOBAL
     if freeze_links_flag:
         if _FREEZE_ATOMS_GLOBAL is not None:
-            return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
+            return merge_freeze_atom_groups(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
         if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
             # No suitable PDB available yet to determine freeze atoms.
-            return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
+            return merge_freeze_atom_groups(_FREEZE_ATOMS_YAML or [])
         fa = detect_freeze_links_logged(pdb_path)
         _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
-        return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
-    return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
+        return merge_freeze_atom_groups(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
+    return merge_freeze_atom_groups(_FREEZE_ATOMS_YAML or [])
 
 
 def _freeze_atoms_for_log() -> List[int]:
     """Return a sorted freeze_atoms list for summary logs (may be empty)."""
 
     try:
-        return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL or [], _FREEZE_ATOMS_YAML or [])
+        return merge_freeze_atom_groups(_FREEZE_ATOMS_GLOBAL or [], _FREEZE_ATOMS_YAML or [])
     except Exception:
         return []
 
@@ -2378,7 +2306,7 @@ def cli(
         dump_override_requested = False
 
     argv_all = sys.argv[1:]
-    i_vals = _collect_option_values(argv_all, ("-i", "--input"))
+    i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []
         for tok in i_vals:
@@ -2391,7 +2319,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = _collect_single_option_values(argv_all, ("--scan-lists", "--scan-list"), "--scan-list(s)")
+    scan_vals = collect_single_option_values(argv_all, ("--scan-lists", "--scan-list"), "--scan-list(s)")
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
@@ -2540,7 +2468,7 @@ def cli(
             click.echo(
                 f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}"
             )
-            resolved_charge = _round_charge_with_note(q_total)
+            resolved_charge = _round_charge_with_note(q_total, prefix="[all]")
         except Exception as e:
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
@@ -2604,11 +2532,11 @@ def cli(
                 click.echo(
                     f"[all] Using --ligand-charge as TOTAL system charge: {charge_total:+g}"
                 )
-                resolved_charge = _round_charge_with_note(charge_total)
+                resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
             elif gjf_charge is not None:
                 charge_total = float(gjf_charge)
                 click.echo(f"[all] Using total charge from first GJF: {charge_total:+g}")
-                resolved_charge = _round_charge_with_note(charge_total)
+                resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
             else:
                 charge_total = 0.0
                 if ligand_charge is not None:
@@ -2623,7 +2551,7 @@ def cli(
                             "[all] NOTE: No total charge provided; defaulting to 0. "
                             "Supply '--ligand-charge <number>' to override."
                         )
-                resolved_charge = _round_charge_with_note(charge_total)
+                resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)

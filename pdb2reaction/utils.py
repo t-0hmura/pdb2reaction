@@ -27,6 +27,10 @@ Description
 - **Generic helpers**
   - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses
     `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `"{}"`.
+  - `collect_option_values(argv, names)`: Collect values following flags that may appear once with multiple
+    space-separated values (e.g., `-i A B C`). Used for relaxed CLI parsing.
+  - `collect_single_option_values(argv, names, label)`: Like `collect_option_values` but enforces a single
+    occurrence of the flag.
   - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"`
     is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are
     left unchanged. Empty iterables become `"[]"`.
@@ -35,6 +39,8 @@ Description
   - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into
     `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the
     updated list (in place).
+  - `normalize_freeze_atoms(raw)`: Normalize a freeze_atoms value (string/list/iterable) into a list of ints.
+  - `merge_freeze_atom_groups(*groups)`: Merge multiple freeze_atoms groups into a sorted list of ints.
   - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalize CLI-style string options
     using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when
     no alias matches.
@@ -91,8 +97,7 @@ Description
   - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other
     `ATOM`/`HETATM` records and return the corresponding 0‑based indices in the full atom order (matching
     geom loading). Returns an empty list if no link hydrogens are present.
-  - `detect_freeze_links_logged(pdb_path)`: Wrapper that catches unexpected parser failures, prints a
-    `[freeze-links]` warning, and always returns a list (possibly empty).
+  - `detect_freeze_links_logged(pdb_path)`: Wrapper that raises a user-facing error on failures.
 
 Outputs (& Directory Layout)
 ----------------------------
@@ -116,6 +121,7 @@ Notes
 """
 
 import ast
+import functools
 import math
 import re
 import tempfile
@@ -198,6 +204,53 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
+    """
+    Collect values following a flag that may appear once with multiple space-separated values,
+    e.g., "-i A B C".
+    """
+    vals: List[str] = []
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                vals.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    return vals
+
+
+def collect_single_option_values(
+    argv: Sequence[str],
+    names: Sequence[str],
+    label: str,
+) -> List[str]:
+    """Collect values following a flag that must appear at most once."""
+    vals: List[str] = []
+    seen = 0
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            seen += 1
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                vals.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    if seen > 1:
+        raise click.BadParameter(
+            f"Use a single {label} followed by multiple values; repeated flags are not accepted."
+        )
+    return vals
+
+
 def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
     """Create an independent pysisyphus Geometry snapshot from the given Geometry."""
     s = geom.as_xyz()
@@ -234,9 +287,7 @@ def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
 
 def make_snapshot_geometry(coord_type_default: str) -> Callable[[Any], Any]:
     """Return a snapshot helper bound to a default coord_type (scan helpers)."""
-    def _snap(geom: Any) -> Any:
-        return snapshot_geometry(geom, coord_type_default=coord_type_default)
-    return _snap
+    return functools.partial(snapshot_geometry, coord_type_default=coord_type_default)
 
 
 def merge_freeze_atom_indices(
@@ -275,6 +326,26 @@ def merge_freeze_atom_indices(
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
+
+
+def normalize_freeze_atoms(raw: Any) -> List[int]:
+    """Normalize freeze_atoms values (string/list/iterable) into a list of integers."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        tokens = re.findall(r"-?\d+", raw)
+        return [int(tok) for tok in tokens]
+    try:
+        return [int(i) for i in raw]
+    except Exception:
+        return []
+
+
+def merge_freeze_atom_groups(*groups: Sequence[int]) -> List[int]:
+    """Merge multiple freeze_atoms groups into a sorted list of ints."""
+    geom_cfg: Dict[str, Any] = {}
+    merge_freeze_atom_indices(geom_cfg, *groups)
+    return list(geom_cfg.get("freeze_atoms", []))
 
 
 def build_sopt_kwargs(
@@ -504,7 +575,7 @@ def convert_xyz_like_outputs_logged(
     out_gjf_path: Optional[Path] = None,
     context: str = "outputs",
 ) -> bool:
-    """Convert XYZ/TRJ outputs with a warning on failure; return success."""
+    """Convert XYZ/TRJ outputs and raise a user-facing error on failure; return success."""
     try:
         convert_xyz_like_outputs(
             xyz_path,
@@ -513,10 +584,9 @@ def convert_xyz_like_outputs_logged(
             out_pdb_path=out_pdb_path,
             out_gjf_path=out_gjf_path,
         )
-        return True
     except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert {context}: {e}", err=True)
-        return False
+        raise click.ClickException(f"[convert] Failed to convert {context}: {e}") from e
+    return True
 
 
 def convert_xyz_to_gjf_logged(
@@ -526,7 +596,7 @@ def convert_xyz_to_gjf_logged(
     out_path: Optional[Path] = None,
     context: str = "GJF",
 ) -> Optional[Path]:
-    """Convert XYZ to GJF with a warning on failure; returns output path or None."""
+    """Convert XYZ to GJF and raise a user-facing error on failure; returns output path or None."""
     try:
         if template is None or (not xyz_path.exists()):
             return None
@@ -534,8 +604,9 @@ def convert_xyz_to_gjf_logged(
         convert_xyz_to_gjf_optional(xyz_path, template, target)
         return target
     except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert '{xyz_path.name}' to {context}: {e}", err=True)
-        return None
+        raise click.ClickException(
+            f"[convert] Failed to convert '{xyz_path.name}' to {context}: {e}"
+        ) from e
 
 
 # =============================================================================
@@ -1226,7 +1297,7 @@ def convert_xyz_to_gjf_optional(
     template: Optional[GjfTemplate],
     out_path: Optional[Path] = None,
 ) -> Optional[Path]:
-    if not _CONVERT_FILES_ENABLED or template is None or not xyz_path.exists():
+    if not (_CONVERT_FILES_ENABLED and template is not None and xyz_path.exists()):
         return None
     target = out_path or xyz_path.with_suffix(".gjf")
     convert_xyz_to_gjf(xyz_path, template, target)
@@ -1746,15 +1817,13 @@ def detect_freeze_links(pdb_path):
 
 
 def detect_freeze_links_logged(pdb_path: Path) -> List[int]:
-    """Return link-parent indices with a `[freeze-links]` warning instead of raising."""
+    """Return link-parent indices and raise a user-facing error on failure."""
     try:
         return list(detect_freeze_links(pdb_path))
     except Exception as e:  # pragma: no cover - defensive logging helper
-        click.echo(
-            f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}",
-            err=True,
-        )
-        return []
+        raise click.ClickException(
+            f"[freeze-links] Failed to detect link parents for '{pdb_path.name}': {e}"
+        ) from e
 
 
 def merge_detected_freeze_links(

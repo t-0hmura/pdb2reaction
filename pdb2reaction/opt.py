@@ -632,11 +632,7 @@ def cli(
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
 
-        try:
-            dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
-        except click.BadParameter as e:
-            click.echo(f"ERROR: {e}", err=True)
-            sys.exit(1)
+        dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
 
         # --------------------------
         # 1) Assemble configuration
