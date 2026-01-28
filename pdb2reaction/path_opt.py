@@ -11,7 +11,7 @@ Usage (CLI)
                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
                         [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
                         [--preopt BOOL] [--preopt-max-cycles N] [--opt-mode {light|heavy}] [--fix-ends BOOL] \
-                        [--convert-files {True|False}] \
+                        [--convert-files {True|False}] [--ref-pdb FILE] \
                         [--out-dir DIR] [--args-yaml FILE]
 
 Examples
@@ -42,9 +42,9 @@ Outputs (& Directory Layout)
 ----------------------------
 out_dir/ (default: ./result_path_opt/)
   ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line carries per-image energy when available
-  ├─ final_geometries.pdb        # Converted from .trj when the *first* endpoint is a PDB and conversion is enabled
+  ├─ final_geometries.pdb        # Converted from .trj when a PDB reference is available and conversion is enabled
   ├─ hei.xyz                     # Highest-energy image with energy on the comment line
-  ├─ hei.pdb                     # HEI converted to PDB when the *first* endpoint is a PDB and conversion is enabled
+  ├─ hei.pdb                     # HEI converted to PDB when a PDB reference is available and conversion is enabled
   ├─ hei.gjf                     # HEI written using a detected .gjf template when available and conversion is enabled
   ├─ align_refine/               # Files from external alignment/refinement
   └─ <optimizer dumps / restarts>  # Emitted when dumping is enabled (e.g., via `--dump` and/or YAML `dump_restart` settings)
@@ -60,7 +60,9 @@ Notes
 - `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
 - `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
 - `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO, selected via `--opt-mode`) and does not affect `--max-cycles`.
-- Format-aware conversions respect the global `--convert-files {True|False}` toggle (default: enabled):
+- Format-aware conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
+- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
+  PDB conversions for trajectories and snapshots.
   trajectories may emit PDB companions when references exist, and XYZ snapshots (e.g., HEI) may emit GJF companions when templates exist.
 """
 
@@ -105,6 +107,7 @@ from .utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     PreparedInputStructure,
+    apply_ref_pdb_override,
 )
 from .opt import (
     LBFGS_KW as _LBFGS_KW,
@@ -476,6 +479,7 @@ def _optimize_single(
     out_dir: Path,
     tag: str,
     prepared_input: Optional[PreparedInputStructure],
+    ref_pdb: Optional[Path],
 ):
     """
     Single-structure optimization (LBFGS or RFO) shared by path_opt and path_search.
@@ -499,18 +503,16 @@ def _optimize_single(
     try:
         final_xyz = Path(opt.final_fn)
         if prepared_input is not None:
-            ref_pdb = (
-                prepared_input.source_path.resolve()
-                if prepared_input.source_path.suffix.lower() == ".pdb"
-                else None
-            )
-            needs_pdb = ref_pdb is not None
+            ref_pdb_path = ref_pdb
+            if ref_pdb_path is None and prepared_input.source_path.suffix.lower() == ".pdb":
+                ref_pdb_path = prepared_input.source_path.resolve()
+            needs_pdb = ref_pdb_path is not None
             needs_gjf = prepared_input.is_gjf
             if needs_pdb or needs_gjf:
                 convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
-                    ref_pdb_path=ref_pdb,
+                    ref_pdb_path=ref_pdb_path,
                     out_pdb_path=final_xyz.with_suffix(".pdb") if needs_pdb else None,
                     out_gjf_path=final_xyz.with_suffix(".gjf") if needs_gjf else None,
                 )
@@ -644,6 +646,12 @@ def _optimize_single(
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
 @click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
+@click.option(
     "--out-dir",
     "out_dir",
     type=str,
@@ -704,6 +712,7 @@ def cli(
     opt_mode: str,
     dump: bool,
     convert_files: bool,
+    ref_pdb: Optional[Path],
     out_dir: str,
     thresh: Optional[str],
     args_yaml: Optional[Path],
@@ -716,6 +725,9 @@ def cli(
     prepared_inputs = [prepare_input_structure(p) for p in input_paths]
     try:
         time_start = time.perf_counter()
+        if ref_pdb is not None:
+            for prepared in prepared_inputs:
+                apply_ref_pdb_override(prepared, ref_pdb)
 
         # --------------------------
         # 1) Assemble final config (defaults ← CLI ← YAML)
@@ -867,6 +879,8 @@ def cli(
                 if p.suffix.lower() == ".pdb":
                     ref_pdb_for_preopt = p.resolve()
                     break
+            if ref_pdb_for_preopt is None and ref_pdb is not None:
+                ref_pdb_for_preopt = Path(ref_pdb).resolve()
 
             preopt_out_dir = out_dir_path
             if (
@@ -888,6 +902,7 @@ def cli(
                         preopt_out_dir,
                         tag=tag,
                         prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else None,
+                        ref_pdb=ref_pdb_for_preopt,
                     )
                     new_geoms.append(g_opt)
                 except Exception as e:

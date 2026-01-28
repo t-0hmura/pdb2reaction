@@ -11,7 +11,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
                       [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
                       [--preopt BOOL] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends BOOL] \
                       [--out-dir DIR] [--args-yaml FILE] \
-                      [--convert-files {True|False}]
+                      [--convert-files {True|False}] [--ref-pdb FILE]
 ```
 
 ## Workflow
@@ -24,7 +24,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
    - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
 
 ### Key behaviors
-- **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs also enable trajectory/HEI PDB exports.
+- **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
 - **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. When no template/derivation applies, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
@@ -47,6 +47,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--dump BOOL` | Dump MEP trajectories/restarts (GSM/DMF). | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `light` |
 | `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | `gau` |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
@@ -58,9 +59,9 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 ```
 out_dir/
 ├─ final_geometries.trj        # XYZ path; comment line holds energies when provided
-├─ final_geometries.pdb        # Only when the first endpoint was a PDB (conversion enabled)
+├─ final_geometries.pdb        # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
 ├─ hei.xyz                     # Highest-energy image with its energy on the comment line
-├─ hei.pdb                     # HEI converted to PDB when the first endpoint was a PDB (conversion enabled)
+├─ hei.pdb                     # HEI converted to PDB when a PDB reference is available (conversion enabled)
 ├─ hei.gjf                     # HEI written using a detected Gaussian template (conversion enabled)
 ├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created when alignment runs)
 └─ <optimizer dumps/restarts>  # Present when dumping is enabled

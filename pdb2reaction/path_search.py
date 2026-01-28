@@ -1300,6 +1300,7 @@ def _build_multistep_path(
         out_dir,
         tag=f"{tag0}_left",
         prepared_input=prepared_input,
+        ref_pdb=ref_pdb_path,
     )
     right_end = _optimize_single(
         right_img,
@@ -1309,6 +1310,7 @@ def _build_multistep_path(
         out_dir,
         tag=f"{tag0}_right",
         prepared_input=prepared_input,
+        ref_pdb=ref_pdb_path,
     )
 
     try:
@@ -1334,6 +1336,7 @@ def _build_multistep_path(
                 out_dir,
                 tag=f"{tag0}_kink_int{i}",
                 prepared_input=prepared_input,
+                ref_pdb=ref_pdb_path,
             )
             opt_inters.append(g_opt)
         step_imgs = [left_end] + opt_inters + [right_end]
@@ -2345,6 +2348,7 @@ def cli(
                     out_dir_path,
                     tag=tag,
                     prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else main_prepared,
+                    ref_pdb=ref_pdb_path,
                 )
                 new_geoms.append(g_opt)
             geoms = new_geoms
