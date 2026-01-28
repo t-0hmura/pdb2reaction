@@ -125,8 +125,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import ast
 import inspect
 import sys
-import textwrap
-import traceback
 
 import click
 import numpy as np
@@ -152,6 +150,7 @@ from .utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
 )
+from .cli_utils import run_cli
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
 H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
@@ -619,23 +618,23 @@ def cli(
 ) -> None:
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
-    with prepared_cli_input(
-        input_path,
-        ref_pdb=ref_pdb,
-        charge=charge,
-        spin=spin,
-        ligand_charge=ligand_charge,
-        prefix="[opt]",
-    ) as (prepared_input, charge, spin):
-        geom_input_path = prepared_input.geom_path
-        source_path = prepared_input.source_path
+    def _run() -> None:
+        with prepared_cli_input(
+            input_path,
+            ref_pdb=ref_pdb,
+            charge=charge,
+            spin=spin,
+            ligand_charge=ligand_charge,
+            prefix="[opt]",
+        ) as (prepared_input, charge, spin):
+            geom_input_path = prepared_input.geom_path
+            source_path = prepared_input.source_path
 
-        dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
+            dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
 
-        # --------------------------
-        # 1) Assemble configuration
-        # --------------------------
-        try:
+            # --------------------------
+            # 1) Assemble configuration
+            # --------------------------
             yaml_cfg = load_yaml_dict(args_yaml)
             geom_cfg = dict(GEOM_KW)
             calc_cfg = dict(CALC_KW)
@@ -779,16 +778,11 @@ def cli(
 
             click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
 
-        except ZeroStepLength:
-            click.echo("ERROR: Step length fell below the minimum allowed (ZeroStepLength).", err=True)
-            sys.exit(2)
-        except OptimizationError as e:
-            click.echo(f"ERROR: Optimization failed - {e}", err=True)
-            sys.exit(3)
-        except KeyboardInterrupt:
-            click.echo("\nInterrupted by user.", err=True)
-            sys.exit(130)
-        except Exception as e:
-            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
-            sys.exit(1)
+    run_cli(
+        _run,
+        label="optimization",
+        zero_step_exc=ZeroStepLength,
+        zero_step_msg="ERROR: Step length fell below the minimum allowed (ZeroStepLength).",
+        opt_exc=OptimizationError,
+        opt_msg="ERROR: Optimization failed - {e}",
+    )

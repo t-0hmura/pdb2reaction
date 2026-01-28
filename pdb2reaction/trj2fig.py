@@ -61,7 +61,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import re
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
@@ -70,6 +69,8 @@ import plotly.graph_objs as go
 from ase import Atoms
 from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
+
+from .utils import read_xyz_energies
 
 AXIS_WIDTH = 3         # axis and tick thickness
 FONT_SIZE = 18         # tick-label font size
@@ -82,32 +83,8 @@ MARKER_SIZE = 6        # marker size
 #  File helpers
 # ---------------------------------------------------------------------
 def read_energies_xyz(fname: Path | str) -> List[float]:
-    """
-    Extract Hartree energies from the second-line comment of each XYZ frame.
-
-    The first numeric token found on the comment line is used, including
-    scientific notation (e.g., ``-1.23e-02``).
-    """
-    energies: List[float] = []
-    with open(fname, encoding="utf-8") as fh:
-        while (hdr := fh.readline()):
-            try:
-                nat = int(hdr.strip())
-            except ValueError:  # reached a non-XYZ header
-                break
-            comment = fh.readline().strip()
-            m = re.search(
-                r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
-                comment,
-            )
-            if not m:
-                raise RuntimeError(f"Energy not found in comment: {comment}")
-            energies.append(float(m.group(1)))
-            for _ in range(nat):  # skip coordinates
-                fh.readline()
-    if not energies:
-        raise RuntimeError(f"No energy data in {fname}")
-    return energies
+    """Compatibility wrapper for utils.read_xyz_energies()."""
+    return read_xyz_energies(fname)
 
 
 def recompute_energies(

@@ -375,6 +375,11 @@ from .utils import (
     parse_scan_list_triples,
     close_matplotlib_figures,
     _derive_charge_from_ligand_charge,
+    write_xyz_trj_with_energy,
+    read_xyz_as_blocks,
+    read_xyz_first_last,
+    xyz_blocks_first_last,
+    set_freeze_atoms_or_warn,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -869,12 +874,8 @@ def _load_segment_endpoints(
         base + "[-1]", coord_type=DEFAULT_COORD_TYPE, freeze_atoms=freeze_atoms
     )
 
-    try:
-        fa = np.array(freeze_atoms, dtype=int)
-        gL_ref.freeze_atoms = fa
-        gR_ref.freeze_atoms = fa
-    except Exception:
-        pass
+    set_freeze_atoms_or_warn(gL_ref, freeze_atoms, context="all")
+    set_freeze_atoms_or_warn(gR_ref, freeze_atoms, context="all")
 
     return gL_ref, gR_ref
 
@@ -892,7 +893,7 @@ def _save_single_geom_as_pdb_for_tools(
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     xyz_trj = out_dir / f"{name}.xyz"
-    _path_search._write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
+    write_xyz_trj_with_energy([g], [float(g.energy)], xyz_trj)
 
     if ref_pdb.suffix.lower() == ".pdb":
         pdb_out = out_dir / f"{name}.pdb"
@@ -906,112 +907,6 @@ def _save_single_geom_as_pdb_for_tools(
 
     return xyz_trj
 
-
-def _parse_xyz_block(
-    block: Sequence[str],
-    *,
-    path: Path,
-    frame_idx: int,
-) -> Tuple[List[str], np.ndarray]:
-    if not block:
-        raise click.ClickException(f"[irc] Empty XYZ frame in {path}")
-    try:
-        nat = int(block[0].strip().split()[0])
-    except Exception:
-        raise click.ClickException(
-            f"[irc] Malformed XYZ/TRJ header in frame {frame_idx} of {path}"
-        )
-    if len(block) < 2 + nat:
-        raise click.ClickException(
-            f"[irc] Incomplete XYZ frame {frame_idx} in {path} (expected {nat} atoms)."
-        )
-    elems: List[str] = []
-    coords: List[List[float]] = []
-    for k in range(nat):
-        parts = block[2 + k].split()
-        if len(parts) < 4:
-            raise click.ClickException(
-                f"[irc] Malformed atom line in frame {frame_idx} of {path}"
-            )
-        elems.append(parts[0])
-        coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
-    return elems, np.array(coords, dtype=float)
-
-
-def _xyz_blocks_first_last(
-    blocks: Sequence[Sequence[str]],
-    *,
-    path: Path,
-) -> Tuple[List[str], np.ndarray, np.ndarray]:
-    if not blocks:
-        raise click.ClickException(f"[irc] No frames found in {path}")
-    first_elems, first_coords = _parse_xyz_block(blocks[0], path=path, frame_idx=1)
-    last_elems, last_coords = _parse_xyz_block(blocks[-1], path=path, frame_idx=len(blocks))
-    if first_elems != last_elems:
-        raise click.ClickException(f"[irc] Element list changed across frames in {path}")
-    return first_elems, first_coords, last_coords
-
-
-def _read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
-    """
-    Lightweight XYZ trajectory reader: return (elements, first_coords[Å], last_coords[Å]).
-    Assumes standard multi-frame XYZ: natoms line, comment line, natoms atom lines.
-    """
-    blocks = _read_xyz_as_blocks(trj_path, strict=True)
-    return _xyz_blocks_first_last(blocks, path=trj_path)
-
-
-def _read_xyz_as_blocks(trj_path: Path, *, strict: bool = False) -> List[List[str]]:
-    """
-    Read a multi-frame XYZ/TRJ file and return a list of frames, each as a list of lines.
-
-    Used for building a concatenated IRC trajectory without parsing coordinates/energies.
-    When *strict* is True, malformed headers or truncated frames raise a ClickException.
-    """
-    try:
-        lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    except Exception as e:
-        raise click.ClickException(f"[irc_all] Failed to read XYZ/TRJ: {trj_path} ({e})")
-
-    blocks: List[List[str]] = []
-    i = 0
-    n = len(lines)
-    while i < n:
-        # Skip empty lines
-        while i < n and not lines[i].strip():
-            i += 1
-        if i >= n:
-            break
-        try:
-            nat = int(lines[i].split()[0])
-        except Exception:
-            if strict:
-                raise click.ClickException(
-                    f"[irc] Malformed XYZ/TRJ header at line {i + 1} in {trj_path}"
-                )
-            click.echo(
-                f"[irc_all] WARNING: Malformed XYZ/TRJ header at line {i + 1} in {trj_path}; stopping here.",
-                err=True,
-            )
-            break
-        start = i
-        i += 1  # comment line
-        if i < n:
-            i += 1
-        if i + nat > n:
-            if strict:
-                raise click.ClickException(
-                    f"[irc] Unexpected EOF while reading frame from {trj_path}"
-                )
-            click.echo(
-                f"[irc_all] WARNING: Unexpected EOF while reading frame from {trj_path}; last frame skipped.",
-                err=True,
-            )
-            break
-        end = i + nat
-        blocks.append(lines[start:end])
-        i = end
-    return blocks
 
 
 def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[Path]:
@@ -1149,7 +1044,7 @@ def _merge_irc_trajectories_to_single_plot(
         if not isinstance(trj_path, Path) or not trj_path.exists():
             continue
         try:
-            blocks = _read_xyz_as_blocks(trj_path)
+            blocks = read_xyz_as_blocks(trj_path)
         except click.ClickException as e:
             click.echo(str(e), err=True)
             continue
@@ -1639,7 +1534,7 @@ def _irc_and_match(
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
 
-    elems, c_first, c_last = _read_xyz_first_last(finished_trj)
+    elems, c_first, c_last = read_xyz_first_last(finished_trj)
 
     calc_args = dict(calc_cfg)
     shared_calc = uma_pysis(**calc_args)
@@ -2882,7 +2777,7 @@ def cli(
         try:
             irc_trj_path = irc_res.get("irc_trj_path")
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
-                n_images = len(_read_xyz_as_blocks(irc_trj_path))
+                n_images = len(read_xyz_as_blocks(irc_trj_path))
         except Exception:
             n_images = 0
 
@@ -3052,9 +2947,7 @@ def cli(
                 shutil.copy2(ts_pdb, ts_copy)
             else:
                 ts_copy = out_dir / "ts_seg_01.xyz"
-                _path_search._write_xyz_trj_with_energy(
-                    [gT], [float(gT.energy)], ts_copy
-                )
+                write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_copy)
             click.echo(
                 f"[all] Copied TS structure for TSOPT-only run → {ts_copy}"
             )
@@ -3358,7 +3251,7 @@ def cli(
                         err=True,
                     )
 
-            raw_blocks = _read_xyz_as_blocks(seg_trj, strict=True)
+            raw_blocks = read_xyz_as_blocks(seg_trj, strict=True)
             blocks = ["\n".join(b) + "\n" for b in raw_blocks]
             if not blocks:
                 raise click.ClickException(
@@ -3380,7 +3273,7 @@ def cli(
 
             first_last = None
             try:
-                first_last = _xyz_blocks_first_last(raw_blocks, path=seg_trj)
+                first_last = xyz_blocks_first_last(raw_blocks, path=seg_trj)
             except Exception as e:
                 click.echo(
                     f"[all] WARNING: failed to parse first/last frames for segment {idx:02d}: {e}",
@@ -3463,7 +3356,7 @@ def cli(
                 if first_last:
                     elems, c_first, c_last = first_last
                 else:
-                    elems, c_first, c_last = _read_xyz_first_last(Path(info["traj"]))
+                    elems, c_first, c_last = read_xyz_first_last(Path(info["traj"]))
                 freeze_atoms = _get_freeze_atoms(info["inputs"][0], freeze_links_flag)
                 gL = _geom_from_angstrom(elems, c_first, freeze_atoms)
                 gR = _geom_from_angstrom(elems, c_last, freeze_atoms)
@@ -3490,7 +3383,7 @@ def cli(
 
         summary = {
             "out_dir": str(path_dir),
-            "n_images": len(_read_xyz_as_blocks(final_trj)),
+            "n_images": len(read_xyz_as_blocks(final_trj)),
             "n_segments": len(segments_summary),
             "segments": segments_summary,
         }
@@ -3951,9 +3844,7 @@ def cli(
                     shutil.copy2(ts_pdb, ts_copy)
                 else:
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
-                    _path_search._write_xyz_trj_with_energy(
-                        [gT], [float(gT.energy)], ts_copy
-                    )
+                    write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_copy)
                 click.echo(
                     f"[all] Copied TS structure for segment {seg_idx:02d} → {ts_copy}"
                 )

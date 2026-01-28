@@ -113,7 +113,6 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import math
 import sys
 import textwrap
-import traceback
 
 import click
 import numpy as np
@@ -153,6 +152,7 @@ from .utils import (
     resolve_freeze_atoms,
     xyz_string_with_energy,
 )
+from .cli_utils import run_cli
 from .bond_changes import has_bond_change
 from .scan_common import add_scan_common_options
 
@@ -369,7 +369,7 @@ def cli(
         needs_pdb = source_path.suffix.lower() == ".pdb"
         needs_gjf = prepared_input.is_gjf
         ref_pdb = source_path.resolve() if needs_pdb else None
-        try:
+        def _run() -> None:
             time_start = time.perf_counter()
 
             # ------------------------------------------------------------------
@@ -784,10 +784,4 @@ def cli(
 
             click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
 
-        except KeyboardInterrupt:
-            click.echo("\nInterrupted by user.", err=True)
-            sys.exit(130)
-        except Exception as e:
-            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during scan:\n" + textwrap.indent(tb, "  "), err=True)
-            sys.exit(1)
+        run_cli(_run, label="scan")

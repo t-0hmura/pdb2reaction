@@ -388,15 +388,10 @@ ResidueKey = Tuple[str, str, int, str, str]
 # ---------------------------------------------------------------------
 
 def str2bool(v: str) -> bool:
-    """
-    Return a boolean for common truthy strings.
-    """
-    from .cli_utils import parse_bool
+    """Return a boolean for common truthy strings."""
+    from .cli_utils import argparse_bool
 
-    try:
-        return parse_bool(v)
-    except ValueError as e:
-        raise argparse.ArgumentTypeError(str(e))
+    return argparse_bool(v)
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:

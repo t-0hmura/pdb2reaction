@@ -105,6 +105,7 @@ from .utils import (
     format_elapsed,
     prepared_cli_input,
     set_convert_file_enabled,
+    YamlFlowList,
 )
 from .uma_pysis import GEOM_KW_DEFAULT
 
@@ -177,19 +178,6 @@ def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
     mf = mf.density_fit()
 
     return mf
-
-
-# ---------------- Flow-style YAML helper (only for inner row lists) -----------
-class FlowList(list):
-    """A list that will be dumped in YAML flow style: [a, b, c]."""
-    pass
-
-
-def _flow_seq_representer(dumper, data):
-    return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
-
-
-yaml.SafeDumper.add_representer(FlowList, _flow_seq_representer)
 
 
 def _format_row_for_echo(row: List[Union[int, str, float, None]]) -> str:
@@ -668,8 +656,8 @@ def cli(
             # --------------------------
             # 7) Save result.yaml (flow style rows for readability)
             # --------------------------
-            charges_rows_flow = [FlowList(r) for r in charges_table]
-            spins_rows_flow   = [FlowList(r) for r in spins_table]
+            charges_rows_flow = [YamlFlowList(r) for r in charges_table]
+            spins_rows_flow = [YamlFlowList(r) for r in spins_table]
 
             result_yaml = {
                 "input": dict(echo_cfg),  # configuration snapshot

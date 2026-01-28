@@ -148,6 +148,7 @@ from .utils import (
     resolve_freeze_atoms,
     distance_A_from_coords,
     distance_tag,
+    set_freeze_atoms_or_warn,
 )
 from .scan_common import add_scan_common_options, build_scan_defaults
 
@@ -438,13 +439,7 @@ def cli(
             geom_outer = geom_loader(
                 geom_input_path, coord_type=coord_type, freeze_atoms=freeze
             )
-            if freeze:
-                try:
-                    import numpy as _np
-
-                    geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
-                except Exception:
-                    pass
+            set_freeze_atoms_or_warn(geom_outer, freeze, context="scan2d")
 
             base_calc = uma_pysis(**calc_cfg)
             biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))

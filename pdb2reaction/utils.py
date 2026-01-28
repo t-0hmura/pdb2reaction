@@ -149,6 +149,36 @@ from .add_elem_info import guess_element
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 # =============================================================================
+# YAML helpers (shared representers)
+# =============================================================================
+
+
+class YamlLiteralStr(str):
+    """String marker to force literal block style when dumping YAML."""
+
+
+class YamlFlowList(list):
+    """List marker to force flow style when dumping YAML."""
+
+
+def _yaml_literal_representer(dumper, data):
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+
+
+def _yaml_flow_list_representer(dumper, data):
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+
+
+def register_yaml_representers() -> None:
+    """Register shared YAML representers (literal strings and flow lists)."""
+    yaml.add_representer(YamlLiteralStr, _yaml_literal_representer)
+    yaml.add_representer(YamlLiteralStr, _yaml_literal_representer, Dumper=yaml.SafeDumper)
+    yaml.SafeDumper.add_representer(YamlFlowList, _yaml_flow_list_representer)
+
+
+register_yaml_representers()
+
+# =============================================================================
 # Generic helpers
 # =============================================================================
 
@@ -933,7 +963,162 @@ class GjfTemplate:
         lines = [str(self.natoms), f"converted from {self.path.name}"]
         for atom in self.coord_lines:
             lines.append(f"{atom.symbol}  {atom.x:.10f}  {atom.y:.10f}  {atom.z:.10f}")
-        return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n"
+
+
+def write_xyz_trj_with_energy(images: Sequence[Any], energies: Sequence[float], path: Path) -> None:
+    """Write an XYZ `.trj` with the energy on line 2 of each block."""
+    blocks: List[str] = []
+    E = np.array(energies, dtype=float)
+    for geom, e in zip(images, E):
+        if hasattr(geom, "as_xyz"):
+            blocks.append(xyz_string_with_energy(geom, energy=float(e)))
+            continue
+        # ASE Atoms fallback
+        symbols = geom.get_chemical_symbols()
+        coords = geom.get_positions()
+        lines = [str(len(symbols)), f"{float(e):.12f}"]
+        lines.extend(
+            f"{sym} {x:.15f} {y:.15f} {z:.15f}"
+            for sym, (x, y, z) in zip(symbols, coords)
+        )
+        blocks.append("\n".join(lines) + "\n")
+    with open(path, "w") as f:
+        f.write("".join(blocks))
+
+
+def set_freeze_atoms_or_warn(
+    geom: Any,
+    freeze_atoms: Sequence[int],
+    *,
+    context: str,
+) -> None:
+    """Attach freeze_atoms to a geometry; warn once on failure."""
+    if not freeze_atoms:
+        return
+    try:
+        geom.freeze_atoms = np.array(sorted({int(i) for i in freeze_atoms}), dtype=int)
+    except Exception:
+        click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.", err=True)
+
+
+def read_xyz_energies(path: Path | str) -> List[float]:
+    """
+    Extract energies from the second-line comment of each XYZ frame.
+    The first numeric token found on the comment line is used.
+    """
+    energies: List[float] = []
+    with open(path, encoding="utf-8") as fh:
+        while (hdr := fh.readline()):
+            try:
+                nat = int(hdr.strip())
+            except ValueError:
+                break
+            comment = fh.readline().strip()
+            m = re.search(
+                r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
+                comment,
+            )
+            if not m:
+                raise RuntimeError(f"Energy not found in comment: {comment}")
+            energies.append(float(m.group(1)))
+            for _ in range(nat):
+                fh.readline()
+    if not energies:
+        raise RuntimeError(f"No energy data in {path}")
+    return energies
+
+
+def parse_xyz_block(
+    block: Sequence[str],
+    *,
+    path: Path,
+    frame_idx: int,
+) -> Tuple[List[str], np.ndarray]:
+    if not block:
+        raise click.ClickException(f"[xyz] Empty XYZ frame in {path}")
+    try:
+        nat = int(block[0].strip().split()[0])
+    except Exception:
+        raise click.ClickException(
+            f"[xyz] Malformed XYZ/TRJ header in frame {frame_idx} of {path}"
+        )
+    if len(block) < 2 + nat:
+        raise click.ClickException(
+            f"[xyz] Incomplete XYZ frame {frame_idx} in {path} (expected {nat} atoms)."
+        )
+    elems: List[str] = []
+    coords: List[List[float]] = []
+    for k in range(nat):
+        parts = block[2 + k].split()
+        if len(parts) < 4:
+            raise click.ClickException(
+                f"[xyz] Malformed atom line in frame {frame_idx} of {path}"
+            )
+        elems.append(parts[0])
+        coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
+    return elems, np.array(coords, dtype=float)
+
+
+def xyz_blocks_first_last(
+    blocks: Sequence[Sequence[str]],
+    *,
+    path: Path,
+) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    if not blocks:
+        raise click.ClickException(f"[xyz] No frames found in {path}")
+    first_elems, first_coords = parse_xyz_block(blocks[0], path=path, frame_idx=1)
+    last_elems, last_coords = parse_xyz_block(blocks[-1], path=path, frame_idx=len(blocks))
+    if first_elems != last_elems:
+        raise click.ClickException(f"[xyz] Element list changed across frames in {path}")
+    return first_elems, first_coords, last_coords
+
+
+def read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    """
+    Lightweight XYZ trajectory reader: return (elements, first_coords[Å], last_coords[Å]).
+    Assumes standard multi-frame XYZ: natoms line, comment line, natoms atom lines.
+    """
+    blocks = read_xyz_as_blocks(trj_path, strict=True)
+    return xyz_blocks_first_last(blocks, path=trj_path)
+
+
+def read_xyz_as_blocks(trj_path: Path, *, strict: bool = False) -> List[List[str]]:
+    """
+    Read a multi-frame XYZ/TRJ file and return a list of frames, each as a list of lines.
+
+    When *strict* is True, malformed headers or truncated frames raise a ClickException.
+    """
+    try:
+        lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception as e:
+        raise click.ClickException(f"[xyz] Failed to read XYZ/TRJ: {trj_path} ({e})")
+
+    blocks: List[List[str]] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        while i < n and not lines[i].strip():
+            i += 1
+        if i >= n:
+            break
+        header = lines[i].strip()
+        try:
+            nat = int(header.split()[0])
+        except Exception:
+            if strict:
+                raise click.ClickException(f"[xyz] Malformed header at line {i+1} in {trj_path}")
+            break
+        block = lines[i : i + 2 + nat]
+        if len(block) < 2 + nat:
+            if strict:
+                raise click.ClickException(
+                    f"[xyz] Incomplete frame at line {i+1} in {trj_path} (expected {nat} atoms)."
+                )
+            break
+        blocks.append(block)
+        i += 2 + nat
+    return blocks
 
 
 @dataclass

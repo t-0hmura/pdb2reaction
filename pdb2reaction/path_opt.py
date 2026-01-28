@@ -102,6 +102,7 @@ from .utils import (
     apply_ref_pdb_override,
     resolve_charge_spin_multi,
     load_prepared_geometries,
+    write_xyz_trj_with_energy,
 )
 from .opt import (
     LBFGS_KW as _LBFGS_KW,
@@ -198,23 +199,6 @@ STOPT_KW: Dict[str, Any] = {
 }
 
 
-def _load_two_endpoints(
-    inputs: Sequence[PreparedInputStructure],
-    coord_type: str,
-    base_freeze: Sequence[int],
-    auto_freeze_links: bool,
-) -> Sequence:
-    """
-    Load the two endpoint structures and set `freeze_atoms` as needed.
-    """
-    return load_prepared_geometries(
-        inputs,
-        coord_type=coord_type,
-        base_freeze=base_freeze,
-        auto_freeze_links=auto_freeze_links,
-    )
-
-
 def _select_hei_index(energies: Sequence[float]) -> int:
     """Pick an HEI index preferring internal local maxima."""
 
@@ -230,23 +214,6 @@ def _select_hei_index(energies: Sequence[float]) -> int:
     if hei_idx is None:
         hei_idx = int(np.argmax(E))
     return hei_idx
-
-
-def _write_ase_trj_with_energy(images: Sequence[Any], energies: Sequence[float], path: Path) -> None:
-    """Write an XYZ `.trj` from ASE Atoms with the energy on line 2."""
-
-    blocks = []
-    for atoms, e in zip(images, np.array(energies, dtype=float)):
-        symbols = atoms.get_chemical_symbols()
-        coords = atoms.get_positions()
-        lines = [str(len(symbols)), f"{e:.12f}"]
-        lines.extend(
-            f"{sym} {x:.15f} {y:.15f} {z:.15f}" for sym, (x, y, z) in zip(symbols, coords)
-        )
-        blocks.append("\n".join(lines) + "\n")
-
-    with open(path, "w") as f:
-        f.write("".join(blocks))
 
 
 @dataclass
@@ -396,7 +363,7 @@ def _run_dmf_mep(
     hei_idx = _select_hei_index(energies)
 
     final_trj = out_dir_path / "final_geometries.trj"
-    _write_ase_trj_with_energy(mxflx.images, energies, final_trj)
+    write_xyz_trj_with_energy(mxflx.images, energies, final_trj)
     if primary_prepared is not None and needs_pdb:
         convert_xyz_like_outputs(
             final_trj,
@@ -406,7 +373,7 @@ def _run_dmf_mep(
         )
     if primary_prepared is not None and (needs_pdb or needs_gjf):
         hei_tmp = out_dir_path / "hei.xyz"
-        _write_ase_trj_with_energy([mxflx.images[hei_idx]], [energies[hei_idx]], hei_tmp)
+        write_xyz_trj_with_energy([mxflx.images[hei_idx]], [energies[hei_idx]], hei_tmp)
         convert_xyz_like_outputs(
             hei_tmp,
             primary_prepared,
@@ -790,8 +757,8 @@ def cli(
 
         source_paths = [prep.source_path for prep in prepared_inputs]
 
-        geoms = _load_two_endpoints(
-            inputs=prepared_inputs,
+        geoms = load_prepared_geometries(
+            prepared_inputs,
             coord_type=geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"]),
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
@@ -901,7 +868,7 @@ def cli(
             try:
                 hei_idx = int(dmf_res.hei_idx)
                 hei_xyz = out_dir_path / "hei.xyz"
-                _write_ase_trj_with_energy(
+                write_xyz_trj_with_energy(
                     [dmf_res.images[hei_idx]], [dmf_res.energies[hei_idx]], hei_xyz
                 )
                 click.echo(f"[write] Wrote '{hei_xyz}'.")

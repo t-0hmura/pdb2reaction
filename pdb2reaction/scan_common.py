@@ -212,31 +212,6 @@ def add_scan_common_options(
     return lambda func: _apply_options(func, options)
 
 
-def build_scan_kw_defaults(
-    *,
-    opt_base_kw: Dict[str, Any],
-    lbfgs_kw: Dict[str, Any],
-    rfo_kw: Dict[str, Any],
-    out_dir: str,
-    thresh: str = "baker",
-) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """Return (opt_kw, lbfgs_kw, rfo_kw) with shared scan defaults applied."""
-    opt_cfg = dict(opt_base_kw)
-    opt_cfg.update(
-        {
-            "out_dir": out_dir,
-            "dump": False,
-            "max_cycles": 10000,
-            "thresh": thresh,
-        }
-    )
-    lbfgs_cfg = dict(lbfgs_kw)
-    lbfgs_cfg.update({"out_dir": out_dir})
-    rfo_cfg = dict(rfo_kw)
-    rfo_cfg.update({"out_dir": out_dir})
-    return opt_cfg, lbfgs_cfg, rfo_cfg
-
-
 def build_scan_defaults(
     *,
     geom_kw_default: Dict[str, Any],
@@ -250,11 +225,17 @@ def build_scan_defaults(
     """Return (geom_kw, calc_kw, opt_kw, lbfgs_kw, rfo_kw) with shared scan defaults applied."""
     geom_kw = dict(geom_kw_default)
     calc_kw = dict(calc_kw_default)
-    opt_cfg, lbfgs_cfg, rfo_cfg = build_scan_kw_defaults(
-        opt_base_kw=opt_base_kw,
-        lbfgs_kw=lbfgs_kw,
-        rfo_kw=rfo_kw,
-        out_dir=out_dir,
-        thresh=thresh,
+    opt_cfg = dict(opt_base_kw)
+    opt_cfg.update(
+        {
+            "out_dir": out_dir,
+            "dump": False,
+            "max_cycles": 10000,
+            "thresh": thresh,
+        }
     )
+    lbfgs_cfg = dict(lbfgs_kw)
+    lbfgs_cfg.update({"out_dir": out_dir})
+    rfo_cfg = dict(rfo_kw)
+    rfo_cfg.update({"out_dir": out_dir})
     return geom_kw, calc_kw, opt_cfg, lbfgs_cfg, rfo_cfg

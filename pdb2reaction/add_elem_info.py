@@ -295,12 +295,9 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 
 
 def _parse_bool(value: str) -> bool:
-    from .cli_utils import parse_bool
+    from .cli_utils import argparse_bool
 
-    try:
-        return parse_bool(value)
-    except ValueError as e:
-        raise argparse.ArgumentTypeError(str(e))
+    return argparse_bool(value)
 
 
 def main():

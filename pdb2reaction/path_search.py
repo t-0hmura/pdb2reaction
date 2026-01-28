@@ -159,7 +159,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable
 
 import sys
-import traceback
 import textwrap
 import tempfile
 import os
@@ -184,7 +183,6 @@ from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .path_opt import (
     _optimize_single,
     _run_dmf_mep,
-    _write_ase_trj_with_energy,
     DMF_KW as _PATH_DMF_KW,
     GS_KW as _PATH_GS_KW,
     STOPT_KW as _PATH_STOPT_KW,
@@ -214,30 +212,20 @@ from .utils import (
     convert_xyz_to_gjf_if_enabled,
     geom_from_xyz_string,
     close_matplotlib_figures,
-    xyz_string_with_energy,
+    write_xyz_trj_with_energy,
+    set_freeze_atoms_or_warn,
+    YamlLiteralStr,
     load_prepared_geometries,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
 from .bond_changes import has_bond_change
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
+from .cli_utils import run_cli
 
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
-
-
-# YAML helper to preserve multiline blocks for bond-change summaries in summary.yaml
-class _LiteralStr(str):
-    """String marker to force literal block style when dumping YAML."""
-
-
-def _literal_str_representer(dumper, data):
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
-
-
-yaml.add_representer(_LiteralStr, _literal_str_representer)
-yaml.add_representer(_LiteralStr, _literal_str_representer, Dumper=yaml.SafeDumper)
 
 
 def _bond_changes_block(text: Optional[str]):
@@ -288,7 +276,7 @@ def _bond_changes_block(text: Optional[str]):
     if sections:
         return sections
     if "\n" in cleaned:
-        return _LiteralStr(cleaned)
+        return YamlLiteralStr(cleaned)
     return cleaned
 
 
@@ -345,35 +333,6 @@ SEARCH_KW: Dict[str, Any] = {
     "max_seq_kink": 2,               # max sequential kinks allowed before aborting
     "refine_mode": None,             # optional refinement strategy tag
 }
-
-
-def _load_structures(
-    inputs: Sequence[PreparedInputStructure],
-    coord_type: str,
-    base_freeze: Sequence[int],
-    auto_freeze_links: bool,
-) -> List[Any]:
-    """
-    Load multiple geometries and assign `freeze_atoms`; return a list of geometries.
-    """
-    return load_prepared_geometries(
-        inputs,
-        coord_type=coord_type,
-        base_freeze=base_freeze,
-        auto_freeze_links=auto_freeze_links,
-    )
-
-
-def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path: Path) -> None:
-    """
-    Write an XYZ `.trj` with the energy on line 2 of each block.
-    """
-    blocks: List[str] = []
-    E = np.array(energies, dtype=float)
-    for geom, e in zip(images, E):
-        blocks.append(xyz_string_with_energy(geom, energy=float(e)))
-    with open(path, "w") as f:
-        f.write("".join(blocks))
 
 
 def _convert_to_gjf(
@@ -620,8 +579,8 @@ def _run_mep_between(
     # Write trajectory
     final_trj = seg_dir / "final_geometries.trj"
     wrote_with_energy = True
-    try:
-        _write_xyz_trj_with_energy(images, energies, final_trj)
+    def _run() -> None:
+    write_xyz_trj_with_energy(images, energies, final_trj)
         click.echo(f"[{tag}] Wrote '{final_trj}'.")
     except Exception:
         wrote_with_energy = False
@@ -728,10 +687,11 @@ def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None
             coord_type=coord_type,
             freeze_atoms=getattr(template_g, "freeze_atoms", []),
         )
-        try:
-            g.freeze_atoms = np.array(getattr(template_g, "freeze_atoms", []), dtype=int)
-        except Exception:
-            pass
+        set_freeze_atoms_or_warn(
+            g,
+            getattr(template_g, "freeze_atoms", []),
+            context="path_search",
+        )
         if shared_calc is not None:
             g.set_calculator(shared_calc)
         return g
@@ -782,7 +742,7 @@ def _run_dmf_between(
     energies = list(map(float, dmf_res.energies))
 
     final_trj = seg_dir / "final_geometries.trj"
-    _write_ase_trj_with_energy(dmf_res.images, energies, final_trj)
+    write_xyz_trj_with_energy(dmf_res.images, energies, final_trj)
     _convert_to_pdb_logged(final_trj, ref_pdb_path)
 
     try:
@@ -2213,8 +2173,8 @@ def cli(
         # --------------------------
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        geoms = _load_structures(
-            inputs=prepared_inputs,
+        geoms = load_prepared_geometries(
+            prepared_inputs,
             coord_type=geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"]),
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
@@ -2382,7 +2342,7 @@ def cli(
         needs_gjf = main_prepared.is_gjf
 
         final_trj = out_dir_path / "mep.trj"
-        _write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
+        write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
         click.echo(f"[write] Wrote '{final_trj}'.")
         try:
             run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
@@ -2423,7 +2383,7 @@ def cli(
                     seg_imgs = [combined_all.images[j] for j in idxs]
                     seg_Es = [combined_all.energies[j] for j in idxs]
                     seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}.trj"
-                    _write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
+                    write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
                     click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
                     if needs_pdb or needs_gjf:
                         try:
@@ -2447,7 +2407,7 @@ def cli(
                     hei_img = combined_all.images[imax_abs]
                     hei_E = [combined_all.energies[imax_abs]]
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
-                    _write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
+                    write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
                     click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
                     if needs_pdb or needs_gjf:
                         try:
@@ -2787,19 +2747,15 @@ def cli(
         # --------------------------
         click.echo(format_elapsed("[time] Elapsed for Path Search", time_start))
 
-    except ZeroStepLength:
-        click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
-        sys.exit(2)
-    except OptimizationError as e:
-        click.echo(f"ERROR: Path search failed — {e}", err=True)
-        sys.exit(3)
-    except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
-        sys.exit(130)
-    except Exception as e:
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during path search:\n" + textwrap.indent(tb, "  "), err=True)
-        sys.exit(1)
+    try:
+        run_cli(
+            _run,
+            label="path search",
+            zero_step_exc=ZeroStepLength,
+            zero_step_msg="ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).",
+            opt_exc=OptimizationError,
+            opt_msg="ERROR: Path search failed — {e}",
+        )
     finally:
         for prepared in prepared_inputs:
             prepared.cleanup()
