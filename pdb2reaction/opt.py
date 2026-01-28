@@ -142,20 +142,17 @@ from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .utils import (
     convert_xyz_to_pdb,
-    detect_freeze_links,
+    merge_detected_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
-    prepare_input_structure,
-    apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs,
+    convert_xyz_like_outputs_logged,
 )
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
@@ -412,7 +409,7 @@ def _resolve_dist_freeze_targets(
     return resolved
 
 
-def _maybe_convert_outputs(
+def _convert_outputs(
     prepared_input: "PreparedInputStructure",
     out_dir: Path,
     dump: bool,
@@ -428,34 +425,30 @@ def _maybe_convert_outputs(
     ref_pdb = prepared_input.source_path.resolve() if needs_pdb else None
 
     # final_geometry.xyz → final_geometry.{pdb|gjf}
-    try:
-        convert_xyz_like_outputs(
-            final_xyz_path,
-            prepared_input,
-            ref_pdb_path=ref_pdb,
-            out_pdb_path=out_dir / "final_geometry.pdb" if needs_pdb else None,
-            out_gjf_path=out_dir / "final_geometry.gjf" if needs_gjf else None,
-        )
+    if convert_xyz_like_outputs_logged(
+        final_xyz_path,
+        prepared_input,
+        ref_pdb_path=ref_pdb,
+        out_pdb_path=out_dir / "final_geometry.pdb" if needs_pdb else None,
+        out_gjf_path=out_dir / "final_geometry.gjf" if needs_gjf else None,
+        context="final geometry",
+    ):
         click.echo("[convert] Wrote 'final_geometry' outputs.")
-    except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
 
     # optimization.trj → optimization.pdb (if dump)
     if dump and needs_pdb:
-        try:
-            trj_path = get_trj_fn("optimization.trj")
-            if trj_path.exists():
-                convert_xyz_like_outputs(
-                    trj_path,
-                    prepared_input,
-                    ref_pdb_path=ref_pdb,
-                    out_pdb_path=out_dir / "optimization.pdb" if needs_pdb else None,
-                )
+        trj_path = get_trj_fn("optimization.trj")
+        if trj_path.exists():
+            if convert_xyz_like_outputs_logged(
+                trj_path,
+                prepared_input,
+                ref_pdb_path=ref_pdb,
+                out_pdb_path=out_dir / "optimization.pdb" if needs_pdb else None,
+                context="optimization trajectory",
+            ):
                 click.echo("[convert] Wrote 'optimization' outputs.")
-            else:
-                click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
-        except Exception as e:
-            click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+        else:
+            click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
 
 
 # -----------------------------------------------
@@ -628,196 +621,181 @@ def cli(
 ) -> None:
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
-    prepared_input = prepare_input_structure(input_path)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    geom_input_path = prepared_input.geom_path
-    source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(
-        prepared_input,
-        charge,
-        spin,
+    with prepared_cli_input(
+        input_path,
+        ref_pdb=ref_pdb,
+        charge=charge,
+        spin=spin,
         ligand_charge=ligand_charge,
         prefix="[opt]",
-    )
+    ) as (prepared_input, charge, spin):
+        geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
 
-    try:
-        dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
-    except click.BadParameter as e:
-        click.echo(f"ERROR: {e}", err=True)
-        prepared_input.cleanup()
-        sys.exit(1)
-
-    # --------------------------
-    # 1) Assemble configuration
-    # --------------------------
-    try:
-        yaml_cfg = load_yaml_dict(args_yaml)
-        geom_cfg = dict(GEOM_KW)
-        calc_cfg = dict(CALC_KW)
-        opt_cfg = dict(OPT_BASE_KW)
-        lbfgs_cfg = dict(LBFGS_KW)
-        rfo_cfg = dict(RFO_KW)
-
-        # CLI overrides (defaults ← CLI)
-        calc_cfg["charge"] = charge
-        calc_cfg["spin"] = spin
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
-        opt_cfg["max_cycles"] = int(max_cycles)
-        opt_cfg["dump"] = bool(dump)
-        opt_cfg["out_dir"] = out_dir
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-
-        # YAML has highest precedence (defaults ← CLI ← YAML)
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("lbfgs",),)),
-                (rfo_cfg, (("rfo",),)),
-            ],
-        )
-
-        # Optionally infer "freeze_atoms" from link hydrogens in PDB
-        if freeze_links and source_path.suffix.lower() == ".pdb":
-            try:
-                detected = detect_freeze_links(source_path)
-            except Exception as e:
-                click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
-                detected = []
-            merged = merge_freeze_atom_indices(geom_cfg, detected)
-            if merged:
-                click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
-
-        # Normalize and select optimizer kind
-        kind = normalize_choice(
-            opt_mode,
-            param="--opt-mode",
-            alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|heavy",
-        )
-
-        # Pretty-print the resolved configuration
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-        click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
-        click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
-        echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
-        echo_sopt.update(opt_cfg)
-        echo_sopt["out_dir"] = str(out_dir_path)
-        click.echo(pretty_block(kind, echo_sopt))
-        if dist_freeze:
-            display_pairs = []
-            for (i, j, target) in dist_freeze:
-                label = (f"{target:.4f}" if target is not None else "<current>")
-                display_pairs.append((int(i) + 1, int(j) + 1, label))
-            click.echo(
-                pretty_block(
-                    "dist_freeze (input)",
-                    {
-                        "k (eV/Å^2)": float(bias_k),
-                        "pairs_1based": display_pairs,
-                    },
-                )
-            )
-
-        # --------------------------
-        # 2) Prepare geometry
-        # --------------------------
-        out_dir_path.mkdir(parents=True, exist_ok=True)
-
-        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-        # Pass all geometry kwargs except coord_type as coord_kwargs
-        coord_kwargs = dict(geom_cfg)
-        coord_kwargs.pop("coord_type", None)
-        geometry = geom_loader(
-            geom_input_path,
-            coord_type=coord_type,
-            **coord_kwargs,
-        )
-
-        # Attach UMA calculator
-        calc_builder_or_instance = uma_pysis(**calc_cfg)
         try:
-            base_calc = calc_builder_or_instance()
-        except TypeError:
-            base_calc = calc_builder_or_instance
-        geometry.set_calculator(base_calc)
+            dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
+        except click.BadParameter as e:
+            click.echo(f"ERROR: {e}", err=True)
+            sys.exit(1)
 
-        resolved_dist_freeze: List[Tuple[int, int, float]] = []
-        if dist_freeze:
-            try:
-                resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
-            except click.BadParameter as e:
-                click.echo(f"ERROR: {e}", err=True)
-                sys.exit(1)
-            click.echo(
-                pretty_block(
-                    "dist_freeze (active)",
-                    {
-                        "k (eV/Å^2)": float(bias_k),
-                        "pairs_1based": [
-                            (int(i) + 1, int(j) + 1, float(f"{t:.4f}"))
-                            for (i, j, t) in resolved_dist_freeze
-                        ],
-                    },
-                )
+        # --------------------------
+        # 1) Assemble configuration
+        # --------------------------
+        try:
+            yaml_cfg = load_yaml_dict(args_yaml)
+            geom_cfg = dict(GEOM_KW)
+            calc_cfg = dict(CALC_KW)
+            opt_cfg = dict(OPT_BASE_KW)
+            lbfgs_cfg = dict(LBFGS_KW)
+            rfo_cfg = dict(RFO_KW)
+
+            # CLI overrides (defaults ← CLI)
+            calc_cfg["charge"] = charge
+            calc_cfg["spin"] = spin
+            calc_cfg["workers"] = int(workers)
+            calc_cfg["workers_per_node"] = int(workers_per_node)
+            opt_cfg["max_cycles"] = int(max_cycles)
+            opt_cfg["dump"] = bool(dump)
+            opt_cfg["out_dir"] = out_dir
+            if thresh is not None:
+                opt_cfg["thresh"] = str(thresh)
+
+            # YAML has highest precedence (defaults ← CLI ← YAML)
+            apply_yaml_overrides(
+                yaml_cfg,
+                [
+                    (geom_cfg, (("geom",),)),
+                    (calc_cfg, (("calc",),)),
+                    (opt_cfg, (("opt",),)),
+                    (lbfgs_cfg, (("lbfgs",),)),
+                    (rfo_cfg, (("rfo",),)),
+                ],
             )
-            bias_calc = HarmonicBiasCalculator(base_calc, k=float(bias_k))
-            bias_calc.set_pairs(resolved_dist_freeze)
-            geometry.set_calculator(bias_calc)
 
-        # --------------------------
-        # 3) Build optimizer
-        # --------------------------
-        common_kwargs = dict(opt_cfg)
-        # Ensure paths (strings) are OK; Optimizer expects str, not Path
-        common_kwargs["out_dir"] = str(out_dir_path)
+            # Optionally infer "freeze_atoms" from link hydrogens in PDB
+            if freeze_links and source_path.suffix.lower() == ".pdb":
+                merge_detected_freeze_links(geom_cfg, source_path)
 
-        if kind == "lbfgs":
-            lbfgs_args = {**lbfgs_cfg, **common_kwargs}
-            optimizer = LBFGS(geometry, **lbfgs_args)
-        else:
-            rfo_args = {**rfo_cfg, **common_kwargs}
-            optimizer = RFOptimizer(geometry, **rfo_args)
+            # Normalize and select optimizer kind
+            kind = normalize_choice(
+                opt_mode,
+                param="--opt-mode",
+                alias_groups=_OPT_MODE_ALIASES,
+                allowed_hint="light|heavy",
+            )
 
-        # --------------------------
-        # 4) Run optimization
-        # --------------------------
-        click.echo("\n=== Optimization started ===\n")
-        optimizer.run()
-        click.echo("\n=== Optimization finished ===\n")
+            # Pretty-print the resolved configuration
+            out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+            click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+            click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
+            click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
+            echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
+            echo_sopt.update(opt_cfg)
+            echo_sopt["out_dir"] = str(out_dir_path)
+            click.echo(pretty_block(kind, echo_sopt))
+            if dist_freeze:
+                display_pairs = []
+                for (i, j, target) in dist_freeze:
+                    label = (f"{target:.4f}" if target is not None else "<current>")
+                    display_pairs.append((int(i) + 1, int(j) + 1, label))
+                click.echo(
+                    pretty_block(
+                        "dist_freeze (input)",
+                        {
+                            "k (eV/Å^2)": float(bias_k),
+                            "pairs_1based": display_pairs,
+                        },
+                    )
+                )
 
-        # --------------------------
-        # 5) Post-processing: PDB conversions (if input is PDB)
-        # --------------------------
-        # Final geometry location (Optimizer sets final_fn during run)
-        final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
-        _maybe_convert_outputs(
-            prepared_input=prepared_input,
-            out_dir=out_dir_path,
-            dump=bool(opt_cfg["dump"]),
-            get_trj_fn=optimizer.get_path_for_fn,
-            final_xyz_path=final_xyz_path,
-        )
+            # --------------------------
+            # 2) Prepare geometry
+            # --------------------------
+            out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            # Pass all geometry kwargs except coord_type as coord_kwargs
+            coord_kwargs = dict(geom_cfg)
+            coord_kwargs.pop("coord_type", None)
+            geometry = geom_loader(
+                geom_input_path,
+                coord_type=coord_type,
+                **coord_kwargs,
+            )
 
-    except ZeroStepLength:
-        click.echo("ERROR: Step length fell below the minimum allowed (ZeroStepLength).", err=True)
-        sys.exit(2)
-    except OptimizationError as e:
-        click.echo(f"ERROR: Optimization failed - {e}", err=True)
-        sys.exit(3)
-    except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
-        sys.exit(130)
-    except Exception as e:
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
-        sys.exit(1)
-    finally:
-        prepared_input.cleanup()
+            # Attach UMA calculator
+            base_calc = uma_pysis(**calc_cfg)
+            geometry.set_calculator(base_calc)
+
+            resolved_dist_freeze: List[Tuple[int, int, float]] = []
+            if dist_freeze:
+                try:
+                    resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
+                except click.BadParameter as e:
+                    click.echo(f"ERROR: {e}", err=True)
+                    sys.exit(1)
+                click.echo(
+                    pretty_block(
+                        "dist_freeze (active)",
+                        {
+                            "k (eV/Å^2)": float(bias_k),
+                            "pairs_1based": [
+                                (int(i) + 1, int(j) + 1, float(f"{t:.4f}"))
+                                for (i, j, t) in resolved_dist_freeze
+                            ],
+                        },
+                    )
+                )
+                bias_calc = HarmonicBiasCalculator(base_calc, k=float(bias_k))
+                bias_calc.set_pairs(resolved_dist_freeze)
+                geometry.set_calculator(bias_calc)
+
+            # --------------------------
+            # 3) Build optimizer
+            # --------------------------
+            common_kwargs = dict(opt_cfg)
+            # Ensure paths (strings) are OK; Optimizer expects str, not Path
+            common_kwargs["out_dir"] = str(out_dir_path)
+
+            if kind == "lbfgs":
+                lbfgs_args = {**lbfgs_cfg, **common_kwargs}
+                optimizer = LBFGS(geometry, **lbfgs_args)
+            else:
+                rfo_args = {**rfo_cfg, **common_kwargs}
+                optimizer = RFOptimizer(geometry, **rfo_args)
+
+            # --------------------------
+            # 4) Run optimization
+            # --------------------------
+            click.echo("\n=== Optimization started ===\n")
+            optimizer.run()
+            click.echo("\n=== Optimization finished ===\n")
+
+            # --------------------------
+            # 5) Post-processing: PDB conversions (if input is PDB)
+            # --------------------------
+            # Final geometry location (Optimizer sets final_fn during run)
+            final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
+            _convert_outputs(
+                prepared_input=prepared_input,
+                out_dir=out_dir_path,
+                dump=bool(opt_cfg["dump"]),
+                get_trj_fn=optimizer.get_path_for_fn,
+                final_xyz_path=final_xyz_path,
+            )
+
+            click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
+
+        except ZeroStepLength:
+            click.echo("ERROR: Step length fell below the minimum allowed (ZeroStepLength).", err=True)
+            sys.exit(2)
+        except OptimizationError as e:
+            click.echo(f"ERROR: Optimization failed - {e}", err=True)
+            sys.exit(3)
+        except KeyboardInterrupt:
+            click.echo("\nInterrupted by user.", err=True)
+            sys.exit(130)
+        except Exception as e:
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            click.echo("Unhandled exception during optimization:\n" + textwrap.indent(tb, "  "), err=True)
+            sys.exit(1)

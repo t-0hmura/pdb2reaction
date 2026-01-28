@@ -61,7 +61,7 @@ Description
     no `charge` was supplied on the CLI.
   - `convert_xyz_to_gjf(xyz_path, template, out_path)`: Render new coordinates into the given `.gjf` template
     while preserving formatting.
-  - `maybe_convert_xyz_to_gjf(xyz_path, template, out_path=None)`: Convenience wrapper that returns the output
+  - `convert_xyz_to_gjf_optional(xyz_path, template, out_path=None)`: Convenience wrapper that returns the output
     path when conversion occurs, otherwise `None`.
 
 - **Plotly: Energy diagram builder**
@@ -91,7 +91,7 @@ Description
   - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other
     `ATOM`/`HETATM` records and return the corresponding 0‑based indices in the full atom order (matching
     geom loading). Returns an empty list if no link hydrogens are present.
-  - `detect_freeze_links_safe(pdb_path)`: Wrapper that catches unexpected parser failures, prints a
+  - `detect_freeze_links_logged(pdb_path)`: Wrapper that catches unexpected parser failures, prints a
     `[freeze-links]` warning, and always returns a list (possibly empty).
 
 Outputs (& Directory Layout)
@@ -101,7 +101,7 @@ General behavior
   ├─ Most helpers return Python objects or mutate dictionaries in place.
   └─ On-disk effects occur only when explicitly invoked:
         • ``convert_xyz_to_pdb`` writes to ``out_pdb_path`` (first frame overwrite, subsequent frames append MODEL/ENDMDL).
-        • ``convert_xyz_to_gjf`` / ``maybe_convert_xyz_to_gjf`` render updated ``.gjf`` files.
+        • ``convert_xyz_to_gjf`` / ``convert_xyz_to_gjf_optional`` render updated ``.gjf`` files.
         • ``prepare_input_structure`` emits a temporary ``.xyz`` for ``.gjf`` inputs and cleans it up at context exit.
         • ``build_energy_diagram`` returns a Plotly ``Figure``; saving/exporting is up to the caller.
 
@@ -115,18 +115,20 @@ Notes
 - Dependencies: PyYAML, ASE (`ase.io.read`/`write`, `ase.data.chemical_symbols`), Plotly (graph objects), Click (for CLI error reporting/options). Ensure these are installed.
 """
 
+import ast
 import math
 import re
 import tempfile
 import time
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
+from numbers import Real, Integral
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
+from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar, Iterator
 
 import click
-import math
-import re
+from click.core import ParameterSource
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
@@ -172,28 +174,6 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     return g
 
 
-def format_freeze_atoms_for_echo(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Return a copy of ``cfg`` with ``freeze_atoms`` flattened for logging."""
-
-    if "freeze_atoms" not in cfg:
-        return dict(cfg)
-
-    g = dict(cfg)
-    freeze_atoms = g.get("freeze_atoms")
-
-    if isinstance(freeze_atoms, str):
-        return g
-
-    try:
-        items = list(freeze_atoms)
-    except TypeError:
-        return g
-
-    joined = ",".join(map(str, items))
-    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
-    return g
-
-
 def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
     """Return a formatted elapsed-time string with the provided ``prefix`` label."""
     finish = end_time if end_time is not None else time.perf_counter()
@@ -201,6 +181,52 @@ def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = N
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+
+
+def ensure_dir(path: Path) -> None:
+    """Create a directory (parents ok); noop if it already exists."""
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
+    """Create an independent pysisyphus Geometry snapshot from the given Geometry."""
+    s = geom.as_xyz()
+    if not s.endswith("\n"):
+        s += "\n"
+    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+    try:
+        tmp.write(s)
+        tmp.flush()
+        tmp.close()
+        from pysisyphus.helpers import geom_loader  # local import to avoid heavy import at module load
+        import numpy as np
+
+        snap = geom_loader(
+            Path(tmp.name),
+            coord_type=getattr(geom, "coord_type", coord_type_default),
+            freeze_atoms=getattr(geom, "freeze_atoms", []),
+        )
+        try:
+            snap.freeze_atoms = np.array(getattr(geom, "freeze_atoms", []), dtype=int)
+        except Exception:
+            click.echo(
+                "[snapshot] WARNING: Failed to propagate freeze_atoms to snapshot geometry.",
+                err=True,
+            )
+        return snap
+    finally:
+        try:
+            import os
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
+def make_snapshot_geometry(coord_type_default: str) -> Callable[[Any], Any]:
+    """Return a snapshot helper bound to a default coord_type (scan helpers)."""
+    def _snap(geom: Any) -> Any:
+        return snapshot_geometry(geom, coord_type_default=coord_type_default)
+    return _snap
 
 
 def merge_freeze_atom_indices(
@@ -257,6 +283,15 @@ def normalize_choice(
     hint = allowed_hint.strip()
     detail = f" Allowed: {hint}." if hint else ""
     raise click.BadParameter(f"Unknown value for {param} '{value}'.{detail}")
+
+
+def cli_param_overridden(ctx: click.Context, name: str) -> bool:
+    """Return True when a CLI parameter value was explicitly provided."""
+    try:
+        source = ctx.get_parameter_source(name)
+    except Exception:
+        return True
+    return source not in (None, ParameterSource.DEFAULT)
 
 
 def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -330,6 +365,107 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
         raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
 
     return data
+
+
+def build_scan_configs(
+    yaml_cfg: Mapping[str, Any],
+    *,
+    geom_kw: Dict[str, Any],
+    calc_kw: Dict[str, Any],
+    opt_kw: Dict[str, Any],
+    lbfgs_kw: Dict[str, Any],
+    rfo_kw: Dict[str, Any],
+    bias_kw: Dict[str, Any],
+    extra_overrides: Sequence[Tuple[Dict[str, Any], _Sequence[_Sequence[str]]]] = (),
+    charge: Optional[int] = None,
+    spin: Optional[int] = None,
+    workers: int = 1,
+    workers_per_node: int = 1,
+    out_dir: str = ".",
+    thresh: Optional[str] = None,
+    bias_k: Optional[float] = None,
+    set_charge_spin: bool = True,
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    """Build common scan configs (defaults ← CLI ← YAML)."""
+    geom_cfg = dict(geom_kw)
+    calc_cfg = dict(calc_kw)
+    opt_cfg = dict(opt_kw)
+    lbfgs_cfg = dict(lbfgs_kw)
+    rfo_cfg = dict(rfo_kw)
+    bias_cfg = dict(bias_kw)
+
+    if set_charge_spin:
+        if charge is not None:
+            calc_cfg["charge"] = int(charge)
+        if spin is not None:
+            calc_cfg["spin"] = int(spin)
+    calc_cfg["workers"] = int(workers)
+    calc_cfg["workers_per_node"] = int(workers_per_node)
+    opt_cfg["out_dir"] = out_dir
+    opt_cfg["dump"] = False
+    if thresh is not None:
+        opt_cfg["thresh"] = str(thresh)
+
+    apply_yaml_overrides(
+        yaml_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (opt_cfg, (("opt",),)),
+            (lbfgs_cfg, (("lbfgs",),)),
+            (rfo_cfg, (("rfo",),)),
+            (bias_cfg, (("bias",),)),
+            *list(extra_overrides),
+        ],
+    )
+
+    if bias_k is not None:
+        bias_cfg["k"] = float(bias_k)
+
+    return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
+
+
+def convert_xyz_like_outputs_logged(
+    xyz_path: Path,
+    prepared_input: "PreparedInputStructure",
+    *,
+    ref_pdb_path: Optional[Path],
+    out_pdb_path: Optional[Path] = None,
+    out_gjf_path: Optional[Path] = None,
+    context: str = "outputs",
+) -> bool:
+    """Convert XYZ/TRJ outputs with a warning on failure; return success."""
+    try:
+        convert_xyz_like_outputs(
+            xyz_path,
+            prepared_input,
+            ref_pdb_path=ref_pdb_path,
+            out_pdb_path=out_pdb_path,
+            out_gjf_path=out_gjf_path,
+        )
+        return True
+    except Exception as e:
+        click.echo(f"[convert] WARNING: Failed to convert {context}: {e}", err=True)
+        return False
+
+
+def convert_xyz_to_gjf_logged(
+    xyz_path: Path,
+    template: Optional["GjfTemplate"],
+    *,
+    out_path: Optional[Path] = None,
+    context: str = "GJF",
+) -> Optional[Path]:
+    """Convert XYZ to GJF with a warning on failure; returns output path or None."""
+    try:
+        if template is None or (not xyz_path.exists()):
+            return None
+        target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
+        convert_xyz_to_gjf_optional(xyz_path, template, target)
+        return target
+    except Exception as e:
+        click.echo(f"[convert] WARNING: Failed to convert '{xyz_path.name}' to {context}: {e}", err=True)
+        return None
 
 
 # =============================================================================
@@ -907,6 +1043,67 @@ def resolve_charge_spin_or_raise(
     return int(charge), int(spin)
 
 
+def resolve_charge_spin_multi(
+    prepared_inputs: Sequence[PreparedInputStructure],
+    charge: Optional[int],
+    spin: Optional[int],
+    *,
+    ligand_charge: Optional[float | str | Dict[str, float]] = None,
+    prefix: str = "[charge]",
+) -> Tuple[int, int]:
+    """Resolve charge/spin for multi-endpoint workflows."""
+    resolved_charge = charge
+    resolved_spin = spin
+    for prepared in prepared_inputs:
+        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
+            resolved_charge, resolved_spin, prepared.gjf_template
+        )
+
+    if ligand_charge is not None:
+        for prepared in prepared_inputs:
+            if prepared.source_path.suffix.lower() in {".xyz", ".gjf"}:
+                raise click.ClickException(
+                    "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+                )
+        if resolved_charge is None:
+            resolved_charge = _derive_charge_from_ligand_charge(
+                prepared_inputs[0], ligand_charge, prefix=prefix
+            )
+
+    if resolved_charge is None:
+        if any(not p.is_gjf for p in prepared_inputs):
+            raise click.ClickException(
+                "-q/--charge is required unless the input is a .gjf template with charge metadata."
+            )
+        resolved_charge = 0
+    if resolved_spin is None:
+        resolved_spin = 1
+    return int(resolved_charge), int(resolved_spin)
+
+
+@contextmanager
+def prepared_cli_input(
+    input_path: Path,
+    *,
+    ref_pdb: Optional[Path],
+    charge: Optional[int],
+    spin: Optional[int],
+    ligand_charge: Optional[float | str | Dict[str, float]] = None,
+    prefix: str = "[charge]",
+) -> Iterator[Tuple[PreparedInputStructure, int, int]]:
+    """Context-managed input preparation with charge/spin resolution."""
+    with prepare_input_structure(input_path) as prepared:
+        apply_ref_pdb_override(prepared, ref_pdb)
+        charge_res, spin_res = resolve_charge_spin_or_raise(
+            prepared,
+            charge,
+            spin,
+            ligand_charge=ligand_charge,
+            prefix=prefix,
+        )
+        yield prepared, charge_res, spin_res
+
+
 _CONVERT_FILES_ENABLED: bool = True
 
 
@@ -954,7 +1151,7 @@ def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) ->
     out_path.write_text(text)
 
 
-def maybe_convert_xyz_to_gjf(
+def convert_xyz_to_gjf_optional(
     xyz_path: Path,
     template: Optional[GjfTemplate],
     out_path: Optional[Path] = None,
@@ -1204,6 +1401,141 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
     raise ValueError(f"Atom spec '{spec}' did not match any atom.")
 
 
+def parse_scan_list_triples(
+    raw: str,
+    *,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    option_name: str,
+    return_one_based: bool = False,
+) -> Tuple[List[Tuple[int, int, float]], List[Tuple[Any, Any, float]]]:
+    """Parse --scan-list style triples into indices (0-based by default)."""
+    try:
+        obj = ast.literal_eval(raw)
+    except Exception as e:
+        raise click.BadParameter(f"Invalid literal for {option_name}: {e}")
+
+    if not isinstance(obj, (list, tuple)):
+        raise click.BadParameter(
+            f"{option_name} must be a list/tuple of (i,j,target)."
+        )
+
+    parsed: List[Tuple[int, int, float]] = []
+    for entry_idx, t in enumerate(obj, start=1):
+        if not (
+            isinstance(t, (list, tuple))
+            and len(t) == 3
+            and isinstance(t[2], Real)
+        ):
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} must be (i,j,target): got {t}"
+            )
+
+        i = resolve_scan_index(
+            t[0],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (i)",
+        )
+        j = resolve_scan_index(
+            t[1],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (j)",
+        )
+        if return_one_based:
+            i += 1
+            j += 1
+        parsed.append((i, j, float(t[2])))
+
+    return parsed, list(obj)
+
+
+def close_matplotlib_figures() -> None:
+    """Best-effort cleanup for matplotlib figures to avoid open-figure warnings."""
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+        plt.close("all")
+    except Exception:
+        pass
+
+
+def resolve_scan_index(
+    value: Any,
+    *,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    context: str,
+) -> int:
+    """Resolve an index or atom-spec string for scan lists with consistent errors."""
+    if isinstance(value, Integral):
+        idx_val = int(value)
+        if one_based:
+            idx_val -= 1
+        if idx_val < 0:
+            raise click.BadParameter(
+                f"Negative atom index after base conversion in {context}: {idx_val} (0-based expected)."
+            )
+        return idx_val
+    if isinstance(value, str):
+        if not atom_meta:
+            raise click.BadParameter(
+                f"{context} uses a string atom spec, but no PDB metadata is available."
+            )
+        try:
+            return resolve_atom_spec_index(value, atom_meta)
+        except ValueError as exc:
+            raise click.BadParameter(f"{context} {exc}")
+    raise click.BadParameter(f"{context} must be an int index or atom spec string.")
+
+
+def parse_scan_list_quads(
+    raw: str,
+    *,
+    expected_len: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    option_name: str,
+) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]]]:
+    """Parse --scan-list style quadruples into 0-based indices."""
+    try:
+        obj = ast.literal_eval(raw)
+    except Exception as e:
+        raise click.BadParameter(f"Invalid literal for {option_name}: {e}")
+
+    if not (isinstance(obj, (list, tuple)) and len(obj) == expected_len):
+        quads = ",".join([f"(i{n},j{n},low{n},high{n})" for n in range(1, expected_len + 1)])
+        raise click.BadParameter(
+            f"{option_name} must contain exactly {expected_len} quadruples: [{quads}]"
+        )
+
+    parsed: List[Tuple[int, int, float, float]] = []
+    for entry_idx, q in enumerate(obj, start=1):
+        if not (
+            isinstance(q, (list, tuple))
+            and len(q) == 4
+            and isinstance(q[2], Real)
+            and isinstance(q[3], Real)
+        ):
+            raise click.BadParameter(f"{option_name} entry must be (i,j,low,high): got {q}")
+
+        i = resolve_scan_index(
+            q[0],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (i)",
+        )
+        j = resolve_scan_index(
+            q[1],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (j)",
+        )
+        parsed.append((i, j, float(q[2]), float(q[3])))
+
+    return parsed, list(obj)
+
+
 def format_pdb_atom_metadata_header() -> str:
     """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
 
@@ -1258,7 +1590,7 @@ def detect_freeze_links(pdb_path):
     return indices
 
 
-def detect_freeze_links_safe(pdb_path: Path) -> List[int]:
+def detect_freeze_links_logged(pdb_path: Path) -> List[int]:
     """Return link-parent indices with a `[freeze-links]` warning instead of raising."""
     try:
         return list(detect_freeze_links(pdb_path))
@@ -1268,3 +1600,17 @@ def detect_freeze_links_safe(pdb_path: Path) -> List[int]:
             err=True,
         )
         return []
+
+
+def merge_detected_freeze_links(
+    geom_cfg: Dict[str, Any],
+    pdb_path: Path,
+    *,
+    prefix: str = "[freeze-links]",
+) -> List[int]:
+    """Detect link-parent atoms and merge them into ``geom_cfg['freeze_atoms']``."""
+    detected = detect_freeze_links_logged(pdb_path)
+    merged = merge_freeze_atom_indices(geom_cfg, detected)
+    if merged:
+        click.echo(f"{prefix} Freeze atoms (0-based): {','.join(map(str, merged))}")
+    return merged

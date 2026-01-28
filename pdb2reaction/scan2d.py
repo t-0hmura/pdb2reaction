@@ -98,17 +98,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import ast
 import math
 import sys
 import textwrap
 import traceback
 import tempfile
-import os
 import time
 
 import click
-from click.core import ParameterSource
 import numpy as np
 import pandas as pd
 from scipy.interpolate import Rbf
@@ -128,22 +125,24 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
-    detect_freeze_links_safe,
+    merge_detected_freeze_links,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
-    prepare_input_structure,
-    apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs,
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
-    resolve_atom_spec_index,
+    ensure_dir,
+    make_snapshot_geometry,
+    parse_scan_list_quads,
+    convert_xyz_like_outputs_logged,
+    build_scan_configs,
+    cli_param_overridden,
+    load_yaml_dict,
 )
 
 # Default keyword dictionaries for the 2D scan (override only the knobs we touch)
@@ -175,34 +174,10 @@ HARTREE_TO_KCAL_MOL = 627.50961
 
 
 def _ensure_dir(path: Path) -> None:
-    path.mkdir(parents=True, exist_ok=True)
+    ensure_dir(path)
 
 
-def _snapshot_geometry(g) -> Any:
-    s = g.as_xyz()
-    if not s.endswith("\n"):
-        s += "\n"
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
-    try:
-        tmp.write(s)
-        tmp.flush()
-        tmp.close()
-        snap = geom_loader(
-            Path(tmp.name),
-            coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"]),
-            freeze_atoms=getattr(g, "freeze_atoms", []),
-        )
-        try:
-            import numpy as _np
-            snap.freeze_atoms = _np.array(getattr(g, "freeze_atoms", []), dtype=int)
-        except Exception:
-            pass
-        return snap
-    finally:
-        try:
-            os.unlink(tmp.name)
-        except Exception:
-            pass
+_snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 
 
 def _parse_scan_list(
@@ -210,56 +185,17 @@ def _parse_scan_list(
     one_based: bool,
     atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
 ) -> Tuple[Tuple[int, int, float, float], Tuple[int, int, float, float], List[Tuple[Any, Any, float, float]]]:
-    try:
-        obj = ast.literal_eval(raw)
-    except Exception as e:
-        raise click.BadParameter(f"Invalid literal for --scan-list: {e}")
-
-    if not (isinstance(obj, (list, tuple)) and len(obj) == 2):
-        raise click.BadParameter("--scan-list must contain exactly two quadruples: [(i1,j1,low1,high1),(i2,j2,low2,high2)]")
-
-    def _resolve_index(value: Any, entry_idx: int, side_label: str) -> int:
-        if isinstance(value, (int, np.integer)):
-            idx_val = int(value)
-            if one_based:
-                idx_val -= 1
-            if idx_val < 0:
-                raise click.BadParameter(
-                    f"Negative atom index after base conversion: {idx_val} (0-based expected)."
-                )
-            return idx_val
-        if isinstance(value, str):
-            if not atom_meta:
-                raise click.BadParameter(
-                    f"--scan-list entry {entry_idx} ({side_label}) uses a string atom spec, "
-                    "but no PDB metadata is available."
-                )
-            try:
-                return resolve_atom_spec_index(value, atom_meta)
-            except ValueError as exc:
-                raise click.BadParameter(
-                    f"--scan-list entry {entry_idx} ({side_label}) {exc}"
-                )
-        raise click.BadParameter(
-            f"--scan-list entry {entry_idx} ({side_label}) must be an int index or atom spec string."
-        )
-
-    parsed: List[Tuple[int, int, float, float]] = []
-    for q in obj:
-        if not (
-            isinstance(q, (list, tuple)) and len(q) == 4
-            and isinstance(q[2], (int, float, np.floating))
-            and isinstance(q[3], (int, float, np.floating))
-        ):
-            raise click.BadParameter(f"--scan-list entry must be (i,j,low,high): got {q}")
-
-        i = _resolve_index(q[0], len(parsed) + 1, "i")
-        j = _resolve_index(q[1], len(parsed) + 1, "j")
-        low, high = float(q[2]), float(q[3])
+    parsed, raw_pairs = parse_scan_list_quads(
+        raw,
+        expected_len=2,
+        one_based=one_based,
+        atom_meta=atom_meta,
+        option_name="--scan-list",
+    )
+    for i, j, low, high in parsed:
         if low <= 0.0 or high <= 0.0:
             raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
-        parsed.append((i, j, low, high))
-    return parsed[0], parsed[1], list(obj)
+    return parsed[0], parsed[1], raw_pairs
 
 
 def _atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
@@ -607,363 +543,256 @@ def cli(
     zmax: Optional[float],
 ) -> None:
 
-    from .utils import load_yaml_dict, apply_yaml_overrides
-
     set_convert_file_enabled(convert_files)
 
-    relax_max_cycles_override_requested = False
-    try:
-        relax_cycles_source = ctx.get_parameter_source("relax_max_cycles")
-        relax_max_cycles_override_requested = relax_cycles_source not in (None, ParameterSource.DEFAULT)
-    except Exception:
-        relax_max_cycles_override_requested = True
+    relax_max_cycles_override_requested = cli_param_overridden(ctx, "relax_max_cycles")
 
-    prepared_input = prepare_input_structure(input_path)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    geom_input_path = prepared_input.geom_path
-    source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(
-        prepared_input,
-        charge,
-        spin,
+    with prepared_cli_input(
+        input_path,
+        ref_pdb=ref_pdb,
+        charge=charge,
+        spin=spin,
         ligand_charge=ligand_charge,
         prefix="[scan2d]",
-    )
+    ) as (prepared_input, charge, spin):
+        geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
 
-    try:
-        time_start = time.perf_counter()
+        try:
+            time_start = time.perf_counter()
 
-        yaml_cfg = load_yaml_dict(args_yaml)
+            yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg = dict(GEOM_KW)
-        calc_cfg = dict(CALC_KW)
-        opt_cfg = dict(OPT_BASE_KW)
-        lbfgs_cfg = dict(LBFGS_KW)
-        rfo_cfg = dict(RFO_KW)
-        bias_cfg = dict(BIAS_KW)
+            geom_cfg = dict(GEOM_KW)
+            calc_cfg = dict(CALC_KW)
+            opt_cfg = dict(OPT_BASE_KW)
+            lbfgs_cfg = dict(LBFGS_KW)
+            rfo_cfg = dict(RFO_KW)
+            bias_cfg = dict(BIAS_KW)
 
-        # CLI overrides (defaults ← CLI)
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"] = int(spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
-        opt_cfg["out_dir"] = out_dir
-        opt_cfg["dump"] = False
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-
-        # YAML overrides (highest precedence)
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("lbfgs",),)),
-                (rfo_cfg, (("rfo",),)),
-                (bias_cfg, (("bias",),)),
-            ],
-        )
-
-        if bias_k is not None:
-            bias_cfg["k"] = float(bias_k)
-
-        kind = normalize_choice(
-            opt_mode,
-            param="--opt-mode",
-            alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|heavy",
-        )
-
-        # Resolve freeze list before logging so printed config matches runtime.
-        freeze = merge_freeze_atom_indices(geom_cfg)
-        freeze_links_msg = None
-        if freeze_links and source_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(source_path)
-            if detected:
-                freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                if freeze:
-                    freeze_links_msg = (
-                        f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
-                    )
-
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        _ensure_dir(out_dir_path)
-        echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
-        echo_opt = dict(opt_cfg)
-        if relax_max_cycles_override_requested:
-            echo_opt["max_cycles"] = int(relax_max_cycles)
-        echo_opt["out_dir"] = str(out_dir_path)
-        echo_bias = dict(bias_cfg)
-        click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("opt", echo_opt))
-        max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
-        echo_sopt = _build_sopt_kwargs(
-            kind,
-            lbfgs_cfg,
-            rfo_cfg,
-            opt_cfg,
-            max_step_bohr_for_log,
-            relax_max_cycles,
-            relax_max_cycles_override_requested,
-            out_dir_path,
-            str(opt_cfg.get("prefix", "")),
-        )
-        click.echo(
-            pretty_block(
-                "lbfgs" if kind == "lbfgs" else "rfo",
-                echo_sopt,
+            geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
+                yaml_cfg,
+                geom_kw=geom_cfg,
+                calc_kw=calc_cfg,
+                opt_kw=opt_cfg,
+                lbfgs_kw=lbfgs_cfg,
+                rfo_kw=rfo_cfg,
+                bias_kw=bias_cfg,
+                charge=charge,
+                spin=spin,
+                workers=workers,
+                workers_per_node=workers_per_node,
+                out_dir=out_dir,
+                thresh=thresh,
+                bias_k=bias_k,
             )
-        )
-        click.echo(pretty_block("bias", echo_bias))
 
-        pdb_atom_meta: List[Dict[str, Any]] = []
-        if source_path.suffix.lower() == ".pdb":
-            pdb_atom_meta = load_pdb_atom_metadata(source_path)
-
-        (i1, j1, low1, high1), (i2, j2, low2, high2), raw_pairs = _parse_scan_list(
-            scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
-        )
-        d1_label_csv = _axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
-        d2_label_csv = _axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
-        d1_label_html = _axis_label_html(d1_label_csv)
-        d2_label_html = _axis_label_html(d2_label_csv)
-        click.echo(
-            pretty_block(
-                "scan-list (0-based)",
-                {"d1": (i1, j1, low1, high1), "d2": (i2, j2, low2, high2)},
+            kind = normalize_choice(
+                opt_mode,
+                param="--opt-mode",
+                alias_groups=_OPT_MODE_ALIASES,
+                allowed_hint="light|heavy",
             )
-        )
 
-        if pdb_atom_meta:
-            click.echo("[scan2d] PDB atom details for scanned pairs:")
-            legend = format_pdb_atom_metadata_header()
-            click.echo(f"        legend: {legend}")
-            click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
-            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
-            click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
-            click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
+            # Resolve freeze list before logging so printed config matches runtime.
+            freeze = merge_freeze_atom_indices(geom_cfg)
+            if freeze_links and source_path.suffix.lower() == ".pdb":
+                freeze = merge_detected_freeze_links(geom_cfg, source_path)
 
-        # Temporary and grid directories
-        tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
-        grid_dir = out_dir_path / "grid"
-        tmp_opt_dir = tmp_root / "opt"
-        _ensure_dir(grid_dir)
-        _ensure_dir(tmp_opt_dir)
-
-        final_dir = out_dir_path
-
-        if freeze_links_msg:
-            click.echo(freeze_links_msg)
-        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-        geom_outer = geom_loader(
-            geom_input_path, coord_type=coord_type, freeze_atoms=freeze
-        )
-        if freeze:
-            try:
-                import numpy as _np
-
-                geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
-            except Exception:
-                pass
-
-        base_calc = uma_pysis(**calc_cfg)
-        biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
-
-        # Records (including preopt) will be accumulated here
-        records: List[Dict[str, Any]] = []
-        ref_pdb_path = source_path if source_path.suffix.lower() == ".pdb" else None
-
-        # Reference distances from the (pre)optimized structure, used for scan ordering
-        d1_ref: Optional[float] = None
-        d2_ref: Optional[float] = None
-
-        # Cache of previously converged geometries for nearest-start logic:
-        # each entry is (d1_A, d2_A, geometry_snapshot)
-        visited_geoms: List[Tuple[float, float, Any]] = []
-
-        if preopt:
-            click.echo("[preopt] Unbiased relaxation of the initial structure ...")
-            geom_outer.set_calculator(base_calc)
-            max_step_bohr_local = float(max_step_size) * ANG2BOHR
-            optimizer0 = _make_optimizer(
-                geom_outer,
+            out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+            _ensure_dir(out_dir_path)
+            echo_geom = format_geom_for_echo(geom_cfg)
+            echo_calc = format_geom_for_echo(calc_cfg)
+            echo_opt = dict(opt_cfg)
+            if relax_max_cycles_override_requested:
+                echo_opt["max_cycles"] = int(relax_max_cycles)
+            echo_opt["out_dir"] = str(out_dir_path)
+            echo_bias = dict(bias_cfg)
+            click.echo(pretty_block("geom", echo_geom))
+            click.echo(pretty_block("calc", echo_calc))
+            click.echo(pretty_block("opt", echo_opt))
+            max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
+            echo_sopt = _build_sopt_kwargs(
                 kind,
                 lbfgs_cfg,
                 rfo_cfg,
                 opt_cfg,
-                max_step_bohr=max_step_bohr_local,
-                relax_max_cycles=relax_max_cycles,
-                relax_override_requested=relax_max_cycles_override_requested,
-                out_dir=tmp_opt_dir,
-                prefix="preopt_",
+                max_step_bohr_for_log,
+                relax_max_cycles,
+                relax_max_cycles_override_requested,
+                out_dir_path,
+                str(opt_cfg.get("prefix", "")),
             )
-            try:
-                optimizer0.run()
-            except ZeroStepLength:
-                click.echo("[preopt] ZeroStepLength — continuing.", err=True)
-            except OptimizationError as e:
-                click.echo(f"[preopt] OptimizationError — {e}", err=True)
+            click.echo(
+                pretty_block(
+                    "lbfgs" if kind == "lbfgs" else "rfo",
+                    echo_sopt,
+                )
+            )
+            click.echo(pretty_block("bias", echo_bias))
 
-            # Measure optimized distances and record preopt structure
-            try:
-                d1_ref = _distance_A(geom_outer, i1, j1)
-                d2_ref = _distance_A(geom_outer, i2, j2)
+            pdb_atom_meta: List[Dict[str, Any]] = []
+            if source_path.suffix.lower() == ".pdb":
+                pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
-                d1_tag = _dist_tag(d1_ref)
-                d2_tag = _dist_tag(d2_ref)
+            (i1, j1, low1, high1), (i2, j2, low2, high2), raw_pairs = _parse_scan_list(
+                scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta
+            )
+            d1_label_csv = _axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
+            d2_label_csv = _axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
+            d1_label_html = _axis_label_html(d1_label_csv)
+            d2_label_html = _axis_label_html(d2_label_csv)
+            click.echo(
+                pretty_block(
+                    "scan-list (0-based)",
+                    {"d1": (i1, j1, low1, high1), "d2": (i2, j2, low2, high2)},
+                )
+            )
 
-                preopt_xyz_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.xyz"
-                s = geom_outer.as_xyz()
-                if not s.endswith("\n"):
-                    s += "\n"
-                with open(preopt_xyz_path, "w") as f:
-                    f.write(s)
+            if pdb_atom_meta:
+                click.echo("[scan2d] PDB atom details for scanned pairs:")
+                legend = format_pdb_atom_metadata_header()
+                click.echo(f"        legend: {legend}")
+                click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}")
+                click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}")
+                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}")
 
+            # Temporary and grid directories
+            tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
+            grid_dir = out_dir_path / "grid"
+            tmp_opt_dir = tmp_root / "opt"
+            _ensure_dir(grid_dir)
+            _ensure_dir(tmp_opt_dir)
+
+            final_dir = out_dir_path
+
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            geom_outer = geom_loader(
+                geom_input_path, coord_type=coord_type, freeze_atoms=freeze
+            )
+            if freeze:
                 try:
-                    convert_xyz_like_outputs(
+                    import numpy as _np
+
+                    geom_outer.freeze_atoms = _np.array(freeze, dtype=int)
+                except Exception:
+                    pass
+
+            base_calc = uma_pysis(**calc_cfg)
+            biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
+
+            # Records (including preopt) will be accumulated here
+            records: List[Dict[str, Any]] = []
+            ref_pdb_path = source_path if source_path.suffix.lower() == ".pdb" else None
+
+            # Reference distances from the (pre)optimized structure, used for scan ordering
+            d1_ref: Optional[float] = None
+            d2_ref: Optional[float] = None
+
+            # Cache of previously converged geometries for nearest-start logic:
+            # each entry is (d1_A, d2_A, geometry_snapshot)
+            visited_geoms: List[Tuple[float, float, Any]] = []
+
+            if preopt:
+                click.echo("[preopt] Unbiased relaxation of the initial structure ...")
+                geom_outer.set_calculator(base_calc)
+                max_step_bohr_local = float(max_step_size) * ANG2BOHR
+                optimizer0 = _make_optimizer(
+                    geom_outer,
+                    kind,
+                    lbfgs_cfg,
+                    rfo_cfg,
+                    opt_cfg,
+                    max_step_bohr=max_step_bohr_local,
+                    relax_max_cycles=relax_max_cycles,
+                    relax_override_requested=relax_max_cycles_override_requested,
+                    out_dir=tmp_opt_dir,
+                    prefix="preopt_",
+                )
+                try:
+                    optimizer0.run()
+                except ZeroStepLength:
+                    click.echo("[preopt] ZeroStepLength — continuing.", err=True)
+                except OptimizationError as e:
+                    click.echo(f"[preopt] OptimizationError — {e}", err=True)
+
+                # Measure optimized distances and record preopt structure
+                try:
+                    d1_ref = _distance_A(geom_outer, i1, j1)
+                    d2_ref = _distance_A(geom_outer, i2, j2)
+
+                    d1_tag = _dist_tag(d1_ref)
+                    d2_tag = _dist_tag(d2_ref)
+
+                    preopt_xyz_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.xyz"
+                    s = geom_outer.as_xyz()
+                    if not s.endswith("\n"):
+                        s += "\n"
+                    with open(preopt_xyz_path, "w") as f:
+                        f.write(s)
+
+                    convert_xyz_like_outputs_logged(
                         preopt_xyz_path,
                         prepared_input,
                         ref_pdb_path=ref_pdb_path,
                         out_pdb_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.pdb",
                         out_gjf_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf",
+                        context=f"'{preopt_xyz_path.name}' to PDB/GJF",
+                    )
+
+                    E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
+                    records.append(
+                        {
+                            "i": int(-1),
+                            "j": int(-1),
+                            "d1_A": float(d1_ref),
+                            "d2_A": float(d2_ref),
+                            "energy_hartree": E_pre_h,
+                            "bias_converged": True,
+                        }
+                    )
+                    # Store preoptimized geometry as a candidate for nearest-start
+                    visited_geoms.append(
+                        (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
+                    )
+
+                    click.echo(
+                        f"[preopt] Recorded preoptimized structure at d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
                     )
                 except Exception as e:
                     click.echo(
-                        f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to PDB/GJF: {e}",
+                        f"[preopt] WARNING: failed to record preoptimized structure: {e}",
                         err=True,
                     )
 
-                E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
-                records.append(
-                    {
-                        "i": int(-1),
-                        "j": int(-1),
-                        "d1_A": float(d1_ref),
-                        "d2_A": float(d2_ref),
-                        "energy_hartree": E_pre_h,
-                        "bias_converged": True,
-                    }
-                )
-                # Store preoptimized geometry as a candidate for nearest-start
-                visited_geoms.append(
-                    (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
-                )
+            max_step_bohr = float(max_step_size) * ANG2BOHR
 
-                click.echo(
-                    f"[preopt] Recorded preoptimized structure at d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
-                )
-            except Exception as e:
-                click.echo(
-                    f"[preopt] WARNING: failed to record preoptimized structure: {e}",
-                    err=True,
-                )
+            # Construct scan grids and reorder so that points near the preopt geometry are visited first
+            d1_values = _values_from_bounds(low1, high1, float(max_step_size))
+            d2_values = _values_from_bounds(low2, high2, float(max_step_size))
 
-        max_step_bohr = float(max_step_size) * ANG2BOHR
+            d1_values = _sort_values_by_reference(d1_values, d1_ref)
+            d2_values = _sort_values_by_reference(d2_values, d2_ref)
 
-        # Construct scan grids and reorder so that points near the preopt geometry are visited first
-        d1_values = _values_from_bounds(low1, high1, float(max_step_size))
-        d2_values = _values_from_bounds(low2, high2, float(max_step_size))
-
-        d1_values = _sort_values_by_reference(d1_values, d1_ref)
-        d2_values = _sort_values_by_reference(d2_values, d2_ref)
-
-        N1, N2 = len(d1_values), len(d2_values)
-        click.echo(
-            f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x:f'{x:.3f}', d1_values))}"
-        )
-        click.echo(
-            f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}"
-        )
-        click.echo(f"[grid] total grid points = {N1*N2}")
-
-        for i_idx, d1_target in enumerate(d1_values):
+            N1, N2 = len(d1_values), len(d2_values)
             click.echo(
-                f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---"
+                f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x:f'{x:.3f}', d1_values))}"
             )
-            biased.set_pairs([(i1, j1, float(d1_target))])
-            geom_outer.set_calculator(biased)
-
-            opt1 = _make_optimizer(
-                geom_outer,
-                kind,
-                lbfgs_cfg,
-                rfo_cfg,
-                opt_cfg,
-                max_step_bohr=max_step_bohr,
-                relax_max_cycles=relax_max_cycles,
-                relax_override_requested=relax_max_cycles_override_requested,
-                out_dir=tmp_opt_dir,
-                prefix=f"d1_{i_idx:03d}_",
+            click.echo(
+                f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}"
             )
-            try:
-                opt1.run()
-            except ZeroStepLength:
+            click.echo(f"[grid] total grid points = {N1*N2}")
+
+            for i_idx, d1_target in enumerate(d1_values):
                 click.echo(
-                    f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan.", err=True
+                    f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---"
                 )
-            except OptimizationError as e:
-                click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
+                biased.set_pairs([(i1, j1, float(d1_target))])
+                geom_outer.set_calculator(biased)
 
-            geom_inner = _snapshot_geometry(geom_outer)
-            geom_inner.set_calculator(biased)
-
-            # Store the d1-relaxed structure as a candidate for nearest-start
-            try:
-                d1_cur = _distance_A(geom_inner, i1, j1)
-                d2_cur = _distance_A(geom_inner, i2, j2)
-                visited_geoms.append(
-                    (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
-                )
-            except Exception as e:
-                click.echo(
-                    f"[nearest-start] WARNING: failed to store d1-relaxed structure for d1={d1_target:.3f} Å: {e}",
-                    err=True,
-                )
-
-            trj_blocks = [] if dump else None
-
-            for j_idx, d2_target in enumerate(d2_values):
-                # Choose initial structure: nearest previously converged (d1,d2) point
-                if visited_geoms:
-                    try:
-                        target_vec = np.array(
-                            [float(d1_target), float(d2_target)], dtype=float
-                        )
-                        prev_coords = np.array(
-                            [(g[0], g[1]) for g in visited_geoms],
-                            dtype=float,
-                        )
-                        dists2 = np.sum((prev_coords - target_vec) ** 2, axis=1)
-                        best_idx = int(np.argmin(dists2))
-                        _, _, best_geom = visited_geoms[best_idx]
-                        # Reset geom_inner coordinates to the best previous geometry
-                        try:
-                            geom_inner.coords[:] = np.array(
-                                best_geom.coords, copy=True
-                            )
-                        except Exception:
-                            geom_inner.coords = np.array(
-                                best_geom.coords, copy=True
-                            )
-                    except Exception as e:
-                        click.echo(
-                            f"[nearest-start] WARNING: failed to select nearest previous structure for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
-                            err=True,
-                        )
-
-                biased.set_pairs(
-                    [
-                        (i1, j1, float(d1_target)),
-                        (i2, j2, float(d2_target)),
-                    ]
-                )
-                geom_inner.set_calculator(biased)
-
-                opt2 = _make_optimizer(
-                    geom_inner,
+                opt1 = _make_optimizer(
+                    geom_outer,
                     kind,
                     lbfgs_cfg,
                     rfo_cfg,
@@ -972,55 +801,21 @@ def cli(
                     relax_max_cycles=relax_max_cycles,
                     relax_override_requested=relax_max_cycles_override_requested,
                     out_dir=tmp_opt_dir,
-                    prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
+                    prefix=f"d1_{i_idx:03d}_",
                 )
                 try:
-                    opt2.run()
-                    converged = True
+                    opt1.run()
                 except ZeroStepLength:
                     click.echo(
-                        f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — recorded anyway.",
-                        err=True,
+                        f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan.", err=True
                     )
-                    converged = False
                 except OptimizationError as e:
-                    click.echo(
-                        f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True
-                    )
-                    converged = False
+                    click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
 
-                E_h = _unbiased_energy_hartree(geom_inner, base_calc)
+                geom_inner = _snapshot_geometry(geom_outer)
+                geom_inner.set_calculator(biased)
 
-                # Write per-grid XYZ snapshots under result_scan2d/grid/
-                d1_tag = _dist_tag(d1_target)
-                d2_tag = _dist_tag(d2_target)
-                xyz_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.xyz"
-                try:
-                    s = geom_inner.as_xyz()
-                    if not s.endswith("\n"):
-                        s += "\n"
-                    with open(xyz_path, "w") as f:
-                        f.write(s)
-                    try:
-                        convert_xyz_like_outputs(
-                            xyz_path,
-                            prepared_input,
-                            ref_pdb_path=ref_pdb_path,
-                            out_pdb_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb",
-                            out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
-                        )
-                    except Exception as e:
-                        click.echo(
-                            f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB/GJF: {e}",
-                            err=True,
-                        )
-                except Exception as e:
-                    click.echo(
-                        f"[write] WARNING: failed to write {xyz_path.name}: {e}",
-                        err=True,
-                    )
-
-                # Store this converged grid point for nearest-start initialization
+                # Store the d1-relaxed structure as a candidate for nearest-start
                 try:
                     d1_cur = _distance_A(geom_inner, i1, j1)
                     d2_cur = _distance_A(geom_inner, i2, j2)
@@ -1029,139 +824,317 @@ def cli(
                     )
                 except Exception as e:
                     click.echo(
-                        f"[nearest-start] WARNING: failed to store geometry for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
+                        f"[nearest-start] WARNING: failed to store d1-relaxed structure for d1={d1_target:.3f} Å: {e}",
                         err=True,
                     )
 
-                if dump and trj_blocks is not None:
-                    sblock = geom_inner.as_xyz()
-                    if not sblock.endswith("\n"):
-                        sblock += "\n"
-                    trj_blocks.append(sblock)
+                trj_blocks = [] if dump else None
 
-                records.append(
-                    {
-                        "i": int(i_idx),
-                        "j": int(j_idx),
-                        "d1_A": float(d1_target),
-                        "d2_A": float(d2_target),
-                        "energy_hartree": E_h,
-                        "bias_converged": bool(converged),
-                    }
-                )
+                for j_idx, d2_target in enumerate(d2_values):
+                    # Choose initial structure: nearest previously converged (d1,d2) point
+                    if visited_geoms:
+                        try:
+                            target_vec = np.array(
+                                [float(d1_target), float(d2_target)], dtype=float
+                            )
+                            prev_coords = np.array(
+                                [(g[0], g[1]) for g in visited_geoms],
+                                dtype=float,
+                            )
+                            dists2 = np.sum((prev_coords - target_vec) ** 2, axis=1)
+                            best_idx = int(np.argmin(dists2))
+                            _, _, best_geom = visited_geoms[best_idx]
+                            # Reset geom_inner coordinates to the best previous geometry
+                            try:
+                                geom_inner.coords[:] = np.array(
+                                    best_geom.coords, copy=True
+                                )
+                            except Exception:
+                                geom_inner.coords = np.array(
+                                    best_geom.coords, copy=True
+                                )
+                        except Exception as e:
+                            click.echo(
+                                f"[nearest-start] WARNING: failed to select nearest previous structure for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
+                                err=True,
+                            )
 
-            if dump and trj_blocks:
-                trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
-                try:
-                    with open(trj_path, "w") as f:
-                        f.write("".join(trj_blocks))
-                    click.echo(f"[write] Wrote '{trj_path}'.")
+                    biased.set_pairs(
+                        [
+                            (i1, j1, float(d1_target)),
+                            (i2, j2, float(d2_target)),
+                        ]
+                    )
+                    geom_inner.set_calculator(biased)
+
+                    opt2 = _make_optimizer(
+                        geom_inner,
+                        kind,
+                        lbfgs_cfg,
+                        rfo_cfg,
+                        opt_cfg,
+                        max_step_bohr=max_step_bohr,
+                        relax_max_cycles=relax_max_cycles,
+                        relax_override_requested=relax_max_cycles_override_requested,
+                        out_dir=tmp_opt_dir,
+                        prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
+                    )
                     try:
-                        convert_xyz_like_outputs(
+                        opt2.run()
+                        converged = True
+                    except ZeroStepLength:
+                        click.echo(
+                            f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — recorded anyway.",
+                            err=True,
+                        )
+                        converged = False
+                    except OptimizationError as e:
+                        click.echo(
+                            f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True
+                        )
+                        converged = False
+
+                    E_h = _unbiased_energy_hartree(geom_inner, base_calc)
+
+                    # Write per-grid XYZ snapshots under result_scan2d/grid/
+                    d1_tag = _dist_tag(d1_target)
+                    d2_tag = _dist_tag(d2_target)
+                    xyz_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.xyz"
+                    try:
+                        s = geom_inner.as_xyz()
+                        if not s.endswith("\n"):
+                            s += "\n"
+                        with open(xyz_path, "w") as f:
+                            f.write(s)
+                        convert_xyz_like_outputs_logged(
+                            xyz_path,
+                            prepared_input,
+                            ref_pdb_path=ref_pdb_path,
+                            out_pdb_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb",
+                            out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
+                            context=f"'{xyz_path.name}' to PDB/GJF",
+                        )
+                    except Exception as e:
+                        click.echo(
+                            f"[write] WARNING: failed to write {xyz_path.name}: {e}",
+                            err=True,
+                        )
+
+                    # Store this converged grid point for nearest-start initialization
+                    try:
+                        d1_cur = _distance_A(geom_inner, i1, j1)
+                        d2_cur = _distance_A(geom_inner, i2, j2)
+                        visited_geoms.append(
+                            (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
+                        )
+                    except Exception as e:
+                        click.echo(
+                            f"[nearest-start] WARNING: failed to store geometry for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
+                            err=True,
+                        )
+
+                    if dump and trj_blocks is not None:
+                        sblock = geom_inner.as_xyz()
+                        if not sblock.endswith("\n"):
+                            sblock += "\n"
+                        trj_blocks.append(sblock)
+
+                    records.append(
+                        {
+                            "i": int(i_idx),
+                            "j": int(j_idx),
+                            "d1_A": float(d1_target),
+                            "d2_A": float(d2_target),
+                            "energy_hartree": E_h,
+                            "bias_converged": bool(converged),
+                        }
+                    )
+
+                if dump and trj_blocks:
+                    trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
+                    try:
+                        with open(trj_path, "w") as f:
+                            f.write("".join(trj_blocks))
+                        click.echo(f"[write] Wrote '{trj_path}'.")
+                        convert_xyz_like_outputs_logged(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb_path,
                             out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}.pdb",
+                            context=f"'{trj_path.name}' to PDB",
                         )
                     except Exception as e:
                         click.echo(
-                            f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB: {e}",
-                            err=True,
+                            f"[write] WARNING: failed to write '{trj_path}': {e}", err=True
                         )
-                except Exception as e:
-                    click.echo(
-                        f"[write] WARNING: failed to write '{trj_path}': {e}", err=True
-                    )
 
-        # ===== surface.csv (final output directly under result_scan2d) =====
-        df = pd.DataFrame.from_records(records)
-        if df.empty:
-            click.echo("No grid records produced; aborting.", err=True)
-            sys.exit(1)
+            # ===== surface.csv (final output directly under result_scan2d) =====
+            df = pd.DataFrame.from_records(records)
+            if df.empty:
+                click.echo("No grid records produced; aborting.", err=True)
+                sys.exit(1)
 
-        if baseline == "first":
-            ref = float(
-                df.loc[(df["i"] == 0) & (df["j"] == 0), "energy_hartree"].iloc[0]
+            if baseline == "first":
+                ref = float(
+                    df.loc[(df["i"] == 0) & (df["j"] == 0), "energy_hartree"].iloc[0]
+                )
+            else:
+                ref = float(df["energy_hartree"].min())
+            df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
+            df["d1_label"] = d1_label_csv
+            df["d2_label"] = d2_label_csv
+
+            surface_csv = final_dir / "surface.csv"
+            df.to_csv(surface_csv, index=False)
+            click.echo(f"[write] Wrote '{surface_csv}'.")
+
+            # ===== Plots (RBF on a fixed 50×50 grid, unified layout, placed under final_dir) =====
+            d1_points = df["d1_A"].to_numpy(dtype=float)
+            d2_points = df["d2_A"].to_numpy(dtype=float)
+            z_points = df["energy_kcal"].to_numpy(dtype=float)
+            mask = (
+                np.isfinite(d1_points)
+                & np.isfinite(d2_points)
+                & np.isfinite(z_points)
             )
-        else:
-            ref = float(df["energy_hartree"].min())
-        df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
-        df["d1_label"] = d1_label_csv
-        df["d2_label"] = d2_label_csv
+            if not np.any(mask):
+                click.echo("[plot] No finite data for plotting.", err=True)
+                sys.exit(1)
 
-        surface_csv = final_dir / "surface.csv"
-        df.to_csv(surface_csv, index=False)
-        click.echo(f"[write] Wrote '{surface_csv}'.")
+            x_min, x_max = float(np.min(d1_points[mask])), float(
+                np.max(d1_points[mask])
+            )
+            y_min, y_max = float(np.min(d2_points[mask])), float(
+                np.max(d2_points[mask])
+            )
 
-        # ===== Plots (RBF on a fixed 50×50 grid, unified layout, placed under final_dir) =====
-        d1_points = df["d1_A"].to_numpy(dtype=float)
-        d2_points = df["d2_A"].to_numpy(dtype=float)
-        z_points = df["energy_kcal"].to_numpy(dtype=float)
-        mask = (
-            np.isfinite(d1_points)
-            & np.isfinite(d2_points)
-            & np.isfinite(z_points)
-        )
-        if not np.any(mask):
-            click.echo("[plot] No finite data for plotting.", err=True)
-            sys.exit(1)
+            xi = np.linspace(x_min, x_max, 50)
+            yi = np.linspace(y_min, y_max, 50)
+            XI, YI = np.meshgrid(xi, yi)
 
-        x_min, x_max = float(np.min(d1_points[mask])), float(
-            np.max(d1_points[mask])
-        )
-        y_min, y_max = float(np.min(d2_points[mask])), float(
-            np.max(d2_points[mask])
-        )
+            rbf = Rbf(
+                d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric"
+            )
+            ZI = rbf(XI, YI)
 
-        xi = np.linspace(x_min, x_max, 50)
-        yi = np.linspace(y_min, y_max, 50)
-        XI, YI = np.meshgrid(xi, yi)
+            vmin = float(np.nanmin(ZI)) if zmin is None else float(zmin)
+            vmax = float(np.nanmax(ZI)) if zmax is None else float(zmax)
+            if (
+                not np.isfinite(vmin)
+                or not np.isfinite(vmax)
+                or vmax <= vmin
+            ):
+                vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
 
-        rbf = Rbf(
-            d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric"
-        )
-        ZI = rbf(XI, YI)
+            # Choose neat contour/tick steps
+            def _nice_step(span: float) -> float:
+                if span <= 0:
+                    return 1.0
+                raw = span / 6.0
+                mag = 10 ** math.floor(math.log10(raw))
+                candidates = (0.5, 1, 2, 5, 10, 20)
+                best = candidates[0] * mag
+                best_err = abs(best - raw)
+                for m in candidates[1:]:
+                    s = m * mag
+                    err = abs(s - raw)
+                    if err < best_err:
+                        best, best_err = s, err
+                return best
 
-        vmin = float(np.nanmin(ZI)) if zmin is None else float(zmin)
-        vmax = float(np.nanmax(ZI)) if zmax is None else float(zmax)
-        if (
-            not np.isfinite(vmin)
-            or not np.isfinite(vmax)
-            or vmax <= vmin
-        ):
-            vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
+            c_step = _nice_step(vmax - vmin)
+            c_start = math.floor(vmin / c_step) * c_step
+            c_end = math.ceil(vmax / c_step) * c_step
 
-        # Choose neat contour/tick steps
-        def _nice_step(span: float) -> float:
-            if span <= 0:
-                return 1.0
-            raw = span / 6.0
-            mag = 10 ** math.floor(math.log10(raw))
-            candidates = (0.5, 1, 2, 5, 10, 20)
-            best = candidates[0] * mag
-            best_err = abs(best - raw)
-            for m in candidates[1:]:
-                s = m * mag
-                err = abs(s - raw)
-                if err < best_err:
-                    best, best_err = s, err
-            return best
+            # ---- 2D contour plot (PNG with explicit size) ----
+            fig2d = go.Figure(
+                data=go.Contour(
+                    z=ZI,
+                    x=xi,
+                    y=yi,
+                    contours=dict(start=c_start, end=c_end, size=c_step),
+                    zmin=vmin,
+                    zmax=vmax,
+                    contours_coloring="heatmap",
+                    colorscale="plasma",
+                    colorbar=dict(
+                        title=dict(
+                            text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
+                        ),
+                        tickfont=dict(size=14, color="#1C1C1C"),
+                        ticks="inside",
+                        ticklen=10,
+                        tickcolor="#1C1C1C",
+                        outlinecolor="#1C1C1C",
+                        outlinewidth=2,
+                        lenmode="fraction",
+                        len=1.11,
+                        x=1.05,
+                        y=0.53,
+                        xanchor="left",
+                        yanchor="middle",
+                    ),
+                )
+            )
+            fig2d.update_layout(
+                width=640,
+                height=600,
+                xaxis_title=d1_label_html,
+                yaxis_title=d2_label_html,
+                plot_bgcolor="white",
+                xaxis=dict(
+                    range=[x_min, x_max],
+                    showline=True,
+                    linewidth=3,
+                    linecolor="#1C1C1C",
+                    mirror=True,
+                    tickson="boundaries",
+                    ticks="inside",
+                    tickwidth=3,
+                    tickcolor="#1C1C1C",
+                    title_font=dict(size=18, color="#1C1C1C"),
+                    tickfont=dict(size=18, color="#1C1C1C"),
+                    tickvals=list(np.linspace(x_min, x_max, 6)),
+                    tickformat=".2f",
+                ),
+                yaxis=dict(
+                    range=[y_min, y_max],
+                    showline=True,
+                    linewidth=3,
+                    linecolor="#1C1C1C",
+                    mirror=True,
+                    tickson="boundaries",
+                    ticks="inside",
+                    tickwidth=3,
+                    tickcolor="#1C1C1C",
+                    title_font=dict(size=18, color="#1C1C1C"),
+                    tickfont=dict(size=18, color="#1C1C1C"),
+                    tickvals=list(np.linspace(y_min, y_max, 6)),
+                    tickformat=".2f",
+                ),
+                margin=dict(l=10, r=10, b=10, t=40),
+            )
+            png2d = final_dir / "scan2d_map.png"
+            fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
+            click.echo(f"[plot] Wrote '{png2d}'.")
 
-        c_step = _nice_step(vmax - vmin)
-        c_start = math.floor(vmin / c_step) * c_step
-        c_end = math.ceil(vmax / c_step) * c_step
+            # ---- 3D surface plus base-plane projection ----
+            spread = vmax - vmin if (vmax > vmin) else 1.0
+            z_bottom = vmin - spread
+            z_top = vmax
 
-        # ---- 2D contour plot (PNG with explicit size) ----
-        fig2d = go.Figure(
-            data=go.Contour(
+            # Avoid ticks below zmin (= vmin) and snap to sensible values
+            z_step = _nice_step(vmax - vmin)
+            z_start_tick = math.ceil(vmin / z_step) * z_step  # First tick must be ≥ vmin
+            z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
+
+            surface3d = go.Surface(
+                x=XI,
+                y=YI,
                 z=ZI,
-                x=xi,
-                y=yi,
-                contours=dict(start=c_start, end=c_end, size=c_step),
-                zmin=vmin,
-                zmax=vmax,
-                contours_coloring="heatmap",
                 colorscale="plasma",
+                cmin=vmin,
+                cmax=vmax,
                 colorbar=dict(
                     title=dict(
                         text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
@@ -1179,184 +1152,104 @@ def cli(
                     xanchor="left",
                     yanchor="middle",
                 ),
+                contours={
+                    "z": {
+                        "show": True,
+                        "start": c_start,
+                        "end": c_end,
+                        "size": c_step,
+                        "color": "black",
+                        "project": {"z": True},
+                    }
+                },
+                name="3D Surface",
             )
-        )
-        fig2d.update_layout(
-            width=640,
-            height=600,
-            xaxis_title=d1_label_html,
-            yaxis_title=d2_label_html,
-            plot_bgcolor="white",
-            xaxis=dict(
-                range=[x_min, x_max],
-                showline=True,
-                linewidth=3,
-                linecolor="#1C1C1C",
-                mirror=True,
-                tickson="boundaries",
-                ticks="inside",
-                tickwidth=3,
-                tickcolor="#1C1C1C",
-                title_font=dict(size=18, color="#1C1C1C"),
-                tickfont=dict(size=18, color="#1C1C1C"),
-                tickvals=list(np.linspace(x_min, x_max, 6)),
-                tickformat=".2f",
-            ),
-            yaxis=dict(
-                range=[y_min, y_max],
-                showline=True,
-                linewidth=3,
-                linecolor="#1C1C1C",
-                mirror=True,
-                tickson="boundaries",
-                ticks="inside",
-                tickwidth=3,
-                tickcolor="#1C1C1C",
-                title_font=dict(size=18, color="#1C1C1C"),
-                tickfont=dict(size=18, color="#1C1C1C"),
-                tickvals=list(np.linspace(y_min, y_max, 6)),
-                tickformat=".2f",
-            ),
-            margin=dict(l=10, r=10, b=10, t=40),
-        )
-        png2d = final_dir / "scan2d_map.png"
-        fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
-        click.echo(f"[plot] Wrote '{png2d}'.")
 
-        # ---- 3D surface plus base-plane projection ----
-        spread = vmax - vmin if (vmax > vmin) else 1.0
-        z_bottom = vmin - spread
-        z_top = vmax
+            plane_proj = go.Surface(
+                x=XI,
+                y=YI,
+                z=np.full_like(ZI, z_bottom),
+                surfacecolor=ZI,
+                colorscale="plasma",
+                cmin=vmin,
+                cmax=vmax,
+                showscale=False,
+                opacity=1.0,
+                name="2D Contour Projection (Bottom)",
+            )
 
-        # Avoid ticks below zmin (= vmin) and snap to sensible values
-        z_step = _nice_step(vmax - vmin)
-        z_start_tick = math.ceil(vmin / z_step) * z_step  # First tick must be ≥ vmin
-        z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
-
-        surface3d = go.Surface(
-            x=XI,
-            y=YI,
-            z=ZI,
-            colorscale="plasma",
-            cmin=vmin,
-            cmax=vmax,
-            colorbar=dict(
-                title=dict(
-                    text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
+            fig3d = go.Figure(data=[surface3d, plane_proj])
+            fig3d.update_layout(
+                title="Energy Landscape with 2D PES Scan",
+                width=800,
+                height=700,
+                scene=dict(
+                    bgcolor="rgba(0,0,0,0)",
+                    xaxis=dict(
+                        title=d1_label_html,
+                        range=[x_min, x_max],
+                        showline=True,
+                        linewidth=4,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        ticks="inside",
+                        tickwidth=4,
+                        tickcolor="#1C1C1C",
+                        gridcolor="rgba(0,0,0,0.1)",
+                        zerolinecolor="rgba(0,0,0,0.1)",
+                        showbackground=False,
+                    ),
+                    yaxis=dict(
+                        title=d2_label_html,
+                        range=[y_min, y_max],
+                        showline=True,
+                        linewidth=4,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        ticks="inside",
+                        tickwidth=4,
+                        tickcolor="#1C1C1C",
+                        gridcolor="rgba(0,0,0,0.1)",
+                        zerolinecolor="rgba(0,0,0,0.1)",
+                        showbackground=False,
+                    ),
+                    zaxis=dict(
+                        title="Potential Energy (kcal/mol)",
+                        range=[z_bottom, z_top],
+                        tickmode="array",
+                        tickvals=z_ticks,
+                        showline=True,
+                        linewidth=4,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        ticks="inside",
+                        tickwidth=4,
+                        tickcolor="#1C1C1C",
+                        showgrid=True,
+                        gridcolor="rgba(0,0,0,0.1)",
+                        zerolinecolor="rgba(0,0,0,0.1)",
+                        showbackground=False,
+                    ),
                 ),
-                tickfont=dict(size=14, color="#1C1C1C"),
-                ticks="inside",
-                ticklen=10,
-                tickcolor="#1C1C1C",
-                outlinecolor="#1C1C1C",
-                outlinewidth=2,
-                lenmode="fraction",
-                len=1.11,
-                x=1.05,
-                y=0.53,
-                xanchor="left",
-                yanchor="middle",
-            ),
-            contours={
-                "z": {
-                    "show": True,
-                    "start": c_start,
-                    "end": c_end,
-                    "size": c_step,
-                    "color": "black",
-                    "project": {"z": True},
-                }
-            },
-            name="3D Surface",
-        )
+                margin=dict(l=10, r=20, b=10, t=40),
+                paper_bgcolor="white",
+            )
 
-        plane_proj = go.Surface(
-            x=XI,
-            y=YI,
-            z=np.full_like(ZI, z_bottom),
-            surfacecolor=ZI,
-            colorscale="plasma",
-            cmin=vmin,
-            cmax=vmax,
-            showscale=False,
-            opacity=1.0,
-            name="2D Contour Projection (Bottom)",
-        )
+            html3d = final_dir / "scan2d_landscape.html"
+            fig3d.write_html(str(html3d))
+            click.echo(f"[plot] Wrote '{html3d}'.")
 
-        fig3d = go.Figure(data=[surface3d, plane_proj])
-        fig3d.update_layout(
-            title="Energy Landscape with 2D PES Scan",
-            width=800,
-            height=700,
-            scene=dict(
-                bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(
-                    title=d1_label_html,
-                    range=[x_min, x_max],
-                    showline=True,
-                    linewidth=4,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    ticks="inside",
-                    tickwidth=4,
-                    tickcolor="#1C1C1C",
-                    gridcolor="rgba(0,0,0,0.1)",
-                    zerolinecolor="rgba(0,0,0,0.1)",
-                    showbackground=False,
-                ),
-                yaxis=dict(
-                    title=d2_label_html,
-                    range=[y_min, y_max],
-                    showline=True,
-                    linewidth=4,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    ticks="inside",
-                    tickwidth=4,
-                    tickcolor="#1C1C1C",
-                    gridcolor="rgba(0,0,0,0.1)",
-                    zerolinecolor="rgba(0,0,0,0.1)",
-                    showbackground=False,
-                ),
-                zaxis=dict(
-                    title="Potential Energy (kcal/mol)",
-                    range=[z_bottom, z_top],
-                    tickmode="array",
-                    tickvals=z_ticks,
-                    showline=True,
-                    linewidth=4,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    ticks="inside",
-                    tickwidth=4,
-                    tickcolor="#1C1C1C",
-                    showgrid=True,
-                    gridcolor="rgba(0,0,0,0.1)",
-                    zerolinecolor="rgba(0,0,0,0.1)",
-                    showbackground=False,
-                ),
-            ),
-            margin=dict(l=10, r=20, b=10, t=40),
-            paper_bgcolor="white",
-        )
+            click.echo("\n=== 2D Scan finished ===\n")
+            click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start))
 
-        html3d = final_dir / "scan2d_landscape.html"
-        fig3d.write_html(str(html3d))
-        click.echo(f"[plot] Wrote '{html3d}'.")
-
-        click.echo("\n=== 2D Scan finished ===\n")
-        click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start))
-
-    except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
-        sys.exit(130)
-    except Exception as e:
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo(
-            "Unhandled exception during 2D scan:\n"
-            + textwrap.indent(tb, "  "),
-            err=True,
-        )
-        sys.exit(1)
-    finally:
-        prepared_input.cleanup()
+        except KeyboardInterrupt:
+            click.echo("\nInterrupted by user.", err=True)
+            sys.exit(130)
+        except Exception as e:
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            click.echo(
+                "Unhandled exception during 2D scan:\n"
+                + textwrap.indent(tb, "  "),
+                err=True,
+            )
+            sys.exit(1)

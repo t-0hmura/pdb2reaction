@@ -99,19 +99,16 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from pdb2reaction.utils import (
-    convert_xyz_like_outputs,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
-    detect_freeze_links,
     merge_freeze_atom_indices,
-    prepare_input_structure,
-    apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    merge_detected_freeze_links,
+    prepared_cli_input,
     set_convert_file_enabled,
+    convert_xyz_like_outputs_logged,
 )
 
 
@@ -158,23 +155,18 @@ def _echo_convert_trj_if_exists(
     out_pdb: Optional[Path] = None,
 ) -> None:
     if trj_path.exists():
-        try:
-            ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == ".pdb" else None
-            convert_xyz_like_outputs(
-                trj_path,
-                prepared_input,
-                ref_pdb_path=ref_pdb,
-                out_pdb_path=out_pdb,
-            )
+        ref_pdb = prepared_input.source_path if prepared_input.source_path.suffix.lower() == ".pdb" else None
+        if convert_xyz_like_outputs_logged(
+            trj_path,
+            prepared_input,
+            ref_pdb_path=ref_pdb,
+            out_pdb_path=out_pdb,
+            context=f"'{trj_path.name}' outputs",
+        ):
             targets = [p for p in (out_pdb,) if p is not None and p.exists()]
             if targets:
                 written = ", ".join(f"'{p.name}'" for p in targets)
                 click.echo(f"[convert] Wrote {written}.")
-        except Exception as e:
-            click.echo(
-                f"[convert] WARNING: Failed to convert '{trj_path.name}' outputs: {e}",
-                err=True,
-            )
 
 
 # --------------------------
@@ -328,146 +320,128 @@ def cli(
     args_yaml: Optional[Path],
 ) -> None:
     set_convert_file_enabled(convert_files)
-    prepared_input = prepare_input_structure(input_path)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    geom_input_path = prepared_input.geom_path
-    source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(
-        prepared_input,
-        charge,
-        spin,
+    with prepared_cli_input(
+        input_path,
+        ref_pdb=ref_pdb,
+        charge=charge,
+        spin=spin,
         ligand_charge=ligand_charge,
         prefix="[irc]",
-    )
-    try:
-        time_start = time.perf_counter()
+    ) as (prepared_input, charge, spin):
+        geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
+        try:
+            time_start = time.perf_counter()
 
-        # --------------------------
-        # 1) Assemble configuration: defaults -> CLI overrides -> YAML overrides
-        # --------------------------
-        yaml_cfg = load_yaml_dict(args_yaml)
+            # --------------------------
+            # 1) Assemble configuration: defaults -> CLI overrides -> YAML overrides
+            # --------------------------
+            yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-        calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
-        irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
+            geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
+            calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
+            irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
 
-        # CLI overrides
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"]   = int(spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
+            # CLI overrides
+            calc_cfg["charge"] = int(charge)
+            calc_cfg["spin"]   = int(spin)
+            calc_cfg["workers"] = int(workers)
+            calc_cfg["workers_per_node"] = int(workers_per_node)
 
-        if hessian_calc_mode is not None:
-            calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+            if hessian_calc_mode is not None:
+                calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
-        if max_cycles is not None:
-            irc_cfg["max_cycles"] = int(max_cycles)
-        if step_size is not None:
-            irc_cfg["step_length"] = float(step_size)
-        if root is not None:
-            irc_cfg["root"] = int(root)
-        if forward is not None:
-            irc_cfg["forward"] = bool(forward)
-        if backward is not None:
-            irc_cfg["backward"] = bool(backward)
-        if out_dir:
-            irc_cfg["out_dir"] = str(out_dir)
+            if max_cycles is not None:
+                irc_cfg["max_cycles"] = int(max_cycles)
+            if step_size is not None:
+                irc_cfg["step_length"] = float(step_size)
+            if root is not None:
+                irc_cfg["root"] = int(root)
+            if forward is not None:
+                irc_cfg["forward"] = bool(forward)
+            if backward is not None:
+                irc_cfg["backward"] = bool(backward)
+            if out_dir:
+                irc_cfg["out_dir"] = str(out_dir)
 
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (irc_cfg, (("irc",),)),
-            ],
-        )
+            apply_yaml_overrides(
+                yaml_cfg,
+                [
+                    (geom_cfg, (("geom",),)),
+                    (calc_cfg, (("calc",),)),
+                    (irc_cfg, (("irc",),)),
+                ],
+            )
 
-        # Normalize any existing freeze list and optionally augment with link parents
-        merged_freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links_flag and source_path.suffix.lower() == ".pdb":
-            try:
-                detected = detect_freeze_links(source_path)
-            except Exception as e:
-                click.echo(
-                    f"[freeze-links] WARNING: Could not detect link parents: {e}",
-                    err=True,
-                )
-                detected = []
-            merged_freeze = merge_freeze_atom_indices(geom_cfg, detected)
-            if merged_freeze:
-                click.echo(
-                    f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged_freeze))}"
-                )
+            # Normalize any existing freeze list and optionally augment with link parents
+            merged_freeze = merge_freeze_atom_indices(geom_cfg)
+            if freeze_links_flag and source_path.suffix.lower() == ".pdb":
+                merge_detected_freeze_links(geom_cfg, source_path)
 
-        # EulerPC currently only supports Cartesian coordinates
-        geom_cfg["coord_type"] = "cart"
+            # EulerPC currently only supports Cartesian coordinates
+            geom_cfg["coord_type"] = "cart"
 
-        # Ensure the calculator receives the freeze list used by geometry
-        # (so FD Hessian can skip frozen DOF, etc.)
-        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
-        calc_cfg["return_partial_hessian"] = False
+            # Ensure the calculator receives the freeze list used by geometry
+            # (so FD Hessian can skip frozen DOF, etc.)
+            calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+            calc_cfg["return_partial_hessian"] = False
 
-        out_dir_path = Path(irc_cfg["out_dir"]).resolve()
-        out_dir_path.mkdir(parents=True, exist_ok=True)
+            out_dir_path = Path(irc_cfg["out_dir"]).resolve()
+            out_dir_path.mkdir(parents=True, exist_ok=True)
 
-        # Pretty-print configuration (expand freeze_atoms for readability)
-        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-        click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
-        click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
+            # Pretty-print configuration (expand freeze_atoms for readability)
+            click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+            click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
+            click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
-        # --------------------------
-        # 2) Load geometry and configure UMA calculator
-        # --------------------------
-        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-        coord_kwargs = dict(geom_cfg)
-        coord_kwargs.pop("coord_type", None)
+            # --------------------------
+            # 2) Load geometry and configure UMA calculator
+            # --------------------------
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            coord_kwargs = dict(geom_cfg)
+            coord_kwargs.pop("coord_type", None)
 
-        geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
+            geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
-        calc_builder_or_instance = uma_pysis(**calc_cfg)
-        if callable(calc_builder_or_instance):
-            geometry.set_calculator(calc_builder_or_instance())
-        else:
-            geometry.set_calculator(calc_builder_or_instance)
+            calc = uma_pysis(**calc_cfg)
+            geometry.set_calculator(calc)
 
-        # --------------------------
-        # 3) Construct and run EulerPC
-        # --------------------------
-        # EulerPC.__init__ forwards **kwargs directly to IRC.__init__
-        eulerpc = EulerPC(geometry, **irc_cfg)
+            # --------------------------
+            # 3) Construct and run EulerPC
+            # --------------------------
+            # EulerPC.__init__ forwards **kwargs directly to IRC.__init__
+            eulerpc = EulerPC(geometry, **irc_cfg)
 
-        click.echo("\n=== IRC (EulerPC) started ===\n")
-        eulerpc.run()
-        click.echo("\n=== IRC (EulerPC) finished ===\n")
+            click.echo("\n=== IRC (EulerPC) started ===\n")
+            eulerpc.run()
+            click.echo("\n=== IRC (EulerPC) finished ===\n")
 
-        # --------------------------
-        # 4) Convert trajectories to PDB based on input type
-        # --------------------------
-        suffix_prefix = irc_cfg.get("prefix", "")
-        _echo_convert_trj_if_exists(
-            out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
-            prepared_input,
-            out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-        )
-        _echo_convert_trj_if_exists(
-            out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
-            prepared_input,
-            out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-        )
-        _echo_convert_trj_if_exists(
-            out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
-            prepared_input,
-            out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-        )
+            # --------------------------
+            # 4) Convert trajectories to PDB based on input type
+            # --------------------------
+            suffix_prefix = irc_cfg.get("prefix", "")
+            _echo_convert_trj_if_exists(
+                out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
+                prepared_input,
+                out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
+            )
+            _echo_convert_trj_if_exists(
+                out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
+                prepared_input,
+                out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
+            )
+            _echo_convert_trj_if_exists(
+                out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
+                prepared_input,
+                out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
+            )
 
-        click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
+            click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 
-    except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
-        sys.exit(130)
-    except Exception as e:
-        tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
-        click.echo("Unhandled exception during IRC:\n" + tb, err=True)
-        sys.exit(1)
-    finally:
-        prepared_input.cleanup()
+        except KeyboardInterrupt:
+            click.echo("\nInterrupted by user.", err=True)
+            sys.exit(130)
+        except Exception as e:
+            tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
+            click.echo("Unhandled exception during IRC:\n" + tb, err=True)
+            sys.exit(1)

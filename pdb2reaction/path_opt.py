@@ -90,20 +90,17 @@ from .uma_pysis import uma_ase, uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC
 
 from .utils import (
     convert_xyz_to_pdb,
-    detect_freeze_links,
-    detect_freeze_links_safe,
+    detect_freeze_links_logged,
     load_yaml_dict,
     apply_yaml_overrides,
     deep_update,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     prepare_input_structure,
     fill_charge_spin_from_gjf,
     _derive_charge_from_ligand_charge,
-    maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     PreparedInputStructure,
@@ -218,7 +215,7 @@ def _load_two_endpoints(
         src_path = prepared.source_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and src_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(src_path)
+            detected = detect_freeze_links_logged(src_path)
             freeze = merge_freeze_atom_indices(cfg, detected)
             if detected and freeze:
                 click.echo(
@@ -511,8 +508,11 @@ def _optimize_single(
         g_final = geom_loader(final_xyz, coord_type=g.coord_type)
         try:
             g_final.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
-        except Exception:
-            pass
+        except Exception as e:
+            click.echo(
+                f"[path-opt] WARNING: Failed to propagate freeze_atoms to final geometry: {e}",
+                err=True,
+            )
         g_final.set_calculator(shared_calc)
         return g_final
     except Exception:
@@ -796,7 +796,7 @@ def cli(
         # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
+        echo_calc = format_geom_for_echo(calc_cfg)
         echo_gs = dict(gs_cfg)
         echo_opt = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
@@ -1118,10 +1118,3 @@ def cli(
     finally:
         for prepared in prepared_inputs:
             prepared.cleanup()
-
-
-def freeze_links_helper(pdb_path: Path):
-    """
-    Expose detect_freeze_links for external callers/tests.
-    """
-    return detect_freeze_links(pdb_path)

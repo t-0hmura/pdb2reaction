@@ -115,11 +115,8 @@ import math
 import sys
 import textwrap
 import traceback
-import tempfile
-import os
 
 import click
-from click.core import ParameterSource
 import numpy as np
 import yaml
 import time
@@ -138,24 +135,23 @@ from .opt import (
     HarmonicBiasCalculator,
 )
 from .utils import (
-    convert_xyz_like_outputs,
-    detect_freeze_links_safe,
     load_yaml_dict,
-    apply_yaml_overrides,
+    build_scan_configs,
+    cli_param_overridden,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
+    merge_detected_freeze_links,
     normalize_choice,
-    prepare_input_structure,
-    apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    prepared_cli_input,
     set_convert_file_enabled,
+    convert_xyz_like_outputs_logged,
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
-    resolve_atom_spec_index,
+    resolve_scan_index,
+    make_snapshot_geometry,
 )
 from .bond_changes import compare_structures, summarize_changes
 
@@ -265,31 +261,6 @@ def _parse_scan_lists(
     if not args:
         raise click.BadParameter("--scan-lists must be provided at least once.")
     stages: List[List[Tuple[int, int, float]]] = []
-    def _resolve_index(value: Any, stage_idx: int, side_label: str) -> int:
-        if isinstance(value, (int, np.integer)):
-            idx_val = int(value)
-            if one_based:
-                idx_val -= 1
-            if idx_val < 0:
-                raise click.BadParameter(
-                    f"Negative atom index in --scan-lists #{stage_idx}: {idx_val} (0-based expected)."
-                )
-            return idx_val
-        if isinstance(value, str):
-            if not atom_meta:
-                raise click.BadParameter(
-                    f"--scan-lists #{stage_idx} ({side_label}) uses a string atom spec, "
-                    "but no PDB metadata is available (non-PDB inputs require integer indices)."
-                )
-            try:
-                return resolve_atom_spec_index(value, atom_meta)
-            except ValueError as exc:
-                raise click.BadParameter(
-                    f"--scan-lists #{stage_idx} ({side_label}) {exc}"
-                )
-        raise click.BadParameter(
-            f"--scan-lists #{stage_idx} ({side_label}) must be an int index or atom spec string."
-        )
 
     for idx, s in enumerate(args, start=1):
         try:
@@ -305,8 +276,18 @@ def _parse_scan_lists(
                 and isinstance(t[2], (int, float, np.floating))
             ):
                 raise click.BadParameter(f"--scan-lists #{idx} contains an invalid triple: {t}")
-            i = _resolve_index(t[0], idx, "i")
-            j = _resolve_index(t[1], idx, "j")
+            i = resolve_scan_index(
+                t[0],
+                one_based=one_based,
+                atom_meta=atom_meta,
+                context=f"--scan-lists #{idx} (i)",
+            )
+            j = resolve_scan_index(
+                t[1],
+                one_based=one_based,
+                atom_meta=atom_meta,
+                context=f"--scan-lists #{idx} (j)",
+            )
             r = float(t[2])
             if r <= 0.0:
                 raise click.BadParameter(f"Non-positive target length in --scan-lists #{idx}: {(i,j,r)}.")
@@ -394,34 +375,7 @@ def _has_bond_change(x, y, bond_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     return (formed or broken), summary
 
 
-def _snapshot_geometry(g) -> Any:
-    """
-    Create an independent pysisyphus Geometry snapshot from the given Geometry.
-    Implemented via temporary XYZ serialization to avoid mutating the original.
-    """
-    s = g.as_xyz()
-    if not s.endswith("\n"):
-        s += "\n"
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
-    try:
-        tmp.write(s)
-        tmp.flush()
-        tmp.close()
-        snap = geom_loader(
-            Path(tmp.name),
-            coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"]),
-            freeze_atoms=getattr(g, "freeze_atoms", []),
-        )
-        try:
-            snap.freeze_atoms = np.array(getattr(g, "freeze_atoms", []), dtype=int)
-        except Exception:
-            pass
-        return snap
-    finally:
-        try:
-            os.unlink(tmp.name)
-        except Exception:
-            pass
+_snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 
 
 @click.command(
@@ -564,283 +518,330 @@ def cli(
 ) -> None:
     set_convert_file_enabled(convert_files)
 
-    relax_max_cycles_override_requested = False
-    try:
-        relax_cycles_source = ctx.get_parameter_source("relax_max_cycles")
-        relax_max_cycles_override_requested = relax_cycles_source not in (None, ParameterSource.DEFAULT)
-    except Exception:
-        relax_max_cycles_override_requested = True
+    relax_max_cycles_override_requested = cli_param_overridden(ctx, "relax_max_cycles")
 
-    prepared_input = prepare_input_structure(input_path)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    geom_input_path = prepared_input.geom_path
-    source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(
-        prepared_input,
-        charge,
-        spin,
+    with prepared_cli_input(
+        input_path,
+        ref_pdb=ref_pdb,
+        charge=charge,
+        spin=spin,
         ligand_charge=ligand_charge,
         prefix="[scan]",
-    )
-    needs_pdb = source_path.suffix.lower() == ".pdb"
-    needs_gjf = prepared_input.is_gjf
-    ref_pdb = source_path.resolve() if needs_pdb else None
-    try:
-        time_start = time.perf_counter()
+    ) as (prepared_input, charge, spin):
+        geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
+        needs_pdb = source_path.suffix.lower() == ".pdb"
+        needs_gjf = prepared_input.is_gjf
+        ref_pdb = source_path.resolve() if needs_pdb else None
+        try:
+            time_start = time.perf_counter()
 
-        # ------------------------------------------------------------------
-        # 1) Assemble configuration (defaults ← CLI ← YAML)
-        # ------------------------------------------------------------------
-        yaml_cfg = load_yaml_dict(args_yaml)
+            # ------------------------------------------------------------------
+            # 1) Assemble configuration (defaults ← CLI ← YAML)
+            # ------------------------------------------------------------------
+            yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg = dict(GEOM_KW)
-        calc_cfg = dict(CALC_KW)
-        opt_cfg  = dict(OPT_BASE_KW)
-        lbfgs_cfg = dict(LBFGS_KW)
-        rfo_cfg   = dict(RFO_KW)
-        bias_cfg  = dict(BIAS_KW)
-        bond_cfg  = dict(BOND_KW)
+            geom_cfg = dict(GEOM_KW)
+            calc_cfg = dict(CALC_KW)
+            opt_cfg  = dict(OPT_BASE_KW)
+            lbfgs_cfg = dict(LBFGS_KW)
+            rfo_cfg   = dict(RFO_KW)
+            bias_cfg  = dict(BIAS_KW)
+            bond_cfg  = dict(BOND_KW)
 
-        # CLI overrides
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"]   = int(spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
-        opt_cfg["out_dir"] = out_dir
-        # Do not use the optimizer's own dump per step; stage dumping is controlled separately.
-        opt_cfg["dump"]    = False
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-        kind = normalize_choice(
-            opt_mode,
-            param="--opt-mode",
-            alias_groups=_OPT_MODE_ALIASES,
-            allowed_hint="light|heavy",
-        )
-
-        # YAML overrides (highest precedence)
-        apply_yaml_overrides(
-            yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("lbfgs",),)),
-                (rfo_cfg, (("rfo",),)),
-                (bias_cfg, (("bias",),)),
-                (bond_cfg, (("bond",),)),
-            ],
-        )
-
-        # Bias strength override
-        if bias_k is not None:
-            bias_cfg["k"] = float(bias_k)
-
-        # Resolve freeze list before logging so printed config matches runtime.
-        freeze = merge_freeze_atom_indices(geom_cfg)
-        freeze_links_msg = None
-        if freeze_links and source_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(source_path)
-            if detected:
-                freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                if freeze:
-                    freeze_links_msg = (
-                        f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
-                    )
-
-        # Present final config
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
-        echo_opt  = dict(opt_cfg)
-        if relax_max_cycles_override_requested:
-            echo_opt["max_cycles"] = int(relax_max_cycles)
-        echo_opt["out_dir"] = str(out_dir_path)
-        echo_bias = dict(bias_cfg)
-        echo_bond = dict(bond_cfg)
-        click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("opt",  echo_opt))
-        max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
-        echo_sopt = _build_sopt_kwargs(
-            kind,
-            lbfgs_cfg,
-            rfo_cfg,
-            opt_cfg,
-            max_step_bohr_for_log,
-            relax_max_cycles,
-            relax_max_cycles_override_requested,
-            out_dir_path,
-            str(opt_cfg.get("prefix", "")),
-        )
-        click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt))
-        click.echo(pretty_block("bias", echo_bias))
-        click.echo(pretty_block("bond", echo_bond))
-
-        pdb_atom_meta: List[Dict[str, Any]] = []
-        if source_path.suffix.lower() == ".pdb":
-            pdb_atom_meta = load_pdb_atom_metadata(source_path)
-
-        # ------------------------------------------------------------------
-        # 2) Parse scan lists
-        # ------------------------------------------------------------------
-        argv_scan = sys.argv[1:]
-        scan_lists_raw_final, scan_flag_count = _collect_scan_list_values(
-            argv_scan, ("--scan-lists", "--scan-list")
-        )
-        if scan_flag_count > 1:
-            raise click.BadParameter(
-                "Use a single --scan-list/--scan-lists followed by multiple stage literals; "
-                "repeated flags are not accepted."
+            geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
+                yaml_cfg,
+                geom_kw=geom_cfg,
+                calc_kw=calc_cfg,
+                opt_kw=opt_cfg,
+                lbfgs_kw=lbfgs_cfg,
+                rfo_kw=rfo_cfg,
+                bias_kw=bias_cfg,
+                extra_overrides=((bond_cfg, (("bond",),)),),
+                charge=charge,
+                spin=spin,
+                workers=workers,
+                workers_per_node=workers_per_node,
+                out_dir=out_dir,
+                thresh=thresh,
+                bias_k=bias_k,
             )
-        if not scan_lists_raw_final:
-            raise click.BadParameter("--scan-list(s) must be provided at least once.")
-        stages = _parse_scan_lists(
-            scan_lists_raw_final, one_based=one_based, atom_meta=pdb_atom_meta
-        )
-        K = len(stages)
-        click.echo(f"[scan] Received {K} stage(s).")
 
-        if pdb_atom_meta:
-            click.echo("[scan] PDB atom details for scanned pairs:")
-            legend = format_pdb_atom_metadata_header()
-            click.echo(f"        legend: {legend}")
-            for stage_idx, tuples in enumerate(stages, start=1):
-                click.echo(f"  Stage {stage_idx}:")
-                for pair_idx, (i, j, _) in enumerate(tuples, start=1):
-                    click.echo(
-                        f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}"
-                    )
-                    click.echo(
-                        f"           j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
-                    )
+            kind = normalize_choice(
+                opt_mode,
+                param="--opt-mode",
+                alias_groups=_OPT_MODE_ALIASES,
+                allowed_hint="light|heavy",
+            )
 
-        # Prepare end-of-run summary collector
-        stages_summary: List[Dict[str, Any]] = []
+            # Resolve freeze list before logging so printed config matches runtime.
+            freeze = merge_freeze_atom_indices(geom_cfg)
+            if freeze_links and source_path.suffix.lower() == ".pdb":
+                freeze = merge_detected_freeze_links(geom_cfg, source_path)
 
-        # ------------------------------------------------------------------
-        # 3) Load geometry (Cartesian) and set calculator (UMA → harmonic-bias wrapper)
-        # ------------------------------------------------------------------
-        out_dir_path.mkdir(parents=True, exist_ok=True)
-
-        # Load
-        if freeze_links_msg:
-            click.echo(freeze_links_msg)
-
-        coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-        geom = geom_loader(geom_input_path, coord_type=coord_type, freeze_atoms=freeze)
-
-        max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
-
-        def _make_optimizer(kind_local: str, _out_dir: Path, _prefix: str):
-            args = _build_sopt_kwargs(
-                kind_local,
+            # Present final config
+            out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+            echo_geom = format_geom_for_echo(geom_cfg)
+            echo_calc = format_geom_for_echo(calc_cfg)
+            echo_opt  = dict(opt_cfg)
+            if relax_max_cycles_override_requested:
+                echo_opt["max_cycles"] = int(relax_max_cycles)
+            echo_opt["out_dir"] = str(out_dir_path)
+            echo_bias = dict(bias_cfg)
+            echo_bond = dict(bond_cfg)
+            click.echo(pretty_block("geom", echo_geom))
+            click.echo(pretty_block("calc", echo_calc))
+            click.echo(pretty_block("opt",  echo_opt))
+            max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
+            echo_sopt = _build_sopt_kwargs(
+                kind,
                 lbfgs_cfg,
                 rfo_cfg,
                 opt_cfg,
-                max_step_bohr,
+                max_step_bohr_for_log,
                 relax_max_cycles,
                 relax_max_cycles_override_requested,
-                _out_dir,
-                _prefix,
+                out_dir_path,
+                str(opt_cfg.get("prefix", "")),
             )
-            if kind_local == "lbfgs":
-                return LBFGS(geom, **args)
-            return RFOptimizer(geom, **args)
+            click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt))
+            click.echo(pretty_block("bias", echo_bias))
+            click.echo(pretty_block("bond", echo_bond))
 
-        # Merge freeze_atoms with link parents (PDB)
-        # Attach freeze indices to Geometry for optimizer awareness
-        if freeze:
-            try:
-                geom.freeze_atoms = np.array(freeze, dtype=int)
-            except Exception:
-                pass
+            pdb_atom_meta: List[Dict[str, Any]] = []
+            if source_path.suffix.lower() == ".pdb":
+                pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
-        # Build UMA calculator (only uma_pysis is supported)
-        base_calc = uma_pysis(**calc_cfg)
+            # ------------------------------------------------------------------
+            # 2) Parse scan lists
+            # ------------------------------------------------------------------
+            argv_scan = sys.argv[1:]
+            scan_lists_raw_final, scan_flag_count = _collect_scan_list_values(
+                argv_scan, ("--scan-lists", "--scan-list")
+            )
+            if scan_flag_count > 1:
+                raise click.BadParameter(
+                    "Use a single --scan-list/--scan-lists followed by multiple stage literals; "
+                    "repeated flags are not accepted."
+                )
+            if not scan_lists_raw_final:
+                raise click.BadParameter("--scan-list(s) must be provided at least once.")
+            stages = _parse_scan_lists(
+                scan_lists_raw_final, one_based=one_based, atom_meta=pdb_atom_meta
+            )
+            K = len(stages)
+            click.echo(f"[scan] Received {K} stage(s).")
 
-        # ------------------------------------------------------------------
-        # Optional preoptimization WITHOUT bias
-        # ------------------------------------------------------------------
-        if preopt:
-            pre_dir = out_dir_path / "preopt"
-            pre_dir.mkdir(parents=True, exist_ok=True)
-            geom.set_calculator(base_calc)
-            click.echo(f"[preopt] Unbiased relaxation ({kind}) ...")
-            optimizer0 = _make_optimizer(kind, pre_dir, "preopt_")
-            try:
-                optimizer0.run()
-            except ZeroStepLength:
-                click.echo(f"[preopt] ZeroStepLength — continuing.", err=True)
-            except OptimizationError as e:
-                click.echo(f"[preopt] OptimizationError — {e}", err=True)
+            if pdb_atom_meta:
+                click.echo("[scan] PDB atom details for scanned pairs:")
+                legend = format_pdb_atom_metadata_header()
+                click.echo(f"        legend: {legend}")
+                for stage_idx, tuples in enumerate(stages, start=1):
+                    click.echo(f"  Stage {stage_idx}:")
+                    for pair_idx, (i, j, _) in enumerate(tuples, start=1):
+                        click.echo(
+                            f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}"
+                        )
+                        click.echo(
+                            f"           j: {format_pdb_atom_metadata(pdb_atom_meta, j)}"
+                        )
 
-            # Write preopt result
-            pre_xyz = pre_dir / "result.xyz"
-            with open(pre_xyz, "w") as f:
-                f.write(_coords3d_to_xyz_string(geom))
-            click.echo(f"[write] Wrote '{pre_xyz}'.")
-            try:
-                convert_xyz_like_outputs(
+            # Prepare end-of-run summary collector
+            stages_summary: List[Dict[str, Any]] = []
+
+            # ------------------------------------------------------------------
+            # 3) Load geometry (Cartesian) and set calculator (UMA → harmonic-bias wrapper)
+            # ------------------------------------------------------------------
+            out_dir_path.mkdir(parents=True, exist_ok=True)
+
+            # Load
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            geom = geom_loader(geom_input_path, coord_type=coord_type, freeze_atoms=freeze)
+
+            max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
+
+            def _make_optimizer(kind_local: str, _out_dir: Path, _prefix: str):
+                args = _build_sopt_kwargs(
+                    kind_local,
+                    lbfgs_cfg,
+                    rfo_cfg,
+                    opt_cfg,
+                    max_step_bohr,
+                    relax_max_cycles,
+                    relax_max_cycles_override_requested,
+                    _out_dir,
+                    _prefix,
+                )
+                if kind_local == "lbfgs":
+                    return LBFGS(geom, **args)
+                return RFOptimizer(geom, **args)
+
+            # Merge freeze_atoms with link parents (PDB)
+            # Attach freeze indices to Geometry for optimizer awareness
+            if freeze:
+                try:
+                    geom.freeze_atoms = np.array(freeze, dtype=int)
+                except Exception as e:
+                    click.echo(
+                        f"[scan] WARNING: Failed to attach freeze_atoms to geometry: {e}",
+                        err=True,
+                    )
+
+            # Build UMA calculator (only uma_pysis is supported)
+            base_calc = uma_pysis(**calc_cfg)
+
+            # ------------------------------------------------------------------
+            # Optional preoptimization WITHOUT bias
+            # ------------------------------------------------------------------
+            if preopt:
+                pre_dir = out_dir_path / "preopt"
+                pre_dir.mkdir(parents=True, exist_ok=True)
+                geom.set_calculator(base_calc)
+                click.echo(f"[preopt] Unbiased relaxation ({kind}) ...")
+                optimizer0 = _make_optimizer(kind, pre_dir, "preopt_")
+                try:
+                    optimizer0.run()
+                except ZeroStepLength:
+                    click.echo(f"[preopt] ZeroStepLength — continuing.", err=True)
+                except OptimizationError as e:
+                    click.echo(f"[preopt] OptimizationError — {e}", err=True)
+
+                # Write preopt result
+                pre_xyz = pre_dir / "result.xyz"
+                with open(pre_xyz, "w") as f:
+                    f.write(_coords3d_to_xyz_string(geom))
+                click.echo(f"[write] Wrote '{pre_xyz}'.")
+                if convert_xyz_like_outputs_logged(
                     pre_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
                     out_pdb_path=pre_dir / "result.pdb" if needs_pdb else None,
                     out_gjf_path=pre_dir / "result.gjf" if needs_gjf else None,
-                )
-                if needs_pdb or needs_gjf:
-                    written = []
-                    if needs_pdb:
-                        written.append("'result.pdb'")
-                    if needs_gjf:
-                        written.append("'result.gjf'")
-                    click.echo(f"[convert] Wrote {', '.join(written)}.")
-            except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert preopt result: {e}", err=True)
+                    context="preopt result",
+                ):
+                    if needs_pdb or needs_gjf:
+                        written = []
+                        if needs_pdb:
+                            written.append("'result.pdb'")
+                        if needs_gjf:
+                            written.append("'result.gjf'")
+                        click.echo(f"[convert] Wrote {', '.join(written)}.")
 
-        # Wrap with bias calculator for the scan
-        biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
-        geom.set_calculator(biased)
+            # Wrap with bias calculator for the scan
+            biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
+            geom.set_calculator(biased)
 
-        # ------------------------------------------------------------------
-        # 4) Stage-by-stage scan
-        # ------------------------------------------------------------------
+            # ------------------------------------------------------------------
+            # 4) Stage-by-stage scan
+            # ------------------------------------------------------------------
 
-        # Iterate stages
-        for k, tuples in enumerate(stages, start=1):
-            stage_dir = _ensure_stage_dir(out_dir_path, k)
-            click.echo(f"\n--- Stage {k}/{K} ---")
-            click.echo(f"Targets (i,j,target Å): {tuples}")
+            # Iterate stages
+            for k, tuples in enumerate(stages, start=1):
+                stage_dir = _ensure_stage_dir(out_dir_path, k)
+                click.echo(f"\n--- Stage {k}/{K} ---")
+                click.echo(f"Targets (i,j,target Å): {tuples}")
 
-            # Snapshot beginning geometry of this stage for bond-change comparison
-            start_geom_for_stage = _snapshot_geometry(geom)
+                # Snapshot beginning geometry of this stage for bond-change comparison
+                start_geom_for_stage = _snapshot_geometry(geom)
 
-            # Current coordinates (Bohr) and schedule computed in Å
-            R_bohr = np.array(geom.coords3d, dtype=float)      # (N,3) Bohr
-            R_ang  = R_bohr * BOHR2ANG                         # (N,3) Å
-            Nsteps, r0, rT, step_widths = _schedule_for_stage(R_ang, tuples, float(max_step_size))
-            click.echo(f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}")
-            click.echo(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}")
-            click.echo(f"[stage {k}] steps N = {Nsteps}")
+                # Current coordinates (Bohr) and schedule computed in Å
+                R_bohr = np.array(geom.coords3d, dtype=float)      # (N,3) Bohr
+                R_ang  = R_bohr * BOHR2ANG                         # (N,3) Å
+                Nsteps, r0, rT, step_widths = _schedule_for_stage(R_ang, tuples, float(max_step_size))
+                click.echo(f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}")
+                click.echo(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}")
+                click.echo(f"[stage {k}] steps N = {Nsteps}")
 
-            # Record per-stage summary
-            srec: Dict[str, Any] = {
-                "index": int(k),
-                "pairs_1based": [(int(i)+1, int(j)+1) for (i, j, _) in tuples],
-                "initial_distances_A": [float(f"{x:.3f}") for x in r0],
-                "target_distances_A": [float(f"{x:.3f}") for x in rT],
-                "per_pair_step_A": [float(f"{x:.3f}") for x in step_widths],
-                "num_steps": int(Nsteps),
-                "bond_change": {"changed": None, "summary": ""},
-            }
-            stages_summary.append(srec)
+                # Record per-stage summary
+                srec: Dict[str, Any] = {
+                    "index": int(k),
+                    "pairs_1based": [(int(i)+1, int(j)+1) for (i, j, _) in tuples],
+                    "initial_distances_A": [float(f"{x:.3f}") for x in r0],
+                    "target_distances_A": [float(f"{x:.3f}") for x in rT],
+                    "per_pair_step_A": [float(f"{x:.3f}") for x in step_widths],
+                    "num_steps": int(Nsteps),
+                    "bond_change": {"changed": None, "summary": ""},
+                }
+                stages_summary.append(srec)
 
-            trj_blocks: List[str] = [] if dump else None
+                trj_blocks: List[str] = [] if dump else None
 
-            pairs = [(i, j) for (i, j, _) in tuples]
+                pairs = [(i, j) for (i, j, _) in tuples]
 
-            if Nsteps == 0:
-                # No stepping; optionally perform end-of-stage unbiased optimization
+                if Nsteps == 0:
+                    # No stepping; optionally perform end-of-stage unbiased optimization
+                    if endopt:
+                        geom.set_calculator(base_calc)
+                        click.echo(f"[stage {k}] endopt (unbiased) ...")
+                        try:
+                            end_optimizer = _make_optimizer(kind, stage_dir, "endopt_")
+                            end_optimizer.run()
+                        except ZeroStepLength:
+                            click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
+                        except OptimizationError as e:
+                            click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
+
+                    # Bond changes: start vs final (possibly endopt)
+                    try:
+                        changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
+                        click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
+                        if changed and summary and summary.strip():
+                            click.echo(textwrap.indent(summary.strip(), prefix="  "))
+                        if not changed:
+                            click.echo("  (no covalent changes detected)")
+                        srec["bond_change"]["changed"] = bool(changed)
+                        srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
+                    except Exception as e:
+                        click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
+
+                    # Write current (possibly endopted) geometry as the stage result
+                    final_xyz = stage_dir / "result.xyz"
+                    with open(final_xyz, "w") as f:
+                        f.write(_coords3d_to_xyz_string(geom))
+                    click.echo(f"[write] Wrote '{final_xyz}'.")
+                    if convert_xyz_like_outputs_logged(
+                        final_xyz,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
+                        out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
+                        context="stage result",
+                    ):
+                        if needs_pdb or needs_gjf:
+                            written = []
+                            if needs_pdb:
+                                written.append("'result.pdb'")
+                            if needs_gjf:
+                                written.append("'result.gjf'")
+                            click.echo(f"[convert] Wrote {', '.join(written)}.")
+                    continue
+
+                # Run N step(s) with bias
+                for s in range(1, Nsteps + 1):
+                    # Compute per-pair step target (Å) for this step
+                    step_targets = [r0_i + s * dw for (r0_i, dw) in zip(r0, step_widths)]
+
+                    # Update bias well targets (still in Å; wrapper converts internally)
+                    biased.set_pairs([(i, j, t) for ((i, j), t) in zip(pairs, step_targets)])
+                    # Flushing Geometry caches by re-attaching the calculator
+                    geom.set_calculator(biased)
+
+                    # Build optimizer and relax (with bias)
+                    prefix = f"scan_s{s:04d}_"
+                    optimizer = _make_optimizer(kind, stage_dir, prefix)
+                    click.echo(f"[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
+                    try:
+                        optimizer.run()
+                    except ZeroStepLength:
+                        click.echo(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.", err=True)
+                    except OptimizationError as e:
+                        click.echo(f"[stage {k}] step {s}: OptimizationError — {e}", err=True)
+
+                    # Record trajectory block only when requested (biased result)
+                    if dump and trj_blocks is not None:
+                        trj_blocks.append(_coords3d_to_xyz_string(geom))
+
+                # Optional end-of-stage UNBIASED optimization
                 if endopt:
                     geom.set_calculator(base_calc)
                     click.echo(f"[stage {k}] endopt (unbiased) ...")
@@ -865,19 +866,40 @@ def cli(
                 except Exception as e:
                     click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
 
-                # Write current (possibly endopted) geometry as the stage result
+                # Stage outputs
+                if dump and trj_blocks:
+                    trj_path = stage_dir / "scan.trj"
+                    with open(trj_path, "w") as f:
+                        f.write("".join(trj_blocks))
+                    click.echo(f"[write] Wrote '{trj_path}'.")
+                    if convert_xyz_like_outputs_logged(
+                        trj_path,
+                        prepared_input,
+                        ref_pdb_path=ref_pdb,
+                        out_pdb_path=stage_dir / "scan.pdb" if needs_pdb else None,
+                        out_gjf_path=stage_dir / "scan.gjf" if needs_gjf else None,
+                        context="stage trajectory",
+                    ):
+                        if needs_pdb or needs_gjf:
+                            written = []
+                            if needs_pdb:
+                                written.append("'scan.pdb'")
+                            if needs_gjf:
+                                written.append("'scan.gjf'")
+                            click.echo(f"[convert] Wrote {', '.join(written)}.")
+
                 final_xyz = stage_dir / "result.xyz"
                 with open(final_xyz, "w") as f:
                     f.write(_coords3d_to_xyz_string(geom))
                 click.echo(f"[write] Wrote '{final_xyz}'.")
-                try:
-                    convert_xyz_like_outputs(
-                        final_xyz,
-                        prepared_input,
-                        ref_pdb_path=ref_pdb,
-                        out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
-                        out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
-                    )
+                if convert_xyz_like_outputs_logged(
+                    final_xyz,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
+                    out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
+                    context="stage result",
+                ):
                     if needs_pdb or needs_gjf:
                         written = []
                         if needs_pdb:
@@ -885,162 +907,61 @@ def cli(
                         if needs_gjf:
                             written.append("'result.gjf'")
                         click.echo(f"[convert] Wrote {', '.join(written)}.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert stage result: {e}", err=True)
-                continue
 
-            # Run N step(s) with bias
-            for s in range(1, Nsteps + 1):
-                # Compute per-pair step target (Å) for this step
-                step_targets = [r0_i + s * dw for (r0_i, dw) in zip(r0, step_widths)]
+            # ------------------------------------------------------------------
+            # 5) Final summary echo (human‑friendly)
+            # ------------------------------------------------------------------
+            def _echo_summary(_stages: List[Dict[str, Any]]) -> None:
+                """
+                Print a readable end-of-run summary.
+                """
+                def _fmt_target_value(x: float) -> str:
+                    s = f"{x:.3f}".rstrip("0").rstrip(".")
+                    return s
 
-                # Update bias well targets (still in Å; wrapper converts internally)
-                biased.set_pairs([(i, j, t) for ((i, j), t) in zip(pairs, step_targets)])
-                # Flushing Geometry caches by re-attaching the calculator
-                geom.set_calculator(biased)
+                def _targets_triplet_str(pairs_1based: List[Tuple[int, int]], targets: List[float]) -> str:
+                    triples = [f"({i}, {j}, {_fmt_target_value(t)})" for (i, j), t in zip(pairs_1based, targets)]
+                    return "[" + ", ".join(triples) + "]"
 
-                # Build optimizer and relax (with bias)
-                prefix = f"scan_s{s:04d}_"
-                optimizer = _make_optimizer(kind, stage_dir, prefix)
-                click.echo(f"[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
-                try:
-                    optimizer.run()
-                except ZeroStepLength:
-                    click.echo(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.", err=True)
-                except OptimizationError as e:
-                    click.echo(f"[stage {k}] step {s}: OptimizationError — {e}", err=True)
+                def _list_of_str_3f(values: List[float]) -> str:
+                    return "[" + ", ".join(f"'{v:.3f}'" for v in values) + "]"
 
-                # Record trajectory block only when requested (biased result)
-                if dump and trj_blocks is not None:
-                    trj_blocks.append(_coords3d_to_xyz_string(geom))
+                click.echo("\nSummary")
+                click.echo("------------------")
+                for s in _stages:
+                    idx = int(s.get("index", 0))
+                    pairs_1b = list(s.get("pairs_1based", []))
+                    r0 = list(s.get("initial_distances_A", []))
+                    rT = list(s.get("target_distances_A", []))
+                    dA = list(s.get("per_pair_step_A", []))
+                    N = int(s.get("num_steps", 0))
+                    bchg = s.get("bond_change", {}) or {}
+                    changed = bool(bchg.get("changed"))
+                    summary_txt = (bchg.get("summary") or "").strip()
 
-            # Optional end-of-stage UNBIASED optimization
-            if endopt:
-                geom.set_calculator(base_calc)
-                click.echo(f"[stage {k}] endopt (unbiased) ...")
-                try:
-                    end_optimizer = _make_optimizer(kind, stage_dir, "endopt_")
-                    end_optimizer.run()
-                except ZeroStepLength:
-                    click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
-                except OptimizationError as e:
-                    click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
+                    click.echo(f"[stage {idx}] Targets (i,j,target Å): { _targets_triplet_str(pairs_1b, rT) }")
+                    click.echo(f"[stage {idx}] initial distances (Å) = { _list_of_str_3f(r0) }")
+                    click.echo(f"[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }")
+                    click.echo(f"[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }")
+                    click.echo(f"[stage {idx}] steps N = {N}")
+                    click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
+                    if changed and summary_txt:
+                        click.echo(textwrap.indent(summary_txt, prefix="  "))
+                    if not changed:
+                        click.echo("  (no covalent changes detected)")
+                    click.echo("")  # blank line between stages
 
-            # Bond changes: start vs final (possibly endopt)
-            try:
-                changed, summary = _has_bond_change(start_geom_for_stage, geom, bond_cfg)
-                click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
-                if changed and summary and summary.strip():
-                    click.echo(textwrap.indent(summary.strip(), prefix="  "))
-                if not changed:
-                    click.echo("  (no covalent changes detected)")
-                srec["bond_change"]["changed"] = bool(changed)
-                srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
-            except Exception as e:
-                click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
+            _echo_summary(stages_summary)
+            # ------------------------------------------------------------------
 
-            # Stage outputs
-            if dump and trj_blocks:
-                trj_path = stage_dir / "scan.trj"
-                with open(trj_path, "w") as f:
-                    f.write("".join(trj_blocks))
-                click.echo(f"[write] Wrote '{trj_path}'.")
-                try:
-                    convert_xyz_like_outputs(
-                        trj_path,
-                        prepared_input,
-                        ref_pdb_path=ref_pdb,
-                        out_pdb_path=stage_dir / "scan.pdb" if needs_pdb else None,
-                        out_gjf_path=stage_dir / "scan.gjf" if needs_gjf else None,
-                    )
-                    if needs_pdb or needs_gjf:
-                        written = []
-                        if needs_pdb:
-                            written.append("'scan.pdb'")
-                        if needs_gjf:
-                            written.append("'scan.gjf'")
-                        click.echo(f"[convert] Wrote {', '.join(written)}.")
-                except Exception as e:
-                    click.echo(f"[convert] WARNING: Failed to convert stage trajectory: {e}", err=True)
+            click.echo("\n=== Scan finished ===\n")
 
-            final_xyz = stage_dir / "result.xyz"
-            with open(final_xyz, "w") as f:
-                f.write(_coords3d_to_xyz_string(geom))
-            click.echo(f"[write] Wrote '{final_xyz}'.")
-            try:
-                convert_xyz_like_outputs(
-                    final_xyz,
-                    prepared_input,
-                    ref_pdb_path=ref_pdb,
-                    out_pdb_path=stage_dir / "result.pdb" if needs_pdb else None,
-                    out_gjf_path=stage_dir / "result.gjf" if needs_gjf else None,
-                )
-                if needs_pdb or needs_gjf:
-                    written = []
-                    if needs_pdb:
-                        written.append("'result.pdb'")
-                    if needs_gjf:
-                        written.append("'result.gjf'")
-                    click.echo(f"[convert] Wrote {', '.join(written)}.")
-            except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert stage result: {e}", err=True)
+            click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
 
-        # ------------------------------------------------------------------
-        # 5) Final summary echo (human‑friendly)
-        # ------------------------------------------------------------------
-        def _echo_summary(_stages: List[Dict[str, Any]]) -> None:
-            """
-            Print a readable end-of-run summary.
-            """
-            def _fmt_target_value(x: float) -> str:
-                s = f"{x:.3f}".rstrip("0").rstrip(".")
-                return s
-
-            def _targets_triplet_str(pairs_1based: List[Tuple[int, int]], targets: List[float]) -> str:
-                triples = [f"({i}, {j}, {_fmt_target_value(t)})" for (i, j), t in zip(pairs_1based, targets)]
-                return "[" + ", ".join(triples) + "]"
-
-            def _list_of_str_3f(values: List[float]) -> str:
-                return "[" + ", ".join(f"'{v:.3f}'" for v in values) + "]"
-
-            click.echo("\nSummary")
-            click.echo("------------------")
-            for s in _stages:
-                idx = int(s.get("index", 0))
-                pairs_1b = list(s.get("pairs_1based", []))
-                r0 = list(s.get("initial_distances_A", []))
-                rT = list(s.get("target_distances_A", []))
-                dA = list(s.get("per_pair_step_A", []))
-                N = int(s.get("num_steps", 0))
-                bchg = s.get("bond_change", {}) or {}
-                changed = bool(bchg.get("changed"))
-                summary_txt = (bchg.get("summary") or "").strip()
-
-                click.echo(f"[stage {idx}] Targets (i,j,target Å): { _targets_triplet_str(pairs_1b, rT) }")
-                click.echo(f"[stage {idx}] initial distances (Å) = { _list_of_str_3f(r0) }")
-                click.echo(f"[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }")
-                click.echo(f"[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }")
-                click.echo(f"[stage {idx}] steps N = {N}")
-                click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
-                if changed and summary_txt:
-                    click.echo(textwrap.indent(summary_txt, prefix="  "))
-                if not changed:
-                    click.echo("  (no covalent changes detected)")
-                click.echo("")  # blank line between stages
-
-        _echo_summary(stages_summary)
-        # ------------------------------------------------------------------
-
-        click.echo("\n=== Scan finished ===\n")
-
-        click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
-
-    except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
-        sys.exit(130)
-    except Exception as e:
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during scan:\n" + textwrap.indent(tb, "  "), err=True)
-        sys.exit(1)
-    finally:
-        prepared_input.cleanup()
+        except KeyboardInterrupt:
+            click.echo("\nInterrupted by user.", err=True)
+            sys.exit(130)
+        except Exception as e:
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            click.echo("Unhandled error during scan:\n" + textwrap.indent(tb, "  "), err=True)
+            sys.exit(1)

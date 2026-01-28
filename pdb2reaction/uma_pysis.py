@@ -95,8 +95,6 @@ Notes
 - Neighborhood defaults come from the model backbone (e.g., `max_neighbors`, `cutoff`)
   unless explicitly overridden. If the backbone is not available (e.g. workers>1),
   AtomicData defaults are used (radius defaults to 6.0 Å).
-- CLI entry point: `run_pysis()` registers the calculator, enabling:
-  `uma_pysis input.yaml`.
 """
 
 from __future__ import annotations
@@ -806,12 +804,3 @@ class uma_ase(FAIRChemCalculator):
             workers_per_node=int(workers_per_node),
         )
         super().__init__(predictor, task_name=str(task_name))
-
-
-# ---------- CLI ----------------------------------------
-def run_pysis():
-    """
-    Enable `uma_pysis input.yaml`.
-    """
-    run.CALC_DICT["uma_pysis"] = uma_pysis
-    run.run()

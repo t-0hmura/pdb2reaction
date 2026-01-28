@@ -343,7 +343,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 AtomKey = Tuple[str, str, str, str, str, str]
 
 # Local imports from the package
-from .extract import compute_charge_summary, extract_api, log_charge_summary
+from .extract import extract_api
 from . import path_search as _path_search
 from . import path_opt as _path_opt
 from . import tsopt as _tsopt
@@ -356,18 +356,20 @@ from .summary_log import write_summary_log
 from .utils import (
     build_energy_diagram,
     convert_xyz_like_outputs,
-    detect_freeze_links_safe,
+    detect_freeze_links_logged,
     format_elapsed,
     prepare_input_structure,
-    maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
     resolve_charge_spin_or_raise,
     load_yaml_dict,
     apply_yaml_overrides,
     load_pdb_atom_metadata,
-    resolve_atom_spec_index,
     merge_freeze_atom_indices,
     apply_ref_pdb_override,
+    ensure_dir,
+    parse_scan_list_triples,
+    close_matplotlib_figures,
+    _derive_charge_from_ligand_charge,
 )
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
@@ -379,19 +381,51 @@ from . import irc as _irc_cli
 # -----------------------------
 
 
-def _close_matplotlib_figures() -> None:
-    """Best-effort cleanup for matplotlib figures to avoid open-figure warnings."""
-
-    try:
-        import matplotlib.pyplot as plt  # type: ignore
-
-        plt.close("all")
-    except Exception:
-        pass
-
-
 def _ensure_dir(p: Path) -> None:
-    p.mkdir(parents=True, exist_ok=True)
+    ensure_dir(p)
+
+
+def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: bool = True) -> bool:
+    """Copy files with consistent warning messages; return success."""
+    try:
+        shutil.copy2(src, dst)
+        if echo:
+            shown = label or src.name
+            click.echo(f"[all] Copied {shown} → {dst}")
+        return True
+    except Exception as e:
+        shown = label or src
+        click.echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}", err=True)
+        return False
+
+
+def _run_cli_main(
+    cmd_name: str,
+    cli_obj,
+    args: Sequence[str],
+    *,
+    on_nonzero: str = "warn",
+    on_exception: str = "raise",
+    prefix: Optional[str] = None,
+) -> None:
+    """Run a Click command with a temporary argv and consistent error handling."""
+    saved = list(sys.argv)
+    label = prefix or cmd_name
+    try:
+        sys.argv = ["pdb2reaction", cmd_name] + list(args)
+        cli_obj.main(args=list(args), standalone_mode=False)
+    except SystemExit as e:
+        code = getattr(e, "code", 1)
+        if code not in (None, 0):
+            if on_nonzero == "raise":
+                raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
+            click.echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
+    except Exception as e:
+        if on_exception == "raise":
+            raise click.ClickException(f"[{label}] {cmd_name} failed: {e}")
+        click.echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
+    finally:
+        sys.argv = saved
 
 
 def _collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
@@ -591,32 +625,6 @@ def _format_atom_key_for_msg(key: AtomKey) -> str:
     return f"{res}:{atom}{alt_sfx}"
 
 
-def _resolve_scan_list_index(
-    value: Any,
-    atom_meta: Optional[Sequence[Dict[str, Any]]],
-    stage_idx: int,
-    tuple_idx: int,
-    side_label: str,
-) -> int:
-    if isinstance(value, (int, np.integer)):
-        return int(value)
-    if isinstance(value, str):
-        if not atom_meta:
-            raise click.BadParameter(
-                f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) uses a string atom spec, "
-                "but no PDB metadata is available (non-PDB inputs require integer indices)."
-            )
-        try:
-            return resolve_atom_spec_index(value, atom_meta) + 1
-        except ValueError as exc:
-            raise click.BadParameter(
-                f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) {exc}"
-            )
-    raise click.BadParameter(
-        f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) must be an int index or atom spec string."
-    )
-
-
 def _parse_scan_lists_literals(
     scan_lists_raw: Sequence[str],
     atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
@@ -624,27 +632,13 @@ def _parse_scan_lists_literals(
     """Parse ``--scan-lists`` literals without re-basing atom indices."""
     stages: List[List[Tuple[int, int, float]]] = []
     for idx_stage, literal in enumerate(scan_lists_raw, start=1):
-        try:
-            obj = ast.literal_eval(literal)
-        except Exception as exc:
-            raise click.BadParameter(f"Invalid literal for --scan-lists #{idx_stage}: {exc}")
-        if not isinstance(obj, (list, tuple)):
-            raise click.BadParameter(
-                f"--scan-lists #{idx_stage} must be a list/tuple of (i,j,target)."
-            )
-        tuples: List[Tuple[int, int, float]] = []
-        for tuple_idx, t in enumerate(obj, start=1):
-            if not (
-                isinstance(t, (list, tuple))
-                and len(t) == 3
-                and isinstance(t[2], (int, float, np.floating))
-            ):
-                raise click.BadParameter(
-                    f"--scan-lists #{idx_stage} contains an invalid triple: {t}"
-                )
-            idx_i = _resolve_scan_list_index(t[0], atom_meta, idx_stage, tuple_idx, "i")
-            idx_j = _resolve_scan_list_index(t[1], atom_meta, idx_stage, tuple_idx, "j")
-            tuples.append((idx_i, idx_j, float(t[2])))
+        tuples, _ = parse_scan_list_triples(
+            literal,
+            one_based=True,
+            atom_meta=atom_meta,
+            option_name=f"--scan-lists #{idx_stage}",
+            return_one_based=True,
+        )
         if not tuples:
             raise click.BadParameter(
                 f"--scan-lists #{idx_stage} must contain at least one (i,j,target) triple."
@@ -811,15 +805,8 @@ def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List
         if pdb_path is None or pdb_path.suffix.lower() != ".pdb":
             # No suitable PDB available yet to determine freeze atoms.
             return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
-        try:
-            fa = detect_freeze_links_safe(pdb_path)
-            _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
-        except Exception as e:
-            click.echo(
-                f"[all] WARNING: detect_freeze_links_safe failed for {pdb_path}: {e}; no atoms will be frozen.",
-                err=True,
-            )
-            _FREEZE_ATOMS_GLOBAL = []
+        fa = detect_freeze_links_logged(pdb_path)
+        _FREEZE_ATOMS_GLOBAL = [int(i) for i in fa]
         return _merge_freeze_atoms(_FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML or [])
     return _merge_freeze_atoms(_FREEZE_ATOMS_YAML or [])
 
@@ -986,7 +973,7 @@ def _save_single_geom_as_pdb_for_tools(
     if ref_pdb.suffix.lower() == ".pdb":
         pdb_out = out_dir / f"{name}.pdb"
         try:
-            _path_search._maybe_convert_to_pdb(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
+            _path_search._convert_to_pdb_logged(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
         except Exception:
             pass
 
@@ -1247,7 +1234,7 @@ def _merge_irc_trajectories_to_single_plot(
 
     try:
         run_trj2fig(tmp_trj, [out_png], unit="kcal", reference="init", reverse_x=False)
-        _close_matplotlib_figures()
+        close_matplotlib_figures()
         click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_png}")
     except Exception as e:
         click.echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}", err=True)
@@ -1391,16 +1378,7 @@ def _run_freq_for_state(
 
     if args_yaml is not None:
         args.extend(["--args-yaml", str(args_yaml)])
-    _saved = list(sys.argv)
-    try:
-        sys.argv = ["pdb2reaction", "freq"] + args
-        _freq_cli.cli.main(args=args, standalone_mode=False)
-    except SystemExit as e:
-        code = getattr(e, "code", 1)
-        if code not in (None, 0):
-            click.echo(f"[freq] WARNING: freq exited with code {code}", err=True)
-    finally:
-        sys.argv = _saved
+    _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
     y = fdir / "thermoanalysis.yaml"
     if y.exists():
         try:
@@ -1494,16 +1472,7 @@ def _run_dft_for_state(
 
     if args_yaml is not None:
         args.extend(["--args-yaml", str(args_yaml)])
-    _saved = list(sys.argv)
-    try:
-        sys.argv = ["pdb2reaction", "dft"] + args
-        _dft_cli.cli.main(args=args, standalone_mode=False)
-    except SystemExit as e:
-        code = getattr(e, "code", 1)
-        if code not in (None, 0):
-            click.echo(f"[dft] WARNING: dft exited with code {code}", err=True)
-    finally:
-        sys.argv = _saved
+    _run_cli_main("dft", _dft_cli.cli, args, on_nonzero="warn", prefix="dft")
     y = out_dir / "result.yaml"
     if y.exists():
         try:
@@ -1610,16 +1579,7 @@ def _run_tsopt_on_hei(
         ts_args.extend(["--ref-pdb", str(ref_pdb)])
 
     click.echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
-    _saved = list(sys.argv)
-    try:
-        sys.argv = ["pdb2reaction", "tsopt"] + ts_args
-        _tsopt.cli.main(args=ts_args, standalone_mode=False)
-    except SystemExit as e:
-        code = getattr(e, "code", 1)
-        if code not in (None, 0):
-            raise click.ClickException(f"[tsopt] tsopt exit code {code}.")
-    finally:
-        sys.argv = _saved
+    _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
 
     ts_pdb = ts_dir / "final_geometry.pdb"
     ts_xyz = ts_dir / "final_geometry.xyz"
@@ -1729,16 +1689,7 @@ def _irc_and_match(
     if args_yaml is not None:
         irc_args.extend(["--args-yaml", str(args_yaml)])
     click.echo(f"[irc] Running EulerPC IRC → out={irc_dir}")
-    _saved_argv = list(sys.argv)
-    try:
-        sys.argv = ["pdb2reaction", "irc"] + irc_args
-        _irc_cli.cli.main(args=irc_args, standalone_mode=False)
-    except SystemExit as e:
-        code = getattr(e, "code", 1)
-        if code not in (None, 0):
-            raise click.ClickException(f"[irc] irc terminated with exit code {code}.")
-    finally:
-        sys.argv = _saved_argv
+    _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
 
     finished_pdb = irc_dir / "finished_irc.pdb"
     finished_trj = irc_dir / "finished_irc.trj"
@@ -1753,7 +1704,7 @@ def _irc_and_match(
             elif ref_pdb_for_seg.suffix.lower() == ".pdb":
                 ref_for_conv = ref_pdb_for_seg
             if ref_for_conv is not None:
-                _path_search._maybe_convert_to_pdb(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
+                _path_search._convert_to_pdb_logged(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
 
@@ -1836,7 +1787,7 @@ def _irc_and_match(
     try:
         if finished_trj.exists():
             run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
-            _close_matplotlib_figures()
+            close_matplotlib_figures()
     except Exception as e:
         click.echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
 
@@ -2560,7 +2511,7 @@ def cli(
 
     if not skip_extract:
         click.echo(
-            f"\n=== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) ===\n"
+            f"=== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) ===\n"
         )
         try:
             ex_res = extract_api(
@@ -2627,40 +2578,33 @@ def cli(
 
         q_total_fallback: float
         numeric_ligand_charge: Optional[float] = None
-        charge_summary: Optional[Dict[str, Any]] = None
+        q_from_flow: Optional[int] = None
         if ligand_charge is not None:
-            try:
-                parser = PDB.PDBParser(QUIET=True)
-                complex_struct = parser.get_structure("complex", str(first_input))
-                selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
-                charge_summary = compute_charge_summary(
-                    complex_struct, selected_ids, set(), ligand_charge
-                )
-                log_charge_summary("[all]", charge_summary)
-                q_total_fallback = float(charge_summary.get("total_charge", 0.0))
-                click.echo(
-                    "[all] Charge summary from full complex (--ligand-charge without extraction):"
-                )
-                click.echo(
-                    f"  Protein: {charge_summary.get('protein_charge', 0.0):+g},  "
-                    f"Ligand: {charge_summary.get('ligand_total_charge', 0.0):+g},  "
-                    f"Ions: {charge_summary.get('ion_total_charge', 0.0):+g},  "
-                    f"Total: {q_total_fallback:+g}"
-                )
-            except Exception as e:
-                charge_summary = None
-                click.echo(
-                    f"[all] NOTE: failed to compute charge from full complex: {e}; "
-                    "falling back to legacy handling.",
-                    err=True,
-                )
             try:
                 numeric_ligand_charge = float(ligand_charge)
             except Exception:
                 numeric_ligand_charge = None
 
-        if charge_summary is not None:
-            q_from_flow = _round_charge_with_note(q_total_fallback)
+            if first_input.suffix.lower() == ".pdb":
+                try:
+                    with prepare_input_structure(first_input) as prepared:
+                        q_from_flow = _derive_charge_from_ligand_charge(
+                            prepared, ligand_charge, prefix="[all]"
+                        )
+                except Exception as e:
+                    click.echo(
+                        f"[all] NOTE: failed to derive total charge from full complex: {e}; "
+                        "falling back to legacy handling.",
+                        err=True,
+                    )
+            else:
+                click.echo(
+                    "[all] NOTE: --ligand-charge derivation requires a PDB input; skipping full-complex derivation.",
+                    err=True,
+                )
+
+        if q_from_flow is not None:
+            pass
         elif numeric_ligand_charge is not None:
             q_total_fallback = numeric_ligand_charge
             click.echo(
@@ -3043,15 +2987,7 @@ def cli(
             with open(tsroot / "summary.yaml", "w") as f:
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
             click.echo(f"[write] Wrote '{tsroot / 'summary.yaml'}'.")
-            try:
-                dst_summary = out_dir / "summary.yaml"
-                shutil.copy2(tsroot / "summary.yaml", dst_summary)
-                click.echo(f"[all] Copied summary.yaml → {dst_summary}")
-            except Exception as e:
-                click.echo(
-                    f"[all] WARNING: Failed to mirror summary.yaml in TSOPT-only mode: {e}",
-                    err=True,
-                )
+            _copy_logged(tsroot / "summary.yaml", out_dir / "summary.yaml", label="summary.yaml")
             try:
                 ts_freq_info = (
                     _read_imaginary_frequency_info(freq_root / "TS") if do_thermo else None
@@ -3153,10 +3089,7 @@ def cli(
                     },
                 }
                 write_summary_log(tsroot / "summary.log", summary_payload)
-                try:
-                    shutil.copy2(tsroot / "summary.log", out_dir / "summary.log")
-                except Exception:
-                    pass
+                _copy_logged(tsroot / "summary.log", out_dir / "summary.log", label="summary.log", echo=False)
             except Exception as e:
                 click.echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
         except Exception as e:
@@ -3175,8 +3108,7 @@ def cli(
                 src = tsroot / f"{stem}.png"
                 if src.exists():
                     dst = out_dir / f"{stem}_all.png"
-                    shutil.copy2(src, dst)
-                    click.echo(f"[all] Copied {src.name} → {dst}")
+                    _copy_logged(src, dst, label=src.name)
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to mirror *_all diagrams in TSOPT-only mode: {e}",
@@ -3186,8 +3118,7 @@ def cli(
         try:
             if isinstance(irc_plot_path, Path) and irc_plot_path.exists():
                 dst = out_dir / "irc_plot_all.png"
-                shutil.copy2(irc_plot_path, dst)
-                click.echo(f"[all] Copied IRC plot → {dst}")
+                _copy_logged(irc_plot_path, dst, label="irc_plot_all.png")
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to mirror IRC plot in TSOPT-only mode: {e}",
@@ -3313,20 +3244,7 @@ def cli(
         click.echo("[all] Invoking scan with arguments:")
         click.echo("  " + " ".join(scan_args))
 
-        _saved_argv = list(sys.argv)
-        try:
-            sys.argv = ["pdb2reaction", "scan"] + scan_args
-            _scan_cli.cli.main(args=scan_args, standalone_mode=False)
-        except SystemExit as e:
-            code = getattr(e, "code", 1)
-            if code not in (None, 0):
-                raise click.ClickException(
-                    f"[all] scan terminated with exit code {code}."
-                )
-        except Exception as e:
-            raise click.ClickException(f"[all] scan failed: {e}")
-        finally:
-            sys.argv = _saved_argv
+        _run_cli_main("scan", _scan_cli.cli, scan_args, on_nonzero="raise", prefix="all")
 
         stage_results: List[Path] = []
         for st in sorted(scan_dir.glob("stage_*")):
@@ -3451,20 +3369,13 @@ def cli(
             click.echo(f"[all] Invoking path-opt for segment {idx}:")
             click.echo("  " + " ".join(po_args))
 
-            _saved_argv = list(sys.argv)
-            try:
-                sys.argv = ["pdb2reaction", "path-opt"] + po_args
-                _path_opt.cli.main(args=po_args, standalone_mode=False)
-            except SystemExit as e:
-                code = getattr(e, "code", 1)
-                if code not in (None, 0):
-                    raise click.ClickException(
-                        f"[all] path-opt terminated with exit code {code} (segment {idx})."
-                    )
-            except Exception as e:
-                raise click.ClickException(f"[all] path-opt failed for segment {idx}: {e}")
-            finally:
-                sys.argv = _saved_argv
+            _run_cli_main(
+                "path-opt",
+                _path_opt.cli,
+                po_args,
+                on_nonzero="raise",
+                prefix=f"all seg {idx:02d}",
+            )
 
             seg_trj = seg_dir / "final_geometries.trj"
             if not seg_trj.exists():
@@ -3489,7 +3400,7 @@ def cli(
                 seg_mep_trj = path_dir / f"mep_seg_{idx:02d}.trj"
                 shutil.copy2(seg_trj, seg_mep_trj)
                 if pockets_for_path[0].suffix.lower() == ".pdb":
-                    _path_search._maybe_convert_to_pdb(
+                    _path_search._convert_to_pdb_logged(
                         seg_mep_trj,
                         ref_pdb_path=pockets_for_path[0],
                         out_path=path_dir / f"mep_seg_{idx:02d}.pdb",
@@ -3553,14 +3464,14 @@ def cli(
 
         try:
             run_trj2fig(final_trj, [path_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
-            _close_matplotlib_figures()
+            close_matplotlib_figures()
             click.echo(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
         try:
             if pockets_for_path[0].suffix.lower() == ".pdb":
-                mep_pdb = _path_search._maybe_convert_to_pdb(
+                mep_pdb = _path_search._convert_to_pdb_logged(
                     final_trj, ref_pdb_path=pockets_for_path[0], out_path=path_dir / "mep.pdb"
                 )
                 if mep_pdb and mep_pdb.exists():
@@ -3658,28 +3569,14 @@ def cli(
                 src = path_dir / name
                 if src.exists():
                     dst = out_dir / name
-                    try:
-                        shutil.copy2(src, dst)
-                        click.echo(f"[all] Copied {name} → {dst}")
-                    except Exception as e:
-                        click.echo(
-                            f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
-                            err=True,
-                        )
+                    _copy_logged(src, dst, label=name)
 
             for stem in ("mep", "mep_w_ref"):
                 for ext in (".trj", ".xyz"):
                     src = path_dir / f"{stem}{ext}"
                     if src.exists():
                         dst = out_dir / src.name
-                        try:
-                            shutil.copy2(src, dst)
-                            click.echo(f"[all] Copied {src.name} → {dst}")
-                        except Exception as e:
-                            click.echo(
-                                f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
-                                err=True,
-                            )
+                        _copy_logged(src, dst, label=src.name)
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to relocate path-opt summary files: {e}", err=True
@@ -3724,11 +3621,7 @@ def cli(
                 },
             }
             write_summary_log(path_dir / "summary.log", summary_payload)
-            try:
-                shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
-                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
-            except Exception:
-                pass
+            _copy_logged(path_dir / "summary.log", out_dir / "summary.log", label="summary.log")
         except Exception as e:
             click.echo(
                 f"[write] WARNING: Failed to write summary.log for path-opt branch: {e}",
@@ -3773,20 +3666,13 @@ def cli(
         click.echo("[all] Invoking path_search with arguments:")
         click.echo("  " + " ".join(ps_args))
 
-        _saved_argv = list(sys.argv)
-        try:
-            sys.argv = ["pdb2reaction", "path_search"] + ps_args
-            _path_search.cli.main(args=ps_args, standalone_mode=False)
-        except SystemExit as e:
-            code = getattr(e, "code", 1)
-            if code not in (None, 0):
-                raise click.ClickException(
-                    f"[all] path_search terminated with exit code {code}."
-                )
-        except Exception as e:
-            raise click.ClickException(f"[all] path_search failed: {e}")
-        finally:
-            sys.argv = _saved_argv
+        _run_cli_main(
+            "path_search",
+            _path_search.cli,
+            ps_args,
+            on_nonzero="raise",
+            prefix="all",
+        )
 
         try:
             for name in (
@@ -3800,28 +3686,14 @@ def cli(
                 src = path_dir / name
                 if src.exists():
                     dst = out_dir / name
-                    try:
-                        shutil.copy2(src, dst)
-                        click.echo(f"[all] Copied {name} → {dst}")
-                    except Exception as e:
-                        click.echo(
-                            f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
-                            err=True,
-                        )
+                    _copy_logged(src, dst, label=name)
 
             for stem in ("mep", "mep_w_ref"):
                 for ext in (".trj", ".xyz"):
                     src = path_dir / f"{stem}{ext}"
                     if src.exists():
                         dst = out_dir / src.name
-                        try:
-                            shutil.copy2(src, dst)
-                            click.echo(f"[all] Copied {src.name} → {dst}")
-                        except Exception as e:
-                            click.echo(
-                                f"[all] WARNING: Failed to copy {src} to {dst}: {e}",
-                                err=True,
-                            )
+                        _copy_logged(src, dst, label=src.name)
         except Exception as e:
             click.echo(
                 f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True

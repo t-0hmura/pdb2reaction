@@ -181,20 +181,17 @@ from .opt import (
 )
 from .utils import (
     convert_xyz_to_pdb,
-    detect_freeze_links,
+    merge_detected_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
-    prepare_input_structure,
-    apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs,
+    convert_xyz_like_outputs_logged,
 )
 from .freq import (
     _torch_device,
@@ -1546,350 +1543,326 @@ def cli(
     hessian_calc_mode: Optional[str],
 ) -> None:
     set_convert_file_enabled(convert_files)
-    prepared_input = prepare_input_structure(input_path)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    geom_input_path = prepared_input.geom_path
-    source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(
-        prepared_input,
-        charge,
-        spin,
+    with prepared_cli_input(
+        input_path,
+        ref_pdb=ref_pdb,
+        charge=charge,
+        spin=spin,
         ligand_charge=ligand_charge,
         prefix="[tsopt]",
-    )
-    time_start = time.perf_counter()
+    ) as (prepared_input, charge, spin):
+        geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
+        time_start = time.perf_counter()
 
-    # --------------------------
-    # 1) Assemble configuration (defaults ← CLI ← YAML)
-    # --------------------------
-    yaml_cfg = load_yaml_dict(args_yaml)
-    geom_cfg = dict(GEOM_KW)
-    calc_cfg = dict(CALC_KW)
-    opt_cfg  = dict(OPT_BASE_KW)
-    simple_cfg = dict(hessian_dimer_KW)
-    rsirfo_cfg = dict(RSIRFO_KW)
+        # --------------------------
+        # 1) Assemble configuration (defaults ← CLI ← YAML)
+        # --------------------------
+        yaml_cfg = load_yaml_dict(args_yaml)
+        geom_cfg = dict(GEOM_KW)
+        calc_cfg = dict(CALC_KW)
+        opt_cfg  = dict(OPT_BASE_KW)
+        simple_cfg = dict(hessian_dimer_KW)
+        rsirfo_cfg = dict(RSIRFO_KW)
 
-    # CLI overrides
-    calc_cfg["charge"] = int(charge)
-    calc_cfg["spin"]   = int(spin)
-    calc_cfg["workers"] = int(workers)
-    calc_cfg["workers_per_node"] = int(workers_per_node)
-    opt_cfg["max_cycles"] = int(max_cycles)
-    opt_cfg["dump"]       = bool(dump)
-    opt_cfg["out_dir"]    = out_dir
-    if thresh is not None:
-        opt_cfg["thresh"] = str(thresh)
-        simple_cfg["thresh"] = str(thresh)
-        rsirfo_cfg["thresh"] = str(thresh)
+        # CLI overrides
+        calc_cfg["charge"] = int(charge)
+        calc_cfg["spin"]   = int(spin)
+        calc_cfg["workers"] = int(workers)
+        calc_cfg["workers_per_node"] = int(workers_per_node)
+        opt_cfg["max_cycles"] = int(max_cycles)
+        opt_cfg["dump"]       = bool(dump)
+        opt_cfg["out_dir"]    = out_dir
+        if thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
+            simple_cfg["thresh"] = str(thresh)
+            rsirfo_cfg["thresh"] = str(thresh)
 
-    # Hessian mode override from CLI
-    if hessian_calc_mode is not None:
-        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+        # Hessian mode override from CLI
+        if hessian_calc_mode is not None:
+            calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
 
-    # YAML overrides (highest precedence)
-    apply_yaml_overrides(
-        yaml_cfg,
-        [
-            (geom_cfg, (("geom",),)),
-            (calc_cfg, (("calc",),)),
-            (opt_cfg,  (("opt",),)),
-            (simple_cfg, (("hessian_dimer",),)),
-            (rsirfo_cfg, (("rsirfo",),)),
-        ],
-    )
+        # YAML overrides (highest precedence)
+        apply_yaml_overrides(
+            yaml_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg,  (("opt",),)),
+                (simple_cfg, (("hessian_dimer",),)),
+                (rsirfo_cfg, (("rsirfo",),)),
+            ],
+        )
 
-    if not flatten_imag_mode:
-        simple_cfg["flatten_max_iter"] = 0
+        if not flatten_imag_mode:
+            simple_cfg["flatten_max_iter"] = 0
 
-    # Freeze links (PDB only): merge with existing list
-    if freeze_links and source_path.suffix.lower() == ".pdb":
-        try:
-            detected = detect_freeze_links(source_path)
-        except Exception as e:
-            click.echo(f"[freeze-links] WARNING: Could not detect link parents: {e}", err=True)
-            detected = []
-        merged = merge_freeze_atom_indices(geom_cfg, detected)
-        if merged:
-            click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
+        # Freeze links (PDB only): merge with existing list
+        if freeze_links and source_path.suffix.lower() == ".pdb":
+            merge_detected_freeze_links(geom_cfg, source_path)
 
-    # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
-    if "freeze_atoms" in geom_cfg:
-        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+        # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
+        if "freeze_atoms" in geom_cfg:
+            calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
-    kind = normalize_choice(
-        opt_mode,
-        param="--opt-mode",
-        alias_groups=_OPT_MODE_ALIASES,
-        allowed_hint="light|heavy",
-    )
-    out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+        kind = normalize_choice(
+            opt_mode,
+            param="--opt-mode",
+            alias_groups=_OPT_MODE_ALIASES,
+            allowed_hint="light|heavy",
+        )
+        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
-    # Pretty-print config summary
-    click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
-    click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
-    if kind == "light":
-        # Split out pass-through dicts for readability
-        sd_cfg_for_echo = dict(simple_cfg)
-        sd_cfg_for_echo["dimer"] = dict(simple_cfg.get("dimer", {}))
-        sd_cfg_for_echo["lbfgs"] = dict(simple_cfg.get("lbfgs", {}))
-        click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
-    else:
-        rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
-        click.echo(pretty_block("rsirfo", rsirfo_kwargs_for_echo))
-
-    # --------------------------
-    # 2) Prepare geometry dir
-    # --------------------------
-    out_dir_path.mkdir(parents=True, exist_ok=True)
-
-    # --------------------------
-    # 3) Run
-    # --------------------------
-    try:
+        # Pretty-print config summary
+        click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
+        click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
+        click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
         if kind == "light":
-            # HessianDimer runner construction
-            uma_kwargs_for_sd = dict(calc_cfg)
-            runner = HessianDimer(
-                fn=str(geom_input_path),
-                out_dir=str(out_dir_path),
-                thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
-                thresh=simple_cfg.get("thresh", "gau"),
-                update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 200)),
-                neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
-                flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
-                flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
-                mem=int(simple_cfg.get("mem", 100000)),
-                uma_kwargs=uma_kwargs_for_sd,
-                device=str(simple_cfg.get("device", calc_cfg.get("device", "auto"))),
-                dump=bool(opt_cfg["dump"]),
-                root=int(simple_cfg.get("root", 0)),
-                dimer_kwargs=dict(simple_cfg.get("dimer", {})),
-                lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
-                max_total_cycles=int(opt_cfg["max_cycles"]),
-                flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
-                flatten_k=int(simple_cfg.get("flatten_k", 10)),
-                flatten_loop_bofill=bool(simple_cfg.get("flatten_loop_bofill", False)),
-                # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
-                geom_kwargs=dict(geom_cfg),
-            )
+            # Split out pass-through dicts for readability
+            sd_cfg_for_echo = dict(simple_cfg)
+            sd_cfg_for_echo["dimer"] = dict(simple_cfg.get("dimer", {}))
+            sd_cfg_for_echo["lbfgs"] = dict(simple_cfg.get("lbfgs", {}))
+            click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
+        else:
+            rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
+            click.echo(pretty_block("rsirfo", rsirfo_kwargs_for_echo))
 
-            click.echo("\n=== TS optimization (Hessian Dimer) started ===\n")
-            runner.run()
-            click.echo("\n=== TS optimization (Hessian Dimer) finished ===\n")
+        # --------------------------
+        # 2) Prepare geometry dir
+        # --------------------------
+        out_dir_path.mkdir(parents=True, exist_ok=True)
 
-            needs_pdb = source_path.suffix.lower() == ".pdb"
-            needs_gjf = prepared_input.is_gjf
-            ref_pdb = source_path.resolve() if needs_pdb else None
-            final_xyz = out_dir_path / "final_geometry.xyz"
-            try:
-                convert_xyz_like_outputs(
+        # --------------------------
+        # 3) Run
+        # --------------------------
+        try:
+            if kind == "light":
+                # HessianDimer runner construction
+                uma_kwargs_for_sd = dict(calc_cfg)
+                runner = HessianDimer(
+                    fn=str(geom_input_path),
+                    out_dir=str(out_dir_path),
+                    thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
+                    thresh=simple_cfg.get("thresh", "gau"),
+                    update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 200)),
+                    neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
+                    flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
+                    flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
+                    mem=int(simple_cfg.get("mem", 100000)),
+                    uma_kwargs=uma_kwargs_for_sd,
+                    device=str(simple_cfg.get("device", calc_cfg.get("device", "auto"))),
+                    dump=bool(opt_cfg["dump"]),
+                    root=int(simple_cfg.get("root", 0)),
+                    dimer_kwargs=dict(simple_cfg.get("dimer", {})),
+                    lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
+                    max_total_cycles=int(opt_cfg["max_cycles"]),
+                    flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
+                    flatten_k=int(simple_cfg.get("flatten_k", 10)),
+                    flatten_loop_bofill=bool(simple_cfg.get("flatten_loop_bofill", False)),
+                    # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
+                    geom_kwargs=dict(geom_cfg),
+                )
+
+                click.echo("\n=== TS optimization (Hessian Dimer) started ===\n")
+                runner.run()
+                click.echo("\n=== TS optimization (Hessian Dimer) finished ===\n")
+
+                needs_pdb = source_path.suffix.lower() == ".pdb"
+                needs_gjf = prepared_input.is_gjf
+                ref_pdb = source_path.resolve() if needs_pdb else None
+                final_xyz = out_dir_path / "final_geometry.xyz"
+                if convert_xyz_like_outputs_logged(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
                     out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
-                )
-                click.echo("[convert] Wrote 'final_geometry' outputs.")
-            except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
+                    context="final geometry",
+                ):
+                    click.echo("[convert] Wrote 'final_geometry' outputs.")
 
-            if bool(opt_cfg.get("dump", False)) and needs_pdb:
-                all_trj = out_dir_path / "optimization_all.trj"
-                if all_trj.exists():
-                    try:
-                        convert_xyz_like_outputs(
+                if bool(opt_cfg.get("dump", False)) and needs_pdb:
+                    all_trj = out_dir_path / "optimization_all.trj"
+                    if all_trj.exists():
+                        if convert_xyz_like_outputs_logged(
                             all_trj,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
                             out_pdb_path=out_dir_path / "optimization_all.pdb" if needs_pdb else None,
-                        )
-                        click.echo("[convert] Wrote 'optimization_all' outputs.")
-                    except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
-                else:
-                    click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
+                            context="optimization trajectory",
+                        ):
+                            click.echo("[convert] Wrote 'optimization_all' outputs.")
+                    else:
+                        click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
 
-        else:
-            # RS-I-RFO (heavy)
-            #  - Build geometry now and attach UMA calculator
-            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-            coord_kwargs = dict(geom_cfg)
-            coord_kwargs.pop("coord_type", None)
-            geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
+            else:
+                # RS-I-RFO (heavy)
+                #  - Build geometry now and attach UMA calculator
+                coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+                coord_kwargs = dict(geom_cfg)
+                coord_kwargs.pop("coord_type", None)
+                geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
-            calc_builder_or_instance = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
-            try:
-                geometry.set_calculator(calc_builder_or_instance())
-            except TypeError:
-                geometry.set_calculator(calc_builder_or_instance)
+                calc = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
+                geometry.set_calculator(calc)
 
-            # Construct RSIRFO optimizer
-            rsirfo_kwargs = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
+                # Construct RSIRFO optimizer
+                rsirfo_kwargs = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
 
-            optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
+                optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
 
-            click.echo("\n=== TS optimization (RS-I-RFO) started ===\n")
-            optimizer.run()
-            click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
-            last_optimizer = optimizer
+                click.echo("\n=== TS optimization (RS-I-RFO) started ===\n")
+                optimizer.run()
+                click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
+                last_optimizer = optimizer
 
-            # --- RSIRFO: count imaginary modes and optional flatten loop ---
-            geometry.set_calculator(None)
-            uma_kwargs_for_heavy = dict(calc_cfg)
-            uma_kwargs_for_heavy["out_hess_torch"] = True
-            device = _torch_device(calc_cfg.get("device", "auto"))
+                # --- RSIRFO: count imaginary modes and optional flatten loop ---
+                geometry.set_calculator(None)
+                uma_kwargs_for_heavy = dict(calc_cfg)
+                uma_kwargs_for_heavy["out_hess_torch"] = True
+                device = _torch_device(calc_cfg.get("device", "auto"))
 
-            def _attach_rsirfo_calc() -> None:
-                try:
-                    geometry.set_calculator(calc_builder_or_instance())
-                except TypeError:
-                    geometry.set_calculator(calc_builder_or_instance)
+                def _attach_rsirfo_calc() -> None:
+                    geometry.set_calculator(calc)
 
-            def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
-                H = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
-                freqs_local, modes_local = _frequencies_cm_and_modes(
-                    H,
-                    geometry.atomic_numbers,
-                    geometry.cart_coords.reshape(-1, 3),
-                    device,
-                    freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None,
-                )
-                del H
-                return freqs_local, modes_local
-
-            freqs_cm, modes = _calc_freqs_and_modes()
-
-            neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
-            neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
-            n_imag = int(np.sum(neg_mask))
-            ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
-            click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
-
-            flatten_max_iter = int(simple_cfg.get("flatten_max_iter", 0))
-            if flatten_max_iter > 0 and n_imag > 1:
-                click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
-                masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
-                roots = rsirfo_kwargs.get("roots", [0])
-                main_root = int(roots[0]) if roots else 0
-                for it in range(flatten_max_iter):
-                    click.echo(f"[flatten] RSIRFO iteration {it + 1}/{flatten_max_iter}")
-                    did_flatten = _flatten_once_with_modes_for_geom(
-                        geometry,
-                        masses_amu,
-                        uma_kwargs_for_heavy,
-                        freqs_cm,
-                        modes,
-                        neg_freq_thresh_cm,
-                        float(simple_cfg.get("flatten_amp_ang", 0.10)),
-                        float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
-                        int(simple_cfg.get("flatten_k", 10)),
-                        main_root,
+                def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
+                    H = _calc_full_hessian_torch(geometry, uma_kwargs_for_heavy, device)
+                    freqs_local, modes_local = _frequencies_cm_and_modes(
+                        H,
+                        geometry.atomic_numbers,
+                        geometry.cart_coords.reshape(-1, 3),
+                        device,
+                        freeze_idx=list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None,
                     )
-                    if not did_flatten:
-                        click.echo("[flatten] No eligible modes to flatten; stopping.")
-                        break
+                    del H
+                    return freqs_local, modes_local
 
-                    _attach_rsirfo_calc()
-                    optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
-                    click.echo("\n=== TS optimization (RS-I-RFO) restarted ===\n")
-                    optimizer.run()
-                    click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
-                    last_optimizer = optimizer
-                    geometry.set_calculator(None)
+                freqs_cm, modes = _calc_freqs_and_modes()
 
-                    freqs_cm, modes = _calc_freqs_and_modes()
-                    neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
-                    n_imag = int(np.sum(neg_mask))
-                    ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
-                    click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
-                    if n_imag <= 1:
-                        break
+                neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
+                neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
+                n_imag = int(np.sum(neg_mask))
+                ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
+                click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
 
-            needs_pdb = source_path.suffix.lower() == ".pdb"
-            needs_gjf = prepared_input.is_gjf
-            ref_pdb = source_path.resolve() if needs_pdb else None
-            final_xyz_path = last_optimizer.final_fn if isinstance(last_optimizer.final_fn, Path) else Path(last_optimizer.final_fn)
-            try:
-                convert_xyz_like_outputs(
+                flatten_max_iter = int(simple_cfg.get("flatten_max_iter", 0))
+                if flatten_max_iter > 0 and n_imag > 1:
+                    click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
+                    masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
+                    roots = rsirfo_kwargs.get("roots", [0])
+                    main_root = int(roots[0]) if roots else 0
+                    for it in range(flatten_max_iter):
+                        click.echo(f"[flatten] RSIRFO iteration {it + 1}/{flatten_max_iter}")
+                        did_flatten = _flatten_once_with_modes_for_geom(
+                            geometry,
+                            masses_amu,
+                            uma_kwargs_for_heavy,
+                            freqs_cm,
+                            modes,
+                            neg_freq_thresh_cm,
+                            float(simple_cfg.get("flatten_amp_ang", 0.10)),
+                            float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
+                            int(simple_cfg.get("flatten_k", 10)),
+                            main_root,
+                        )
+                        if not did_flatten:
+                            click.echo("[flatten] No eligible modes to flatten; stopping.")
+                            break
+
+                        _attach_rsirfo_calc()
+                        optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
+                        click.echo("\n=== TS optimization (RS-I-RFO) restarted ===\n")
+                        optimizer.run()
+                        click.echo("\n=== TS optimization (RS-I-RFO) finished ===\n")
+                        last_optimizer = optimizer
+                        geometry.set_calculator(None)
+
+                        freqs_cm, modes = _calc_freqs_and_modes()
+                        neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
+                        n_imag = int(np.sum(neg_mask))
+                        ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
+                        click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
+                        if n_imag <= 1:
+                            break
+
+                needs_pdb = source_path.suffix.lower() == ".pdb"
+                needs_gjf = prepared_input.is_gjf
+                ref_pdb = source_path.resolve() if needs_pdb else None
+                final_xyz_path = last_optimizer.final_fn if isinstance(last_optimizer.final_fn, Path) else Path(last_optimizer.final_fn)
+                if convert_xyz_like_outputs_logged(
                     final_xyz_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
                     out_pdb_path=out_dir_path / "final_geometry.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "final_geometry.gjf" if needs_gjf else None,
-                )
-                click.echo("[convert] Wrote 'final_geometry' outputs.")
-            except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final geometry: {e}", err=True)
+                    context="final geometry",
+                ):
+                    click.echo("[convert] Wrote 'final_geometry' outputs.")
 
-            if bool(opt_cfg.get("dump", False)) and needs_pdb:
-                trj_path = out_dir_path / "optimization.trj"
-                if trj_path.exists():
-                    try:
-                        convert_xyz_like_outputs(
+                if bool(opt_cfg.get("dump", False)) and needs_pdb:
+                    trj_path = out_dir_path / "optimization.trj"
+                    if trj_path.exists():
+                        if convert_xyz_like_outputs_logged(
                             trj_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb,
                             out_pdb_path=out_dir_path / "optimization.pdb" if needs_pdb else None,
-                        )
-                        click.echo("[convert] Wrote 'optimization' outputs.")
-                    except Exception as e:
-                        click.echo(f"[convert] WARNING: Failed to convert optimization trajectory: {e}", err=True)
+                            context="optimization trajectory",
+                        ):
+                            click.echo("[convert] Wrote 'optimization' outputs.")
+                    else:
+                        click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+
+                # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
+                neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
+                if len(neg_idx) == 0:
+                    click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
                 else:
-                    click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+                    roots = rsirfo_kwargs.get("roots", [0])
+                    main_root = int(roots[0]) if roots else 0
+                    order = np.argsort(freqs_cm[neg_idx])
+                    pick_idx = neg_idx[order[max(0, min(main_root, len(order)-1))]]
+                    mode_mw = modes[pick_idx]
+                    masses_amu_t = torch.as_tensor([atomic_masses[z] for z in geometry.atomic_numbers],
+                                                   dtype=mode_mw.dtype, device=mode_mw.device)
+                    m3 = torch.repeat_interleave(masses_amu_t, 3)
+                    v_cart = (mode_mw / torch.sqrt(m3)).detach().cpu().numpy()
+                    v_cart = v_cart / np.linalg.norm(v_cart)
 
-            # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
-            neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
-            if len(neg_idx) == 0:
-                click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
-            else:
-                roots = rsirfo_kwargs.get("roots", [0])
-                main_root = int(roots[0]) if roots else 0
-                order = np.argsort(freqs_cm[neg_idx])
-                pick_idx = neg_idx[order[max(0, min(main_root, len(order)-1))]]
-                mode_mw = modes[pick_idx]
-                masses_amu_t = torch.as_tensor([atomic_masses[z] for z in geometry.atomic_numbers],
-                                               dtype=mode_mw.dtype, device=mode_mw.device)
-                m3 = torch.repeat_interleave(masses_amu_t, 3)
-                v_cart = (mode_mw / torch.sqrt(m3)).detach().cpu().numpy()
-                v_cart = v_cart / np.linalg.norm(v_cart)
+                    vib_dir = out_dir_path / "vib"
+                    vib_dir.mkdir(parents=True, exist_ok=True)
+                    out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj"
+                    out_pdb = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb"
 
-                vib_dir = out_dir_path / "vib"
-                vib_dir.mkdir(parents=True, exist_ok=True)
-                out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj"
-                out_pdb = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb"
+                    ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
+                    _write_mode_trj_and_pdb(
+                        geometry,
+                        v_cart,
+                        out_trj,
+                        amplitude_ang=0.8,
+                        n_frames=20,
+                        comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1",
+                        ref_pdb=ref_pdb,
+                        write_pdb=ref_pdb is not None,
+                        out_pdb=out_pdb,
+                    )
 
-                ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
-                _write_mode_trj_and_pdb(
-                    geometry,
-                    v_cart,
-                    out_trj,
-                    amplitude_ang=0.8,
-                    n_frames=20,
-                    comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1",
-                    ref_pdb=ref_pdb,
-                    write_pdb=ref_pdb is not None,
-                    out_pdb=out_pdb,
-                )
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
 
-        click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
-
-    except ZeroStepLength:
-        click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
-        sys.exit(2)
-    except OptimizationError as e:
-        click.echo(f"ERROR: Optimization failed — {e}", err=True)
-        sys.exit(3)
-    except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
-        sys.exit(130)
-    except Exception as e:
-        import traceback
-        tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
-        sys.exit(1)
-    finally:
-        prepared_input.cleanup()
+        except ZeroStepLength:
+            click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
+            sys.exit(2)
+        except OptimizationError as e:
+            click.echo(f"ERROR: Optimization failed — {e}", err=True)
+            sys.exit(3)
+        except KeyboardInterrupt:
+            click.echo("\nInterrupted by user.", err=True)
+            sys.exit(130)
+        except Exception as e:
+            import traceback
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
+            sys.exit(1)

@@ -182,7 +182,7 @@ from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .path_opt import (
-    _maybe_convert_to_pdb,
+    _convert_to_pdb_logged,
     _optimize_single,
     _run_dmf_mep,
     _write_ase_trj_with_energy,
@@ -196,23 +196,23 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
-    detect_freeze_links_safe,
+    merge_detected_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     build_energy_diagram,
     prepare_input_structure,
     fill_charge_spin_from_gjf,
     _derive_charge_from_ligand_charge,
-    maybe_convert_xyz_to_gjf,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     PreparedInputStructure,
     GjfTemplate,
+    convert_xyz_to_gjf_logged,
+    close_matplotlib_figures,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
@@ -222,17 +222,6 @@ from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
-
-
-def _close_matplotlib_figures() -> None:
-    """Best-effort cleanup for matplotlib figures to avoid open-figure warnings."""
-
-    try:
-        import matplotlib.pyplot as plt  # type: ignore
-
-        plt.close("all")
-    except Exception:
-        pass
 
 
 # YAML helper to preserve multiline blocks for bond-change summaries in summary.yaml
@@ -368,10 +357,11 @@ def _load_two_endpoints(
     for p in paths:
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and p.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(p)
-            freeze = merge_freeze_atom_indices(cfg, detected)
-            if detected and freeze:
-                click.echo(f"[freeze-links] {p.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+            freeze = merge_detected_freeze_links(
+                cfg,
+                p,
+                prefix=f"[freeze-links] {p.name}:",
+            )
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g = geom_loader(p, coord_type=coord_type, freeze_atoms=freeze)
@@ -396,10 +386,11 @@ def _load_structures(
         src_path = prepared.source_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         if auto_freeze_links and src_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(src_path)
-            freeze = merge_freeze_atom_indices(cfg, detected)
-            if detected and freeze:
-                click.echo(f"[freeze-links] {src_path.name}: Freeze atoms (0-based): {','.join(map(str, freeze))}")
+            freeze = merge_detected_freeze_links(
+                cfg,
+                src_path,
+                prefix=f"[freeze-links] {src_path.name}:",
+            )
         else:
             freeze = merge_freeze_atom_indices(cfg)
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
@@ -427,7 +418,7 @@ def _write_xyz_trj_with_energy(images: Sequence, energies: Sequence[float], path
         f.write("".join(blocks))
 
 
-def _maybe_convert_to_gjf(
+def _convert_to_gjf(
     xyz_path: Path,
     template: Optional[GjfTemplate],
     out_path: Optional[Path] = None,
@@ -435,16 +426,15 @@ def _maybe_convert_to_gjf(
     """
     Convert XYZ to Gaussian input using a template, when available.
     """
-    try:
-        if template is None or (not xyz_path.exists()):
-            return None
-        target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
-        maybe_convert_xyz_to_gjf(xyz_path, template, target)
+    target = convert_xyz_to_gjf_logged(
+        xyz_path,
+        template,
+        out_path=out_path,
+        context="GJF",
+    )
+    if target is not None:
         click.echo(f"[convert] Wrote '{target}'.")
-        return target
-    except Exception as e:
-        click.echo(f"[convert] WARNING: Failed to convert '{xyz_path.name}' to GJF: {e}", err=True)
-        return None
+    return target
 
 
 def _kabsch_rmsd(A: np.ndarray, B: np.ndarray, align: bool = True, indices: Optional[Sequence[int]] = None) -> float:
@@ -724,7 +714,7 @@ def _run_mep_between(
     try:
         if wrote_with_energy:
             run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
-            _close_matplotlib_figures()
+            close_matplotlib_figures()
             click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
         else:
             click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
@@ -874,11 +864,11 @@ def _run_dmf_between(
 
     final_trj = seg_dir / "final_geometries.trj"
     _write_ase_trj_with_energy(dmf_res.images, energies, final_trj)
-    _maybe_convert_to_pdb(final_trj, ref_pdb_path)
+    _convert_to_pdb_logged(final_trj, ref_pdb_path)
 
     try:
         run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
-        _close_matplotlib_figures()
+        close_matplotlib_figures()
         click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
@@ -928,7 +918,7 @@ def _refine_between(
     return _run_mep_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
 
 
-def _maybe_bridge_segments(
+def _bridge_segments(
     tail_g,
     head_g,
     shared_calc,
@@ -1063,7 +1053,7 @@ def _stitch_paths(
             right_base = _segment_base_id(right_tag_upcoming)
             bridge_name_base = f"{left_base}_{right_base}"
 
-            br = _maybe_bridge_segments(
+            br = _bridge_segments(
                 tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
                 rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path,
                 mep_mode_kind=mep_mode_kind, calc_cfg=calc_cfg or {}, max_nodes=max_nodes,
@@ -2274,7 +2264,7 @@ def cli(
 
         out_dir_path = Path(out_dir).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
+        echo_calc = format_geom_for_echo(calc_cfg)
         echo_gs   = dict(gs_cfg)
         echo_opt  = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
@@ -2323,14 +2313,12 @@ def cli(
             auto_freeze_links=bool(freeze_links_flag),
         )
         if geoms:
-            freeze_effective: Dict[str, List[int]] = {}
-            for prepared, g in zip(prepared_inputs, geoms):
-                try:
-                    freeze_list = list(getattr(g, "freeze_atoms", []))
-                except Exception:
-                    freeze_list = list(geom_cfg.get("freeze_atoms", []))
-                freeze_effective[prepared.source_path.name] = freeze_list
-            click.echo(pretty_block("freeze_atoms (effective)", freeze_effective))
+            try:
+                freeze_list = [int(i) for i in list(getattr(geoms[0], "freeze_atoms", []))]
+            except Exception:
+                freeze_list = [int(i) for i in list(geom_cfg.get("freeze_atoms", []))]
+            freeze_text = ",".join(map(str, freeze_list))
+            click.echo("freeze_atoms\n" + "-" * len("freeze_atoms") + "\n" + freeze_text + "\n")
 
         main_prepared = prepared_inputs[0] if prepared_inputs else None
 
@@ -2490,7 +2478,7 @@ def cli(
         click.echo(f"[write] Wrote '{final_trj}'.")
         try:
             run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
-            _close_matplotlib_figures()
+            close_matplotlib_figures()
             click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)

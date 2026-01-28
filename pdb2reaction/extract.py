@@ -761,7 +761,7 @@ def select_residues(complex_struct,
         res = atom.get_parent()
         return (res.get_resname() in AMINO_ACIDS) and (atom.get_name() in BACKBONE_ATOMS)
 
-    def maybe_add(atom, via_backbone: bool):
+    def add_if_eligible(atom, via_backbone: bool):
         res = atom.get_parent()
         if not include_h2o and res.get_resname() in WATER_RES:
             return
@@ -776,7 +776,7 @@ def select_residues(complex_struct,
             if exclude_backbone and is_amino_backbone_atom(neigh):
                 continue  # require non-backbone atom for amino-acid residues
             via_backbone_neigh = (neigh.get_name() in BACKBONE_ATOMS)
-            maybe_add(neigh, via_backbone_neigh)
+            add_if_eligible(neigh, via_backbone_neigh)
 
     # hetero-hetero radius: both sides non-C/H (and non-backbone filter for amino acids when exclude_backbone==True)
     for atom in substrate_het:
@@ -786,7 +786,7 @@ def select_residues(complex_struct,
             if exclude_backbone and is_amino_backbone_atom(neigh):
                 continue
             via_backbone_neigh = (neigh.get_name() in BACKBONE_ATOMS)
-            maybe_add(neigh, via_backbone_neigh)
+            add_if_eligible(neigh, via_backbone_neigh)
 
     return selected_ids, backbone_contact_ids
 

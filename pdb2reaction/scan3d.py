@@ -132,17 +132,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import ast
 import math
 import sys
 import textwrap
 import traceback
 import tempfile
-import os
 import time
 
 import click
-from click.core import ParameterSource
 import numpy as np
 import pandas as pd
 from scipy.interpolate import Rbf
@@ -162,22 +159,24 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
-    detect_freeze_links_safe,
+    merge_detected_freeze_links,
     pretty_block,
     format_geom_for_echo,
-    format_freeze_atoms_for_echo,
     format_elapsed,
     merge_freeze_atom_indices,
     normalize_choice,
-    prepare_input_structure,
-    apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    prepared_cli_input,
     set_convert_file_enabled,
-    convert_xyz_like_outputs,
+    convert_xyz_like_outputs_logged,
     load_pdb_atom_metadata,
     format_pdb_atom_metadata,
     format_pdb_atom_metadata_header,
-    resolve_atom_spec_index,
+    ensure_dir,
+    make_snapshot_geometry,
+    parse_scan_list_quads,
+    build_scan_configs,
+    cli_param_overridden,
+    load_yaml_dict,
 )
 
 # Default keyword dictionaries for the 3D scan (override only the knobs we touch)
@@ -210,35 +209,10 @@ _VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid
 
 
 def _ensure_dir(path: Path) -> None:
-    path.mkdir(parents=True, exist_ok=True)
+    ensure_dir(path)
 
 
-def _snapshot_geometry(g) -> Any:
-    """Snapshot a Geometry via temporary XYZ to decouple state."""
-    s = g.as_xyz()
-    if not s.endswith("\n"):
-        s += "\n"
-    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
-    try:
-        tmp.write(s)
-        tmp.flush()
-        tmp.close()
-        snap = geom_loader(
-            Path(tmp.name),
-            coord_type=getattr(g, "coord_type", GEOM_KW_DEFAULT["coord_type"]),
-            freeze_atoms=getattr(g, "freeze_atoms", []),
-        )
-        try:
-            import numpy as _np  # noqa: PLC0415
-            snap.freeze_atoms = _np.array(getattr(g, "freeze_atoms", []), dtype=int)
-        except Exception:
-            pass
-        return snap
-    finally:
-        try:
-            os.unlink(tmp.name)
-        except Exception:
-            pass
+_snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 
 
 def _format_distance_tag(d: float) -> str:
@@ -295,60 +269,18 @@ def _parse_scan_list(
         If True, the indices in `raw` are interpreted as 1-based and converted
         to 0-based. If False, they are assumed to be 0-based already.
     """
-    try:
-        obj = ast.literal_eval(raw)
-    except Exception as e:
-        raise click.BadParameter(f"Invalid literal for --scan-list: {e}")
-
-    if not (isinstance(obj, (list, tuple)) and len(obj) == 3):
-        raise click.BadParameter(
-            "--scan-list must contain exactly three quadruples: "
-            "[(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]"
-        )
-
-    def _resolve_index(value: Any, entry_idx: int, side_label: str) -> int:
-        if isinstance(value, (int, np.integer)):
-            idx_val = int(value)
-            if one_based:
-                idx_val -= 1
-            if idx_val < 0:
-                raise click.BadParameter(
-                    f"Negative atom index after base conversion: {idx_val} (0-based expected)."
-                )
-            return idx_val
-        if isinstance(value, str):
-            if not atom_meta:
-                raise click.BadParameter(
-                    f"--scan-list entry {entry_idx} ({side_label}) uses a string atom spec, "
-                    "but no PDB metadata is available."
-                )
-            try:
-                return resolve_atom_spec_index(value, atom_meta)
-            except ValueError as exc:
-                raise click.BadParameter(
-                    f"--scan-list entry {entry_idx} ({side_label}) {exc}"
-                )
-        raise click.BadParameter(
-            f"--scan-list entry {entry_idx} ({side_label}) must be an int index or atom spec string."
-        )
-
-    parsed: List[Tuple[int, int, float, float]] = []
-    for q in obj:
-        if not (
-            isinstance(q, (list, tuple)) and len(q) == 4
-            and isinstance(q[2], (int, float, np.floating))
-            and isinstance(q[3], (int, float, np.floating))
-        ):
-            raise click.BadParameter(f"--scan-list entry must be (i,j,low,high): got {q}")
-
-        i = _resolve_index(q[0], len(parsed) + 1, "i")
-        j = _resolve_index(q[1], len(parsed) + 1, "j")
-        low, high = float(q[2]), float(q[3])
+    parsed, raw_pairs = parse_scan_list_quads(
+        raw,
+        expected_len=3,
+        one_based=one_based,
+        atom_meta=atom_meta,
+        option_name="--scan-list",
+    )
+    for i, j, low, high in parsed:
         if low <= 0.0 or high <= 0.0:
             raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
-        parsed.append((i, j, low, high))
 
-    return parsed[0], parsed[1], parsed[2], list(obj)
+    return parsed[0], parsed[1], parsed[2], raw_pairs
 
 
 def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
@@ -696,39 +628,17 @@ def cli(
     zmin: Optional[float],
     zmax: Optional[float],
 ) -> None:
-    from .utils import load_yaml_dict, apply_yaml_overrides
-
     set_convert_file_enabled(convert_files)
 
-    relax_max_cycles_override_requested = False
-    try:
-        relax_cycles_source = ctx.get_parameter_source("relax_max_cycles")
-        relax_max_cycles_override_requested = relax_cycles_source not in (None, ParameterSource.DEFAULT)
-    except Exception:
-        relax_max_cycles_override_requested = True
+    relax_max_cycles_override_requested = cli_param_overridden(ctx, "relax_max_cycles")
 
-    prepared_input = None
-    geom_input_path = None
-    source_path = None
-    if csv_path is None:
-        if input_path is None:
-            raise click.ClickException("-i/--input is required unless --csv is provided.")
-        if scan_list_raw is None:
-            raise click.ClickException("--scan-list is required unless --csv is provided.")
-        prepared_input = prepare_input_structure(input_path)
-        apply_ref_pdb_override(prepared_input, ref_pdb)
-        geom_input_path = prepared_input.geom_path
-        source_path = prepared_input.source_path
-
-        charge, spin = resolve_charge_spin_or_raise(
-            prepared_input,
-            charge,
-            spin,
-            ligand_charge=ligand_charge,
-            prefix="[scan3d]",
-        )
-
-    try:
+    def _run_scan3d(
+        prepared_input: Optional["PreparedInputStructure"],
+        charge_val: Optional[int],
+        spin_val: Optional[int],
+        geom_input: Optional[Path],
+        source: Optional[Path],
+    ) -> None:
         time_start = time.perf_counter()
 
         yaml_cfg = load_yaml_dict(args_yaml)
@@ -740,32 +650,23 @@ def cli(
         rfo_cfg = dict(RFO_KW)
         bias_cfg = dict(BIAS_KW)
 
-        # CLI overrides (defaults ← CLI)
-        if csv_path is None:
-            calc_cfg["charge"] = int(charge)
-            calc_cfg["spin"] = int(spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
-        opt_cfg["out_dir"] = out_dir
-        opt_cfg["dump"] = False
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-
-        # YAML overrides (highest precedence)
-        apply_yaml_overrides(
+        geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
             yaml_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("lbfgs",),)),
-                (rfo_cfg, (("rfo",),)),
-                (bias_cfg, (("bias",),)),
-            ],
+            geom_kw=geom_cfg,
+            calc_kw=calc_cfg,
+            opt_kw=opt_cfg,
+            lbfgs_kw=lbfgs_cfg,
+            rfo_kw=rfo_cfg,
+            bias_kw=bias_cfg,
+            charge=charge_val,
+            spin=spin_val,
+            workers=workers,
+            workers_per_node=workers_per_node,
+            out_dir=out_dir,
+            thresh=thresh,
+            bias_k=bias_k,
+            set_charge_spin=(csv_path is None),
         )
-
-        if bias_k is not None:
-            bias_cfg["k"] = float(bias_k)
 
         kind = normalize_choice(
             opt_mode,
@@ -776,22 +677,15 @@ def cli(
 
         # Resolve freeze list before logging so printed config matches runtime.
         freeze = None
-        freeze_links_msg = None
         if csv_path is None:
             freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and source_path and source_path.suffix.lower() == ".pdb":
-                detected = detect_freeze_links_safe(source_path)
-                if detected:
-                    freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                    if freeze:
-                        freeze_links_msg = (
-                            f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
-                        )
+            if freeze_links and source and source.suffix.lower() == ".pdb":
+                freeze = merge_detected_freeze_links(geom_cfg, source)
 
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         _ensure_dir(out_dir_path)
         echo_geom = format_geom_for_echo(geom_cfg)
-        echo_calc = format_freeze_atoms_for_echo(calc_cfg)
+        echo_calc = format_geom_for_echo(calc_cfg)
         echo_opt = dict(opt_cfg)
         if relax_max_cycles_override_requested:
             echo_opt["max_cycles"] = int(relax_max_cycles)
@@ -822,8 +716,8 @@ def cli(
         d2_label_csv = None
         d3_label_csv = None
         if csv_path is None:
-            if source_path and source_path.suffix.lower() == ".pdb":
-                pdb_atom_meta = load_pdb_atom_metadata(source_path)
+            if source and source.suffix.lower() == ".pdb":
+                pdb_atom_meta = load_pdb_atom_metadata(source)
 
             (
                 (i1, j1, low1, high1),
@@ -859,8 +753,8 @@ def cli(
         final_dir = out_dir_path
 
         ref_pdb_path = None
-        if csv_path is None and source_path and source_path.suffix.lower() == ".pdb":
-            ref_pdb_path = source_path
+        if csv_path is None and source and source.suffix.lower() == ".pdb":
+            ref_pdb_path = source
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
@@ -878,13 +772,11 @@ def cli(
             _ensure_dir(grid_dir)
             _ensure_dir(tmp_opt_dir)
 
-            if freeze_links_msg:
-                click.echo(freeze_links_msg)
             if freeze is None:
                 freeze = merge_freeze_atom_indices(geom_cfg)
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
             geom_outer = geom_loader(
-                geom_input_path, coord_type=coord_type, freeze_atoms=freeze
+                geom_input, coord_type=coord_type, freeze_atoms=freeze
             )
             if freeze:
                 try:
@@ -947,19 +839,14 @@ def cli(
             except Exception as e:
                 click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
 
-            try:
-                convert_xyz_like_outputs(
-                    preopt_xyz_path,
-                    prepared_input,
-                    ref_pdb_path=ref_pdb_path,
-                    out_pdb_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.pdb",
-                    out_gjf_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.gjf",
-                )
-            except Exception as e:
-                click.echo(
-                    f"[convert] WARNING: failed to convert '{preopt_xyz_path.name}' to PDB/GJF: {e}",
-                    err=True,
-                )
+            convert_xyz_like_outputs_logged(
+                preopt_xyz_path,
+                prepared_input,
+                ref_pdb_path=ref_pdb_path,
+                out_pdb_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.pdb",
+                out_gjf_path=grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.gjf",
+                context=f"'{preopt_xyz_path.name}' to PDB/GJF",
+            )
 
             E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
             preopt_record = {
@@ -1177,19 +1064,14 @@ def cli(
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
                         else:
-                            try:
-                                convert_xyz_like_outputs(
-                                    xyz_path,
-                                    prepared_input,
-                                    ref_pdb_path=ref_pdb_path,
-                                    out_pdb_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.pdb",
-                                    out_gjf_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.gjf",
-                                )
-                            except Exception as e:
-                                click.echo(
-                                    f"[convert] WARNING: failed to convert '{xyz_path.name}' to PDB/GJF: {e}",
-                                    err=True,
-                                )
+                            convert_xyz_like_outputs_logged(
+                                xyz_path,
+                                prepared_input,
+                                ref_pdb_path=ref_pdb_path,
+                                out_pdb_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.pdb",
+                                out_gjf_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.gjf",
+                                context=f"'{xyz_path.name}' to PDB/GJF",
+                            )
 
                         if dump and trj_blocks is not None:
                             sblock = geom_inner.as_xyz()
@@ -1219,18 +1101,13 @@ def cli(
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
                         else:
-                            try:
-                                convert_xyz_like_outputs(
-                                    trj_path,
-                                    prepared_input,
-                                    ref_pdb_path=ref_pdb_path,
-                                    out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.pdb",
-                                )
-                            except Exception as e:
-                                click.echo(
-                                    f"[convert] WARNING: failed to convert '{trj_path.name}' to PDB: {e}",
-                                    err=True,
-                                )
+                            convert_xyz_like_outputs_logged(
+                                trj_path,
+                                prepared_input,
+                                ref_pdb_path=ref_pdb_path,
+                                out_pdb_path=grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.pdb",
+                                context=f"'{trj_path.name}' to PDB",
+                            )
 
             # Add starting structure as an extra record for plotting
             records.append(preopt_record)
@@ -1483,6 +1360,29 @@ def cli(
         click.echo("\n=== 3D Scan finished ===\n")
         click.echo(format_elapsed("[time] Elapsed Time for 3D Scan", time_start))
 
+    try:
+        if csv_path is None:
+            if input_path is None:
+                raise click.ClickException("-i/--input is required unless --csv is provided.")
+            if scan_list_raw is None:
+                raise click.ClickException("--scan-list is required unless --csv is provided.")
+            with prepared_cli_input(
+                input_path,
+                ref_pdb=ref_pdb,
+                charge=charge,
+                spin=spin,
+                ligand_charge=ligand_charge,
+                prefix="[scan3d]",
+            ) as (prepared_input, charge_val, spin_val):
+                _run_scan3d(
+                    prepared_input,
+                    charge_val,
+                    spin_val,
+                    prepared_input.geom_path,
+                    prepared_input.source_path,
+                )
+        else:
+            _run_scan3d(None, charge, spin, None, None)
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user.", err=True)
         sys.exit(130)
@@ -1490,6 +1390,3 @@ def cli(
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
-    finally:
-        if prepared_input:
-            prepared_input.cleanup()
