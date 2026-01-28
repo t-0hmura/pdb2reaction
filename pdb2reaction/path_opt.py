@@ -807,7 +807,10 @@ def cli(
         click.echo(pretty_block("opt", echo_opt))
         if mep_mode_kind == "dmf":
             click.echo(pretty_block("dmf", dmf_cfg))
-        click.echo(pretty_block("sopt." + sopt_kind, sopt_cfg))
+        echo_sopt = dict(sopt_cfg)
+        echo_sopt["out_dir"] = str(out_dir_path)
+        echo_sopt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{sopt_kind}_opt"
+        click.echo(pretty_block("sopt." + sopt_kind, echo_sopt))
         click.echo(
             pretty_block(
                 "run_flags",
@@ -832,6 +835,15 @@ def cli(
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
         )
+        if geoms:
+            freeze_effective: Dict[str, List[int]] = {}
+            for prepared, g in zip(prepared_inputs, geoms):
+                try:
+                    freeze_list = list(getattr(g, "freeze_atoms", []))
+                except Exception:
+                    freeze_list = list(geom_cfg.get("freeze_atoms", []))
+                freeze_effective[prepared.source_path.name] = freeze_list
+            click.echo(pretty_block("freeze_atoms (effective)", freeze_effective))
 
         # Shared UMA calculator (reuse the same instance for all images)
         shared_calc = uma_pysis(**calc_cfg)

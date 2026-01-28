@@ -1140,6 +1140,8 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 
 
 def _split_atom_spec_tokens(spec: str) -> List[str]:
+    # Split an atom selector string into tokens using whitespace, comma, slash, backtick, or backslash.
+    # Split the atom specification without parsing spaces by replacing spaces with commas before splitting.
     tokens = [t for t in re.split(r"[\s/`,\\]+", spec.strip().replace(' ',',')) if t]
     return tokens
 

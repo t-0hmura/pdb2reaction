@@ -410,6 +410,33 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     return str(values.iloc[0])
 
 
+def _build_sopt_kwargs(
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    out_dir: Path,
+    prefix: str,
+) -> Dict[str, Any]:
+    common = dict(opt_cfg)
+    common["out_dir"] = str(out_dir)
+    common["prefix"] = prefix
+    if kind == "lbfgs":
+        args = {**lbfgs_cfg, **common}
+        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
+    else:
+        args = {**rfo_cfg, **common}
+        tr = float(rfo_cfg.get("trust_radius", 0.10))
+        args["trust_radius"] = min(tr, max_step_bohr)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
+    if relax_override_requested:
+        args["max_cycles"] = int(relax_max_cycles)
+    return args
+
+
 def _make_optimizer(
     geom,
     kind: str,
@@ -422,23 +449,20 @@ def _make_optimizer(
     out_dir: Path,
     prefix: str,
 ):
-    common = dict(opt_cfg)
-    common["out_dir"] = str(out_dir)
-    common["prefix"] = prefix
+    args = _build_sopt_kwargs(
+        kind,
+        lbfgs_cfg,
+        rfo_cfg,
+        opt_cfg,
+        max_step_bohr,
+        relax_max_cycles,
+        relax_override_requested,
+        out_dir,
+        prefix,
+    )
     if kind == "lbfgs":
-        args = {**lbfgs_cfg, **common}
-        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
-        if relax_override_requested:
-            args["max_cycles"] = int(relax_max_cycles)
         return LBFGS(geom, **args)
-    else:
-        args = {**rfo_cfg, **common}
-        tr = float(rfo_cfg.get("trust_radius", 0.10))
-        args["trust_radius"] = min(tr, max_step_bohr)
-        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
-        if relax_override_requested:
-            args["max_cycles"] = int(relax_max_cycles)
-        return RFOptimizer(geom, **args)
+    return RFOptimizer(geom, **args)
 
 
 def _unbiased_energy_hartree(geom, base_calc) -> float:
@@ -750,18 +774,46 @@ def cli(
             allowed_hint="light|heavy",
         )
 
+        # Resolve freeze list before logging so printed config matches runtime.
+        freeze = None
+        freeze_links_msg = None
+        if csv_path is None:
+            freeze = merge_freeze_atom_indices(geom_cfg)
+            if freeze_links and source_path and source_path.suffix.lower() == ".pdb":
+                detected = detect_freeze_links_safe(source_path)
+                if detected:
+                    freeze = merge_freeze_atom_indices(geom_cfg, detected)
+                    if freeze:
+                        freeze_links_msg = (
+                            f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
+                        )
+
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         _ensure_dir(out_dir_path)
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_freeze_atoms_for_echo(calc_cfg)
         echo_opt = dict(opt_cfg)
+        if relax_max_cycles_override_requested:
+            echo_opt["max_cycles"] = int(relax_max_cycles)
         echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("opt", echo_opt))
+        max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
+        echo_sopt = _build_sopt_kwargs(
+            kind,
+            lbfgs_cfg,
+            rfo_cfg,
+            opt_cfg,
+            max_step_bohr_for_log,
+            relax_max_cycles,
+            relax_max_cycles_override_requested,
+            out_dir_path,
+            str(opt_cfg.get("prefix", "")),
+        )
         click.echo(
-            pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg))
+            pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt)
         )
         click.echo(pretty_block("bias", echo_bias))
 
@@ -826,13 +878,10 @@ def cli(
             _ensure_dir(grid_dir)
             _ensure_dir(tmp_opt_dir)
 
-            freeze = merge_freeze_atom_indices(geom_cfg)
-            if freeze_links and source_path and source_path.suffix.lower() == ".pdb":
-                detected = detect_freeze_links_safe(source_path)
-                if detected:
-                    freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                    if freeze:
-                        click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+            if freeze_links_msg:
+                click.echo(freeze_links_msg)
+            if freeze is None:
+                freeze = merge_freeze_atom_indices(geom_cfg)
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
             geom_outer = geom_loader(
                 geom_input_path, coord_type=coord_type, freeze_atoms=freeze

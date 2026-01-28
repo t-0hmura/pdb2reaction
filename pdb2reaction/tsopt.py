@@ -1388,6 +1388,34 @@ RSIRFO_KW.update({
     "assert_neg_eigval": False, # ensure a negative eigenvalue at convergence
 })
 
+def _build_rsirfo_kwargs(
+    opt_cfg: Dict[str, Any],
+    rsirfo_cfg: Dict[str, Any],
+    out_dir_path: Path,
+) -> Dict[str, Any]:
+    """Return the exact kwargs used for RSIRFO after normalization."""
+    rs_args = dict(rsirfo_cfg)
+    opt_base = dict(opt_cfg)
+    opt_base["out_dir"] = str(out_dir_path)
+    rs_args["out_dir"] = str(out_dir_path)
+
+    roots = rs_args.get("roots", None)
+    root_single = rs_args.get("root", None)
+    if roots is None and root_single is not None:
+        roots = [int(root_single)]
+    if roots is None:
+        roots = [0]
+    rs_args["roots"] = [int(x) for x in roots]
+    rs_args.pop("root", None)
+
+    rsirfo_kwargs = {**opt_base, **rs_args}
+
+    # RSIRFO ignores these DIIS-related knobs; drop them for clarity.
+    for diis_kw in ("gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func"):
+        rsirfo_kwargs.pop(diis_kw, None)
+
+    return rsirfo_kwargs
+
 
 # ===================================================================
 #                            CLI
@@ -1607,7 +1635,8 @@ def cli(
         sd_cfg_for_echo["lbfgs"] = dict(simple_cfg.get("lbfgs", {}))
         click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
     else:
-        click.echo(pretty_block("rsirfo", rsirfo_cfg))
+        rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
+        click.echo(pretty_block("rsirfo", rsirfo_kwargs_for_echo))
 
     # --------------------------
     # 2) Prepare geometry dir
@@ -1696,26 +1725,7 @@ def cli(
                 geometry.set_calculator(calc_builder_or_instance)
 
             # Construct RSIRFO optimizer
-            rs_args = dict(rsirfo_cfg)
-            opt_base = dict(opt_cfg)
-            opt_base["out_dir"] = str(out_dir_path)
-            rs_args["out_dir"] = str(out_dir_path)
-
-            # Normalize roots/root
-            roots = rs_args.get("roots", None)
-            root_single = rs_args.get("root", None)
-            if roots is None and root_single is not None:
-                roots = [int(root_single)]
-            if roots is None:
-                roots = [0]
-            rs_args["roots"] = [int(x) for x in roots]
-            if "root" in rs_args:
-                rs_args.pop("root")
-
-            rsirfo_kwargs = {**opt_base, **rs_args}
-    
-            for diis_kw in ("gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func"):
-                rsirfo_kwargs.pop(diis_kw, None)
+            rsirfo_kwargs = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
 
             optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
 
@@ -1760,7 +1770,7 @@ def cli(
             if flatten_max_iter > 0 and n_imag > 1:
                 click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
                 masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
-                roots = rs_args.get("roots", [0])
+                roots = rsirfo_kwargs.get("roots", [0])
                 main_root = int(roots[0]) if roots else 0
                 for it in range(flatten_max_iter):
                     click.echo(f"[flatten] RSIRFO iteration {it + 1}/{flatten_max_iter}")
@@ -1833,7 +1843,7 @@ def cli(
             if len(neg_idx) == 0:
                 click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
             else:
-                roots = rs_args.get("roots", [0])
+                roots = rsirfo_kwargs.get("roots", [0])
                 main_root = int(roots[0]) if roots else 0
                 order = np.argsort(freqs_cm[neg_idx])
                 pick_idx = neg_idx[order[max(0, min(main_root, len(order)-1))]]

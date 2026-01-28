@@ -682,6 +682,8 @@ def cli(
             (freq_cfg, (("freq",),)),
         ],
     )
+    thermo_yaml = yaml_cfg.get("thermo")
+    thermo_yaml_dict = thermo_yaml if isinstance(thermo_yaml, dict) else None
 
     # Freeze links (PDB only): merge with existing list
     if freeze_links and source_path.suffix.lower() == ".pdb":
@@ -694,6 +696,10 @@ def cli(
         if merged:
             click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, merged))}")
 
+    # Ensure calc config reflects the geometry freeze list used in the run.
+    calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+    calc_cfg.setdefault("return_partial_hessian", True)
+
     out_dir_path = Path(out_dir).resolve()
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -701,11 +707,16 @@ def cli(
     click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
     click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
     click.echo(pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
-    click.echo(pretty_block("thermo", {
+    thermo_block = {
         "temperature": thermo_cfg["temperature"],
         "pressure_atm": thermo_cfg["pressure_atm"],
         "dump": thermo_cfg["dump"],
-    }))
+    }
+    if thermo_yaml_dict:
+        thermo_block["note"] = "args-yaml thermo section is not applied by this command."
+    click.echo(pretty_block("thermo", thermo_block))
+    if thermo_yaml_dict:
+        click.echo(pretty_block("thermo (args-yaml; ignored)", thermo_yaml_dict))
 
     # --------------------------
     # 2) Load geometry
@@ -725,13 +736,7 @@ def cli(
     # 3) Compute Hessian & modes
     # --------------------------
     try:
-        # Inject freeze list into UMA calc config for Hessian construction,
-        # and ensure partial Hessian return is default True (can be overridden by YAML).
-        freeze_list = list(geom_cfg.get("freeze_atoms", []))
-        calc_cfg = dict(calc_cfg)
-        calc_cfg["freeze_atoms"] = freeze_list
-        calc_cfg.setdefault("return_partial_hessian", True)
-
+        freeze_list = list(calc_cfg.get("freeze_atoms", []))
         H = _calc_full_hessian_torch(geometry, calc_cfg, device)
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
 

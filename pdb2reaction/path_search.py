@@ -2278,6 +2278,19 @@ def cli(
         echo_gs   = dict(gs_cfg)
         echo_opt  = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
+        opt_yaml = yaml_cfg.get("opt")
+        if isinstance(opt_yaml, dict) and "out_dir" in opt_yaml:
+            yaml_out_dir = opt_yaml.get("out_dir")
+            if yaml_out_dir is not None:
+                try:
+                    yaml_out_dir_resolved = str(Path(str(yaml_out_dir)).resolve())
+                except Exception:
+                    yaml_out_dir_resolved = str(yaml_out_dir)
+                if yaml_out_dir_resolved != str(out_dir_path):
+                    echo_opt["out_dir_yaml"] = str(yaml_out_dir)
+                    echo_opt["out_dir_note"] = (
+                        "CLI --out-dir takes precedence; YAML opt.out_dir is ignored."
+                    )
 
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
@@ -2285,7 +2298,10 @@ def cli(
         click.echo(pretty_block("opt",  echo_opt))
         if mep_mode_kind == "dmf":
             click.echo(pretty_block("dmf", dmf_cfg))
-        click.echo(pretty_block("sopt."+sopt_kind, sopt_cfg))
+        echo_sopt = dict(sopt_cfg)
+        echo_sopt["out_dir"] = str(out_dir_path)
+        echo_sopt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{sopt_kind}_opt"
+        click.echo(pretty_block("sopt."+sopt_kind, echo_sopt))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
         click.echo(
@@ -2306,6 +2322,15 @@ def cli(
             base_freeze=geom_cfg.get("freeze_atoms", []),
             auto_freeze_links=bool(freeze_links_flag),
         )
+        if geoms:
+            freeze_effective: Dict[str, List[int]] = {}
+            for prepared, g in zip(prepared_inputs, geoms):
+                try:
+                    freeze_list = list(getattr(g, "freeze_atoms", []))
+                except Exception:
+                    freeze_list = list(geom_cfg.get("freeze_atoms", []))
+                freeze_effective[prepared.source_path.name] = freeze_list
+            click.echo(pretty_block("freeze_atoms (effective)", freeze_effective))
 
         main_prepared = prepared_inputs[0] if prepared_inputs else None
 

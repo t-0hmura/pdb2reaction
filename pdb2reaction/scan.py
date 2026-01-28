@@ -214,6 +214,33 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
     return d
 
 
+def _build_sopt_kwargs(
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    out_dir: Path,
+    prefix: str,
+) -> Dict[str, Any]:
+    common = dict(opt_cfg)
+    common["out_dir"] = str(out_dir)
+    common["prefix"] = prefix
+    if kind == "lbfgs":
+        args = {**lbfgs_cfg, **common}
+        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
+    else:
+        args = {**rfo_cfg, **common}
+        tr = float(rfo_cfg.get("trust_radius", 0.10))
+        args["trust_radius"] = min(tr, max_step_bohr)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
+    if relax_override_requested:
+        args["max_cycles"] = int(relax_max_cycles)
+    return args
+
+
 def _coords3d_to_xyz_string(geom, energy: Optional[float] = None) -> str:
     s = geom.as_xyz()
     lines = s.splitlines()
@@ -609,17 +636,44 @@ def cli(
         if bias_k is not None:
             bias_cfg["k"] = float(bias_k)
 
+        # Resolve freeze list before logging so printed config matches runtime.
+        freeze = merge_freeze_atom_indices(geom_cfg)
+        freeze_links_msg = None
+        if freeze_links and source_path.suffix.lower() == ".pdb":
+            detected = detect_freeze_links_safe(source_path)
+            if detected:
+                freeze = merge_freeze_atom_indices(geom_cfg, detected)
+                if freeze:
+                    freeze_links_msg = (
+                        f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}"
+                    )
+
         # Present final config
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_freeze_atoms_for_echo(calc_cfg)
-        echo_opt  = dict(opt_cfg); echo_opt["out_dir"] = str(out_dir_path)
+        echo_opt  = dict(opt_cfg)
+        if relax_max_cycles_override_requested:
+            echo_opt["max_cycles"] = int(relax_max_cycles)
+        echo_opt["out_dir"] = str(out_dir_path)
         echo_bias = dict(bias_cfg)
         echo_bond = dict(bond_cfg)
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("opt",  echo_opt))
-        click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
+        max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
+        echo_sopt = _build_sopt_kwargs(
+            kind,
+            lbfgs_cfg,
+            rfo_cfg,
+            opt_cfg,
+            max_step_bohr_for_log,
+            relax_max_cycles,
+            relax_max_cycles_override_requested,
+            out_dir_path,
+            str(opt_cfg.get("prefix", "")),
+        )
+        click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt))
         click.echo(pretty_block("bias", echo_bias))
         click.echo(pretty_block("bond", echo_bond))
 
@@ -670,13 +724,8 @@ def cli(
         out_dir_path.mkdir(parents=True, exist_ok=True)
 
         # Load
-        freeze = merge_freeze_atom_indices(geom_cfg)
-        if freeze_links and source_path.suffix.lower() == ".pdb":
-            detected = detect_freeze_links_safe(source_path)
-            if detected:
-                freeze = merge_freeze_atom_indices(geom_cfg, detected)
-                if freeze:
-                    click.echo(f"[freeze-links] Freeze atoms (0-based): {','.join(map(str, freeze))}")
+        if freeze_links_msg:
+            click.echo(freeze_links_msg)
 
         coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         geom = geom_loader(geom_input_path, coord_type=coord_type, freeze_atoms=freeze)
@@ -684,19 +733,19 @@ def cli(
         max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
 
         def _make_optimizer(kind_local: str, _out_dir: Path, _prefix: str):
-            common = dict(opt_cfg)
-            common["out_dir"] = str(_out_dir)
-            common["prefix"] = _prefix
-            if relax_max_cycles_override_requested:
-                common["max_cycles"] = int(relax_max_cycles)
+            args = _build_sopt_kwargs(
+                kind_local,
+                lbfgs_cfg,
+                rfo_cfg,
+                opt_cfg,
+                max_step_bohr,
+                relax_max_cycles,
+                relax_max_cycles_override_requested,
+                _out_dir,
+                _prefix,
+            )
             if kind_local == "lbfgs":
-                args = {**lbfgs_cfg, **common}
-                args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
                 return LBFGS(geom, **args)
-            args = {**rfo_cfg, **common}
-            tr = float(rfo_cfg.get("trust_radius", 0.10))
-            args["trust_radius"] = min(tr, max_step_bohr)
-            args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
             return RFOptimizer(geom, **args)
 
         # Merge freeze_atoms with link parents (PDB)

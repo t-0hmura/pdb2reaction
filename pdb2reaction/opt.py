@@ -705,7 +705,10 @@ def cli(
         click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
         click.echo(pretty_block("calc", format_freeze_atoms_for_echo(calc_cfg)))
         click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
-        click.echo(pretty_block(kind, (lbfgs_cfg if kind == "lbfgs" else rfo_cfg)))
+        echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
+        echo_sopt.update(opt_cfg)
+        echo_sopt["out_dir"] = str(out_dir_path)
+        click.echo(pretty_block(kind, echo_sopt))
         if dist_freeze:
             display_pairs = []
             for (i, j, target) in dist_freeze:
