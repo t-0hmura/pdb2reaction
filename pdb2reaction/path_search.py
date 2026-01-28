@@ -544,19 +544,6 @@ def _run_mep_between(
     def calc_getter():
         return shared_calc
 
-    # Debug: Check atom compatibility
-    try:
-        atoms_A = gA.atoms
-        atoms_B = gB.atoms
-        if len(atoms_A) != len(atoms_B):
-            click.echo(f"[DEBUG] [{tag}] Atom count mismatch: gA has {len(atoms_A)} atoms, gB has {len(atoms_B)} atoms", err=True)
-        else:
-            for i, (a, b) in enumerate(zip(atoms_A, atoms_B)):
-                if a != b:
-                    click.echo(f"[DEBUG] [{tag}] Atom {i} mismatch: gA={a}, gB={b}", err=True)
-    except Exception as e:
-        click.echo(f"[DEBUG] [{tag}] Error checking atom compatibility: {e}", err=True)
-
     gs = GrowingString(
         images=[gA, gB],
         calc_getter=calc_getter,

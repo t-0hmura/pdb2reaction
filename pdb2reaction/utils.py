@@ -2070,7 +2070,7 @@ def _create_sorted_pdb_temp(pdb_path: Path) -> Optional[Path]:
         return None
 
     try:
-        from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain as PDBChain
+        from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain, Residue
 
         parser = PDBParser(QUIET=True)
         structure = parser.get_structure("temp", pdb_path)
@@ -2099,12 +2099,12 @@ def _create_sorted_pdb_temp(pdb_path: Path) -> Optional[Path]:
         current_res_id = None
         current_residue = None
 
-        for res_id, atom_name, atom, residue, chain in atoms_data:
-            chain_id = chain.get_id()
+        for res_id, atom_name, atom, residue, chain_obj in atoms_data:
+            chain_id = chain_obj.get_id()
 
             # Create new chain if needed
             if chain_id != current_chain_id:
-                current_chain = PDBChain(chain_id)
+                current_chain = Chain.Chain(chain_id)
                 new_model.add(current_chain)
                 current_chain_id = chain_id
                 current_res_id = None
@@ -2112,7 +2112,6 @@ def _create_sorted_pdb_temp(pdb_path: Path) -> Optional[Path]:
             # Create new residue if needed
             if residue.get_id() != current_res_id:
                 # Make a copy of the residue
-                from Bio.PDB import Residue
                 new_residue = Residue.Residue(residue.get_id(), residue.get_resname(), residue.get_segid())
                 current_chain.add(new_residue)
                 current_residue = new_residue
@@ -2132,11 +2131,8 @@ def _create_sorted_pdb_temp(pdb_path: Path) -> Optional[Path]:
         io.save(str(tmp_path))
 
         return tmp_path
-    except Exception as e:
-        import sys
-        import traceback
-        print(f"Warning: Failed to create sorted PDB for {pdb_path.name}: {e}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+    except Exception:
+        # Silently fall back to original PDB if sorting fails
         return None
 
 
@@ -2156,11 +2152,7 @@ def load_prepared_geometries(
     all_pdbs = all(prepared.source_path.suffix.lower() == ".pdb" for prepared in prepared_inputs)
     use_sorted_pdbs = all_pdbs and len(prepared_inputs) > 1
 
-    if use_sorted_pdbs:
-        import sys
-        print(f"[DEBUG] Sorting {len(prepared_inputs)} PDB files to ensure consistent atom ordering", file=sys.stderr)
-
-    for idx, prepared in enumerate(prepared_inputs):
+    for prepared in prepared_inputs:
         src_path = prepared.source_path
 
         # Create sorted temporary PDB if needed
@@ -2170,12 +2162,8 @@ def load_prepared_geometries(
             if sorted_pdb is not None:
                 # Use the sorted PDB as the geometry path
                 geom_path = sorted_pdb
-                import sys
-                print(f"[DEBUG] Created sorted PDB for {src_path.name} -> {sorted_pdb}", file=sys.stderr)
             else:
                 geom_path = prepared.geom_path
-                import sys
-                print(f"[DEBUG] Failed to create sorted PDB for {src_path.name}, using original", file=sys.stderr)
         else:
             geom_path = prepared.geom_path
             temp_files.append(None)
