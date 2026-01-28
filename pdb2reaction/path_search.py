@@ -2327,7 +2327,7 @@ def cli(
                     out_dir_path,
                     tag=tag,
                     prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else main_prepared,
-                    ref_pdb=ref_pdb_path,
+                    ref_pdb=ref_pdb_for_segments,
                 )
                 new_geoms.append(g_opt)
             geoms = new_geoms
