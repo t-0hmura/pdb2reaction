@@ -3361,6 +3361,17 @@ def cli(
                 "--preopt",
                 "True" if preopt else "False",
             ]
+            ref_pdb_for_seg: Optional[Path] = None
+            if pocket_ref_pdbs and len(pocket_ref_pdbs) >= idx:
+                ref_pdb_for_seg = pocket_ref_pdbs[idx - 1]
+            elif pL.suffix.lower() == ".pdb":
+                ref_pdb_for_seg = pL
+            elif pR.suffix.lower() == ".pdb":
+                ref_pdb_for_seg = pR
+            elif is_single and has_scan and input_paths[0].suffix.lower() == ".pdb":
+                ref_pdb_for_seg = input_paths[0]
+            if ref_pdb_for_seg is not None:
+                po_args.extend(["--ref-pdb", str(ref_pdb_for_seg)])
             if thresh is not None:
                 po_args.extend(["--thresh", str(thresh)])
             if args_yaml is not None:
