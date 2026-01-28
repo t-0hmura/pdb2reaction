@@ -321,7 +321,7 @@ def geom_from_xyz_string(
 ) -> Any:
     """Load a pysisyphus Geometry from an XYZ text string (tempfile-backed)."""
     s = xyz_text if xyz_text.endswith("\n") else (xyz_text + "\n")
-    freeze_atoms = list(freeze_atoms or [])
+    freeze_atoms = list(freeze_atoms) if freeze_atoms is not None else []
     tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
     try:
         tmp.write(s)

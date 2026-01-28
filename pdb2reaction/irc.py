@@ -326,7 +326,7 @@ def cli(
         spin=spin,
         ligand_charge=ligand_charge,
         prefix="[irc]",
-    ) as (prepared_input, charge, spin):
+    ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
         try:
@@ -342,8 +342,8 @@ def cli(
             irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
 
             # CLI overrides
-            calc_cfg["charge"] = int(charge)
-            calc_cfg["spin"]   = int(spin)
+            calc_cfg["charge"] = int(resolved_charge)
+            calc_cfg["spin"]   = int(resolved_spin)
             calc_cfg["workers"] = int(workers)
             calc_cfg["workers_per_node"] = int(workers_per_node)
 

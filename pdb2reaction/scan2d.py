@@ -267,7 +267,7 @@ def cli(
         spin=spin,
         ligand_charge=ligand_charge,
         prefix="[scan2d]",
-    ) as (prepared_input, charge, spin):
+    ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
 
@@ -294,8 +294,8 @@ def cli(
                 lbfgs_kw=dict(LBFGS_KW),
                 rfo_kw=dict(RFO_KW),
                 bias_kw=dict(BIAS_KW),
-                charge=charge,
-                spin=spin,
+                charge=resolved_charge,
+                spin=resolved_spin,
                 workers=workers,
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,

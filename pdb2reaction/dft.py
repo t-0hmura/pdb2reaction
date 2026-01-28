@@ -451,7 +451,7 @@ def cli(
         spin=spin,
         ligand_charge=ligand_charge,
         prefix="[dft]",
-    ) as (prepared_input, charge, spin):
+    ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
         try:
             time_start = time.perf_counter()
@@ -489,7 +489,7 @@ def cli(
             basis = str(dft_cfg.get("basis", "")).strip()
             if not xc or not basis:
                 raise click.BadParameter("Functional and basis must be non-empty (set via --func-basis or YAML dft.func/basis)")
-            multiplicity = int(spin)
+            multiplicity = int(resolved_spin)
             if multiplicity < 1:
                 raise click.BadParameter("Multiplicity (spin) must be >= 1.")
             spin2s = multiplicity - 1  # PySCF expects 2S
@@ -497,7 +497,7 @@ def cli(
             # Echo resolved config
             out_dir_path = Path(dft_cfg["out_dir"]).resolve()
             echo_cfg = {
-                "charge": int(charge),
+                "charge": int(resolved_charge),
                 "multiplicity": multiplicity,
                 "spin (PySCF expects 2S)": spin2s,
                 "xc": xc,
@@ -540,7 +540,7 @@ def cli(
             mol.build(
                 atom=atoms_list,
                 unit="Angstrom",
-                charge=int(charge),
+                charge=int(resolved_charge),
                 spin=int(spin2s),
                 basis=basis,
             )

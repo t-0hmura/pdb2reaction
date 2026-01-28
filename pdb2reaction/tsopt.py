@@ -1548,7 +1548,7 @@ def cli(
         spin=spin,
         ligand_charge=ligand_charge,
         prefix="[tsopt]",
-    ) as (prepared_input, charge, spin):
+    ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
         time_start = time.perf_counter()
@@ -1564,8 +1564,8 @@ def cli(
         rsirfo_cfg = dict(RSIRFO_KW)
 
         # CLI overrides
-        calc_cfg["charge"] = int(charge)
-        calc_cfg["spin"]   = int(spin)
+        calc_cfg["charge"] = int(resolved_charge)
+        calc_cfg["spin"]   = int(resolved_spin)
         calc_cfg["workers"] = int(workers)
         calc_cfg["workers_per_node"] = int(workers_per_node)
         opt_cfg["max_cycles"] = int(max_cycles)

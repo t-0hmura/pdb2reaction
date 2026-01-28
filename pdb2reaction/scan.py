@@ -232,7 +232,7 @@ def cli(
         spin=spin,
         ligand_charge=ligand_charge,
         prefix="[scan]",
-    ) as (prepared_input, charge, spin):
+    ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
         needs_pdb = source_path.suffix.lower() == ".pdb"
@@ -263,8 +263,8 @@ def cli(
                 rfo_kw=rfo_cfg,
                 bias_kw=bias_cfg,
                 extra_overrides=((bond_cfg, (("bond",),)),),
-                charge=charge,
-                spin=spin,
+                charge=resolved_charge,
+                spin=resolved_spin,
                 workers=workers,
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,
