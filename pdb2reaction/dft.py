@@ -194,13 +194,15 @@ yaml.SafeDumper.add_representer(FlowList, _flow_seq_representer)
 
 def _format_row_for_echo(row: List[Union[int, str, float, None]]) -> str:
     """Format a row like: [0, H, 0.0, 0.0, 0.0]."""
-    def _fmt(x):
-        if x is None:
-            return "null"
-        if isinstance(x, float):
-            return f"{x:.10g}"
-        return str(x)
-    return "[" + ", ".join(_fmt(v) for v in row) + "]"
+    return "[" + ", ".join(_format_row_value_for_echo(v) for v in row) + "]"
+
+
+def _format_row_value_for_echo(x: Union[int, str, float, None]) -> str:
+    if x is None:
+        return "null"
+    if isinstance(x, float):
+        return f"{x:.10g}"
+    return str(x)
 
 
 # This function is based on https://pyscf.org/_modules/pyscf/lo/iao.html
@@ -268,6 +270,15 @@ def _get_occupied_orbitals(mf) -> np.ndarray:
         return mo[0][:, occ_idx]
 
 
+def _safe_array(label: str, what: str, func):
+    try:
+        vals = func()
+        return np.asarray(vals, dtype=float).tolist()
+    except Exception as e:
+        click.echo(f"{label} WARNING: Failed to compute {what}: {e}", err=True)
+        return None
+
+
 def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     """
     Compute atomic charges by three schemes:
@@ -283,24 +294,19 @@ def _compute_atomic_charges(mol, mf) -> Dict[str, Optional[List[float]]]:
     # Total density (for charges)
     dm_tot = dm[0] + dm[1] if (isinstance(dm, np.ndarray) and dm.ndim == 3) else dm
 
-    def _safe(label: str, func):
-        try:
-            vals = func()
-            return np.asarray(vals, dtype=float).tolist()
-        except Exception as e:
-            click.echo(f"{label} WARNING: Failed to compute charges: {e}", err=True)
-            return None
-
-    mull_q: Optional[List[float]] = _safe(
+    mull_q: Optional[List[float]] = _safe_array(
         "[Mulliken]",
+        "charges",
         lambda: scf_hf.mulliken_pop(mol, dm_tot, s=S, verbose=0)[1],
     )
-    low_q: Optional[List[float]] = _safe(
+    low_q: Optional[List[float]] = _safe_array(
         "[Löwdin]",
+        "charges",
         lambda: scf_hf.mulliken_pop_meta_lowdin_ao(mol, dm_tot, verbose=0, s=S)[1],
     )
-    iao_q: Optional[List[float]] = _safe(
+    iao_q: Optional[List[float]] = _safe_array(
         "[IAO]",
+        "charges",
         lambda: lo_iao.fast_iao_mullikan_pop(
             mol,
             dm,
@@ -335,24 +341,19 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
         zeros = [0.0] * nat
         return {"mulliken": zeros, "lowdin": zeros, "iao": zeros}
 
-    def _safe(label: str, func):
-        try:
-            vals = func()
-            return np.asarray(vals, dtype=float).tolist()
-        except Exception as e:
-            click.echo(f"{label} WARNING: Failed to compute spin densities: {e}", err=True)
-            return None
-
-    mull: Optional[List[float]] = _safe(
+    mull: Optional[List[float]] = _safe_array(
         "[Spin Mulliken]",
+        "spin densities",
         lambda: scf_uhf.mulliken_spin_pop(mol, dm, s=S, verbose=0)[1],
     )
-    low: Optional[List[float]] = _safe(
+    low: Optional[List[float]] = _safe_array(
         "[Spin Löwdin]",
+        "spin densities",
         lambda: scf_uhf.mulliken_spin_pop_meta_lowdin_ao(mol, dm, verbose=0, s=S)[1],
     )
-    iao_ms: Optional[List[float]] = _safe(
+    iao_ms: Optional[List[float]] = _safe_array(
         "[Spin IAO]",
+        "spin densities",
         lambda: fast_iao_mullikan_spin_pop(
             mol,
             dm,

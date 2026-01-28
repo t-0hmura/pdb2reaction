@@ -146,10 +146,8 @@ from scipy.interpolate import Rbf
 import plotly.graph_objects as go
 
 from pysisyphus.helpers import geom_loader
-from pysisyphus.optimizers.LBFGS import LBFGS
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
-from pysisyphus.constants import ANG2BOHR
+from pysisyphus.constants import ANG2BOHR, AU2KCALPERMOL
 
 from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
 from .opt import (
@@ -159,6 +157,13 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
+    axis_label_csv,
+    axis_label_html,
+    build_sopt_kwargs,
+    make_sopt_optimizer,
+    parse_scan_list_quads_checked,
+    unbiased_energy_hartree,
+    values_from_bounds,
     merge_detected_freeze_links,
     pretty_block,
     format_geom_for_echo,
@@ -173,7 +178,6 @@ from .utils import (
     format_pdb_atom_metadata_header,
     ensure_dir,
     make_snapshot_geometry,
-    parse_scan_list_quads,
     build_scan_configs,
     cli_param_overridden,
     load_yaml_dict,
@@ -204,12 +208,7 @@ _OPT_MODE_ALIASES = (
     (("heavy",), "rfo"),
 )
 
-HARTREE_TO_KCAL_MOL = 627.50961
 _VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid
-
-
-def _ensure_dir(path: Path) -> None:
-    ensure_dir(path)
 
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
@@ -245,94 +244,6 @@ def _measure_distances_A(
     return dist(i1, j1), dist(i2, j2), dist(i3, j3)
 
 
-def _parse_scan_list(
-    raw: str,
-    one_based: bool,
-    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
-) -> Tuple[
-    Tuple[int, int, float, float],
-    Tuple[int, int, float, float],
-    Tuple[int, int, float, float],
-    List[Tuple[Any, Any, float, float]],
-]:
-    """
-    Parse --scan-list into three quadruples and return them with 0-based indices.
-
-    Expected format:
-        [(i1,j1,low1,high1),(i2,j2,low2,high2),(i3,j3,low3,high3)]
-
-    Parameters
-    ----------
-    raw
-        String passed to --scan-list.
-    one_based
-        If True, the indices in `raw` are interpreted as 1-based and converted
-        to 0-based. If False, they are assumed to be 0-based already.
-    """
-    parsed, raw_pairs = parse_scan_list_quads(
-        raw,
-        expected_len=3,
-        one_based=one_based,
-        atom_meta=atom_meta,
-        option_name="--scan-list",
-    )
-    for i, j, low, high in parsed:
-        if low <= 0.0 or high <= 0.0:
-            raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
-
-    return parsed[0], parsed[1], parsed[2], raw_pairs
-
-
-def _values_from_bounds(low: float, high: float, h: float) -> np.ndarray:
-    if h <= 0.0:
-        raise click.BadParameter("--max-step-size must be > 0.")
-    delta = abs(high - low)
-    if delta < 1e-12:
-        return np.array([low], dtype=float)
-    N = int(math.ceil(delta / h))
-    return np.linspace(low, high, N + 1, dtype=float)
-
-
-def _atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
-    if index < 0 or index >= len(atom_meta):
-        return f"idx{index}"
-    meta = atom_meta[index]
-    resname = (meta.get("resname") or "?").strip() or "?"
-    resseq = meta.get("resseq")
-    resseq_txt = "?" if resseq is None else str(resseq)
-    atom = (meta.get("name") or "?").strip() or "?"
-    return f"{resname}-{resseq_txt}-{atom}"
-
-
-def _axis_label_csv(
-    axis_name: str,
-    i_idx: int,
-    j_idx: int,
-    one_based: bool,
-    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
-    pair_raw: Optional[Tuple[Any, Any, float, float]] = None,
-) -> str:
-    """Return a CSV-safe axis label without commas."""
-    if pair_raw and (isinstance(pair_raw[0], str) or isinstance(pair_raw[1], str)) and atom_meta:
-        i_label = _atom_label_from_meta(atom_meta, i_idx)
-        j_label = _atom_label_from_meta(atom_meta, j_idx)
-        return f"{axis_name}_{i_label}_{j_label}_A"
-    i_disp = i_idx + 1 if one_based else i_idx
-    j_disp = j_idx + 1 if one_based else j_idx
-    return f"{axis_name}_{i_disp}_{j_disp}_A"
-
-
-def _axis_label_html(label: str) -> str:
-    """Return a human-readable axis label for HTML output."""
-    parts = label.split("_")
-    if len(parts) >= 4 and parts[-1] == "A":
-        axis = parts[0]
-        i_disp = parts[1]
-        j_disp = parts[2]
-        return f"{axis} ({i_disp},{j_disp}) (Å)"
-    return label
-
-
 def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) -> Optional[str]:
     if column not in df.columns:
         return fallback
@@ -340,75 +251,6 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     if values.empty:
         return fallback
     return str(values.iloc[0])
-
-
-def _build_sopt_kwargs(
-    kind: str,
-    lbfgs_cfg: Dict[str, Any],
-    rfo_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
-    max_step_bohr: float,
-    relax_max_cycles: int,
-    relax_override_requested: bool,
-    out_dir: Path,
-    prefix: str,
-) -> Dict[str, Any]:
-    common = dict(opt_cfg)
-    common["out_dir"] = str(out_dir)
-    common["prefix"] = prefix
-    if kind == "lbfgs":
-        args = {**lbfgs_cfg, **common}
-        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
-    else:
-        args = {**rfo_cfg, **common}
-        tr = float(rfo_cfg.get("trust_radius", 0.10))
-        args["trust_radius"] = min(tr, max_step_bohr)
-        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
-    if relax_override_requested:
-        args["max_cycles"] = int(relax_max_cycles)
-    return args
-
-
-def _make_optimizer(
-    geom,
-    kind: str,
-    lbfgs_cfg: Dict[str, Any],
-    rfo_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
-    max_step_bohr: float,
-    relax_max_cycles: int,
-    relax_override_requested: bool,
-    out_dir: Path,
-    prefix: str,
-):
-    args = _build_sopt_kwargs(
-        kind,
-        lbfgs_cfg,
-        rfo_cfg,
-        opt_cfg,
-        max_step_bohr,
-        relax_max_cycles,
-        relax_override_requested,
-        out_dir,
-        prefix,
-    )
-    if kind == "lbfgs":
-        return LBFGS(geom, **args)
-    return RFOptimizer(geom, **args)
-
-
-def _unbiased_energy_hartree(geom, base_calc) -> float:
-    """Evaluate UMA energy (Hartree) without harmonic bias."""
-    coords_bohr = np.asarray(geom.coords)
-    elems = getattr(geom, "atoms", None)
-
-    if elems is None:
-        return float("nan")
-
-    try:
-        return float(base_calc.get_energy(elems, coords_bohr)["energy"])
-    except Exception:
-        return float("nan")
 
 
 @click.command(
@@ -683,7 +525,7 @@ def cli(
                 freeze = merge_detected_freeze_links(geom_cfg, source)
 
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
-        _ensure_dir(out_dir_path)
+        ensure_dir(out_dir_path)
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_geom_for_echo(calc_cfg)
         echo_opt = dict(opt_cfg)
@@ -695,7 +537,7 @@ def cli(
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("opt", echo_opt))
         max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
-        echo_sopt = _build_sopt_kwargs(
+        echo_sopt = build_sopt_kwargs(
             kind,
             lbfgs_cfg,
             rfo_cfg,
@@ -719,15 +561,17 @@ def cli(
             if source and source.suffix.lower() == ".pdb":
                 pdb_atom_meta = load_pdb_atom_metadata(source)
 
-            (
-                (i1, j1, low1, high1),
-                (i2, j2, low2, high2),
-                (i3, j3, low3, high3),
-                raw_pairs,
-            ) = _parse_scan_list(scan_list_raw, one_based=one_based, atom_meta=pdb_atom_meta)
-            d1_label_csv = _axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
-            d2_label_csv = _axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
-            d3_label_csv = _axis_label_csv("d3", i3, j3, one_based, pdb_atom_meta, raw_pairs[2])
+            parsed, raw_pairs = parse_scan_list_quads_checked(
+                scan_list_raw,
+                expected_len=3,
+                one_based=one_based,
+                atom_meta=pdb_atom_meta,
+                option_name="--scan-list",
+            )
+            (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = parsed
+            d1_label_csv = axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
+            d2_label_csv = axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
+            d3_label_csv = axis_label_csv("d3", i3, j3, one_based, pdb_atom_meta, raw_pairs[2])
             click.echo(
                 pretty_block(
                     "scan-list (0-based)",
@@ -769,8 +613,8 @@ def cli(
             tmp_root = Path(tempfile.mkdtemp(prefix="scan3d_tmp_"))
             grid_dir = out_dir_path / "grid"
             tmp_opt_dir = tmp_root / "opt"
-            _ensure_dir(grid_dir)
-            _ensure_dir(tmp_opt_dir)
+            ensure_dir(grid_dir)
+            ensure_dir(tmp_opt_dir)
 
             if freeze is None:
                 freeze = merge_freeze_atom_indices(geom_cfg)
@@ -793,7 +637,7 @@ def cli(
                 click.echo("[preopt] Unbiased relaxation of the initial structure ...")
                 geom_outer.set_calculator(base_calc)
                 max_step_bohr_local = float(max_step_size) * ANG2BOHR
-                optimizer0 = _make_optimizer(
+                optimizer0 = make_sopt_optimizer(
                     geom_outer,
                     kind,
                     lbfgs_cfg,
@@ -848,7 +692,7 @@ def cli(
                 context=f"'{preopt_xyz_path.name}' to PDB/GJF",
             )
 
-            E_pre_h = _unbiased_energy_hartree(geom_outer, base_calc)
+            E_pre_h = unbiased_energy_hartree(geom_outer, base_calc)
             preopt_record = {
                 "i": -1,
                 "j": -1,
@@ -861,9 +705,9 @@ def cli(
             }
 
             # Build and reorder the grids so that we scan from values closest to the reference distances
-            d1_values = _values_from_bounds(low1, high1, float(max_step_size))
-            d2_values = _values_from_bounds(low2, high2, float(max_step_size))
-            d3_values = _values_from_bounds(low3, high3, float(max_step_size))
+            d1_values = values_from_bounds(low1, high1, float(max_step_size))
+            d2_values = values_from_bounds(low2, high2, float(max_step_size))
+            d3_values = values_from_bounds(low3, high3, float(max_step_size))
 
             d1_values = np.array(
                 sorted(d1_values, key=lambda v: abs(v - d1_ref)),
@@ -914,7 +758,7 @@ def cli(
                 biased.set_pairs([(i1, j1, float(d1_target))])
                 geom_outer_i.set_calculator(biased)
 
-                opt1 = _make_optimizer(
+                opt1 = make_sopt_optimizer(
                     geom_outer_i,
                     kind,
                     lbfgs_cfg,
@@ -967,7 +811,7 @@ def cli(
                     )
                     geom_mid.set_calculator(biased)
 
-                    opt2 = _make_optimizer(
+                    opt2 = make_sopt_optimizer(
                         geom_mid,
                         kind,
                         lbfgs_cfg,
@@ -1018,7 +862,7 @@ def cli(
                         )
                         geom_inner.set_calculator(biased)
 
-                        opt3 = _make_optimizer(
+                        opt3 = make_sopt_optimizer(
                             geom_inner,
                             kind,
                             lbfgs_cfg,
@@ -1049,7 +893,7 @@ def cli(
                         # Cache final geometry for nearest-neighbor reuse
                         d3_store[k_idx] = _snapshot_geometry(geom_inner)
 
-                        E_h = _unbiased_energy_hartree(geom_inner, base_calc)
+                        E_h = unbiased_energy_hartree(geom_inner, base_calc)
 
                         tag_i = _format_distance_tag(d1_target)
                         tag_j = _format_distance_tag(d2_target)
@@ -1130,9 +974,9 @@ def cli(
                 err=True,
             )
 
-        d1_label_html = _axis_label_html(d1_label_csv) if d1_label_csv else "d1 (Å)"
-        d2_label_html = _axis_label_html(d2_label_csv) if d2_label_csv else "d2 (Å)"
-        d3_label_html = _axis_label_html(d3_label_csv) if d3_label_csv else "d3 (Å)"
+        d1_label_html = axis_label_html(d1_label_csv) if d1_label_csv else "d1 (Å)"
+        d2_label_html = axis_label_html(d2_label_csv) if d2_label_csv else "d2 (Å)"
+        d3_label_html = axis_label_html(d3_label_csv) if d3_label_csv else "d3 (Å)"
 
         # If energy_kcal is already present (e.g. loaded from existing CSV), reuse it.
         # Otherwise compute it from energy_hartree and baseline.
@@ -1157,7 +1001,7 @@ def cli(
             else:
                 ref = float(df["energy_hartree"].min())
 
-            df["energy_kcal"] = (df["energy_hartree"] - ref) * HARTREE_TO_KCAL_MOL
+            df["energy_kcal"] = (df["energy_hartree"] - ref) * AU2KCALPERMOL
 
         # Only write surface.csv when we actually performed the scan in this run
         if csv_path is None:

@@ -196,6 +196,7 @@ from .opt import (
     RFO_KW as _RFO_KW,
 )
 from .utils import (
+    as_list,
     merge_detected_freeze_links,
     load_yaml_dict,
     apply_yaml_overrides,
@@ -541,16 +542,8 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
     faL = getattr(gL, "freeze_atoms", None)
     faR = getattr(gR, "freeze_atoms", None)
 
-    def _as_list(raw: Any) -> List[Any]:
-        if raw is None:
-            return []
-        try:
-            return list(raw)
-        except Exception:
-            return []
-
     freeze_union = sorted(
-        set(map(int, _as_list(faL))) | set(map(int, _as_list(faR)))
+        set(map(int, as_list(faL))) | set(map(int, as_list(faR)))
     )
     interps: List[Any] = []
     for k in range(1, n_internal + 1):
@@ -640,6 +633,9 @@ class SegmentReport:
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
 
 
+_PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
+
+
 def _run_mep_between(
     gA,
     gB,
@@ -656,10 +652,7 @@ def _run_mep_between(
     Run GSM between `gA`–`gB`, save segment outputs, and return images/energies/HEI index.
     """
     if gjf_template is None:
-        try:
-            gjf_template = _PRIMARY_GJF_TEMPLATE  # type: ignore[name-defined]
-        except NameError:
-            pass
+        gjf_template = _PRIMARY_GJF_TEMPLATE
     for g in (gA, gB):
         g.set_calculator(shared_calc)
 

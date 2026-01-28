@@ -120,6 +120,8 @@ except Exception:
     # Direct execution, etc.
     from pdb2reaction.uma_pysis import uma_pysis
 
+from .utils import as_list
+
 
 # =============================================================================
 # Math utilities (row-vector convention: Q @ R + t)
@@ -258,15 +260,7 @@ def _freeze_union(g_ref, g_mob, n_atoms: Optional[int] = None) -> List[int]:
     fa0 = getattr(g_ref, "freeze_atoms", None)
     fa1 = getattr(g_mob, "freeze_atoms", None)
 
-    def _as_list(raw: Any) -> List[Any]:
-        if raw is None:
-            return []
-        try:
-            return list(raw)
-        except Exception:
-            return []
-
-    cand = sorted(set(int(i) for i in (_as_list(fa0) + _as_list(fa1))))
+    cand = sorted(set(int(i) for i in (as_list(fa0) + as_list(fa1))))
     if n_atoms is None:
         return cand
     good = [i for i in cand if 0 <= i < int(n_atoms)]
@@ -302,9 +296,6 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     N = P.shape[0]
     idx = _freeze_union(g_ref, g_mob, n_atoms=N)
 
-    def _set_all(Q_new: np.ndarray) -> None:
-        _set_all_coords_disabling_freeze(g_mob, Q_new)
-
     mode = "kabsch"
     report_all_atoms = False
 
@@ -321,7 +312,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             Vt[-1] *= -1.0
             R = Vt.T @ U.T
         Q_aln = (Q_rel @ R) + p0
-        _set_all(Q_aln)
+        _set_all_coords_disabling_freeze(g_mob, Q_aln)
         after = _rmsd(P, Q_aln)
         mode = "one_anchor"
         if verbose:
@@ -355,7 +346,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
             R_axis = _rodrigues(u, theta)
             Q1 = ((Q0 - c) @ R_axis.T) + c
-            _set_all(Q1)
+            _set_all_coords_disabling_freeze(g_mob, Q1)
             after = _rmsd(P, Q1)
             mode = "two_anchor"
             if verbose:
@@ -381,7 +372,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
     R, t = kabsch_R_t(P_sel, Q_sel)
     Q_aln = (Q @ R) + t
-    _set_all(Q_aln)
+    _set_all_coords_disabling_freeze(g_mob, Q_aln)
 
     after_sel = _rmsd(P_sel, Q_aln[use])
     after_report = _rmsd(P, Q_aln) if report_all_atoms else after_sel

@@ -406,6 +406,18 @@ def _calc_energy(geom, uma_kwargs: dict) -> float:
     return E
 
 
+def _fmt_ha(x: float) -> str:
+    return f"{float(x): .6f} Ha"
+
+
+def _fmt_cal(x: float) -> str:
+    return f"{float(x): .2f} cal/mol"
+
+
+def _fmt_calK(x: float) -> str:
+    return f"{float(x): .2f} cal/(mol*K)"
+
+
 def _write_mode_trj_and_pdb(geom,
                             mode_vec_3N: np.ndarray,
                             out_trj: Path,
@@ -823,23 +835,19 @@ def cli(
                 click.echo("[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.")
             click.echo(f"Number of Imaginary Freq = {n_imag:d}\n")
 
-            def _ha(x): return f"{float(x): .6f} Ha"
-            def _cal(x): return f"{float(x): .2f} cal/mol"
-            def _calK(x): return f"{float(x): .2f} cal/(mol*K)"
-
-            click.echo(f"Electronic Energy (EE)                 = {_ha(EE)}")
-            click.echo(f"Zero-point Energy Correction           = {_ha(ZPE)}")
-            click.echo(f"Thermal Correction to Energy           = {_ha(dE_therm)}")
-            click.echo(f"Thermal Correction to Enthalpy         = {_ha(dH_therm)}")
-            click.echo(f"Thermal Correction to Free Energy      = {_ha(dG_therm)}")
-            click.echo(f"EE + Zero-point Energy                 = {_ha(sum_EE_ZPE)}")
-            click.echo(f"EE + Thermal Energy Correction         = {_ha(sum_EE_thermal_E)}")
-            click.echo(f"EE + Thermal Enthalpy Correction       = {_ha(sum_EE_thermal_H)}")
-            click.echo(f"EE + Thermal Free Energy Correction    = {_ha(sum_EE_thermal_G)}")
+            click.echo(f"Electronic Energy (EE)                 = {_fmt_ha(EE)}")
+            click.echo(f"Zero-point Energy Correction           = {_fmt_ha(ZPE)}")
+            click.echo(f"Thermal Correction to Energy           = {_fmt_ha(dE_therm)}")
+            click.echo(f"Thermal Correction to Enthalpy         = {_fmt_ha(dH_therm)}")
+            click.echo(f"Thermal Correction to Free Energy      = {_fmt_ha(dG_therm)}")
+            click.echo(f"EE + Zero-point Energy                 = {_fmt_ha(sum_EE_ZPE)}")
+            click.echo(f"EE + Thermal Energy Correction         = {_fmt_ha(sum_EE_thermal_E)}")
+            click.echo(f"EE + Thermal Enthalpy Correction       = {_fmt_ha(sum_EE_thermal_H)}")
+            click.echo(f"EE + Thermal Free Energy Correction    = {_fmt_ha(sum_EE_thermal_G)}")
             click.echo("")
-            click.echo(f"E (Thermal)                            = {_cal(E_thermal_cal)}")
-            click.echo(f"Heat Capacity (Cv)                     = {_calK(Cv_cal_per_Kmol)}")
-            click.echo(f"Entropy (S)                            = {_calK(S_cal_per_Kmol)}")
+            click.echo(f"E (Thermal)                            = {_fmt_cal(E_thermal_cal)}")
+            click.echo(f"Heat Capacity (Cv)                     = {_fmt_calK(Cv_cal_per_Kmol)}")
+            click.echo(f"Entropy (S)                            = {_fmt_calK(S_cal_per_Kmol)}")
             click.echo("")
 
             if bool(thermo_cfg["dump"]):

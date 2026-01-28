@@ -381,10 +381,6 @@ from . import irc as _irc_cli
 # -----------------------------
 
 
-def _ensure_dir(p: Path) -> None:
-    ensure_dir(p)
-
-
 def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: bool = True) -> bool:
     """Copy files with consistent warning messages; return success."""
     try:
@@ -1185,7 +1181,7 @@ def _concat_images_horizontally(
         y = (max_height - im.height) // 2
         canvas.paste(im, (x, y))
         x += im.width + gap
-    _ensure_dir(out_path.parent)
+    ensure_dir(out_path.parent)
     canvas.save(str(out_path))
     click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_path}")
 
@@ -1225,7 +1221,7 @@ def _merge_irc_trajectories_to_single_plot(
         return
 
     tmp_trj = out_png.with_suffix(".trj")
-    _ensure_dir(tmp_trj.parent)
+    ensure_dir(tmp_trj.parent)
     try:
         tmp_trj.write_text("\n".join(all_blocks) + "\n", encoding="utf-8")
     except Exception as e:
@@ -1279,7 +1275,7 @@ def _optimize_endpoint_geom(
 
     cfg = dict(base_cfg)
     opt_dir = out_dir / f"{tag}_{sopt_kind}_opt"
-    _ensure_dir(opt_dir)
+    ensure_dir(opt_dir)
     cfg["out_dir"] = str(opt_dir)
     cfg["dump"] = bool(dump)
     max_cycles = int(cfg.get("max_cycles", 300))
@@ -1329,7 +1325,7 @@ def _run_freq_for_state(
     Run freq CLI; return parsed thermo dict (may be empty).
     """
     fdir = out_dir
-    _ensure_dir(fdir)
+    ensure_dir(fdir)
     overrides = overrides or {}
 
     freeze_use = overrides.get("freeze_links")
@@ -1442,7 +1438,7 @@ def _run_dft_for_state(
     Run dft CLI; return parsed result.yaml dict (may be empty).
     """
     ddir = out_dir
-    _ensure_dir(ddir)
+    ensure_dir(ddir)
     overrides = overrides or {}
 
     func_basis_use = overrides.get("func_basis", func_basis)
@@ -1538,7 +1534,7 @@ def _run_tsopt_on_hei(
     needs_gjf = prepared_input.is_gjf
     ref_pdb = prepared_input.source_path if needs_pdb else None
     ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
-    _ensure_dir(ts_dir)
+    ensure_dir(ts_dir)
 
     freeze_use = overrides.get("freeze_links")
     if freeze_use is None:
@@ -1661,7 +1657,7 @@ def _irc_and_match(
     freeze_atoms: List[int] = _get_freeze_atoms(seg_pocket_pdb, freeze_links_flag)
 
     irc_dir = seg_dir / "irc"
-    _ensure_dir(irc_dir)
+    ensure_dir(irc_dir)
 
     irc_args: List[str] = [
         "-i",
@@ -2462,11 +2458,11 @@ def cli(
     path_dir = out_dir / ("path_search" if refine_path else "path_opt")
     scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)
     stage_total = 3
-    _ensure_dir(out_dir)
+    ensure_dir(out_dir)
     if not skip_extract:
-        _ensure_dir(pockets_dir)
+        ensure_dir(pockets_dir)
     if not single_tsopt_mode:
-        _ensure_dir(path_dir)
+        ensure_dir(path_dir)
 
     elem_tmp_dir = out_dir / "add_elem_info"
     inputs_for_extract: List[Path] = []
@@ -2478,7 +2474,7 @@ def cli(
                     "\n=== [all] Preflight — add_elem_info (only when element fields are missing) ===\n"
                 )
                 elem_fix_echo = True
-            _ensure_dir(elem_tmp_dir)
+            ensure_dir(elem_tmp_dir)
             out_p = (elem_tmp_dir / p.name).resolve()
             try:
                 _assign_elem_info(str(p), str(out_p), overwrite=False)
@@ -2507,7 +2503,7 @@ def cli(
         for p in extract_inputs:
             pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
 
-    q_from_flow: Optional[int] = None
+    resolved_charge: Optional[int] = None
 
     if not skip_extract:
         click.echo(
@@ -2544,7 +2540,7 @@ def cli(
             click.echo(
                 f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}"
             )
-            q_from_flow = _round_charge_with_note(q_total)
+            resolved_charge = _round_charge_with_note(q_total)
         except Exception as e:
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
@@ -2576,19 +2572,18 @@ def cli(
         except Exception:
             user_provided_spin = True
 
-        q_total_fallback: float
-        numeric_ligand_charge: Optional[float] = None
-        q_from_flow: Optional[int] = None
+        charge_total: float
+        ligand_charge_numeric: Optional[float] = None
         if ligand_charge is not None:
             try:
-                numeric_ligand_charge = float(ligand_charge)
+                ligand_charge_numeric = float(ligand_charge)
             except Exception:
-                numeric_ligand_charge = None
+                ligand_charge_numeric = None
 
             if first_input.suffix.lower() == ".pdb":
                 try:
                     with prepare_input_structure(first_input) as prepared:
-                        q_from_flow = _derive_charge_from_ligand_charge(
+                        resolved_charge = _derive_charge_from_ligand_charge(
                             prepared, ligand_charge, prefix="[all]"
                         )
                 except Exception as e:
@@ -2603,33 +2598,32 @@ def cli(
                     err=True,
                 )
 
-        if q_from_flow is not None:
-            pass
-        elif numeric_ligand_charge is not None:
-            q_total_fallback = numeric_ligand_charge
-            click.echo(
-                f"[all] Using --ligand-charge as TOTAL system charge: {q_total_fallback:+g}"
-            )
-            q_from_flow = _round_charge_with_note(q_total_fallback)
-        elif gjf_charge is not None:
-            q_total_fallback = float(gjf_charge)
-            click.echo(f"[all] Using total charge from first GJF: {q_total_fallback:+g}")
-            q_from_flow = _round_charge_with_note(q_total_fallback)
-        else:
-            q_total_fallback = 0.0
-            if ligand_charge is not None:
+        if resolved_charge is None:
+            if ligand_charge_numeric is not None:
+                charge_total = ligand_charge_numeric
                 click.echo(
-                    "[all] NOTE: failed to derive total charge from --ligand-charge; "
-                    "defaulting total charge to 0 (no GJF charge available).",
-                    err=True,
+                    f"[all] Using --ligand-charge as TOTAL system charge: {charge_total:+g}"
                 )
+                resolved_charge = _round_charge_with_note(charge_total)
+            elif gjf_charge is not None:
+                charge_total = float(gjf_charge)
+                click.echo(f"[all] Using total charge from first GJF: {charge_total:+g}")
+                resolved_charge = _round_charge_with_note(charge_total)
             else:
-                if charge_override is None:
+                charge_total = 0.0
+                if ligand_charge is not None:
                     click.echo(
-                        "[all] NOTE: No total charge provided; defaulting to 0. "
-                        "Supply '--ligand-charge <number>' to override."
+                        "[all] NOTE: failed to derive total charge from --ligand-charge; "
+                        "defaulting total charge to 0 (no GJF charge available).",
+                        err=True,
                     )
-            q_from_flow = _round_charge_with_note(q_total_fallback)
+                else:
+                    if charge_override is None:
+                        click.echo(
+                            "[all] NOTE: No total charge provided; defaulting to 0. "
+                            "Supply '--ligand-charge <number>' to override."
+                        )
+                resolved_charge = _round_charge_with_note(charge_total)
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
@@ -2640,11 +2634,11 @@ def cli(
         override_msg = (
             f"[all] WARNING: -q/--charge override supplied; forcing TOTAL system charge to {q_int:+d}"
         )
-        if q_from_flow is not None:
-            override_msg += f" (would otherwise use {int(q_from_flow):+d} from workflow)"
+        if resolved_charge is not None:
+            override_msg += f" (would otherwise use {int(resolved_charge):+d} from workflow)"
         click.echo(override_msg, err=True)
     else:
-        q_int = int(q_from_flow) if q_from_flow is not None else 0
+        q_int = int(resolved_charge) if resolved_charge is not None else 0
 
     freeze_ref: Optional[Path] = None
     if freeze_links_flag:
@@ -2677,7 +2671,7 @@ def cli(
     if single_tsopt_mode:
         click.echo("\n=== [all] TSOPT-only single-structure mode ===\n")
         tsroot = out_dir / "tsopt_single"
-        _ensure_dir(tsroot)
+        ensure_dir(tsroot)
 
         # In TSOPT-only mode, no MEP search is performed. Use a placeholder for
         # MEP-related fields in downstream summaries.
@@ -2731,7 +2725,7 @@ def cli(
             g_prod_irc, e_prod_irc = gL, eL
 
         struct_dir = tsroot / "structures"
-        _ensure_dir(struct_dir)
+        ensure_dir(struct_dir)
         pocket_ref = ts_initial_pdb
         pR_irc = _save_single_geom_as_pdb_for_tools(
             g_react_irc, pocket_ref, struct_dir, "reactant_irc"
@@ -2742,7 +2736,7 @@ def cli(
         pT = _save_single_geom_as_pdb_for_tools(gT, pocket_ref, struct_dir, "ts")
 
         endpoint_opt_dir = tsroot / "endpoint_opt"
-        _ensure_dir(endpoint_opt_dir)
+        ensure_dir(endpoint_opt_dir)
         try:
             g_react_opt, _ = _optimize_endpoint_geom(
                 g_react_irc,
@@ -3157,7 +3151,7 @@ def cli(
     pocket_ref_pdbs: Optional[List[Path]] = None
     if is_single and has_scan:
         click.echo("\n=== [all] Stage 1b — Staged scan on input ===\n")
-        _ensure_dir(scan_dir)
+        ensure_dir(scan_dir)
 
         if skip_extract:
             scan_input_pdb = Path(input_paths[0]).resolve()
@@ -3398,7 +3392,7 @@ def cli(
                 mirror_dir = path_dir / f"{seg_tag}_mep"
                 mirror_trj = mirror_dir / "final_geometries.trj"
 
-                _ensure_dir(mirror_dir)
+                ensure_dir(mirror_dir)
                 if seg_trj.resolve() != mirror_trj.resolve():
                     shutil.copy2(seg_trj, mirror_trj)
             except Exception as e:
@@ -3849,7 +3843,7 @@ def cli(
 
         seg_root = path_dir
         seg_dir = seg_root / f"post_seg_{seg_idx:02d}"
-        _ensure_dir(seg_dir)
+        ensure_dir(seg_dir)
 
         segment_log = {
             "index": seg_idx,
@@ -3879,7 +3873,7 @@ def cli(
                 ref_pdb_for_seg = candidate_ref
 
         struct_dir = seg_dir / "structures"
-        _ensure_dir(struct_dir)
+        ensure_dir(struct_dir)
         state_structs: Dict[str, Path] = {}
         uma_ref_energies: Dict[str, float] = {}
 
@@ -3941,7 +3935,7 @@ def cli(
             )
 
             endpoint_opt_dir = seg_dir / "endpoint_opt"
-            _ensure_dir(endpoint_opt_dir)
+            ensure_dir(endpoint_opt_dir)
             try:
                 g_react_opt, _ = _optimize_endpoint_geom(
                     gL,

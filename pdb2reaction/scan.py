@@ -122,8 +122,6 @@ import yaml
 import time
 
 from pysisyphus.helpers import geom_loader
-from pysisyphus.optimizers.LBFGS import LBFGS
-from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
@@ -135,6 +133,8 @@ from .opt import (
     HarmonicBiasCalculator,
 )
 from .utils import (
+    build_sopt_kwargs,
+    make_sopt_optimizer,
     load_yaml_dict,
     build_scan_configs,
     cli_param_overridden,
@@ -210,33 +210,6 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
     return d
 
 
-def _build_sopt_kwargs(
-    kind: str,
-    lbfgs_cfg: Dict[str, Any],
-    rfo_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
-    max_step_bohr: float,
-    relax_max_cycles: int,
-    relax_override_requested: bool,
-    out_dir: Path,
-    prefix: str,
-) -> Dict[str, Any]:
-    common = dict(opt_cfg)
-    common["out_dir"] = str(out_dir)
-    common["prefix"] = prefix
-    if kind == "lbfgs":
-        args = {**lbfgs_cfg, **common}
-        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
-    else:
-        args = {**rfo_cfg, **common}
-        tr = float(rfo_cfg.get("trust_radius", 0.10))
-        args["trust_radius"] = min(tr, max_step_bohr)
-        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
-    if relax_override_requested:
-        args["max_cycles"] = int(relax_max_cycles)
-    return args
-
-
 def _coords3d_to_xyz_string(geom, energy: Optional[float] = None) -> str:
     s = geom.as_xyz()
     lines = s.splitlines()
@@ -246,6 +219,47 @@ def _coords3d_to_xyz_string(geom, energy: Optional[float] = None) -> str:
     if not s.endswith("\n"):
         s += "\n"
     return s
+
+
+def _fmt_target_value(x: float) -> str:
+    return f"{x:.3f}".rstrip("0").rstrip(".")
+
+
+def _targets_triplet_str(pairs_1based: List[Tuple[int, int]], targets: List[float]) -> str:
+    triples = [f"({i}, {j}, {_fmt_target_value(t)})" for (i, j), t in zip(pairs_1based, targets)]
+    return "[" + ", ".join(triples) + "]"
+
+
+def _list_of_str_3f(values: List[float]) -> str:
+    return "[" + ", ".join(f"'{v:.3f}'" for v in values) + "]"
+
+
+def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
+    """Print a readable end-of-run summary."""
+    click.echo("\nSummary")
+    click.echo("------------------")
+    for s in stages:
+        idx = int(s.get("index", 0))
+        pairs_1b = list(s.get("pairs_1based", []))
+        r0 = list(s.get("initial_distances_A", []))
+        rT = list(s.get("target_distances_A", []))
+        dA = list(s.get("per_pair_step_A", []))
+        N = int(s.get("num_steps", 0))
+        bchg = s.get("bond_change", {}) or {}
+        changed = bool(bchg.get("changed"))
+        summary_txt = (bchg.get("summary") or "").strip()
+
+        click.echo(f"[stage {idx}] Targets (i,j,target Å): { _targets_triplet_str(pairs_1b, rT) }")
+        click.echo(f"[stage {idx}] initial distances (Å) = { _list_of_str_3f(r0) }")
+        click.echo(f"[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }")
+        click.echo(f"[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }")
+        click.echo(f"[stage {idx}] steps N = {N}")
+        click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
+        if changed and summary_txt:
+            click.echo(textwrap.indent(summary_txt, prefix="  "))
+        if not changed:
+            click.echo("  (no covalent changes detected)")
+        click.echo("")  # blank line between stages
 
 
 def _parse_scan_lists(
@@ -593,7 +607,7 @@ def cli(
             click.echo(pretty_block("calc", echo_calc))
             click.echo(pretty_block("opt",  echo_opt))
             max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
-            echo_sopt = _build_sopt_kwargs(
+            echo_sopt = build_sopt_kwargs(
                 kind,
                 lbfgs_cfg,
                 rfo_cfg,
@@ -615,19 +629,18 @@ def cli(
             # ------------------------------------------------------------------
             # 2) Parse scan lists
             # ------------------------------------------------------------------
-            argv_scan = sys.argv[1:]
-            scan_lists_raw_final, scan_flag_count = _collect_scan_list_values(
-                argv_scan, ("--scan-lists", "--scan-list")
+            scan_lists_raw, scan_flag_count = _collect_scan_list_values(
+                sys.argv[1:], ("--scan-lists", "--scan-list")
             )
             if scan_flag_count > 1:
                 raise click.BadParameter(
                     "Use a single --scan-list/--scan-lists followed by multiple stage literals; "
                     "repeated flags are not accepted."
                 )
-            if not scan_lists_raw_final:
+            if not scan_lists_raw:
                 raise click.BadParameter("--scan-list(s) must be provided at least once.")
             stages = _parse_scan_lists(
-                scan_lists_raw_final, one_based=one_based, atom_meta=pdb_atom_meta
+                scan_lists_raw, one_based=one_based, atom_meta=pdb_atom_meta
             )
             K = len(stages)
             click.echo(f"[scan] Received {K} stage(s).")
@@ -660,22 +673,6 @@ def cli(
 
             max_step_bohr = float(max_step_size) * ANG2BOHR  # shared cap for LBFGS step / RFO trust radii
 
-            def _make_optimizer(kind_local: str, _out_dir: Path, _prefix: str):
-                args = _build_sopt_kwargs(
-                    kind_local,
-                    lbfgs_cfg,
-                    rfo_cfg,
-                    opt_cfg,
-                    max_step_bohr,
-                    relax_max_cycles,
-                    relax_max_cycles_override_requested,
-                    _out_dir,
-                    _prefix,
-                )
-                if kind_local == "lbfgs":
-                    return LBFGS(geom, **args)
-                return RFOptimizer(geom, **args)
-
             # Merge freeze_atoms with link parents (PDB)
             # Attach freeze indices to Geometry for optimizer awareness
             if freeze:
@@ -698,7 +695,18 @@ def cli(
                 pre_dir.mkdir(parents=True, exist_ok=True)
                 geom.set_calculator(base_calc)
                 click.echo(f"[preopt] Unbiased relaxation ({kind}) ...")
-                optimizer0 = _make_optimizer(kind, pre_dir, "preopt_")
+                optimizer0 = make_sopt_optimizer(
+                    geom,
+                    kind,
+                    lbfgs_cfg,
+                    rfo_cfg,
+                    opt_cfg,
+                    max_step_bohr,
+                    relax_max_cycles,
+                    relax_max_cycles_override_requested,
+                    pre_dir,
+                    "preopt_",
+                )
                 try:
                     optimizer0.run()
                 except ZeroStepLength:
@@ -774,7 +782,18 @@ def cli(
                         geom.set_calculator(base_calc)
                         click.echo(f"[stage {k}] endopt (unbiased) ...")
                         try:
-                            end_optimizer = _make_optimizer(kind, stage_dir, "endopt_")
+                            end_optimizer = make_sopt_optimizer(
+                                geom,
+                                kind,
+                                lbfgs_cfg,
+                                rfo_cfg,
+                                opt_cfg,
+                                max_step_bohr,
+                                relax_max_cycles,
+                                relax_max_cycles_override_requested,
+                                stage_dir,
+                                "endopt_",
+                            )
                             end_optimizer.run()
                         except ZeroStepLength:
                             click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
@@ -828,7 +847,18 @@ def cli(
 
                     # Build optimizer and relax (with bias)
                     prefix = f"scan_s{s:04d}_"
-                    optimizer = _make_optimizer(kind, stage_dir, prefix)
+                    optimizer = make_sopt_optimizer(
+                        geom,
+                        kind,
+                        lbfgs_cfg,
+                        rfo_cfg,
+                        opt_cfg,
+                        max_step_bohr,
+                        relax_max_cycles,
+                        relax_max_cycles_override_requested,
+                        stage_dir,
+                        prefix,
+                    )
                     click.echo(f"[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
                     try:
                         optimizer.run()
@@ -846,7 +876,18 @@ def cli(
                     geom.set_calculator(base_calc)
                     click.echo(f"[stage {k}] endopt (unbiased) ...")
                     try:
-                        end_optimizer = _make_optimizer(kind, stage_dir, "endopt_")
+                        end_optimizer = make_sopt_optimizer(
+                            geom,
+                            kind,
+                            lbfgs_cfg,
+                            rfo_cfg,
+                            opt_cfg,
+                            max_step_bohr,
+                            relax_max_cycles,
+                            relax_max_cycles_override_requested,
+                            stage_dir,
+                            "endopt_",
+                        )
                         end_optimizer.run()
                     except ZeroStepLength:
                         click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
@@ -911,47 +952,7 @@ def cli(
             # ------------------------------------------------------------------
             # 5) Final summary echo (human‑friendly)
             # ------------------------------------------------------------------
-            def _echo_summary(_stages: List[Dict[str, Any]]) -> None:
-                """
-                Print a readable end-of-run summary.
-                """
-                def _fmt_target_value(x: float) -> str:
-                    s = f"{x:.3f}".rstrip("0").rstrip(".")
-                    return s
-
-                def _targets_triplet_str(pairs_1based: List[Tuple[int, int]], targets: List[float]) -> str:
-                    triples = [f"({i}, {j}, {_fmt_target_value(t)})" for (i, j), t in zip(pairs_1based, targets)]
-                    return "[" + ", ".join(triples) + "]"
-
-                def _list_of_str_3f(values: List[float]) -> str:
-                    return "[" + ", ".join(f"'{v:.3f}'" for v in values) + "]"
-
-                click.echo("\nSummary")
-                click.echo("------------------")
-                for s in _stages:
-                    idx = int(s.get("index", 0))
-                    pairs_1b = list(s.get("pairs_1based", []))
-                    r0 = list(s.get("initial_distances_A", []))
-                    rT = list(s.get("target_distances_A", []))
-                    dA = list(s.get("per_pair_step_A", []))
-                    N = int(s.get("num_steps", 0))
-                    bchg = s.get("bond_change", {}) or {}
-                    changed = bool(bchg.get("changed"))
-                    summary_txt = (bchg.get("summary") or "").strip()
-
-                    click.echo(f"[stage {idx}] Targets (i,j,target Å): { _targets_triplet_str(pairs_1b, rT) }")
-                    click.echo(f"[stage {idx}] initial distances (Å) = { _list_of_str_3f(r0) }")
-                    click.echo(f"[stage {idx}] target distances  (Å) = { _list_of_str_3f(rT) }")
-                    click.echo(f"[stage {idx}] per_pair_step     (Å) = { _list_of_str_3f(dA) }")
-                    click.echo(f"[stage {idx}] steps N = {N}")
-                    click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}")
-                    if changed and summary_txt:
-                        click.echo(textwrap.indent(summary_txt, prefix="  "))
-                    if not changed:
-                        click.echo("  (no covalent changes detected)")
-                    click.echo("")  # blank line between stages
-
-            _echo_summary(stages_summary)
+            _echo_scan_summary(stages_summary)
             # ------------------------------------------------------------------
 
             click.echo("\n=== Scan finished ===\n")

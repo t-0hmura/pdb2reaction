@@ -135,7 +135,7 @@ from ase.io import read, write
 import plotly.graph_objs as go
 
 from .add_elem_info import guess_element
-
+from pysisyphus.constants import AU2KCALPERMOL
 
 # =============================================================================
 # Generic helpers
@@ -181,6 +181,16 @@ def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = N
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+
+
+def as_list(raw: Any) -> List[Any]:
+    """Return ``raw`` as a list, or [] when not iterable/None."""
+    if raw is None:
+        return []
+    try:
+        return list(raw)
+    except Exception:
+        return []
 
 
 def ensure_dir(path: Path) -> None:
@@ -265,6 +275,66 @@ def merge_freeze_atom_indices(
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
+
+
+def build_sopt_kwargs(
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    out_dir: Path,
+    prefix: str,
+) -> Dict[str, Any]:
+    """Build LBFGS/RFO optimizer kwargs with a shared max-step cap."""
+    common = dict(opt_cfg)
+    common["out_dir"] = str(out_dir)
+    common["prefix"] = prefix
+    if kind == "lbfgs":
+        args = {**lbfgs_cfg, **common}
+        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
+    else:
+        args = {**rfo_cfg, **common}
+        tr = float(rfo_cfg.get("trust_radius", 0.10))
+        args["trust_radius"] = min(tr, max_step_bohr)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
+    if relax_override_requested:
+        args["max_cycles"] = int(relax_max_cycles)
+    return args
+
+
+def make_sopt_optimizer(
+    geom: Any,
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    out_dir: Path,
+    prefix: str,
+):
+    """Construct an LBFGS/RFO optimizer based on shared settings."""
+    args = build_sopt_kwargs(
+        kind,
+        lbfgs_cfg,
+        rfo_cfg,
+        opt_cfg,
+        max_step_bohr,
+        relax_max_cycles,
+        relax_override_requested,
+        out_dir,
+        prefix,
+    )
+    from pysisyphus.optimizers.LBFGS import LBFGS
+    from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+
+    if kind == "lbfgs":
+        return LBFGS(geom, **args)
+    return RFOptimizer(geom, **args)
 
 
 def normalize_choice(
@@ -1339,6 +1409,7 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 def _split_atom_spec_tokens(spec: str) -> List[str]:
     # Split an atom selector string into tokens using whitespace, comma, slash, backtick, or backslash.
     # Split the atom specification without parsing spaces by replacing spaces with commas before splitting.
+    # Without replacing, it didn't work well for specs like "ALA 25 CA", somehow.
     tokens = [t for t in re.split(r"[\s/`,\\]+", spec.strip().replace(' ',',')) if t]
     return tokens
 
@@ -1401,6 +1472,78 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
     raise ValueError(f"Atom spec '{spec}' did not match any atom.")
 
 
+def values_from_bounds(low: float, high: float, h: float) -> "np.ndarray":
+    """Return evenly spaced values from low→high with step cap h (inclusive)."""
+    if h <= 0.0:
+        raise click.BadParameter("--max-step-size must be > 0.")
+    delta = abs(high - low)
+    if delta < 1e-12:
+        import numpy as np
+        return np.array([low], dtype=float)
+    import numpy as np
+    N = int(math.ceil(delta / h))
+    return np.linspace(low, high, N + 1, dtype=float)
+
+
+def atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
+    if index < 0 or index >= len(atom_meta):
+        return f"idx{index}"
+    meta = atom_meta[index]
+    resname = (meta.get("resname") or "?").strip() or "?"
+    resseq = meta.get("resseq")
+    resseq_txt = "?" if resseq is None else str(resseq)
+    atom = (meta.get("name") or "?").strip() or "?"
+    return f"{resname}-{resseq_txt}-{atom}"
+
+
+def axis_label_csv(
+    axis_name: str,
+    i_idx: int,
+    j_idx: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+    pair_raw: Optional[Tuple[Any, Any, float, float]] = None,
+) -> str:
+    if pair_raw and (isinstance(pair_raw[0], str) or isinstance(pair_raw[1], str)) and atom_meta:
+        i_label = atom_label_from_meta(atom_meta, i_idx)
+        j_label = atom_label_from_meta(atom_meta, j_idx)
+        return f"{axis_name}_{i_label}_{j_label}_A"
+    i_disp = i_idx + 1 if one_based else i_idx
+    j_disp = j_idx + 1 if one_based else j_idx
+    return f"{axis_name}_{i_disp}_{j_disp}_A"
+
+
+def axis_label_html(label: str) -> str:
+    parts = label.split("_")
+    if len(parts) >= 4 and parts[-1] == "A":
+        axis = parts[0]
+        i_disp = parts[1]
+        j_disp = parts[2]
+        return f"{axis} ({i_disp},{j_disp}) (Å)"
+    return label
+
+
+def parse_scan_list_quads_checked(
+    raw: str,
+    *,
+    expected_len: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    option_name: str,
+) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]]]:
+    parsed, raw_pairs = parse_scan_list_quads(
+        raw,
+        expected_len=expected_len,
+        one_based=one_based,
+        atom_meta=atom_meta,
+        option_name=option_name,
+    )
+    for i, j, low, high in parsed:
+        if low <= 0.0 or high <= 0.0:
+            raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
+    return parsed, raw_pairs
+
+
 def parse_scan_list_triples(
     raw: str,
     *,
@@ -1449,6 +1592,20 @@ def parse_scan_list_triples(
         parsed.append((i, j, float(t[2])))
 
     return parsed, list(obj)
+
+
+def unbiased_energy_hartree(geom, base_calc) -> float:
+    """Evaluate UMA energy (Hartree) without harmonic bias."""
+    import numpy as np
+
+    coords_bohr = np.asarray(geom.coords)
+    elems = getattr(geom, "atoms", None)
+    if elems is None:
+        return float("nan")
+    try:
+        return float(base_calc.get_energy(elems, coords_bohr)["energy"])
+    except Exception:
+        return float("nan")
 
 
 def close_matplotlib_figures() -> None:
@@ -1577,9 +1734,7 @@ def detect_freeze_links(pdb_path):
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
-    if not lkhs:
-        return []
-    if not others:
+    if not lkhs or not others:
         return []
 
     indices = []

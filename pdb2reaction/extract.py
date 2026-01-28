@@ -722,6 +722,27 @@ def are_peptide_adjacent(prev_res: PDB.Residue.Residue,
 #   Residue selection around the substrate
 # ---------------------------------------------------------------------
 
+def _is_amino_backbone_atom(atom: PDB.Atom.Atom) -> bool:
+    res = atom.get_parent()
+    return (res.get_resname() in AMINO_ACIDS) and (atom.get_name() in BACKBONE_ATOMS)
+
+
+def _add_residue_if_eligible(
+    atom: PDB.Atom.Atom,
+    include_h2o: bool,
+    selected_ids: Set[Tuple],
+    backbone_contact_ids: Set[Tuple],
+    via_backbone: bool,
+) -> None:
+    res = atom.get_parent()
+    if not include_h2o and res.get_resname() in WATER_RES:
+        return
+    fid = res.get_full_id()
+    selected_ids.add(fid)
+    if via_backbone and res.get_resname() in AMINO_ACIDS:
+        backbone_contact_ids.add(fid)
+
+
 def select_residues(complex_struct,
                     substrate_res_list: List[PDB.Residue.Residue],
                     r_as: float,
@@ -757,36 +778,35 @@ def select_residues(complex_struct,
     selected_ids: Set[Tuple] = {res.get_full_id() for res in substrate_res_list}
     backbone_contact_ids: Set[Tuple] = set()
 
-    def is_amino_backbone_atom(atom: PDB.Atom.Atom) -> bool:
-        res = atom.get_parent()
-        return (res.get_resname() in AMINO_ACIDS) and (atom.get_name() in BACKBONE_ATOMS)
-
-    def add_if_eligible(atom, via_backbone: bool):
-        res = atom.get_parent()
-        if not include_h2o and res.get_resname() in WATER_RES:
-            return
-        fid = res.get_full_id()
-        selected_ids.add(fid)
-        if via_backbone and res.get_resname() in AMINO_ACIDS:
-            backbone_contact_ids.add(fid)
-
     # standard radius: any atom within r_as (with backbone filter when exclude_backbone==True)
     for atom in substrate_atoms:
         for neigh in ns.search(atom.get_coord(), r_as):
-            if exclude_backbone and is_amino_backbone_atom(neigh):
+            if exclude_backbone and _is_amino_backbone_atom(neigh):
                 continue  # require non-backbone atom for amino-acid residues
             via_backbone_neigh = (neigh.get_name() in BACKBONE_ATOMS)
-            add_if_eligible(neigh, via_backbone_neigh)
+            _add_residue_if_eligible(
+                neigh,
+                include_h2o,
+                selected_ids,
+                backbone_contact_ids,
+                via_backbone_neigh,
+            )
 
     # hetero-hetero radius: both sides non-C/H (and non-backbone filter for amino acids when exclude_backbone==True)
     for atom in substrate_het:
         for neigh in ns.search(atom.get_coord(), r_het):
             if neigh.element in ("C", "H"):
                 continue
-            if exclude_backbone and is_amino_backbone_atom(neigh):
+            if exclude_backbone and _is_amino_backbone_atom(neigh):
                 continue
             via_backbone_neigh = (neigh.get_name() in BACKBONE_ATOMS)
-            add_if_eligible(neigh, via_backbone_neigh)
+            _add_residue_if_eligible(
+                neigh,
+                include_h2o,
+                selected_ids,
+                backbone_contact_ids,
+                via_backbone_neigh,
+            )
 
     return selected_ids, backbone_contact_ids
 
