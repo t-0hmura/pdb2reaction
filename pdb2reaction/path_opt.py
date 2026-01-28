@@ -87,6 +87,7 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 from .uma_pysis import uma_ase, uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from . import utils as _utils
 
 from .utils import (
     convert_xyz_to_pdb,
@@ -230,18 +231,18 @@ def _load_two_endpoints(
     return geoms
 
 
-def _maybe_convert_to_pdb(
+def _convert_to_pdb_logged(
     src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
 ) -> Optional[Path]:
     """
     Convert an XYZ/TRJ path to PDB using a reference topology when available.
 
     Returns the written path on success; otherwise None. Conversion is skipped when
-    the source does not exist, lacks an XYZ/TRJ suffix, or no reference PDB is
-    provided.
+    the source does not exist, lacks an XYZ/TRJ suffix, conversion is disabled, or
+    no reference PDB is provided.
     """
     try:
-        if ref_pdb_path is None:
+        if ref_pdb_path is None or not _utils._CONVERT_FILES_ENABLED:
             return None
         src_path = Path(src_path)
         if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
@@ -249,11 +250,19 @@ def _maybe_convert_to_pdb(
 
         out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
         convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)
-        click.echo(f"[convert] Wrote '{out_path}'.")
-        return out_path
+        if out_path.exists():
+            click.echo(f"[convert] Wrote '{out_path}'.")
+            return out_path
+        return None
     except Exception as e:
         click.echo(f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}", err=True)
         return None
+
+
+def _maybe_convert_to_pdb(
+    src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
+) -> Optional[Path]:
+    return _convert_to_pdb_logged(src_path, ref_pdb_path, out_path)
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
