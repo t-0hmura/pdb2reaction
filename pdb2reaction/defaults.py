@@ -2,8 +2,10 @@
 
 """Common default configurations for pdb2reaction workflows.
 
-This module centralizes shared settings used across opt, scan, freq, tsopt,
+This module centralizes ALL shared settings used across opt, scan, freq, tsopt,
 path_opt, path_search, and other command-line tools.
+
+All default dictionaries are defined here to avoid redundant definitions across modules.
 """
 
 from typing import Any, Dict
@@ -191,3 +193,33 @@ OPT_MODE_ALIASES = (
     (("light",), "lbfgs"),
     (("heavy",), "rfo"),
 )
+
+# -----------------------------------------------
+# UMA Calculator extended defaults (uma_pysis)
+# -----------------------------------------------
+
+# Extended UMA calculator defaults with additional keys for Hessian control
+UMA_CALC_KW: Dict[str, Any] = {
+    **CALC_KW_DEFAULT,
+    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (CUDA) or numpy (CPU)
+    "freeze_atoms": None,     # Optional[Sequence[int]], list of 0-based freeze atom indices
+}
+
+# -----------------------------------------------
+# Scan-specific defaults (scan, scan2d, scan3d)
+# -----------------------------------------------
+
+# Scan optimizer defaults (used by scan.py, scan2d.py, scan3d.py)
+SCAN_OPT_BASE_KW: Dict[str, Any] = {
+    **OPT_BASE_KW,
+    "dump": False,
+    "max_cycles": 10000,
+}
+
+SCAN_LBFGS_KW: Dict[str, Any] = {
+    **LBFGS_KW,
+}
+
+SCAN_RFO_KW: Dict[str, Any] = {
+    **RFO_KW,
+}

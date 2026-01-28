@@ -32,16 +32,15 @@ from pysisyphus.constants import ANG2BOHR, AU2KCALPERMOL
 
 from .defaults import (
     GEOM_KW_DEFAULT,
-    BIAS_KW as _BIAS_KW,
+    BIAS_KW,
     OPT_MODE_ALIASES,
+    OPT_BASE_KW,
+    LBFGS_KW,
+    RFO_KW,
+    UMA_CALC_KW,
 )
-from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
-from .opt import (
-    HarmonicBiasCalculator,
-    OPT_BASE_KW as _OPT_BASE_KW,
-    LBFGS_KW as _LBFGS_KW,
-    RFO_KW as _RFO_KW,
-)
+from .uma_pysis import uma_pysis
+from .opt import HarmonicBiasCalculator
 from .utils import (
     axis_label_csv,
     axis_label_html,
@@ -72,18 +71,10 @@ from .utils import (
 )
 from .scan_common import add_scan_common_options, build_scan_defaults
 
-# Default keyword dictionaries for the 2D scan (override only the knobs we touch)
-GEOM_KW, CALC_KW, OPT_BASE_KW, LBFGS_KW, RFO_KW = build_scan_defaults(
-    geom_kw_default=GEOM_KW_DEFAULT,
-    calc_kw_default=_UMA_CALC_KW,
-    opt_base_kw=_OPT_BASE_KW,
-    lbfgs_kw=_LBFGS_KW,
-    rfo_kw=_RFO_KW,
-    out_dir="./result_scan2d/",
-    thresh="baker",
-)
-
-BIAS_KW: Dict[str, Any] = dict(_BIAS_KW)
+# Note: Defaults imported from defaults.py - no local copies needed
+# scan2d/scan3d use scan_common.build_scan_defaults for convenience
+DEFAULT_OUT_DIR_2D = "./result_scan2d/"
+DEFAULT_THRESH_2D = "baker"
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 
@@ -222,8 +213,8 @@ def _build_scan_context(
     help="Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.",
 )
 @add_scan_common_options(
-    workers_default=CALC_KW["workers"],
-    workers_per_node_default=CALC_KW["workers_per_node"],
+    workers_default=UMA_CALC_KW["workers"],
+    workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default="./result_scan2d/",
     baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
     dump_help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
@@ -288,8 +279,8 @@ def cli(
                 out_dir_path,
             ) = _build_scan_context(
                 yaml_cfg=yaml_cfg,
-                geom_kw=dict(GEOM_KW),
-                calc_kw=dict(CALC_KW),
+                geom_kw=dict(GEOM_KW_DEFAULT),
+                calc_kw=dict(UMA_CALC_KW),
                 opt_kw=dict(OPT_BASE_KW),
                 lbfgs_kw=dict(LBFGS_KW),
                 rfo_kw=dict(RFO_KW),

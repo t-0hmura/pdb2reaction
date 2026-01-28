@@ -29,12 +29,13 @@ from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 from .defaults import (
     GEOM_KW_DEFAULT,
     CALC_KW_DEFAULT,
-    OPT_BASE_KW as _OPT_BASE_KW,
-    LBFGS_KW as _LBFGS_KW,
-    RFO_KW as _RFO_KW,
-    OPT_MODE_ALIASES as _OPT_MODE_ALIASES,
+    OPT_BASE_KW,
+    LBFGS_KW,
+    RFO_KW,
+    OPT_MODE_ALIASES,
+    UMA_CALC_KW,
 )
-from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_pysis
 from .utils import (
     resolve_freeze_atoms,
     load_yaml_dict,
@@ -52,15 +53,7 @@ from .cli_utils import run_cli
 EV2AU = 1.0 / AU2EV  # eV → Hartree
 H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 
-# -----------------------------------------------
-# Default settings (overridable via YAML/CLI)
-# -----------------------------------------------
-
-GEOM_KW = dict(GEOM_KW_DEFAULT)
-CALC_KW = dict(_UMA_CALC_KW)
-OPT_BASE_KW = dict(_OPT_BASE_KW)
-LBFGS_KW = dict(_LBFGS_KW)
-RFO_KW = dict(_RFO_KW)
+# Note: All defaults imported from defaults.py - no local copies needed
 
 
 class HarmonicBiasCalculator:
@@ -260,7 +253,7 @@ def _convert_outputs(
 @click.option(
     "--workers",
     type=int,
-    default=CALC_KW["workers"],
+    default=UMA_CALC_KW["workers"],
     show_default=True,
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
@@ -268,7 +261,7 @@ def _convert_outputs(
     "--workers-per-node",
     "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_node"],
+    default=UMA_CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -417,11 +410,11 @@ def cli(
             dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
 
             # --------------------------
-            # 1) Assemble configuration
+            # 1) Assemble configuration (create fresh copies for merging)
             # --------------------------
             yaml_cfg = load_yaml_dict(args_yaml)
-            geom_cfg = dict(GEOM_KW)
-            calc_cfg = dict(CALC_KW)
+            geom_cfg = dict(GEOM_KW_DEFAULT)
+            calc_cfg = dict(UMA_CALC_KW)
             opt_cfg = dict(OPT_BASE_KW)
             lbfgs_cfg = dict(LBFGS_KW)
             rfo_cfg = dict(RFO_KW)
@@ -456,7 +449,7 @@ def cli(
             kind = normalize_choice(
                 opt_mode,
                 param="--opt-mode",
-                alias_groups=_OPT_MODE_ALIASES,
+                alias_groups=OPT_MODE_ALIASES,
                 allowed_hint="light|heavy",
             )
 

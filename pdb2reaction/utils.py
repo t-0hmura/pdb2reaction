@@ -841,6 +841,8 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         - *xyz_path* may contain one or many frames. For multi‑frame trajectories,
           a MODEL/ENDMDL block is appended for each subsequent frame in the output PDB.
         - On the first frame the output file is created/overwritten; subsequent frames are appended.
+        - If the atom order in XYZ differs from PDB (e.g., pysisyphus sorts by element),
+          coordinates are mapped by matching element symbols.
 
     Args:
         xyz_path: Path to an XYZ file (single or multi-frame).
@@ -852,13 +854,77 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
 
+    # Check if atom order matches between ref_pdb and xyz
+    ref_symbols = ref_atoms.get_chemical_symbols()
+
     for step, frame in enumerate(traj):
+        xyz_symbols = frame.get_chemical_symbols()
+        xyz_positions = frame.get_positions()
+
+        # If atom order differs, reorder XYZ positions to match PDB
+        if xyz_symbols != ref_symbols:
+            # Create mapping from XYZ order to PDB order based on element matching
+            reordered_positions = _reorder_xyz_to_match_pdb(
+                ref_symbols, xyz_symbols, xyz_positions, xyz_path, ref_pdb_path
+            )
+        else:
+            reordered_positions = xyz_positions
+
         atoms = ref_atoms.copy()
-        atoms.set_positions(frame.get_positions())
+        atoms.set_positions(reordered_positions)
         if step == 0:
             write(out_pdb_path, atoms)  # Create/overwrite on the first frame
         else:
             write(out_pdb_path, atoms, append=True)  # Append subsequent frames using MODEL/ENDMDL
+
+
+def _reorder_xyz_to_match_pdb(
+    ref_symbols: List[str],
+    xyz_symbols: List[str],
+    xyz_positions: "np.ndarray",
+    xyz_path: Path,
+    ref_pdb_path: Path,
+) -> "np.ndarray":
+    """Reorder XYZ positions to match PDB atom order when elements differ.
+
+    This handles cases where pysisyphus reorders atoms (e.g., by element type).
+    We match atoms by element symbol in order.
+    """
+    import numpy as np
+
+    if len(ref_symbols) != len(xyz_symbols):
+        raise ValueError(
+            f"Atom count mismatch: ref_pdb has {len(ref_symbols)} atoms, "
+            f"xyz has {len(xyz_symbols)} atoms ({xyz_path.name} vs {ref_pdb_path.name})"
+        )
+
+    # Count elements in both
+    from collections import Counter
+    ref_counts = Counter(ref_symbols)
+    xyz_counts = Counter(xyz_symbols)
+
+    if ref_counts != xyz_counts:
+        raise ValueError(
+            f"Element composition mismatch between ref_pdb and xyz:\n"
+            f"  ref_pdb ({ref_pdb_path.name}): {dict(ref_counts)}\n"
+            f"  xyz ({xyz_path.name}): {dict(xyz_counts)}"
+        )
+
+    # Create mapping: for each element, map xyz indices to pdb indices in order
+    reordered_positions = np.zeros_like(xyz_positions)
+
+    # Track which indices we've used in xyz
+    xyz_used = [False] * len(xyz_symbols)
+
+    for pdb_idx, elem in enumerate(ref_symbols):
+        # Find next unused atom of this element in xyz
+        for xyz_idx, (xyz_elem, used) in enumerate(zip(xyz_symbols, xyz_used)):
+            if xyz_elem == elem and not used:
+                reordered_positions[pdb_idx] = xyz_positions[xyz_idx]
+                xyz_used[xyz_idx] = True
+                break
+
+    return reordered_positions
 
 
 # =============================================================================

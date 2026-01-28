@@ -127,14 +127,10 @@ F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr�
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
 # Import defaults from centralized configuration
-from .defaults import GEOM_KW_DEFAULT, CALC_KW_DEFAULT
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
 
-# UMA calculator defaults (extend from centralized defaults with UMA-specific keys)
-CALC_KW: Dict[str, Any] = {
-    **CALC_KW_DEFAULT,
-    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor
-    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms
-}
+# Use centralized UMA calculator defaults (no local redefinition)
+CALC_KW = UMA_CALC_KW
 
 # ===================================================================
 #                         UMA core wrapper

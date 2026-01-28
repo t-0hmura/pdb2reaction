@@ -173,11 +173,14 @@ from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignore
 
 # local helpers from pdb2reaction
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
-from .opt import (
-    OPT_BASE_KW as _OPT_BASE_KW,
-    LBFGS_KW as _LBFGS_KW,
-    RFO_KW as _RFO_KW,
+from .uma_pysis import uma_pysis
+from .defaults import (
+    GEOM_KW_DEFAULT,
+    UMA_CALC_KW,
+    OPT_BASE_KW,
+    LBFGS_KW,
+    RFO_KW,
+    OPT_MODE_ALIASES,
 )
 from .utils import (
     resolve_freeze_atoms,
@@ -202,11 +205,7 @@ from .freq import (
 )
 
 
-# Normalization helper
-_OPT_MODE_ALIASES = (
-    (("light",), "light"),
-    (("heavy",), "heavy"),
-)
+# Note: OPT_MODE_ALIASES imported from defaults.py
 
 
 # ===================================================================
@@ -1297,11 +1296,11 @@ class HessianDimer:
 # Geometry defaults
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-CALC_KW = dict(_UMA_CALC_KW)
+CALC_KW = dict(UMA_CALC_KW)
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
-OPT_BASE_KW = dict(_OPT_BASE_KW)
-OPT_BASE_KW.update({
+OPT_BASE_KW_LOCAL = dict(OPT_BASE_KW)
+OPT_BASE_KW_LOCAL.update({
     "out_dir": "./result_tsopt/",  # base output directory for TS optimization artifacts
     "thresh": "baker",             # main threshold preset for TS search
 })
@@ -1342,7 +1341,7 @@ DIMER_KW = {
 }
 
 # Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW
-LBFGS_TS_KW: Dict[str, Any] = dict(_LBFGS_KW)
+LBFGS_TS_KW: Dict[str, Any] = dict(LBFGS_KW)
 LBFGS_TS_KW.update({
     "thresh": "baker",          # main threshold preset for TS search
 })
@@ -1366,7 +1365,7 @@ hessian_dimer_KW = {
 }
 
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
-RSIRFO_KW: Dict[str, Any] = dict(_RFO_KW)
+RSIRFO_KW: Dict[str, Any] = dict(RFO_KW)
 RSIRFO_KW.update({
     "thresh": "baker",          # main threshold preset for TS search
     "roots": [0],               # mode indices to follow uphill
@@ -1559,7 +1558,7 @@ def cli(
         yaml_cfg = load_yaml_dict(args_yaml)
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
-        opt_cfg  = dict(OPT_BASE_KW)
+        opt_cfg  = dict(OPT_BASE_KW_LOCAL)
         simple_cfg = dict(hessian_dimer_KW)
         rsirfo_cfg = dict(RSIRFO_KW)
 
@@ -1605,7 +1604,7 @@ def cli(
         kind = normalize_choice(
             opt_mode,
             param="--opt-mode",
-            alias_groups=_OPT_MODE_ALIASES,
+            alias_groups=OPT_MODE_ALIASES,
             allowed_hint="light|heavy",
         )
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()

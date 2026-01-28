@@ -94,7 +94,8 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_pysis
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -482,7 +483,8 @@ def _write_mode_trj_and_pdb(geom,
 # Geometry defaults
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-CALC_KW = dict(_UMA_CALC_KW)
+# Calc defaults (extend UMA_CALC_KW with freq-specific settings)
+CALC_KW = dict(UMA_CALC_KW)
 CALC_KW.update(
     {
         "return_partial_hessian": True,  # default to PHVA-friendly active-block Hessians when possible

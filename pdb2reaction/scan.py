@@ -28,14 +28,15 @@ from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
 from .defaults import (
     GEOM_KW_DEFAULT,
-    OPT_BASE_KW as _OPT_BASE_KW,
-    LBFGS_KW as _LBFGS_KW,
-    RFO_KW as _RFO_KW,
-    BIAS_KW as _BIAS_KW,
-    BOND_KW as _BOND_KW,
-    OPT_MODE_ALIASES as _OPT_MODE_ALIASES,
+    OPT_BASE_KW,
+    LBFGS_KW,
+    RFO_KW,
+    BIAS_KW,
+    BOND_KW,
+    OPT_MODE_ALIASES,
+    UMA_CALC_KW,
 )
-from .uma_pysis import uma_pysis, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_pysis
 from .opt import HarmonicBiasCalculator
 from .utils import (
     build_sopt_kwargs,
@@ -64,23 +65,9 @@ from .bond_changes import has_bond_change
 from .scan_common import add_scan_common_options
 
 
-# --------------------------------------------------------------------------------------
-# Defaults (merge order: defaults ← CLI ← YAML)
-# --------------------------------------------------------------------------------------
-
-GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
-OPT_BASE_KW: Dict[str, Any] = dict(_OPT_BASE_KW)
-OPT_BASE_KW["out_dir"] = "./result_scan/"
-
-LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_KW["out_dir"] = "./result_scan/"
-
-RFO_KW: Dict[str, Any] = dict(_RFO_KW)
-RFO_KW["out_dir"] = "./result_scan/"
-
-BIAS_KW: Dict[str, Any] = dict(_BIAS_KW)
-BOND_KW: Dict[str, Any] = dict(_BOND_KW)
+# Note: All defaults imported from defaults.py - no local copies needed
+# Default output directory for scan (overridden in runtime config)
+DEFAULT_OUT_DIR = "./result_scan/"
 
 
 def _ensure_stage_dir(base: Path, k: int) -> Path:
@@ -159,7 +146,8 @@ def _schedule_for_stage(
     return N, r0, rT, step_widths
 
 
-_snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
+_COORD_TYPE_DEFAULT = GEOM_KW_DEFAULT["coord_type"]
+_snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 
 
 @click.command(
@@ -184,8 +172,8 @@ _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
          "multiple literals to run sequential stages, e.g. --scan-lists '[(0,1,1.50)]' '[(5,7,1.20)]'.",
 )
 @add_scan_common_options(
-    workers_default=CALC_KW["workers"],
-    workers_per_node_default=CALC_KW["workers_per_node"],
+    workers_default=UMA_CALC_KW["workers"],
+    workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default="./result_scan/",
     baseline_help="(unused)",
     dump_help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).",
@@ -242,12 +230,12 @@ def cli(
             time_start = time.perf_counter()
 
             # ------------------------------------------------------------------
-            # 1) Assemble configuration (defaults ← CLI ← YAML)
+            # 1) Assemble configuration (defaults ← CLI ← YAML) - create fresh copies for merging
             # ------------------------------------------------------------------
             yaml_cfg = load_yaml_dict(args_yaml)
 
-            geom_cfg = dict(GEOM_KW)
-            calc_cfg = dict(CALC_KW)
+            geom_cfg = dict(GEOM_KW_DEFAULT)
+            calc_cfg = dict(UMA_CALC_KW)
             opt_cfg  = dict(OPT_BASE_KW)
             lbfgs_cfg = dict(LBFGS_KW)
             rfo_cfg   = dict(RFO_KW)
@@ -275,7 +263,7 @@ def cli(
             kind = normalize_choice(
                 opt_mode,
                 param="--opt-mode",
-                alias_groups=_OPT_MODE_ALIASES,
+                alias_groups=OPT_MODE_ALIASES,
                 allowed_hint="light|heavy",
             )
 

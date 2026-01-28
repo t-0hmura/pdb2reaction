@@ -179,7 +179,8 @@ from pysisyphus.constants import AU2KCALPERMOL, BOHR2ANG
 from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_pysis
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
 from .path_opt import (
     _optimize_single,
     _run_dmf_mep,
@@ -187,11 +188,7 @@ from .path_opt import (
     GS_KW as _PATH_GS_KW,
     STOPT_KW as _PATH_STOPT_KW,
 )
-from .opt import (
-    OPT_BASE_KW as _OPT_BASE_KW,
-    LBFGS_KW as _LBFGS_KW,
-    RFO_KW as _RFO_KW,
-)
+from .defaults import OPT_BASE_KW, LBFGS_KW, RFO_KW
 from .utils import (
     as_list,
     collect_option_values,
@@ -284,10 +281,7 @@ def _bond_changes_block(text: Optional[str]):
 # Configuration defaults
 # -----------------------------------------------
 
-# Geometry (input handling)
-GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-
-CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
+# Note: All defaults imported from defaults.py - no local copies needed
 
 # DMF (Direct Max Flux + (C)FB-ENM)
 DMF_KW: Dict[str, Any] = dict(_PATH_DMF_KW)
@@ -301,15 +295,15 @@ STOPT_KW.update({
     "out_dir": "./result_path_search/",  # output directory for string-optimizer artifacts
 })
 
-# LBFGS settings
-LBFGS_KW: Dict[str, Any] = dict(_LBFGS_KW)
-LBFGS_KW.update({
+# LBFGS settings (local copy with path_search-specific out_dir)
+LBFGS_KW_LOCAL: Dict[str, Any] = dict(LBFGS_KW)
+LBFGS_KW_LOCAL.update({
     "out_dir": "./result_path_search/",  # LBFGS output directory (restart, logs)
 })
 
-# RFO settings
-RFO_KW: Dict[str, Any] = dict(_RFO_KW)
-RFO_KW.update({
+# RFO settings (local copy with path_search-specific out_dir)
+RFO_KW_LOCAL: Dict[str, Any] = dict(RFO_KW)
+RFO_KW_LOCAL.update({
     "out_dir": "./result_path_search/",  # RFO output directory (restart, logs)
 })
 
@@ -1816,7 +1810,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--workers",
     type=int,
-    default=CALC_KW["workers"],
+    default=UMA_CALC_KW["workers"],
     show_default=True,
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
@@ -1824,7 +1818,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--workers-per-node",
     "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_node"],
+    default=UMA_CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -2039,13 +2033,13 @@ def cli(
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg = dict(GEOM_KW)
-        calc_cfg = dict(CALC_KW)
+        geom_cfg = dict(GEOM_KW_DEFAULT)
+        calc_cfg = dict(UMA_CALC_KW)
         dmf_cfg  = dict(DMF_KW)
         gs_cfg   = dict(GS_KW)
         opt_cfg  = dict(STOPT_KW)
-        lbfgs_cfg = dict(_LBFGS_KW)
-        rfo_cfg   = dict(_RFO_KW)
+        lbfgs_cfg = dict(LBFGS_KW_LOCAL)
+        rfo_cfg   = dict(RFO_KW_LOCAL)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
         search_cfg["refine_mode"] = refine_mode_kind

@@ -87,7 +87,8 @@ from pysisyphus.optimizers.exceptions import OptimizationError
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
-from .uma_pysis import uma_ase, uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .uma_pysis import uma_ase, uma_pysis
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -104,10 +105,7 @@ from .utils import (
     load_prepared_geometries,
     write_xyz_trj_with_energy,
 )
-from .opt import (
-    LBFGS_KW as _LBFGS_KW,
-    RFO_KW as _RFO_KW,
-)
+from .defaults import LBFGS_KW, RFO_KW
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 
 
@@ -115,10 +113,7 @@ from .align_freeze_atoms import align_and_refine_sequence_inplace
 # Defaults (overridden by YAML/CLI)
 # -----------------------------------------------
 
-# Geometry (input handling)
-GEOM_KW: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-
-CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
+# Note: All defaults imported from defaults.py - no local copies needed
 
 # DMF (Direct Max Flux + (C)FB-ENM)
 DMF_KW: Dict[str, Any] = {
@@ -477,7 +472,7 @@ def _optimize_single(
 @click.option(
     "--workers",
     type=int,
-    default=CALC_KW["workers"],
+    default=UMA_CALC_KW["workers"],
     show_default=True,
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
@@ -485,7 +480,7 @@ def _optimize_single(
     "--workers-per-node",
     "workers_per_node",
     type=int,
-    default=CALC_KW["workers_per_node"],
+    default=UMA_CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
@@ -648,13 +643,13 @@ def cli(
         # --------------------------
         yaml_cfg = load_yaml_dict(args_yaml)
 
-        geom_cfg = dict(GEOM_KW)
-        calc_cfg = dict(CALC_KW)
+        geom_cfg = dict(GEOM_KW_DEFAULT)
+        calc_cfg = dict(UMA_CALC_KW)
         dmf_cfg = dict(DMF_KW)
         gs_cfg = dict(GS_KW)
         opt_cfg = dict(STOPT_KW)
-        lbfgs_cfg = dict(_LBFGS_KW)
-        rfo_cfg = dict(_RFO_KW)
+        lbfgs_cfg = dict(LBFGS_KW)
+        rfo_cfg = dict(RFO_KW)
 
         # Resolve charge/spin (defaults ← CLI/GJF/ligand-charge)
         resolved_charge, resolved_spin = resolve_charge_spin_multi(

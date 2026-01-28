@@ -97,7 +97,8 @@ import time
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
-from pdb2reaction.uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from pdb2reaction.uma_pysis import uma_pysis
+from pdb2reaction.defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
 from pdb2reaction.utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -115,7 +116,7 @@ from pdb2reaction.utils import (
 # Default configuration
 # --------------------------
 
-CALC_KW_DEFAULT: Dict[str, Any] = dict(_UMA_CALC_KW)
+# Note: CALC_KW_DEFAULT imported from defaults.py (use UMA_CALC_KW for UMA-specific defaults)
 
 IRC_KW_DEFAULT: Dict[str, Any] = {
     # Arguments for IRC.__init__ (forwarded to EulerPC via **kwargs)
@@ -196,7 +197,7 @@ def _echo_convert_trj_if_exists(
 @click.option(
     "--workers",
     type=int,
-    default=CALC_KW_DEFAULT["workers"],
+    default=UMA_CALC_KW["workers"],
     show_default=True,
     help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
@@ -204,7 +205,7 @@ def _echo_convert_trj_if_exists(
     "--workers-per-node",
     "workers_per_node",
     type=int,
-    default=CALC_KW_DEFAULT["workers_per_node"],
+    default=UMA_CALC_KW["workers_per_node"],
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
