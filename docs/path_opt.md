@@ -160,5 +160,5 @@ dmf:
     eps_rot: 0.01            # rotational tolerance
     beta: 10.0               # beta parameter for DMF
     update_teval: false      # update transition evaluation
-  k_fix: 100.0               # harmonic constant for restraints
+  k_fix: 300.0               # harmonic constant for restraints
 ```

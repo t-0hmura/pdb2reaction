@@ -174,7 +174,7 @@ hessian_dimer:
   update_interval_hessian: 500   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
-  flatten_max_iter: 50       # flattening iteration cap (default: Disabled)
+  flatten_max_iter: 50       # flattening iteration cap (disabled when --flatten-imag-mode False)
   flatten_sep_cutoff: 0.0    # minimum distance between representative atoms (Å)
   flatten_k: 10              # representative atoms sampled per mode
   flatten_loop_bofill: false # Bofill update for flatten displacements

@@ -4,16 +4,30 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdb2reaction"
-description = "pdb2reaction"
+description = "pdb2reaction - Automated enzyme reaction path modeling from PDB structures"
 readme = "README.md"
-authors = [{name = "Takuto Ohmura"}]
+authors = [{name = "Takuto Ohmura", email = "ohmura.takuto@gmail.com"}]
 license = {file = "LICENSE"}
 dynamic = ["version"]
 requires-python = ">=3.11"
+keywords = [
+    "computational chemistry",
+    "enzyme",
+    "reaction path",
+    "transition state",
+    "PDB",
+    "machine learning potential",
+    "MLIP",
+]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
+    # pdb2reaction core dependencies
     "fairchem-core[extras]",
-    "torch_pysis @ git+https://github.com/t-0hmura/torch_pysis.git@v0.2.2", 
-    "thermoanalysis @ git+https://github.com/t-0hmura/thermoanalysis.git@v0.1.0",
     "pydmf",
     "torch>=2.6.0",
     "torch_geometric>=2.7.0",
@@ -29,18 +43,44 @@ dependencies = [
     "gpu4pyscf-cuda12x>=1.5.2; platform_machine == 'x86_64'",
     "cupy-cuda12x==13.4.1",
     "cutensor-cu12==2.2.0",
-    "basis-set-exchange==0.11"
+    "basis-set-exchange==0.11",
+
+    # pysisyphus dependencies (bundled)
+    "autograd",
+    "dask",
+    "distributed",
+    "h5py",
+    "fabric",
+    "jinja2",
+    "joblib",
+    "matplotlib",
+    "natsort",
+    "psutil",
+    "rmsd",
+    "scipy",
+    "sympy",
+    "scikit-learn",
+
+    # thermoanalysis dependencies (bundled)
+    "cclib",
+    "pandas",
+    "tabulate",
 ]
+
+[project.urls]
+Homepage = "https://github.com/t-0hmura/pdb2reaction"
+Repository = "https://github.com/t-0hmura/pdb2reaction"
+Issues = "https://github.com/t-0hmura/pdb2reaction/issues"
 
 [project.scripts]
 pdb2reaction = "pdb2reaction.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pdb2reaction*"]
+include = ["pdb2reaction*", "pysisyphus*", "thermoanalysis*"]
 
-[tool.setuptools]
-package-data = { "pdb2reaction" = ["py.typed"] }
+[tool.setuptools.package-data]
+pdb2reaction = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "pdb2reaction.__version__"}
