@@ -343,7 +343,7 @@ Below are the most commonly used options across workflows.
   Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Default: `light`.  
 
 - `--opt-mode-post light|heavy`  
-  Optimizer preset for TSOPT and post-IRC endpoint optimization. Default: `heavy`.
+  Optimizer preset override for TSOPT and post-IRC endpoint optimization. When omitted, `--opt-mode` takes precedence if explicitly provided; otherwise TSOPT defaults to `heavy`.
 
 - `--flatten-imag-mode {True|False}`  
   Enable extra-imaginary-mode flattening in `tsopt` (light: dimer loop, heavy: post-RSIRFO). Default: `False`.
