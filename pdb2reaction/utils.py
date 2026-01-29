@@ -841,8 +841,6 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         - *xyz_path* may contain one or many frames. For multi‑frame trajectories,
           a MODEL/ENDMDL block is appended for each subsequent frame in the output PDB.
         - On the first frame the output file is created/overwritten; subsequent frames are appended.
-        - If the atom order in XYZ differs from PDB (e.g., pysisyphus sorts by element),
-          coordinates are mapped by matching element symbols.
 
     Args:
         xyz_path: Path to an XYZ file (single or multi-frame).
@@ -854,77 +852,24 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
 
-    # Check if atom order matches between ref_pdb and xyz
     ref_symbols = ref_atoms.get_chemical_symbols()
 
     for step, frame in enumerate(traj):
         xyz_symbols = frame.get_chemical_symbols()
         xyz_positions = frame.get_positions()
 
-        # If atom order differs, reorder XYZ positions to match PDB
         if xyz_symbols != ref_symbols:
-            # Create mapping from XYZ order to PDB order based on element matching
-            reordered_positions = _reorder_xyz_to_match_pdb(
-                ref_symbols, xyz_symbols, xyz_positions, xyz_path, ref_pdb_path
+            raise ValueError(
+                "Atom ordering mismatch between XYZ and PDB; "
+                "expected identical ordering when converting coordinates."
             )
-        else:
-            reordered_positions = xyz_positions
 
         atoms = ref_atoms.copy()
-        atoms.set_positions(reordered_positions)
+        atoms.set_positions(xyz_positions)
         if step == 0:
             write(out_pdb_path, atoms)  # Create/overwrite on the first frame
         else:
             write(out_pdb_path, atoms, append=True)  # Append subsequent frames using MODEL/ENDMDL
-
-
-def _reorder_xyz_to_match_pdb(
-    ref_symbols: List[str],
-    xyz_symbols: List[str],
-    xyz_positions: "np.ndarray",
-    xyz_path: Path,
-    ref_pdb_path: Path,
-) -> "np.ndarray":
-    """Reorder XYZ positions to match PDB atom order when elements differ.
-
-    This handles cases where pysisyphus reorders atoms (e.g., by element type).
-    We match atoms by element symbol in order.
-    """
-    import numpy as np
-
-    if len(ref_symbols) != len(xyz_symbols):
-        raise ValueError(
-            f"Atom count mismatch: ref_pdb has {len(ref_symbols)} atoms, "
-            f"xyz has {len(xyz_symbols)} atoms ({xyz_path.name} vs {ref_pdb_path.name})"
-        )
-
-    # Count elements in both
-    from collections import Counter
-    ref_counts = Counter(ref_symbols)
-    xyz_counts = Counter(xyz_symbols)
-
-    if ref_counts != xyz_counts:
-        raise ValueError(
-            f"Element composition mismatch between ref_pdb and xyz:\n"
-            f"  ref_pdb ({ref_pdb_path.name}): {dict(ref_counts)}\n"
-            f"  xyz ({xyz_path.name}): {dict(xyz_counts)}"
-        )
-
-    # Create mapping: for each element, map xyz indices to pdb indices in order
-    reordered_positions = np.zeros_like(xyz_positions)
-
-    # Track which indices we've used in xyz
-    xyz_used = [False] * len(xyz_symbols)
-
-    for pdb_idx, elem in enumerate(ref_symbols):
-        # Find next unused atom of this element in xyz
-        for xyz_idx, (xyz_elem, used) in enumerate(zip(xyz_symbols, xyz_used)):
-            if xyz_elem == elem and not used:
-                reordered_positions[pdb_idx] = xyz_positions[xyz_idx]
-                xyz_used[xyz_idx] = True
-                break
-
-    return reordered_positions
 
 
 # =============================================================================
@@ -2127,81 +2072,6 @@ def resolve_freeze_atoms(
         raise
 
 
-def _create_sorted_pdb_temp(pdb_path: Path) -> Optional[Path]:
-    """
-    Create a temporary PDB file with atoms sorted by residue number and atom name.
-    Returns the path to the temporary file, or None if sorting fails.
-    """
-    if pdb_path.suffix.lower() != ".pdb":
-        return None
-
-    try:
-        from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain, Residue
-
-        parser = PDBParser(QUIET=True)
-        structure = parser.get_structure("temp", pdb_path)
-
-        # Collect all atoms with their sorting keys
-        atoms_data = []
-        for model in structure:
-            for chain in model:
-                for residue in chain:
-                    res_id = residue.get_id()[1]  # residue number
-                    for atom in residue:
-                        atom_name = atom.get_name()
-                        atoms_data.append((res_id, atom_name, atom, residue, chain))
-            break  # Only use first model
-
-        # Sort by residue number and atom name
-        atoms_data.sort(key=lambda x: (x[0], x[1]))
-
-        # Create new structure with sorted atoms
-        new_structure = Structure.Structure("sorted")
-        new_model = Model.Model(0)
-        new_structure.add(new_model)
-
-        current_chain_id = None
-        current_chain = None
-        current_res_id = None
-        current_residue = None
-
-        for res_id, atom_name, atom, residue, chain_obj in atoms_data:
-            chain_id = chain_obj.get_id()
-
-            # Create new chain if needed
-            if chain_id != current_chain_id:
-                current_chain = Chain.Chain(chain_id)
-                new_model.add(current_chain)
-                current_chain_id = chain_id
-                current_res_id = None
-
-            # Create new residue if needed
-            if residue.get_id() != current_res_id:
-                # Make a copy of the residue
-                new_residue = Residue.Residue(residue.get_id(), residue.get_resname(), residue.get_segid())
-                current_chain.add(new_residue)
-                current_residue = new_residue
-                current_res_id = residue.get_id()
-
-            # Add atom to the current residue
-            current_residue.add(atom.copy())
-
-        # Write to temporary file
-        import tempfile
-        tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.pdb', delete=False)
-        tmp_path = Path(tmp.name)
-        tmp.close()
-
-        io = PDBIO()
-        io.set_structure(new_structure)
-        io.save(str(tmp_path))
-
-        return tmp_path
-    except Exception:
-        # Silently fall back to original PDB if sorting fails
-        return None
-
-
 def load_prepared_geometries(
     prepared_inputs: Sequence["PreparedInputStructure"],
     *,
@@ -2212,28 +2082,10 @@ def load_prepared_geometries(
 ) -> List[Any]:
     """Load multiple PreparedInputStructure geometries and apply freeze atom logic."""
     geoms: List[Any] = []
-    temp_files: List[Optional[Path]] = []
-
-    # First pass: create sorted PDB files if multiple PDBs are present
-    all_pdbs = all(prepared.source_path.suffix.lower() == ".pdb" for prepared in prepared_inputs)
-    use_sorted_pdbs = all_pdbs and len(prepared_inputs) > 1
 
     for prepared in prepared_inputs:
         src_path = prepared.source_path
-
-        # Create sorted temporary PDB if needed
-        if use_sorted_pdbs:
-            sorted_pdb = _create_sorted_pdb_temp(src_path)
-            temp_files.append(sorted_pdb)
-            if sorted_pdb is not None:
-                # Use the sorted PDB as the geometry path
-                geom_path = sorted_pdb
-            else:
-                geom_path = prepared.geom_path
-        else:
-            geom_path = prepared.geom_path
-            temp_files.append(None)
-
+        geom_path = prepared.geom_path
         cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
         freeze = resolve_freeze_atoms(
             cfg,
@@ -2245,13 +2097,5 @@ def load_prepared_geometries(
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)
         geoms.append(g)
-
-    # Clean up temporary files
-    for tmp_file in temp_files:
-        if tmp_file is not None:
-            try:
-                tmp_file.unlink()
-            except:
-                pass
 
     return geoms
