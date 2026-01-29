@@ -46,6 +46,10 @@ from .defaults import (
     OPT_BASE_KW,
     LBFGS_KW,
     RFO_KW,
+    TSOPT_MODE_ALIASES,
+    DIMER_KW,
+    HESSIAN_DIMER_KW,
+    OUT_DIR_TSOPT,
 )
 from .utils import (
     resolve_freeze_atoms,
@@ -68,13 +72,6 @@ from .freq import (
     _calc_energy,
     _write_mode_trj_and_pdb,
     _frequencies_cm_and_modes,
-)
-
-
-# Map tsopt opt-mode to light/heavy while accepting lbfgs/rfo aliases.
-TSOPT_MODE_ALIASES = (
-    (("light", "lbfgs"), "light"),
-    (("heavy", "rfo"), "heavy"),
 )
 
 
@@ -1169,69 +1166,16 @@ GEOM_KW = dict(GEOM_KW_DEFAULT)
 CALC_KW = dict(UMA_CALC_KW)
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
-OPT_BASE_KW_LOCAL = dict(OPT_BASE_KW)
-OPT_BASE_KW_LOCAL.update({
-    "out_dir": "./result_tsopt/",  # base output directory for TS optimization artifacts
-    "thresh": "baker",             # main threshold preset for TS search
-})
+OPT_BASE_KW_LOCAL = {**OPT_BASE_KW, "out_dir": OUT_DIR_TSOPT, "thresh": "baker"}
 
-DIMER_KW = {
-    # --- Geometry / length ---
-    "length": 0.0189,                 # dimer half-length in Bohr (≈ 0.01 Å)
+# Reference: internal L-BFGS defaults for TS optimization
+LBFGS_TS_KW: Dict[str, Any] = {**LBFGS_KW, "thresh": "baker"}
 
-    # --- Rotation loop settings ---
-    "rotation_max_cycles": 15,        # max rotation cycles per update
-    "rotation_method": "fourier",     # "fourier" (robust) | "direct" (steepest-like)
-    "rotation_thresh": 1e-4,          # threshold on ||rot_force||
-    "rotation_tol": 1,                # degrees; skip rotation if |angle| < tol
-    "rotation_max_element": 0.001,    # max element for direct rotation step (Bohr)
-    "rotation_interpolate": True,     # interpolate f1 during rotation (Fourier method)
-    "rotation_disable": False,        # disable rotation (use given N as-is)
-    "rotation_disable_pos_curv": True,# if curvature positive after rotation, restore previous N
-    "rotation_remove_trans": True,    # remove net translation from N
-
-    # --- Translational part of projected force ---
-    "trans_force_f_perp": True,       # include perpendicular force into translational component when C<0
-
-    # --- Initial guess helpers (mutually exclusive) ---
-    "bonds": None,                    # Optional[List[Tuple[int,int]]], use weighted-bond mode as N_raw
-    "N_hessian": None,                # Optional[str], path to HDF5 Hessian; use 1st imag. mode as N_raw
-
-    # --- Optional bias potentials for robustness ---
-    "bias_rotation": False,           # quadratic bias along initial N during rotation
-    "bias_translation": False,        # add Gaussians along the path to stabilize translation
-    "bias_gaussian_dot": 0.1,         # target dot product when tuning Gaussian height
-
-    # --- Stochastic control / IO ---
-    "seed": None,                     # RNG seed; Runner sets to 0 for determinism
-    "write_orientations": True,       # write N.trj each call; Runner overrides to False to reduce IO
-
-    # --- Hessian forwarding ---
-    "forward_hessian": True,          # allow forwarding get_hessian to wrapped calculator
-}
-
-# Reference: internal L-BFGS defaults for TS optimization highlighting deviations from OPT_BASE_KW
-LBFGS_TS_KW: Dict[str, Any] = dict(LBFGS_KW)
-LBFGS_TS_KW.update({
-    "thresh": "baker",          # main threshold preset for TS search
-})
-
-# HessianDimer defaults (CLI-level)
+# HessianDimer defaults (CLI-level) - extend HESSIAN_DIMER_KW with nested dimer/lbfgs configs
 hessian_dimer_KW = {
-    "thresh_loose": "gau_loose",      # loose threshold preset for first pass
-    "thresh": "baker",                # main threshold preset for TS search
-    "update_interval_hessian": 500,   # LBFGS cycles per Hessian refresh for direction
-    "neg_freq_thresh_cm": 5.0,        # treat ν < -this as imaginary (cm^-1)
-    "flatten_amp_ang": 0.10,          # mass-scaled displacement amplitude for flattening (Å)
-    "flatten_max_iter": 50,           # max flattening iterations (0 disables loop)
-    "flatten_sep_cutoff": 0.0,        # minimum distance between representative atoms (Å)
-    "flatten_k": 10,                  # number of representative atoms per mode
-    "flatten_loop_bofill": False,     # use Bofill-updated Hessian for dimer direction in flatten loop
-    "mem": 100000,                    # scratch/IO memory passed through Calculator (**kwargs)
-    "device": "auto",                 # "cuda"|"cpu"|"auto" for torch-side ops
-    "root": 0,                        # 0: follow the most negative mode
-    "dimer": {**DIMER_KW},            # default kwargs forwarded to Dimer (Runner may override some)
-    "lbfgs": {**LBFGS_TS_KW},         # default kwargs forwarded to inner LBFGS
+    **HESSIAN_DIMER_KW,
+    "dimer": {**DIMER_KW},
+    "lbfgs": {**LBFGS_TS_KW},
 }
 
 # RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)

@@ -1,23 +1,35 @@
 # pdb2reaction/defaults.py
 
 """
-Common default configurations for pdb2reaction workflows.
-
-This module centralizes ALL shared settings used across opt, scan, freq, tsopt,
-path_opt, path_search, and other command-line tools.
+Central configuration defaults for pdb2reaction workflows.
 
 All default dictionaries are defined here to avoid redundant definitions across modules.
+Modules should import defaults from here instead of defining local copies.
 """
 
 from typing import Any, Dict
+
+# -----------------------------------------------
+# Output directory defaults
+# -----------------------------------------------
+
+OUT_DIR_OPT = "./result_opt/"
+OUT_DIR_SCAN = "./result_scan/"
+OUT_DIR_SCAN2D = "./result_scan2d/"
+OUT_DIR_SCAN3D = "./result_scan3d/"
+OUT_DIR_FREQ = "./result_freq/"
+OUT_DIR_IRC = "./result_irc/"
+OUT_DIR_TSOPT = "./result_tsopt/"
+OUT_DIR_PATH_OPT = "./result_path_opt/"
+OUT_DIR_PATH_SEARCH = "./result_path_search/"
 
 # -----------------------------------------------
 # Geometry defaults
 # -----------------------------------------------
 
 GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",       # coordinate representation (cart | dlc | redund)
-    "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
+    "coord_type": "cart",
+    "freeze_atoms": [],
 }
 
 # -----------------------------------------------
@@ -25,29 +37,27 @@ GEOM_KW_DEFAULT: Dict[str, Any] = {
 # -----------------------------------------------
 
 CALC_KW_DEFAULT: Dict[str, Any] = {
-    # Charge and multiplicity
-    "charge": 0,              # int, total charge
-    "spin": 1,                # int, multiplicity (2S+1)
+    "charge": 0,
+    "spin": 1,
+    "model": "uma-s-1p1",
+    "task_name": "omol",
+    "device": "auto",
+    "max_neigh": None,
+    "radius": None,
+    "r_edges": False,
+    "workers": 1,
+    "workers_per_node": 1,
+    "hessian_calc_mode": "FiniteDifference",
+    "out_hess_torch": False,
+    "hessian_double": False,
+    "return_partial_hessian": False,
+}
 
-    # Model selection
-    "model": "uma-s-1p1",     # str, UMA pretrained model ID
-    "task_name": "omol",      # str, dataset/task tag
-
-    # Device & graph construction
-    "device": "auto",         # str, "cuda" | "cpu" | "auto"
-    "max_neigh": None,        # Optional[int], max neighbors per atom
-    "radius": None,           # Optional[float], cutoff radius in Å
-    "r_edges": False,         # bool, use radial edges
-
-    # Parallelism
-    "workers": 1,             # int, UMA predictor workers (>1 spawns parallel predictor)
-    "workers_per_node": 1,    # int, workers per node when workers>1
-
-    # Hessian computation
-    "hessian_calc_mode": "FiniteDifference",  # "Analytical" | "FiniteDifference"
-    "out_hess_torch": False,  # bool, return torch.Tensor Hessian (CUDA) or numpy (CPU)
-    "hessian_double": False,  # bool, use float64 for Hessian
-    "return_partial_hessian": False,  # bool, return only active DOF
+# Extended UMA calculator defaults with Hessian control
+UMA_CALC_KW: Dict[str, Any] = {
+    **CALC_KW_DEFAULT,
+    "out_hess_torch": True,
+    "freeze_atoms": None,
 }
 
 # -----------------------------------------------
@@ -55,48 +65,23 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
 # -----------------------------------------------
 
 OPT_BASE_KW: Dict[str, Any] = {
-    # Convergence threshold preset
-    "thresh": "gau",            # "gau_loose" | "gau" | "gau_tight" | "gau_vtight" | "baker" | "never"
-
-    # Convergence criteria (forces in Hartree/bohr, steps in bohr)
-    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # |  Preset    | Purpose                                                    | max|F|  | RMS(F) | max|step| | RMS(step)   |
-    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # | gau_loose  | Loose/quick preoptimization; rough path searches           | 2.5e-3  | 1.7e-3 | 1.0e-2    | 6.7e-3      |
-    # | gau        | Standard "Gaussian-like" tightness for routine work        | 4.5e-4  | 3.0e-4 | 1.8e-3    | 1.2e-3      |
-    # | gau_tight  | Tighter; better structures / freq / TS refinement          | 1.5e-5  | 1.0e-5 | 6.0e-5    | 4.0e-5      |
-    # | gau_vtight | Very tight; benchmarking/high-precision final structures   | 2.0e-6  | 1.0e-6 | 6.0e-6    | 4.0e-6      |
-    # | baker*     | Baker-style rule (special; see below)                      | 3.0e-4* |   —    | 3.0e-4*   |     —       |
-    # | never      | Disable built-in convergence (debug/external stopping)     |   —     |   —    |    —      |    —        |
-    # +------------+------------------------------------------------------------+---------+--------+-----------+-------------+
-    # * Baker rule: converged if (max|F| < 3.0e-4) AND (|ΔE| < 1.0e-6 OR max|step| < 3.0e-4).
-
-    "max_cycles": 10000,         # hard cap on optimization cycles
-    "print_every": 100,          # progress print frequency in cycles
-
-    # Step-size safeguarding
-    "min_step_norm": 1e-8,       # minimum ||step|| before raising ZeroStepLength
-    "assert_min_step": True,     # enforce the min_step_norm check
-
-    # Convergence criteria toggles
-    "rms_force": None,           # Optional[float], if set, derive thresholds from this RMS(F)
-    "rms_force_only": False,     # only check RMS(force)
-    "max_force_only": False,     # only check max(|force|)
-    "force_only": False,         # check RMS(force) and max(|force|) only
-
-    # Extra convergence mechanisms
-    "converge_to_geom_rms_thresh": 0.05,  # RMSD to reference geometry (Growing-NT)
-    "overachieve_factor": 0.0,            # consider converged if forces < thresh/this_factor
-    "check_eigval_structure": False,      # TS search: require expected negative modes
-
-    # Line search
-    "line_search": True,         # enable polynomial line search
-
-    # Dumping / restart / bookkeeping
-    "dump": False,               # write optimization trajectory
-    "dump_restart": False,       # False | int, write restart YAML every N cycles (False disables)
-    "prefix": "",                # file name prefix
-    "out_dir": "./result_opt/",  # output directory
+    "thresh": "gau",
+    "max_cycles": 10000,
+    "print_every": 100,
+    "min_step_norm": 1e-8,
+    "assert_min_step": True,
+    "rms_force": None,
+    "rms_force_only": False,
+    "max_force_only": False,
+    "force_only": False,
+    "converge_to_geom_rms_thresh": 0.05,
+    "overachieve_factor": 0.0,
+    "check_eigval_structure": False,
+    "line_search": True,
+    "dump": False,
+    "dump_restart": False,
+    "prefix": "",
+    "out_dir": OUT_DIR_OPT,
 }
 
 # -----------------------------------------------
@@ -105,24 +90,14 @@ OPT_BASE_KW: Dict[str, Any] = {
 
 LBFGS_KW: Dict[str, Any] = {
     **OPT_BASE_KW,
-
-    # History / memory
-    "keep_last": 7,              # number of (s, y) pairs to retain
-
-    # Preconditioner / initial scaling
-    "beta": 1.0,                 # β in -(H + βI)^{-1} g
-    "gamma_mult": False,         # estimate β from previous cycle (Nocedal Eq. 7.20)
-
-    # Step-size control
-    "max_step": 0.30,            # maximum allowed component-wise step
-    "control_step": True,        # scale step to satisfy |max component| <= max_step
-
-    # Safeguards
-    "double_damp": True,         # double-damping to enforce s·y > 0
-
-    # Regularized L-BFGS (μ_reg)
-    "mu_reg": None,              # initial regularization; enables regularized L-BFGS if set
-    "max_mu_reg_adaptions": 10,  # maximum trial steps for μ adaptation
+    "keep_last": 7,
+    "beta": 1.0,
+    "gamma_mult": False,
+    "max_step": 0.30,
+    "control_step": True,
+    "double_damp": True,
+    "mu_reg": None,
+    "max_mu_reg_adaptions": 10,
 }
 
 # -----------------------------------------------
@@ -131,40 +106,25 @@ LBFGS_KW: Dict[str, Any] = {
 
 RFO_KW: Dict[str, Any] = {
     **OPT_BASE_KW,
-
-    # Trust-region (step-size) control
-    "trust_radius": 0.10,        # initial trust radius (in working coordinates)
-    "trust_update": True,        # adapt the trust radius based on step quality
-    "trust_min": 0.00,           # lower bound for trust radius
-    "trust_max": 0.10,           # upper bound for trust radius
-    "max_energy_incr": None,     # abort if ΔE exceeds this after a bad step
-
-    # Hessian model / refresh
-    "hessian_update": "bfgs",    # "bfgs" (faster convergence) | "bofill" (more robust)
-    "hessian_init": "calc",      # initial Hessian calculation
-    "hessian_recalc": 200,       # recompute exact Hessian every N cycles
-    "hessian_recalc_adapt": None,# heuristic: trigger exact Hessian recompute based on force norm
-
-    # Numerical hygiene & mode filtering
-    "small_eigval_thresh": 1e-8, # treat |λ| < threshold as zero / remove corresponding modes
-
-    # RFO/RS micro-iterations
-    "alpha0": 1.0,               # initial α for restricted-step RFO
-    "max_micro_cycles": 50,      # max inner iterations to hit the trust radius
-    "rfo_overlaps": False,       # mode following via eigenvector overlap across cycles
-
-    # Inter/Extrapolation helpers
-    "gediis": False,             # enable GEDIIS (energy-based DIIS)
-    "gdiis": True,               # enable GDIIS (gradient-based DIIS)
-
-    # Thresholds for enabling DIIS (semantics matter)
-    "gdiis_thresh": 2.5e-3,      # compared to RMS(step)  → enable GDIIS when small
-    "gediis_thresh": 1.0e-2,     # compared to RMS(force) → enable GEDIIS when small
-
-    "gdiis_test_direction": True,# compare DIIS step direction to the RFO step
-
-    # Choice of step model
-    "adapt_step_func": True,     # switch to shifted-Newton on trust when PD & gradient is small
+    "trust_radius": 0.10,
+    "trust_update": True,
+    "trust_min": 0.00,
+    "trust_max": 0.10,
+    "max_energy_incr": None,
+    "hessian_update": "bfgs",
+    "hessian_init": "calc",
+    "hessian_recalc": 200,
+    "hessian_recalc_adapt": None,
+    "small_eigval_thresh": 1e-8,
+    "alpha0": 1.0,
+    "max_micro_cycles": 50,
+    "rfo_overlaps": False,
+    "gediis": False,
+    "gdiis": True,
+    "gdiis_thresh": 2.5e-3,
+    "gediis_thresh": 1.0e-2,
+    "gdiis_test_direction": True,
+    "adapt_step_func": True,
 }
 
 # -----------------------------------------------
@@ -172,7 +132,7 @@ RFO_KW: Dict[str, Any] = {
 # -----------------------------------------------
 
 BIAS_KW: Dict[str, Any] = {
-    "k": 100,  # float, harmonic bias strength in eV/Å^2
+    "k": 100,
 }
 
 # -----------------------------------------------
@@ -180,10 +140,10 @@ BIAS_KW: Dict[str, Any] = {
 # -----------------------------------------------
 
 BOND_KW: Dict[str, Any] = {
-    "device": "cuda",            # str, device for UMA graph analysis during bond detection
-    "bond_factor": 1.20,         # float, scaling of covalent radii for bond cutoff
-    "margin_fraction": 0.05,     # float, fractional margin to tolerate small deviations
-    "delta_fraction": 0.05,      # float, change threshold to flag bond formation/breaking
+    "device": "cuda",
+    "bond_factor": 1.20,
+    "margin_fraction": 0.05,
+    "delta_fraction": 0.05,
 }
 
 # -----------------------------------------------
@@ -196,21 +156,9 @@ OPT_MODE_ALIASES = (
 )
 
 # -----------------------------------------------
-# UMA Calculator extended defaults (uma_pysis)
+# Scan-specific defaults
 # -----------------------------------------------
 
-# Extended UMA calculator defaults with additional keys for Hessian control
-UMA_CALC_KW: Dict[str, Any] = {
-    **CALC_KW_DEFAULT,
-    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor (CUDA) or numpy (CPU)
-    "freeze_atoms": None,     # Optional[Sequence[int]], list of 0-based freeze atom indices
-}
-
-# -----------------------------------------------
-# Scan-specific defaults (scan, scan2d, scan3d)
-# -----------------------------------------------
-
-# Scan optimizer defaults (used by scan.py, scan2d.py, scan3d.py)
 SCAN_OPT_BASE_KW: Dict[str, Any] = {
     **OPT_BASE_KW,
     "dump": False,
@@ -223,4 +171,201 @@ SCAN_LBFGS_KW: Dict[str, Any] = {
 
 SCAN_RFO_KW: Dict[str, Any] = {
     **RFO_KW,
+}
+
+# -----------------------------------------------
+# DMF (Direct Max Flux + (C)FB-ENM) defaults
+# -----------------------------------------------
+
+DMF_KW: Dict[str, Any] = {
+    "correlated": True,
+    "sequential": True,
+    "fbenm_only_endpoints": False,
+    "fbenm_options": {
+        "delta_scale": 0.2,
+        "bond_scale": 1.25,
+        "fix_planes": True,
+    },
+    "cfbenm_options": {
+        "bond_scale": 1.25,
+        "corr0_scale": 1.10,
+        "corr1_scale": 1.50,
+        "corr2_scale": 1.60,
+        "eps": 0.05,
+        "pivotal": True,
+        "single": True,
+        "remove_fourmembered": True,
+    },
+    "dmf_options": {
+        "remove_rotation_and_translation": False,
+        "mass_weighted": False,
+        "parallel": False,
+        "eps_vel": 0.01,
+        "eps_rot": 0.01,
+        "beta": 10.0,
+        "update_teval": False,
+    },
+    "k_fix": 300.0,
+}
+
+# -----------------------------------------------
+# GrowingString (path representation) defaults
+# -----------------------------------------------
+
+GS_KW: Dict[str, Any] = {
+    "fix_first": True,
+    "fix_last": True,
+    "max_nodes": 10,
+    "perp_thresh": 5e-3,
+    "reparam_check": "rms",
+    "reparam_every": 1,
+    "reparam_every_full": 1,
+    "param": "equi",
+    "max_micro_cycles": 10,
+    "reset_dlc": True,
+    "climb": True,
+    "climb_rms": 5e-4,
+    "climb_lanczos": True,
+    "climb_lanczos_rms": 5e-4,
+    "climb_fixed": False,
+    "scheduler": None,
+}
+
+# -----------------------------------------------
+# StringOptimizer (optimization control) defaults
+# -----------------------------------------------
+
+STOPT_KW: Dict[str, Any] = {
+    "type": "string",
+    "stop_in_when_full": 300,
+    "align": False,
+    "scale_step": "global",
+    "max_cycles": 300,
+    "dump": False,
+    "dump_restart": False,
+    "reparam_thresh": 0.0,
+    "coord_diff_thresh": 0.0,
+    "out_dir": OUT_DIR_PATH_OPT,
+    "print_every": 10,
+}
+
+# -----------------------------------------------
+# Path search control defaults
+# -----------------------------------------------
+
+SEARCH_KW: Dict[str, Any] = {
+    "max_depth": 10,
+    "stitch_rmsd_thresh": 1.0e-4,
+    "bridge_rmsd_thresh": 1.0e-4,
+    "rmsd_align": True,
+    "max_nodes_segment": 10,
+    "max_nodes_bridge": 5,
+    "kink_max_nodes": 3,
+    "max_seq_kink": 2,
+    "refine_mode": None,
+}
+
+# -----------------------------------------------
+# IRC defaults
+# -----------------------------------------------
+
+IRC_KW: Dict[str, Any] = {
+    "step_length": 0.10,
+    "max_cycles": 125,
+    "downhill": False,
+    "forward": True,
+    "backward": True,
+    "root": 0,
+    "hessian_init": "calc",
+    "displ": "energy",
+    "displ_energy": 1.0e-3,
+    "displ_length": 0.10,
+    "rms_grad_thresh": 1.0e-3,
+    "hard_rms_grad_thresh": None,
+    "energy_thresh": 1.0e-6,
+    "imag_below": 0.0,
+    "force_inflection": True,
+    "check_bonds": False,
+    "out_dir": OUT_DIR_IRC,
+    "prefix": "",
+    "hessian_update": "bofill",
+    "hessian_recalc": None,
+    "max_pred_steps": 500,
+    "loose_cycles": 3,
+    "corr_func": "mbs",
+}
+
+# -----------------------------------------------
+# Frequency analysis defaults
+# -----------------------------------------------
+
+FREQ_KW: Dict[str, Any] = {
+    "amplitude_ang": 0.8,
+    "n_frames": 20,
+    "max_write": 10,
+    "sort": "value",
+}
+
+# -----------------------------------------------
+# Thermochemistry defaults
+# -----------------------------------------------
+
+THERMO_KW: Dict[str, Any] = {
+    "temperature": 298.15,
+    "pressure_atm": 1.0,
+    "dump": False,
+}
+
+# -----------------------------------------------
+# TS optimization mode aliases
+# -----------------------------------------------
+
+TSOPT_MODE_ALIASES = (
+    (("light", "lbfgs"), "light"),
+    (("heavy", "rfo"), "heavy"),
+)
+
+# -----------------------------------------------
+# Dimer defaults for TS optimization
+# -----------------------------------------------
+
+DIMER_KW: Dict[str, Any] = {
+    "length": 0.0189,
+    "rotation_max_cycles": 15,
+    "rotation_method": "fourier",
+    "rotation_thresh": 1e-4,
+    "rotation_tol": 1,
+    "rotation_max_element": 0.001,
+    "rotation_interpolate": True,
+    "rotation_disable": False,
+    "rotation_disable_pos_curv": True,
+    "rotation_remove_trans": True,
+    "trans_force_f_perp": True,
+    "bonds": None,
+    "N_hessian": None,
+    "bias_rotation": False,
+    "bias_translation": False,
+    "bias_gaussian_dot": 0.1,
+    "seed": None,
+    "write_orientations": True,
+    "forward_hessian": True,
+}
+
+# -----------------------------------------------
+# Hessian-dimer defaults for TS optimization
+# -----------------------------------------------
+
+HESSIAN_DIMER_KW: Dict[str, Any] = {
+    "thresh_loose": "gau_loose",
+    "thresh": "baker",
+    "update_interval_hessian": 500,
+    "neg_freq_thresh_cm": 5.0,
+    "flatten_amp_ang": 0.10,
+    "flatten_max_iter": 50,
+    "flatten_sep_cutoff": 0.0,
+    "flatten_k": 10,
+    "flatten_loop_bofill": False,
+    "mem": 100000,
+    "device": "auto",
+    "root": 0,
 }

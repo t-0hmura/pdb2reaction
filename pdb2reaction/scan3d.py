@@ -39,6 +39,7 @@ from .defaults import (
     LBFGS_KW,
     RFO_KW,
     UMA_CALC_KW,
+    OUT_DIR_SCAN3D,
 )
 from .uma_pysis import uma_pysis
 from .opt import HarmonicBiasCalculator
@@ -68,8 +69,7 @@ from .utils import (
 from .scan_common import add_scan_common_options, build_scan_defaults
 from .scan2d import _build_scan_context
 
-# Note: Defaults imported from defaults.py - no local copies needed
-DEFAULT_OUT_DIR_3D = "./result_scan3d/"
+# Defaults imported from defaults.py
 DEFAULT_THRESH_3D = "baker"
 
 _VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid

@@ -39,6 +39,7 @@ from .defaults import (
     LBFGS_KW,
     RFO_KW,
     UMA_CALC_KW,
+    OUT_DIR_SCAN2D,
 )
 from .uma_pysis import uma_pysis
 from .opt import HarmonicBiasCalculator
@@ -73,9 +74,7 @@ from .utils import (
 )
 from .scan_common import add_scan_common_options, build_scan_defaults
 
-# Note: Defaults imported from defaults.py - no local copies needed
-# scan2d/scan3d use scan_common.build_scan_defaults for convenience
-DEFAULT_OUT_DIR_2D = "./result_scan2d/"
+# Defaults imported from defaults.py
 DEFAULT_THRESH_2D = "baker"
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])

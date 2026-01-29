@@ -30,7 +30,7 @@ from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
 from .uma_pysis import uma_pysis
-from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, FREQ_KW, THERMO_KW
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -411,35 +411,12 @@ def _write_mode_trj_and_pdb(geom,
         )
 
 
-# ===================================================================
-#                         Defaults for CLI
-# ===================================================================
-
-# Geometry defaults
+# Geometry defaults (local copy for CLI)
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
 # Calc defaults (extend UMA_CALC_KW with freq-specific settings)
 CALC_KW = dict(UMA_CALC_KW)
-CALC_KW.update(
-    {
-        "return_partial_hessian": True,  # default to PHVA-friendly active-block Hessians when possible
-    }
-)
-
-# Freq writer defaults
-FREQ_KW = {
-    "amplitude_ang": 0.8,     # animation amplitude (Å) applied to both .trj and .pdb outputs
-    "n_frames": 20,           # number of frames per vibrational mode
-    "max_write": 10,          # maximum number of modes to export
-    "sort": "value",          # "value" (ascending by cm^-1) | "abs" (ascending by absolute value)
-}
-
-# Thermochemistry defaults
-THERMO_KW = {
-    "temperature": 298.15,    # temperature in Kelvin
-    "pressure_atm": 1.0,      # pressure in atm (converted to Pa internally)
-    "dump": False,            # write thermoanalysis.yaml when True
-}
+CALC_KW["return_partial_hessian"] = True
 
 
 # ===================================================================

@@ -32,7 +32,15 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
 from .uma_pysis import uma_ase, uma_pysis
-from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
+from .defaults import (
+    GEOM_KW_DEFAULT,
+    UMA_CALC_KW,
+    LBFGS_KW,
+    RFO_KW,
+    DMF_KW,
+    GS_KW,
+    STOPT_KW,
+)
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -49,91 +57,7 @@ from .utils import (
     load_prepared_geometries,
     write_xyz_trj_with_energy,
 )
-from .defaults import LBFGS_KW, RFO_KW
 from .align_freeze_atoms import align_and_refine_sequence_inplace
-
-
-# -----------------------------------------------
-# Defaults (overridden by YAML/CLI)
-# -----------------------------------------------
-
-# Note: All defaults imported from defaults.py - no local copies needed
-
-# DMF (Direct Max Flux + (C)FB-ENM)
-DMF_KW: Dict[str, Any] = {
-    # Top-level interpolate_fbenm options
-    "correlated": True,             # Add CFB_ENM for correlated paths
-    "sequential": True,             # Enable staged barrier construction during optimization
-    "fbenm_only_endpoints": False,  # If False, use all images (not just endpoints) for ENM references
-
-    # FB_ENM_Bonds options (fbenm_options)
-    "fbenm_options": {
-        "delta_scale": 0.2,         # Scale for the distance penalty width
-        "bond_scale": 1.25,         # Bond test: d_ij < bond_scale * (r_cov_i + r_cov_j)
-        "fix_planes": True,         # Add plane constraints to preserve planarity
-    },
-
-    # CFB_ENM options (cfbenm_options)
-    "cfbenm_options": {
-        "bond_scale": 1.25,         # neighbor cutoff multiplier for CFB-ENM graph construction
-        "corr0_scale": 1.10,        # d_corr0 ~ corr0_scale * d_bond
-        "corr1_scale": 1.50,        # scale for first correlation shell distance
-        "corr2_scale": 1.60,        # scale for second correlation shell distance
-        "eps": 0.05,                # sqrt(pp^2 + eps^2) term's epsilon
-        "pivotal": True,            # enable pivotal constraints in the CFB-ENM
-        "single": True,             # enforce single-path constraint in correlation graph
-        "remove_fourmembered": True,# prune four-membered rings in the correlation network
-    },
-
-    # DirectMaxFlux core options (forwarded via dmf_options)
-    "dmf_options": {
-        "remove_rotation_and_translation": False,  # Do not explicitly constrain rigid-body motions
-        "mass_weighted": False,                    # Whether to use mass-weighted velocity norms
-        "parallel": False,                         # allow parallel execution inside DMF core
-        "eps_vel": 0.01,                           # stabilization epsilon for velocity norms
-        "eps_rot": 0.01,                           # stabilization epsilon for rotational terms
-        "beta": 10.0,                              # "Beta" for the geometric action
-        "update_teval": False,                     # Control node relocation from interpolate_fbenm
-    },
-
-    # Strength of fix_atoms harmonic restraints
-    "k_fix": 300.0,                                # [eV/Å^2]
-}
-
-# GrowingString (path representation)
-GS_KW: Dict[str, Any] = {
-    "fix_first": True,           # keep the first image fixed during optimization
-    "fix_last": True,            # keep the last image fixed during optimization
-    "max_nodes": 10,            # int, internal nodes; total images = max_nodes + 2 including endpoints
-    "perp_thresh": 5e-3,        # float, frontier growth criterion (RMS/NORM of perpendicular force)
-    "reparam_check": "rms",     # str, "rms" | "norm"; convergence check metric after reparam
-    "reparam_every": 1,         # int, reparametrize every N steps while growing
-    "reparam_every_full": 1,    # int, reparametrize every N steps after fully grown
-    "param": "equi",            # str, "equi" (even spacing) | "energy" (weight by energy)
-    "max_micro_cycles": 10,     # int, micro-optimization cycles per macro iteration
-    "reset_dlc": True,          # bool, reset DLC coordinates when appropriate
-    "climb": True,              # bool, enable climbing image
-    "climb_rms": 5e-4,          # float, RMS force threshold to start climbing image
-    "climb_lanczos": True,      # bool, use Lanczos to estimate the HEI tangent (enabled by default; tied to --climb)
-    "climb_lanczos_rms": 5e-4,  # float, RMS force threshold for Lanczos tangent
-    "climb_fixed": False,       # bool, fix the HEI image index instead of adapting it
-    "scheduler": None,          # Optional[str], execution scheduler; None = serial (shared calculator)
-}
-
-# StringOptimizer (optimization control)
-STOPT_KW: Dict[str, Any] = {
-    "type": "string",           # str, tag for bookkeeping / output labelling
-    "stop_in_when_full": 300,   # int, allow N extra cycles after the string is fully grown
-    "align": False,             # bool, keep internal align disabled; use external Kabsch alignment instead
-    "scale_step": "global",     # str, "global" | "per_image" scaling policy
-    "max_cycles": 300,          # int, maximum macro cycles for the optimizer
-    "dump": False,              # bool, write optimizer trajectory to disk
-    "dump_restart": False,      # bool | int, write restart YAML every N cycles (False disables)
-    "reparam_thresh": 0.0,      # float, convergence threshold for reparametrization
-    "coord_diff_thresh": 0.0,   # float, tolerance for coordinate difference before pruning
-    "out_dir": "./result_path_opt/",  # str, output directory for optimizer artifacts
-    "print_every": 10,          # int, status print frequency (cycles)
-}
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:

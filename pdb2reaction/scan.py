@@ -36,6 +36,7 @@ from .defaults import (
     BOND_KW,
     OPT_MODE_ALIASES,
     UMA_CALC_KW,
+    OUT_DIR_SCAN,
 )
 from .uma_pysis import uma_pysis
 from .opt import HarmonicBiasCalculator
@@ -67,9 +68,7 @@ from .bond_changes import has_bond_change
 from .scan_common import add_scan_common_options
 
 
-# Note: All defaults imported from defaults.py - no local copies needed
-# Default output directory for scan (overridden in runtime config)
-DEFAULT_OUT_DIR = "./result_scan/"
+# All defaults imported from defaults.py
 
 
 def _ensure_stage_dir(base: Path, k: int) -> Path:

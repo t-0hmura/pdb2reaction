@@ -24,7 +24,7 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis
-from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW
+from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW
 from pdb2reaction.utils import (
     load_yaml_dict,
     apply_yaml_overrides,
@@ -36,42 +36,6 @@ from pdb2reaction.utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
 )
-
-
-# --------------------------
-# Default configuration
-# --------------------------
-
-# Note: CALC_KW_DEFAULT imported from defaults.py (use UMA_CALC_KW for UMA-specific defaults)
-
-IRC_KW_DEFAULT: Dict[str, Any] = {
-    # Arguments for IRC.__init__ (forwarded to EulerPC via **kwargs)
-    "step_length": 0.10,         # float, default step length in mass-weighted coordinates (overridden by CLI)
-    "max_cycles": 125,           # int, maximum IRC steps (overridden by CLI)
-    "downhill": False,           # bool, follow downhill potential (debug option)
-    "forward": True,             # bool, integrate forward branch (CLI override --forward)
-    "backward": True,            # bool, integrate backward branch (CLI override --backward)
-    "root": 0,                   # int, imaginary mode index for initial displacement (CLI override --root)
-    "hessian_init": "calc",      # str, initial Hessian source ("calc" = calculator-provided TS Hessian)
-    "displ": "energy",           # str, displacement metric (energy|length)
-    "displ_energy": 1.0e-3,      # float, energy step (Hartree) when displ == "energy"
-    "displ_length": 0.10,        # float, length step in mass-weighted coordinates when displ == "length"
-    "rms_grad_thresh": 1.0e-3,   # float, RMS gradient threshold for convergence (Hartree/bohr)
-    "hard_rms_grad_thresh": None,# Optional[float], stricter RMS gradient cutoff
-    "energy_thresh": 1.0e-6,     # float, energy-change threshold for convergence (Hartree)
-    "imag_below": 0.0,           # float, treat imaginary frequency below this as zero
-    "force_inflection": True,    # bool, stop when force inflection detected
-    "check_bonds": False,        # bool, enable bond-change detection during IRC
-    "out_dir": "./result_irc/",  # str, output directory
-    "prefix": "",                # str, file name prefix
-
-    # EulerPC-specific options
-    "hessian_update": "bofill",  # str, Hessian update algorithm
-    "hessian_recalc": None,      # Optional[int], force Hessian recalculation every N steps
-    "max_pred_steps": 500,       # int, predictor steps per segment
-    "loose_cycles": 3,           # int, cycles using looser thresholds
-    "corr_func": "mbs",          # str, correction function selection
-}
 
 
 def _echo_convert_trj_if_exists(
@@ -266,7 +230,7 @@ def cli(
 
             geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
             calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
-            irc_cfg:  Dict[str, Any] = dict(IRC_KW_DEFAULT)
+            irc_cfg:  Dict[str, Any] = dict(IRC_KW)
 
             # CLI overrides
             calc_cfg["charge"] = int(resolved_charge)

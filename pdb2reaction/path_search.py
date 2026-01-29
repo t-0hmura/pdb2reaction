@@ -37,15 +37,20 @@ from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
 from .uma_pysis import uma_pysis
-from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
-from .path_opt import (
-    _optimize_single,
-    _run_dmf_mep,
-    DMF_KW as _PATH_DMF_KW,
-    GS_KW as _PATH_GS_KW,
-    STOPT_KW as _PATH_STOPT_KW,
+from .defaults import (
+    GEOM_KW_DEFAULT,
+    UMA_CALC_KW,
+    OPT_BASE_KW,
+    LBFGS_KW,
+    RFO_KW,
+    DMF_KW,
+    GS_KW,
+    STOPT_KW,
+    BOND_KW,
+    SEARCH_KW,
+    OUT_DIR_PATH_SEARCH,
 )
-from .defaults import OPT_BASE_KW, LBFGS_KW, RFO_KW
+from .path_opt import _optimize_single, _run_dmf_mep
 from .utils import (
     as_list,
     collect_option_values,
@@ -134,56 +139,9 @@ def _bond_changes_block(text: Optional[str]):
     return cleaned
 
 
-# -----------------------------------------------
-# Configuration defaults
-# -----------------------------------------------
-
-# Note: All defaults imported from defaults.py - no local copies needed
-
-# DMF (Direct Max Flux + (C)FB-ENM)
-DMF_KW: Dict[str, Any] = dict(_PATH_DMF_KW)
-
-# GrowingString (path representation)
-GS_KW: Dict[str, Any] = dict(_PATH_GS_KW)
-
-# StringOptimizer (GSM optimization control)
-STOPT_KW: Dict[str, Any] = dict(_PATH_STOPT_KW)
-STOPT_KW.update({
-    "out_dir": "./result_path_search/",  # output directory for string-optimizer artifacts
-})
-
-# LBFGS settings (local copy with path_search-specific out_dir)
-LBFGS_KW_LOCAL: Dict[str, Any] = dict(LBFGS_KW)
-LBFGS_KW_LOCAL.update({
-    "out_dir": "./result_path_search/",  # LBFGS output directory (restart, logs)
-})
-
-# RFO settings (local copy with path_search-specific out_dir)
-RFO_KW_LOCAL: Dict[str, Any] = dict(RFO_KW)
-RFO_KW_LOCAL.update({
-    "out_dir": "./result_path_search/",  # RFO output directory (restart, logs)
-})
-
-# Covalent‑bond change detection
-BOND_KW: Dict[str, Any] = {
-    "device": "cuda",               # compute UMA graph features on CUDA when available
-    "bond_factor": 1.20,            # covalent cutoff multiplier (r_cov * bond_factor)
-    "margin_fraction": 0.05,        # tolerance margin added to bond cutoff for stability
-    "delta_fraction": 0.05,         # threshold fraction to flag bond formation/breaking
-}
-
-# Global search control
-SEARCH_KW: Dict[str, Any] = {
-    "max_depth": 10,                 # recursion depth for path-search branching
-    "stitch_rmsd_thresh": 1.0e-4,    # RMSD cutoff when stitching partial segments
-    "bridge_rmsd_thresh": 1.0e-4,    # RMSD cutoff when bridging paths
-    "rmsd_align": True,              # retained for compatibility (ignored internally)
-    "max_nodes_segment": 10,         # max nodes per segment during expansion
-    "max_nodes_bridge": 5,           # max nodes per bridge construction
-    "kink_max_nodes": 3,             # max nodes for kink resolution
-    "max_seq_kink": 2,               # max sequential kinks allowed before aborting
-    "refine_mode": None,             # optional refinement strategy tag
-}
+# Local configs with path_search-specific out_dir
+LBFGS_KW_LOCAL: Dict[str, Any] = {**LBFGS_KW, "out_dir": OUT_DIR_PATH_SEARCH}
+RFO_KW_LOCAL: Dict[str, Any] = {**RFO_KW, "out_dir": OUT_DIR_PATH_SEARCH}
 
 
 def _convert_to_gjf(
