@@ -1,127 +1,16 @@
 # pdb2reaction/utils.py
 
 """
-utils — concise utilities for configuration, plotting, coordinates, Gaussian templates, and link-freezing
-=========================================================================================================
+Utilities for configuration, plotting, coordinates, Gaussian templates, and link-freezing.
 
-Usage (API)
------------
-    from pdb2reaction.utils import (
-        build_energy_diagram,
-        convert_xyz_to_pdb,
-        detect_freeze_links,
-        merge_freeze_atom_indices,
-        normalize_choice,
-        pretty_block,
-        resolve_freeze_atoms,
-        xyz_string_with_energy,
-    )
+Categories:
+    - Generic helpers: pretty_block, format_elapsed, deep_update, load_yaml_dict, etc.
+    - Gaussian (.gjf): parse_gjf_template, prepare_input_structure, convert_xyz_to_gjf
+    - Plotting: build_energy_diagram (Plotly-based energy diagrams)
+    - Coordinate conversion: convert_xyz_to_pdb (XYZ to PDB with reference topology)
+    - Link-freezing: detect_freeze_links, resolve_freeze_atoms (for PDB link hydrogens)
 
-Examples
---------
-    >>> from pathlib import Path
-    >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
-    >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
-    >>> indices = detect_freeze_links(Path("pocket.pdb"))
-
-Description
------------
-- **Generic helpers**
-  - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses
-    `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `"{}"`.
-  - `collect_option_values(argv, names)`: Collect values following flags that may appear once with multiple
-    space-separated values (e.g., `-i A B C`). Used for relaxed CLI parsing.
-  - `collect_single_option_values(argv, names, label)`: Like `collect_option_values` but enforces a single
-    occurrence of the flag.
-  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"`
-    is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are
-    left unchanged. Empty iterables become `"[]"`.
-  - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given
-    a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
-  - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into
-    `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the
-    updated list (in place).
-  - `normalize_freeze_atoms(raw)`: Normalize a freeze_atoms value (string/list/iterable) into a list of ints.
-  - `merge_freeze_atom_groups(*groups)`: Merge multiple freeze_atoms groups into a sorted list of ints.
-  - `resolve_freeze_atoms(geom_cfg, source_path, freeze_links, ...)`: Normalize freeze_atoms and optionally
-    merge link-parent indices for PDB inputs.
-  - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalize CLI-style string options
-    using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when
-    no alias matches.
-  - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged,
-    non-dicts overwrite; returns `dst`.
-  - `_get_mapping_section(cfg, path)`: Internal helper to resolve a nested mapping section. Returns a `dict`
-    or `None`.
-  - `apply_yaml_overrides(yaml_cfg, overrides)`: For each target dictionary and its candidate key paths,
-    find the first existing path in `yaml_cfg` and apply it via `deep_update`. Centralizes repeated
-    `yaml_cfg.get(...)`-style merging.
-  - `load_yaml_dict(path)`: Load a YAML file whose root must be a mapping. Returns `{}` when `path` is `None`.
-    Raises `ValueError` if the YAML root is not a mapping.
-
-- **Gaussian input (.gjf) helpers**
-  - `parse_gjf_template(path)`: Parse a Gaussian input template to extract charge/multiplicity and coordinate
-    lines while preserving non-coordinate text. Returns a `GjfTemplate`.
-  - `prepare_input_structure(path)`: If `path` is a `.gjf`, write a temporary XYZ (derived from the template)
-    and return a `PreparedInputStructure` context manager that cleans up the temporary file on exit; otherwise
-    returns a structure referring to `path` directly.
-  - `fill_charge_spin_from_gjf(charge, spin, template)`: Fill `charge`/`spin` from a template when unspecified.
-  - `resolve_charge_spin_or_raise(prepared, charge, spin, spin_default=1, charge_default=0)`: Resolve charge
-    and multiplicity using a template when present, otherwise fall back to the provided defaults; returns
-    integers `(charge, spin)`. Raises a user-facing error when *prepared* is **not** a `.gjf` template and
-    no `charge` was supplied on the CLI.
-  - `convert_xyz_to_gjf(xyz_path, template, out_path)`: Render new coordinates into the given `.gjf` template
-    while preserving formatting.
-  - `convert_xyz_to_gjf_if_enabled(...)`: Helper that respects the global conversion toggle and returns the
-    output path when conversion occurs, otherwise `None`.
-
-- **Plotly: Energy diagram builder**
-  - `build_energy_diagram(energies, labels, ylabel="ΔE", baseline=False, showgrid=False)`:
-    Render an energy diagram where each state is a thick horizontal segment and adjacent states are connected
-    by dotted diagonals (right end of left state → left end of right state). Segment length shrinks as the
-    number of states grows to keep gaps readable. X ticks are centered on states and labeled by `labels`.
-    Optional dotted baseline at the first state’s energy; optional grid. Energies are plotted as provided
-    (no unit conversion). Returns a `plotly.graph_objs.Figure`. Validates equal lengths for `energies`/`labels`
-    and non-empty input.
-
-- **Coordinate conversion utilities**
-  - `convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)`:
-    Overlay coordinates from an XYZ file (single or multi-frame) onto the atom ordering/topology of a
-    reference PDB and write to `out_pdb_path`. The first frame creates/overwrites; subsequent frames append
-    using `MODEL`/`ENDMDL`. Implemented with ASE (`ase.io.read`/`write`). Raises `ValueError` if no frames
-    are found in the XYZ.
-
-- **Link-freezing helpers**
-  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating non‑`LKH` atoms (as “others”)
-    from link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns
-    (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` where `others` includes the 0‑based atom
-    index for the first MODEL (or full file if no MODEL records are present).
-  - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`;
-    returns `(index, distance)` where `index` is the full 0‑based atom index or `-1` if `pool` is empty
-    (distance will be `inf`).
-  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other
-    `ATOM`/`HETATM` records and return the corresponding 0‑based indices in the full atom order (matching
-    geom loading). Returns an empty list if no link hydrogens are present.
-  - `detect_freeze_links_logged(pdb_path)`: Wrapper that raises a user-facing error on failures.
-
-Outputs (& Directory Layout)
-----------------------------
-General behavior
-  ├─ The module does not create directories on its own.
-  ├─ Most helpers return Python objects or mutate dictionaries in place.
-  └─ On-disk effects occur only when explicitly invoked:
-        • ``convert_xyz_to_pdb`` writes to ``out_pdb_path`` (first frame overwrite, subsequent frames append MODEL/ENDMDL).
-        • ``convert_xyz_to_gjf`` / ``convert_xyz_to_gjf_if_enabled`` render updated ``.gjf`` files.
-        • ``prepare_input_structure`` emits a temporary ``.xyz`` for ``.gjf`` inputs and cleans it up at context exit.
-        • ``build_energy_diagram`` returns a Plotly ``Figure``; saving/exporting is up to the caller.
-
-Notes
------
-- Energy units in `build_energy_diagram` are passed through unchanged; ensure consistent units across states.
-- Axis/line styling in `build_energy_diagram` is fixed-width with automatic padding; segment length adapts to the number of states.
-- `load_yaml_dict` uses `yaml.safe_load` and enforces a mapping at the YAML root; empty files yield `{}`.
-- `apply_yaml_overrides` tries candidate key paths in order and applies only the first existing mapping section per target.
-- `parse_pdb_coords` skips unparseable coordinate fields and considers only `ATOM`/`HETATM` lines.
-- Dependencies: PyYAML, ASE (`ase.io.read`/`write`, `ase.data.chemical_symbols`), Plotly (graph objects), Click (for CLI error reporting/options). Ensure these are installed.
+Dependencies: PyYAML, ASE, Plotly, Click
 """
 
 import ast

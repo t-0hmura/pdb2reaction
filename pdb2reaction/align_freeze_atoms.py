@@ -1,103 +1,16 @@
 # pdb2reaction/align_freeze_atoms.py
 
 """
-align_freeze_atoms — Rigid alignment and staged “scan + relaxation” utilities for pysisyphus Geometry objects
-====================================================================
+Rigid alignment and staged scan+relaxation utilities for pysisyphus Geometry objects.
 
-Usage (API)
------------
-    from pdb2reaction.align_freeze_atoms import (
-        align_and_refine_pair_inplace,
-        align_and_refine_sequence_inplace,
-        align_second_to_first_kabsch_inplace,
-        kabsch_R_t,
-        scan_freeze_atoms_toward_target_inplace,
-    )
+Main Functions:
+    - kabsch_R_t: Row-vector Kabsch solver for (N,3) point sets.
+    - align_second_to_first_kabsch_inplace: Rigidly align g_mob to g_ref in place.
+    - scan_freeze_atoms_toward_target_inplace: Move freeze_atoms toward reference with relaxation.
+    - align_and_refine_pair_inplace: Rigid alignment + scan/relaxation for a geometry pair.
+    - align_and_refine_sequence_inplace: Apply pair procedure along a sequence of geometries.
 
-Examples
---------
-    >>> from pdb2reaction.align_freeze_atoms import align_and_refine_pair_inplace
-    >>> result = align_and_refine_pair_inplace(g_ref, g_mob, verbose=False)
-    >>> result["align"]["mode"]
-    'kabsch'
-
-Description
------------
-API-only utilities to co-align and refine preoptimized `pysisyphus.Geometry` objects—typically adjacent
-images along a reaction path—using `freeze_atoms`. A rigid alignment is performed first (with special
-handling when the **union** of `freeze_atoms` across the pair has size 1 or 2), followed by a staged
-“scan toward reference + local relaxation” that moves the selected anchor atoms (the **union** of
-`freeze_atoms` from `g_ref` and `g_mob`) toward the reference in small steps while relaxing the surroundings.
-All updates are applied in place on the mobile geometry.
-
-Provided functionality (concise):
-- kabsch_R_t(P, Q)
-    Row-vector Kabsch solver for two (N, 3) point sets. Returns (R, t) minimizing ||(Q @ R + t) − P||.
-- align_second_to_first_kabsch_inplace(g_ref, g_mob, *, verbose=True)
-    Rigidly aligns `g_mob` to `g_ref` in place. Special cases (selection = union of `freeze_atoms`):
-      - length = 1: translate to match the anchor; restrict rotations about that anchor;
-        minimizes all-atom RMSD; RMSD reported on all atoms.
-      - length = 2: align the axis defined by the two anchors; optimize rotation around
-        that axis; RMSD reported on all atoms. If the axis is degenerate, falls back to Kabsch.
-      - otherwise: Kabsch on the union selection (or all atoms if empty); apply the transform
-        to all atoms; RMSD reported on the same selection used by Kabsch.
-    Returns: dict(before_A, after_A, n_used, mode) with RMSD in Å and mode ∈ {"one_anchor","two_anchor","kabsch"}.
-- scan_freeze_atoms_toward_target_inplace(
-      g_ref, g_mob, *, step_A=0.1, per_step_cycles=50, final_cycles=200, max_steps=1000,
-      thresh="gau", shared_calc=None, out_dir=Path("./result_align_refine/"),
-      charge=0, spin=1, model="uma-s-1p1", device="auto", verbose=True)
-    Moves the **union** of `freeze_atoms` toward `g_ref` by `step_A` Å per iteration. At each step the
-    anchors are held fixed and the surroundings are relaxed with LBFGS. When the maximum remaining distance
-    is below one step, enforce exact coincidence of the anchors and run a finishing relaxation.
-    Returns: dict(max_remaining_A, n_steps, converged).
-- align_and_refine_pair_inplace(
-      g_ref, g_mob, *, shared_calc=None, out_dir=Path("./result_align_refine/"),
-      step_A=0.1, per_step_cycles=50, final_cycles=200, max_steps=1000,
-      thresh="gau", charge=0, spin=1, model="uma-s-1p1", device="auto", verbose=True)
-    High-level pair API: (1) rigid alignment, then (2) scan + relaxation toward the reference.
-    Returns: {"align": {...}, "scan": {...}}.
-- align_and_refine_sequence_inplace(
-      geoms, *, shared_calc=None, out_dir=Path("./result_align_refine/"),
-      step_A=0.1, per_step_cycles=1000, final_cycles=1000, max_steps=10000,
-      thresh="gau", charge=0, spin=1, model="uma-s-1p1", device="auto", verbose=True)
-    Applies the pair procedure along [g0, g1, g2, ...] as (g0←g1), (g1←g2), ... and returns a list of per-pair results.
-
-Outputs (& Directory Layout)
-----------------------------
-When the scan stage runs (i.e., union(`freeze_atoms`) is non-empty):
-
-out_dir/ (default: ./result_align_refine/)
-  ├─ <pair>/                         # Pair API writes stepwise and final LBFGS artifacts directly under out_dir
-  └─ pair_00/, pair_01/, ...         # Sequence API creates one subdirectory per adjacent pair
-
-Directories are only created when scan/relaxation artifacts are produced (``dump=False`` is still used for LBFGS).
-
-Notes
------
-- Units & conventions:
-  - User-facing distances/thresholds are in Å; internal coordinates are in bohr (conversion via `BOHR2ANG`).
-  - Row-vector convention for rigid transforms: points `Q` are mapped as `Q @ R + t`.
-  - Indices in `freeze_atoms` are 0-based.
-- Selection policy:
-  - The selection used for special-cased alignment and for scanning is the **union** of `freeze_atoms`
-    from `g_ref` and `g_mob`. If the union is empty, Kabsch uses all atoms; the scan is skipped.
-- Calculator handling:
-  - If `shared_calc` is supplied, it is set on the geometries even when a calculator is already present.
-  - Otherwise an existing calculator is reused; if none is present, UMA (`uma_pysis`) is attached automatically.
-    (`charge`, `spin`, `model`, and `device` are configurable.)
-- Rigid alignment priority and RMSD reporting:
-  - union length = 1 → rotations about the single anchor only; RMSD minimized and reported on all atoms.
-  - union length = 2 → align anchor-defined axis; optimize rotation about that axis; RMSD reported on all atoms.
-  - else → Kabsch on the union selection (or all atoms if empty); transform applied to all atoms;
-    RMSD reported on the same selection used by Kabsch.
-- Scan + relaxation details:
-  - At each step: move anchors by `step_A` Å toward the reference, hold them fixed, run a short LBFGS on the surroundings.
-  - Finalization: enforce exact coincidence of anchors, then run a finishing LBFGS.
-  - The original `freeze_atoms` of `g_mob` is restored after the scan, even on exceptions.
-- Error handling:
-  - `LBFGS` exceptions (`ZeroStepLength`, `OptimizationError`) are caught and logged; the procedure continues when reasonable.
-- Internals:
-  - Uses Rodrigues-based rotations, vector-alignment, and planar projection helpers to implement axis-constrained motions.
+Units: User-facing distances in Å; internal coordinates in bohr. Indices are 0-based.
 """
 
 from __future__ import annotations

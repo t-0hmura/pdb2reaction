@@ -77,7 +77,7 @@ cli.add_command(scan3d_cmd, name="scan3d")
 import logging
 logging.disable(logging.CRITICAL)
 
-# Filter noisy UMA/torch_dmf warnings that clutter CLI output
+# Filter noisy UMA/pydmf warnings that clutter CLI output
 import warnings
 
 warnings.filterwarnings(
@@ -89,12 +89,6 @@ warnings.filterwarnings(
 warnings.filterwarnings(
     "ignore",
     category=UserWarning,
-    message=r"Sparse CSR tensor support is in beta state.*",
-    module=r"torch_dmf"
-)
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
     message=r"t_eval update skipped due to insufficient candidates",
-    module=r"torch_dmf"
+    module=r"dmf"
 )

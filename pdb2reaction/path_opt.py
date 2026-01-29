@@ -173,6 +173,8 @@ def _run_dmf_mep(
 ) -> DMFMepResult:
     """Run Direct Max Flux (DMF) MEP optimization between two endpoints.
 
+    Uses pydmf (CPU version) with harmonic constraints for frozen atoms.
+
     References:
     [1] S.-i. Koda and  S. Saito, Locating Transition States by Variational Reaction Path Optimization with an Energy-Derivative-Free Objective Function, JCTC, 20, 2798–2811 (2024). [doi: 10.1021/acs.jctc.3c01246]
     [2] S.-i. Koda and  S. Saito, Flat-bottom Elastic Network Model for Generating Improved Plausible Reaction Paths, JCTC, 20, 7176−7187 (2024). [doi: 10.1021/acs.jctc.4c00792]
@@ -180,24 +182,22 @@ def _run_dmf_mep(
     """
 
     try:
-        import torch
         from ase.io import read as ase_read
         from ase.io import write as ase_write
-        from torch_dmf import DirectMaxFlux, interpolate_fbenm
+        from ase.calculators.mixing import SumCalculator
+        from dmf import DirectMaxFlux, interpolate_fbenm
     except Exception as e:
         raise RuntimeError(
-            "DMF mode requires torch, ase, fairchem (via uma_pysis), cyiopt, and torch_dmf "
+            "DMF mode requires ase, fairchem (via uma_pysis), cyipopt, and pydmf "
             "to be installed."
         ) from e
+
+    from .harmonic_constraints import HarmonicFixAtoms
 
     def _geom_to_ase(g: Any):
         from io import StringIO
 
         return ase_read(StringIO(g.as_xyz()), format="xyz")
-
-    device = str(calc_cfg.get("device", "auto"))
-    if device == "auto":
-        device = "cuda" if torch.cuda.is_available() else "cpu"
 
     fix_atoms = list(sorted(set(map(int, fix_atoms))))
 
@@ -232,6 +232,7 @@ def _run_dmf_mep(
     update_teval = bool(dmf_opts.pop("update_teval", False))
     k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
 
+    # Run FB-ENM interpolation (pydmf CPU version)
     mxflx_fbenm = interpolate_fbenm(
         ref_images,
         nmove=max(1, int(max_nodes)),
@@ -239,13 +240,9 @@ def _run_dmf_mep(
         correlated=bool(dmf_cfg.get("correlated", False)),
         sequential=bool(dmf_cfg.get("sequential", False)),
         output_file=str(out_dir_path / "dmf_fbenm_ipopt.out"),
-        device=device,
-        dtype="float64",
-        fix_atoms=fix_atoms,
         fbenm_options=fbenm_opts,
         cfbenm_options=cfbenm_opts,
         dmf_options=dmf_opts,
-        k_fix=k_fix,
     )
 
     initial_trj = out_dir_path / "dmf_initial.trj"
@@ -259,14 +256,12 @@ def _run_dmf_mep(
         )
     coefs = mxflx_fbenm.coefs.copy()
 
+    # Create DirectMaxFlux object (pydmf CPU version)
     mxflx = DirectMaxFlux(
         ref_images,
         coefs=coefs,
         nmove=max(1, int(max_nodes)),
         update_teval=update_teval,
-        device=device,
-        dtype="float64",
-        fix_atoms=fix_atoms,
         remove_rotation_and_translation=bool(
             dmf_opts.get("remove_rotation_and_translation", False)
         ),
@@ -275,15 +270,28 @@ def _run_dmf_mep(
         eps_vel=float(dmf_opts.get("eps_vel", 0.01)),
         eps_rot=float(dmf_opts.get("eps_rot", 0.01)),
         beta=float(dmf_opts.get("beta", 10.0)),
-        k_fix=k_fix,
     )
 
+    # Assign calculators to images
+    # For frozen atoms, use HarmonicFixAtoms combined with UMA via SumCalculator
     for image in mxflx.images:
         if "charge" not in image.info:
             image.info["charge"] = charge
         if "spin" not in image.info:
             image.info["spin"] = spin
-        image.calc = calc_uma
+
+        if fix_atoms:
+            # Create harmonic constraint calculator for frozen atoms
+            ref_positions = image.get_positions()[fix_atoms]
+            harmonic_calc = HarmonicFixAtoms(
+                indices=fix_atoms,
+                ref_positions=ref_positions,
+                k_fix=k_fix,
+            )
+            # Combine UMA calculator with harmonic constraints
+            image.calc = SumCalculator([calc_uma, harmonic_calc])
+        else:
+            image.calc = calc_uma
 
     mxflx.add_ipopt_options({"output_file": str(out_dir_path / "dmf_ipopt.out")})
     mxflx.solve(tol="tight")
