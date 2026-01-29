@@ -252,13 +252,13 @@ def cli(
 
         # ==== Either load existing surface.csv, or run the full 3D scan ====
         if csv_path is not None:
-            csv_path = Path(csv_path).resolve()
+            resolved_csv_path = Path(csv_path).resolve()
             try:
-                df = pd.read_csv(csv_path)
+                df = pd.read_csv(resolved_csv_path)
             except Exception as e:
-                click.echo(f"[read] Failed to read CSV '{csv_path}': {e}", err=True)
+                click.echo(f"[read] Failed to read CSV '{resolved_csv_path}': {e}", err=True)
                 sys.exit(1)
-            click.echo(f"[read] Loaded precomputed grid from '{csv_path}'.")
+            click.echo(f"[read] Loaded precomputed grid from '{resolved_csv_path}'.")
         else:
             tmp_root = Path(tempfile.mkdtemp(prefix="scan3d_tmp_"))
             grid_dir = out_dir_path / "grid"
