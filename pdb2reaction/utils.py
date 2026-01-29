@@ -914,8 +914,17 @@ def set_freeze_atoms_or_warn(
     context: str,
 ) -> None:
     """Attach freeze_atoms to a geometry; warn once on failure."""
-    if not freeze_atoms:
+    if freeze_atoms is None:
         return
+    try:
+        if isinstance(freeze_atoms, np.ndarray):
+            if freeze_atoms.size == 0:
+                return
+        elif len(freeze_atoms) == 0:
+            return
+    except TypeError:
+        if not freeze_atoms:
+            return
     try:
         geom.freeze_atoms = np.array(sorted({int(i) for i in freeze_atoms}), dtype=int)
     except Exception:
