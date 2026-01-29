@@ -142,7 +142,7 @@ def _build_scan_context(
     kind = normalize_choice(
         opt_mode,
         param="--opt-mode",
-        alias_groups=_OPT_MODE_ALIASES,
+        alias_groups=OPT_MODE_ALIASES,
         allowed_hint="light|heavy",
     )
 
