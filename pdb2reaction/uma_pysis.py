@@ -1,100 +1,11 @@
-"""
-uma_pysis — UMA calculator wrapper for PySisyphus
-====================================================================
+"""UMA calculator wrapper for PySisyphus providing energy, forces, and Hessians.
 
-Usage (API)
------------
-    from pdb2reaction.uma_pysis import uma_pysis
-
-Examples
---------
+Example:
     >>> from pdb2reaction.uma_pysis import uma_pysis
     >>> calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1")
     >>> calc.get_energy(["C", "O"], coords)
-    {'energy': -228.123456}
 
-Description
------------
-- Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA
-  pretrained ML potentials via ASE/AtomicData.
-- Two Hessian modes (on the selected device; GPU if available):
-  - **Analytical**: second‑order autograd of the UMA energy.
-    Requires more VRAM/time than finite differences. During evaluation,
-    model parameter gradients are disabled; dropout layers are force‑disabled;
-    the model is temporarily toggled to `train()` only to build the autograd
-    graph and then restored to `eval()`.
-      * if `return_partial_hessian=True`, the Hessian is reduced to the Active‑DOF
-        block (non‑frozen atoms);
-      * otherwise the full matrix is returned and columns for frozen DOF are zeroed.
-  - **FiniteDifference**: central differences of forces, assembled on the selected
-    device. Columns for frozen DOF are skipped; optionally return only the
-    active‑DOF block. Default step: ε = 1.0e‑3 Å.
-- Device handling: `device="auto"` selects CUDA if available, else CPU.
-- **Precision / dtype**:
-    * UMA models run in their native precision (currently float32). We no longer
-      upcast the full model and graph to float64.
-    * Energies and forces returned by the PySisyphus API are always float64
-      (Hartree / Hartree·Bohr⁻¹).
-    * The Hessian dtype is controlled by `hessian_double`:
-        - `hessian_double=True` (default): assemble and return the Hessian in
-          float64 (double precision) on the host/device, without changing the
-          internal model precision.
-        - `hessian_double=False`: assemble and return the Hessian in the model
-          dtype (typically float32).
-- Neighborhood/graph: optional overrides for `max_neigh`, `radius`, `r_edges`.
-  On‑the‑fly graphs are built (`otf_graph=True`), and `task_name` is attached to
-  the batch; charge/spin are stored in `Atoms.info`.
-- Robustness: analytical path catches CUDA out‑of‑memory and advises switching to
-  finite differences.
-- Default Hessian mode at construction is `"FiniteDifference"`. If `hessian_calc_mode`
-  is falsy *or unrecognized* in `get_hessian`, `"FiniteDifference"` is used.
-
-- **Parallel inference workers** (`workers`, `workers_per_node`):
-    * If `workers > 1`, this wrapper directly instantiates FAIR‑Chem's
-      `ParallelMLIPPredictUnit` (instead of calling `pretrained_mlip.get_predict_unit`)
-      using:
-        - `num_workers = workers`
-        - `num_workers_per_node = workers_per_node`
-    * When `workers>1`, FAIR‑Chem returns a parallel predictor that does **not**
-      expose `predictor.model`. Therefore:
-        - all `predictor.model`-related operations (eval/train toggles, dropout
-          neutering, parameter requires_grad modifications) are skipped;
-        - **Analytical Hessian is disabled**, and `get_hessian()` always uses
-          **FiniteDifference** regardless of `hessian_calc_mode`.
-
-- Units: UMA runs in Å and eV; PySisyphus public API converts to Hartree/Bohr:
-  energy eV→Hartree, forces eV·Å⁻¹→Hartree·Bohr⁻¹, Hessian eV·Å⁻²→Hartree·Bohr⁻².
-
-Outputs (& Directory Layout)
-----------------------------
-In-memory calculator interface (`implemented_properties = ["energy", "forces", "hessian"]`)
-  ├─ get_energy(elem, coords)  → ``{"energy": E}`` (E in Hartree; coords supplied in Bohr and converted to Å internally)
-  ├─ get_forces(elem, coords)  → ``{"energy": E, "forces": F}`` (F has 3N components in Hartree/Bohr; frozen DOF set to 0)
-  └─ get_hessian(elem, coords) → ``{"energy": E, "forces": F, "hessian": H}``
-        • ``H`` has shape (3N, 3N) in Hartree/Bohr² or (3N_active, 3N_active) when ``return_partial_hessian=True``
-        • Columns for frozen DOF are zeroed in the full-size form
-
-
-Notes
------
-- `freeze_atoms`: list of 0‑based atom indices; **applies to both Analytical and
-  FiniteDifference**. Forces on frozen atoms are returned as 0. In Hessians,
-  either the matrix is reduced to the Active‑DOF block (`return_partial_hessian=True`)
-  or (for full size) columns for frozen DOF are zeroed.
-- `return_partial_hessian`: if True, return only the Active‑DOF submatrix in both modes.
-  Full Hessians (default; `return_partial_hessian=False`) avoid shape mismatches with
-  pysisyphus optimizers.
-- UMA loader:
-    * `workers == 1`:
-        `pretrained_mlip.get_predict_unit(model, device=...)`
-    * `workers > 1`:
-        direct instantiation of `ParallelMLIPPredictUnit(...)`
-- During analytical Hessian evaluation, model parameters have `requires_grad=False`;
-  the model is briefly set to `train()` to enable autograd and then restored to `eval()`.
-  CUDA caches are cleared if needed.
-- Neighborhood defaults come from the model backbone (e.g., `max_neighbors`, `cutoff`)
-  unless explicitly overridden. If the backbone is not available (e.g. workers>1),
-  AtomicData defaults are used (radius defaults to 6.0 Å).
+For detailed documentation, see: docs/uma_pysis.md
 """
 
 from __future__ import annotations

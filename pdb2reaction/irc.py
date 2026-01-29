@@ -1,86 +1,11 @@
 # pdb2reaction/irc.py
 
-"""
-irc — IRC calculations with the EulerPC algorithm
-====================================================================
+"""IRC calculations using the EulerPC predictor-corrector integrator with UMA.
 
-Usage (CLI)
------------
-    pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] \
-        [--workers <int>] [--workers-per-node <int>] [-m <multiplicity>] \
-        [--max-cycles <int>] [--step-size <float>] [--root <int>] \
-        [--forward {True|False}] [--backward {True|False}] \
-        [--freeze-links {True|False}] [--convert-files {True|False}] [--ref-pdb <file>] \
-        [--out-dir <dir>] [--hessian-calc-mode {Analytical|FiniteDifference}] \
-        [--args-yaml <file>]
-
-Examples
---------
-    # Forward-only with finite-difference Hessian and custom step size
-    pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward True --backward False \
-        --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
-
-    # Use a PDB input so trajectories are also exported as PDB
+Example:
     pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
-Description
------------
-- Purpose: Run Intrinsic Reaction Coordinate (IRC) calculations using the EulerPC predictor–corrector integrator.
-- Inputs: Any structure readable by `pysisyphus.helpers.geom_loader` (.pdb, .xyz, .trj, ...).
-  If the input is `.pdb`, trajectory files written by the run are additionally converted to PDB (when conversion is enabled).
-- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
-  format-aware PDB/GJF output conversion.
-- Configuration model: Only the CLI options listed above are accepted. All other parameters
-  (geometry options, UMA calculator configuration, and detailed EulerPC/IRC settings) must be provided via YAML.
-  Final configuration precedence: built-in defaults → CLI → YAML.
-- Charge/spin defaults: `-q/--charge` and `-m/--multiplicity` inherit values from `.gjf` templates when provided. For non-`.gjf`
-  inputs, omitting `-q/--charge` is allowed only when ``--ligand-charge`` is set: the full complex is treated as an
-  enzyme–substrate system and its total charge is derived with ``extract.py``’s residue-aware logic. Otherwise the CLI aborts;
-  multiplicity still defaults to 1 when unspecified, and an explicit `-q` overrides any derived charge.
-
-CLI options
------------
-  - `-i/--input PATH` (required): Structure file (.pdb/.xyz/.trj/…).
-  - `-q/--charge INT`: Total charge; sets `calc.charge`. Required for non-`.gjf` inputs; `.gjf` templates
-    supply defaults when available.
-  - `--workers`, `--workers-per-node`: UMA predictor parallelism (workers > 1 disables analytic Hessians).
-  - `-m/--multiplicity INT` (default 1): Spin multiplicity (2S+1); sets `calc.spin` and defaults to the template multiplicity or `1`.
-  - `--max-cycles INT` (default `125`): Max number of IRC steps; sets `irc.max_cycles`.
-  - `--step-size FLOAT` (default `0.10`): Step length in mass-weighted coordinates; sets `irc.step_length`.
-  - `--root INT` (default `0`): Imaginary mode index for the initial displacement; sets `irc.root`.
-  - `--forward BOOL` (default `True`): Run the forward IRC (explicit `True`/`False`); sets `irc.forward`.
-  - `--backward BOOL` (default `True`): Run the backward IRC (explicit `True`/`False`); sets `irc.backward`.
-  - `--freeze-links BOOL` (default `True`): Freeze parent atoms of link hydrogens when the input is PDB.
-  - `--convert-files {True|False}` (default `True`): Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.
-  - `--ref-pdb PATH`: Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).
-  - `--out-dir STR` (default `./result_irc/`): Output directory; sets `irc.out_dir`.
-  - `--hessian-calc-mode {Analytical,FiniteDifference}` (default `FiniteDifference`): How UMA builds the Hessian; sets `calc.hessian_calc_mode`.
-  - `--args-yaml PATH`: YAML file with sections `geom`, `calc`, and `irc`.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_irc/)
-  ├─ irc_data.h5                    # Optional HDF5 dump (if enabled by EulerPC)
-  ├─ <prefix>finished_irc.trj       # Full IRC trajectory (TRJ)
-  ├─ <prefix>forward_irc.trj        # Forward-only segment (TRJ)
-  ├─ <prefix>backward_irc.trj       # Backward-only segment (TRJ)
-  ├─ <prefix>finished_irc.pdb       # PDB conversions (written when the input was .pdb and conversion is enabled)
-  ├─ <prefix>forward_irc.pdb        # PDB conversions (written when the input was .pdb and conversion is enabled)
-  └─ <prefix>backward_irc.pdb       # PDB conversions (written when the input was .pdb and conversion is enabled)
-
-All files honor ``irc.prefix`` when it is set; the directory is created if missing.
-
-Notes
------
-- YAML overrides CLI for overlapping keys such as `calc.charge`, `calc.spin`, IRC step control, and output paths.
-- UMA options are passed directly to `pdb2reaction.uma_pysis.uma_pysis`. With `device: "auto"`,
-  the calculator selects GPU/CPU automatically. If `hessian_calc_mode: "FiniteDifference"`,
-  `geom.freeze_atoms` can be used to skip frozen DOF in FD Hessian construction.
-  The geometry's freeze list is also forwarded to the calculator as `calc.freeze_atoms`.
-- `--step-size` is in mass-weighted coordinates; `--root` selects the imaginary-frequency index used
-  for the initial displacement.
-- Output conversion steps can be disabled via `--convert-files False`.
-- Standard output includes progress and timing.
+For detailed documentation, see: docs/irc.md
 """
 
 from __future__ import annotations

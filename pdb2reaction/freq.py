@@ -1,77 +1,11 @@
 # pdb2reaction/freq.py
 
-"""
-freq — Vibrational frequency analysis, mode export, and thermochemistry
-====================================================================
+"""Vibrational frequency analysis with PHVA support and thermochemistry output.
 
-Usage (CLI)
------------
-    pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <spin>] \
-        [--workers <int>] [--workers-per-node <int>] \
-        [--freeze-links {True|False}] [--max-write <int>] \
-        [--amplitude-ang <float>] [--n-frames <int>] [--sort {value|abs}] \
-        [--out-dir <dir>] [--args-yaml <file>] [--temperature <K>] \
-        [--pressure <atm>] [--dump {True|False}] \
-        [--hessian-calc-mode {Analytical|FiniteDifference}] \
-        [--convert-files {True|False}] [--ref-pdb <file>]
-
-Examples
---------
-    # Minimal frequency run with explicit charge and spin
+Example:
     pdb2reaction freq -i a.pdb -q 0 -m 1
 
-    # PHVA with YAML overrides and a custom output directory
-    pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq/
-
-Description
------------
-- Computes vibrational frequencies and normal modes using the UMA calculator.
-- Supports Partial Hessian Vibrational Analysis (PHVA) when atoms are frozen.
-- Exports animated modes (.trj; and, for PDB inputs, optionally .pdb animations when ``--convert-files`` is enabled) and prints a Gaussian-style thermochemistry summary.
-- For XYZ/GJF inputs, ``--ref-pdb`` supplies a reference PDB topology while keeping XYZ coordinates, enabling
-  format-aware PDB/GJF output conversion.
-- Configuration can be provided via YAML (sections: ``geom``, ``calc``, ``freq``, ``thermo``); YAML values override CLI.
-- Thermochemistry uses the PHVA frequencies (respecting ``freeze_atoms``). CLI pressure (atm) is converted internally to Pa.
-- The thermochemistry summary is printed when the optional ``thermoanalysis`` package is available; writing a YAML summary is controlled by ``--dump``.
-- `-q/--charge` is required for non-`.gjf` inputs **unless** ``--ligand-charge`` is provided; when ``-q`` is omitted and
-  ``--ligand-charge`` is set, the full complex is treated as an enzyme–substrate system and the total charge is inferred
-  using ``extract.py``’s residue-aware logic. `.gjf` templates supply charge/spin when available and allow omitting
-  `-q/--charge`. Explicit `-q` always overrides derived values.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_freq/)
-  ├─ mode_XXXX_{±freq}cm-1.trj    # XYZ-like trajectory (Å) with sinusoidal motion per mode
-  ├─ mode_XXXX_{±freq}cm-1.pdb    # Multi-MODEL PDB animation (PDB inputs only; attempted when --convert-files is enabled)
-  ├─ frequencies_cm-1.txt         # All computed frequencies (cm^-1), sorted according to --sort
-  └─ thermoanalysis.yaml          # Thermochemistry summary (written only when --dump True and thermoanalysis is available)
-
-Notes
------
-- Input geometry: .pdb, .xyz, .trj (via pysisyphus ``geom_loader``). For PDB, ``--freeze-links`` (default: True)
-  detects parent atoms of link hydrogens and merges them with any ``geom.freeze_atoms``; the merged list is echoed.
-- UMA settings:
-  - ``--hessian-calc-mode``: ``FiniteDifference`` (default) or ``Analytical``; may also be set in YAML.
-  - ``return_partial_hessian`` defaults to True so PHVA can use a reduced active‑block Hessian when possible.
-  - Device: ``auto`` selects CUDA if available; otherwise CPU.
-  - Parallelism: ``--workers``/``--workers-per-node`` configure UMA predictors; when ``workers>1``,
-    the parallel predictor disables analytical Hessians and always uses finite differences.
-- PHVA and projections:
-  - With frozen atoms, eigenanalysis is performed in the active DOF subspace and translation/rotation (TR) modes are projected in that subspace.
-  - Both full Hessians (3N×3N) and pre‑reduced active blocks (3N_act×3N_act) are accepted.
-  - Frequencies are reported in cm^-1 (negative values denote imaginary modes).
-- Mode writing:
-  - ``--max-write`` limits how many modes are exported (ascending by value, or by absolute value with ``--sort abs``).
-  - ``--amplitude-ang`` (Å) and ``--n-frames`` control the sinusoidal animation.
-- For PDB inputs and when ``--convert-files`` is enabled, the .trj is converted to a .pdb animation using the input PDB as a template.
-- Thermochemistry:
-  - Requires the optional ``thermoanalysis`` package; if absent, the summary is skipped with a warning.
-  - Default model is QRRHO; the summary includes EE, ZPE, and thermal corrections to E/H/G. Values in cal·mol^-1 and cal·(mol·K)^-1 are also printed.
-- Performance and numerical details:
-  - GPU memory usage is minimized by keeping only one Hessian in memory and avoiding redundant allocations.
-- Exit behavior:
-  - On keyboard interrupt, exits with code 130; on errors during frequency analysis, prints a traceback and exits with code 1.
-    Errors during the optional thermochemistry summary are reported but do not abort the run.
+For detailed documentation, see: docs/freq.md
 """
 
 from __future__ import annotations

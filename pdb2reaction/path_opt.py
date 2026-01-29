@@ -1,68 +1,11 @@
 # pdb2reaction/path_opt.py
 
-"""
-path_opt — Minimum-energy path (MEP) optimization via GSM or DMF with a UMA calculator
-=====================================================================================
+"""Pairwise MEP optimization via GSM or DMF with UMA calculator.
 
-Usage (CLI)
------------
-    pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                        [--workers <int>] [--workers-per-node <int>] \
-                        [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
-                        [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
-                        [--preopt BOOL] [--preopt-max-cycles N] [--opt-mode {light|heavy}] [--fix-ends BOOL] \
-                        [--convert-files {True|False}] [--ref-pdb FILE] \
-                        [--out-dir DIR] [--args-yaml FILE]
-
-Examples
---------
-    # Minimal: two endpoints, neutral singlet
+Example:
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1
 
-    # Typical full run with YAML overrides, dumps, and a convergence preset
-    pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1 \
-      --freeze-links True --max-nodes 10 --max-cycles 100 \
-      --climb True --dump True --out-dir ./result_path_opt/ \
-      --thresh gau_tight --args-yaml ./args.yaml
-
-Description
------------
-- Optimizes a minimum-energy path between two endpoints using GSM (pysisyphus `GrowingString` + `StringOptimizer`) or DMF, with UMA as the calculator (via `uma_pysis`).
-- Inputs: two structures (.pdb or .xyz). If a PDB is provided and `--freeze-links=True` (default), parent atoms of link hydrogens are added to `freeze_atoms` (0-based indices).
-- Configuration via YAML with sections `geom`, `calc`, `gs`, `opt`, `dmf`, and single-structure optimizer sections such as `sopt.lbfgs` / `sopt.rfo` (also accepting `opt.lbfgs` / `opt.rfo` and top-level `lbfgs` / `rfo`). Precedence: YAML > CLI > built-in defaults.
-- Optional endpoint pre-optimization: with `--preopt=True` (default False), each endpoint is relaxed individually via single-structure LBFGS ("light", default) or RFO ("heavy") before alignment and MEP search. The iteration limit for this pre-optimization is controlled independently by `--preopt-max-cycles` (default: 10000) for whichever optimizer is selected.
-- Path generator: `--mep-mode` accepts GSM or DMF, with GSM enabled by default to match the CLI default.
-- Alignment: before optimization, all inputs after the first are rigidly Kabsch-aligned to the first structure using an external routine with a short relaxation. `StringOptimizer.align` is disabled. If either endpoint specifies `freeze_atoms`, the RMSD fit uses only those atoms and the resulting rigid transform is applied to all atoms.
-- With `--climb=True` (default), a climbing-image step refines the highest-energy image. Lanczos-based tangent estimation (`gs.climb_lanczos`) is enabled by default and follows the `--climb` flag; YAML can still override it.
-- `--thresh` sets the convergence preset used by the string optimizer, the optional endpoint pre-optimization, and the pre-alignment refinement (e.g., `gau_loose|gau|gau_tight|gau_vtight|baker|never`). When omitted, the effective default is `gau`.
-- When `--fix-ends True` (default: False), both endpoint geometries are fixed during GSM (`fix_first=True`, `fix_last=True`).
-- After optimization, the highest-energy image (HEI) is identified as the highest-energy internal local maximum (preferring internal nodes). If none exist, the maximum among internal nodes is used; if there are no internal nodes, the global maximum is used. The selected HEI is exported.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_path_opt/)
-  ├─ final_geometries.trj        # XYZ trajectory of the optimized path; comment line carries per-image energy when available
-  ├─ final_geometries.pdb        # Converted from .trj when a PDB reference is available and conversion is enabled
-  ├─ hei.xyz                     # Highest-energy image with energy on the comment line
-  ├─ hei.pdb                     # HEI converted to PDB when a PDB reference is available and conversion is enabled
-  ├─ hei.gjf                     # HEI written using a detected .gjf template when available and conversion is enabled
-  ├─ align_refine/               # Files from external alignment/refinement
-  └─ <optimizer dumps / restarts>  # Emitted when dumping is enabled (e.g., via `--dump` and/or YAML `dump_restart` settings)
-
-Notes
------
-- Charge/spin: `-q/--charge` is required unless a `.gjf` template provides charge metadata or `--ligand-charge` is supplied
-  for PDB inputs. Explicit CLI options override template values. When ``-q`` is omitted but ``--ligand-charge`` is set, the full
-  complex is treated as an enzyme–substrate system and the total charge is inferred using ``extract.py``’s residue-aware logic.
-  If the derivation is not possible (e.g., non-PDB inputs), the command errors and requests an explicit total charge.
-- Coordinates are Cartesian; `freeze_atoms` use 0-based indices. With `--freeze-links=True` and PDB inputs, link-hydrogen parents are added automatically.
-- `--max-nodes` sets the number of internal nodes; the string has (max_nodes + 2) images including endpoints.
-- `--max-cycles` limits optimization; after full growth, the same bound applies to additional refinement.
-- `--preopt-max-cycles` limits only the optional endpoint single-structure preoptimization (LBFGS or RFO, selected via `--opt-mode`) and does not affect `--max-cycles`.
-- Format-aware conversions respect the global `--convert-files {True|False}` toggle (default: enabled).
-- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling
-  PDB conversions for trajectories and snapshots.
-  trajectories may emit PDB companions when references exist, and XYZ snapshots (e.g., HEI) may emit GJF companions when templates exist.
+For detailed documentation, see: docs/path_opt.md
 """
 
 from __future__ import annotations

@@ -1,82 +1,11 @@
 # pdb2reaction/dft.py
 
-"""
-dft — Single-point DFT calculation
-====================================================================
+"""Single-point DFT calculation with GPU acceleration (GPU4PySCF or CPU PySCF).
 
-Usage (CLI)
------------
-    pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q <charge>] [--ligand-charge <number|'RES:Q,...'>] [-m <multiplicity>] \
-        [--func-basis 'FUNC/BASIS'] [--max-cycle <int>] [--conv-tol <hartree>] \
-        [--grid-level <int>] [--out-dir <dir>] [--engine {gpu|cpu|auto}] \
-        [--convert-files {True|False}] [--ref-pdb <file>] [--args-yaml <file>]
-
-Examples
---------
-    # Default GPU-first policy with an explicit functional/basis pair
+Example:
     pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis 'wb97m-v/6-31g**'
 
-    # Tight SCF controls with a larger basis and CPU-only fallback
-    pdb2reaction dft -i input.pdb -q 0 -m 2 --func-basis 'wb97m-v/def2-tzvpd' \
-        --max-cycle 150 --conv-tol 1e-9 --engine cpu
-
-Description
------------
-- Single-point DFT engine with optional GPU acceleration (GPU4PySCF) and a CPU PySCF backend.
-  The backend policy is controlled by --engine:
-  * gpu  (default): require GPU4PySCF; error out if the GPU backend is unavailable.
-                    Blackwell GPUs emit a warning on detection.
-  * cpu           : use CPU PySCF only.
-  * auto          : try GPU4PySCF first and fall back to CPU PySCF if unavailable.
-- RKS/UKS is selected automatically from the spin multiplicity (2S+1).
-- Inputs: any structure format supported by pysisyphus.helpers.geom_loader (.pdb, .xyz, .trj, …).
-  The geometry is written back unchanged as input_geometry.xyz.
-- For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology (atom count validation) while keeping XYZ
-  coordinates. This primarily enables `--ligand-charge` derivation from a PDB template; the DFT stage itself
-  only writes `input_geometry.xyz` and `result.yaml` (no PDB/GJF output conversion is performed).
-- Functional/basis specified as 'FUNC/BASIS' via --func-basis (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-svp', 'wb97m-v/def2-tzvpd').
-  Names are case-insensitive in PySCF.
-- Density fitting (DF) is enabled via PySCF's density_fit(); the auxiliary basis is left to
-  PySCF's default selection.
-- SCF controls: --conv-tol (Eh), --max-cycle, --grid-level (mapped to PySCF grids.level).
-  Verbosity defaults to 0 and can be overridden via YAML (dft.verbose). Output directory
-  selection is handled separately via --out-dir.
-- VV10 / other nonlocal corrections are **not** configured explicitly; backends run with their
-  defaults for the chosen functional.
-- Charge/spin are resolved by internal helpers; .gjf templates may supply charge/spin when available.
-  Provide explicit -q/--charge and -m/--multiplicity values whenever possible to enforce the intended state
-  (multiplicity > 1 selects UKS). When ``-q`` is omitted but ``--ligand-charge`` is given for a parseable
-  complex structure, the total system charge is inferred using ``extract.py``’s residue-aware logic; an
-  explicit ``-q`` always takes precedence.
-- **Atomic properties:** from the final density, **atomic charges** and **atomic spin densities** are reported by three schemes:
-    * Mulliken (charges: scf.hf.mulliken_pop; spins: scf.uhf.mulliken_spin_pop for UKS; RKS → zeros; failure → null)
-    * meta‑Löwdin (charges: scf.hf.mulliken_pop_meta_lowdin_ao; spins: scf.uhf.mulliken_spin_pop_meta_lowdin_ao for UKS; RKS → zeros; not available or failure → null)
-    * IAO (charges: lo.iao.fast_iao_mullikan_pop; spins: fast_iao_mullikan_spin_pop implemented here; RKS → zeros; failure → null)
-- Energies are reported in Hartree and kcal/mol; SCF convergence status and backend selection are recorded.
-  Elapsed time is printed to stdout.
-- The per-atom tables are echoed to stdout and saved to YAML in flow-style rows for readability.
-- `--convert-files` is accepted for interface consistency with other subcommands but does not create extra outputs here.
-
-Outputs (& Directory Layout)
-----------------------------
-out_dir/ (default: ./result_dft/)
-  ├─ result.yaml                # Input metadata, SCF energy (Eh/kcal), convergence status, backend used, and per-atom charge/spin tables
-  └─ input_geometry.xyz         # Geometry snapshot passed to PySCF (as read; unchanged)
-
-Notes
------
-- Charge/spin resolution: -q/--charge and -m/--multiplicity may inherit values from .gjf templates when present.
-  For non-.gjf inputs, omitting -q/--charge is allowed only when ``--ligand-charge`` is supplied; the full complex
-  is treated as an enzyme–substrate system and the total charge is derived with the same logic as ``extract.py``.
-  Otherwise the CLI aborts. Explicit ``-q`` overrides any derived charge.
-  Spin defaults to 1 when unspecified. Provide explicit values whenever possible to enforce the intended state
-  (multiplicity > 1 selects UKS).
-- YAML overrides: --args-yaml points to a file with top-level keys "dft" (func, basis, conv_tol,
-  max_cycle, grid_level, verbose, out_dir, or combined func_basis) and "geom" (passed to
-  pysisyphus.helpers.geom_loader).
-- Grids: sets grids.level when supported.
-- Units: input coordinates are in Å.
-- If any population analysis (Mulliken, meta‑Löwdin, IAO) fails, a WARNING is printed and the corresponding column is null.
+For detailed documentation, see: docs/dft.md
 """
 
 from __future__ import annotations
