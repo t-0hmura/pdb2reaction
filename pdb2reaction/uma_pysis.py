@@ -663,10 +663,40 @@ class uma_ase(FAIRChemCalculator):
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        predictor = pretrained_mlip.get_predict_unit(
-            model,
-            device=device,
-            workers=int(workers),
-            workers_per_node=int(workers_per_node),
-        )
+        num_workers = int(workers) if workers is not None else 1
+        if num_workers < 1:
+            num_workers = 1
+
+        num_workers_per_node = int(workers_per_node) if workers_per_node is not None else 1
+        if num_workers_per_node < 1:
+            num_workers_per_node = 1
+
+        if num_workers > 1:
+            if (ParallelMLIPPredictUnit is None) or (guess_inference_settings is None):
+                raise ImportError(
+                    "workers>1 requested, but ParallelMLIPPredictUnit/guess_inference_settings "
+                    "could not be imported from fairchem. Please ensure your FAIR-Chem installation "
+                    "includes `fairchem-core[extras]`."
+                )
+            ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
+            inference_settings = guess_inference_settings("default")
+
+            atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
+            form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
+
+            predictor = ParallelMLIPPredictUnit(
+                inference_model_path=str(ckpt_path),
+                device=device,
+                inference_settings=inference_settings,
+                atom_refs=atom_refs,
+                form_elem_refs=form_elem_refs,
+                num_workers=num_workers,
+                num_workers_per_node=num_workers_per_node,
+            )
+        else:
+            predictor = pretrained_mlip.get_predict_unit(
+                model,
+                device=device,
+                workers=num_workers,
+            )
         super().__init__(predictor, task_name=str(task_name))
