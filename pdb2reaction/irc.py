@@ -98,7 +98,7 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.uma_pysis import uma_pysis
-from pdb2reaction.defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
+from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW
 from pdb2reaction.utils import (
     load_yaml_dict,
     apply_yaml_overrides,

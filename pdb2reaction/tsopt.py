@@ -180,7 +180,6 @@ from .defaults import (
     OPT_BASE_KW,
     LBFGS_KW,
     RFO_KW,
-    OPT_MODE_ALIASES,
 )
 from .utils import (
     resolve_freeze_atoms,
@@ -205,7 +204,11 @@ from .freq import (
 )
 
 
-# Note: OPT_MODE_ALIASES imported from defaults.py
+# Map tsopt opt-mode to light/heavy while accepting lbfgs/rfo aliases.
+TSOPT_MODE_ALIASES = (
+    (("light", "lbfgs"), "light"),
+    (("heavy", "rfo"), "heavy"),
+)
 
 
 # ===================================================================
@@ -1604,7 +1607,7 @@ def cli(
         kind = normalize_choice(
             opt_mode,
             param="--opt-mode",
-            alias_groups=OPT_MODE_ALIASES,
+            alias_groups=TSOPT_MODE_ALIASES,
             allowed_hint="light|heavy",
         )
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()

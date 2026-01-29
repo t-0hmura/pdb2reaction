@@ -2375,7 +2375,7 @@ def cli(
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
         click.echo(
-            f"\n=== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n"
+            f"=== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n"
         )
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
@@ -2969,7 +2969,7 @@ def cli(
     pockets_for_path: List[Path]
     pocket_ref_pdbs: Optional[List[Path]] = None
     if is_single and has_scan:
-        click.echo("\n=== [all] Stage 1b — Staged scan on input ===\n")
+        click.echo("=== [all] Stage 1b — Staged scan on input ===\n")
         ensure_dir(scan_dir)
 
         if skip_extract:
