@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "wheel", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,7 +23,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     # pdb2reaction core dependencies
@@ -82,5 +81,7 @@ include = ["pdb2reaction*", "pysisyphus*", "thermoanalysis*"]
 [tool.setuptools.package-data]
 pdb2reaction = ["py.typed"]
 
-[tool.setuptools.dynamic]
-version = {attr = "pdb2reaction.__version__"}
+[tool.setuptools_scm]
+version_file = "pdb2reaction/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"

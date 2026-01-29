@@ -2,6 +2,8 @@
 
 import click
 
+from pdb2reaction import __version__
+
 class DefaultGroup(click.Group):
     def __init__(self, *args, default: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,6 +40,7 @@ from .scan3d import cli as scan3d_cmd
     help="pdb2reaction: Root command to execute each subcommands.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
+@click.version_option(version=__version__, prog_name="pdb2reaction")
 def cli() -> None:
     pass
 
