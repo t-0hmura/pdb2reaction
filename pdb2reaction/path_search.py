@@ -1,6 +1,7 @@
 # pdb2reaction/path_search.py
 
-"""Recursive MEP construction using GSM/DMF with bond-change detection and refinement.
+"""
+Recursive MEP construction using GSM/DMF with bond-change detection and refinement.
 
 Example:
     pdb2reaction path-search -i reactant.pdb product.pdb -q 0

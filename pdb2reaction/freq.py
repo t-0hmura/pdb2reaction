@@ -1,6 +1,7 @@
 # pdb2reaction/freq.py
 
-"""Vibrational frequency analysis with PHVA support and thermochemistry output.
+"""
+Vibrational frequency analysis with PHVA support and thermochemistry output.
 
 Example:
     pdb2reaction freq -i a.pdb -q 0 -m 1

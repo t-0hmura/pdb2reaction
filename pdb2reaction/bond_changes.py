@@ -1,6 +1,7 @@
 # pdb2reaction/bond_changes.py
 
-"""Bond-change detection using covalent radii and distance matrices.
+"""
+Bond-change detection using covalent radii and distance matrices.
 
 Public API:
 - compare_structures(geom1, geom2, **params) -> BondChangeResult

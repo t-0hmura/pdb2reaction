@@ -1,6 +1,7 @@
 # pdb2reaction/add_elem_info.py
 
-"""Repair PDB element symbols (columns 77-78) with Biopython inference.
+"""
+Repair PDB element symbols (columns 77-78) with Biopython inference.
 
 Example:
     pdb2reaction add-elem-info -i 1abc.pdb

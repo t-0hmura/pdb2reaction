@@ -1,3 +1,5 @@
+# pdb2reaction/summary_log.py
+
 """
 User-friendly summary log writer used by ``path_search`` and ``all``.
 

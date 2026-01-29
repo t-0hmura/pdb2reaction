@@ -1,6 +1,7 @@
 # pdb2reaction/scan2d.py
 
-"""2D grid scan with harmonic restraints on two inter-atomic distances using UMA calculator.
+"""
+2D grid scan with harmonic restraints on two inter-atomic distances using UMA calculator.
 
 Example:
     pdb2reaction scan2d -i input.pdb -q 0 --scan-lists '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'

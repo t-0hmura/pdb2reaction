@@ -1,4 +1,7 @@
-"""UMA calculator wrapper for PySisyphus providing energy, forces, and Hessians.
+# pdb2reaction/uma_pysis.py
+
+"""
+UMA calculator wrapper for PySisyphus providing energy, forces, and Hessians.
 
 Example:
     >>> from pdb2reaction.uma_pysis import uma_pysis

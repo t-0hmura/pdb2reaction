@@ -1,6 +1,7 @@
 # pdb2reaction/extract.py
 
-"""Automated binding-pocket (active-site) extraction from protein-substrate complexes.
+"""
+Automated binding-pocket (active-site) extraction from protein-substrate complexes.
 
 Example:
     pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3

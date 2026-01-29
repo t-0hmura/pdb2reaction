@@ -1,6 +1,7 @@
 # pdb2reaction/all.py
 
-"""End-to-end enzymatic reaction workflow: extraction, MEP search, TS optimization, IRC, and post-processing.
+"""
+End-to-end enzymatic reaction workflow: extraction, MEP search, TS optimization, IRC, and post-processing.
 
 Example:
     pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' --ligand-charge 'GPP:-3,MMT:-1'

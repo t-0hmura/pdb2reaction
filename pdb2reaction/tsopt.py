@@ -1,6 +1,7 @@
 # pdb2reaction/tsopt.py
 
-"""Transition-state optimization using Hessian Dimer (light) or RS-I-RFO (heavy) with UMA.
+"""
+Transition-state optimization using Hessian Dimer (light) or RS-I-RFO (heavy) with UMA.
 
 Example:
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --out-dir ./result_tsopt/

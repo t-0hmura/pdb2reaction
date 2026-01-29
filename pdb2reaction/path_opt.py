@@ -1,6 +1,7 @@
 # pdb2reaction/path_opt.py
 
-"""Pairwise MEP optimization via GSM or DMF with UMA calculator.
+"""
+Pairwise MEP optimization via GSM or DMF with UMA calculator.
 
 Example:
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1

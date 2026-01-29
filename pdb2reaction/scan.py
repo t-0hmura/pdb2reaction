@@ -1,6 +1,7 @@
 # pdb2reaction/scan.py
 
-"""Staged bond-length scan with harmonic restraints and full relaxation using UMA calculator.
+"""
+Staged bond-length scan with harmonic restraints and full relaxation using UMA calculator.
 
 Example:
     pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]' --preopt True --endopt True

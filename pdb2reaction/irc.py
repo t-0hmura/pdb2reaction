@@ -1,6 +1,7 @@
 # pdb2reaction/irc.py
 
-"""IRC calculations using the EulerPC predictor-corrector integrator with UMA.
+"""
+IRC calculations using the EulerPC predictor-corrector integrator with UMA.
 
 Example:
     pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/

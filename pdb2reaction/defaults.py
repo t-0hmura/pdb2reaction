@@ -1,6 +1,7 @@
 # pdb2reaction/defaults.py
 
-"""Common default configurations for pdb2reaction workflows.
+"""
+Common default configurations for pdb2reaction workflows.
 
 This module centralizes ALL shared settings used across opt, scan, freq, tsopt,
 path_opt, path_search, and other command-line tools.

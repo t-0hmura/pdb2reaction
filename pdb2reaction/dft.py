@@ -1,6 +1,7 @@
 # pdb2reaction/dft.py
 
-"""Single-point DFT calculation with GPU acceleration (GPU4PySCF or CPU PySCF).
+"""
+Single-point DFT calculation with GPU acceleration (GPU4PySCF or CPU PySCF).
 
 Example:
     pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis 'wb97m-v/6-31g**'

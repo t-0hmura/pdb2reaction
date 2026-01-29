@@ -1,6 +1,7 @@
 # pdb2reaction/trj2fig.py
 
-"""Energy-profile plotting utility for XYZ trajectories.
+"""
+Energy-profile plotting utility for XYZ trajectories.
 
 Example:
     pdb2reaction trj2fig -i traj.xyz --reverse-x True

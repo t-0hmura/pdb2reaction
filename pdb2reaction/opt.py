@@ -1,6 +1,7 @@
 # pdb2reaction/opt.py
 
-"""Single-structure geometry optimization using LBFGS or RFO with UMA calculator.
+"""
+Single-structure geometry optimization using LBFGS or RFO with UMA calculator.
 
 Example:
     pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode light
