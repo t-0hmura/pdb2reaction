@@ -86,6 +86,26 @@ def pretty_block(title: str, content: Dict[str, Any]) -> str:
     return f"{title}\n" + "-" * len(title) + "\n" + body + "\n"
 
 
+def strip_inherited_keys(
+    child_cfg: Dict[str, Any],
+    base_cfg: Mapping[str, Any],
+    *,
+    mode: str = "present",
+) -> Dict[str, Any]:
+    """Return child_cfg without inherited keys (for concise logs)."""
+    trimmed: Dict[str, Any] = {}
+    if mode not in {"present", "same"}:
+        raise ValueError(f"Unknown strip_inherited_keys mode: {mode}")
+    for key, value in child_cfg.items():
+        if key in base_cfg:
+            if mode == "present":
+                continue
+            if base_cfg.get(key) == value:
+                continue
+        trimmed[key] = value
+    return trimmed
+
+
 def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize geometry configuration for CLI echo output.

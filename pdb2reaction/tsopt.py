@@ -58,6 +58,7 @@ from .utils import (
     prepared_cli_input,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
+    strip_inherited_keys,
 )
 from .freq import (
     _torch_device,
@@ -1481,15 +1482,25 @@ def cli(
         # Pretty-print config summary
         click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
         click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
-        click.echo(pretty_block("opt",  {**opt_cfg, "out_dir": str(out_dir_path)}))
+        echo_opt = {**opt_cfg, "out_dir": str(out_dir_path)}
+        click.echo(pretty_block("opt", echo_opt))
         if kind == "light":
             # Split out pass-through dicts for readability
             sd_cfg_for_echo = dict(simple_cfg)
             sd_cfg_for_echo["dimer"] = dict(simple_cfg.get("dimer", {}))
-            sd_cfg_for_echo["lbfgs"] = dict(simple_cfg.get("lbfgs", {}))
+            sd_cfg_for_echo["lbfgs"] = strip_inherited_keys(
+                dict(simple_cfg.get("lbfgs", {})),
+                echo_opt,
+                mode="same",
+            )
             click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
         else:
             rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
+            rsirfo_kwargs_for_echo = strip_inherited_keys(
+                rsirfo_kwargs_for_echo,
+                echo_opt,
+                mode="same",
+            )
             click.echo(pretty_block("rsirfo", rsirfo_kwargs_for_echo))
 
         # --------------------------

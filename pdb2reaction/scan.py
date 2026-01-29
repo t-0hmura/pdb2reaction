@@ -47,6 +47,7 @@ from .utils import (
     collect_single_option_values,
     cli_param_overridden,
     pretty_block,
+    strip_inherited_keys,
     format_geom_for_echo,
     format_elapsed,
     normalize_choice,
@@ -296,6 +297,7 @@ def cli(
                 out_dir_path,
                 str(opt_cfg.get("prefix", "")),
             )
+            echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
             click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt))
             click.echo(pretty_block("bias", echo_bias))
             click.echo(pretty_block("bond", echo_bond))

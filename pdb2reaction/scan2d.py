@@ -51,6 +51,7 @@ from .utils import (
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
+    strip_inherited_keys,
     format_geom_for_echo,
     format_elapsed,
     normalize_choice,
@@ -175,6 +176,7 @@ def _build_scan_context(
         out_dir_path,
         str(opt_cfg.get("prefix", "")),
     )
+    echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
     click.echo(
         pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt)
     )

@@ -71,7 +71,6 @@ DMF_KW: Dict[str, Any] = {
         "delta_scale": 0.2,         # Scale for the distance penalty width
         "bond_scale": 1.25,         # Bond test: d_ij < bond_scale * (r_cov_i + r_cov_j)
         "fix_planes": True,         # Add plane constraints to preserve planarity
-        "two_hop_mode": "sparse",   # Two-hop neighbor construction ("sparse" | "dense")
     },
 
     # CFB_ENM options (cfbenm_options)
@@ -84,7 +83,6 @@ DMF_KW: Dict[str, Any] = {
         "pivotal": True,            # enable pivotal constraints in the CFB-ENM
         "single": True,             # enforce single-path constraint in correlation graph
         "remove_fourmembered": True,# prune four-membered rings in the correlation network
-        "two_hop_mode": "sparse",   # Two-hop construction on the CFB_ENM side
     },
 
     # DirectMaxFlux core options (forwarded via dmf_options)
@@ -99,7 +97,7 @@ DMF_KW: Dict[str, Any] = {
     },
 
     # Strength of fix_atoms harmonic restraints
-    "k_fix": 100.0,                                # [eV/Å^2]
+    "k_fix": 300.0,                                # [eV/Å^2]
 }
 
 # GrowingString (path representation)

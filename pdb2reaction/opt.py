@@ -42,6 +42,7 @@ from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
+    strip_inherited_keys,
     format_geom_for_echo,
     format_elapsed,
     normalize_choice,
@@ -460,8 +461,7 @@ def cli(
             click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
             click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
             echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
-            echo_sopt.update(opt_cfg)
-            echo_sopt["out_dir"] = str(out_dir_path)
+            echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
             click.echo(pretty_block(kind, echo_sopt))
             if dist_freeze:
                 display_pairs = []
