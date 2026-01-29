@@ -57,7 +57,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
    - `--tsopt True`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
    - `--thermo True`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
    - `--dft True`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo True`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
-   - Shared overrides include `--opt-mode`, `--opt-mode-post` (default `heavy`), `--flatten-imag-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
+   - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten-imag-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
    - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 
 6. **TSOPT-only mode** (single input, `--tsopt True`, no `--scan-lists`)
@@ -94,7 +94,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--max-cycles INT` | MEP maximum optimization cycles (GSM/DMF). | `300` |
 | `--climb BOOLEAN` | Enable TS climbing for the first segment in each pair. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset shared across scan, tsopt, and path_search (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
-| `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC endpoint optimization. | `heavy` |
+| `--opt-mode-post [light\|heavy]` | Optimizer preset override for TSOPT and post-IRC endpoint optimization. If omitted, `--opt-mode` applies when explicitly set; otherwise TSOPT defaults to `heavy`. | _None_ |
 | `--dump BOOLEAN` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path_search`/`path-opt`; scan/tsopt receive it only when explicitly set here. In this wrapper, the freq stage uses `dump=True` by default to write `thermoanalysis.yaml`; set `--dump False` explicitly to disable it. | `False` |
 | `--convert-files {True|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
 | `--thresh TEXT` | Convergence preset for MEP and single-structure optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |

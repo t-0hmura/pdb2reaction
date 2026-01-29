@@ -1044,7 +1044,7 @@ def _run_tsopt_on_hei(
     args_yaml: Optional[Path],
     out_dir: Path,
     freeze_links: bool,
-    opt_mode_default: str,
+    opt_mode_default: Optional[str],
     ref_pdb: Optional[Path],
     convert_files: bool,
     overrides: Optional[Dict[str, Any]] = None,
@@ -1535,10 +1535,11 @@ def _irc_and_match(
 @click.option(
     "--opt-mode-post",
     type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="heavy",
-    show_default=True,
+    default=None,
+    show_default=False,
     help=(
-        "Optimizer mode for post-processing TSOPT/endpoint optimizations."
+        "Optimizer mode override for TSOPT/post-IRC endpoint optimizations. "
+        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to tsopt defaults."
     ),
 )
 @click.option(
@@ -1905,6 +1906,17 @@ def cli(
     except Exception:
         dump_override_requested = False
 
+    opt_mode_set = False
+    opt_mode_post_set = False
+    try:
+        opt_mode_source = ctx.get_parameter_source("opt_mode")
+        opt_mode_set = opt_mode_source not in (None, ParameterSource.DEFAULT)
+        opt_mode_post_source = ctx.get_parameter_source("opt_mode_post")
+        opt_mode_post_set = opt_mode_post_source not in (None, ParameterSource.DEFAULT)
+    except Exception:
+        opt_mode_set = False
+        opt_mode_post_set = False
+
     argv_all = sys.argv[1:]
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
@@ -1933,8 +1945,13 @@ def cli(
             "or use a single structure with --scan-lists, or a single structure with --tsopt True."
         )
 
-    opt_mode_post_use = opt_mode_post.lower() if opt_mode_post is not None else opt_mode.lower()
-    tsopt_opt_mode_default = opt_mode_post_use
+    tsopt_opt_mode_default: Optional[str] = None
+    if opt_mode_post_set and opt_mode_post is not None:
+        tsopt_opt_mode_default = opt_mode_post.lower()
+    elif opt_mode_set:
+        tsopt_opt_mode_default = opt_mode.lower()
+    else:
+        tsopt_opt_mode_default = "heavy"
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)

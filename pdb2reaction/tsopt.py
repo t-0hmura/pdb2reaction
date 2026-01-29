@@ -1036,74 +1036,75 @@ class HessianDimer:
         _steps_normal, zero_step_normal = self._dimer_loop(self.thresh)
 
         # (4) Flatten loop — exact Hessian each iteration & optional Bofill update
-        if self.flatten_loop_bofill:
-            print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
-        else:
-            print("Flatten loop without Bofill updates (flatten displacements only)...")
-
-        # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
-        H = self._calc_full_hessian_cached(allow_reuse=zero_step_normal)
-        if H.size(0) == 3 * N:
-            # full → extract active
-            H = _extract_active_block(H, mask_dof)  # torch (3N_act,3N_act)
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        # Flatten iterations with Hessian updates
-        for it in range(self.flatten_max_iter):
-            if (self.max_total_cycles - self._cycles_spent) <= 0:
-                break
-
-            # (a) Frequencies & modes from the active Hessian
-            freqs_cm, modes_embedded = _frequencies_cm_and_modes(
-                H.clone(),
-                self.geom.atomic_numbers,
-                self.geom.cart_coords.reshape(-1, 3),
-                self.device,
-                freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
-            )
-            n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
-            ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
-            print(f"[Imaginary modes] n={n_imag}  ({ims})")
-            if n_imag <= 1:
-                break
-
-            # (b) Flatten other imaginary modes
-            x_before_flat = self.geom.cart_coords.copy().reshape(-1)
-            g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
-
-            did_flatten = self._flatten_once_with_modes(freqs_cm, modes_embedded)
-            if not did_flatten:
-                break
-
-            x_after_flat = self.geom.cart_coords.copy().reshape(-1)
-            g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
-
-            # (c) Bofill update using UMA gradients across the flatten displacement
+        if self.flatten_max_iter > 0:
             if self.flatten_loop_bofill:
-                delta_flat_full = x_after_flat - x_before_flat
-                delta_flat_act = delta_flat_full[mask_dof]
-                g_old_act = g_before_flat[mask_dof]
-                g_new_act = g_after_flat[mask_dof]
-                H = _bofill_update_active(H, delta_flat_act, g_new_act, g_old_act)
+                print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
+            else:
+                print("Flatten loop without Bofill updates (flatten displacements only)...")
 
-            # (d) Refresh dimer direction
-            mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
-                H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
-                self.masses_au_t, active_idx, self.device, root=self.root
-            )
-            print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
-            np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
-
-            # (e) Re-optimize with Dimer (consumes global cycle budget)
-            _steps_flat, zero_step_flat = self._dimer_loop(self.thresh)
-
-            # (f) After dimer optimization, recompute an exact Hessian for the next iteration
-            H = self._calc_full_hessian_cached(allow_reuse=zero_step_flat)
+            # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
+            H = self._calc_full_hessian_cached(allow_reuse=zero_step_normal)
             if H.size(0) == 3 * N:
-                H = _extract_active_block(H, mask_dof)
+                # full → extract active
+                H = _extract_active_block(H, mask_dof)  # torch (3N_act,3N_act)
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+            # Flatten iterations with Hessian updates
+            for it in range(self.flatten_max_iter):
+                if (self.max_total_cycles - self._cycles_spent) <= 0:
+                    break
+
+                # (a) Frequencies & modes from the active Hessian
+                freqs_cm, modes_embedded = _frequencies_cm_and_modes(
+                    H.clone(),
+                    self.geom.atomic_numbers,
+                    self.geom.cart_coords.reshape(-1, 3),
+                    self.device,
+                    freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
+                )
+                n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
+                ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
+                print(f"[Imaginary modes] n={n_imag}  ({ims})")
+                if n_imag <= 1:
+                    break
+
+                # (b) Flatten other imaginary modes
+                x_before_flat = self.geom.cart_coords.copy().reshape(-1)
+                g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
+
+                did_flatten = self._flatten_once_with_modes(freqs_cm, modes_embedded)
+                if not did_flatten:
+                    break
+
+                x_after_flat = self.geom.cart_coords.copy().reshape(-1)
+                g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
+
+                # (c) Bofill update using UMA gradients across the flatten displacement
+                if self.flatten_loop_bofill:
+                    delta_flat_full = x_after_flat - x_before_flat
+                    delta_flat_act = delta_flat_full[mask_dof]
+                    g_old_act = g_before_flat[mask_dof]
+                    g_new_act = g_after_flat[mask_dof]
+                    H = _bofill_update_active(H, delta_flat_act, g_new_act, g_old_act)
+
+                # (d) Refresh dimer direction
+                mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
+                    H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
+                    self.masses_au_t, active_idx, self.device, root=self.root
+                )
+                print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
+                np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
+
+                # (e) Re-optimize with Dimer (consumes global cycle budget)
+                _steps_flat, zero_step_flat = self._dimer_loop(self.thresh)
+
+                # (f) After dimer optimization, recompute an exact Hessian for the next iteration
+                H = self._calc_full_hessian_cached(allow_reuse=zero_step_flat)
+                if H.size(0) == 3 * N:
+                    H = _extract_active_block(H, mask_dof)
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
         # (5) Final outputs
         final_xyz = self.out_dir / "final_geometry.xyz"
