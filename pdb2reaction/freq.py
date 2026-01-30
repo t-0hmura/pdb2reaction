@@ -731,7 +731,7 @@ def cli(
             Cv_cal_per_Kmol = J_per_Kmol_to_cal_per_Kmol(tr.c_tot)
             S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)
 
-            click.echo("\n=== Thermochemistry summary started ===\n")
+            click.echo("\n====== Thermochemistry summary started ======\n")
             click.echo(f"Temperature (K)         = {T:.2f}")
             click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
             if freeze_list:
@@ -752,7 +752,7 @@ def cli(
             click.echo(f"E (Thermal)                            = {_fmt_cal(E_thermal_cal)}")
             click.echo(f"Heat Capacity (Cv)                     = {_fmt_calK(Cv_cal_per_Kmol)}")
             click.echo(f"Entropy (S)                            = {_fmt_calK(S_cal_per_Kmol)}")
-            click.echo("\n=== Thermochemistry summary finished ===\n")
+            click.echo("\n====== Thermochemistry summary finished ======\n")
 
             if bool(thermo_cfg["dump"]):
                 out_yaml = out_dir_path / "thermoanalysis.yaml"

@@ -2039,7 +2039,7 @@ def cli(
         if _pdb_needs_elem_fix(p):
             if not elem_fix_echo:
                 _echo_section(
-                    "\n=== [all] Preflight — add_elem_info (only when element fields are missing) started ==="
+                    "\n====== [all] Preflight — add_elem_info (only when element fields are missing) started ======"
                 )
                 elem_fix_echo = True
             ensure_dir(elem_tmp_dir)
@@ -2075,7 +2075,7 @@ def cli(
 
     if not skip_extract:
         _echo_section(
-            f"\n=== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) started ==="
+            f"\n====== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) started ======"
         )
         try:
             ex_res = extract_api(
@@ -2113,7 +2113,7 @@ def cli(
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
         _echo_section(
-            f"\n=== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets started ==="
+            f"\n====== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets started ======"
         )
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
@@ -2228,7 +2228,7 @@ def cli(
     # TSOPT-only single-structure mode
     # -------------------------------------------------------------------------
     if single_tsopt_mode:
-        _echo_section("\n=== [all] TSOPT-only single-structure mode started ===\n")
+        _echo_section("\n====== [all] TSOPT-only single-structure mode started ======\n")
         tsroot = out_dir / "tsopt_single"
         ensure_dir(tsroot)
 
@@ -2698,7 +2698,7 @@ def cli(
             )
 
         _echo_section(
-            "\n=== [all] TSOPT-only pipeline successfully finished ==="
+            "\n====== [all] TSOPT-only pipeline successfully finished ======"
         )
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
@@ -2709,7 +2709,7 @@ def cli(
     pockets_for_path: List[Path]
     pocket_ref_pdbs: Optional[List[Path]] = None
     if is_single and has_scan:
-        _echo_section("\n=== [all] Stage 1b — Staged scan on input started ===\n")
+        _echo_section("\n====== [all] Stage 1b — Staged scan on input started ======\n")
         ensure_dir(scan_dir)
 
         if skip_extract:
@@ -2876,7 +2876,7 @@ def cli(
     # -------------------------------------------------------------------------
     if not refine_path:
         _echo_section(
-            f"\n=== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ==="
+            f"\n====== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ======"
         )
 
         if len(pockets_for_path) < 2:
@@ -3212,7 +3212,7 @@ def cli(
     if refine_path:
         # --- recursive GSM path_search branch ---
         _echo_section(
-            f"\n=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) started ==="
+            f"\n====== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) started ======"
         )
 
         ps_args: List[str] = []
@@ -3285,7 +3285,7 @@ def cli(
     # -------------------------------------------------------------------------
     # Stage 3: merge to full systems (performed by path_search when enabled)
     # -------------------------------------------------------------------------
-    _echo_section(f"\n=== [all] Stage 3/{stage_total} — Merge into full-system templates started ===\n")
+    _echo_section(f"\n====== [all] Stage 3/{stage_total} — Merge into full-system templates started ======\n")
     if refine_path and gave_ref_pdb:
         _echo(
             "[all] Merging was carried out by path_search using the original inputs as templates."
@@ -3311,7 +3311,7 @@ def cli(
     _echo(
         "  - energy_diagram_MEP.png / energy_diagram.* (copied summary at <out-dir>/)"
     )
-    _echo_section("\n=== [all] Pipeline (core path) successfully finished ===\n")
+    _echo_section("\n====== [all] Pipeline (core path) successfully finished ======\n")
 
     summary_yaml = path_dir / "summary.yaml"
     summary_loaded = load_yaml_dict(summary_yaml) if summary_yaml.exists() else {}
@@ -3383,7 +3383,7 @@ def cli(
     # Stage 4: post-processing per reactive segment
     # -------------------------------------------------------------------------
     _echo_section(
-        "\n=== [all] Stage 4 — Post-processing per reactive segment started ==="
+        "\n====== [all] Stage 4 — Post-processing per reactive segment started ======"
     )
 
     if not segments:
