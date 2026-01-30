@@ -3,7 +3,7 @@
 ## Overview
 `pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
 
-When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True|False}` (enabled by default). PDB-specific conveniences include:
+When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True\|False}` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
 - Output conversion produces `final_geometry.pdb` (and `optimization.pdb` when dumping trajectories) using the input PDB as the topology reference.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
@@ -14,11 +14,11 @@ A Gaussian `.gjf` template seeds the charge/spin defaults and enables automatic 
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                 [--opt-mode light|heavy] [--freeze-links BOOL] \
-                 [--dist-freeze '[(i,j,target_A), ...]'] [--one-based {True|False}] \
-                 [--bias-k K_eV_per_A2] [--dump BOOL] [--out-dir DIR] \
+                 [--opt-mode light|heavy] [--freeze-links {True\|False}] \
+                 [--dist-freeze '[(i,j,target_A), ...]'] [--one-based {True\|False}] \
+                 [--bias-k K_eV_per_A2] [--dump {True\|False}] [--out-dir DIR] \
                  [--max-cycles N] [--thresh PRESET] [--args-yaml FILE] \
-                 [--convert-files {True|False}] [--ref-pdb FILE]
+                 [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ## Workflow
@@ -34,17 +34,17 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | --- | --- | --- |
 | `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
 | `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_A)` tuples for harmonic restraints. | _None_ |
-| `--one-based {True|False}` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `True` |
+| `--one-based {True\|False}` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `True` |
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
-| `--freeze-links BOOL` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
+| `--freeze-links {True\|False}` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
-| `--dump BOOL` | Emit trajectory dumps (`optimization.trj`). | `False` |
-| `--convert-files {True|False}` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
+| `--dump {True\|False}` | Emit trajectory dumps (`optimization.trj`). | `False` |
+| `--convert-files {True\|False}` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
@@ -62,7 +62,7 @@ out_dir/
 ```
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
-## YAML sections (`--args-yaml`)
+## YAML configuration (`--args-yaml`)
 YAML values override CLI, which override the defaults below.
 
 ### `geom`

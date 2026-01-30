@@ -8,7 +8,7 @@ are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light,
 or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
 run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
-When `--scan-list(s)` is supplied once the scan runs in a single stage; supplying
+When `--scan-lists` is supplied once the scan runs in a single stage; supplying
 multiple literals runs sequential stages, each starting from the previous stage’s
 relaxed result.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
@@ -17,8 +17,8 @@ enabling format-aware PDB/GJF output conversion.
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                  --scan-list(s) '[(i,j,targetÅ), ...]' [options]
-                  [--convert-files {True|False}] [--ref-pdb FILE]
+                  --scan-lists '[(i,j,targetÅ), ...]' [options]
+                  [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -33,7 +33,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
     --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode light \
     --preopt True --endopt True
 
-# Supply multiple stage literals after a single --scan-list(s)
+# Supply multiple stage literals after a single --scan-lists
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
     '[("TYR,285,CA","MMT,309,C10",1.35)]' \
     '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
@@ -47,7 +47,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
    charge before any scans.
 2. Optionally run an unbiased preoptimization (`--preopt True`) before any
    biasing so the starting point is relaxed.
-3. For each stage literal supplied via `--scan-list(s)`, parse and normalize the
+3. For each stage literal supplied via `--scan-lists`, parse and normalize the
    `(i, j)` indices (1-based by default). When the input is a PDB, each entry
    may be either an integer index or an atom selector string like `'TYR,285,CA'`;
    selector fields can be separated by spaces, commas, slashes, backticks, or
@@ -69,28 +69,28 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template > 0). When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
-| `--scan-list(s) TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
-| `--one-based {True|False}` | Interpret atom indices as 1- or 0-based. | `True` |
+| `--scan-lists TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `--one-based {True\|False}` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Overrides `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
-| `--freeze-links BOOL` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
-| `--dump BOOL` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
+| `--freeze-links {True\|False}` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
+| `--dump {True\|False}` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
-| `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
-| `--endopt BOOL` | Run an unbiased optimization after each stage. | `True` |
+| `--preopt {True\|False}` | Run an unbiased optimization before scanning. | `True` |
+| `--endopt {True\|False}` | Run an unbiased optimization after each stage. | `True` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
-  [`opt`](opt.md#yaml-configuration-args-yaml). `opt.dump` is internally forced
+  [YAML Reference](yaml-reference.md). `opt.dump` is internally forced
   to `False`; use `--dump` to control stage trajectories.
 - `--relax-max-cycles` overrides `opt.max_cycles` only when explicitly provided; otherwise YAML `opt.max_cycles` is honored (default `10000`).
 
@@ -121,7 +121,7 @@ out_dir/ (default: ./result_scan/)
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
-- Provide multiple literals after a single `--scan-list(s)` flag; repeated flags are not accepted.
+- Provide multiple literals after a single `--scan-lists` flag; repeated flags are not accepted.
   Tuples must have positive targets. Atom indices are normalized to 0-based internally. For
   PDB inputs, `i`/`j` can be selector strings with flexible delimiters
   (space/comma/slash/backtick/backslash) and unordered tokens.
@@ -137,7 +137,7 @@ out_dir/ (default: ./result_scan/)
 
 ## YAML configuration (`--args-yaml`)
 The YAML root must be a mapping. YAML parameters override CLI. Shared sections
-reuse the definitions documented for [`opt`](opt.md#yaml-configuration-args-yaml).
+reuse the definitions documented for [YAML Reference](yaml-reference.md).
 
 ```yaml
 geom:

@@ -12,7 +12,7 @@ records in a PDB file.
 
 ## Usage
 ```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True|False}]
+pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True\|False}]
 ```
 
 ## Examples
@@ -49,7 +49,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file. | Required |
 | `-o, --out PATH` | Output path. When set, `--overwrite` is ignored. | _None_ → `<input>_add_elem.pdb` |
-| `--overwrite {True|False}` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
+| `--overwrite {True\|False}` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
 
 ## Outputs
 - A PDB file with element symbols populated/corrected:

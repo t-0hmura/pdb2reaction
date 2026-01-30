@@ -1,0 +1,37 @@
+/* Custom styles for pdb2reaction documentation */
+
+/* Make the sidebar title (pdb2reaction) bold */
+.sidebar-brand-text {
+    font-weight: 700 !important;
+}
+
+/* Reduce overall font size */
+html {
+    font-size: 14px;
+}
+
+/* Adjust content area font */
+.content {
+    font-size: 0.95rem;
+}
+
+/* Adjust sidebar font */
+.sidebar-tree {
+    font-size: 0.9rem;
+}
+
+/* Adjust code blocks */
+pre, code {
+    font-size: 0.85rem;
+}
+
+/* Adjust table font */
+table {
+    font-size: 0.9rem;
+}
+
+/* Adjust headings */
+h1 { font-size: 1.8rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.1rem; }

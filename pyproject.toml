@@ -11,12 +11,12 @@ license = {file = "LICENSE"}
 dynamic = ["version"]
 requires-python = ">=3.11"
 keywords = [
-    "computational chemistry",
+    "computational-chemistry",
     "enzyme",
-    "reaction path",
-    "transition state",
+    "reaction-mechanism",
+    "transition-state",
     "PDB",
-    "machine learning potential",
+    "machine-learning-potential",
     "MLIP",
 ]
 classifiers = [
@@ -66,10 +66,20 @@ dependencies = [
     "tabulate",
 ]
 
+[project.optional-dependencies]
+docs = [
+    "sphinx>=7.0",
+    "myst-parser>=2.0",
+    "furo>=2024.0",
+    "sphinx-copybutton>=0.5",
+    "sphinx-autobuild>=2024.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/t-0hmura/pdb2reaction"
 Repository = "https://github.com/t-0hmura/pdb2reaction"
 Issues = "https://github.com/t-0hmura/pdb2reaction/issues"
+Documentation = "https://t-0hmura.github.io/pdb2reaction/"
 
 [project.scripts]
 pdb2reaction = "pdb2reaction.cli:cli"

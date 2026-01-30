@@ -21,11 +21,11 @@ switch to `--opt-mode light` to run the Hessian Dimer workflow.
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                    [--opt-mode light|heavy] [--flatten-imag-mode {True|False}] \
-                    [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
-                    [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
+                    [--opt-mode light|heavy] [--flatten-imag-mode {True\|False}] \
+                    [--freeze-links {True\|False}] [--max-cycles N] [--thresh PRESET] \
+                    [--dump {True\|False}] [--out-dir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference] \
-                    [--convert-files {True|False}] [--ref-pdb FILE]
+                    [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -86,18 +86,18 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
+| `--freeze-links {True\|False}` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
-| `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
+| `--dump {True\|False}` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to both light (dimer loop) and heavy (post-RSIRFO) modes. | `False` |
+| `--flatten-imag-mode {True\|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to both light (dimer loop) and heavy (post-RSIRFO) modes. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
 
@@ -130,7 +130,7 @@ out_dir/ (default: ./result_tsopt/)
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; YAML values override CLI. Shared sections reuse
-[`opt`](opt.md#yaml-configuration-args-yaml). Keep the full block below intact if it already
+[YAML Reference](yaml-reference.md). Keep the full block below intact if it already
 matches your workflow—adjust only the values you need to change.
 
 ```yaml

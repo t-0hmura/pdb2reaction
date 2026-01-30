@@ -7,13 +7,13 @@ Construct a continuous minimum-energy path (MEP) across **two or more** structur
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
                          [--workers N] [--workers-per-node N]
-                         [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--thresh PRESET]
+                         [--mep-mode {gsm|dmf}] [--freeze-links {True\|False}] [--thresh PRESET]
                          [--refine-mode {peak|minima}]
-                         [--max-nodes N] [--max-cycles N] [--climb BOOL]
-                         [--opt-mode light|heavy] [--dump BOOL]
-                         [--out-dir DIR] [--preopt BOOL]
-                         [--align {True|False}] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
-                         [--convert-files {True|False}]
+                         [--max-nodes N] [--max-cycles N] [--climb {True\|False}]
+                         [--opt-mode light|heavy] [--dump {True\|False}]
+                         [--out-dir DIR] [--preopt {True\|False}]
+                         [--align {True\|False}] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
+                         [--convert-files {True\|False}]
                          [--args-yaml FILE]
 ```
 
@@ -34,23 +34,23 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
 | `-q, --charge INT` | Total charge. Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds (PDB inputs). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs. | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs. | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | Explicit `True`/`False`. When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
+| `--freeze-links {True\|False}` | When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
-| `--climb BOOL` | Explicit `True`/`False`. Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
+| `--climb {True\|False}` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
-| `--dump BOOL` | Explicit `True`/`False`. Dump MEP (GSM/DMF) and single-structure trajectories/restarts. | `False` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
+| `--dump {True\|False}` | Dump MEP (GSM/DMF) and single-structure trajectories/restarts. | `False` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt BOOL` | Explicit `True`/`False`. Pre-optimize each endpoint before MEP search (recommended). | `True` |
-| `--align {True|False}` | Align all inputs to the first structure before searching. | `True` |
+| `--preopt {True\|False}` | Pre-optimize each endpoint before MEP search (recommended). | `True` |
+| `--align {True\|False}` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 | `--ref-pdb PATH...` | Pocket reference PDBs to use when inputs are XYZ/GJF (one per input; keeps XYZ coordinates). | _None_ |
 
@@ -88,11 +88,11 @@ out_dir/ (default: ./result_path_search/)
 - Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. For non-`.gjf` inputs without a usable `--ligand-charge`, the command aborts; multiplicity defaults to `1` when omitted.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.
+The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
-`sopt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [`opt`](opt.md#yaml-configuration-args-yaml) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
+`sopt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml-reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 

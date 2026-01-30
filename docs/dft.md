@@ -8,7 +8,7 @@ Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySC
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
                  [--func-basis 'FUNC/BASIS'] \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True|False}] \
+                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True\|False}] \
                  [--ref-pdb FILE] [--args-yaml FILE]
 ```
 
@@ -32,7 +32,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
 | `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
@@ -40,7 +40,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
-| `--convert-files {True|False}` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
+| `--convert-files {True\|False}` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 

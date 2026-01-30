@@ -2,7 +2,7 @@
 
 ## Overview
 `scan2d` performs a two-distance (d₁, d₂) grid scan using harmonic restraints
-and UMA-based relaxations. You supply one `--scan-list(s)` literal with two
+and UMA-based relaxations. You supply one `--scan-lists` literal with two
 quadruples `(i, j, lowÅ, highÅ)`; the tool constructs linear grids for both
 ranges using `--max-step-size`, then **reorders each axis so that points closest
 to the (pre)optimized structure are visited first**. Each grid point is relaxed
@@ -16,19 +16,19 @@ enabling format-aware PDB/GJF output conversion.
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    --scan-list(s) '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options]
-                    [--convert-files {True|False}] [--ref-pdb FILE]
+                    --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]' [options]
+                    [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
 ```bash
 # Minimal two-distance scan
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-list(s) '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
 
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-list(s) '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
+    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
     --max-step-size 0.20 --dump True --out-dir ./result_scan2d/ --opt-mode light \
     --preopt True --baseline min
 ```
@@ -41,7 +41,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
    scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
    structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
    stored in `surface.csv` with indices `i = j = -1`.
-2. Parse the single `--scan-list(s)` literal into two quadruples, normalize indices
+2. Parse the single `--scan-lists` literal into two quadruples, normalize indices
    (1-based by default). For PDB inputs, each atom entry can be an integer index
    or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
    slashes, backticks, or backslashes, and token order is flexible (fallback
@@ -70,29 +70,29 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
-| `--scan-list(s) TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
-| `--one-based {True|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
+| `--scan-lists TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `--one-based {True\|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
-| `--freeze-links BOOL` | When the input is PDB, freeze parents of link hydrogens. | `True` |
-| `--dump BOOL` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--freeze-links {True\|False}` | When the input is PDB, freeze parents of link hydrogens. | `True` |
+| `--dump {True\|False}` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
-| `--preopt BOOL` | Run an unbiased optimization before scanning. | `True` |
+| `--preopt {True\|False}` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [`opt`](opt.md#yaml-configuration-args-yaml). `opt.dump` is forced to `False`
+  [YAML Reference](yaml-reference.md). `opt.dump` is forced to `False`
   so trajectory control stays on the CLI.
 
 ### Section `bias`

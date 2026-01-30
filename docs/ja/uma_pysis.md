@@ -1,33 +1,33 @@
-# `uma_pysis` calculator
+# `uma_pysis` 計算機
 
-## Overview
-`uma_pysis` exposes Meta's UMA machine-learning interatomic potentials to PySisyphus as an ASE-compatible calculator. It returns energies, forces, and Hessians (via analytical autograd or finite differences) in Hartree units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+## 概要
+`uma_pysis` は、MetaのUMA機械学習ポテンシャルをPySisyphus向けのASE互換計算機として公開します。エネルギー/力/ヘシアン（解析自動微分または有限差分）を Hartree 単位で返し、デバイス配置・グラフ構築・単位変換を内部で処理します。`pdb2reaction` では最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
 
-## Quick start
+## クイックスタート
 ```python
 from pdb2reaction.uma_pysis import uma_pysis
 
-# Build a calculator for a neutral singlet system on GPU when available
+# GPUが利用可能ならGPU、なければCPUで中性一重項の計算機を構築
 calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
 energy_only = calc.get_energy(["C", "O"], coords_bohr)
 forces = calc.get_forces(["C", "O"], coords_bohr)
 hessian = calc.get_hessian(["C", "O"], coords_bohr)
 ```
-- Coordinates are supplied in **Bohr**; the wrapper converts to Å for UMA and converts energies/derivatives back to Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻².
-- Attach the calculator to a `pysisyphus` geometry object or call it directly as above.
+- 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
+- `pysisyphus` の geometry オブジェクトにアタッチするか、上記のように直接呼び出せます。
 
-## Key features
-- **UMA backend** – loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch.
-- **Device handling** – `device="auto"` selects CUDA when available, otherwise CPU. Graph construction happens on the chosen device; when `workers>1`, the parallel predictor manages device transfers.
-- **Hessian modes** – `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
-- **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. Hessians either drop frozen degrees of freedom (`return_partial_hessian=True`) or zero corresponding columns in the full matrix.
-- **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian in the model's native dtype (typically float32).
-- **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput. Analytical Hessians are skipped in this mode.
+## 主な特徴
+- **UMAバックエンド** – FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。
+- **デバイス処理** – `device="auto"` はCUDAがあればGPU、なければCPUを選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
+- **ヘシアンモード** – `hessian_calc_mode="Analytical"` で2階自動微分、`"FiniteDifference"`（デフォルト）は力の中心差分。`workers>1` の場合は解析ヘシアンは無効化されます。
+- **凍結原子** – `freeze_atoms` に0始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
+- **精度制御** – エネルギー/力は常にfloat64。`hessian_double=False` でヘシアンをモデルのネイティブdtype（通常float32）で返します。
+- **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。解析ヘシアンはこのモードでは無効です。
 
-## HPC example: PBS + Open MPI + Ray
+## HPC例: PBS + Open MPI + Ray
 
-`workers` / `workers_per_node` can be scaled across nodes by launching a Ray cluster under your scheduler. The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system (adjust module names, ports, and resource requests to match your environment):
+`workers` / `workers_per_node` は、スケジューラ環境でRayクラスタを立ち上げてスケールできます。以下はOpen MPIを使うPBSスクリプトの一例です（モジュール名、ポート、リソース要求は環境に合わせて調整してください）。
 
 ```bash
 #!/bin/bash
@@ -158,29 +158,29 @@ ray status || true
 pdb2reaction opt -i test.pdb -q -5 -m 1
 ```
 
-## Configuration reference
-Common constructor keywords (defaults shown in the rightmost column):
+## 設定リファレンス
+代表的なコンストラクタ引数（右端はデフォルト値）:
 
-| Option | Description | Default |
+| オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `charge` | Total system charge. | `0` |
-| `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | UMA pretrained model name. | `"uma-s-1p1"` |
-| `task_name` | Task tag recorded in UMA batches. | `"omol"` |
-| `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
-| `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
-| `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
-| `freeze_atoms` | List of 0-based atom indices to freeze. | _None_ |
-| `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |
-| `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `False` |
-| `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |
-| `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
+| `charge` | 総電荷 | `0` |
+| `spin` | スピン多重度（2S+1） | `1` |
+| `model` | UMAプリトレイン済みモデル名 | `"uma-s-1p1"` |
+| `task_name` | UMAバッチに記録されるタスクタグ | `"omol"` |
+| `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
+| `workers` / `workers_per_node` | 並列UMA予測器（`workers>1` で解析ヘシアン無効） | `1` / `1` |
+| `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
+| `freeze_atoms` | 0始まりの凍結原子インデックス | _None_ |
+| `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
+| `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
+| `hessian_double` | ヘシアンをfloat64で返す | `True` |
+| `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 
-## CLI and YAML usage
-`uma_pysis` is registered as a PySisyphus calculator entry point. With a YAML input file matching these keywords you can run:
+## CLI / YAML での利用
+`uma_pysis` はPySisyphusの計算機エントリポイントとして登録されています。以下のようにYAML入力で起動できます:
 
 ```bash
 uma_pysis input.yaml
 ```
 
-Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under `calc.kwargs` to reuse the same UMA configuration across stages.
+`pdb2reaction` の各コマンド（`all`, `opt`, `path-opt` など）では、`--args-yaml` の `calc.kwargs` に同等の設定を渡すことで、同一のUMA設定を再利用できます。

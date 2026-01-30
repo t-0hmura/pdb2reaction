@@ -14,12 +14,12 @@ enabling format-aware PDB output conversion.
 ## Usage
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                  [--freeze-links {True|False}] \
+                  [--freeze-links {True\|False}] \
                   [--max-write N] [--amplitude-ang Å] [--n-frames N] \
                   [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \
-                  [--temperature K] [--pressure atm] [--dump {True|False}] \
+                  [--temperature K] [--pressure atm] [--dump {True\|False}] \
                   [--hessian-calc-mode Analytical|FiniteDifference] \
-                  [--convert-files {True|False}] [--ref-pdb FILE]
+                  [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -61,10 +61,10 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
+| `--freeze-links {True\|False}` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. | `True` |
 | `--max-write INT` | Number of modes to export. | `10` |
 | `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |
@@ -72,9 +72,9 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
-| `--dump BOOL` | Explicit `True`/`False`. Write `thermoanalysis.yaml`. | `False` |
+| `--dump {True\|False}` | Write `thermoanalysis.yaml`. | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--args-yaml FILE` | YAML overrides (sections: `geom`, `calc`, `freq`, `thermo`). | _None_ |
 
@@ -99,7 +99,7 @@ out_dir/ (default: ./result_freq/)
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; YAML values override both defaults and CLI switches (highest
-precedence). Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml).
+precedence). Shared sections reuse [YAML Reference](yaml-reference.md).
 An additional `thermo` section is supported for thermochemistry controls.
 
 ```yaml

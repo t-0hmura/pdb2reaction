@@ -11,7 +11,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
                  [--forward True|False] [--backward True|False]
                  [--freeze-links True|False]
                  [--out-dir DIR]
-                 [--convert-files {True|False}] [--ref-pdb FILE]
+                 [--convert-files {True\|False}] [--ref-pdb FILE]
                  [--hessian-calc-mode Analytical|FiniteDifference]
                  [--args-yaml FILE]
 ```
@@ -37,17 +37,17 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | --- | --- | --- |
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge; overrides `calc.charge`. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | `0.10` |
 | `--root INT` | Imaginary-mode index for the initial displacement; overrides `irc.root`. | `0` |
-| `--forward BOOL` | Run forward branch (`irc.forward`). Requires explicit `True`/`False`. | `True` |
-| `--backward BOOL` | Run backward branch (`irc.backward`). Requires explicit `True`/`False`. | `True` |
-| `--freeze-links BOOL` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
+| `--forward {True\|False}` | Run forward branch (`irc.forward`). | `True` |
+| `--backward {True\|False}` | Run backward branch (`irc.backward`). | `True` |
+| `--freeze-links {True\|False}` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `True` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | `FiniteDifference` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
@@ -71,7 +71,7 @@ out_dir/ (default: ./result_irc/)
 - `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; YAML overrides CLI. Shared sections reuse [`opt`](opt.md#yaml-configuration-args-yaml) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block.
+Provide a mapping; YAML overrides CLI. Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.

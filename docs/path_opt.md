@@ -7,11 +7,11 @@
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                       [--workers N] [--workers-per-node N] \
-                      [--mep-mode {gsm|dmf}] [--freeze-links BOOL] [--max-nodes N] [--max-cycles N] \
-                      [--climb BOOL] [--dump BOOL] [--thresh PRESET] \
-                      [--preopt BOOL] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends BOOL] \
+                      [--mep-mode {gsm|dmf}] [--freeze-links {True\|False}] [--max-nodes N] [--max-cycles N] \
+                      [--climb {True\|False}] [--dump {True\|False}] [--thresh PRESET] \
+                      [--preopt {True\|False}] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends {True\|False}] \
                       [--out-dir DIR] [--args-yaml FILE] \
-                      [--convert-files {True|False}] [--ref-pdb FILE]
+                      [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ## Workflow
@@ -36,24 +36,24 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
 | `-q, --charge INT` | Total charge (`calc.charge`). Optional; when omitted, `.gjf` templates or `--ligand-charge` (PDB inputs) may supply it, otherwise it falls back to `0`. Overrides `--ligand-charge` when both are set. | Template/`0` |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs; otherwise the charge falls back to `0`. | `None` |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs; otherwise the charge falls back to `0`. | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
-| `--freeze-links BOOL` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
+| `--freeze-links {True\|False}` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
 | `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
-| `--climb BOOL` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
-| `--dump BOOL` | Dump MEP trajectories/restarts (GSM/DMF). | `False` |
+| `--climb {True\|False}` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
+| `--dump {True\|False}` | Dump MEP trajectories/restarts (GSM/DMF). | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `light` |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | `gau` |
 | `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
-| `--preopt BOOL` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
+| `--preopt {True\|False}` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
-| `--fix-ends BOOL` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
+| `--fix-ends {True\|False}` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
 
 ## Outputs
 ```
