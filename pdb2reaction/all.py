@@ -2875,9 +2875,9 @@ def cli(
     # Stage 2: MEP search
     # -------------------------------------------------------------------------
     if not refine_path:
-            _echo_section(
-                f"=== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ==="
-            )
+        _echo_section(
+            f"=== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ==="
+        )
 
         if len(pockets_for_path) < 2:
             raise click.ClickException("[all] Need at least two structures for path-opt MEP concatenation.")
@@ -3211,9 +3211,9 @@ def cli(
             )
     if refine_path:
         # --- recursive GSM path_search branch ---
-            _echo_section(
-                f"=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) started ==="
-            )
+        _echo_section(
+            f"=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) started ==="
+        )
 
         ps_args: List[str] = []
 
