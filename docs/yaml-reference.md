@@ -1,4 +1,4 @@
-# YAML Configuration Reference
+# YAML Reference
 
 This document provides a comprehensive reference for all YAML configuration options used across `pdb2reaction` subcommands. Configuration files are passed via `--args-yaml` and follow the precedence: **defaults → CLI → YAML** (YAML has highest precedence).
 

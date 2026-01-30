@@ -1,4 +1,4 @@
-# `scan3d` subcommand
+# `scan3d`
 
 ## Overview
 `scan3d` performs a three-distance grid scan with harmonic restraints using the

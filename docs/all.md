@@ -1,4 +1,4 @@
-# `all` subcommand
+# `all`
 
 ## Overview
 `pdb2reaction all` is the top-level command that can run the **entire pipeline** in one go: pocket extraction → optional staged UMA scan → recursive MEP search (`path_search`, GSM/DMF) → full-system merging → optional TS optimization + IRC (`tsopt`) → optional vibrational analysis (`freq`) → optional single-point DFT (`dft`). The command accepts multi-structure ensembles, converts single-structure scans into ordered intermediates, and can fall back to a TSOPT-only pocket workflow. All downstream tools share a consistent CLI interface, so you can coordinate long reaction workflows from a single invocation. Format-aware XYZ/TRJ → PDB/GJF conversions across every stage are controlled by the shared `--convert-files {True\|False}` flag (enabled by default).
@@ -169,7 +169,7 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 - `--args-yaml` lets you coordinate all calculators from a single configuration file. YAML values override CLI flags.
 
 ## YAML configuration (`--args-yaml`)
-The same YAML file is forwarded unchanged to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
+The same YAML file is forwarded unchanged to **every** invoked command. Each tool reads the sections described in its own documentation:
 
 - [`path_search`](path_search.md): `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`.
 - [`scan`](scan.md): `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`.

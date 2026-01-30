@@ -1,4 +1,4 @@
-# `scan3d` サブコマンド
+# `scan3d`
 
 ## 概要
 `scan3d` は、UMA計算機と調和拘束を使った**3距離のグリッドスキャン**を実行します。`--scan-lists` には 3つの四つ組 `(i, j, lowÅ, highÅ)` を含む**1つのリテラル**を与えます。`--max-step-size` で各距離の線形グリッドを作り、（事前最適化された）開始構造に近い値が先に訪れられるよう並べ替えます。ループは外側 d₁ → 中間 d₂ → 内側 d₃ の順です。各グリッド点は対応する拘束をかけて緩和され、**バイアスを除去した**エネルギーが記録されます。`surface.csv` を事前に用意して、再計算せずに可視化だけを行うことも可能です。
@@ -70,7 +70,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
 `opt` の詳細は [docs/opt.md](opt.md) を参照してください。
 
 ## YAML設定（`--args-yaml`）
-最小例（詳細は [`opt`](opt.md#yaml-configuration-args-yaml) を参照）:
+最小例（詳細は {ref}`opt <yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:

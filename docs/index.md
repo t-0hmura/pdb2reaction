@@ -8,7 +8,6 @@
 :hidden:
 
 getting-started
-ja/index
 all
 extract
 add_elem_info
@@ -25,6 +24,7 @@ dft
 trj2fig
 yaml-reference
 uma_pysis
+ja/index
 ```
 
 ---
@@ -129,7 +129,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ### Charge and Spin
 - Use `--ligand-charge` to specify charges for unknown residues: `'SAM:1,GPP:-3'`
 - Use `-q/--charge` to override the total system charge
-- Use `-m/--mult` (or `-m/--multiplicity` on subcommands) to set spin multiplicity (default: 1)
+- Use `-m/--mult` (or `-m/--multiplicity` on commands) to set spin multiplicity (default: 1)
 
 ### Boolean Options
 All boolean CLI options require explicit `True` or `False`:

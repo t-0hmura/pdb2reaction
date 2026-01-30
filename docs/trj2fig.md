@@ -1,4 +1,4 @@
-# `trj2fig` subcommand
+# `trj2fig`
 
 ## Overview
 `trj2fig` converts an XYZ trajectory into polished energy profiles. By default it

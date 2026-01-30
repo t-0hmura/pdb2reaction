@@ -152,7 +152,7 @@ If you prefer to build the environment piece by piece:
 
 ## Command line basics
 
-The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default subcommand is `all`.
+The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default command is `all`.
 
 That means:
 
@@ -318,7 +318,7 @@ Each `path_search` segment directory also gets its own `summary.log` and `summar
 
 ---
 
-## CLI subcommands
+## CLI commands
 
 While most users will primarily call `pdb2reaction all`, the CLI also exposes subcommands like `pdb2reaction opt`. Each subcommand supports `-h/--help`.
 

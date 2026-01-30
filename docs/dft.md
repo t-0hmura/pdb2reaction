@@ -1,4 +1,4 @@
-# `dft` subcommand
+# `dft`
 
 ## Overview
 Run single-point DFT calculations on the GPU (using GPU4PySCF when available; otherwise falling back to CPU PySCF). In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.

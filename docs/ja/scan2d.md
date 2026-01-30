@@ -1,4 +1,4 @@
-# `scan2d` サブコマンド
+# `scan2d`
 
 ## 概要
 `scan2d` は、2つの距離 (d₁, d₂) のグリッドスキャンを調和拘束とUMA最適化で実行します。1つの `--scan-lists` リテラルに2つの四つ組 `(i, j, lowÅ, highÅ)` を与えると、`--max-step-size` に基づいて両軸の線形グリッドが作成されます。その後、**（事前最適化された）構造に最も近い点を先に訪れる**ように各軸が並べ替えられます。各グリッド点は緩和され、プロット可能なCSV/図出力が生成されます。`surface.csv` のエネルギーは常に**バイアスなし**で評価されるため、グリッド点を直接比較できます。最適化は `--opt-mode light`（デフォルト）の LBFGS、または `--opt-mode heavy` の RFOptimizer を使用します。
@@ -83,7 +83,7 @@ out_dir/ (デフォルト: ./result_scan2d/)
 - 電荷はテンプレートがあればそれを優先。`.gjf` 以外の入力では `-q/--charge` が必須ですが、`--ligand-charge` がある場合は例外（PDB入力、または `--ref-pdb` 付きXYZ/GJF）。明示的な `-q` が常に優先され、多重度は省略時に `1` です。
 
 ## YAML設定（`--args-yaml`）
-最小例（詳細は [`opt`](opt.md#yaml-configuration-args-yaml) を参照）:
+最小例（詳細は {ref}`opt <yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:

@@ -1,4 +1,4 @@
-# `dft` サブコマンド
+# `dft`
 
 ## 概要
 GPU（利用可能な場合はGPU4PySCF、そうでない場合はCPU PySCF）を使用して一点DFT計算を実行します。総エネルギーに加えて、Mulliken、meta-Löwdin、およびIAO原子電荷/スピン密度を報告します。XYZ/GJF入力では `--ref-pdb` が参照PDBトポロジーを提供し、原子数の検証や（`--ligand-charge` 使用時の）電荷導出に用いられますが、`dft` 自体はPDB/GJF出力を生成しません。

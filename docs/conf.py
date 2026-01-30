@@ -44,6 +44,8 @@ myst_enable_extensions = [
     'html_image',       # HTML image syntax
     'substitution',     # Substitution syntax
     'tasklist',         # Task lists
+    'attrs_inline',     # Inline {#id} attributes
+    'attrs_block',      # Block {#id} attributes for headings
 ]
 
 myst_heading_anchors = 3

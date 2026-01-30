@@ -1,4 +1,4 @@
-# `scan` subcommand
+# `scan`
 
 ## Overview
 `scan` performs a staged, bond-length–driven scan using the UMA calculator and

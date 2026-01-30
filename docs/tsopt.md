@@ -1,4 +1,4 @@
-# `tsopt` subcommand
+# `tsopt`
 
 ## Overview
 `pdb2reaction tsopt` optimizes transition states using two complementary workflows:
@@ -124,7 +124,7 @@ out_dir/ (default: ./result_tsopt/)
   `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
   exported when multiple remain.
 - `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging, mirroring the
-  behavior of other subcommands.
+  behavior of other commands.
 - PHVA translation/rotation projection mirrors the implementation in `freq`, reducing GPU
   memory consumption while preserving correct eigenvectors in the active space.
 

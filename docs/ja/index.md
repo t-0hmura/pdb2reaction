@@ -39,7 +39,7 @@ uma_pysis
 
 - [`all`](all.md) - **エンドツーエンドワークフロー**: 抽出 → スキャン → MEP探索 → TS最適化 → IRC → 熱化学 → DFT
 
-### CLIサブコマンド
+### CLIコマンド
 
 #### 構造準備
 | コマンド | 説明 |
@@ -128,7 +128,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ### 電荷とスピン
 - 未知残基の電荷を指定するには `--ligand-charge` を使用: `'SAM:1,GPP:-3'`
 - 総電荷を上書きするには `-q/--charge` を使用
-- スピン多重度は `-m/--mult`（サブコマンドでは `-m/--multiplicity`）で設定（デフォルト: 1）
+- スピン多重度は `-m/--mult`（コマンドでは `-m/--multiplicity`）で設定（デフォルト: 1）
 
 ### ブール値オプション
 すべてのブール値CLIオプションは明示的に `True` または `False` を指定する必要があります:
@@ -192,8 +192,8 @@ result_all/
 # 一般的なヘルプ
 pdb2reaction --help
 
-# サブコマンドのヘルプ
-pdb2reaction <subcommand> --help
+# コマンドのヘルプ
+pdb2reaction <command> --help
 ```
 
 問題や機能リクエストについては、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) をご覧ください。

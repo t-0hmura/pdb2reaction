@@ -1,4 +1,4 @@
-# `add-elem-info` サブコマンド
+# `add-elem-info`
 
 ## 概要
 `add-elem-info` は、PDBファイルの ATOM/HETATM レコードにある元素記号カラム（77–78）を修復します。

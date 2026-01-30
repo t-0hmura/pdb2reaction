@@ -1,4 +1,4 @@
-# `path-opt` サブコマンド
+# `path-opt`
 
 ## 概要
 `pdb2reaction path-opt` は、`--mep-mode` で選択されるpysisyphusのGrowing String法（GSM）またはDirect Max Flux（DMF）を使用して、2つのエンドポイント構造間の最小エネルギー経路（MEP）を探索します。UMAはすべてのイメージにエネルギー/勾配/ヘシアンを提供し、外部の剛体アライメントルーチンがオプティマイザー開始前にストリングを整えます。設定は **デフォルト → CLI → `--args-yaml`** の優先順位で `geom`/`calc`/`gs`/`opt` に適用されます。`--convert-files`（デフォルト有効）を有効にすると、PDB参照がある場合は軌跡を `.pdb` コンパニオンへ、Gaussianテンプレートがある場合はXYZスナップショット（例: HEI）を `.gjf` コンパニオンへミラーします。XYZ/GJF入力では `--ref-pdb` が参照PDBトポロジーを提供しXYZ座標を保持するため、PDB変換が可能です。GSMがデフォルトの経路生成器であり、単一構造最適化は `light`（LBFGS）プリセットがデフォルトです。

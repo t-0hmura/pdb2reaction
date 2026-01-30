@@ -3,6 +3,57 @@
 {% block body -%}
 {{ super() }}
 {% include "partials/icons.html" %}
+{% set is_ja = pagename.startswith('ja/') %}
+
+{#- Set language and filter sidebar based on current language -#}
+{% set is_ja = pagename.startswith('ja/') %}
+<script>
+(function() {
+  var isJa = {{ 'true' if is_ja else 'false' }};
+  document.body.dataset.lang = isJa ? 'ja' : 'en';
+
+  function filterSidebar() {
+    var topLevel = document.querySelector('.sidebar-tree > ul');
+    if (!topLevel) return;
+    var topItems = topLevel.querySelectorAll(':scope > li');
+    topItems.forEach(function(li) {
+      var link = li.querySelector(':scope > a');
+      if (!link) return;
+      var href = link.getAttribute('href') || '';
+      var isJaSection = href.includes('ja/') || href.includes('ja%2F');
+      var isEnglishFromJa = href.startsWith('../');
+
+      if (isJa) {
+        // Japanese page: hide English items (relative ../ links)
+        if (isEnglishFromJa) {
+          li.classList.add('lang-hidden');
+          return;
+        }
+        // Flatten the ja/index wrapper so JP pages align with EN nav structure
+        var nestedUl = li.querySelector(':scope > ul');
+        if (nestedUl) {
+          var children = Array.from(nestedUl.children);
+          children.forEach(function(child) {
+            topLevel.appendChild(child);
+          });
+          li.classList.add('lang-hidden');
+          return;
+        }
+        li.classList.remove('lang-hidden');
+      } else {
+        // English page: hide Japanese section
+        if (isJaSection) li.classList.add('lang-hidden');
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', filterSidebar);
+  } else {
+    filterSidebar();
+  }
+})();
+</script>
 
 <input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
 <input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
@@ -82,11 +133,27 @@
           </div>
           {% endif %}
           {#- Language switch -#}
-          {% set is_ja = pagename.startswith('ja/') %}
-          <div class="lang-switch" aria-label="Language switch">
-            <a class="lang-link{% if not is_ja %} is-active{% endif %}" href="{{ pathto(master_doc) }}"{% if not is_ja %} aria-current="page"{% endif %}>EN</a>
+          {% if is_ja %}
+            {% set en_page = pagename[3:] %}
+            {% set ja_page = pagename %}
+          {% else %}
+            {% set en_page = pagename %}
+            {% set ja_page = 'ja/' + pagename %}
+          {% endif %}
+          {% if hasdoc(en_page) %}
+            {% set en_href = pathto(en_page) %}
+          {% else %}
+            {% set en_href = pathto(master_doc) %}
+          {% endif %}
+          {% if hasdoc(ja_page) %}
+            {% set ja_href = pathto(ja_page) %}
+          {% else %}
+            {% set ja_href = pathto('ja/index') %}
+          {% endif %}
+          <div class="lang-switch" role="group" aria-label="Language">
+            <a class="lang-link{% if not is_ja %} is-active{% endif %}" href="{{ en_href }}"{% if not is_ja %} aria-current="page"{% endif %}>EN</a>
             <span class="lang-sep">|</span>
-            <a class="lang-link{% if is_ja %} is-active{% endif %}" href="{{ pathto('ja/index') }}"{% if is_ja %} aria-current="page"{% endif %}>JA</a>
+            <a class="lang-link{% if is_ja %} is-active{% endif %}" href="{{ ja_href }}"{% if is_ja %} aria-current="page"{% endif %}>JA</a>
           </div>
           {#- Theme toggle -#}
           <div class="theme-toggle-container theme-toggle-content">
@@ -110,30 +177,44 @@
         {% block footer %}
         <div class="related-pages">
           {% if next -%}
-            <a class="next-page" href="{{ next.link }}">
-              <div class="page-info">
-                <div class="context">
-                  <span>{{ _("Next") }}</span>
+            {% if is_ja %}
+              {% set next_is_ja = not next.link.startswith('../') %}
+            {% else %}
+              {% set next_is_ja = 'ja/' in next.link %}
+            {% endif %}
+            {% if next_is_ja == is_ja %}
+              <a class="next-page" href="{{ next.link }}">
+                <div class="page-info">
+                  <div class="context">
+                    <span>{{ _("Next") }}</span>
+                  </div>
+                  <div class="title">{{ next.title }}</div>
                 </div>
-                <div class="title">{{ next.title }}</div>
-              </div>
-              <svg><use href="#svg-arrow-right"></use></svg>
-            </a>
+                <svg><use href="#svg-arrow-right"></use></svg>
+              </a>
+            {% endif %}
           {%- endif %}
           {% if prev -%}
-            <a class="prev-page" href="{{ prev.link }}">
-              <svg><use href="#svg-arrow-right"></use></svg>
-              <div class="page-info">
-                <div class="context">
-                  <span>{{ _("Previous") }}</span>
+            {% if is_ja %}
+              {% set prev_is_ja = not prev.link.startswith('../') %}
+            {% else %}
+              {% set prev_is_ja = 'ja/' in prev.link %}
+            {% endif %}
+            {% if prev_is_ja == is_ja %}
+              <a class="prev-page" href="{{ prev.link }}">
+                <svg><use href="#svg-arrow-right"></use></svg>
+                <div class="page-info">
+                  <div class="context">
+                    <span>{{ _("Previous") }}</span>
+                  </div>
+                  {% if prev.link == pathto(master_doc) %}
+                  <div class="title">{{ _("Home") }}</div>
+                  {% else %}
+                  <div class="title">{{ prev.title }}</div>
+                  {% endif %}
                 </div>
-                {% if prev.link == pathto(master_doc) %}
-                <div class="title">{{ _("Home") }}</div>
-                {% else %}
-                <div class="title">{{ prev.title }}</div>
-                {% endif %}
-              </div>
-            </a>
+              </a>
+            {% endif %}
           {%- endif %}
         </div>
         <div class="bottom-of-page">

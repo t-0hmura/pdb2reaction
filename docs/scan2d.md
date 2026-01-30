@@ -1,4 +1,4 @@
-# `scan2d` subcommand
+# `scan2d`
 
 ## Overview
 `scan2d` performs a two-distance (d₁, d₂) grid scan using harmonic restraints

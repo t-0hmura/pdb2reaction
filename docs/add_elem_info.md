@@ -1,4 +1,4 @@
-# `add-elem-info` subcommand
+# `add-elem-info`
 
 ## Overview
 `add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM

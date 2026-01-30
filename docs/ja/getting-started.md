@@ -340,7 +340,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{important}
-サブコマンド（**`all` 以外**すべて）は、`extract` で生成された**クラスターモデル**を入力として想定しています。これらのクラスターモデルでは、Link-Hキャップに最も近い原子が自動的に**凍結**されます。クラスターモデルを自分で構築する場合は、Link-H残基名を `LKH`、原子名を `HL` に設定するか、`--args-yaml` → `geom.freeze_atoms` で凍結する原子を指定してください。
+コマンド（**`all` 以外**すべて）は、`extract` で生成された**クラスターモデル**を入力として想定しています。これらのクラスターモデルでは、Link-Hキャップに最も近い原子が自動的に**凍結**されます。クラスターモデルを自分で構築する場合は、Link-H残基名を `LKH`、原子名を `HL` に設定するか、`--args-yaml` → `geom.freeze_atoms` で凍結する原子を指定してください。
 ```
 
 ```{tip}
@@ -354,7 +354,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 任意のサブコマンドについて:
 
 ```bash
-pdb2reaction <subcommand> --help
+pdb2reaction <command> --help
 ```
 
 これは利用可能なオプション、デフォルト、および短い説明を表示します。詳細なUMA計算機オプションについては [UMA計算機](uma_pysis.md) を参照してください。

@@ -7,7 +7,7 @@
 
 /* Set base font size */
 html {
-    font-size: 16pt;
+    font-size: 15px;
 }
 
 /* Adjust content area font */
@@ -30,33 +30,51 @@ table {
     font-size: 0.95rem;
 }
 
-/* Language switch (EN | JA) */
+/* Language switch - Pill-style segment control */
 .lang-switch {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    margin-right: 0.4rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    line-height: 1;
+    gap: 0.2rem;
+    margin-right: 0.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 999px;
+    padding: 0.2rem;
+    border: 1px solid var(--color-background-border);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .lang-switch .lang-link {
-    color: var(--color-foreground-secondary);
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
     text-decoration: none;
+    color: var(--color-foreground-secondary);
+    background: transparent;
+    transition: all 0.2s ease;
+    line-height: 1;
 }
 
 .lang-switch .lang-link:hover {
-    color: var(--color-brand-content);
+    color: var(--color-foreground-primary);
+    background: var(--color-background-hover);
 }
 
 .lang-switch .lang-link.is-active {
-    color: var(--color-brand-primary);
+    color: #fff;
+    background: var(--color-brand-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.lang-switch .lang-link.is-active:hover {
+    filter: brightness(1.05);
 }
 
 .lang-switch .lang-sep {
-    color: var(--color-foreground-secondary);
-    opacity: 0.6;
+    font-size: 0.7rem;
+    color: var(--color-foreground-muted);
 }
 
 /* Adjust headings */
@@ -64,3 +82,16 @@ h1 { font-size: 2.0rem; }
 h2 { font-size: 1.6rem; }
 h3 { font-size: 1.3rem; }
 h4 { font-size: 1.15rem; }
+
+/* Reduce prev/next navigation arrow size */
+.related-pages a svg {
+    width: 1.6rem;
+    height: 1.6rem;
+}
+
+/* ==========================================================================
+   Language-based sidebar filtering (controlled by JavaScript)
+   ========================================================================== */
+.lang-hidden {
+    display: none !important;
+}
