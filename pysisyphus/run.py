@@ -18,8 +18,7 @@ from distributed import Client
 import numpy as np
 import scipy as sp
 import yaml
-
-from pysisyphus import __version__
+__version__ = 'Pytorch-Enabled version bundled with `pdb2reaction`'
 from pysisyphus.calculators import *
 from pysisyphus.config import OUT_DIR_DEFAULT, p_DEFAULT, T_DEFAULT
 from pysisyphus.cos import *

@@ -33,7 +33,6 @@ except Exception:
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
-from pysisyphus import run
 
 # ------------ unit conversion constants ----------------------------
 EV2AU          = 1.0 / AU2EV                     # eV → Hartree
