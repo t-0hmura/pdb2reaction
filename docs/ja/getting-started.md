@@ -34,6 +34,18 @@ MetaのUMAモデルを使用した**機械学習原子間ポテンシャル (MLI
 - ブール値CLIオプションは `True`/`False` として明示的に渡されます（例: `--tsopt True`）。
 ```
 
+### 水素原子付与の推奨ツール
+
+PDBに水素原子がない場合、pdb2reactionを実行する前に以下のツールを使用してください：
+
+| ツール | コマンド例 | 備考 |
+|--------|------------|------|
+| **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | 高速、結晶構造に広く使用 |
+| **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | 水素を追加し部分電荷を割り当て |
+| **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用ケモインフォマティクスツールキット |
+
+複数のPDB入力で同一の原子順序を確保するには、すべての構造に同じ水素付与ツールを一貫した設定で適用してください。
+
 ```{warning}
 このソフトウェアはまだ開発中です。自己責任でご使用ください。
 ```

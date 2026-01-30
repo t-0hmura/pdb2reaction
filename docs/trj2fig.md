@@ -33,7 +33,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 
 ## Workflow
 1. Parse the XYZ trajectory. By default, read the first floating-point number
-   found in every frame comment (scientific notation is not supported). If
+   found in every frame comment (scientific notation such as `1.5e-3` is supported). If
    `-q/-m` is present, recompute Hartree energies for each frame with
    `uma_pysis` using those charge/spin values instead of the comment.
    If no energies are found or produced, the run aborts.

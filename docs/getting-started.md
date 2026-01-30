@@ -34,6 +34,18 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process larg
 - Boolean CLI options are passed explicitly as `True`/`False` (e.g., `--tsopt True`).
 ```
 
+### Recommended tools for hydrogen addition
+
+If your PDB lacks hydrogen atoms, use one of the following tools before running pdb2reaction:
+
+| Tool | Example Command | Notes |
+|------|-----------------|-------|
+| **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | Fast, widely used for crystallographic structures |
+| **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | Adds hydrogens and assigns partial charges |
+| **Open Babel** | `obabel input.pdb -O output.pdb -h` | General-purpose cheminformatics toolkit |
+
+To ensure identical atom ordering across multiple PDB inputs, apply the same hydrogen-addition tool with consistent settings to all structures.
+
 ```{warning}
 This software is still under development. Please use it at your own risk.
 ```

@@ -24,7 +24,23 @@ dft
 trj2fig
 yaml-reference
 uma_pysis
+glossary
 ```
+
+---
+
+## 目的別クイックスタート
+
+| やりたいこと | 推奨コマンド | ガイド |
+|--------------|--------------|--------|
+| PDBから完全な反応経路探索を実行 | `pdb2reaction all` | [all.md](all.md) |
+| タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
+| 単一構造を最適化 | `pdb2reaction opt` | [opt.md](opt.md) |
+| 遷移状態を探索・精緻化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
+| 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search.md](path_search.md) |
+| 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
+| エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
+| 略語や用語を調べる | — | [用語集](glossary.md) |
 
 ---
 
@@ -171,7 +187,7 @@ result_all/
 
 ## 引用
 
-`pdb2reaction` を説明するプレプリントは近日公開予定です。引用情報については後日ご確認ください。
+`pdb2reaction` を説明するプレプリントを準備中です。引用情報については後日ご確認ください。
 
 ## ライセンス
 

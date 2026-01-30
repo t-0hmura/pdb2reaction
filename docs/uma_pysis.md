@@ -183,4 +183,4 @@ Common constructor keywords (defaults shown in the rightmost column):
 uma_pysis input.yaml
 ```
 
-Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under `calc.kwargs` to reuse the same UMA configuration across stages.
+Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under the `calc` key to reuse the same UMA configuration across stages.

@@ -35,7 +35,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 ## ワークフロー
 1. **活性部位ポケット抽出**（`-c/--center` が提供された場合）
    - 基質はPDBパス、残基ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
-   - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected_resn`、`--verbose`
+   - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
    - 入力ごとのポケットPDBは `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
    - **最初のポケットの総電荷**がスキャン/MEP/TSOPTに伝播
 
@@ -76,6 +76,9 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 
 ## CLIオプション
+
+> **注記:** 表示されているデフォルト値は、オプション未指定時に使用される内部デフォルトです。
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt True` を使用する場合のみ単一入力可） | 必須 |
@@ -86,7 +89,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--include-H2O BOOLEAN` | 水分子を含める（`False` で HOH/WAT/TIP3/SOL を除外） | `True` |
 | `--exclude-backbone BOOLEAN` | 非基質アミノ酸の主鎖原子を除去 | `True` |
 | `--add-linkH BOOLEAN` | 切断結合にリンク水素を付加（炭素のみ） | `True` |
-| `--selected_resn TEXT` | 強制包含残基（カンマ/空白区切り、チェーン/挿入コード可） | `""` |
+| `--selected-resn TEXT` | 強制包含残基（カンマ/空白区切り、チェーン/挿入コード可） | `""` |
 | `--verbose BOOLEAN` | 抽出器のINFOログを有効化 | `True` |
 | `--ligand-charge TEXT` | 未知残基の残基別マッピングまたは総電荷（推奨）。`-q` 省略時にPDB入力でextract方式の電荷導出を行い、数値指定は総電荷のフォールバックとしても利用される | _None_ |
 | `-q, --charge INT` | 総電荷を強制上書き（extractor/`.gjf`/`--ligand-charge` を上書き、警告を出力） | _None_ |

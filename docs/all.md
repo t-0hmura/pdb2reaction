@@ -35,7 +35,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 ## Workflow
 1. **Active-site pocket extraction** (if `-c/--center` is provided)
    - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,MMT`).
-   - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected_resn`, and `--verbose`.
+   - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`, and `--verbose`.
    - Per-input pocket PDBs are saved under `<out-dir>/pockets/`. When multiple structures are supplied, their pockets are unioned per residue selection.
    - The **first pocket’s total charge** is propagated to scan/MEP/TSOPT.
 
@@ -73,6 +73,9 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 - Multi-structure runs require ≥2 structures.
 
 ## CLI options
+
+> **Note:** Default values shown are used when the option is not specified.
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt True`). | Required |
@@ -83,7 +86,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--include-H2O BOOLEAN` | Include waters (set `False` to drop HOH/WAT/TIP3/SOL). | `True` |
 | `--exclude-backbone BOOLEAN` | Remove backbone atoms on non-substrate amino acids. | `True` |
 | `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds (carbon-only). | `True` |
-| `--selected_resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
+| `--selected-resn TEXT` | Residues to force include (comma/space separated; chain/insertion codes allowed). | `""` |
 | `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). When `-q` is omitted, triggers extract-style charge derivation on the full complex for PDB inputs; numeric values also act as a total-charge fallback. | _None_ |
 | `-q, --charge INT` | Force the total system charge, overriding extractor rounding / `.gjf` metadata / `--ligand-charge` (logs a warning). | _None_ |

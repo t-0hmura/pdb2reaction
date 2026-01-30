@@ -1428,7 +1428,7 @@ def _irc_and_match(
     help="Add link hydrogens for severed bonds (carbon-only) in pockets.",
 )
 @click.option(
-    "--selected_resn",
+    "--selected-resn",
     type=str,
     default="",
     show_default=True,

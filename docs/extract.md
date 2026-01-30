@@ -79,6 +79,9 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - Residue names: comma-separated list (case insensitive). If multiple residues share a name, **all** matches are included and a warning is logged.
 
 ## CLI options
+
+> **Note:** Default values shown are used when the option is not specified.
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | One or more protein–ligand PDB files (identical atom ordering required). | Required |

@@ -183,4 +183,4 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 uma_pysis input.yaml
 ```
 
-`pdb2reaction` の各コマンド（`all`, `opt`, `path-opt` など）では、`--args-yaml` の `calc.kwargs` に同等の設定を渡すことで、同一のUMA設定を再利用できます。
+`pdb2reaction` の各コマンド（`all`, `opt`, `path-opt` など）では、`--args-yaml` の `calc` キー配下に同等の設定を渡すことで、同一のUMA設定を再利用できます。
