@@ -152,7 +152,7 @@ If you prefer to build the environment piece by piece:
 
 ## Command line basics
 
-The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default command is `all`.
+The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default subcommand is `all`.
 
 That means:
 

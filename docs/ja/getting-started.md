@@ -354,7 +354,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 任意のサブコマンドについて:
 
 ```bash
-pdb2reaction <command> --help
+pdb2reaction <subcommand> --help
 ```
 
 これは利用可能なオプション、デフォルト、および短い説明を表示します。詳細なUMA計算機オプションについては [UMA計算機](uma_pysis.md) を参照してください。

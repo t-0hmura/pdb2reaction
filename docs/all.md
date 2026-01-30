@@ -169,7 +169,7 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 - `--args-yaml` lets you coordinate all calculators from a single configuration file. YAML values override CLI flags.
 
 ## YAML configuration (`--args-yaml`)
-The same YAML file is forwarded unchanged to **every** invoked command. Each tool reads the sections described in its own documentation:
+The same YAML file is forwarded unchanged to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
 
 - [`path_search`](path_search.md): `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`.
 - [`scan`](scan.md): `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`.

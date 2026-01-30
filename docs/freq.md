@@ -7,7 +7,7 @@ normal modes as `.trj`/`.pdb` animations, prints a Gaussian-style thermochemistr
 when the optional `thermoanalysis` package is installed, and can emit a YAML summary when
 `--dump True`. Configuration starts from defaults, applies CLI switches, and finally
 applies YAML overrides (`geom`, `calc`, `freq`) with highest precedence, so the same
-template can drive both standalone runs and workflows launched by other commands.
+template can drive both standalone runs and workflows launched by other subcommands.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
 enabling format-aware PDB output conversion.
 
