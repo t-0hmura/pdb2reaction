@@ -285,7 +285,7 @@ Below are the most commonly used options across workflows.
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
 | `--ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of total system charge. |
-| `--mult INT` | Spin multiplicity (e.g., `1` for singlet). |
+| `-m, --mult INT` | Spin multiplicity (e.g., `1` for singlet). Note: Use `--multiplicity` in subcommands other than `all`. |
 | `--scan-lists TEXT...` | Staged distance scans for single‑input runs. |
 | `--out-dir PATH` | Top‑level output directory. |
 | `--tsopt {True\|False}` | Enable TS optimization and IRC. |

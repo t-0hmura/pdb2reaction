@@ -285,7 +285,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、またはPDBパスをサポート |
 | `--ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷のハードオーバーライド |
-| `--mult INT` | スピン多重度（例: シングレットは `1`） |
+| `-m, --mult INT` | スピン多重度（例: シングレットは `1`）。注: `all` 以外のサブコマンドでは `--multiplicity` を使用してください。 |
 | `--scan-lists TEXT...` | 単一入力実行用の段階的距離スキャン |
 | `--out-dir PATH` | トップレベル出力ディレクトリ |
 | `--tsopt {True\|False}` | TS最適化とIRCを有効化 |

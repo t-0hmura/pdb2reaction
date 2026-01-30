@@ -176,7 +176,7 @@ hessian_dimer:
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
     prefix: ""                 # filename prefix
-    out_dir: ./result_opt/     # output directory
+    out_dir: ./result_tsopt/   # output directory
     keep_last: 7               # history size for LBFGS buffers
     beta: 1.0                  # initial damping beta
     gamma_mult: false          # multiplicative gamma update toggle
@@ -202,7 +202,7 @@ rsirfo:
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
   prefix: ""                 # filename prefix
-  out_dir: ./result_opt/     # output directory
+  out_dir: ./result_tsopt/   # output directory
   roots: [0]                 # target root indices
   hessian_ref: null          # reference Hessian
   rx_modes: null             # reaction-mode definitions for projection

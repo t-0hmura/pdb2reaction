@@ -305,8 +305,8 @@ Below are the most commonly used options across workflows.
 
   Use when you want full manual control of the charge.
 
-- `--mult INT`  
-  Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
+- `-m, --mult INT` (in `all` command) / `-m, --multiplicity INT` (in other subcommands)
+  Spin multiplicity for QM regions (e.g., `--mult 1` or `--multiplicity 1` for singlet). Used for scan and GSM runs.
 
 > If charge and multiplicity are present in a `.gjf` input, `-q` and `-m` can be omitted.
 

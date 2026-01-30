@@ -8,7 +8,7 @@ with `--max-step-size`, reorders the values so that those nearest to the
 (pre-optimized) starting structure are visited first, and then nests the loops
 (outer d₁, middle d₂, inner d₃). Each grid point is relaxed with the
 appropriate restraints active; unbiased energies are recorded so you can compare
-points directly. A precomputed `surface.csv` can also be visualized without
+points directly. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFOptimizer. A precomputed `surface.csv` can also be visualized without
 rerunning the scan.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
 enabling format-aware PDB/GJF output conversion.
