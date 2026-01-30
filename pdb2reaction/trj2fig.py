@@ -204,14 +204,14 @@ def save_outputs(
         elif ext == ".html":
             assert fig is not None
             fig.write_html(out)
-            print(f"[trj2fig] Saved figure -> {out}")
+            click.echo(f"[trj2fig] Saved figure -> {out}")
         elif ext in {".png", ".jpg", ".jpeg", ".pdf", ".svg"}:
             assert fig is not None
             kw = {"engine": "kaleido"}
             if ext == ".png":
                 kw["scale"] = 2  # high-resolution PNG
             fig.write_image(out, **kw)
-            print(f"[trj2fig] Saved figure -> {out}")
+            click.echo(f"[trj2fig] Saved figure -> {out}")
         else:
             raise ValueError(f"Unsupported format: {ext}")
 
@@ -232,7 +232,7 @@ def write_csv(
         w.writerow(["frame", "energy_hartree", colname])
         for i, (eh, y) in enumerate(zip(energies_hartree, series)):
             w.writerow([i, f"{eh:.8f}", f"{y:.6f}"])
-    print(f"[trj2fig] Saved CSV -> {out}")
+    click.echo(f"[trj2fig] Saved CSV -> {out}")
 
 
 # ---------------------------------------------------------------------

@@ -116,7 +116,7 @@ def _run_cli_main(
     label = prefix or cmd_name
     try:
         sys.argv = ["pdb2reaction", cmd_name] + list(args)
-        print()
+        click.echo()
         cli_obj.main(args=list(args), standalone_mode=False)
     except SystemExit as e:
         code = getattr(e, "code", 1)

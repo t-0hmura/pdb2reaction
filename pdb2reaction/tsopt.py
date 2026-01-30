@@ -419,7 +419,7 @@ def _flatten_once_with_modes_for_geom(
         geom.coords = (plus if use_plus else minus).reshape(-1)
         E_keep = E_plus if use_plus else E_minus
         delta_e = E_keep - E_ref
-        print(
+        click.echo(
             f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 "
             f"E_disp={E_keep:.8f} Ha \u0394E={delta_e:+.8f} Ha"
         )
@@ -733,7 +733,7 @@ class HessianDimer:
         if allow_reuse:
             cached = self._reuse_cached_hessian()
             if cached is not None:
-                print("[Hessian] Reusing cached raw Hessian (0-step convergence).")
+                click.echo("[Hessian] Reusing cached raw Hessian (0-step convergence).")
                 return cached
         H = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
         self._cache_raw_hessian_cpu(H)
@@ -827,7 +827,7 @@ class HessianDimer:
                     H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                     self.masses_au_t, active_idx, self.device, root=self.root
                 )
-            print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
+            click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
             del H, coords_bohr_t, mode_xyz, mode_freq_cm
             if torch.cuda.is_available():
@@ -960,7 +960,7 @@ class HessianDimer:
             self.geom.coords = (plus if use_plus else minus).reshape(-1)
             E_keep = E_plus if use_plus else E_minus
             delta_e = E_keep - E_ref
-            print(
+            click.echo(
                 f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 "
                 f"E_disp={E_keep:.8f} Ha \u0394E={delta_e:+.8f} Ha"
             )
@@ -989,12 +989,12 @@ class HessianDimer:
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
-            print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+            click.echo("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
             mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                 H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
-        print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
+        click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
         del mode_xyz, coords_bohr_t, H, mode_freq_cm
         if torch.cuda.is_available():
@@ -1002,12 +1002,12 @@ class HessianDimer:
 
         # (2) Loose loop (or initial pass)
         if self.root != 0:
-            print("[WARNING] root != 0. Using this root only for the initial dimer loop.")
-            print(f"Dimer loop with initial direction from mode {self.root}...")
+            click.echo("[WARNING] root != 0. Using this root only for the initial dimer loop.")
+            click.echo(f"Dimer loop with initial direction from mode {self.root}...")
             self.root = 0
             self.thresh_loose = self.thresh
         else:
-            print("Loose dimer loop...")
+            click.echo("Loose dimer loop...")
 
         _steps_loose, zero_step_loose = self._dimer_loop(self.thresh_loose)
 
@@ -1021,26 +1021,26 @@ class HessianDimer:
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None
             )
         else:
-            print("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+            click.echo("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
             mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
                 H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                 self.masses_au_t, active_idx, self.device, root=self.root
             )
-        print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
+        click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
         del mode_xyz, coords_bohr_t, H, mode_freq_cm
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        print("Normal dimer loop...")
+        click.echo("Normal dimer loop...")
         _steps_normal, zero_step_normal = self._dimer_loop(self.thresh)
 
         # (4) Flatten loop — exact Hessian each iteration & optional Bofill update
         if self.flatten_max_iter > 0:
             if self.flatten_loop_bofill:
-                print("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
+                click.echo("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
             else:
-                print("Flatten loop without Bofill updates (flatten displacements only)...")
+                click.echo("Flatten loop without Bofill updates (flatten displacements only)...")
 
             # (4.1) Evaluate one exact Hessian at the loop start and prepare the active block
             H = self._calc_full_hessian_cached(allow_reuse=zero_step_normal)
@@ -1065,7 +1065,7 @@ class HessianDimer:
                 )
                 n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
                 ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
-                print(f"[Imaginary modes] n={n_imag}  ({ims})")
+                click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
                 if n_imag <= 1:
                     break
 
@@ -1093,7 +1093,7 @@ class HessianDimer:
                     H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
                     self.masses_au_t, active_idx, self.device, root=self.root
                 )
-                print(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
+                click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1")
                 np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
 
                 # (e) Re-optimize with Dimer (consumes global cycle budget)
@@ -1124,7 +1124,7 @@ class HessianDimer:
         del H
         neg_idx = np.where(freqs_cm < -abs(self.neg_freq_thresh_cm))[0]
         if len(neg_idx) == 0:
-            print("[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1)." % (freqs_cm.min(),))
+            click.echo("[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1)." % (freqs_cm.min(),))
             del modes
         else:
             # primary (by root)
@@ -1153,8 +1153,8 @@ class HessianDimer:
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        print(f"[DONE] Saved final geometry → {final_xyz}")
-        print(f"[DONE] Mode files → {self.vib_dir}")
+        click.echo(f"[DONE] Saved final geometry → {final_xyz}")
+        click.echo(f"[DONE] Mode files → {self.vib_dir}")
 
 
 # ===================================================================

@@ -236,14 +236,14 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     io.save(out_path)
 
     # Summary
-    print(f"[OK] Wrote: {out_path}")
-    print(f"  total atoms                 : {total}")
-    print(f"  assigned/updated            : {assigned_or_updated}")
+    click.echo(f"[OK] Wrote: {out_path}")
+    click.echo(f"  total atoms                 : {total}")
+    click.echo(f"  assigned/updated            : {assigned_or_updated}")
     if by_element:
         top = ", ".join(f"{k}:{v}" for k, v in by_element.most_common())
-        print(f"  assignment breakdown        : {top}")
+        click.echo(f"  assignment breakdown        : {top}")
     if unknown:
-        print(f"[WARN] Could not confidently assign {len(unknown)} atoms; left unchanged.")
+        click.echo(f"[WARN] Could not confidently assign {len(unknown)} atoms; left unchanged.")
         for (mid, chid, resid, resn, aname, serial) in unknown[:50]:
             if isinstance(resid, tuple):
                 resseq = resid[1]
@@ -251,9 +251,9 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
             else:
                 resseq, icode = "?", ""
             s_str = f" serial {serial}" if serial is not None else ""
-            print(f"    model {mid} chain {chid} {resn} {resseq}{icode} : {aname}{s_str}")
+            click.echo(f"    model {mid} chain {chid} {resn} {resseq}{icode} : {aname}{s_str}")
     if len(unknown) > 50:
-        print("    ... (truncated) ...")
+        click.echo("    ... (truncated) ...")
 
 
 def _parse_bool(value: str) -> bool:
@@ -287,13 +287,13 @@ def main():
     args = ap.parse_args()
 
     if not os.path.isfile(args.in_pdb):
-        print(f"[ERR] Input not found: {args.in_pdb}", file=sys.stderr)
+        click.echo(f"[ERR] Input not found: {args.in_pdb}", err=True)
         sys.exit(1)
 
     try:
         assign_elements(args.in_pdb, args.out, overwrite=args.overwrite)
     except Exception as e:
-        print(f"[ERR] Failed: {e}", file=sys.stderr)
+        click.echo(f"[ERR] Failed: {e}", err=True)
         sys.exit(2)
 
 # -----------------------------

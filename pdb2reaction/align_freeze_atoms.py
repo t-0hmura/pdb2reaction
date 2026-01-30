@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Tuple, Dict, Any
 
 import numpy as np
+import click
 
 # pysisyphus
 from pysisyphus.optimizers.LBFGS import LBFGS
@@ -229,7 +230,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
         after = _rmsd(P, Q_aln)
         mode = "one_anchor"
         if verbose:
-            print(f"[align] one-anchor: RMSD {before:.6f} Å → {after:.6f} Å (idx={i})")
+            click.echo(f"[align] one-anchor: RMSD {before:.6f} Å → {after:.6f} Å (idx={i})")
         return {"before_A": before, "after_A": after, "n_used": 1, "mode": mode}
 
     # ---- 2 anchors ----
@@ -263,7 +264,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             after = _rmsd(P, Q1)
             mode = "two_anchor"
             if verbose:
-                print(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))")
+                click.echo(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))")
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
         # If the axis is degenerate, fall through to the generic Kabsch case.
         report_all_atoms = True
@@ -291,7 +292,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     after_report = _rmsd(P, Q_aln) if report_all_atoms else after_sel
 
     if verbose:
-        print(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})")
+        click.echo(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})")
 
     return {"before_A": before_report, "after_A": after_report, "n_used": n_used, "mode": mode}
 
@@ -348,7 +349,7 @@ def scan_freeze_atoms_toward_target_inplace(
 
         if len(idx) == 0:
             if verbose:
-                print("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
+                click.echo("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
             return {"max_remaining_A": 0.0, "n_steps": 0, "converged": True}
 
         _attach_calc_if_needed(g_mob, shared_calc, charge=charge, spin=spin, model=model, device=device)
@@ -369,7 +370,7 @@ def scan_freeze_atoms_toward_target_inplace(
             max_rem_bohr = float(rem_bohr.max()) if len(rem_bohr) else 0.0
             max_remaining_A = max_rem_bohr * BOHR2ANG
             if verbose:
-                print(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å")
+                click.echo(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å")
 
             if max_rem_bohr <= step_bohr + 1e-12:
                 # Final step: enforce exact coincidence
@@ -388,7 +389,7 @@ def scan_freeze_atoms_toward_target_inplace(
                     ).run()
                 except (ZeroStepLength, OptimizationError) as e:
                     if verbose:
-                        print(f"[scan] WARNING: Exception occurred in final relaxation: {e} (continuing)")
+                        click.echo(f"[scan] WARNING: Exception occurred in final relaxation: {e} (continuing)")
                 g_mob.freeze_atoms = np.array([], int)
                 converged = True
                 n_steps_done = istep
@@ -414,14 +415,14 @@ def scan_freeze_atoms_toward_target_inplace(
                 ).run()
             except (ZeroStepLength, OptimizationError) as e:
                 if verbose:
-                    print(f"[scan] WARNING: Exception occurred in relaxation: {e} (continuing)")
+                    click.echo(f"[scan] WARNING: Exception occurred in relaxation: {e} (continuing)")
             finally:
                 g_mob.freeze_atoms = np.array([], int)
 
             n_steps_done = istep
         else:
             if verbose:
-                print(f"[scan] WARNING: Reached max_steps={max_steps}.")
+                click.echo(f"[scan] WARNING: Reached max_steps={max_steps}.")
 
         return {"max_remaining_A": float(max_remaining_A or 0.0),
                 "n_steps": int(n_steps_done),
@@ -517,7 +518,7 @@ def align_and_refine_sequence_inplace(
         pair_out = out_dir / f"pair_{i:02d}"
 
         if verbose:
-            print(f"\n[align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
+            click.echo(f"\n[align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
 
         res = align_and_refine_pair_inplace(
             g_ref, g_mob,
