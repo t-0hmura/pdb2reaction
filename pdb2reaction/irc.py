@@ -300,9 +300,9 @@ def cli(
             # EulerPC.__init__ forwards **kwargs directly to IRC.__init__
             eulerpc = EulerPC(geometry, **irc_cfg)
 
-            click.echo("=== IRC (EulerPC) started ===")
+            click.echo("\n=== IRC (EulerPC) started ===\n")
             eulerpc.run()
-            click.echo("=== IRC (EulerPC) finished ===")
+            click.echo("\n=== IRC (EulerPC) finished ===\n")
 
             # --------------------------
             # 4) Convert trajectories to PDB based on input type

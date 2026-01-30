@@ -279,9 +279,9 @@ def _optimize_single(
     else:
         opt = RFOptimizer(g, **args)
 
-    click.echo(f"=== [{tag}] Single-structure {sopt_kind.upper()} started ===")
+    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} started ===\n")
     opt.run()
-    click.echo(f"=== [{tag}] Single-structure {sopt_kind.upper()} finished ===")
+    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} finished ===\n")
 
     try:
         final_xyz = Path(opt.final_fn)
@@ -647,7 +647,7 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
-            click.echo("=== Preoptimizing endpoints via single-structure optimizer started ===")
+            click.echo("\n=== Preoptimizing endpoints via single-structure optimizer started ===\n")
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
                 if p.suffix.lower() == ".pdb":
@@ -695,7 +695,7 @@ def cli(
         align_thresh = str(opt_cfg.get("thresh", "gau"))
         try:
             click.echo(
-                "=== Aligning all inputs to the first structure "
+                "\n=== Aligning all inputs to the first structure "
                 "(freeze-guided scan + relaxation) started ==="
             )
             _ = align_and_refine_sequence_inplace(
@@ -797,9 +797,9 @@ def cli(
         # --------------------------
         # 4) Run optimization
         # --------------------------
-        click.echo("=== Growing String optimization started ===")
+        click.echo("\n=== Growing String optimization started ===\n")
         optimizer.run()
-        click.echo("=== Growing String optimization finished ===")
+        click.echo("\n=== Growing String optimization finished ===\n")
 
         # --------------------------
         # 5) Write final path (final_geometries.trj)
