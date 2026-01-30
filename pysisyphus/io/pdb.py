@@ -114,7 +114,8 @@ def parse_pdb(text):
         master_fields = master_parse(master_line)
     except UnboundLocalError:
         master_fields = None
-        print(f"Warning! No MASTER line found in PDB!")
+        import sys
+        print("Warning! No MASTER line found in PDB!", file=sys.stderr)
 
     atoms = list()
     coords = list()
