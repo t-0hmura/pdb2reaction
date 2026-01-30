@@ -17,10 +17,10 @@
 | [`rfo`](#rfo) | RFOの設定 | opt, scan, scan2d, scan3d, path-search |
 | [`gs`](#gs) | GSM（Growing String Method）設定 | path-opt, path-search |
 | [`dmf`](#dmf) | DMF（Direct Max Flux）設定 | path-opt, path-search |
-| [`irc`](#irc-section) | IRC積分設定 | irc |
-| [`freq`](#freq-section) | 振動数解析設定 | freq |
+| [`irc`](#ja-irc-section) | IRC積分設定 | irc |
+| [`freq`](#ja-freq-section) | 振動数解析設定 | freq |
 | [`thermo`](#thermo) | 熱化学設定 | freq |
-| [`dft`](#dft-section) | DFT計算設定 | dft |
+| [`dft`](#ja-dft-section) | DFT計算設定 | dft |
 | [`bias`](#bias) | 調和バイアス設定 | scan, scan2d, scan3d |
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
@@ -347,7 +347,7 @@ rsirfo:
 
 ## IRCセクション
 
-(irc-section)=
+(ja-irc-section)=
 ### `irc` (section)
 
 IRC積分設定。
@@ -385,7 +385,7 @@ irc:
 
 ## 振動解析セクション
 
-(freq-section)=
+(ja-freq-section)=
 ### `freq` (section)
 
 振動数解析設定。
@@ -415,7 +415,7 @@ thermo:
 
 ## DFTセクション
 
-(dft-section)=
+(ja-dft-section)=
 ### `dft` (section)
 
 DFT計算設定。

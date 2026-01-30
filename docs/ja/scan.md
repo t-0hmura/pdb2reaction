@@ -70,6 +70,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 ### セクション `bias`
 - `k`（`100`）: 調和バイアス強度（eV·Å⁻²）。
 
+(section-bond)=
 ### セクション `bond`
 `path_search` と同一のUMAベース結合変化検出:
 - `device`（`"cuda"`）: 結合解析用UMAデバイス。

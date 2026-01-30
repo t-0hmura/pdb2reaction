@@ -1,7 +1,7 @@
 # `dft` subcommand
 
 ## Overview
-Run single-point DFT calculations with a GPU (GPU4PySCF when available, CPU PySCF otherwise). In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges/spin densities.
+Run single-point DFT calculations on the GPU (using GPU4PySCF when available; otherwise falling back to CPU PySCF). In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 
 ## Usage
 ```bash
@@ -59,7 +59,7 @@ out_dir/ (default: ./result_dft/)
   convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used whenever available; CPU PySCF is built otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur.
+- GPU4PySCF is used whenever available; CPU PySCF is used otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur.
 - If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
 - Compiled GPU4PySCF wheels may not support Blackwell-architecture GPUs, and non-x86 systems require compiling from source; we recommend using the CPU backend or building GPU4PySCF yourself in these situations. (see https://github.com/pyscf/gpu4pyscf)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).

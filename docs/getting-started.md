@@ -4,11 +4,10 @@
 
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** using machine-learning interatomic potentials (MLIPs).
 
-In most cases, a **single command** like the one below is enough:
+In most cases, a **single command** like the one below is enough to model an enzymatic reaction pathway:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
-to model an enzymatic reaction pathway.
 
 ---
 You can also run **MEP search → TS refinement → IRC → thermochemistry → DFT single-point** in one go by adding `--tsopt True --thermo True --dft True`:
@@ -21,11 +20,11 @@ Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), *
 
 - extracts an **active site** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
-- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations** and **DFT single‑point calculations**
+- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations**, and **DFT single‑point calculations**.
 
-with a **machine learning interatomic potential (MLIP)** using Meta's UMA model.
+All calculations use Meta's UMA machine-learning interatomic potential (MLIP).
 
-All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Of course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures when you run workflows on the full structure (i.e., omit `--center/-c` and `--ligand-charge`).
+All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. It can also handle small molecular systems. You can also use `.xyz` or `.gjf` inputs when you run workflows on full structures (i.e., omit `--center/-c` and `--ligand-charge`).
 
 On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference itself across nodes. Set `workers` and `workers_per_node` to enable parallel calculation; see [UMA Calculator](uma_pysis.md) for configuration details.
 
@@ -52,7 +51,7 @@ Refer to the upstream projects for additional details:
 
 ### Quick start
 
-Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. Below assumes the default GSM MEP mode (no DMF). For DMF, install cyipopt via conda first.
+Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (no DMF). For DMF, install cyipopt via conda first.
 
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
@@ -80,7 +79,7 @@ huggingface-cli login
 
 You only need to do this once per machine / environment.
 
-- If you want to use Direct Max Flux method for MEP search, create conda environment and install cyipopt before installation.
+- If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
   ```bash
   # Create and activate a dedicated conda environment
   conda create -n pdb2reaction python=3.11 -y
@@ -96,11 +95,11 @@ You only need to do this once per machine / environment.
   ```
 
 
-### Step‑by‑step installation
+### Step-by-step installation
 
 If you prefer to build the environment piece by piece:
 
-1. **Load CUDA (when you use environment modules on HPC)**
+1. **Load CUDA (if you use environment modules on an HPC cluster)**
 
    ```bash
    module load cuda/12.9
@@ -163,7 +162,7 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-The `all` workflow is an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
+The `all` workflow acts as an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
 
 All high‑level workflows share two important options when you want cluster extraction:
 

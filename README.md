@@ -2,32 +2,32 @@
 
 ## Overview
 
-`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with Machine Learning Interatomic Potential (MLIP).  
-  
-Basically, you just need a **single command** such as  
+`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs).
+
+In most cases, a **single command** like the one below is enough:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```  
-for modeling enzymatic reaction pathways.  
+to model an enzymatic reaction pathway.
 
 ---
-Furthermore, you can proceed **MEP search --> TS refinement --> IRC --> thermochemistry analysis --> DFT single point calculation** with single command with options `--tsopt True --thermo True --dft True` such as  
+You can also run **MEP search → TS refinement → IRC → thermochemistry analysis → DFT single-point calculations** in one command by adding `--tsopt True --thermo True --dft True`, for example:  
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
 ```
 ---
 
-Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-list(s)`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
+Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
 
 - extracts an **active site** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
-- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations** and **DFT single‑point calculations**
+- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations**, and **DFT single‑point calculations**,
 
-with a **machine learning interatomic potential (MLIP)** using Meta’s UMA model.
+using Meta’s UMA machine-learning interatomic potential (MLIP).
    
-All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. Of course, this toolkit can handle small molecular systems. You can also use `.xyz` or `.gjf` format input structures when you run workflows on the full structure (i.e., omit `--center/-c` and `--ligand-charge`).
+All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. It can also handle small molecular systems. You can also use `.xyz` or `.gjf` inputs when you run workflows on full structures (i.e., omit `--center/-c` and `--ligand-charge`).
 
-On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference itself across nodes. Set `workers` and `workers_per_node` to enable parallel calculation; see [`docs/uma_pysis.md`](docs/uma_pysis.md) for configuration details.
+On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [`docs/uma_pysis.md`](docs/uma_pysis.md) for configuration details.
 
 > **Important (prerequisites):**  
 > - Input PDB files must already contain **hydrogen atoms**.  
@@ -49,7 +49,7 @@ Refer to the upstream projects for additional details:
 
 ### 1.1 Quick start
 
-Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. Below assumes the default GSM MEP mode (no DMF). For DMF, install cyipopt via conda first.
+Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (no DMF). For DMF, install cyipopt via conda first.
 
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
@@ -77,7 +77,7 @@ huggingface-cli login
 
 You only need to do this once per machine / environment.
 
-- If you want to use Direct Max Flux method for MEP search, create conda environment and install cyipopt before installation.
+- If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
   ```bash
   # Create and activate a dedicated conda environment
   conda create -n pdb2reaction python=3.11 -y
@@ -93,11 +93,11 @@ You only need to do this once per machine / environment.
   ```
 
 
-### 1.2 Step‑by‑step installation
+### 1.2 Step-by-step installation
 
 If you prefer to build the environment piece by piece:
 
-1. **Load CUDA (when you use environment modules on HPC)**
+1. **Load CUDA (if you use environment modules on an HPC cluster)**
 
    ```bash
    module load cuda/12.9
@@ -160,7 +160,7 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-The `all` workflow is an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
+The `all` workflow acts as an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single‑point calculations into a single command.
 
 All high‑level workflows share two important options when you want cluster extraction:
 
@@ -196,7 +196,7 @@ Behavior:
 - performs a **recursive MEP search** via `path_search` by default,
 - optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
-- optionally runs TS optimization, vibrational analysis, and DFT single points for each segment.
+- optionally runs TS optimization, vibrational analysis, and DFT single‑point calculations for each segment.
 
 This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modeling).
 
@@ -207,12 +207,12 @@ This is the recommended mode when you can generate reasonably spaced intermediat
 
 Use this when you only have **one PDB structure**, but you know which inter‑atomic distances should change along the reaction.
 
-Provide a single `-i` together with `--scan-list(s)`:
+Provide a single `-i` together with `--scan-lists`:
 
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]'  
+pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]'
 ```
 
 **Richer example**
@@ -223,11 +223,11 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
 
 Key points:
 
-- `--scan-list(s)` describes **staged distance scans** on the extracted cluster model.
+- `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
   - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,  
   - automatically remapped to the cluster-model indices.
-- Supplying one `--scan-list(s)` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals after a single flag (repeated flags are not accepted).
+- Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals after a single flag (repeated flags are not accepted).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path_search`.
 - With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
@@ -238,9 +238,9 @@ This mode is useful for building reaction paths starting from a single structure
 
 ### 3.3 Single‑structure TSOPT‑only mode
 
-Use this when you already have a **transition state candidate** and only want to refine it and procced following IRC calculation.
+Use this when you already have a **transition state candidate** and only want to refine it and proceed to the subsequent IRC calculation.
 
-Provide exactly one PDB and enable `--tsopt`:
+Provide exactly one PDB and enable `--tsopt True`:
 
 **Minimal example**
 
@@ -259,12 +259,12 @@ Behavior:
 - skips the MEP/path search entirely,
 - refines the **cluster-model TS** with TS optimization,
 - runs an **IRC** in both directions and optimizes both ends to relax down to R and P minima,
-- can then perform `freq` and `dft` on the R/TS/P,
+- can then run `freq` and `dft` on the R/TS/P structures,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams.
 
-Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
+Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are written under the top‑level `--out-dir`.
 
-> **Important:** Single‑input runs require **either** `--scan-list(s)` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
+> **Important:** Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 
 ---
 
@@ -276,7 +276,7 @@ Below are the most commonly used options across workflows.
   Input structures. Interpretation depends on how many you provide:
 
   - **≥ 2 PDBs** → MEP search (GSM by default, DMF with `--mep-mode dmf`) (reactant/intermediates/product).
-  - **1 PDB + `--scan-list(s)`** → staged scan → GSM.
+  - **1 PDB + `--scan-lists`** → staged scan → GSM.
   - **1 PDB + `--tsopt True`** → TSOPT‑only mode.
 
   If `--center/-c` is omitted, cluster extraction is skipped and the **full input structure** is used directly. In this mode, `.xyz` and `.gjf` inputs are also accepted; when using these file formats, omit `--center/-c` and `--ligand-charge`.
@@ -308,9 +308,9 @@ Below are the most commonly used options across workflows.
 - `--mult INT`  
   Spin multiplicity for QM regions (e.g., `--mult 1` for singlet). Used for scan and GSM runs.
 
-> If you have charge and multiplicity in .gjf input, -q and -m can be omitted.
+> If charge and multiplicity are present in a `.gjf` input, `-q` and `-m` can be omitted.
 
-- `--scan-list(s) TEXT...`  
+- `--scan-lists TEXT...`  
   One or more Python‑style lists describing **staged scans** for single‑input runs. A single literal runs one stage; multiple literals run sequential stages. Example:
 
   ```bash
@@ -318,7 +318,7 @@ Below are the most commonly used options across workflows.
   --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]'
   ```
 
-  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model. 
+  Each tuple describes a harmonic distance restraint between atoms `i` and `j` driven to a target in Å. Indices are 1‑based in the original full PDB and are automatically remapped onto the cluster model.
 
 - `--out-dir PATH`
   Top‑level output directory. All intermediate files, logs, and figures are placed here.
@@ -340,7 +340,7 @@ Below are the most commonly used options across workflows.
   When `--refine-path True` (default) and full‑system PDB templates are available, merged MEP snapshots (`mep_w_ref*.pdb`) are written under `<out-dir>/path_search/`.
 
 - `--opt-mode light|heavy`  
-  Switch optimization / TS refinement methods between Light (LBFGS and Dimer) and Heavy (Hessian-using RFO and RS-I-RFO) algorithms. Default: `light`.  
+  Switch optimization/TS refinement between the Light (LBFGS/Dimer) and Heavy (RFO/RS-I-RFO) presets. Default: `light`.
 
 - `--opt-mode-post light|heavy`  
   Optimizer preset override for TSOPT and post-IRC endpoint optimization. When omitted, `--opt-mode` takes precedence if explicitly provided; otherwise TSOPT defaults to `heavy`.
@@ -349,9 +349,9 @@ Below are the most commonly used options across workflows.
   Enable extra-imaginary-mode flattening in `tsopt` (light: dimer loop, heavy: post-RSIRFO). Default: `False`.
 
 - `--hessian-calc-mode Analytical|FiniteDifference`  
-  **When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended in `all`, `tsopt`, `freq` and `irc`**
+  **When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended in `all`, `tsopt`, `freq`, and `irc`.**
 
-- `--mep-mode gsm | dmf`
+- `--mep-mode gsm | dmf`  
   Switch MEP refinement between the Growing String Method (GSM) and Direct Max Flux (DMF).
 
 For a full matrix of options and YAML schemas, see `docs/all.md` in the repository.
@@ -382,7 +382,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes su
 
 | Subcommand   | Role                                                                                  | Documentation                             |
 | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot. (Optionally, following TS opt, IRC, Thermochemistry analysis, DFT single point calculation) | [`docs/all.md`](docs/all.md)              |
+| `all`        | Extraction → (optional staged scan) → MEP search → merge to full PDBs in one shot (optionally followed by TS opt, IRC, thermochemistry, and DFT single‑point calculations). | [`docs/all.md`](docs/all.md)              |
 | `scan`       | Bond‑length driven scan with staged harmonic restraints and relaxation.               | [`docs/scan.md`](docs/scan.md)            |
 | `opt`        | Single‑structure geometry optimization using LBFGS or RFO.                            | [`docs/opt.md`](docs/opt.md)              |
 | `path-opt`   | MEP optimization via the GSM or DMF.                                                  | [`docs/path_opt.md`](docs/path_opt.md)    |
@@ -413,7 +413,7 @@ pdb2reaction <subcommand> --help
 
 This prints the available options, defaults, and a short description. For detailed workflows, argument schemas, and example YAML files, consult the `docs/*.md` files in the repository (e.g. `docs/all.md`, `docs/scan.md`). For detailed UMA calculator options and defaults, see [`docs/uma_pysis.md`](docs/uma_pysis.md).
 
-> If you encounter any issues—such as dependency conflicts, library bugs, or other uncertainties—please open an Issue on the repository. I will address them as promptly as possible.
+> If you encounter any issues—such as dependency conflicts, library bugs, or other uncertainties—please open an issue on the repository. We will address them as promptly as possible.
 
 ## Citation
 A preprint describing `pdb2reaction` will be released soon. Please check back for citation details once it is available.

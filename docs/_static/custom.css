@@ -5,33 +5,62 @@
     font-weight: 700 !important;
 }
 
-/* Reduce overall font size */
+/* Set base font size */
 html {
-    font-size: 14px;
+    font-size: 16pt;
 }
 
 /* Adjust content area font */
 .content {
-    font-size: 0.95rem;
+    font-size: 1rem;
 }
 
 /* Adjust sidebar font */
 .sidebar-tree {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
 /* Adjust code blocks */
 pre, code {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 /* Adjust table font */
 table {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+}
+
+/* Language switch (EN | JA) */
+.lang-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-right: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.lang-switch .lang-link {
+    color: var(--color-foreground-secondary);
+    text-decoration: none;
+}
+
+.lang-switch .lang-link:hover {
+    color: var(--color-brand-content);
+}
+
+.lang-switch .lang-link.is-active {
+    color: var(--color-brand-primary);
+}
+
+.lang-switch .lang-sep {
+    color: var(--color-foreground-secondary);
+    opacity: 0.6;
 }
 
 /* Adjust headings */
-h1 { font-size: 1.8rem; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.25rem; }
-h4 { font-size: 1.1rem; }
+h1 { font-size: 2.0rem; }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.3rem; }
+h4 { font-size: 1.15rem; }

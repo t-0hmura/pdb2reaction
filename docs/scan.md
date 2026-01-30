@@ -8,7 +8,7 @@ are applied, and the entire structure is relaxed with LBFGS (`--opt-mode` light,
 or RFOptimizer (`--opt-mode` heavy). After the biased walk, you can optionally
 run unbiased pre-/post-optimizations to clean up the geometries that get written
 to disk.
-When `--scan-lists` is supplied once the scan runs in a single stage; supplying
+When `--scan-lists` is supplied once, the scan runs as a single stage; supplying
 multiple literals runs sequential stages, each starting from the previous stage’s
 relaxed result.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,

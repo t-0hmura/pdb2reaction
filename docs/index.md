@@ -1,6 +1,6 @@
 # pdb2reaction Documentation
 
-**pdb2reaction** is a Python CLI toolkit for automated enzymatic reaction-path modeling directly from PDB structures using Machine Learning Interatomic Potentials (MLIP).
+**pdb2reaction** is a Python CLI toolkit for automated enzymatic reaction-path modeling directly from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 ```{toctree}
 :maxdepth: 2
@@ -8,6 +8,7 @@
 :hidden:
 
 getting-started
+ja/index
 all
 extract
 add_elem_info

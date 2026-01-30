@@ -1,7 +1,7 @@
 # `extract` subcommand
 
 ## Overview
-Automatically extract binding pockets (active sites) from protein–substrate complexes. The tool applies chemically aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
+Automatically extract binding pockets (active sites) from protein–substrate complexes. The tool applies chemically-aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
 
 ## Usage
 ```bash
@@ -31,8 +31,8 @@ pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge '
 # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
 pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
 
-# Multi-structure to multi outputs with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --ligand-charge 'GPP:-3,SAM:1'
+# Multi-structure to multiple outputs with hetero-hetero proximity enabled
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
 ```
 
 ## Workflow
@@ -58,7 +58,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 ### Link hydrogens (`--add-linkH True`)
 - Adds carbon-only link hydrogens at 1.09 Å along severed bond vectors (CB–CA, CA–N, CA–C; PRO/HYP use CA–C only).
 - Inserted after a `TER` as contiguous `HETATM` records named `HL` in residue `LKH` (chain `L`). Serial numbers continue from the main block.
-- In multi-structure mode the same bonds are capped across all models; coordinates remain model specific.
+- In multi-structure mode the same bonds are capped across all models; coordinates remain model-specific.
 
 ### Charge summary (`--ligand-charge`)
 - Amino acids and common ions draw charges from internal dictionaries; waters are zero.
@@ -71,7 +71,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
   - No `-o`, multiple inputs → per-file `pocket_<original_basename>.pdb`.
   - One `-o` path → single multi-MODEL PDB.
   - N outputs where N == number of inputs → N individual PDBs.
-- Diagnostics echo raw vs kept atom counts per model along with residue IDs.
+- Diagnostics echo raw vs. kept atom counts per model along with residue IDs.
 
 ### Substrate specification (`-c/--center`)
 - PDB path: the coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.

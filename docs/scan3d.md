@@ -5,7 +5,7 @@
 UMA calculator. You provide exactly one `--scan-lists` literal containing three
 quadruples `(i, j, lowÅ, highÅ)`. The tool builds linear grids for each distance
 with `--max-step-size`, reorders the values so that those nearest to the
-(pre‑optimized) starting structure are visited first, and then nests the loops
+(pre-optimized) starting structure are visited first, and then nests the loops
 (outer d₁, middle d₂, inner d₃). Each grid point is relaxed with the
 appropriate restraints active; unbiased energies are recorded so you can compare
 points directly. A precomputed `surface.csv` can also be visualized without
@@ -13,8 +13,8 @@ rerunning the scan.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
 enabling format-aware PDB/GJF output conversion.
 
-> If you want to adjust the plot for better visibility, we recommend adding the
-option to load the CSV after the scan finishes and changing `--zmin` and `--zmax`.
+> If you want to tweak the plot for better visibility, load the CSV after the scan
+finishes and adjust `--zmin` and `--zmax`.
 
 ## Usage
 ```bash
@@ -30,7 +30,7 @@ Note: `-i/--input` and `--scan-lists` are required unless `--csv` is provided.
 pdb2reaction scan3d -i input.pdb -q 0 \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
 
-# LBFGS relaxations, dumped inner trajectories, and HTML isosurface plot
+# LBFGS relaxations, dumped inner trajectories, and an HTML isosurface plot
 pdb2reaction scan3d -i input.pdb -q 0 \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
     --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \

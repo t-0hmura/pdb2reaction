@@ -65,7 +65,7 @@ out_dir/ (default: ./result_irc/)
 
 ## Notes
 - CLI booleans (`--forward`, `--backward`) must be spelled out (`True`/`False`) to be merged into YAML when desired.
-- UMA is reused throughout the IRC; aggressive `step_length` values can destabilise EulerPC.
+- UMA is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
 - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 - Charge/spin inherit `.gjf` metadata when possible. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Override them explicitly for non-standard states.
 - `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
