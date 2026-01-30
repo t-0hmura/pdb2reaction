@@ -43,32 +43,32 @@ ja/index
 ### CLI Subcommands
 
 #### Structure Preparation
-| Command | Description |
+| Subcommand | Description |
 |---------|-------------|
 | [`extract`](extract.md) | Extract active-site cluster from protein-ligand complex |
 | [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77-78) |
 
 #### Geometry Optimization
-| Command | Description |
+| Subcommand | Description |
 |---------|-------------|
 | [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS / RFO) |
 | [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO) |
 
 #### Path Search & Optimization
-| Command | Description |
+| Subcommand | Description |
 |---------|-------------|
 | [`path-opt`](path_opt.md) | MEP optimization via GSM or DMF |
 | [`path-search`](path_search.md) | Recursive MEP search with automatic refinement |
 
 #### Scans
-| Command | Description |
+| Subcommand | Description |
 |---------|-------------|
 | [`scan`](scan.md) | 1D bond-length driven scan with restraints |
 | [`scan2d`](scan2d.md) | 2D distance grid scan |
 | [`scan3d`](scan3d.md) | 3D distance grid scan |
 
 #### Analysis & Post-processing
-| Command | Description |
+| Subcommand | Description |
 |---------|-------------|
 | [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
