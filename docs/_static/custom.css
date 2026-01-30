@@ -7,7 +7,7 @@
 
 /* Set base font size */
 html {
-    font-size: 15px;
+    font-size: 16px;
 }
 
 /* Adjust content area font */
@@ -17,7 +17,7 @@ html {
 
 /* Adjust sidebar font */
 .sidebar-tree {
-    font-size: 0.95rem;
+    font-size: 1rem;
 }
 
 /* Adjust code blocks */
