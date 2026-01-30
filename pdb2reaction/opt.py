@@ -537,9 +537,9 @@ def cli(
             # --------------------------
             # 4) Run optimization
             # --------------------------
-            click.echo("\n=== Optimization started ===\n")
+            click.echo("=== Optimization started ===")
             optimizer.run()
-            click.echo("\n=== Optimization finished ===\n")
+            click.echo("=== Optimization finished ===")
 
             # --------------------------
             # 5) Post-processing: PDB conversions (if input is PDB)

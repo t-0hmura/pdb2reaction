@@ -731,13 +731,13 @@ def cli(
             Cv_cal_per_Kmol = J_per_Kmol_to_cal_per_Kmol(tr.c_tot)
             S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)
 
-            click.echo("\nThermochemistry Summary")
-            click.echo("------------------------")
+            click.echo("=== Thermochemistry summary started ===")
             click.echo(f"Temperature (K)         = {T:.2f}")
             click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
             if freeze_list:
                 click.echo("[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.")
-            click.echo(f"Number of Imaginary Freq = {n_imag:d}\n")
+            click.echo(f"Number of Imaginary Freq = {n_imag:d}")
+            click.echo("")
 
             click.echo(f"Electronic Energy (EE)                 = {_fmt_ha(EE)}")
             click.echo(f"Zero-point Energy Correction           = {_fmt_ha(ZPE)}")
@@ -752,7 +752,7 @@ def cli(
             click.echo(f"E (Thermal)                            = {_fmt_cal(E_thermal_cal)}")
             click.echo(f"Heat Capacity (Cv)                     = {_fmt_calK(Cv_cal_per_Kmol)}")
             click.echo(f"Entropy (S)                            = {_fmt_calK(S_cal_per_Kmol)}")
-            click.echo("")
+            click.echo("=== Thermochemistry summary finished ===")
 
             if bool(thermo_cfg["dump"]):
                 out_yaml = out_dir_path / "thermoanalysis.yaml"
@@ -789,7 +789,7 @@ def cli(
         click.echo(format_elapsed("[time] Elapsed Time for Freq", time_start))
 
     except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
+        click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         import traceback

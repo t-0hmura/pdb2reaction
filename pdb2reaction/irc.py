@@ -300,9 +300,9 @@ def cli(
             # EulerPC.__init__ forwards **kwargs directly to IRC.__init__
             eulerpc = EulerPC(geometry, **irc_cfg)
 
-            click.echo("\n=== IRC (EulerPC) started ===\n")
+            click.echo("=== IRC (EulerPC) started ===")
             eulerpc.run()
-            click.echo("\n=== IRC (EulerPC) finished ===\n")
+            click.echo("=== IRC (EulerPC) finished ===")
 
             # --------------------------
             # 4) Convert trajectories to PDB based on input type
@@ -327,7 +327,7 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 
         except KeyboardInterrupt:
-            click.echo("\nInterrupted by user.", err=True)
+            click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
             tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")

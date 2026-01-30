@@ -387,7 +387,7 @@ def cli(
 
             # ===== 3D nested scan: d1 (outer) → d2 (middle) → d3 (inner) =====
             for i_idx, d1_target in enumerate(d1_values):
-                click.echo(f"\n=== d1 step {i_idx + 1}/{N1} : target = {d1_target:.3f} Å ===")
+                click.echo(f"[stage] d1 step {i_idx + 1}/{N1}: target = {d1_target:.3f} Å")
 
                 # Choose initial geometry for this d1 from the previously scanned
                 # structure with the closest d1 value (or the reference structure).
@@ -431,8 +431,8 @@ def cli(
 
                 for j_idx, d2_target in enumerate(d2_values):
                     click.echo(
-                        f"\n--- (d1,d2) = ({i_idx + 1}/{N1}, {j_idx + 1}/{N2}) : "
-                        f"targets = ({d1_target:.3f}, {d2_target:.3f}) Å ---"
+                        f"[stage] d1/d2 step ({i_idx + 1}/{N1}, {j_idx + 1}/{N2}): "
+                        f"targets = ({d1_target:.3f}, {d2_target:.3f}) Å"
                     )
 
                     # Choose initial geometry for this (d1,d2) from the previously
@@ -846,7 +846,7 @@ def cli(
         fig3d.write_html(str(html3d))
         click.echo(f"[plot] Wrote '{html3d}'.")
 
-        click.echo("\n=== 3D Scan finished ===\n")
+        click.echo("=== 3D Scan finished ===")
         click.echo(format_elapsed("[time] Elapsed Time for 3D Scan", time_start))
 
     try:
@@ -873,7 +873,7 @@ def cli(
         else:
             _run_scan3d(None, charge, spin, None, None)
     except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
+        click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

@@ -457,7 +457,7 @@ def cli(
 
             for i_idx, d1_target in enumerate(d1_values):
                 click.echo(
-                    f"\n--- d1 step {i_idx+1}/{N1} : target = {d1_target:.3f} Å ---"
+                    f"[stage] d1 step {i_idx+1}/{N1}: target = {d1_target:.3f} Å"
                 )
                 biased.set_pairs([(i1, j1, float(d1_target))])
                 geom_outer.set_calculator(biased)
@@ -912,11 +912,11 @@ def cli(
             fig3d.write_html(str(html3d))
             click.echo(f"[plot] Wrote '{html3d}'.")
 
-            click.echo("\n=== 2D Scan finished ===\n")
+            click.echo("=== 2D Scan finished ===")
             click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start))
 
         except KeyboardInterrupt:
-            click.echo("\nInterrupted by user.", err=True)
+            click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

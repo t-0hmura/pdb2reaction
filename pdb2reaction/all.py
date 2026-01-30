@@ -78,6 +78,24 @@ from .utils import (
     xyz_blocks_first_last,
     set_freeze_atoms_or_warn,
 )
+
+_log_started = False
+
+
+def _echo(*args, **kwargs) -> None:
+    """Echo with local output tracking for section spacing."""
+    global _log_started
+    click.echo(*args, **kwargs)
+    _log_started = True
+
+
+def _echo_section(message: str, **kwargs) -> None:
+    """Echo a section header with a leading blank line unless it's the first log."""
+    global _log_started
+    if _log_started:
+        click.echo()
+    click.echo(message, **kwargs)
+    _log_started = True
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
 from . import irc as _irc_cli
@@ -94,11 +112,11 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         shutil.copy2(src, dst)
         if echo:
             shown = label or src.name
-            click.echo(f"[all] Copied {shown} → {dst}")
+            _echo(f"[all] Copied {shown} → {dst}")
         return True
     except Exception as e:
         shown = label or src
-        click.echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}", err=True)
+        _echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}", err=True)
         return False
 
 
@@ -116,20 +134,21 @@ def _run_cli_main(
     label = prefix or cmd_name
     try:
         sys.argv = ["pdb2reaction", cmd_name] + list(args)
-        click.echo()
+        _echo()
         cli_obj.main(args=list(args), standalone_mode=False)
     except SystemExit as e:
         code = getattr(e, "code", 1)
         if code not in (None, 0):
             if on_nonzero == "raise":
                 raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
-            click.echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
+            _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
     except Exception as e:
         if on_exception == "raise":
             raise click.ClickException(f"[{label}] {cmd_name} failed: {e}")
-        click.echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
+        _echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
     finally:
         sys.argv = saved
+        _echo()
 
 
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
@@ -598,7 +617,7 @@ def _save_single_geom_as_pdb_for_tools(
         try:
             _path_search._convert_to_pdb_logged(xyz_trj, ref_pdb_path=ref_pdb, out_path=pdb_out)
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: failed to convert '{xyz_trj.name}' to PDB for {name}: {e}",
                 err=True,
             )
@@ -644,9 +663,9 @@ def _write_segment_energy_diagram(
     png = prefix.with_suffix(".png")
     try:
         fig.write_image(str(png), scale=2)
-        click.echo(f"[diagram] Wrote energy diagram → {png.name}")
+        _echo(f"[diagram] Wrote energy diagram → {png.name}")
     except Exception as e:
-        click.echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
+        _echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
 
     payload: Dict[str, Any] = {
         "name": prefix.stem,
@@ -702,7 +721,7 @@ def _concat_images_horizontally(
     try:
         from PIL import Image
     except Exception:
-        click.echo(f"[irc_all] Pillow not available; skipping '{out_path.name}'.", err=True)
+        _echo(f"[irc_all] Pillow not available; skipping '{out_path.name}'.", err=True)
         return
 
     images = [Image.open(str(p)) for p in existing]
@@ -718,7 +737,7 @@ def _concat_images_horizontally(
         x += im.width + gap
     ensure_dir(out_path.parent)
     canvas.save(str(out_path))
-    click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_path}")
+    _echo(f"[irc_all] Wrote aggregated IRC plot → {out_path}")
 
 
 def _merge_irc_trajectories_to_single_plot(
@@ -744,7 +763,7 @@ def _merge_irc_trajectories_to_single_plot(
         try:
             blocks = read_xyz_as_blocks(trj_path)
         except click.ClickException as e:
-            click.echo(str(e), err=True)
+            _echo(str(e), err=True)
             continue
         if not blocks:
             continue
@@ -760,15 +779,15 @@ def _merge_irc_trajectories_to_single_plot(
     try:
         tmp_trj.write_text("\n".join(all_blocks) + "\n", encoding="utf-8")
     except Exception as e:
-        click.echo(f"[irc_all] WARNING: Failed to write concatenated IRC trajectory: {e}", err=True)
+        _echo(f"[irc_all] WARNING: Failed to write concatenated IRC trajectory: {e}", err=True)
         return
 
     try:
         run_trj2fig(tmp_trj, [out_png], unit="kcal", reference="init", reverse_x=False)
         close_matplotlib_figures()
-        click.echo(f"[irc_all] Wrote aggregated IRC plot → {out_png}")
+        _echo(f"[irc_all] Wrote aggregated IRC plot → {out_png}")
     except Exception as e:
-        click.echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}", err=True)
+        _echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}", err=True)
     finally:
         try:
             tmp_trj.unlink()
@@ -821,12 +840,12 @@ def _optimize_endpoint_geom(
     if thresh is not None:
         cfg["thresh"] = str(thresh)
 
-    click.echo(f"[endpoint-opt] Optimizing '{tag}' with {sopt_kind.upper()} → {opt_dir}")
+    _echo(f"[endpoint-opt] Optimizing '{tag}' with {sopt_kind.upper()} → {opt_dir}")
     opt = OptClass(geom, **cfg)
     try:
         opt.run()
     except (OptimizationError, ZeroStepLength) as e:
-        click.echo(
+        _echo(
             f"[endpoint-opt] WARNING: optimization for '{tag}' terminated early ({e}); using last geometry.",
             err=True,
         )
@@ -1102,7 +1121,8 @@ def _run_tsopt_on_hei(
     if ref_pdb is not None:
         ts_args.extend(["--ref-pdb", str(ref_pdb)])
 
-    click.echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
+    _echo()
+    _echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
     _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
 
     ts_pdb = ts_dir / "final_geometry.pdb"
@@ -1121,7 +1141,7 @@ def _run_tsopt_on_hei(
                 out_gjf_path=ts_gjf if needs_gjf else None,
             )
         except Exception as e:
-            click.echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
+            _echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
 
     if ts_xyz.exists():
         ts_geom_path = ts_xyz
@@ -1212,7 +1232,8 @@ def _irc_and_match(
 
     if args_yaml is not None:
         irc_args.extend(["--args-yaml", str(args_yaml)])
-    click.echo(f"[irc] Running EulerPC IRC → out={irc_dir}")
+    _echo()
+    _echo(f"[irc] Running EulerPC IRC → out={irc_dir}")
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
 
     finished_pdb = irc_dir / "finished_irc.pdb"
@@ -1230,7 +1251,7 @@ def _irc_and_match(
             if ref_for_conv is not None:
                 _path_search._convert_to_pdb_logged(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
     except Exception as e:
-        click.echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
+        _echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
 
     elems, c_first, c_last = read_xyz_first_last(finished_trj)
 
@@ -1291,21 +1312,21 @@ def _irc_and_match(
                             left_tag, right_tag = right_tag, left_tag
                             reverse_irc = True
                     except Exception as e:
-                        click.echo(
+                        _echo(
                             f"[irc] WARNING: segment endpoint mapping via RMSD failed: {e}",
                             err=True,
                         )
             else:
-                click.echo(
+                _echo(
                     f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' in the segment directories; "
                     "using raw IRC orientation.",
                     err=True,
                 )
         except Exception as e:
-            click.echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+            _echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
     else:
         # TSOPT-only mode: use raw IRC orientation.
-        click.echo(f"[irc] TSOPT-only mode: Use raw irc orientation.")
+        _echo(f"[irc] TSOPT-only mode: Use raw irc orientation.")
 
     # Per-segment IRC plot
     try:
@@ -1313,7 +1334,7 @@ def _irc_and_match(
             run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
             close_matplotlib_figures()
     except Exception as e:
-        click.echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
+        _echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
 
     return {
         "left_min_geom": g_left,
@@ -1894,6 +1915,8 @@ def cli(
     a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
+    global _log_started
+    _log_started = False
     set_convert_file_enabled(convert_files)
     command_str = " ".join(sys.argv)
     time_start = time.perf_counter()
@@ -2015,25 +2038,25 @@ def cli(
     for p in input_paths:
         if _pdb_needs_elem_fix(p):
             if not elem_fix_echo:
-                click.echo(
-                    "\n=== [all] Preflight — add_elem_info (only when element fields are missing) ===\n"
+                _echo_section(
+                    "=== [all] Preflight — add_elem_info (only when element fields are missing) started ==="
                 )
                 elem_fix_echo = True
             ensure_dir(elem_tmp_dir)
             out_p = (elem_tmp_dir / p.name).resolve()
             try:
                 _assign_elem_info(str(p), str(out_p), overwrite=False)
-                click.echo(f"[all] add_elem_info: fixed elements → {out_p}")
+                _echo(f"[all] add_elem_info: fixed elements → {out_p}")
                 inputs_for_extract.append(out_p)
             except SystemExit as e:
                 code = getattr(e, "code", 1)
-                click.echo(
+                _echo(
                     f"[all] WARNING: add_elem_info exited with code {code} for {p}; using original.",
                     err=True,
                 )
                 inputs_for_extract.append(p.resolve())
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] WARNING: add_elem_info failed for {p}: {e} — using original file.",
                     err=True,
                 )
@@ -2051,8 +2074,8 @@ def cli(
     resolved_charge: Optional[int] = None
 
     if not skip_extract:
-        click.echo(
-            f"=== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) ===\n"
+        _echo_section(
+            f"=== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) started ==="
         )
         try:
             ex_res = extract_api(
@@ -2071,9 +2094,9 @@ def cli(
         except Exception as e:
             raise click.ClickException(f"[all] Extractor failed: {e}")
 
-        click.echo("[all] Pocket files:")
+        _echo("[all] Pocket files:")
         for op in pocket_outputs:
-            click.echo(f"  - {op}")
+            _echo(f"  - {op}")
 
         try:
             cs = ex_res.get("charge_summary", {})
@@ -2081,16 +2104,16 @@ def cli(
             q_prot = float(cs.get("protein_charge", 0.0))
             q_lig = float(cs.get("ligand_total_charge", 0.0))
             q_ion = float(cs.get("ion_total_charge", 0.0))
-            click.echo("\n[all] Charge summary from extractor (model #1):")
-            click.echo(
+            _echo("[all] Charge summary from extractor (model #1):")
+            _echo(
                 f"  Protein: {q_prot:+g},  Ligand: {q_lig:+g},  Ions: {q_ion:+g},  Total: {q_total:+g}"
             )
             resolved_charge = _round_charge_with_note(q_total, prefix="[all]")
         except Exception as e:
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
-        click.echo(
-            f"=== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets ===\n"
+        _echo_section(
+            f"=== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets started ==="
         )
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
@@ -2101,11 +2124,11 @@ def cli(
                     gjf_charge, gjf_spin = resolve_charge_spin_or_raise(
                         prepared, charge=None, spin=None
                     )
-                click.echo(
+                _echo(
                     f"[all] Detected from GJF (first input): charge={gjf_charge:+d}, spin={gjf_spin}"
                 )
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] NOTE: failed to parse charge/spin from GJF '{first_input.name}': {e}",
                     err=True,
                 )
@@ -2132,13 +2155,13 @@ def cli(
                             prepared, ligand_charge, prefix="[all]"
                         )
                 except Exception as e:
-                    click.echo(
+                    _echo(
                         f"[all] NOTE: failed to derive total charge from full complex: {e}; "
                         "falling back to legacy handling.",
                         err=True,
                     )
             else:
-                click.echo(
+                _echo(
                     "[all] NOTE: --ligand-charge derivation requires a PDB input; skipping full-complex derivation.",
                     err=True,
                 )
@@ -2146,13 +2169,13 @@ def cli(
         if resolved_charge is None:
             if ligand_charge_numeric is not None:
                 charge_total = ligand_charge_numeric
-                click.echo(
+                _echo(
                     f"[all] Using --ligand-charge as TOTAL system charge: {charge_total:+g}"
                 )
                 resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
             elif gjf_charge is not None:
                 charge_total = float(gjf_charge)
-                click.echo(f"[all] Using total charge from first GJF: {charge_total:+g}")
+                _echo(f"[all] Using total charge from first GJF: {charge_total:+g}")
                 resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
             else:
                 if charge_override is None:
@@ -2163,7 +2186,7 @@ def cli(
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)
-            click.echo(f"[all] Spin multiplicity set from GJF: {spin}")
+            _echo(f"[all] Spin multiplicity set from GJF: {spin}")
 
     if charge_override is not None:
         q_int = int(charge_override)
@@ -2172,7 +2195,7 @@ def cli(
         )
         if resolved_charge is not None:
             override_msg += f" (would otherwise use {int(resolved_charge):+d} from workflow)"
-        click.echo(override_msg, err=True)
+        _echo(override_msg, err=True)
     else:
         q_int = int(resolved_charge) if resolved_charge is not None else 0
 
@@ -2205,7 +2228,7 @@ def cli(
     # TSOPT-only single-structure mode
     # -------------------------------------------------------------------------
     if single_tsopt_mode:
-        click.echo("\n=== [all] TSOPT-only single-structure mode ===\n")
+        _echo_section("=== [all] TSOPT-only single-structure mode started ===")
         tsroot = out_dir / "tsopt_single"
         ensure_dir(tsroot)
 
@@ -2283,7 +2306,7 @@ def cli(
                 thresh=thresh_post,
             )
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[post] WARNING: Reactant endpoint optimization failed in TSOPT-only mode: {e}",
                 err=True,
             )
@@ -2298,7 +2321,7 @@ def cli(
                 thresh=thresh_post,
             )
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[post] WARNING: Product endpoint optimization failed in TSOPT-only mode: {e}",
                 err=True,
             )
@@ -2306,7 +2329,7 @@ def cli(
 
         # Clean up endpoint_opt as a temporary working directory
         shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-        click.echo(f"[endpoint-opt] Clean endpoint-opt working dir.") 
+        _echo(f"[endpoint-opt] Clean endpoint-opt working dir.") 
 
         pR = _save_single_geom_as_pdb_for_tools(
             g_react_opt, pocket_ref, struct_dir, "reactant"
@@ -2332,7 +2355,8 @@ def cli(
         dft_root = _resolve_override_dir(tsroot / "dft", dft_out_dir)
 
         if do_thermo:
-            click.echo("[thermo] Single TSOPT: freq on R/TS/P")
+            _echo()
+            _echo("[thermo] Single TSOPT: freq on R/TS/P")
             ref_pdb_for_tsopt_only = (
                 ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
             )
@@ -2388,12 +2412,13 @@ def cli(
                 if diag_payload:
                     energy_diagrams.append(diag_payload)
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True
                 )
 
         if do_dft:
-            click.echo("[dft] Single TSOPT: DFT on R/TS/P")
+            _echo()
+            _echo("[dft] Single TSOPT: DFT on R/TS/P")
             dft_jobs = [
                 ("R", pR, dft_root / "R"),
                 ("TS", pT, dft_root / "TS"),
@@ -2432,7 +2457,7 @@ def cli(
                 if diag_payload:
                     energy_diagrams.append(diag_payload)
             except Exception as e:
-                click.echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
+                _echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
 
             if do_thermo:
                 try:
@@ -2464,7 +2489,7 @@ def cli(
                     if diag_payload:
                         energy_diagrams.append(diag_payload)
                 except Exception as e:
-                    click.echo(
+                    _echo(
                         f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}",
                         err=True,
                     )
@@ -2479,7 +2504,7 @@ def cli(
             if not changed:
                 bond_summary = "(no covalent changes detected)"
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[post] WARNING: Failed to detect bond changes for TSOPT-only endpoints: {e}",
                 err=True,
             )
@@ -2516,7 +2541,7 @@ def cli(
         try:
             with open(tsroot / "summary.yaml", "w") as f:
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-            click.echo(f"[write] Wrote '{tsroot / 'summary.yaml'}'.")
+            _echo(f"[write] Wrote '{tsroot / 'summary.yaml'}'.")
             _copy_logged(tsroot / "summary.yaml", out_dir / "summary.yaml", label="summary.yaml")
             try:
                 ts_freq_info = (
@@ -2621,9 +2646,9 @@ def cli(
                 write_summary_log(tsroot / "summary.log", summary_payload)
                 _copy_logged(tsroot / "summary.log", out_dir / "summary.log", label="summary.log", echo=False)
             except Exception as e:
-                click.echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
+                _echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[write] WARNING: Failed to write summary.yaml for TSOPT-only run: {e}",
                 err=True,
             )
@@ -2640,7 +2665,7 @@ def cli(
                     dst = out_dir / f"{stem}_all.png"
                     _copy_logged(src, dst, label=src.name)
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to mirror *_all diagrams in TSOPT-only mode: {e}",
                 err=True,
             )
@@ -2650,7 +2675,7 @@ def cli(
                 dst = out_dir / "irc_plot_all.png"
                 _copy_logged(irc_plot_path, dst, label="irc_plot_all.png")
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to mirror IRC plot in TSOPT-only mode: {e}",
                 err=True,
             )
@@ -2663,19 +2688,19 @@ def cli(
             else:
                 ts_copy = out_dir / "ts_seg_01.xyz"
                 write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_copy)
-            click.echo(
+            _echo(
                 f"[all] Copied TS structure for TSOPT-only run → {ts_copy}"
             )
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to write TS structure in TSOPT-only mode: {e}",
                 err=True,
             )
 
-        click.echo(
-            "\n=== [all] TSOPT-only pipeline finished successfully ===\n"
+        _echo_section(
+            "=== [all] TSOPT-only pipeline successfully finished ==="
         )
-        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     # -------------------------------------------------------------------------
@@ -2684,7 +2709,7 @@ def cli(
     pockets_for_path: List[Path]
     pocket_ref_pdbs: Optional[List[Path]] = None
     if is_single and has_scan:
-        click.echo("=== [all] Stage 1b — Staged scan on input ===\n")
+        _echo_section("=== [all] Stage 1b — Staged scan on input started ===")
         ensure_dir(scan_dir)
 
         if skip_extract:
@@ -2701,7 +2726,7 @@ def cli(
             converted_scan_stages = _convert_scan_lists_to_pocket_indices(
                 scan_lists_raw, full_input_pdb, scan_input_pdb
             )
-            click.echo(
+            _echo(
                 "[all] Remapped --scan-lists indices from the full PDB to the pocket ordering."
             )
 
@@ -2770,8 +2795,9 @@ def cli(
             scan_args.append("--scan-lists")
             scan_args.extend(scan_stage_literals)
 
-        click.echo("[all] Invoking scan with arguments:")
-        click.echo("  " + " ".join(scan_args))
+        _echo()
+        _echo("[all] Invoking scan with arguments:")
+        _echo("  " + " ".join(scan_args))
 
         _run_cli_main("scan", _scan_cli.cli, scan_args, on_nonzero="raise", prefix="all")
 
@@ -2785,9 +2811,9 @@ def cli(
                 "[all] No stage result structures found under scan/ "
                 "(looked for result.[pdb|xyz|gjf])."
             )
-        click.echo("[all] Collected scan stage pocket files:")
+        _echo("[all] Collected scan stage pocket files:")
         for p in stage_results:
-            click.echo(f"  - {p}")
+            _echo(f"  - {p}")
 
         pockets_for_path = [scan_input_pdb] + stage_results
 
@@ -2807,7 +2833,7 @@ def cli(
             if not missing_pdb:
                 pocket_ref_pdbs = candidate_pdbs
             else:
-                click.echo(
+                _echo(
                     "[all] WARNING: pocket PDB snapshots for staged scan were not found; "
                     "full-system merge will use input paths instead.",
                     err=True,
@@ -2827,21 +2853,21 @@ def cli(
     mep_mode_kind = mep_mode.strip().lower()
 
     if skip_extract:
-        click.echo(
+        _echo(
             "[all] NOTE: skipping --ref-full-pdb (no --center; inputs already represent full structures)."
         )
     elif is_single and has_scan:
         if _is_pdb(input_paths[0]):
             gave_ref_pdb = True
         else:
-            click.echo(
+            _echo(
                 "[all] NOTE: skipping --ref-full-pdb (single+scan: original input is not a PDB)."
             )
     else:
         if all(_is_pdb(p) for p in input_paths):
             gave_ref_pdb = True
         else:
-            click.echo(
+            _echo(
                 "[all] NOTE: skipping --ref-full-pdb (one or more original inputs are not PDB)."
             )
 
@@ -2849,9 +2875,9 @@ def cli(
     # Stage 2: MEP search
     # -------------------------------------------------------------------------
     if not refine_path:
-        click.echo(
-            f"\n=== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) ===\n"
-        )
+            _echo_section(
+                f"=== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ==="
+            )
 
         if len(pockets_for_path) < 2:
             raise click.ClickException("[all] Need at least two structures for path-opt MEP concatenation.")
@@ -2906,8 +2932,9 @@ def cli(
             if args_yaml is not None:
                 po_args.extend(["--args-yaml", str(args_yaml)])
 
-            click.echo(f"[all] Invoking path-opt for segment {idx}:")
-            click.echo("  " + " ".join(po_args))
+            _echo()
+            _echo(f"[all] Invoking path-opt for segment {idx}:")
+            _echo("  " + " ".join(po_args))
 
             _run_cli_main(
                 "path-opt",
@@ -2931,7 +2958,7 @@ def cli(
                 if seg_trj.resolve() != mirror_trj.resolve():
                     shutil.copy2(seg_trj, mirror_trj)
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] WARNING: failed to mirror path-opt trajectory for segment {idx:02d}: {e}",
                     err=True,
                 )
@@ -2946,7 +2973,7 @@ def cli(
                         out_path=path_dir / f"mep_seg_{idx:02d}.pdb",
                     )
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] WARNING: failed to emit per-segment trajectory copies for segment {idx:02d}: {e}",
                     err=True,
                 )
@@ -2962,7 +2989,7 @@ def cli(
                     if hei_gjf_src.exists():
                         shutil.copy2(hei_gjf_src, path_dir / f"hei_seg_{idx:02d}.gjf")
                 except Exception as e:
-                    click.echo(
+                    _echo(
                         f"[all] WARNING: failed to prepare HEI artifacts for segment {idx:02d}: {e}",
                         err=True,
                     )
@@ -2991,7 +3018,7 @@ def cli(
             try:
                 first_last = xyz_blocks_first_last(raw_blocks, path=seg_trj)
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] WARNING: failed to parse first/last frames for segment {idx:02d}: {e}",
                     err=True,
                 )
@@ -3009,16 +3036,16 @@ def cli(
         final_trj = path_dir / "mep.trj"
         try:
             final_trj.write_text("".join(combined_blocks), encoding="utf-8")
-            click.echo(f"[all] Wrote concatenated MEP trajectory: {final_trj}")
+            _echo(f"[all] Wrote concatenated MEP trajectory: {final_trj}")
         except Exception as e:
             raise click.ClickException(f"[all] Failed to write concatenated MEP: {e}")
 
         try:
             run_trj2fig(final_trj, [path_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
             close_matplotlib_figures()
-            click.echo(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
+            _echo(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
         except Exception as e:
-            click.echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
+            _echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
         try:
             if pockets_for_path[0].suffix.lower() == ".pdb":
@@ -3028,9 +3055,9 @@ def cli(
                 if mep_pdb and mep_pdb.exists():
                     dst = out_dir / mep_pdb.name
                     shutil.copy2(mep_pdb, dst)
-                    click.echo(f"[all] Copied concatenated MEP PDB → {dst}")
+                    _echo(f"[all] Copied concatenated MEP PDB → {dst}")
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to convert/copy concatenated MEP to PDB: {e}", err=True
             )
 
@@ -3056,7 +3083,7 @@ def cli(
                 if diag_payload:
                     energy_diagrams.append(diag_payload)
         except Exception as e:
-            click.echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
+            _echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
 
         segments_summary: List[Dict[str, Any]] = []
         bond_cfg = dict(_path_search.BOND_KW)
@@ -3080,7 +3107,7 @@ def cli(
                 if not changed:
                     bond_summary = "(no covalent changes detected)"
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] WARNING: Failed to detect bond changes for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
@@ -3108,9 +3135,9 @@ def cli(
         try:
             with open(path_dir / "summary.yaml", "w") as f:
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-            click.echo(f"[write] Wrote '{path_dir / 'summary.yaml'}'.")
+            _echo(f"[write] Wrote '{path_dir / 'summary.yaml'}'.")
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
+            _echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
 
         try:
             for name in (
@@ -3133,7 +3160,7 @@ def cli(
                         dst = out_dir / src.name
                         _copy_logged(src, dst, label=src.name)
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to relocate path-opt summary files: {e}", err=True
             )
         try:
@@ -3178,15 +3205,15 @@ def cli(
             write_summary_log(path_dir / "summary.log", summary_payload)
             _copy_logged(path_dir / "summary.log", out_dir / "summary.log", label="summary.log")
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[write] WARNING: Failed to write summary.log for path-opt branch: {e}",
                 err=True,
             )
     if refine_path:
         # --- recursive GSM path_search branch ---
-        click.echo(
-            f"\n=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) ===\n"
-        )
+            _echo_section(
+                f"=== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) started ==="
+            )
 
         ps_args: List[str] = []
 
@@ -3218,8 +3245,9 @@ def cli(
                 for p in pocket_ref_pdbs:
                     ps_args.extend(["--ref-pdb", str(p)])
 
-        click.echo("[all] Invoking path_search with arguments:")
-        click.echo("  " + " ".join(ps_args))
+        _echo()
+        _echo("[all] Invoking path_search with arguments:")
+        _echo("  " + " ".join(ps_args))
 
         _run_cli_main(
             "path_search",
@@ -3250,40 +3278,40 @@ def cli(
                         dst = out_dir / src.name
                         _copy_logged(src, dst, label=src.name)
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True
             )
 
     # -------------------------------------------------------------------------
     # Stage 3: merge to full systems (performed by path_search when enabled)
     # -------------------------------------------------------------------------
-    click.echo(f"\n=== [all] Stage 3/{stage_total} — Merge into full-system templates ===\n")
+    _echo_section(f"=== [all] Stage 3/{stage_total} — Merge into full-system templates started ===")
     if refine_path and gave_ref_pdb:
-        click.echo(
+        _echo(
             "[all] Merging was carried out by path_search using the original inputs as templates."
         )
-        click.echo(f"[all] Final products can be found under: {path_dir}")
-        click.echo(
+        _echo(f"[all] Final products can be found under: {path_dir}")
+        _echo(
             "  - mep_w_ref.pdb            (full-system merged trajectory; also copied to <out-dir>/)"
         )
-        click.echo(
+        _echo(
             "  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)"
         )
     elif refine_path:
-        click.echo(
+        _echo(
             "[all] --ref-full-pdb was not provided; full-system merged trajectories are not produced."
         )
-        click.echo(f"[all] Pocket-only outputs are under: {path_dir}")
+        _echo(f"[all] Pocket-only outputs are under: {path_dir}")
     else:
-        click.echo(
+        _echo(
             "[all] path-opt mode produces pocket-level outputs only; full-system merge is not performed."
         )
-        click.echo(f"[all] Aggregated products are under: {path_dir}")
-    click.echo("  - summary.yaml             (segment barriers, ΔE, labels)")
-    click.echo(
+        _echo(f"[all] Aggregated products are under: {path_dir}")
+    _echo("  - summary.yaml             (segment barriers, ΔE, labels)")
+    _echo(
         "  - energy_diagram_MEP.png / energy_diagram.* (copied summary at <out-dir>/)"
     )
-    click.echo("\n=== [all] Pipeline finished successfully (core path) ===\n")
+    _echo_section("=== [all] Pipeline (core path) successfully finished ===")
 
     summary_yaml = path_dir / "summary.yaml"
     summary_loaded = load_yaml_dict(summary_yaml) if summary_yaml.exists() else {}
@@ -3338,29 +3366,29 @@ def cli(
             write_summary_log(path_dir / "summary.log", summary_payload)
             try:
                 shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
-                click.echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
+                _echo(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
             except Exception:
                 pass
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+            _echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
 
     if not (do_tsopt or do_thermo or do_dft):
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
         _write_pipeline_summary_log([])
-        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     # -------------------------------------------------------------------------
     # Stage 4: post-processing per reactive segment
     # -------------------------------------------------------------------------
-    click.echo(
-        "\n=== [all] Stage 4 — Post-processing per reactive segment ===\n"
+    _echo_section(
+        "=== [all] Stage 4 — Post-processing per reactive segment started ==="
     )
 
     if not segments:
-        click.echo("[post] No segments found in summary; nothing to do.")
-        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        _echo("[post] No segments found in summary; nothing to do.")
+        _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     reactive = [
@@ -3374,8 +3402,8 @@ def cli(
         )
     ]
     if not reactive:
-        click.echo("[post] No bond-change segments. Skipping TS/thermo/DFT.")
-        click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.")
+        _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
     # Per-category per-segment energies
@@ -3389,7 +3417,7 @@ def cli(
     for s in reactive:
         seg_idx = int(s.get("index", 0) or 0)
         seg_tag = s.get("tag", f"seg_{seg_idx:02d}")
-        click.echo(f"\n--- [post] Segment {seg_idx:02d} ({seg_tag}) ---")
+        _echo(f"[stage] [post] Segment {seg_idx:02d} ({seg_tag})")
 
         seg_root = path_dir
         seg_dir = seg_root / f"post_seg_{seg_idx:02d}"
@@ -3409,7 +3437,7 @@ def cli(
         hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
         hei_pocket_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
         if hei_pocket_path is None:
-            click.echo(
+            _echo(
                 f"[post] WARNING: HEI pocket file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
                 err=True,
             )
@@ -3496,7 +3524,7 @@ def cli(
                     thresh=thresh_post,
                 )
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[post] WARNING: Reactant endpoint optimization failed for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
@@ -3511,14 +3539,14 @@ def cli(
                     thresh=thresh_post,
                 )
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[post] WARNING: Product endpoint optimization failed for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
                 g_prod_opt = gR
 
             shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-            click.echo(f"[endpoint-opt] Clean endpoint-opt working dir.") 
+            _echo(f"[endpoint-opt] Clean endpoint-opt working dir.") 
 
             pL = _save_single_geom_as_pdb_for_tools(
                 g_react_opt, ref_struct_template, struct_dir, "reactant"
@@ -3561,11 +3589,11 @@ def cli(
                 else:
                     ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
                     write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_copy)
-                click.echo(
+                _echo(
                     f"[all] Copied TS structure for segment {seg_idx:02d} → {ts_copy}"
                 )
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[all] WARNING: Failed to write TS structure for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
@@ -3587,14 +3615,14 @@ def cli(
             try:
                 endpoints = _load_segment_endpoints(seg_root, str(seg_tag), freeze_atoms)
                 if endpoints is None:
-                    click.echo(
+                    _echo(
                         f"[post] WARNING: final_geometries.trj not found for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
                         err=True,
                     )
                     continue
                 gL, gR = endpoints
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[post] WARNING: failed to load segment endpoints from final_geometries.trj for segment {seg_idx:02d}: {e}. Skipping segment.",
                     err=True,
                 )
@@ -3610,7 +3638,7 @@ def cli(
                     fa = np.array(freeze_atoms, dtype=int)
                     g_ts.freeze_atoms = fa
             except Exception as e:
-                click.echo(
+                _echo(
                     f"[post] WARNING: failed to load HEI geometry for segment {seg_idx:02d}: {e}. Skipping segment.",
                     err=True,
                 )
@@ -3639,7 +3667,7 @@ def cli(
         dft_seg_root = _resolve_override_dir(seg_dir / "dft", dft_out_dir)
 
         if (do_thermo or do_dft) and not state_structs:
-            click.echo(
+            _echo(
                 f"[post] WARNING: No segment structures prepared for segment {seg_idx:02d}; skipping thermo/DFT.",
                 err=True,
             )
@@ -3651,12 +3679,13 @@ def cli(
 
         if do_thermo:
             if not (p_react and p_ts and p_prod):
-                click.echo(
+                _echo(
                     f"[thermo] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping thermo.",
                     err=True,
                 )
             else:
-                click.echo(
+                _echo()
+                _echo(
                     f"[thermo] Segment {seg_idx:02d}: freq on R/TS/P"
                 )
                 tR = _run_freq_for_state(
@@ -3743,23 +3772,24 @@ def cli(
                             "delta_kcal": (GP - GR) * AU2KCALPERMOL,
                         }
                     else:
-                        click.echo(
+                        _echo(
                             "[thermo] NOTE: Gibbs energies non-finite; diagram skipped."
                         )
                 except Exception as e:
-                    click.echo(
+                    _echo(
                         f"[thermo] WARNING: failed to build Gibbs diagram: {e}",
                         err=True,
                     )
 
         if do_dft:
             if not (p_react and p_ts and p_prod):
-                click.echo(
+                _echo(
                     f"[dft] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping DFT.",
                     err=True,
                 )
             else:
-                click.echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
+                _echo()
+                _echo(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
                 dft_jobs = [
                     ("R", p_react, dft_seg_root / "R"),
                     ("TS", p_ts, dft_seg_root / "TS"),
@@ -3819,12 +3849,12 @@ def cli(
                             "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
                         }
                     else:
-                        click.echo(
+                        _echo(
                             "[dft] WARNING: some DFT energies missing; diagram skipped.",
                             err=True,
                         )
                 except Exception as e:
-                    click.echo(
+                    _echo(
                         f"[dft] WARNING: failed to build DFT diagram: {e}", err=True
                     )
 
@@ -3877,12 +3907,12 @@ def cli(
                                 "delta_kcal": (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
                             }
                         else:
-                            click.echo(
+                            _echo(
                                 "[dft//uma] WARNING: DFT//UMA Gibbs energies non-finite; diagram skipped.",
                                 err=True,
                             )
                     except Exception as e:
-                        click.echo(
+                        _echo(
                             f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}",
                             err=True,
                         )
@@ -3957,21 +3987,21 @@ def cli(
         summary["energy_diagrams"] = list(energy_diagrams)
         with open(path_dir / "summary.yaml", "w") as f:
             yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        click.echo(f"[write] Updated '{path_dir / 'summary.yaml'}' with energy diagrams.")
+        _echo(f"[write] Updated '{path_dir / 'summary.yaml'}' with energy diagrams.")
         try:
             dst_summary = out_dir / "summary.yaml"
             shutil.copy2(path_dir / "summary.yaml", dst_summary)
-            click.echo(f"[all] Copied summary.yaml → {dst_summary}")
+            _echo(f"[all] Copied summary.yaml → {dst_summary}")
         except Exception as e:
-            click.echo(
+            _echo(
                 f"[all] WARNING: Failed to mirror summary.yaml to {out_dir}: {e}",
                 err=True,
             )
         _write_pipeline_summary_log(post_segment_logs)
     except Exception as e:
-        click.echo(
+        _echo(
             f"[write] WARNING: Failed to refresh summary.yaml with energy diagram metadata: {e}",
             err=True,
         )
 
-    click.echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+    _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))

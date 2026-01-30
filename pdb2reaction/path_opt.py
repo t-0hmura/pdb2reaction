@@ -279,9 +279,9 @@ def _optimize_single(
     else:
         opt = RFOptimizer(g, **args)
 
-    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} started ===\n")
+    click.echo(f"=== [{tag}] Single-structure {sopt_kind.upper()} started ===")
     opt.run()
-    click.echo(f"\n=== [{tag}] Single-structure {sopt_kind.upper()} finished ===\n")
+    click.echo(f"=== [{tag}] Single-structure {sopt_kind.upper()} finished ===")
 
     try:
         final_xyz = Path(opt.final_fn)
@@ -647,9 +647,7 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
-            click.echo(
-                "\n=== Preoptimizing endpoints via single-structure optimizer ===\n"
-            )
+            click.echo("=== Preoptimizing endpoints via single-structure optimizer started ===")
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
                 if p.suffix.lower() == ".pdb":
@@ -697,8 +695,8 @@ def cli(
         align_thresh = str(opt_cfg.get("thresh", "gau"))
         try:
             click.echo(
-                "\n=== Aligning all inputs to the first structure "
-                "(freeze-guided scan + relaxation) ===\n"
+                "=== Aligning all inputs to the first structure "
+                "(freeze-guided scan + relaxation) started ==="
             )
             _ = align_and_refine_sequence_inplace(
                 geoms,
@@ -799,9 +797,9 @@ def cli(
         # --------------------------
         # 4) Run optimization
         # --------------------------
-        click.echo("\n=== Growing String optimization started ===\n")
+        click.echo("=== Growing String optimization started ===")
         optimizer.run()
-        click.echo("\n=== Growing String optimization finished ===\n")
+        click.echo("=== Growing String optimization finished ===")
 
         # --------------------------
         # 5) Write final path (final_geometries.trj)
@@ -905,7 +903,7 @@ def cli(
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)
         sys.exit(3)
     except KeyboardInterrupt:
-        click.echo("\nInterrupted by user.", err=True)
+        click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

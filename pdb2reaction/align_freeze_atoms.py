@@ -518,7 +518,7 @@ def align_and_refine_sequence_inplace(
         pair_out = out_dir / f"pair_{i:02d}"
 
         if verbose:
-            click.echo(f"\n[align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
+            click.echo(f"[stage] [align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
 
         res = align_and_refine_pair_inplace(
             g_ref, g_mob,

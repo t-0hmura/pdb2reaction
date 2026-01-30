@@ -369,9 +369,9 @@ def _run_mep_between(
         **{k: v for k, v in _opt_args.items() if k != "type"}
     )
 
-    click.echo(f"\n=== [{tag}] GSM started ===\n")
+    click.echo(f"=== [{tag}] GSM started ===")
     optimizer.run()
-    click.echo(f"\n=== [{tag}] GSM finished ===\n")
+    click.echo(f"=== [{tag}] GSM finished ===")
 
     energies = list(map(float, np.array(gs.energy, dtype=float)))
     images = list(gs.images)
@@ -1996,7 +1996,9 @@ def cli(
             except Exception:
                 freeze_list = [int(i) for i in list(geom_cfg.get("freeze_atoms", []))]
             freeze_text = ",".join(map(str, freeze_list))
-            click.echo("freeze_atoms\n" + "-" * len("freeze_atoms") + "\n" + freeze_text + "\n")
+            click.echo("freeze_atoms")
+            click.echo("-" * len("freeze_atoms"))
+            click.echo(freeze_text)
 
         main_prepared = prepared_inputs[0] if prepared_inputs else None
 
@@ -2034,7 +2036,7 @@ def cli(
         align_thresh = str(opt_cfg.get("thresh", "gau"))
         if align:
             try:
-                click.echo("\n=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ===\n")
+                click.echo("=== Aligning all inputs to the first structure (freeze-guided scan + relaxation) started ===")
                 _ = align_and_refine_sequence_inplace(
                     geoms,
                     thresh=align_thresh,
@@ -2051,7 +2053,7 @@ def cli(
         # --------------------------
         # 3) Run recursive search for each adjacent pair and stitch
         # --------------------------
-        click.echo("\n=== Multistep MEP search (multi-structure) started ===\n")
+        click.echo("=== Multistep MEP search (multi-structure) started ===")
         seg_counter = [0]
 
         bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 10))
@@ -2082,7 +2084,7 @@ def cli(
         for i in range(len(geoms) - 1):
             gA, gB = geoms[i], geoms[i + 1]
             pair_tag = f"pair_{i:02d}"
-            click.echo(f"\n--- Processing pair {i:02d}: image {i} → {i+1} ---")
+            click.echo(f"[stage] Processing pair {i:02d}: image {i} → {i+1}")
             pair_path = _build_multistep_path(
                 gA, gB,
                 shared_calc,
@@ -2127,7 +2129,7 @@ def cli(
                 )
                 seg_reports_all.extend(pair_path.segments)
 
-        click.echo("\n=== Multistep MEP search (multi-structure) finished ===\n")
+        click.echo("=== Multistep MEP search (multi-structure) finished ===")
 
         combined_all = CombinedPath(images=combined_imgs, energies=combined_Es, segments=seg_reports_all)
 
@@ -2238,7 +2240,7 @@ def cli(
             click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
 
         if do_merge:
-            click.echo("\n=== Full-system merge (pocket → templates) started ===\n")
+            click.echo("=== Full-system merge (pocket → templates) started ===")
             # With --align True, use only the first reference PDB for all pairs (replicate it).
             if align:
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:
@@ -2256,7 +2258,7 @@ def cli(
                 out_dir=out_dir_path,
                 pocket_ref_pdbs=[Path(p) for p in pocket_ref_pdb_paths] if pocket_ref_pdb_paths else None,
             )
-            click.echo("\n=== Full-system merge finished ===\n")
+            click.echo("=== Full-system merge finished ===")
 
         # --------------------------
         # 5) Console summary
@@ -2266,23 +2268,25 @@ def cli(
         except Exception:
             overall_changed, overall_summary = False, ""
 
-        click.echo("\n=== MEP Summary ===\n")
+        click.echo("=== MEP summary started ===")
 
-        click.echo("\n[overall] Covalent-bond changes between first and last image:")
+        click.echo("[overall] Covalent-bond changes between first and last image:")
         if overall_changed and overall_summary.strip():
             click.echo(textwrap.indent(overall_summary.strip(), prefix="  "))
         else:
             click.echo("  (no covalent changes detected)")
 
         if combined_all.segments:
-            click.echo("\n[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:")
+            click.echo("[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:")
             for i, seg in enumerate(combined_all.segments, 1):
                 kind_label = "BRIDGE" if seg.kind == "bridge" else "SEG"
                 click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
                 if seg.kind != "bridge" and seg.summary.strip():
                     click.echo(textwrap.indent(seg.summary.strip(), prefix="      "))
         else:
-            click.echo("\n[segments] (no segment reports)")
+            click.echo("[segments] (no segment reports)")
+
+        click.echo("=== MEP summary finished ===")
 
         # --------------------------
         # 6) Energy diagram (compressed state sequence)

@@ -575,11 +575,13 @@ def cli(
                 spins_table.append([i, elem, s_mull, s_low, s_iao])
 
             # ---- Echo charges/spins to stdout in flow style lines ----
-            click.echo("\ncharges [index, element, mulliken, lowdin, iao]:")
+            click.echo("")
+            click.echo("charges [index, element, mulliken, lowdin, iao]:")
             for row in charges_table:
                 click.echo(f"- {_format_row_for_echo(row)}")
 
-            click.echo("\nspin_densities [index, element, mulliken, lowdin, iao]:")
+            click.echo("")
+            click.echo("spin_densities [index, element, mulliken, lowdin, iao]:")
             for row in spins_table:
                 click.echo(f"- {_format_row_for_echo(row)}")
 
@@ -610,7 +612,8 @@ def cli(
             # --------------------------
             # 8) Final print: energies
             # --------------------------
-            click.echo(f"\nE_total (Hartree): {e_h:.12f}")
+            click.echo("")
+            click.echo(f"E_total (Hartree): {e_h:.12f}")
             click.echo(f"E_total (kcal/mol): {e_kcal:.6f}")
 
             # Exit codes: 0 if converged, 3 otherwise
@@ -621,7 +624,7 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))
 
         except KeyboardInterrupt:
-            click.echo("\nInterrupted by user.", err=True)
+            click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except click.ClickException:
             raise

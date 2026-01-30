@@ -79,9 +79,8 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
 
 def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
     """Print a readable end-of-run summary."""
-    click.echo("\nSummary")
-    click.echo("------------------")
-    for s in stages:
+    click.echo("=== Scan summary started ===")
+    for idx_s, s in enumerate(stages):
         idx = int(s.get("index", 0))
         pairs_1b = list(s.get("pairs_1based", []))
         r0 = list(s.get("initial_distances_A", []))
@@ -106,7 +105,9 @@ def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
             click.echo(textwrap.indent(summary_txt, prefix="  "))
         if not changed:
             click.echo("  (no covalent changes detected)")
-        click.echo("")  # blank line between stages
+        if idx_s != len(stages) - 1:
+            click.echo("")  # blank line between stages
+    click.echo("=== Scan summary finished ===")
 
 
 def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
@@ -430,7 +431,7 @@ def cli(
             # Iterate stages
             for k, tuples in enumerate(stages, start=1):
                 stage_dir = _ensure_stage_dir(out_dir_path, k)
-                click.echo(f"\n--- Stage {k}/{K} ---")
+                click.echo(f"[stage] Stage {k}/{K}")
                 click.echo(f"Targets (i,j,target Å): {tuples}")
 
                 # Snapshot beginning geometry of this stage for bond-change comparison
@@ -639,7 +640,7 @@ def cli(
             _echo_scan_summary(stages_summary)
             # ------------------------------------------------------------------
 
-            click.echo("\n=== Scan finished ===\n")
+            click.echo("=== Scan finished ===")
 
             click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
 
