@@ -2,9 +2,14 @@
 
 ## Overview
 
-`pdb2reaction dft` runs single-point DFT calculations using GPU4PySCF (or CPU PySCF as fallback). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+`pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
-The command uses GPU4PySCF when available, otherwise falling back to CPU PySCF. In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
+The backend is controlled by `--engine`:
+- `gpu` (default): Uses GPU4PySCF. **Raises an error if GPU is unavailable.**
+- `cpu`: Forces CPU PySCF.
+- `auto` (recommended for portability): Attempts GPU4PySCF first, falls back to CPU PySCF if GPU is unavailable.
+
+In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 
 ## Usage
 ```bash
@@ -62,7 +67,7 @@ out_dir/ (default: ./result_dft/)
   convergence knobs, and resolved output directory.
 
 ## Notes
-- GPU4PySCF is used whenever available; CPU PySCF is used otherwise (unless `--engine cpu` forces CPU). `--engine auto` mirrors the GPU-first fallback logic, automatically retrying on the CPU backend when GPU import/runtime errors occur.
+- `--engine gpu` (default) requires GPU4PySCF and **raises an error** if a GPU is unavailable. Use `--engine auto` for automatic fallback to CPU PySCF when GPU resources are not detected, or `--engine cpu` to force CPU-only execution.
 - If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
 - Compiled GPU4PySCF wheels may not support Blackwell-architecture GPUs, and non-x86 systems require compiling from source; we recommend using the CPU backend or building GPU4PySCF yourself in these situations. (see https://github.com/pyscf/gpu4pyscf)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
