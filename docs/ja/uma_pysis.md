@@ -5,15 +5,25 @@
 
 ## クイックスタート
 ```python
+import numpy as np
 from pdb2reaction.uma_pysis import uma_pysis
 
-# GPUが利用可能ならGPU、なければCPUで中性一重項の計算機を構築
+# 例: 中性一重項の2原子系（GPUが利用可能ならGPU、なければCPU）
 calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
-energy_only = calc.get_energy(["C", "O"], coords_bohr)
-forces = calc.get_forces(["C", "O"], coords_bohr)
-hessian = calc.get_hessian(["C", "O"], coords_bohr)
+# uma_pysis には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
+coords_bohr = np.array([
+    [0.0, 0.0, 0.0],
+    [2.2, 0.0, 0.0],  # 約 1.16 Å
+])
+
+symbols = ["C", "O"]
+
+energy_h = calc.get_energy(symbols, coords_bohr)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)
 ```
+
 - 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
 - `pysisyphus` の geometry オブジェクトにアタッチするか、上記のように直接呼び出せます。
 

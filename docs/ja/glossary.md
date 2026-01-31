@@ -1,6 +1,6 @@
 # 用語集
 
-pdb2reaction ドキュメントで使用される略語と専門用語の定義です。
+このページでは、pdb2reaction ドキュメント内で使われる略語・専門用語を簡潔に説明します。
 
 ---
 
@@ -8,11 +8,12 @@ pdb2reaction ドキュメントで使用される略語と専門用語の定義�
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
-| **MEP** | Minimum Energy Path（最小エネルギー経路） | 反応物から生成物へ遷移状態を経由する最低エネルギー経路。 |
-| **TS** | Transition State（遷移状態） | ポテンシャルエネルギー曲面上の鞍点で、反応座標に沿った最高エネルギー点。 |
-| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | TSから反応物・生成物方向への質量重み付き最急降下経路。 |
-| **GSM** | Growing String Method | 両端から中央に向かってイメージを反復的に成長させることでMEPを探索するアルゴリズム。 |
-| **NEB** | Nudged Elastic Band | バネ力を使用して反応経路に沿ったイメージ間隔を維持するchain-of-states法。 |
+| **MEP** | Minimum Energy Path | 反応物から生成物へ至る最小エネルギー経路（ポテンシャルエネルギー面上の最も低い経路）。 |
+| **TS** | Transition State | 反応座標に沿ったエネルギー極大に対応する一次の鞍点。 |
+| **IRC** | Intrinsic Reaction Coordinate | TS から反応物側・生成物側へ向かう、質量重み付き最急降下経路。TS の接続検証によく使われます。 |
+| **GSM** | Growing String Method | 端点からストリング（画像列）を伸長・最適化して MEP を近似する手法。 |
+| **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します。 |
+| **NEB** | Nudged Elastic Band | 画像間にばね力を導入し、画像間隔を保ちながら経路を最適化する chain-of-states 手法。 |
 
 ---
 
@@ -20,9 +21,8 @@ pdb2reaction ドキュメントで使用される略語と専門用語の定義�
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
-| **MLIP** | Machine Learning Interatomic Potential（機械学習原子間ポテンシャル） | 量子力学データで訓練されたニューラルネットワークベースのエネルギー/力予測器。 |
-| **UMA** | Universal Machine-learning potential for Atoms | pdb2reactionでデフォルト計算機として使用されるMetaの事前学習済みMLIPファミリー。 |
-| **DMF** | Distance Matrix Fingerprints（距離行列フィンガープリント） | 原子間距離に基づく構造記述子。GSMでの類似度チェックに使用。 |
+| **MLIP** | Machine Learning Interatomic Potential | 量子化学データから学習し、構造からエネルギー・力を予測する（多くはニューラルネットの）原子間ポテンシャル。 |
+| **UMA** | Universal Machine-learning potential for Atoms | Meta が公開している事前学習 MLIP 群。pdb2reaction のデフォルト計算機バックエンドです。 |
 
 ---
 
@@ -30,19 +30,19 @@ pdb2reaction ドキュメントで使用される略語と専門用語の定義�
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
-| **QM** | Quantum Mechanics（量子力学） | DFT、HF、post-HF等の第一原理電子構造計算。 |
-| **DFT** | Density Functional Theory（密度汎関数理論） | 電子密度汎関数を介して電子構造をモデル化する量子力学的手法。 |
-| **Hessian**（ヘシアン） | — | 原子座標に対するエネルギーの二次微分行列。振動解析とTS最適化に使用。 |
+| **QM** | Quantum Mechanics | DFT、HF、post-HF などの第一原理電子状態計算。 |
+| **DFT** | Density Functional Theory | 電子密度汎関数に基づく電子状態計算法。 |
+| **Hessian** | — | エネルギーの二階微分行列。振動解析や TS 最適化に使用します。 |
 
 ---
 
-## 構造生物学
+## 構造生物学・入出力形式
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
-| **PDB** | Protein Data Bank | 高分子3D構造のファイル形式およびデータベース。 |
-| **XYZ** | — | 原子記号とデカルト座標を列挙するシンプルなテキスト形式。 |
-| **GJF** | Gaussian Job File | Gaussianの入力形式。pdb2reactionはこれらのファイルから電荷/多重度と座標を読み取る。 |
+| **PDB** | Protein Data Bank | タンパク質などの三次元構造を表す標準フォーマット（およびデータベース）。 |
+| **XYZ** | — | 元素記号と直交座標を並べたシンプルなテキスト形式。 |
+| **GJF** | Gaussian Job File | Gaussian の入力形式。pdb2reaction は電荷/多重度と座標の読み取りに利用します。 |
 
 ---
 
@@ -50,15 +50,17 @@ pdb2reaction ドキュメントで使用される略語と専門用語の定義�
 
 | 用語 | 説明 |
 |------|------|
-| **Hartree** | エネルギーの原子単位。1 Hartree ≈ 627.5 kcal/mol ≈ 27.21 eV。 |
-| **kcal/mol** | キロカロリー毎モル。反応エネルギー論の一般的な単位。 |
-| **Bohr** | 長さの原子単位。1 Bohr ≈ 0.529 Å。 |
-| **Angstrom (Å)** | 10⁻¹⁰ メートル。原子間距離の標準単位。 |
+| **Hartree** | 原子単位系のエネルギー。1 Hartree ≈ 627.5 kcal/mol ≈ 27.21 eV。 |
+| **kcal/mol** | 反応エネルギー表現でよく使われる単位。 |
+| **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å。 |
+| **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の表現でよく使われる長さ単位。 |
 
 ---
 
-## 関連項目
+## 関連ページ
 
 - [はじめに](getting-started.md) — インストールと初回実行
-- [YAML リファレンス](../yaml-reference.md) — 設定ファイル形式
-- [UMA 計算機](uma_pysis.md) — 機械学習ポテンシャルの詳細
+- [概念とワークフロー](concepts.md) — ポケット抽出、MEP 探索、後処理の全体像
+- [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
+- [YAMLリファレンス](yaml-reference.md) — 設定ファイルの仕様
+- [UMA計算機](uma_pysis.md) — UMA ポテンシャルの詳細

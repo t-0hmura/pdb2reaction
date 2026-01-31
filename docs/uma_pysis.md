@@ -5,15 +5,25 @@
 
 ## Quick start
 ```python
+import numpy as np
 from pdb2reaction.uma_pysis import uma_pysis
 
-# Build a calculator for a neutral singlet system on GPU when available
+# Example: a neutral singlet diatomic on GPU when available
 calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
-energy_only = calc.get_energy(["C", "O"], coords_bohr)
-forces = calc.get_forces(["C", "O"], coords_bohr)
-hessian = calc.get_hessian(["C", "O"], coords_bohr)
+# uma_pysis expects coordinates in Bohr (shape: [n_atoms, 3])
+coords_bohr = np.array([
+    [0.0, 0.0, 0.0],
+    [2.2, 0.0, 0.0],  # ~1.16 Å
+])
+
+symbols = ["C", "O"]
+
+energy_h = calc.get_energy(symbols, coords_bohr)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)
 ```
+
 - Coordinates are supplied in **Bohr**; the wrapper converts to Å for UMA and converts energies/derivatives back to Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻².
 - Attach the calculator to a `pysisyphus` geometry object or call it directly as above.
 

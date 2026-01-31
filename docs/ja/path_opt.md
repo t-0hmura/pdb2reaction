@@ -47,13 +47,14 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--max-cycles INT` | オプティマイザーマクロイテレーション上限 | `300` |
 | `--climb {True\|False}` | クライミングイメージ精密化を有効化 | `True` |
 | `--dump {True\|False}` | MEP軌跡/リスタートをダンプ | `False` |
-| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー | `light` |
+| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`light` = LBFGS、`heavy` = RFO） | `light` |
 | `--convert-files {True\|False}` | PDB/Gaussian入力用のXYZ/TRJ → PDB/GJFコンパニオンをトグル | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力用の参照PDBトポロジー | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | GSM/ストリングオプティマイザーの収束プリセットをオーバーライド | `gau` |
 | `--args-yaml FILE` | YAMLオーバーライド（セクション `geom`、`calc`、`gs`、`opt`） | _None_ |
-| `--preopt {True\|False}` | アライメント/MEP探索前に各エンドポイントを事前最適化 | `False` |
+| `--preopt {True\|False}` | アライメント/MEP探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
+| `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
 | `--fix-ends {True\|False}` | GSM成長/精密化中にエンドポイント構造を固定 | `False` |
 
 ## 出力

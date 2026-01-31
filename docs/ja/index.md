@@ -8,6 +8,8 @@
 :hidden:
 
 getting-started
+concepts
+troubleshooting
 all
 extract
 add_elem_info
@@ -40,6 +42,8 @@ glossary
 | 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
+| 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
+| よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
 
 ---
@@ -49,6 +53,8 @@ glossary
 ### はじめに
 
 - [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
+- [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
+- [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
 - [**システム要件**](#システム要件) - ハードウェアとソフトウェアの前提条件
 
 ### メインワークフロー
@@ -90,10 +96,11 @@ glossary
 | [`dft`](dft.md) | 一点DFT計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
 
-### 設定
+### 設定・リファレンス
 
-- [**YAMLリファレンス**](yaml-reference.md) - 完全なYAML設定オプション
+- [**YAMLリファレンス**](yaml-reference.md) - 全サブコマンドのYAML設定オプション
 - [**UMA計算機**](uma_pysis.md) - UMA機械学習ポテンシャル設定
+- [**用語集**](glossary.md) - 略語と技術用語の定義
 
 ---
 

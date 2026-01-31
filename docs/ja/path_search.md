@@ -179,4 +179,83 @@ dmf:
     beta: 10.0                         # Beta parameter for DMF
     update_teval: false                # Update transition evaluation
   k_fix: 300.0                         # Harmonic constant for restraints
+sopt:
+  lbfgs:
+    thresh: gau                # LBFGS convergence preset
+    max_cycles: 10000          # iteration limit
+    print_every: 100           # logging stride
+    min_step_norm: 1.0e-08     # minimum accepted step norm
+    assert_min_step: true      # assert when steps stagnate
+    rms_force: null            # explicit RMS force target
+    rms_force_only: false      # rely only on RMS force convergence
+    max_force_only: false      # rely only on max force convergence
+    force_only: false          # skip displacement checks
+    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
+    overachieve_factor: 0.0    # tighten thresholds
+    check_eigval_structure: false   # validate Hessian eigenstructure
+    line_search: true          # enable line search
+    dump: false                # dump trajectory/restart data
+    dump_restart: false        # dump restart checkpoints
+    prefix: ""                 # filename prefix
+    out_dir: ./result_path_search/   # output directory
+    keep_last: 7               # history size for LBFGS buffers
+    beta: 1.0                  # initial damping beta
+    gamma_mult: false          # multiplicative gamma update toggle
+    max_step: 0.3              # maximum step length
+    control_step: true         # control step length adaptively
+    double_damp: true          # double damping safeguard
+    mu_reg: null               # regularization strength
+    max_mu_reg_adaptions: 10   # cap on mu adaptations
+  rfo:
+    thresh: gau                # RFOptimizer convergence preset
+    max_cycles: 10000          # iteration cap
+    print_every: 100           # logging stride
+    min_step_norm: 1.0e-08     # minimum accepted step norm
+    assert_min_step: true      # assert when steps stagnate
+    rms_force: null            # explicit RMS force target
+    rms_force_only: false      # rely only on RMS force convergence
+    max_force_only: false      # rely only on max force convergence
+    force_only: false          # skip displacement checks
+    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
+    overachieve_factor: 0.0    # tighten thresholds
+    check_eigval_structure: false   # validate Hessian eigenstructure
+    line_search: true          # enable line search
+    dump: false                # dump trajectory/restart data
+    dump_restart: false        # dump restart checkpoints
+    prefix: ""                 # filename prefix
+    out_dir: ./result_path_search/   # output directory
+    trust_radius: 0.1          # trust-region radius
+    trust_update: true         # enable trust-region updates
+    trust_min: 0.0             # minimum trust radius
+    trust_max: 0.1             # maximum trust radius
+    max_energy_incr: null      # allowed energy increase per step
+    hessian_update: bfgs       # Hessian update scheme
+    hessian_init: calc         # Hessian initialization source
+    hessian_recalc: 200        # rebuild Hessian every N steps
+    hessian_recalc_adapt: null # adaptive Hessian rebuild factor
+    small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
+    alpha0: 1.0                # initial micro step
+    max_micro_cycles: 50       # micro-iteration limit
+    rfo_overlaps: false        # enable RFO overlaps
+    gediis: false              # enable GEDIIS
+    gdiis: true                # enable GDIIS
+    gdiis_thresh: 0.0025       # GDIIS acceptance threshold
+    gediis_thresh: 0.01        # GEDIIS acceptance threshold
+    gdiis_test_direction: true # test descent direction before DIIS
+    adapt_step_func: true      # adaptive step scaling toggle
+bond:
+  device: cuda                # UMA device for bond analysis
+  bond_factor: 1.2            # covalent-radius scaling
+  margin_fraction: 0.05       # tolerance margin for comparisons
+  delta_fraction: 0.05        # minimum relative change to flag bonds
+search:
+  max_depth: 10               # recursion depth limit
+  stitch_rmsd_thresh: 0.0001  # RMSD threshold for stitching segments
+  bridge_rmsd_thresh: 0.0001  # RMSD threshold for bridging nodes
+  rmsd_align: true            # legacy alignment flag (ignored)
+  max_nodes_segment: 10       # max nodes per segment
+  max_nodes_bridge: 5         # max nodes per bridge
+  kink_max_nodes: 3           # max nodes for kink optimizations
+  max_seq_kink: 2             # max sequential kinks
+  refine_mode: null           # optional refinement strategy (auto-chooses when null)
 ```

@@ -34,6 +34,12 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process larg
 - Boolean CLI options are passed explicitly as `True`/`False` (e.g., `--tsopt True`).
 ```
 
+```{tip}
+If you're new to the project, read [Concepts & Workflow](concepts.md) first.
+If you hit an error during setup or runtime, jump to [Troubleshooting](troubleshooting.md).
+```
+
+
 ### Recommended tools for hydrogen addition
 
 If your PDB lacks hydrogen atoms, use one of the following tools before running pdb2reaction:
@@ -308,7 +314,7 @@ Below are the most commonly used options across workflows.
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian calculation mode. **Analytical recommended when VRAM available.** |
 
-For a full matrix of options and YAML schemas, see [all](all.md).
+For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml-reference.md).
 
 ---
 

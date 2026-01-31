@@ -58,8 +58,8 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--opt-mode TEXT` | 上記のLight/Heavyエイリアス | `heavy` |
 | `--dump {True\|False}` | 軌跡をダンプ | `False` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
-| `--thresh TEXT` | 収束プリセットのオーバーライド | `baker` |
-| `--flatten-imag-mode {True\|False}` | 余分な虚数モードフラットンループを有効化 | `False` |
+| `--thresh TEXT` | 収束プリセットのオーバーライド（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
+| `--flatten-imag-mode {True\|False}` | 余分な虚数モードフラットンループを有効化（`False` は `flatten_max_iter=0` を強制）。lightモード（dimerループ）とheavyモード（RS-IRFO後）の両方に適用 | `False` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files {True\|False}` | PDBまたはGaussian入力用のXYZ/TRJ → PDB/GJFコンパニオンをトグル | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照PDBトポロジー | _None_ |

@@ -120,6 +120,8 @@ irc:
   prefix: ""                 # filename prefix
   dump_fn: irc_data.h5       # IRC data filename
   dump_every: 5              # dump stride
+  hessian_update: bofill     # Hessian update scheme
+  hessian_recalc: null       # Hessian rebuild cadence
   max_pred_steps: 500        # predictor-corrector max steps
   loose_cycles: 3            # loose cycles before tightening
   corr_func: mbs             # correlation function choice

@@ -83,10 +83,10 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
-L-BFGS固有で `opt` を拡張: `keep_last`、`beta`、`gamma_mult`、`max_step`、`control_step`、`double_damp`
+L-BFGS固有で `opt` を拡張: `keep_last`、`beta`、`gamma_mult`、`max_step`、`control_step`、`double_damp`、およびオプションの正則化パラメータ `mu_reg`/`max_mu_reg_adaptions`
 
 ### `rfo`
-RFOptimizerフィールドで `opt` を拡張: 信頼領域サイジング、ヘシアン管理、マイクロイテレーション制御、DIISヘルパー
+RFOptimizerフィールドで `opt` を拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、ヘシアン管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIISヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
 
 
 ### YAML例

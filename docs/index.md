@@ -8,6 +8,8 @@
 :hidden:
 
 getting-started
+concepts
+troubleshooting
 all
 extract
 add_elem_info
@@ -41,6 +43,8 @@ ja/index
 | Search for minimum energy path | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
+| Understand the overall workflow and key terms | — | [Concepts & Workflow](concepts.md) |
+| Solve common setup/runtime issues | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
 
 ---
@@ -50,6 +54,8 @@ ja/index
 ### Getting Started
 
 - [**Getting Started**](getting-started.md) - Installation, quick start, and overview
+- [**Concepts & Workflow**](concepts.md) - Mental model of pockets, templates, segments, and stages
+- [**Troubleshooting**](troubleshooting.md) - Common errors and fixes
 - [**System Requirements**](#system-requirements) - Hardware and software prerequisites
 
 ### Main Workflow
@@ -91,10 +97,11 @@ ja/index
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 
-### Configuration
+### Configuration & Reference
 
-- [**YAML Reference**](yaml-reference.md) - Complete YAML configuration options
+- [**YAML Reference**](yaml-reference.md) - Complete YAML configuration options for all subcommands
 - [**UMA Calculator**](uma_pysis.md) - UMA machine-learning potential settings
+- [**Glossary**](glossary.md) - Definitions of abbreviations and technical terms
 
 ---
 

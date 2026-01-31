@@ -34,6 +34,12 @@ MetaのUMAモデルを使用した**機械学習原子間ポテンシャル (MLI
 - ブール値CLIオプションは `True`/`False` として明示的に渡されます（例: `--tsopt True`）。
 ```
 
+```{tip}
+初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。  
+セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
+```
+
+
 ### 水素原子付与の推奨ツール
 
 PDBに水素原子がない場合、pdb2reactionを実行する前に以下のツールを使用してください：
@@ -308,7 +314,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `--mep-mode gsm\|dmf` | MEP手法: Growing String Method または Direct Max Flux |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン計算モード。**VRAMが十分な場合はAnalytical推奨** |
 
-すべてのオプションとYAMLスキーマについては [all](all.md) を参照してください。
+すべてのオプションとYAMLスキーマについては [all](all.md) および [YAMLリファレンス](yaml-reference.md) を参照してください。
 
 ---
 
