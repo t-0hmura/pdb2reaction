@@ -76,7 +76,7 @@ source_suffix = {
 master_doc = 'index'
 
 # Patterns to exclude
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'README.md', 'requirements-docs.txt']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'README.md']
 
 # Templates path
 templates_path = ['_templates']
