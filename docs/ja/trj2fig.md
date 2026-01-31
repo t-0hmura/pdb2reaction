@@ -33,7 +33,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 4. Plotly 図を作成（強調ティック、スプライン補間、マーカー、タイトルなし）し、指定された拡張子へ書き出します。
 5. 必要に応じて `frame`, `energy_hartree` と、指定単位での ΔE/E 列を含むCSVを出力します。
 
-## CLIオプション
+## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | コメント行にエネルギーを含むXYZ軌跡 | 必須 |

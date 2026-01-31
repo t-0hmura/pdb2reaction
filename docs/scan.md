@@ -1,6 +1,9 @@
 # `scan`
 
 ## Overview
+
+> **TL;DR:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
+
 `scan` performs a staged, bond-length–driven scan using the UMA calculator and
 harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
 every integration step the temporary targets are updated, the restraint wells
@@ -245,3 +248,13 @@ bond:
   margin_fraction: 0.05      # tolerance margin for comparisons
   delta_fraction: 0.05       # minimum relative change to flag bonds
 ```
+
+---
+
+## See Also
+
+- [all](all.md) — End-to-end workflow with `--scan-lists` for single-structure inputs
+- [path-search](path_search.md) — MEP search using scan endpoints as intermediates
+- [extract](extract.md) — Generate pocket PDBs before scanning
+- [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options
+- [Glossary](glossary.md) — Definitions of MEP, Segment

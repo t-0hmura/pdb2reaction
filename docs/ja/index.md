@@ -1,6 +1,6 @@
 # pdb2reaction ドキュメント
 
-**pdb2reaction** は、機械学習原子間ポテンシャル (MLIP) を使用して、PDB構造から酵素反応経路を自動モデリングするPython CLIツールキットです。
+**pdb2reaction** は、機械学習原子間ポテンシャル (MLIP) を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 
 ```{toctree}
 :maxdepth: 2
@@ -38,7 +38,7 @@ glossary
 | PDBから完全な反応経路探索を実行 | `pdb2reaction all` | [all.md](all.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt.md](opt.md) |
-| 遷移状態を探索・精緻化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
+| 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
 | 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
@@ -59,14 +59,14 @@ glossary
 
 ### メインワークフロー
 
-- [`all`](all.md) - **エンドツーエンドワークフロー**: 抽出 → スキャン → MEP探索 → TS最適化 → IRC → 熱化学 → DFT
+- [`all`](all.md) - **エンドツーエンドワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
 
-### CLIサブコマンド
+### CLI サブコマンド
 
 #### 構造準備
 | サブコマンド | 説明 |
 |---------|------|
-| [`extract`](extract.md) | タンパク質-リガンド複合体から活性部位クラスターを抽出 |
+| [`extract`](extract.md) | タンパク質-リガンド複合体から活性部位ポケット（クラスターモデル）を抽出 |
 | [`add-elem-info`](add_elem_info.md) | PDB元素カラム（77-78）を修復 |
 
 #### 構造最適化
@@ -78,8 +78,8 @@ glossary
 #### 経路探索・最適化
 | サブコマンド | 説明 |
 |---------|------|
-| [`path-opt`](path_opt.md) | GSMまたはDMFによるMEP最適化 |
-| [`path-search`](path_search.md) | 自動精密化を伴う再帰的MEP探索 |
+| [`path-opt`](path_opt.md) | GSM または DMF による MEP 最適化 |
+| [`path-search`](path_search.md) | 自動精密化を伴う再帰的 MEP 探索 |
 
 #### スキャン
 | サブコマンド | 説明 |
@@ -93,13 +93,13 @@ glossary
 |---------|------|
 | [`irc`](irc.md) | 固有反応座標（IRC）計算 |
 | [`freq`](freq.md) | 振動数解析と熱化学 |
-| [`dft`](dft.md) | 一点DFT計算（GPU4PySCF / PySCF） |
+| [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
 
 ### 設定・リファレンス
 
-- [**YAMLリファレンス**](yaml-reference.md) - 全サブコマンドのYAML設定オプション
-- [**UMA計算機**](uma_pysis.md) - UMA機械学習ポテンシャル設定
+- [**YAML リファレンス**](yaml-reference.md) - 全サブコマンドの YAML 設定オプション
+- [**UMA 計算機**](uma_pysis.md) - UMA 機械学習ポテンシャル設定
 - [**用語集**](glossary.md) - 略語と技術用語の定義
 
 ---
@@ -121,12 +121,12 @@ glossary
 
 ## クイック例
 
-### 基本的なMEP探索
+### 基本的なMEP 探索
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
-### TS精密化を含む完全ワークフロー
+### TS 最適化を含む完全ワークフロー
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
     --tsopt True --thermo True --dft True
@@ -138,7 +138,7 @@ pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
 ```
 
-### TS最適化のみ
+### TS 最適化のみ
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
     --tsopt True
@@ -154,17 +154,17 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 - スピン多重度は `-m/--mult`（`all` コマンド）または `-m/--multiplicity`（他のサブコマンド）で設定（デフォルト: 1）
 
 ### ブール値オプション
-すべてのブール値CLIオプションは明示的に `True` または `False` を指定する必要があります:
+すべてのブール値CLI オプションは明示的に `True` または `False` を指定する必要があります:
 ```bash
 --tsopt True --thermo True --dft False
 ```
 
-### YAML設定
-高度な設定は `--args-yaml` で指定できます:
+### YAML 設定
+高度な設定は `--args-yaml` で指定できます。
 ```bash
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
 ```
-すべてのオプションについては [YAMLリファレンス](yaml-reference.md) を参照してください。
+すべてのオプションについては [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ---
 

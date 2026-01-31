@@ -11,7 +11,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 to model an enzymatic reaction pathway.
 
 ---
-You can also run **MEP search → TS refinement → IRC → thermochemistry analysis → DFT single-point calculations** in one command by adding `--tsopt True --thermo True --dft True`, for example:
+You can also run **MEP search → TS optimization → IRC → thermochemistry → single-point DFT calculations** in one command by adding `--tsopt True --thermo True --dft True`, for example:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
 ```
@@ -19,9 +19,9 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 
 Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
 
-- extracts an **active site** around user‑defined substrates to build a **cluster model**,
+- extracts an **active-site pocket** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
-- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations**, and **DFT single‑point calculations**,
+- _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**,
 
 using Meta's UMA machine-learning interatomic potential (MLIP).
 
@@ -91,7 +91,7 @@ For detailed installation instructions, see [Getting Started](docs/getting-start
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
-### Full workflow with TS refinement, thermochemistry, and DFT
+### Full workflow with TS optimization, thermochemistry, and DFT
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
     --tsopt True --thermo True --dft True
@@ -115,8 +115,8 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 
 | Subcommand   | Role                                                                                  | Documentation                             |
 | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `all`        | End-to-end workflow: extraction → MEP search → TS opt → IRC → freq → DFT              | [`docs/all.md`](docs/all.md)              |
-| `extract`    | Extract active-site cluster from protein–ligand complex                               | [`docs/extract.md`](docs/extract.md)      |
+| `all`        | End-to-end workflow: extraction → MEP search → TS optimization → IRC → freq → DFT              | [`docs/all.md`](docs/all.md)              |
+| `extract`    | Extract active-site pocket (cluster model) from protein–ligand complex                               | [`docs/extract.md`](docs/extract.md)      |
 | `opt`        | Single-structure geometry optimization (L-BFGS or RFO)                                | [`docs/opt.md`](docs/opt.md)              |
 | `tsopt`      | Transition state optimization (Dimer or RS-I-RFO)                                     | [`docs/tsopt.md`](docs/tsopt.md)          |
 | `path-opt`   | MEP optimization via GSM or DMF                                                       | [`docs/path_opt.md`](docs/path_opt.md)    |

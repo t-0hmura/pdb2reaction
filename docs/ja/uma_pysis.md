@@ -187,7 +187,7 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 
 ## CLI / YAML での利用
-`uma_pysis` はPySisyphusの計算機エントリポイントとして登録されています。以下のようにYAML入力で起動できます:
+`uma_pysis` はPySisyphusの計算機エントリポイントとして登録されています。以下のようにYAML 入力で起動できます。
 
 ```bash
 uma_pysis input.yaml

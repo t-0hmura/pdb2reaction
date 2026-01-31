@@ -1,4 +1,4 @@
-# YAML設定リファレンス
+# YAML 設定リファレンス
 
 このドキュメントは、`pdb2reaction` の各コマンドで利用される YAML 設定の完全なリファレンスです。設定ファイルは `--args-yaml` で指定し、適用順序は **デフォルト → CLI → YAML**（YAMLが最優先）です。
 
@@ -11,7 +11,7 @@
 | セクション | 説明 | 使用されるコマンド |
 |---------|-------------|---------|
 | [`geom`](#geom) | ジオメトリと座標設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
-| [`calc`](#calc) | UMA計算機の設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
+| [`calc`](#calc) | UMA 計算機の設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | 最適化の共通設定 | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
 | [`lbfgs`](#lbfgs) | L-BFGSの設定 | opt, scan, scan2d, scan3d, path-search |
 | [`rfo`](#rfo) | RFOの設定 | opt, scan, scan2d, scan3d, path-search |
@@ -24,8 +24,8 @@
 | [`bias`](#bias) | 調和バイアス設定 | scan, scan2d, scan3d |
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
-| [`hessian_dimer`](#hessian_dimer) | ヘシアン・ダイマーTS最適化 | tsopt |
-| [`rsirfo`](#rsirfo) | RS-I-RFO TS最適化 | tsopt |
+| [`hessian_dimer`](#hessian_dimer) | ヘシアン・ダイマーTS 最適化 | tsopt |
+| [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt |
 | [`sopt`](#sopt) | path-search用単一構造最適化 | path-search |
 
 ---
@@ -43,7 +43,7 @@ geom:
 ```
 
 **注記:**
-- `freeze_atoms` は PDB入力時の `--freeze-links` 検出原子とマージされます。
+- `freeze_atoms` は PDB 入力時の `--freeze-links` 検出原子とマージされます。
 - 凍結原子は力がゼロ化され、ヘシアンの該当行/列もゼロ化されます。
 
 ---
@@ -269,11 +269,11 @@ sopt:
 
 ---
 
-## TS最適化セクション
+## TS 最適化セクション
 
 ### `hessian_dimer`
 
-ヘシアン・ダイマーTS最適化（tsopt --opt-mode light）。
+ヘシアン・ダイマーTS 最適化（tsopt --opt-mode light）。
 
 ```yaml
 hessian_dimer:
@@ -319,7 +319,7 @@ hessian_dimer:
 
 ### `rsirfo`
 
-RS-I-RFO TS最適化（tsopt --opt-mode heavy）。
+RS-I-RFO TS 最適化（tsopt --opt-mode heavy）。
 
 ```yaml
 rsirfo:
@@ -526,7 +526,7 @@ dft:
 - [all](all.md) - メインワークフロー
 - [opt](opt.md) - 単一構造最適化
 - [tsopt](tsopt.md) - 遷移状態最適化
-- [path-search](path_search.md) - 再帰的MEP探索
+- [path-search](path_search.md) - 再帰的 MEP 探索
 - [freq](freq.md) - 振動解析
 - [dft](dft.md) - DFT計算
-- [uma_pysis](uma_pysis.md) - UMA計算機の詳細
+- [uma_pysis](uma_pysis.md) - UMA 計算機の詳細

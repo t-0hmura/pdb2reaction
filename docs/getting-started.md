@@ -10,7 +10,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-You can also run **MEP search → TS refinement → IRC → thermochemistry → DFT single-point** in one go by adding `--tsopt True --thermo True --dft True`:
+You can also run **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** in a single run by adding `--tsopt True --thermo True --dft True`:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
 ```
@@ -18,26 +18,34 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 
 Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
 
-- extracts an **active site** around user‑defined substrates to build a **cluster model**,
+- extracts an **active-site pocket** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
-- _optionally_ refines **transition states**, runs **vibrational analysis**, **IRC calculations**, and **DFT single‑point calculations**.
+- _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
 
-All calculations use Meta's UMA machine-learning interatomic potential (MLIP).
+At the UMA stage, calculations use Meta's UMA machine-learning interatomic potential (MLIP).
 
-All of this is exposed through a command‑line interface (CLI) designed so that a **multi‑step enzymatic reaction mechanism** can be generated with minimal manual intervention. It can also handle small molecular systems. You can also use `.xyz` or `.gjf` inputs when you run workflows on full structures (i.e., omit `--center/-c` and `--ligand-charge`).
+Everything is exposed through a command‑line interface (CLI) designed to generate **multi‑step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small‑molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
-On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference itself across nodes. Set `workers` and `workers_per_node` to enable parallel calculation; see [UMA Calculator](uma_pysis.md) for configuration details.
+On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi‑worker inference; see [UMA Calculator](uma_pysis.md) for configuration details.
 
 ```{important}
 - Input PDB files must already contain **hydrogen atoms**.
 - When you provide multiple PDBs, they must contain **the same atoms in the same order** (only coordinates may differ); otherwise an error is raised.
-- Boolean CLI options are passed explicitly as `True`/`False` (e.g., `--tsopt True`).
 ```
 
 ```{tip}
 If you're new to the project, read [Concepts & Workflow](concepts.md) first.
 If you hit an error during setup or runtime, jump to [Troubleshooting](troubleshooting.md).
 ```
+
+### CLI conventions
+
+| Convention | Example | Notes |
+|------------|---------|-------|
+| **Boolean options** | `--tsopt True`, `--dft False` | Use `True`/`False` (capitalized), not `true`/`false` or `1`/`0` |
+| **Residue selectors** | `'SAM,GPP'`, `'A:123,B:456'` | Quote multi-value strings to prevent shell expansion |
+| **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` | Colon separates name from charge, comma separates entries |
+| **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` | Delimiters: space, comma, slash, backtick, backslash |
 
 
 ### Recommended tools for hydrogen addition
@@ -180,7 +188,7 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-The `all` workflow acts as an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT single points into a single command.
+The `all` workflow acts as an **orchestrator**: it chains cluster extraction, MEP search, TS optimization, vibrational analysis, and optional single-point DFT calculations into a single command.
 
 All high‑level workflows share two important options when you want cluster extraction:
 
@@ -193,7 +201,7 @@ If you omit `--center/-c`, cluster extraction is skipped and the **full input st
 
 ## Main workflow modes
 
-### Multi‑structure MEP pipeline (reactant → product)
+### Multi‑structure MEP workflow (reactant → product)
 
 Use this when you already have several full PDB structures along a putative reaction coordinate (e.g., R → I1 → I2 → P).
 
@@ -216,7 +224,7 @@ Behavior:
 - performs a **recursive MEP search** via `path_search` by default,
 - optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
-- optionally runs TS optimization, vibrational analysis, and DFT single points for each segment.
+- optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
 
 This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modeling).
 
@@ -261,7 +269,7 @@ This mode is useful for building reaction paths starting from a single structure
 
 ### Single‑structure TSOPT‑only mode
 
-Use this when you already have a **transition state candidate** and only want to refine it and proceed to IRC calculations.
+Use this when you already have a **transition state candidate** and only want to optimize it and proceed to IRC calculations.
 
 Provide exactly one PDB and enable `--tsopt`:
 
@@ -280,7 +288,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 Behavior:
 
 - skips the MEP/path search entirely,
-- refines the **cluster-model TS** with TS optimization,
+- optimizes the **cluster-model TS** with TS optimization,
 - runs an **IRC** in both directions and optimizes both ends to relax down to R and P minima,
 - can then perform `freq` and `dft` on the R/TS/P,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams.
@@ -308,7 +316,7 @@ Below are the most commonly used options across workflows.
 | `--out-dir PATH` | Top‑level output directory. |
 | `--tsopt {True\|False}` | Enable TS optimization and IRC. |
 | `--thermo {True\|False}` | Run vibrational analysis and thermochemistry. |
-| `--dft {True\|False}` | Perform DFT single‑point calculations. |
+| `--dft {True\|False}` | Perform single‑point DFT calculations. |
 | `--refine-path {True\|False}` | Recursive MEP refinement (default) vs single‑pass. |
 | `--opt-mode light\|heavy` | Optimization method: Light (LBFGS/Dimer) or Heavy (RFO/RS-I-RFO). |
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
@@ -343,7 +351,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes su
 | Subcommand | Role | Documentation |
 |------------|------|---------------|
 | `all` | End-to-end workflow | [all](all.md) |
-| `extract` | Extract active-site cluster | [extract](extract.md) |
+| `extract` | Extract active-site pocket (cluster model) | [extract](extract.md) |
 | `opt` | Geometry optimization | [opt](opt.md) |
 | `tsopt` | Transition state optimization | [tsopt](tsopt.md) |
 | `path-opt` | MEP optimization (GSM/DMF) | [path_opt](path_opt.md) |
@@ -353,7 +361,7 @@ While most users will primarily call `pdb2reaction all`, the CLI also exposes su
 | `scan3d` | 3D distance scan | [scan3d](scan3d.md) |
 | `irc` | IRC calculation | [irc](irc.md) |
 | `freq` | Vibrational analysis | [freq](freq.md) |
-| `dft` | DFT single-point | [dft](dft.md) |
+| `dft` | single-point DFT | [dft](dft.md) |
 | `trj2fig` | Plot energy profiles | [trj2fig](trj2fig.md) |
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
@@ -364,6 +372,39 @@ The subcommands (everything **except** `all`) assume you feed them **cluster mod
 ```{tip}
 In `all`, `tsopt`, `freq` and `irc`, setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
 ```
+
+---
+
+## Quick reference
+
+**Common command patterns:**
+
+```bash
+# Basic MEP search (2+ structures)
+pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
+
+# Full workflow with post-processing
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+    --tsopt True --thermo True --dft True
+
+# Single structure with staged scan
+pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
+
+# TS-only optimization
+pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
+```
+
+**Essential options at a glance:**
+
+| Option | Purpose |
+|--------|---------|
+| `-i` | Input structure(s) |
+| `-c` | Substrate definition for pocket extraction |
+| `--ligand-charge` | Substrate charges (e.g., `'SAM:1,GPP:-3'`) |
+| `--tsopt True` | Enable TS optimization + IRC |
+| `--thermo True` | Run vibrational analysis |
+| `--dft True` | Run single-point DFT |
+| `--out-dir` | Output directory |
 
 ---
 

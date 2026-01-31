@@ -63,7 +63,7 @@ calc:
   radius: null                         # Cutoff radius for neighbor search
   r_edges: false                       # Store radial edges
   out_hess_torch: true                 # Return Hessian as torch.Tensor
-  freeze_atoms: null                   # Calculator-level frozen atoms (usually set via geom)
+  # freeze_atoms: null                 # Inherited from geom.freeze_atoms; do not set directly
   hessian_calc_mode: FiniteDifference  # Hessian mode: "Analytical" or "FiniteDifference"
   return_partial_hessian: false        # Return only active-DOF Hessian block
 ```

@@ -36,7 +36,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
    - `--overwrite True`（`-o/--out` なし）: 入力パスを上書き
 4. 割り当て/再割り当て数、元素別合計、未解決原子のリスト（最大50件）を要約表示。
 
-## CLIオプション
+## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | 入力PDBファイル | 必須 |

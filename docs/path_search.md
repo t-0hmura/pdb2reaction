@@ -1,6 +1,9 @@
 # `path-search`
 
 ## Overview
+
+> **TL;DR:** Build a continuous MEP across 2+ structures using GSM (default) or DMF (`--mep-mode dmf`). Automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate.
+
 Construct a continuous minimum-energy path (MEP) across **two or more** structures ordered along a reaction coordinate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO. Format-aware conversions mirror trajectories into `.pdb` companions when PDB references exist, and mirror XYZ snapshots (for example HEIs) into `.gjf` companions when Gaussian templates exist and `--convert-files` is enabled (default). For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling full-template merges when `--ref-full-pdb` is provided (XYZ/GJF inputs still do not produce PDB companions).
 
 ## Usage
@@ -255,3 +258,14 @@ search:
   max_seq_kink: 2             # max sequential kinks
   refine_mode: null           # optional refinement strategy (auto-chooses when null)
 ```
+
+---
+
+## See Also
+
+- [path-opt](path_opt.md) — Single-pass MEP optimization (no recursive refinement)
+- [tsopt](tsopt.md) — Optimize the HEI as a transition state
+- [extract](extract.md) — Generate pocket PDBs for path-search inputs
+- [all](all.md) — End-to-end workflow that calls path-search internally
+- [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `bond`, `search` configuration options
+- [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

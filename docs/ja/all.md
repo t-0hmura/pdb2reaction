@@ -1,13 +1,21 @@
 # `all`
 
 ## 概要
-`pdb2reaction all` は、**すべてのパイプラインステージ**を一度に実行するコマンドです: ポケット抽出 → オプションの段階的UMAスキャン → 再帰的MEP探索（`path_search`、GSM/DMF） → 全系マージ → オプションのTS最適化 + IRC（`tsopt`） → オプションの振動解析（`freq`） → オプションの一点DFT（`dft`）。このコマンドは複数構造アンサンブルを受け入れ、単一構造スキャンを順序付けられた中間体に変換し、TSOPTのみのポケットワークフローにフォールバックできます。すべての下流ツールは単一のCLIサーフェスを共有するため、1つの呼び出しから長い反応キャンペーンを調整できます。すべてのステージにわたるフォーマット対応XYZ/TRJ → PDB/GJF変換は、共有の `--convert-files {True\|False}` フラグ（デフォルトで有効）によって制御されます。
 
-主要モード:
-- **エンドツーエンドアンサンブル** – 反応順序で2つ以上のPDB/GJF/XYZファイルと基質定義を入力; コマンドはポケットを抽出し、GSM/DMF MEP探索を実行し、親PDBにマージし、オプションで反応セグメントごとにTSOPT/freq/DFTを実行
-- **単一構造 + 段階的スキャン** – 1つ以上の `--scan-lists` と共に1つの構造を提供; 抽出されたポケットでのUMAスキャンがMEPエンドポイントとなる中間体を生成
-- 単一の `--scan-lists` リテラルは1ステージスキャンを実行; 複数のリテラルは順次ステージを実行（1つのフラグの後に複数の値として提供、フラグの繰り返しは不可）
-- **TSOPTのみポケット精密化** – 1つの入力構造を提供し、`--scan-lists` を省略し、`--tsopt True` を有効化; `-c/--center` が指定されている場合はポケットを抽出し、その単一システムでTS最適化 + IRC（オプションでfreq/DFT）のみを実行
+`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。典型的なフローは次のとおりです。
+
+ポケット抽出 →（任意）段階的 UMA スキャン → 再帰的 MEP 探索（`path_search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化 + IRC（`tsopt`）→（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+
+主なモードは 3 つあります。
+
+- **エンドツーエンド（複数構造）** — 反応順に並べた 2 構造以上（PDB/GJF/XYZ）と基質定義を与えます。`all` がポケット抽出→GSM/DMF による MEP 探索→全系テンプレートへのマージまで行い、必要に応じてセグメントごとに TSOPT / freq / DFT を実行します。
+- **単一構造 + 段階的スキャン** — 1 つの構造に対して `--scan-lists` を 1 つ以上与えます。スキャンで得られた中間体列を MEP の端点として用います。
+  - `--scan-lists` を 1 つだけ渡すと 1 ステージです。
+  - 複数ステージは、`--scan-lists` を 1 回指定した後に複数値として渡します（フラグの繰り返し指定はできません）。
+- **TSOPT のみ（ポケット TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt True` を指定します。`-c/--center` がある場合はポケットを抽出し、その系で TS 最適化 + IRC（必要に応じて freq / DFT）だけを実行します。
+
+テンプレートがある場合の XYZ/TRJ → PDB/GJF 変換（付随ファイルの生成）は、全ステージ共通の `--convert-files {True\|False}`（既定: `True`）で制御します。
+
 
 ## 使用法
 ```bash
@@ -27,47 +35,59 @@ pdb2reaction all -i single.pdb -c '308,309' \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
     --opt-mode heavy --tsopt True --thermo True --dft True
 
-# TSOPTのみワークフロー（経路探索なし）
+# TSOPT のみワークフロー（経路探索なし）
 pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
     --ligand-charge 'GPP:-3,MMT:-1' --tsopt True --thermo True --dft True
 ```
 
 ## ワークフロー
 1. **活性部位ポケット抽出**（`-c/--center` が提供された場合）
-   - 基質はPDBパス、残基ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
+   - 基質はPDB パス、残基ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
    - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
-   - 入力ごとのポケットPDBは `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
+   - 入力ごとのポケット PDBは `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
    - **最初のポケットの総電荷**がスキャン/MEP/TSOPTに伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
-   - 各 `--scan-lists` 引数はUMAスキャンステージを記述する `(i,j,target_Å)` タプルのPythonライクなリスト
+   - 各 `--scan-lists` 引数はUMA スキャンステージを記述する `(i,j,target_Å)` タプルのPythonライクなリスト
    - 単一リテラルは1ステージスキャンを実行; 複数リテラルは**順次**実行
    - スキャンは電荷/スピン、`--freeze-links`、UMA最適化プリセット（`--opt-mode`）、`--args-yaml`、`--preopt` を継承。`--dump` はこのコマンドで明示指定された場合のみスキャンへ転送され、それ以外は scan 側のデフォルト（`False`）を使用
    - `--scan-out-dir`、`--scan-one-based`、`--scan-max-step-size`、`--scan-bias-k`、`--scan-relax-max-cycles`、`--scan-preopt`、`--scan-endopt` などの上書きフラグが利用可能
    - ステージエンドポイント（`stage_XX/result.pdb`）が後続MEPステップに供給される順序付き中間体となる
 
-3. **ポケットでのMEP探索（再帰的GSM/DMF）**
+3. **ポケットでのMEP 探索（再帰的GSM/DMF）**
    - 抽出されたポケット（または抽出がスキップされた場合は元の全構造）を使用してデフォルトで `path_search` を実行
    - `--refine-path False` で再帰的精密化なしのシングルパス `path-opt` GSM/DMFチェーンに切り替え
 
 4. **ポケットを全系にマージ**
-   - 参照PDBテンプレートが存在する場合、マージされた `mep_w_ref*.pdb` およびセグメントごとの `mep_w_ref_seg_XX.pdb` ファイルが `<out-dir>/path_search/` に出力
+   - 参照 PDB テンプレートが存在する場合、マージされた `mep_w_ref*.pdb` およびセグメントごとの `mep_w_ref_seg_XX.pdb` ファイルが `<out-dir>/path_search/` に出力
 
 5. **オプションのセグメントごとの後処理**
-   - `--tsopt True`: 各HEIポケットでTS最適化を実行、EulerPC IRCで追跡し、セグメントエネルギーダイアグラムを出力
+   - `--tsopt True`: 各HEIポケットでTS 最適化を実行、EulerPC IRCで追跡し、セグメントエネルギーダイアグラムを出力
    - `--thermo True`: (R, TS, P) で `freq` を呼び出し振動/熱化学データとUMA Gibbsダイアグラムを取得
-   - `--dft True`: (R, TS, P) で一点DFTを起動しDFTダイアグラムを構築。`--thermo True` と組み合わせるとDFT//UMA Gibbsダイアグラムも生成
+   - `--dft True`: (R, TS, P) でDFT 一点計算を起動しDFTダイアグラムを構築。`--thermo True` と組み合わせるとDFT//UMA Gibbsダイアグラムも生成
    - 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten-imag-mode`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
    - VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨
 
-6. **TSOPTのみモード**（単一入力、`--tsopt True`、`--scan-lists` なし）
+6. **TSOPT のみモード**（単一入力、`--tsopt True`、`--scan-lists` なし）
    - MEP/マージステージをスキップ。ポケット（または抽出がスキップされた場合は完全入力）で `tsopt` を実行し、EulerPC IRCを実行
    - 高エネルギー側のIRC終端を反応物 (R) として識別し、同じ種類のエネルギーダイアグラムとオプションの freq/DFT 出力を生成
 
 
 ### 電荷とスピンの優先順位
-- 抽出あり: ポケット電荷 = 抽出器のモデル#1総電荷（`--ligand-charge` があればそれを使用）。スピンは `--mult`（デフォルト1）。
-- 抽出なし: 明示的な `-q/--charge` が最優先。省略され、`--ligand-charge` が与えられている場合は**全複合体を酵素–基質アダクトとして扱い**、先頭入力がPDBなら `extract.py` の電荷サマリーで総電荷を導出。導出に失敗しても `--ligand-charge` が数値なら総電荷として採用。それ以外は `.gjf` の電荷かデフォルト0。スピンの優先順位は `--mult` → `.gjf` → 1。
+
+**電荷の解決（優先度順）:**
+
+| 優先度 | ソース | 適用条件 |
+|--------|--------|----------|
+| 1 | `-q/--charge` | CLI で明示指定 |
+| 2 | ポケット抽出 | `-c` 指定時（アミノ酸・イオン・`--ligand-charge` を合算） |
+| 3 | `--ligand-charge`（数値） | 抽出失敗時またはスキップ時のフォールバック |
+| 4 | `.gjf` テンプレート | 埋め込み電荷/スピン情報 |
+| 5 | デフォルト | 0 |
+
+**スピンの解決:** `--mult`（CLI） → `.gjf` テンプレート → デフォルト (1)
+
+> **ヒント:** 非標準の基質には `--ligand-charge` を必ず指定し、正しい電荷伝播を確保してください。
 
 ### 入力要件
 - 抽出有効（`-c/--center`）: 残基同定のため入力は **PDB** が必須。
@@ -75,77 +95,124 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 - 複数構造実行は 2 つ以上の構造が必要。
 
 
-## CLIオプション
+## CLI オプション
 
 > **注記:** 表示されているデフォルト値は、オプション未指定時に使用される内部デフォルトです。
 
+### 入出力オプション
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt True` を使用する場合のみ単一入力可） | 必須 |
-| `-c, --center TEXT` | 基質指定（PDBパス、残基ID `123,124` / `A:123,B:456`、または残基名 `GPP,MMT`） | 抽出に必須 |
+| `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt True` のみ単一入力可） | 必須 |
 | `--out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
+| `--convert-files {True\|False}` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
+| `--dump BOOLEAN` | MEP(GSM/DMF)軌跡を出力 | `False` |
+| `--args-yaml FILE` | 全サブコマンドへそのまま転送されるYAML | _None_ |
+
+### 電荷・スピンオプション
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--ligand-charge TEXT` | 未知残基の残基別マッピングまたは総電荷（推奨） | _None_ |
+| `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
+| `-m, --mult INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
+
+### ポケット抽出オプション
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
 | `-r, --radius FLOAT` | ポケット包含カットオフ（Å） | `2.6` |
-| `--radius-het2het FLOAT` | 独立したヘテロ–ヘテロカットオフ（Å） | `0.0` |
-| `--include-H2O BOOLEAN` | 水分子を含める（`False` で HOH/WAT/TIP3/SOL を除外） | `True` |
+| `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
+| `--include-H2O BOOLEAN` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone BOOLEAN` | 非基質アミノ酸の主鎖原子を除去 | `True` |
-| `--add-linkH BOOLEAN` | 切断結合にリンク水素を付加（炭素のみ） | `True` |
-| `--selected-resn TEXT` | 強制包含残基（カンマ/空白区切り、チェーン/挿入コード可） | `""` |
+| `--add-linkH BOOLEAN` | 切断結合にリンク水素を付加 | `True` |
+| `--selected-resn TEXT` | 強制包含残基 | `""` |
+| `--freeze-links BOOLEAN` | ポケットPDBでリンクHの親を凍結 | `True` |
 | `--verbose BOOLEAN` | 抽出器のINFOログを有効化 | `True` |
-| `--ligand-charge TEXT` | 未知残基の残基別マッピングまたは総電荷（推奨）。`-q` 省略時にPDB入力でextract方式の電荷導出を行い、数値指定は総電荷のフォールバックとしても利用される | _None_ |
-| `-q, --charge INT` | 総電荷を強制上書き（extractor/`.gjf`/`--ligand-charge` を上書き、警告を出力） | _None_ |
-| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
-| `-m, --mult INT` | すべての下流ステップに転送されるスピン多重度 | `1` |
-| `--freeze-links BOOLEAN` | ポケットPDBでリンクHの親を凍結（scan/tsopt/freq でも再利用） | `True` |
-| `--max-nodes INT` | MEP内部ノード数（GSM string / DMF images） | `10` |
-| `--max-cycles INT` | MEP最大最適化サイクル（GSM/DMF） | `300` |
-| `--climb BOOLEAN` | 各ペアの最初のセグメントでTSクライミングを有効化 | `True` |
-| `--opt-mode [light\|heavy]` | scan/tsopt/path_search で共有する最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
-| `--opt-mode-post [light\|heavy]` | TSOPT/IRC後最適化のプリセット上書き。未指定なら `--opt-mode` が明示されていればそれを適用、そうでなければ TSOPT は `heavy` | _None_ |
-| `--dump BOOLEAN` | MEP(GSM/DMF)軌跡を出力。`path_search`/`path-opt` へ常に転送。scan/tsopt へは明示指定時のみ。freq はこのラッパーでは `dump=True` が既定で `thermoanalysis.yaml` を書くため、`--dump False` で明示的に無効化 | `False` |
-| `--convert-files {True\|False}` | テンプレート利用可能時のXYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
-| `--thresh TEXT` | MEPおよび単一構造最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
+
+### MEP探索オプション
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--max-nodes INT` | MEP内部ノード数 | `10` |
+| `--max-cycles INT` | MEP最大最適化サイクル | `300` |
+| `--climb BOOLEAN` | 最初のセグメントでTSクライミングを有効化 | `True` |
+| `--opt-mode [light\|heavy]` | 最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
+| `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`） | `gau` |
+| `--preopt BOOLEAN` | MEP前にポケット端点を事前最適化 | `True` |
+
+### UMA計算機オプション
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--workers`, `--workers-per-node` | UMA並列度（workers > 1 で解析ヘシアン無効） | `1`, `1` |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有UMAヘシアンエンジン | `FiniteDifference` |
+
+### 後処理オプション
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--tsopt BOOLEAN` | セグメントごとのTS最適化 + IRC を実行 | `False` |
+| `--thermo BOOLEAN` | R/TS/Pで振動解析を実行 | `False` |
+| `--dft BOOLEAN` | R/TS/PでDFT一点計算を実行 | `False` |
+| `--opt-mode-post [light\|heavy]` | TSOPT/IRC後最適化のプリセット | _None_ |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット | `baker` |
-| `--args-yaml FILE` | `path_search`/`scan`/`tsopt`/`freq`/`dft` へそのまま転送されるYAML | _None_ |
-| `--preopt BOOLEAN` | MEP前にポケット端点を事前最適化（scan の preopt 既定にもなる） | `True` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | tsopt/freq に転送される共有UMAヘシアンエンジン | `FiniteDifference` |
-| `--tsopt BOOLEAN` | セグメントごとのTS最適化 + IRC を実行、またはTSOPTのみモードを有効化 | `False` |
-| `--thermo BOOLEAN` | R/TS/Pで振動解析を実行しUMA Gibbsダイアグラムを構築 | `False` |
-| `--dft BOOLEAN` | R/TS/Pで一点DFTを実行しDFT図を構築 | `False` |
-| `--dft-engine [gpu\|cpu\|auto]` | DFTステージのバックエンド（`auto` はGPU優先でCPUへフォールバック） | `gpu` |
-| `--tsopt-max-cycles INT` | 各TS精密化で `tsopt --max-cycles` を上書き | `10000` |
-| `--tsopt-out-dir PATH` | tsopt出力サブディレクトリの上書き（相対パスは `<out-dir>` 配下に解決） | _None_ |
-| `--flatten-imag-mode {True\|False}` | 余分な虚数モードのフラット化（light: dimer ループ、heavy: RSIRFO後処理） | `False` |
-| `--freq-out-dir PATH` | freq 出力ディレクトリの上書き | _None_ |
-| `--freq-max-write INT` | `freq --max-write` 上書き | `10` |
-| `--freq-amplitude-ang FLOAT` | `freq --amplitude-ang` 上書き（Å） | `0.8` |
-| `--freq-n-frames INT` | `freq --n-frames` 上書き | `20` |
-| `--freq-sort [value\|abs]` | freq のソート方法上書き | `value` |
-| `--freq-temperature FLOAT` | 熱化学温度 (K) 上書き | `298.15` |
-| `--freq-pressure FLOAT` | 熱化学圧力 (atm) 上書き | `1.0` |
+| `--flatten-imag-mode {True\|False}` | 余分な虚数モードのフラット化 | `False` |
+
+### TSOPT 上書き
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--tsopt-max-cycles INT` | `tsopt --max-cycles` 上書き | `10000` |
+| `--tsopt-out-dir PATH` | tsopt出力サブディレクトリ | _None_ |
+
+### Freq 上書き
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--freq-out-dir PATH` | freq出力ディレクトリ上書き | _None_ |
+| `--freq-max-write INT` | 最大モード出力数 | `10` |
+| `--freq-amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
+| `--freq-n-frames INT` | モードアニメーションフレーム数 | `20` |
+| `--freq-sort [value\|abs]` | モードソート方法 | `value` |
+| `--freq-temperature FLOAT` | 熱化学温度（K） | `298.15` |
+| `--freq-pressure FLOAT` | 熱化学圧力（atm） | `1.0` |
+
+### DFT 上書き
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--dft-engine [gpu\|cpu\|auto]` | バックエンド（`auto` はGPU優先） | `gpu` |
 | `--dft-out-dir PATH` | DFT出力ディレクトリ上書き | _None_ |
-| `--dft-func-basis TEXT` | `dft --func-basis` 上書き | `wb97m-v/def2-tzvpd` |
-| `--dft-max-cycle INT` | `dft --max-cycle` 上書き | `100` |
-| `--dft-conv-tol FLOAT` | `dft --conv-tol` 上書き | `1e-9` |
-| `--dft-grid-level INT` | `dft --grid-level` 上書き | `3` |
-| `--scan-lists TEXT...` | 抽出ポケットでの段階的スキャンを記述するPythonライクなリスト（単一入力のみ）。各要素は `(i,j,target_Å)`。単一リテラルは1ステージ、複数リテラルは順次ステージ。`i`/`j` は整数インデックスまたは PDB セレクタで内部的に再マップ | _None_ |
-| `--scan-out-dir PATH` | scan 出力ディレクトリ上書き（相対パスはデフォルト親配下） | _None_ |
-| `--scan-one-based BOOLEAN` | scan のインデックスを1始まり/0始まりに強制（省略時は scan デフォルト=1始まり） | `True` |
-| `--scan-max-step-size FLOAT` | scan の `--max-step-size` 上書き（Å） | `0.20` |
-| `--scan-bias-k FLOAT` | 調和バイアス強度 `k` 上書き（eV/Å²） | `100` |
-| `--scan-relax-max-cycles INT` | scan の緩和サイクル上限上書き | `10000` |
-| `--scan-preopt BOOLEAN` | scan 事前最適化の上書き（省略時は `--preopt` に追従） | `True` |
-| `--scan-endopt BOOLEAN` | scan ステージ終端最適化の上書き | `True` |
+| `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-tzvpd` |
+| `--dft-max-cycle INT` | 最大SCFサイクル | `100` |
+| `--dft-conv-tol FLOAT` | SCF収束閾値 | `1e-9` |
+| `--dft-grid-level INT` | PySCFグリッドレベル | `3` |
+
+### スキャンオプション（単一入力）
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `--scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
+| `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
+| `--scan-one-based BOOLEAN` | 1始まり/0始まりインデックス | `True` |
+| `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
+| `--scan-bias-k FLOAT` | 調和バイアス強度（eV/Å²） | `100` |
+| `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
+| `--scan-preopt BOOLEAN` | scan事前最適化 | `True` |
+| `--scan-endopt BOOLEAN` | scanステージ終端最適化 | `True` |
 
 ## 出力
-```
+```text
 out_dir/ (デフォルト: ./result_all/)
 ├─ summary.log               # クイック検査用フォーマット済みサマリー
-├─ summary.yaml              # YAMLバージョンサマリー
-├─ pockets/                  # 抽出実行時の入力ごとのポケットPDB
+├─ summary.yaml              # YAML バージョンサマリー
+├─ pockets/                  # 抽出実行時の入力ごとのポケット PDB
 ├─ scan/                     # 段階的ポケットスキャン結果（--scan-lists提供時）
 ├─ path_search/              # MEP結果: 軌跡、マージPDB、ダイアグラム
 ├─ path_search/post_seg_XX/  # 後処理出力（TS最適化、IRC、freq、DFT）
-└─ tsopt_single/             # TSOPTのみ出力とIRCエンドポイント
+└─ tsopt_single/             # TSOPT のみ出力とIRCエンドポイント
 ```
 
 
@@ -169,162 +236,52 @@ YAMLは機械可読サマリーです。代表的なトップレベルキーは�
 
 ## 注意事項
 - 形式電荷が推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFTへ正しい総電荷を伝播させてください。
-- マージ用の参照PDBテンプレートは元の入力から自動導出されます。`path_search` の `--ref-full-pdb` はこのラッパーでは意図的に隠されています。
+- マージ用の参照 PDB テンプレートは元の入力から自動導出されます。`path_search` の `--ref-full-pdb` はこのラッパーでは意図的に隠されています。
 - 収束プリセット: `--thresh` の既定は `gau`、`--thresh-post` の既定は `baker`。
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - ダイアグラムのエネルギーは反応物（最初の状態）基準の kcal/mol で報告されます。
 - `-c/--center` を省略すると抽出をスキップして全構造を MEP/tsopt/freq/DFT に渡しますが、単一構造実行には `--scan-lists` か `--tsopt True` が引き続き必要です。
 - `--args-yaml` で全計算器を単一設定から制御できます。YAMLはCLIを上書きします。
 
-## YAML設定（`--args-yaml`）
-同じYAMLファイルが**すべての**呼び出されるサブコマンドにそのまま転送されます。各ツールは独自のドキュメントに記載されているセクションを読み取ります:
+## YAML 設定（`--args-yaml`）
 
-- [`path_search`](path_search.md): `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search`
-- [`scan`](scan.md): `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`
-- [`tsopt`](tsopt.md): `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`
-- [`freq`](freq.md): `geom`, `calc`, `freq`, `thermo`
-- [`dft`](dft.md): `dft`
+同じ YAML ファイルが**すべての**呼び出されるサブコマンドにそのまま転送されます。各ツールは独自のドキュメントに記載されているセクションを読み取ります:
 
-すべてのYAMLオプションの完全なリファレンスについては、[YAML設定リファレンス](yaml-reference.md) を参照してください。
+| サブコマンド | YAML セクション |
+|------------|-----------------|
+| [`path_search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
+| [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
+| [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
+| [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
+| [`dft`](dft.md) | `dft` |
 
-YAMLルートには必要なセクションだけを含めてください。`geom`/`calc`/`opt` などの共通セクションは複数モジュールで共有され、`freq` や `dft` などのモジュール固有ブロックは対応するステージのみで適用されます。CLIとYAMLの両方が指定された場合、YAMLが優先されます。
+> **注記:** CLI と YAML の両方が指定された場合、YAML が優先されます。
 
-共有・固有セクションを組み合わせた例:
-
+**最小例:**
 ```yaml
-geom:
-  coord_type: cart                     # coordinate type: cartesian vs dlc internals
 calc:
-  model: uma-s-1p1                     # UMA model tag
-  hessian_calc_mode: FiniteDifference  # Hessian mode selection
+  model: uma-s-1p1
+  hessian_calc_mode: Analytical  # VRAM に余裕がある場合推奨
 gs:
-  max_nodes: 12                        # maximum string nodes
-freq:
-  max_write: 8                         # maximum modes written
+  max_nodes: 12
+  climb: true
 dft:
-  grid_level: 6                        # PySCF grid level
+  grid_level: 6
 ```
 
-```yaml
-geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
-calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
-gs:
-  max_nodes: 10              # maximum string nodes
-  perp_thresh: 0.005         # perpendicular displacement threshold
-  reparam_check: rms         # reparametrization check metric
-  reparam_every: 1           # reparametrization stride
-  reparam_every_full: 1      # full reparametrization stride
-  param: equi                # parametrization scheme
-  max_micro_cycles: 10       # micro-iteration limit
-  reset_dlc: true            # rebuild delocalized coordinates each step
-  climb: true                # enable climbing image
-  climb_rms: 0.0005          # climbing RMS threshold
-  climb_lanczos: true        # Lanczos refinement for climbing
-  climb_lanczos_rms: 0.0005  # Lanczos RMS threshold
-  climb_fixed: false         # keep climbing image fixed
-  scheduler: null            # optional scheduler backend
-opt:
-  type: string               # optimizer type label
-  stop_in_when_full: 300     # early stop threshold when string is full
-  align: false               # alignment toggle (kept off)
-  scale_step: global         # step scaling mode
-  max_cycles: 300            # maximum optimization cycles
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  reparam_thresh: 0.0        # reparametrization threshold
-  coord_diff_thresh: 0.0     # coordinate difference threshold
-  out_dir: ./result_path_search/   # output directory
-  print_every: 10            # logging stride
-sopt:
-  lbfgs:
-    thresh: gau                # LBFGS convergence preset
-    max_cycles: 10000          # iteration limit
-    print_every: 100           # logging stride
-    min_step_norm: 1.0e-08     # minimum accepted step norm
-    assert_min_step: true      # assert when steps stagnate
-    rms_force: null            # explicit RMS force target
-    rms_force_only: false      # rely only on RMS force convergence
-    max_force_only: false      # rely only on max force convergence
-    force_only: false          # skip displacement checks
-    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-    overachieve_factor: 0.0    # tighten thresholds
-    check_eigval_structure: false   # validate Hessian eigenstructure
-    line_search: true          # enable line search
-    dump: false                # dump trajectory/restart data
-    dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
-    out_dir: ./result_path_search/   # output directory
-    keep_last: 7               # history size for LBFGS buffers
-    beta: 1.0                  # initial damping beta
-    gamma_mult: false          # multiplicative gamma update toggle
-    max_step: 0.3              # maximum step length
-    control_step: true         # control step length adaptively
-    double_damp: true          # double damping safeguard
-    mu_reg: null               # regularization strength
-    max_mu_reg_adaptions: 10   # cap on mu adaptations
-  rfo:
-    thresh: gau                # RFOptimizer convergence preset
-    max_cycles: 10000          # iteration cap
-    print_every: 100           # logging stride
-    min_step_norm: 1.0e-08     # minimum accepted step norm
-    assert_min_step: true      # assert when steps stagnate
-    rms_force: null            # explicit RMS force target
-    rms_force_only: false      # rely only on RMS force convergence
-    max_force_only: false      # rely only on max force convergence
-    force_only: false          # skip displacement checks
-    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-    overachieve_factor: 0.0    # tighten thresholds
-    check_eigval_structure: false   # validate Hessian eigenstructure
-    line_search: true          # enable line search
-    dump: false                # dump trajectory/restart data
-    dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
-    out_dir: ./result_path_search/   # output directory
-    trust_radius: 0.1          # trust-region radius
-    trust_update: true         # enable trust-region updates
-    trust_min: 0.0             # minimum trust radius
-    trust_max: 0.1             # maximum trust radius
-    max_energy_incr: null      # allowed energy increase per step
-    hessian_update: bfgs       # Hessian update scheme
-    hessian_init: calc         # Hessian initialization source
-    hessian_recalc: 200        # rebuild Hessian every N steps
-    hessian_recalc_adapt: null # adaptive Hessian rebuild factor
-    small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
-    alpha0: 1.0                # initial micro step
-    max_micro_cycles: 50       # micro-iteration limit
-    rfo_overlaps: false        # enable RFO overlaps
-    gediis: false              # enable GEDIIS
-    gdiis: true                # enable GDIIS
-    gdiis_thresh: 0.0025       # GDIIS acceptance threshold
-    gediis_thresh: 0.01        # GEDIIS acceptance threshold
-    gdiis_test_direction: true # test descent direction before DIIS
-    adapt_step_func: true      # adaptive step scaling toggle
-bond:
-  device: cuda                # UMA device for bond analysis
-  bond_factor: 1.2            # covalent-radius scaling
-  margin_fraction: 0.05       # tolerance margin for comparisons
-  delta_fraction: 0.05        # minimum relative change to flag bonds
-search:
-  max_depth: 10               # recursion depth limit
-  stitch_rmsd_thresh: 0.0001  # RMSD threshold for stitching segments
-  bridge_rmsd_thresh: 0.0001  # RMSD threshold for bridging nodes
-  rmsd_align: true            # legacy alignment flag (ignored)
-  max_nodes_segment: 10       # max nodes per segment
-  max_nodes_bridge: 5         # max nodes per bridge
-  kink_max_nodes: 3           # max nodes for kink optimizations
-  max_seq_kink: 2             # max sequential kinks
-```
+すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml-reference.md)** を参照してください。
+
+---
+
+## 関連項目
+
+- [はじめに](getting-started.md) — インストールと初回実行
+- [概念とワークフロー](concepts.md) — ポケット、セグメント、ステージの全体像
+- [extract](extract.md) — 単独のポケット抽出（`all` が内部で呼び出し）
+- [path-search](path_search.md) — 単独のMEP探索（`all` が内部で呼び出し）
+- [tsopt](tsopt.md) — 単独のTS最適化
+- [freq](freq.md) — 単独の振動解析
+- [dft](dft.md) — 単独のDFT計算
+- [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
+- [YAML リファレンス](yaml-reference.md) — 全YAML設定オプション
+- [用語集](glossary.md) — MEP、TS、IRC、GSM、DMFの定義

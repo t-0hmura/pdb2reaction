@@ -1,6 +1,9 @@
 # `opt`
 
 ## Overview
+
+> **TL;DR:** Optimize a single structure to a local minimum using L-BFGS (`--opt-mode light`, default) or RFO (`--opt-mode heavy`). For PDB inputs, link-hydrogen parents are automatically frozen.
+
 `pdb2reaction opt` performs a single-structure geometry optimization with the pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings are applied in the order **built-in defaults → CLI overrides → `--args-yaml` overrides** (YAML has the highest precedence), making it easy to keep lightweight defaults while selectively overriding options. The optimizer preset now defaults to the LBFGS-based **`light`** mode.
 
 When the starting structure is a PDB or Gaussian template, format-aware conversion mirrors the optimized structure into `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files {True\|False}` (enabled by default). PDB-specific conveniences include:
@@ -188,3 +191,14 @@ rfo:
   gdiis_test_direction: true # test descent direction before DIIS
   adapt_step_func: true      # adaptive step scaling
 ```
+
+---
+
+## See Also
+
+- [tsopt](tsopt.md) — Optimize transition states (saddle points) instead of minima
+- [freq](freq.md) — Vibrational analysis to confirm optimization reached a minimum
+- [extract](extract.md) — Generate pocket PDBs before optimization
+- [all](all.md) — End-to-end workflow that pre-optimizes endpoints
+- [YAML Reference](yaml-reference.md) — Full `opt`, `lbfgs`, `rfo` configuration options
+- [Glossary](glossary.md) — Definitions of L-BFGS, RFO

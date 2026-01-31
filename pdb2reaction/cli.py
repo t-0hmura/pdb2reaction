@@ -18,6 +18,12 @@ class DefaultGroup(click.Group):
                 args.insert(0, self._default_cmd)
         return super().parse_args(ctx, args)
 
+    def invoke(self, ctx):
+        # Add a leading blank line for subcommands (except "all") to separate CLI tool logs.
+        if ctx.invoked_subcommand and ctx.invoked_subcommand != "all":
+            click.echo()
+        return super().invoke(ctx)
+
 
 from .all import cli as all_cmd
 from .scan import cli as scan_cmd

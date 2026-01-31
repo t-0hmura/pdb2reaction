@@ -39,7 +39,7 @@ ja/index
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt.md](opt.md) |
-| Find and refine a transition state | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
+| Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
 | Search for minimum energy path | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
@@ -67,7 +67,7 @@ ja/index
 #### Structure Preparation
 | Subcommand | Description |
 |---------|-------------|
-| [`extract`](extract.md) | Extract active-site cluster from protein-ligand complex |
+| [`extract`](extract.md) | Extract active-site pocket (cluster model) from protein–ligand complex |
 | [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77-78) |
 
 #### Geometry Optimization

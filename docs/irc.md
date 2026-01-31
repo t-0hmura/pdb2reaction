@@ -1,6 +1,9 @@
 # `irc`
 
 ## Overview
+
+> **TL;DR:** Trace the reaction path from a TS toward reactant and product using IRC. Runs both forward and backward branches by default. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits.
+
 Run EulerPC-based Intrinsic Reaction Coordinate (IRC) integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Usage
@@ -125,3 +128,14 @@ irc:
   loose_cycles: 3            # loose cycles before tightening
   corr_func: mbs             # correlation function choice
 ```
+
+---
+
+## See Also
+
+- [tsopt](tsopt.md) — Optimize the TS before running IRC
+- [freq](freq.md) — Verify TS has one imaginary frequency; analyze IRC endpoints
+- [opt](opt.md) — Optimize IRC endpoints to true minima
+- [all](all.md) — End-to-end workflow that runs IRC after tsopt
+- [YAML Reference](yaml-reference.md) — Full `irc` configuration options
+- [Glossary](glossary.md) — Definition of IRC (Intrinsic Reaction Coordinate)

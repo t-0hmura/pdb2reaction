@@ -1,7 +1,10 @@
 # `extract`
 
 ## Overview
-Automatically extract binding pockets (active sites) from protein–substrate complexes. The tool applies chemically-aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
+
+> **TL;DR:** Extract a cluster model (active-site pocket) from a protein–ligand PDB. Specify substrates via `-c` (residue names, IDs, or PDB path). Link hydrogens are added to cap severed bonds. Use `--ligand-charge` for non-standard residue charges.
+
+Automatically extract active-site pockets (binding pockets) from protein–substrate complexes. The tool applies chemically-aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
 
 ## Usage
 ```bash
@@ -97,7 +100,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
 
 ## Outputs
-```
+```text
 <output>.pdb  # Pocket PDB(s) with optional link hydrogens after a TER record
                # Single input → pocket.pdb by default
                # Multiple inputs without -o → pocket_<original_basename>.pdb per structure
@@ -113,3 +116,14 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - Backbone trimming plus capping respect chain breaks and PRO/HYP safeguards as outlined above; non-amino residues never lose backbone-like atom names.
 - Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
 - INFO logs summarize residue selection, truncation counts, and charge breakdowns.
+
+---
+
+## See Also
+
+- [all](all.md) — End-to-end workflow that calls extract internally via `-c/--center`
+- [path-search](path_search.md) — MEP search on extracted pockets
+- [scan](scan.md) — Staged scan on extracted pockets
+- [add-elem-info](add_elem_info.md) — Fix missing PDB element columns before extraction
+- [Troubleshooting](troubleshooting.md) — Common extraction errors
+- [Glossary](glossary.md) — Definitions of Pocket, Cluster Model, Link Hydrogen

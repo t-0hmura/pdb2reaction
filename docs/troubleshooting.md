@@ -48,7 +48,7 @@ Typical messages:
 ```
 
 Fix:
-- Regenerate **all** structures with the same preparation pipeline (same protonation tool, same settings).
+- Regenerate **all** structures with the same preparation workflow (same protonation tool, same settings).
 - If you add hydrogens, do it in a way that produces consistent ordering across all frames.
 
 Tip:
@@ -71,7 +71,7 @@ Fixes to try:
 ## Charge / spin problems
 
 ### “Charge is required …” (non-GJF inputs)
-Many stages need a total charge when the input is not `.gjf`. If you omit `-q/--charge`, the pipeline may attempt to derive charge from `--ligand-charge` (PDB-only) or from a `.gjf` template.
+Many stages need a total charge when the input is not `.gjf`. If you omit `-q/--charge`, the workflow may attempt to derive charge from `--ligand-charge` (PDB-only) or from a `.gjf` template.
 
 Fix:
 - Provide charge and multiplicity explicitly:

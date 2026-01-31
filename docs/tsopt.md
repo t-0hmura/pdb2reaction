@@ -1,6 +1,9 @@
 # `tsopt`
 
 ## Overview
+
+> **TL;DR:** Optimize transition states using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). Use `--hessian-calc-mode Analytical` for best performance when VRAM permits. The converged TS will have exactly one imaginary frequency.
+
 `pdb2reaction tsopt` optimizes transition states using two complementary workflows:
 
 - **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
@@ -258,3 +261,14 @@ rsirfo:
   max_line_search: true      # enforce maximum line-search step
   assert_neg_eigval: false   # require a negative eigenvalue at convergence
 ```
+
+---
+
+## See Also
+
+- [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
+- [irc](irc.md) — Trace the reaction path from an optimized TS
+- [freq](freq.md) — Confirm exactly one imaginary frequency
+- [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
+- [YAML Reference](yaml-reference.md) — Full `hessian_dimer` and `rsirfo` configuration options
+- [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

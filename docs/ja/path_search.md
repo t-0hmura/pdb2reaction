@@ -2,7 +2,10 @@
 
 
 ## 概要
-反応座標に沿って順序付けられた**2つ以上**の構造にわたって連続的な最小エネルギー経路（MEP）を構築します。`path-search` はGSM**またはDMF**セグメントを連鎖させ、共有結合変化のある領域のみを選択的に精密化し、（オプションで）PDBポケットをフルサイズテンプレートにマージします。`--mep-mode` でどちらを選んでも同じ再帰ワークフローが動作し、**GSMがデフォルト**です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。フォーマット対応の変換は、PDB参照がある場合に軌跡を `.pdb` に、Gaussianテンプレートがある場合にXYZスナップショット（例: HEI）を `.gjf` にミラーします（`--convert-files` 有効時、デフォルト）。XYZ/GJF入力では `--ref-pdb` がポケットPDBトポロジーを提供しXYZ座標を保持するため、`--ref-full-pdb` が与えられればフルテンプレートマージが可能になります（XYZ/GJF入力ではPDBコンパニオン自体は生成されません）。
+
+> **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つ以上の構造から連続的な MEP を構築します。結合変化のある領域を自動的に精密化し、最高エネルギー画像（HEI）を TS 候補として特定します。
+
+反応座標に沿って順序付けられた**2つ以上**の構造にわたって連続的な最小エネルギー経路（MEP）を構築します。`path-search` はGSM**またはDMF**セグメントを連鎖させ、共有結合変化のある領域のみを選択的に精密化し、（オプションで）PDB ポケットをフルサイズテンプレートにマージします。`--mep-mode` でどちらを選んでも同じ再帰ワークフローが動作し、**GSMがデフォルト**です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。フォーマット対応の変換は、PDB 参照がある場合に軌跡を `.pdb` に、Gaussianテンプレートがある場合にXYZスナップショット（例: HEI）を `.gjf` にミラーします（`--convert-files` 有効時、デフォルト）。XYZ/GJF入力では `--ref-pdb` がポケット PDB トポロジーを提供しXYZ座標を保持するため、`--ref-full-pdb` が与えられればフルテンプレートマージが可能になります（XYZ/GJF入力ではPDBコンパニオン自体は生成されません）。
 
 ## 使用法
 
@@ -24,7 +27,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
   ```bash
   pdb2reaction path-search -i reactant.pdb product.pdb -q 0
   ```
-- YAMLオーバーライドとマージされた全系出力を使用した**マルチステップ**探索:
+- YAML 上書きとマージされた全系出力を使用した**マルチステップ**探索:
   ```bash
   pdb2reaction path-search \
       -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
@@ -32,15 +35,15 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
   ```
 
 
-## CLIオプション
+## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。`-i` を繰り返すか1つのフラグに複数パスを渡す | 必須 |
 | `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `--ligand-charge TEXT` | `-q` が省略された場合に使用する総電荷または残基名マッピング。PDB入力ではextract方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | `-q` が省略された場合に使用する総電荷または残基名マッピング。PDB 入力ではextract方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links {True\|False}` | PDBポケット読み込み時、リンク水素の親原子を凍結 | `True` |
+| `--freeze-links {True\|False}` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
 | `--max-nodes INT` | MEPセグメントごとの内部ノード | `10` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
 | `--climb {True\|False}` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
@@ -51,11 +54,11 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--convert-files {True\|False}` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | GSMおよびイメージごとの最適化の収束プリセットを上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--args-yaml FILE` | YAMLオーバーライド（下記参照） | _None_ |
-| `--preopt {True\|False}` | MEP探索前に各エンドポイントを事前最適化（推奨） | `True` |
+| `--args-yaml FILE` | YAML 上書き（下記参照） | _None_ |
+| `--preopt {True\|False}` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
 | `--align {True\|False}` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレートPDB（`--align` があれば先頭のみ再利用可） | _None_ |
-| `--ref-pdb PATH...` | 入力がXYZ/GJFの場合のポケット参照PDB（XYZ座標は保持） | _None_ |
+| `--ref-pdb PATH...` | 入力がXYZ/GJFの場合のポケット参照 PDB（XYZ座標は保持） | _None_ |
 
 ## ワークフロー
 
@@ -64,16 +67,16 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 3. **kink vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *kink* とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **精密化セグメント（GSM/DMF）** を起動。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジMEPを挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
-6. **アライメント & マージング（オプション）** – `--align`（既定）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定するとポケット軌跡をフルサイズPDBテンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
+6. **アライメント & マージング（オプション）** – `--align`（既定）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定するとポケット軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
 
-結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。UMA計算機は全構造で共有され、効率的に再利用されます。
+結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。UMA 計算機は全構造で共有され、効率的に再利用されます。
 
 ## 出力
 ```
 out_dir/ (デフォルト: ./result_path_search/)
 ├─ mep.trj                  # プライマリMEP軌跡
-├─ mep.pdb                  # 入力がPDBテンプレートで変換が有効な場合のPDBコンパニオン
-├─ mep_w_ref.pdb            # マージされた全系MEP（参照PDB/テンプレートが必要）
+├─ mep.pdb                  # 入力がPDB テンプレートで変換が有効な場合のPDBコンパニオン
+├─ mep_w_ref.pdb            # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb     # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml             # すべての再帰セグメントの障壁と分類サマリー
 ├─ mep_plot.png             # ΔEプロファイル（kcal/mol、反応物基準）
@@ -87,16 +90,16 @@ out_dir/ (デフォルト: ./result_path_search/)
 ## 注意事項
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - `--ref-full-pdb` は1回の指定で複数ファイルを続けて渡せます。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
-- UMA計算機は全構造で共有され、効率化されます。
+- UMA 計算機は全構造で共有され、効率化されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡および再開用YAMLが出力されます。
-- 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`-q` が省略され `--ligand-charge` が与えられている場合、入力は酵素–基質複合体として扱われ、PDB入力では `extract.py` の電荷サマリーで総電荷が導出されます。明示的な `-q` は常に優先されます。`.gjf` 以外で `--ligand-charge` が使えない場合は実行が中断され、多重度は省略時に `1` がデフォルトです。
+- 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`-q` が省略され `--ligand-charge` が与えられている場合、入力は酵素–基質複合体として扱われ、PDB 入力では `extract.py` の電荷サマリーで総電荷が導出されます。明示的な `-q` は常に優先されます。`.gjf` 以外で `--ligand-charge` が使えない場合は実行が中断され、多重度は省略時に `1` がデフォルトです。
 
-## YAML設定（`--args-yaml`）
-YAMLルートはマッピングである必要があります。YAML値はCLIを上書きします。共通セクションは [YAMLリファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path_opt` に記載のStringOptimizer設定を継承します。
+## YAML 設定（`--args-yaml`）
+YAML ルートはマッピングでなければなりません。YAML 値はCLIを上書きします。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path_opt` に記載のStringOptimizer設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
-`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAMLリファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
+`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出で、{ref}`scan <section-bond>` と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
@@ -259,3 +262,14 @@ search:
   max_seq_kink: 2             # max sequential kinks
   refine_mode: null           # optional refinement strategy (auto-chooses when null)
 ```
+
+---
+
+## 関連項目
+
+- [path-opt](path_opt.md) — 単一パスMEP最適化（再帰的精密化なし）
+- [tsopt](tsopt.md) — HEIを遷移状態として最適化
+- [extract](extract.md) — path-search入力用のポケットPDBを生成
+- [all](all.md) — 内部でpath-searchを呼び出すエンドツーエンドワークフロー
+- [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
+- [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

@@ -1,6 +1,9 @@
 # `extract`
 
 ## 概要
+
+> **要約:** タンパク質-リガンド PDB からクラスターモデル（活性部位ポケット）を抽出します。`-c` で基質を指定（残基名、ID、または PDB パス）します。切断された結合をキャップするためにリンク水素が追加されます。非標準残基の電荷には `--ligand-charge` を使用してください。
+
 タンパク質-基質複合体から結合ポケット（活性部位）を自動抽出します。このツールは化学的に適切な残基選択（距離カットオフ + ジスルフィド結合、PRO隣接などのヒューリスティクス）を適用し、側鎖/主鎖セグメントを切断し、オプションでリンク水素を追加し、単一構造またはアンサンブルを処理できます。
 
 ## 使用法
@@ -76,19 +79,19 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - 診断ログにモデルごとの生/保持原子数と残基IDを出力します。
 
 ### 基質指定（`-c/--center`）
-- **PDBパス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基IDは他構造へ伝播。
+- **PDB パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基IDは他構造へ伝播。
 - **残基ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
 - **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
 
-## CLIオプション
+## CLI オプション
 
 > **注記:** 表示されているデフォルト値は、オプション未指定時に使用される内部デフォルトです。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH...` | 1つ以上のタンパク質-リガンドPDBファイル（同一の原子順序が必要） | 必須 |
-| `-c, --center SPEC` | 基質指定（PDBパス、残基ID、または残基名） | 必須 |
-| `-o, --output PATH...` | ポケットPDB出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
+| `-c, --center SPEC` | 基質指定（PDB パス、残基ID、または残基名） | 必須 |
+| `-o, --output PATH...` | ポケット PDB出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0` |
 | `--include-H2O {True\|False}` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
@@ -99,8 +102,8 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `-v, --verbose` | INFOレベルログを出力 | `true` |
 
 ## 出力
-```
-<output>.pdb  # TERレコード後にオプションのリンク水素を含むポケットPDB
+```text
+<output>.pdb  # TERレコード後にオプションのリンク水素を含むポケット PDB
                # 単一入力 → デフォルトでpocket.pdb
                # -oなしの複数入力 → 構造ごとにpocket_<original_basename>.pdb
                # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
@@ -116,3 +119,14 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - 主鎖トリミングとキャッピングはチェーン切断や PRO/HYP 保護を尊重し、非アミノ酸残基は主鎖様の原子名を保持します。
 - リンク水素は炭素切断のみで挿入され、アンサンブルモードでは同一結合パターンを全モデルで再利用します。
 - INFOログに残基選択、切断数、電荷内訳が要約されます。
+
+---
+
+## 関連項目
+
+- [all](all.md) — `-c/--center` で内部的にextractを呼び出すエンドツーエンドワークフロー
+- [path-search](path_search.md) — 抽出されたポケットでのMEP探索
+- [scan](scan.md) — 抽出されたポケットでの段階的スキャン
+- [add-elem-info](add_elem_info.md) — 抽出前に欠落したPDB元素カラムを修正
+- [トラブルシューティング](troubleshooting.md) — よくある抽出エラー
+- [用語集](glossary.md) — ポケット、クラスターモデル、リンク水素の定義

@@ -1,6 +1,9 @@
 # `dft`
 
 ## Overview
+
+> **TL;DR:** Run single-point DFT calculations using GPU4PySCF (or CPU PySCF fallback). Default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+
 Run single-point DFT calculations on the GPU (using GPU4PySCF when available; otherwise falling back to CPU PySCF). In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 
 ## Usage
@@ -93,3 +96,12 @@ dft:
   verbose: 0            # PySCF verbosity (0-9)
   out_dir: ./result_dft/  # output directory root
 ```
+
+---
+
+## See Also
+
+- [freq](freq.md) — UMA-based vibrational analysis (often precedes DFT refinement)
+- [all](all.md) — End-to-end workflow with `--dft True`
+- [YAML Reference](yaml-reference.md) — Full `dft` configuration options
+- [Glossary](glossary.md) — Definitions of DFT, SP (Single Point)

@@ -1,14 +1,16 @@
 # Concepts & Workflow
 
-This page gives a **mental model** of how `pdb2reaction` is structured: what “pockets”, “templates”, “segments”, and “images” mean, and how the top-level `all` workflow orchestrates subcommands.
+This page gives a **mental model** of how `pdb2reaction` is structured: what "pockets", "templates", "segments", and "images" mean, and how the top-level `all` workflow orchestrates subcommands.
+
+> **New to pdb2reaction?** Start with [Getting Started](getting-started.md) for installation and your first run.
 
 ---
 
-## The pipeline at a glance
+## Workflow at a glance
 
 Most workflows follow this flow:
 
-```
+```text
 Full system(s) (PDB/XYZ/GJF)
    │
    ├─ (optional) pocket extraction   [extract]     ← requires PDB when you use --center/-c
@@ -23,9 +25,9 @@ Full system(s) (PDB/XYZ/GJF)
    │                 ↓
    │            MEP trajectory (mep.trj) + energy diagrams
    │
-   └─ (optional) TS refinement + IRC  [tsopt] → [irc]
+   └─ (optional) TS optimization + IRC  [tsopt] → [irc]
              └─ (optional) thermo     [freq]
-             └─ (optional) DFT SP     [dft]
+             └─ (optional) single-point DFT     [dft]
 ```
 
 `pdb2reaction` provides each stage as an individual subcommand, and also provides `pdb2reaction all` as a convenience wrapper that runs many stages end-to-end.
@@ -76,8 +78,8 @@ pdb2reaction -i holo.pdb -c '308,309' \
   --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
 ```
 
-### 3) TSOPT-only mode (pocket refinement)
-Use this when you already have a TS candidate (or want a quick TS refinement on one structure).
+### 3) TSOPT-only mode (pocket TS optimization)
+Use this when you already have a TS candidate (or want a quick TS optimization on one structure).
 
 Typical command:
 
@@ -91,7 +93,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 
 ### Prefer `pdb2reaction all` when…
 - You want an **end-to-end** run (extract → MEP → TSOPT/IRC → freq/DFT).
-- You are still exploring the pipeline and want a single command to manage outputs.
+- You are still exploring the workflow and want a single command to manage outputs.
 
 ### Prefer subcommands when…
 - You want to **debug** a specific stage (e.g., only `extract`, only `path-search`).
@@ -111,8 +113,20 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 
 ## Next steps
 
+### Getting started
 - [Getting Started](getting-started.md) — installation and first run
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
-- [`all`](all.md) — the end-to-end wrapper
-- [`path-search`](path_search.md) — recursive MEP search details
+
+### Core subcommands
+| Subcommand | Purpose | Documentation |
+|------------|---------|---------------|
+| `all` | End-to-end workflow | [all.md](all.md) |
+| `extract` | Pocket extraction | [extract.md](extract.md) |
+| `path-search` | Recursive MEP search | [path_search.md](path_search.md) |
+| `tsopt` | TS optimization | [tsopt.md](tsopt.md) |
+| `freq` | Vibrational analysis | [freq.md](freq.md) |
+| `dft` | Single-point DFT | [dft.md](dft.md) |
+
+### Reference
 - [YAML Reference](yaml-reference.md) — complete YAML configuration options
+- [Glossary](glossary.md) — terminology reference

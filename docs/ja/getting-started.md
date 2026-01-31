@@ -2,47 +2,55 @@
 
 ## 概要
 
-`pdb2reaction` は、機械学習原子間ポテンシャル (MLIP) を使用して **PDB構造** を **酵素反応経路** に変換するPython CLIツールキットです。
+`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を用いて **PDB 構造** から **酵素反応経路** を自動的に構築する Python 製の CLI ツールキットです。
 
-基本的には、以下のような**単一コマンド**で酵素反応経路をモデリングできます:
+多くの場合、次のような **1 コマンド** で反応経路をモデル化できます。
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-さらに、`--tsopt True --thermo True --dft True` を追加すると、**MEP探索 → TS精密化 → IRC → 熱化学解析 → DFT一点計算** を一度に実行できます:
+さらに `--tsopt True --thermo True --dft True` を追加すると、**MEP 探索 → TS 最適化 → IRC → 熱化学解析 → DFT 一点計算** までまとめて実行できます。
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
 ```
 ---
 
-**(i) 2つ以上の完全なタンパク質-リガンドPDB** `.pdb`（R → … → P）、**または (ii) `--scan-lists` 付きの1つのPDB**、**または (iii) `--tsopt True` 付きの1つのTS候補** が与えられると、`pdb2reaction` は自動的に:
+入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt True` を与えると、`pdb2reaction` が次を自動化します。
 
-- ユーザー定義の基質周辺の**活性部位**を抽出して**クラスターモデル**を構築
-- Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で**最小エネルギー経路 (MEP)** を探索
-- _オプションで_**遷移状態**を精密化し、**振動解析**、**IRC計算**、**DFT一点計算**を実行
+- ユーザーが指定した基質の周辺から **活性部位ポケット** を抽出し、計算用の **クラスターモデル** を構築
+- Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP)** を探索
+- 必要に応じて **遷移状態** を最適化し、**振動解析**・**IRC 計算**・**DFT 一点計算** を実行
 
-MetaのUMAモデルを使用した**機械学習原子間ポテンシャル (MLIP)** で計算を行います。
+UMA レベルの計算には Meta の UMA（MLIP）を用います。
 
-これらすべてはコマンドラインインターフェース (CLI) を通じて提供され、**多段階酵素反応メカニズム**を最小限の手動介入で生成できるように設計されています。もちろん、このツールキットは小分子系も扱えます。全構造でワークフローを実行する場合（つまり `--center/-c` と `--ligand-charge` を省略）、`.xyz` または `.gjf` 形式の入力構造も使用できます。
+一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
 
-**HPCクラスターやマルチGPUワークステーション**では、`pdb2reaction` はノード間でUMA推論自体を並列化することで、大規模なクラスターモデル（およびオプションで**完全なタンパク質-リガンド複合体**）を処理できます。並列計算を有効にするには `workers` と `workers_per_node` を設定してください。設定の詳細については [UMA計算機](uma_pysis.md) を参照してください。
+**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [UMA 計算機](uma_pysis.md)）。
 
 ```{important}
-- 入力PDBファイルには**水素原子**が含まれている必要があります。
-- 複数のPDBを提供する場合、**同じ原子が同じ順序**で含まれている必要があります（座標のみ異なる可能性があります）。そうでない場合はエラーが発生します。
-- ブール値CLIオプションは `True`/`False` として明示的に渡されます（例: `--tsopt True`）。
+- 入力 PDB ファイルには**水素原子**が含まれている必要があります。
+- 複数の PDB を提供する場合、**同じ原子が同じ順序**で含まれている必要があります（座標のみ異なる可能性があります）。そうでない場合はエラーが発生します。
 ```
 
 ```{tip}
-初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。  
+初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。
 セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
 ```
+
+### CLI の慣習
+
+| 慣習 | 例 | 備考 |
+|-----|-----|------|
+| **真偽値オプション** | `--tsopt True`, `--dft False` | `True`/`False`（大文字始まり）を使用。`true`/`false` や `1`/`0` は不可 |
+| **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
+| **電荷マッピング** | `--ligand-charge 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
+| **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
 
 
 ### 水素原子付与の推奨ツール
 
-PDBに水素原子がない場合、pdb2reactionを実行する前に以下のツールを使用してください：
+PDB に水素原子がない場合は、pdb2reaction を実行する前に次のいずれかを使ってください。
 
 | ツール | コマンド例 | 備考 |
 |--------|------------|------|
@@ -50,7 +58,7 @@ PDBに水素原子がない場合、pdb2reactionを実行する前に以下の�
 | **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | 水素を追加し部分電荷を割り当て |
 | **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用ケモインフォマティクスツールキット |
 
-複数のPDB入力で同一の原子順序を確保するには、すべての構造に同じ水素付与ツールを一貫した設定で適用してください。
+複数の PDB 入力で同一の原子順序を確保するには、すべての構造に同じ水素付与ツールを一貫した設定で適用してください。
 
 ```{warning}
 このソフトウェアはまだ開発中です。自己責任でご使用ください。
@@ -60,7 +68,7 @@ PDBに水素原子がない場合、pdb2reactionを実行する前に以下の�
 
 ## インストール
 
-`pdb2reaction` は、CUDA対応GPUを備えたLinux環境（ローカルワークステーションまたはHPCクラスター）向けに設計されています。特に **PyTorch**、**fairchem-core (UMA)**、**gpu4pyscf-cuda12x** などの依存関係は、動作するCUDAインストールを前提としています。
+`pdb2reaction` は、CUDA対応GPUを備えたLinux環境（ローカルワークステーションまたはHPC クラスター）向けに設計されています。特に **PyTorch**、**fairchem-core (UMA)**、**gpu4pyscf-cuda12x** などの依存関係は、動作するCUDAインストールを前提としています。
 
 詳細は上流プロジェクトを参照してください:
 
@@ -97,7 +105,7 @@ huggingface-cli login
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-- MEP探索でDirect Max Flux法を使用する場合は、conda環境を作成し、インストール前にcyipoptをインストールしてください:
+- MEP 探索でDirect Max Flux法を使用する場合は、conda環境を作成し、インストール前にcyipoptをインストールしてください:
   ```bash
   # 専用のconda環境を作成してアクティブ化
   conda create -n pdb2reaction python=3.11 -y
@@ -107,7 +115,7 @@ huggingface-cli login
   conda install -c conda-forge cyipopt -y
   ```
 
-- *環境モジュール*を使用するHPCクラスターでは、PyTorchをインストールする**前に**CUDAをロードしてください:
+- *環境モジュール*を使用するHPC クラスターでは、PyTorchをインストールする**前に**CUDAをロードしてください:
   ```bash
   module load cuda/12.9
   ```
@@ -131,7 +139,7 @@ huggingface-cli login
    ```
 
 3. **cyipoptをインストール**
-   MEP探索でDMF法を使用する場合に必要です。
+   MEP 探索でDMF法を使用する場合に必要です。
 
    ```bash
    conda install -c conda-forge cyipopt -y
@@ -180,7 +188,7 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-`all` ワークフローは**オーケストレーター**です: クラスター抽出、MEP探索、TS最適化、振動解析、オプションのDFT一点計算を単一コマンドに連鎖させます。
+`all` ワークフローは**オーケストレーター**です: クラスター抽出、MEP 探索、TS 最適化、振動解析、オプションのDFT 一点計算を単一コマンドに連鎖させます。
 
 クラスター抽出を行う場合、すべての高レベルワークフローは2つの重要なオプションを共有します:
 
@@ -193,9 +201,9 @@ pdb2reaction all [OPTIONS] ...
 
 ## メインワークフローモード
 
-### 複数構造MEPパイプライン（反応物 → 生成物）
+### 複数構造MEPワークフロー（反応物 → 生成物）
 
-推定反応座標に沿った複数の完全PDB構造（例: R → I1 → I2 → P）がすでにある場合に使用します。
+推定反応座標に沿った複数の完全PDB 構造（例: R → I1 → I2 → P）がすでにある場合に使用します。
 
 **最小例**
 
@@ -213,22 +221,22 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 
 - 反応順序で2つ以上の**完全系**を受け取る
 - 各構造の触媒クラスターモデルを抽出
-- デフォルトで `path_search` による**再帰的MEP探索**を実行
+- デフォルトで `path_search` による**再帰的 MEP 探索**を実行
 - `--refine-path False` でオプションで**シングルパス** `path-opt` 実行に切り替え
-- PDBテンプレートが利用可能な場合、クラスターモデルMEPを**完全系**にマージ
-- オプションで各セグメントに対してTS最適化、振動解析、DFT一点計算を実行
+- PDB テンプレートが利用可能な場合、クラスターモデルMEPを**完全系**にマージ
+- オプションで各セグメントに対してTS 最適化、振動解析、DFT 一点計算を実行
 
 これは適度に間隔を置いた中間体（ドッキング、MD、または手動モデリングなど）を生成できる場合に推奨されるモードです。
 
 ```{important}
-`pdb2reaction` は複数の入力PDBが**まったく同じ原子を同じ順序**で含むことを前提としています（座標のみ異なる可能性があります）。入力間で座標以外のフィールドが異なる場合、エラーが発生します。入力PDBファイルには**水素原子**も含まれている必要があります。
+`pdb2reaction` は複数の入力PDBが**まったく同じ原子を同じ順序**で含むことを前提としています（座標のみ異なる可能性があります）。入力間で座標以外のフィールドが異なる場合、エラーが発生します。入力 PDB ファイルには**水素原子**も含まれている必要があります。
 ```
 
 ---
 
-### 単一構造 + 段階的スキャン（MEP精密化への入力）
+### 単一構造 + 段階的スキャン（MEP 精密化への入力）
 
-**1つのPDB構造**しかないが、反応に沿ってどの原子間距離が変化するかを知っている場合に使用します。
+**1つのPDB 構造**しかないが、反応に沿ってどの原子間距離が変化するかを知っている場合に使用します。
 
 `--scan-lists` と一緒に単一の `-i` を指定します:
 
@@ -259,9 +267,9 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
 
 ---
 
-### 単一構造TSOPTのみモード
+### 単一構造 TSOPT のみモード
 
-すでに**遷移状態候補**があり、それを精密化してIRC計算を行いたい場合に使用します。
+すでに**遷移状態候補**があり、それを最適化して IRC 計算を行いたい場合に使用します。
 
 正確に1つのPDBを指定し、`--tsopt` を有効にします:
 
@@ -279,42 +287,42 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 動作:
 
-- MEP/経路探索を完全にスキップ
-- TS最適化で**クラスターモデルTS**を精密化
-- 両方向で**IRC**を実行し、両端点を最適化してRおよびP極小に緩和
-- R/TS/Pに対して `freq` と `dft` を実行可能
-- UMA、Gibbs、DFT//UMAエネルギーダイアグラムを生成
+- MEP/経路探索を完全にスキップします。
+- TS 最適化で **クラスターモデル上の TS** を収束させます。
+- 両方向で **IRC** を実行し、両端点を最適化して R および P 極小に緩和します。
+- R/TS/P に対して `freq` と `dft` を実行できます。
+- UMA、Gibbs、DFT//UMA エネルギーダイアグラムを生成します。
 
 `energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にミラーされます。
 
 ```{important}
-単一入力実行には **`--scan-lists`**（段階的スキャン → GSM）**または** `--tsopt True`（TSOPTのみ）のいずれかが必要です。これらのいずれかなしで単一の `-i` のみを指定しても、完全なワークフローはトリガーされません。
+単一入力実行には **`--scan-lists`**（段階的スキャン → GSM）**または** `--tsopt True`（TSOPT のみ）のいずれかが必要です。これらのいずれかなしで単一の `-i` のみを指定しても、完全なワークフローはトリガーされません。
 ```
 
 ---
 
-## 重要なCLIオプションと動作
+## 重要なCLI オプションと動作
 
 以下はワークフロー全体で最もよく使用されるオプションです。
 
 | オプション | 説明 |
 |----------|------|
-| `-i, --input PATH...` | 入力構造。**2つ以上のPDB** → MEP探索; **1つのPDB + `--scan-lists`** → 段階的スキャン → GSM; **1つのPDB + `--tsopt True`** → TSOPTのみモード |
-| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、またはPDBパスをサポート |
+| `-i, --input PATH...` | 入力構造。**2つ以上のPDB** → MEP 探索; **1つのPDB + `--scan-lists`** → 段階的スキャン → GSM; **1つのPDB + `--tsopt True`** → TSOPT のみモード |
+| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、またはPDB パスをサポート |
 | `--ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
-| `-q, --charge INT` | 総電荷のハードオーバーライド |
+| `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --mult INT` | スピン多重度（例: シングレットは `1`）。注: `all` 以外のサブコマンドでは `--multiplicity` を使用してください。 |
 | `--scan-lists TEXT...` | 単一入力実行用の段階的距離スキャン |
 | `--out-dir PATH` | トップレベル出力ディレクトリ |
-| `--tsopt {True\|False}` | TS最適化とIRCを有効化 |
+| `--tsopt {True\|False}` | TS 最適化と IRC を有効化 |
 | `--thermo {True\|False}` | 振動解析と熱化学を実行 |
-| `--dft {True\|False}` | DFT一点計算を実行 |
-| `--refine-path {True\|False}` | 再帰的MEP精密化（デフォルト）vs シングルパス |
+| `--dft {True\|False}` | DFT 一点計算を実行 |
+| `--refine-path {True\|False}` | 再帰的 MEP 精密化（デフォルト） vs シングルパス |
 | `--opt-mode light\|heavy` | 最適化手法: Light (LBFGS/Dimer) または Heavy (RFO/RS-I-RFO) |
-| `--mep-mode gsm\|dmf` | MEP手法: Growing String Method または Direct Max Flux |
+| `--mep-mode gsm\|dmf` | MEP 手法: Growing String Method または Direct Max Flux |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン計算モード。**VRAMが十分な場合はAnalytical推奨** |
 
-すべてのオプションとYAMLスキーマについては [all](all.md) および [YAMLリファレンス](yaml-reference.md) を参照してください。
+すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ---
 
@@ -323,7 +331,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 すべての `pdb2reaction all` 実行は以下を書き出します:
 
 - `summary.log` – クイック検査用のフォーマット済みサマリー
-- `summary.yaml` – YAMLバージョンサマリー
+- `summary.yaml` – YAML バージョンサマリー
 
 通常含まれる内容:
 
@@ -336,24 +344,24 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 ---
 
-## CLIサブコマンド
+## CLI サブコマンド
 
 ほとんどのユーザーは主に `pdb2reaction all` を呼び出しますが、CLIは `pdb2reaction opt` のようなサブコマンドも公開しています。各サブコマンドは `-h/--help` をサポートしています。
 
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
 | `all` | エンドツーエンドワークフロー | [all](all.md) |
-| `extract` | 活性部位クラスター抽出 | [extract](extract.md) |
+| `extract` | 活性部位ポケット（クラスターモデル）抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |
 | `path-opt` | MEP最適化 (GSM/DMF) | [path_opt](path_opt.md) |
-| `path-search` | 再帰的MEP探索 | [path_search](path_search.md) |
+| `path-search` | 再帰的 MEP 探索 | [path_search](path_search.md) |
 | `scan` | 1D結合長スキャン | [scan](scan.md) |
 | `scan2d` | 2D距離スキャン | [scan2d](scan2d.md) |
 | `scan3d` | 3D距離スキャン | [scan3d](scan3d.md) |
-| `irc` | IRC計算 | [irc](irc.md) |
+| `irc` | IRC 計算 | [irc](irc.md) |
 | `freq` | 振動解析 | [freq](freq.md) |
-| `dft` | DFT一点計算 | [dft](dft.md) |
+| `dft` | DFT 一点計算 | [dft](dft.md) |
 | `trj2fig` | エネルギープロファイルプロット | [trj2fig](trj2fig.md) |
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
@@ -367,6 +375,39 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 ---
 
+## クイックリファレンス
+
+**よく使うコマンドパターン:**
+
+```bash
+# 基本的な MEP 探索（2 構造以上）
+pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
+
+# 後処理付きフルワークフロー
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+    --tsopt True --thermo True --dft True
+
+# 単一構造 + 段階的スキャン
+pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
+
+# TS のみ最適化
+pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
+```
+
+**主要オプション一覧:**
+
+| オプション | 用途 |
+|----------|------|
+| `-i` | 入力構造 |
+| `-c` | ポケット抽出用の基質定義 |
+| `--ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
+| `--tsopt True` | TS 最適化 + IRC を有効化 |
+| `--thermo True` | 振動解析を実行 |
+| `--dft True` | DFT 一点計算を実行 |
+| `--out-dir` | 出力ディレクトリ |
+
+---
+
 ## ヘルプ
 
 任意のサブコマンドについて:
@@ -375,6 +416,6 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 pdb2reaction <subcommand> --help
 ```
 
-これは利用可能なオプション、デフォルト、および短い説明を表示します。詳細なUMA計算機オプションについては [UMA計算機](uma_pysis.md) を参照してください。
+これは利用可能なオプション、デフォルト、および短い説明を表示します。詳細なUMA 計算機オプションについては [UMA 計算機](uma_pysis.md) を参照してください。
 
 問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。
