@@ -2,9 +2,7 @@
 
 ## Overview
 
-> **TL;DR:** Extract a cluster model (active-site pocket) from a protein–ligand PDB. Specify substrates via `-c` (residue names, IDs, or PDB path). Link hydrogens are added to cap severed bonds. Use `--ligand-charge` for non-standard residue charges.
-
-Automatically extract active-site pockets (binding pockets) from protein–substrate complexes. The tool applies chemically-aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
+`pdb2reaction extract` creates an active-site pocket (cluster model) from a protein–ligand PDB. Specify substrates with `-c` (residue names, IDs, or a PDB path), and use `--ligand-charge` for non-standard residue charges. Link hydrogens cap severed bonds automatically. The tool applies chemically-aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
 
 ## Usage
 ```bash

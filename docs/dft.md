@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **TL;DR:** Run single-point DFT calculations using GPU4PySCF (or CPU PySCF fallback). Default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+`pdb2reaction dft` runs single-point DFT calculations using GPU4PySCF (or CPU PySCF as fallback). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
-Run single-point DFT calculations on the GPU (using GPU4PySCF when available; otherwise falling back to CPU PySCF). In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
+The command uses GPU4PySCF when available, otherwise falling back to CPU PySCF. In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 
 ## Usage
 ```bash

@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **TL;DR:** Trace the reaction path from a TS toward reactant and product using IRC. Runs both forward and backward branches by default. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits.
+`pdb2reaction irc` traces the intrinsic reaction coordinate from a transition state toward reactant and product. Both forward and backward branches run by default. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits.
 
-Run EulerPC-based Intrinsic Reaction Coordinate (IRC) integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+The command runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash

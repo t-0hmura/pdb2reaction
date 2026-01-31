@@ -2,10 +2,9 @@
 
 ## Overview
 
-> **TL;DR:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using UMA. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits. Imaginary frequencies appear as negative values.
+`pdb2reaction freq` computes vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using UMA. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits. Imaginary frequencies appear as negative values.
 
-`pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring any
-frozen atoms via partial Hessian vibrational analysis (PHVA). It exports mass-weighted
+The command performs vibrational analysis with the UMA calculator, honoring any frozen atoms via partial Hessian vibrational analysis (PHVA). It exports mass-weighted
 normal modes as `.trj`/`.pdb` animations, prints a Gaussian-style thermochemistry summary
 when the optional `thermoanalysis` package is installed, and can emit a YAML summary when
 `--dump True`. Configuration starts from defaults, applies CLI switches, and finally

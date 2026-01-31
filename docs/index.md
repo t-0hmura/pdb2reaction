@@ -1,5 +1,7 @@
 # pdb2reaction Documentation
 
+**Version: {{ version }}**
+
 **pdb2reaction** is a Python CLI toolkit for automated enzymatic reaction-path modeling directly from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 ```{toctree}
@@ -9,6 +11,7 @@
 
 getting-started
 concepts
+cli-conventions
 troubleshooting
 all
 extract
@@ -34,8 +37,8 @@ ja/index
 
 ## Quick Start by Goal
 
-| What do you want to do? | Recommended Command | Guide |
-|-------------------------|---------------------|-------|
+| What do you want to do? | Command | Guide |
+|-------------------------|---------|-------|
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt.md](opt.md) |
@@ -43,181 +46,77 @@ ja/index
 | Search for minimum energy path | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
-| Understand the overall workflow and key terms | — | [Concepts & Workflow](concepts.md) |
-| Solve common setup/runtime issues | — | [Troubleshooting](troubleshooting.md) |
-| Look up abbreviations and terms | — | [Glossary](glossary.md) |
 
 ---
 
-## Quick Navigation
+## Documentation Guide
 
-### Getting Started
+| Topic | Page |
+|-------|------|
+| **Installation & first run** | [Getting Started](getting-started.md) |
+| **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
+| **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
+| **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
 
-- [**Getting Started**](getting-started.md) - Installation, quick start, and overview
-- [**Concepts & Workflow**](concepts.md) - Mental model of pockets, templates, segments, and stages
-- [**Troubleshooting**](troubleshooting.md) - Common errors and fixes
-- [**System Requirements**](#system-requirements) - Hardware and software prerequisites
+---
+
+## CLI Subcommands
 
 ### Main Workflow
-
-- [`all`](all.md) - **End-to-end workflow**: extraction → scan → MEP search → TS optimization → IRC → thermochemistry → DFT
-
-### CLI Subcommands
-
-#### Structure Preparation
 | Subcommand | Description |
-|---------|-------------|
+|------------|-------------|
+| [`all`](all.md) | End-to-end workflow: extraction → MEP → TS optimization → IRC → freq → DFT |
+
+### Structure Preparation
+| Subcommand | Description |
+|------------|-------------|
 | [`extract`](extract.md) | Extract active-site pocket (cluster model) from protein–ligand complex |
 | [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77-78) |
 
-#### Geometry Optimization
+### Geometry Optimization
 | Subcommand | Description |
-|---------|-------------|
+|------------|-------------|
 | [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS / RFO) |
 | [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO) |
 
-#### Path Search & Optimization
+### Path Search & Optimization
 | Subcommand | Description |
-|---------|-------------|
-| [`path-opt`](path_opt.md) | MEP optimization via GSM or DMF |
-| [`path-search`](path_search.md) | Recursive MEP search with automatic refinement |
+|------------|-------------|
+| [`path-opt`](path_opt.md) | MEP optimization via GSM or DMF (two structures) |
+| [`path-search`](path_search.md) | Recursive MEP search with automatic refinement (2+ structures) |
 
-#### Scans
+### Scans
 | Subcommand | Description |
-|---------|-------------|
+|------------|-------------|
 | [`scan`](scan.md) | 1D bond-length driven scan with restraints |
 | [`scan2d`](scan2d.md) | 2D distance grid scan |
 | [`scan3d`](scan3d.md) | 3D distance grid scan |
 
-#### Analysis & Post-processing
+### Analysis & Post-processing
 | Subcommand | Description |
-|---------|-------------|
+|------------|-------------|
 | [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 
-### Configuration & Reference
-
-- [**YAML Reference**](yaml-reference.md) - Complete YAML configuration options for all subcommands
-- [**UMA Calculator**](uma_pysis.md) - UMA machine-learning potential settings
-- [**Glossary**](glossary.md) - Definitions of abbreviations and technical terms
-
 ---
 
-## System Requirements
+## Configuration & Reference
 
-### Hardware
-- **OS**: Linux (Ubuntu 20.04+, CentOS 8+ tested)
-- **GPU**: CUDA 12.x compatible (RTX 30xx/40xx, A100, H100 tested)
-- **VRAM**: Minimum 8 GB (16 GB+ recommended for >1000 atoms)
-- **RAM**: 16 GB+ recommended
-
-### Software
-- Python 3.11
-- PyTorch with CUDA support
-- CUDA 12.x toolkit
-
----
-
-## Quick Examples
-
-### Basic MEP Search
-```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
-```
-
-### Full Workflow with TS Refinement
-```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True --thermo True --dft True
-```
-
-### Single-Structure Scan Mode
-```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
-```
-
-### TS Optimization Only
-```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True
-```
-
----
-
-## Key Concepts
-
-### Charge and Spin
-- Use `--ligand-charge` to specify charges for unknown residues: `'SAM:1,GPP:-3'`
-- Use `-q/--charge` to override the total system charge
-- Use `-m/--mult` (in `all` command) or `-m/--multiplicity` (in other subcommands) to set spin multiplicity (default: 1)
-
-### Boolean Options
-All boolean CLI options require explicit `True` or `False`:
-```bash
---tsopt True --thermo True --dft False
-```
-
-### YAML Configuration
-Advanced settings can be provided via `--args-yaml`:
-```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
-```
-See [YAML Reference](yaml-reference.md) for all options.
-
----
-
-## Output Structure
-
-A typical `pdb2reaction all` run produces:
-```
-result_all/
-├── summary.log              # Human-readable summary
-├── summary.yaml             # Machine-readable summary
-├── pockets/                 # Extracted cluster models
-├── scan/                    # (Optional) Scan results
-├── path_search/             # MEP trajectories and diagrams
-│   ├── mep.trj              # MEP trajectory
-│   ├── mep.pdb              # MEP as PDB
-│   ├── mep_w_ref.pdb        # MEP merged with full system
-│   ├── mep_plot.png         # Energy profile plot
-│   └── seg_*/               # Per-segment details
-└── path_search/post_seg_*/  # Post-processing outputs
-    ├── tsopt/               # TS optimization results
-    ├── irc/                 # IRC trajectories
-    ├── freq/                # Vibrational modes
-    └── dft/                 # DFT results
-```
-
----
-
-## Citation
-
-A preprint describing `pdb2reaction` is in preparation. Please check back for citation details.
-
-## License
-
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** derived from Pysisyphus.
-
----
-
-## References
-
-1. Wood, B. M. et al. (2025). UMA: A Family of Universal Models for Atoms. [arXiv:2506.23971](http://arxiv.org/abs/2506.23971)
-2. Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. *Int. J. Quantum Chem.*, 121(3). [DOI:10.1002/qua.26390](https://doi.org/10.1002/qua.26390)
+| Topic | Page |
+|-------|------|
+| **YAML configuration options** | [YAML Reference](yaml-reference.md) |
+| **UMA calculator settings** | [UMA Calculator](uma_pysis.md) |
+| **Terminology** | [Glossary](glossary.md) |
 
 ---
 
 ## Getting Help
 
 ```bash
-# General help
 pdb2reaction --help
-
-# Subcommand help
 pdb2reaction <subcommand> --help
 ```
 
-For issues and feature requests, please visit the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).
+For issues and feature requests, visit the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).

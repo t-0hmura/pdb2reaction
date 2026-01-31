@@ -15,14 +15,22 @@ project = 'pdb2reaction'
 copyright = '2025, Takuto Ohmura'
 author = 'Takuto Ohmura'
 
-# Try to get version from package
+# Get version from package (setuptools_scm)
 try:
-    from pdb2reaction.pysisyphus.version import version
-    release = version
+    from pdb2reaction import __version__
+    release = __version__
 except ImportError:
-    release = '0.1.0'
+    # Fallback for docs build without package installed
+    try:
+        from pdb2reaction._version import __version__
+        release = __version__
+    except ImportError:
+        release = '0.0.0.dev0'
 
 version = release
+
+# Extract short version (e.g., "0.1.2" from "0.1.2.dev136+gb070dbf49")
+short_version = release.split('.dev')[0] if '.dev' in release else release.split('+')[0]
 
 # -- General configuration ---------------------------------------------------
 
@@ -49,6 +57,14 @@ myst_enable_extensions = [
 ]
 
 myst_heading_anchors = 3
+
+# MyST substitutions for version display in Markdown files
+# Use {{ version }} or {{ release }} in .md files
+myst_substitutions = {
+    'version': short_version,
+    'release': release,
+    'project': project,
+}
 
 # Source file suffixes
 source_suffix = {

@@ -2,19 +2,19 @@
 
 ## Overview
 
-`pdb2reaction all` is the top-level wrapper that can run the entire workflow end-to-end:
+`pdb2reaction all` runs the entire workflow end-to-end:
 
 pocket extraction → (optional) staged UMA scan → recursive MEP search (`path_search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
 
 It supports three common modes:
 
-- **End-to-end ensemble** — Provide ≥2 structures (PDB/GJF/XYZ) in reaction order plus a substrate definition. `all` extracts pockets, runs GSM/DMF MEP search, merges the optimized path back into the full-system template(s), and optionally runs TSOPT/freq/DFT per reactive segment.
+- **Multi-structure workflow** — Provide ≥2 structures (PDB/GJF/XYZ) in reaction order plus a substrate definition. `all` extracts pockets, runs GSM/DMF MEP search, merges the optimized path back into the full-system template(s), and optionally runs TSOPT/freq/DFT per reactive segment.
 - **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists`. The scan generates an ordered set of intermediates that become MEP endpoints.
   - One `--scan-lists` literal runs a single scan stage.
   - Multiple stages are passed as multiple values after a single `--scan-lists` flag (the flag itself cannot be repeated).
 - **TSOPT-only pocket TS optimization** — Provide a single input structure, omit `--scan-lists`, and set `--tsopt True`. `all` extracts the pocket (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
-Format-aware XYZ/TRJ → PDB/GJF companion generation (when templates are available) is controlled globally by `--convert-files {True\|False}` (enabled by default).
+PDB/GJF companion files are generated when templates are available, controlled by `--convert-files {True\|False}` (enabled by default).
 
 
 ## Usage

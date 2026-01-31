@@ -2,10 +2,9 @@
 
 ## Overview
 
-> **TL;DR:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
+`pdb2reaction scan` drives a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
 
-`scan` performs a staged, bond-length–driven scan using the UMA calculator and
-harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
+The command performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
 every integration step the temporary targets are updated, the restraint wells
 are applied, and the entire structure is relaxed with LBFGS or RFOptimizer.
 The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFOptimizer. After the biased walk, you can optionally

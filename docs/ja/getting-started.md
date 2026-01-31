@@ -174,6 +174,14 @@ huggingface-cli login
    - <https://huggingface.co/facebook/UMA>
    - <https://huggingface.co/docs/hub/security-tokens>
 
+7. **インストールの確認**
+
+   ```bash
+   pdb2reaction --version
+   ```
+
+   インストールされたバージョンが表示されます（例: `{{ version }}`）。
+
 ---
 
 ## コマンドラインの基本

@@ -525,7 +525,7 @@ dft:
 
 ## See Also
 
-- [all](all.md) - Main workflow orchestrator
+- [all](all.md) - End-to-end workflow
 - [opt](opt.md) - Single-structure optimization
 - [tsopt](tsopt.md) - Transition state optimization
 - [path-search](path_search.md) - Recursive MEP search

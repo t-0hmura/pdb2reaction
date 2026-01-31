@@ -2,9 +2,7 @@
 
 ## Overview
 
-> **TL;DR:** Find the MEP between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). Outputs the path trajectory and highest-energy image (HEI). For recursive refinement with multiple structures, use `path-search` instead.
-
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoint structures using pysisyphus' Growing String method (GSM) or Direct Max Flux (DMF) selected via `--mep-mode`. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
+`pdb2reaction path-opt` finds the minimum-energy path (MEP) between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). It outputs the path trajectory and identifies the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
 
 ## Usage
 ```bash

@@ -1,6 +1,6 @@
 # Concepts & Workflow
 
-This page gives a **mental model** of how `pdb2reaction` is structured: what "pockets", "templates", "segments", and "images" mean, and how the top-level `all` workflow orchestrates subcommands.
+This page explains the key terms in pdb2reaction—pockets, templates, segments, and images—and how the `all` command ties together the subcommands.
 
 > **New to pdb2reaction?** Start with [Getting Started](getting-started.md) for installation and your first run.
 
@@ -30,7 +30,7 @@ Full system(s) (PDB/XYZ/GJF)
              └─ (optional) single-point DFT     [dft]
 ```
 
-`pdb2reaction` provides each stage as an individual subcommand, and also provides `pdb2reaction all` as a convenience wrapper that runs many stages end-to-end.
+Each stage is available as an individual subcommand. The `pdb2reaction all` command runs many stages end-to-end.
 
 ---
 

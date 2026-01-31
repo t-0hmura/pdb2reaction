@@ -40,7 +40,7 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can process larg
 For detailed documentation, please refer to:
 
 - [**Getting Started**](docs/getting-started.md) — Installation, quick start, and workflow overview
-- [**Concepts & Workflow**](docs/concepts.md) — Mental model of pockets, templates, segments, and stages
+- [**Concepts & Workflow**](docs/concepts.md) — Key terms: pockets, templates, segments, and stages
 - [**Troubleshooting**](docs/troubleshooting.md) — Common errors and fixes
 - **Full command index**: [docs/index.md](docs/index.md) (English) / [docs/ja/index.md](docs/ja/index.md) (日本語)
 

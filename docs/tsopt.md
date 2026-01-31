@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **TL;DR:** Optimize transition states using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). Use `--hessian-calc-mode Analytical` for best performance when VRAM permits. The converged TS will have exactly one imaginary frequency.
+`pdb2reaction tsopt` optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, use `--hessian-calc-mode Analytical` for faster convergence. The optimized TS has exactly one imaginary frequency.
 
-`pdb2reaction tsopt` optimizes transition states using two complementary workflows:
+The command supports two complementary workflows:
 
 - **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
   optional memory-conscious flatten loop (disabled by default) to remove surplus
