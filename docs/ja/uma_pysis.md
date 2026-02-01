@@ -57,6 +57,7 @@ conda activate pdb2reaction
 # -------------------
 
 
+# --- Ray setting ---
 # Stable CUDA/NCCL
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
@@ -164,6 +165,7 @@ RAY_LAUNCH_PID=$!
 
 sleep 10 # Wait for workers
 ray status || true
+# --- Ray setup end ---
 
 pdb2reaction opt -i test.pdb -q -5 -m 1
 ```
@@ -185,12 +187,5 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
 | `hessian_double` | ヘシアンをfloat64で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
-
-## CLI / YAML での利用
-`uma_pysis` はPySisyphusの計算機エントリポイントとして登録されています。以下のようにYAML 入力で起動できます。
-
-```bash
-uma_pysis input.yaml
-```
 
 `pdb2reaction` の各コマンド（`all`, `opt`, `path-opt` など）では、`--args-yaml` の `calc` キー配下に同等の設定を渡すことで、同一のUMA設定を再利用できます。

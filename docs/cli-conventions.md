@@ -6,17 +6,19 @@ This page documents the conventions used across all `pdb2reaction` commands. Und
 
 ## Boolean Options
 
-All boolean CLI options require explicit `True` or `False` (case-sensitive):
+All boolean CLI options require an explicit value—you cannot use flag-style `--tsopt` alone:
 
 ```bash
-# Correct
+# Correct (any of these work)
 --tsopt True --thermo True --dft False
+--tsopt true --thermo TRUE --dft false   # case-insensitive
+--tsopt 1 --thermo yes --dft 0           # 1/0, yes/no also accepted
 
 # Wrong (will not work)
---tsopt true    # lowercase
---tsopt 1       # numeric
---tsopt         # flag-style (no value)
+--tsopt         # flag-style (no value) is not supported
 ```
+
+The CLI accepts `True`, `true`, `TRUE`, `1`, `yes`, `Yes`, `y`, `t` for truthy values, and `False`, `false`, `FALSE`, `0`, `no`, `No`, `n`, `f` for falsy values.
 
 Common boolean options:
 - `--tsopt`, `--thermo`, `--dft` — enable post-processing stages

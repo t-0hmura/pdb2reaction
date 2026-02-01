@@ -57,6 +57,7 @@ conda activate pdb2reaction
 # -------------------
 
 
+# --- Ray setting ---
 # Stable CUDA/NCCL
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
@@ -164,6 +165,7 @@ RAY_LAUNCH_PID=$!
 
 sleep 10 # Wait for workers
 ray status || true
+# --- Ray setup end ---
 
 pdb2reaction opt -i test.pdb -q -5 -m 1
 ```
@@ -185,12 +187,5 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `False` |
 | `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |
 | `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
-
-## CLI and YAML usage
-`uma_pysis` is registered as a PySisyphus calculator entry point. With a YAML input file matching these keywords you can run:
-
-```bash
-uma_pysis input.yaml
-```
 
 Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under the `calc` key to reuse the same UMA configuration across stages.

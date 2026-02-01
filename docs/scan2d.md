@@ -45,8 +45,9 @@ pdb2reaction scan2d -i input.pdb -q 0 \
    (1-based by default). For PDB inputs, each atom entry can be an integer index
    or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
    slashes, backticks, or backslashes, and token order is flexible (fallback
-   assumes resname, resseq, atom). Construct linear grids: `N = ceil(|high − low| / h)`
-   with `h = --max-step-size`. Zero-length spans collapse to a single point.
+   assumes resname, resseq, atom). Construct linear grids with
+   `ceil(|high − low| / h) + 1` points (both endpoints included), where
+   `h = --max-step-size`. Zero-length spans collapse to a single point.
    Each axis is then reordered so that the distance closest to the preoptimized
    geometry is indexed as `i = 0` / `j = 0`.
 3. Iterate over every `d1[i]` (nearest-first ordering). For each value, relax

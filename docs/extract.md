@@ -95,7 +95,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `--add-linkH {True\|False}` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `True` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | _None_ |
-| `-v, --verbose` | Emit INFO-level logging (`true`) or keep warnings only (`false`). | `true` |
+| `-v, --verbose {True\|False}` | Emit INFO-level logging (`True`) or keep warnings only (`False`). | `True` |
 
 ## Outputs
 ```text

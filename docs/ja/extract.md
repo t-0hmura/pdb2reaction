@@ -99,7 +99,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `--add-linkH {True\|False}` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基（オプションのチェーン/挿入コード付きID） | `""` |
 | `--ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
-| `-v, --verbose` | INFOレベルログを出力 | `true` |
+| `-v, --verbose {True\|False}` | INFOレベルログを出力（`True`）または警告のみ（`False`） | `True` |
 
 ## 出力
 ```text

@@ -42,7 +42,7 @@ If you hit an error during setup or runtime, jump to [Troubleshooting](troublesh
 
 | Convention | Example |
 |------------|---------|
-| **Boolean options** | `--tsopt True`, `--dft False` (use `True`/`False`, not `true`/`1`) |
+| **Boolean options** | `--tsopt True`, `--dft False` (case-insensitive; `true`/`1`/`yes` also work, but flag-style `--tsopt` alone is not allowed) |
 | **Residue selectors** | `'SAM,GPP'` or `'A:123,B:456'` |
 | **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` |
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` |
