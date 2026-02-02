@@ -8,7 +8,7 @@ The command performs vibrational analysis with the UMA calculator, honoring any 
 normal modes as `.trj`/`.pdb` animations, prints a Gaussian-style thermochemistry summary
 when the optional `thermoanalysis` package is installed, and can emit a YAML summary when
 `--dump True`. Configuration starts from defaults, applies CLI switches, and finally
-applies YAML overrides (`geom`, `calc`, `freq`) with highest precedence, so the same
+applies YAML overrides (`geom`, `calc`, `freq`, `thermo`) with highest precedence, so the same
 template can drive both standalone runs and workflows launched by other subcommands.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
 enabling format-aware PDB output conversion.
@@ -93,7 +93,8 @@ out_dir/ (default: ./result_freq/)
 ## Notes
 - Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
   and dumps details when `--dump True`.
-- `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging.
+- `--hessian-calc-mode` follows the standard precedence (defaults → CLI → YAML); if YAML
+  specifies `calc.hessian_calc_mode`, it overrides the CLI value.
 - Charge/spin inherit `.gjf` metadata when available. For non-`.gjf` inputs,
   `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs
   or XYZ/GJF with `--ref-pdb`). Explicit `-q` still overrides. Multiplicity defaults to `1`

@@ -73,7 +73,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1. **Note:** Template inheritance is not supported; defaults to `1` when omitted. | `1` |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `--scan-lists TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True\|False}` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
@@ -132,7 +132,7 @@ out_dir/ (default: ./result_scan/)
 - Charge inherits Gaussian template metadata when available. For non-`.gjf`
   inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for
   PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. **Multiplicity
-  always defaults to `1` when omitted (template inheritance is not supported).**
+  inherits `.gjf` metadata when available, otherwise defaults to `1`.**
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are written
   regardless of `--dump`; trajectories are written only when `--dump` is `True`
   and converted to `scan.pdb` (PDB inputs only) when conversion is enabled.

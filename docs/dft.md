@@ -71,11 +71,11 @@ out_dir/ (default: ./result_dft/)
 - If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
 - Compiled GPU4PySCF wheels may not support Blackwell-architecture GPUs, and non-x86 systems require compiling from source; we recommend using the CPU backend or building GPU4PySCF yourself in these situations. (see https://github.com/pyscf/gpu4pyscf)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
-- The YAML input file must contain a mapping root with top-level key `dft`; non-mapping roots raise an error via `load_yaml_dict`.
+- The YAML input file must have a mapping root; the `dft` section is optional. Non-mapping roots raise an error via `load_yaml_dict`.
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
 ## YAML configuration (`--args-yaml`)
-Accepts a mapping with top-level key `dft` (and an optional `geom` section forwarded to `geom_loader`). YAML values override CLI values.
+Accepts a mapping root; the `dft` section (and optional `geom`) is applied when present. YAML values override CLI values.
 
 `dft` keys (defaults in parentheses):
 - `func` (`"wb97m-v"`): Exchange–correlation functional.

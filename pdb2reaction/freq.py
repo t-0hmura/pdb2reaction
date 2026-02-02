@@ -469,7 +469,7 @@ CALC_KW["return_partial_hessian"] = True
         "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(
@@ -584,10 +584,9 @@ def cli(
             (geom_cfg, (("geom",),)),
             (calc_cfg, (("calc",),)),
             (freq_cfg, (("freq",),)),
+            (thermo_cfg, (("thermo",),)),
         ],
     )
-    thermo_yaml = yaml_cfg.get("thermo")
-    thermo_yaml_dict = thermo_yaml if isinstance(thermo_yaml, dict) else None
 
     # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
     resolve_freeze_atoms(geom_cfg, source_path, freeze_links, on_error="warn")
@@ -608,11 +607,7 @@ def cli(
         "pressure_atm": thermo_cfg["pressure_atm"],
         "dump": thermo_cfg["dump"],
     }
-    if thermo_yaml_dict:
-        thermo_block["note"] = "args-yaml thermo section is not applied by this command."
     click.echo(pretty_block("thermo", thermo_block))
-    if thermo_yaml_dict:
-        click.echo(pretty_block("thermo (args-yaml; ignored)", thermo_yaml_dict))
 
     # --------------------------
     # 2) Load geometry

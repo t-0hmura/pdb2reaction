@@ -365,7 +365,7 @@ def _optimize_single(
     show_default=False,
     help=(
         "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (PDB inputs only; otherwise it may fall back to 0)."
+        "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
 @click.option(
@@ -373,8 +373,8 @@ def _optimize_single(
     "--multiplicity",
     "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default=False,
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(

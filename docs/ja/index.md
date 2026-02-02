@@ -16,6 +16,7 @@ troubleshooting
 all
 extract
 add_elem_info
+fix_altloc
 opt
 tsopt
 path_opt

@@ -26,18 +26,18 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
-- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge for PDB inputs; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` aborts unless PDB derivation succeeds. If `.gjf` inputs lack charge metadata and `-q` is not provided, the command aborts; multiplicity defaults to `1` when omitted. Always set them explicitly for correct states.
+- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge for PDB inputs (or XYZ/GJF when `--ref-pdb` is supplied); explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` aborts unless derivation succeeds. If `.gjf` inputs lack charge metadata and `-q` is not provided, the command aborts; multiplicity defaults to `1` when omitted. Always set them explicitly for correct states.
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
-- **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.
+- **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory dumps inside `out_dir`. Restart YAML is written only when enabled in YAML.
 - **Exit codes**: `0` success, `3` optimizer failure, `4` trajectory write error, `5` HEI export error, `130` interrupt, `1` unexpected error.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
-| `-q, --charge INT` | Total charge (`calc.charge`). Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds for PDB inputs. `.gjf` templates can supply it; if `.gjf` inputs lack charge metadata, the run aborts unless `-q` is provided. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. PDB-only: triggers extract-style charge derivation on the full complex; XYZ/GJF inputs must use `-q` or `.gjf` metadata. | _None_ |
+| `-q, --charge INT` | Total charge (`calc.charge`). Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds (PDB inputs or XYZ/GJF with `--ref-pdb`). `.gjf` templates can supply it; if `.gjf` inputs lack charge metadata, the run aborts unless `-q` is provided. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs (or XYZ/GJF when `--ref-pdb` is supplied). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links {True\|False}` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
@@ -45,7 +45,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
 | `--climb {True\|False}` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
-| `--dump {True\|False}` | Dump MEP trajectories/restarts (GSM/DMF). | `False` |
+| `--dump {True\|False}` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`light` = LBFGS, `heavy` = RFO). | `light` |
 | `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
@@ -65,7 +65,7 @@ out_dir/
 ├─ hei.pdb                     # HEI converted to PDB when a PDB reference is available (conversion enabled)
 ├─ hei.gjf                     # HEI written using a detected Gaussian template (conversion enabled)
 ├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created when alignment runs)
-└─ <optimizer dumps/restarts>  # Present when dumping is enabled
+└─ <optimizer dumps>           # Trajectory dumps when --dump True (restart YAML only via YAML dump_restart)
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
 

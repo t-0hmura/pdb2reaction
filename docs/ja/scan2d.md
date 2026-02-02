@@ -39,7 +39,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
 | `--ligand-charge TEXT` | `-q` が省略された場合に使う総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
-| `-m, --multiplicity INT` | スピン多重度 2S+1。**注:** テンプレートからの継承は非対応。省略時は常に `1` | `1` |
+| `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--scan-lists TEXT` | **単一**のPythonリテラルで2つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based {True\|False}` | `(i, j)` のインデックス解釈 | `True` |
 | `--max-step-size FLOAT` | 1距離あたりの最大増分（Å）。グリッド密度を制御 | `0.20` |
@@ -80,7 +80,7 @@ out_dir/ (デフォルト: ./result_scan2d/)
 - Å単位の制限は内部でBohrに変換され、LBFGSステップやRFO信頼半径を制御します。最適化の一時ファイルはテンポラリディレクトリに置かれます。
 - バイアスは最終エネルギー評価前に必ず除去されるため、`surface.csv` を下流のフィッティングや可視化に再利用できます。
 - `--freeze-links` は `freeze_atoms` とリンクH親原子をマージし、抽出ポケットを固定します。
-- 電荷はテンプレートがあればそれを優先。`.gjf` 以外の入力では `-q/--charge` が必須ですが、`--ligand-charge` がある場合は例外（PDB 入力、または `--ref-pdb` 付きXYZ/GJF）。明示的な `-q` が常に優先されます。**多重度は省略時に常に `1` となり、テンプレートからは継承されません。**
+- 電荷はテンプレートがあればそれを優先。`.gjf` 以外の入力では `-q/--charge` が必須ですが、`--ligand-charge` がある場合は例外（PDB 入力、または `--ref-pdb` 付きXYZ/GJF）。明示的な `-q` が常に優先されます。**多重度は `.gjf` テンプレートがあれば継承され、未指定時は `1` です。**
 
 ## YAML 設定（`--args-yaml`）
 最小例（詳細は {ref}`opt <yaml-configuration-args-yaml>` を参照）:

@@ -126,8 +126,8 @@ out_dir/ (default: ./result_tsopt/)
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
   `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
   exported when multiple remain.
-- `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging, mirroring the
-  behavior of other subcommands.
+- `--hessian-calc-mode` follows the standard precedence (defaults → CLI → YAML); if YAML
+  specifies `calc.hessian_calc_mode`, it overrides the CLI value.
 - PHVA translation/rotation projection mirrors the implementation in `freq`, reducing GPU
   memory consumption while preserving correct eigenvectors in the active space.
 

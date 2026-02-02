@@ -45,7 +45,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
-| `--dump {True\|False}` | Dump MEP (GSM/DMF) and single-structure trajectories/restarts. | `False` |
+| `--dump {True\|False}` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
 | `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
@@ -85,7 +85,7 @@ out_dir/ (default: ./result_path_search/)
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
 - `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
-- When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories and restart YAML files.
+- When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
 - Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. For non-`.gjf` inputs without a usable `--ligand-charge`, the command aborts; multiplicity defaults to `1` when omitted.
 
 ## YAML configuration (`--args-yaml`)

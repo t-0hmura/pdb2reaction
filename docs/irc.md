@@ -4,7 +4,7 @@
 
 `pdb2reaction irc` traces the intrinsic reaction coordinate from a transition state toward reactant and product. Both forward and backward branches run by default. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits.
 
-The command runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+The command runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion.
 
 ## Usage
 ```bash
@@ -30,10 +30,10 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
 ## Workflow
-1. **Input preparation** – Any format supported by `geom_loader` is accepted. If the source is `.pdb`, EulerPC trajectories are automatically converted to PDB using the original topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens.
+1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs.
 2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Always set them explicitly to remain on the intended PES.
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
-4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, for PDB inputs, mirrored to `.pdb`. Optional HDF5 dumps capture per-step frames when `dump_every` > 0.
+4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, when a reference PDB is available, mirrored to `.pdb`.
 
 ## CLI options
 | Option | Description | Default |
@@ -50,7 +50,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--backward {True\|False}` | Run backward branch (`irc.backward`). | `True` |
 | `--freeze-links {True\|False}` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
-| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB companions for PDB inputs. | `True` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB companions when a reference PDB is available. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | `FiniteDifference` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
@@ -58,11 +58,10 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ## Outputs
 ```
 out_dir/ (default: ./result_irc/)
-├─ irc_data.h5                # Written every `dump_every` steps when enabled
 ├─ <prefix>finished_irc.trj   # Complete IRC trajectory
 ├─ <prefix>forward_irc.trj    # Present when the forward branch runs
 ├─ <prefix>backward_irc.trj   # Present when the backward branch runs
-└─ *.pdb                      # Trajectory companions for PDB inputs (when conversion is enabled)
+└─ *.pdb                      # Trajectory companions when a reference PDB is available (conversion enabled)
 ```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
@@ -82,7 +81,7 @@ Provide a mapping; YAML overrides CLI. Shared sections reuse [YAML Reference](ya
 - `hessian_init` (`"calc"`), `hessian_update` (`"bofill"`), `hessian_recalc` (`null`): Hessian initialization/update cadence.
 - `displ`, `displ_energy`, `displ_length`: displacement construction; keep defaults unless debugging.
 - Convergence thresholds: `rms_grad_thresh` (`1.0e-3`), `hard_rms_grad_thresh` (`null`), `energy_thresh` (`1.0e-6`), `imag_below` (`0.0`).
-- Output & diagnostics: `force_inflection` (`True`), `check_bonds` (`False`), `out_dir` (`"./result_irc/"`), `prefix` (`""`), `dump_fn` (`"irc_data.h5"`), `dump_every` (`5`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`"mbs"`).
+- Output & diagnostics: `force_inflection` (`True`), `check_bonds` (`False`), `out_dir` (`"./result_irc/"`), `prefix` (`""`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`"mbs"`).
 
 ```yaml
 geom:
@@ -120,8 +119,6 @@ irc:
   check_bonds: false         # check bonds during propagation
   out_dir: ./result_irc/     # output directory
   prefix: ""                 # filename prefix
-  dump_fn: irc_data.h5       # IRC data filename
-  dump_every: 5              # dump stride
   hessian_update: bofill     # Hessian update scheme
   hessian_recalc: null       # Hessian rebuild cadence
   max_pred_steps: 500        # predictor-corrector max steps

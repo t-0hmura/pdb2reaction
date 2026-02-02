@@ -109,7 +109,7 @@ def _echo_convert_trj_if_exists(
         "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option(
     "--max-cycles",
     type=int,

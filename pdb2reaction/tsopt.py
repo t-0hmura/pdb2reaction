@@ -1276,7 +1276,7 @@ def _build_rsirfo_kwargs(
         "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=1, show_default=True, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
 @click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
               help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(

@@ -87,7 +87,7 @@ out_dir/ (デフォルト: ./result_tsopt/)
 ## 注意事項
 - `--opt-mode` エイリアスは上記のワークフローに正確にマップされる; YAMLキーを手動で調整するよりも意図したアルゴリズム用に1つを選択（デフォルト: `heavy`）
 - 虚数モード検出は〜5 cm⁻¹がデフォルト（`hessian_dimer.neg_freq_thresh_cm` で設定可能）。複数残る場合は `root` がどの虚数モードを出力するかに影響します。
-- `--hessian-calc-mode` はYAMLマージ後に `calc.hessian_calc_mode` を上書き
+- `--hessian-calc-mode` は **デフォルト → CLI → YAML** の順で解決され、YAMLに `calc.hessian_calc_mode` があればCLIより優先されます
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPUメモリ消費を抑えつつ活性空間の固有ベクトルを保持します。
 
 

@@ -36,6 +36,10 @@ from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 import click
+try:
+    from .cli_utils import argparse_bool
+except Exception:  # pragma: no cover - support direct execution
+    from pdb2reaction.cli_utils import argparse_bool
 
 COORD_RECORDS = ("ATOM  ", "HETATM")
 ANISOU_RECORD = "ANISOU"
@@ -323,6 +327,9 @@ def fix_altloc_file(
 # =============================================================================
 
 def main(argv: Optional[List[str]] = None) -> int:
+    def _parse_bool(value: str) -> bool:
+        return argparse_bool(value)
+
     parser = argparse.ArgumentParser(
         description=(
             "Blank PDB altLoc column (col 17) without shifting, and keep one altLoc per atom "
@@ -338,20 +345,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Output file (if input is a file) or output directory (if input is a directory)."
     )
     parser.add_argument(
-        "--recursive", action="store_true",
-        help="When input is a directory, process *.pdb recursively (including subdirectories)."
+        "--recursive",
+        type=_parse_bool,
+        default=False,
+        help="When input is a directory, process *.pdb recursively (including subdirectories). Use True/False.",
     )
     parser.add_argument(
-        "--inplace", action="store_true",
-        help="Overwrite input file(s) in place (creates .bak next to each file)."
+        "--inplace",
+        type=_parse_bool,
+        default=False,
+        help="Overwrite input file(s) in place (creates .bak next to each file). Use True/False.",
     )
     parser.add_argument(
-        "--overwrite", action="store_true",
-        help="Allow overwriting existing output files."
+        "--overwrite",
+        type=_parse_bool,
+        default=False,
+        help="Allow overwriting existing output files. Use True/False.",
     )
     parser.add_argument(
-        "--force", action="store_true",
-        help="Process files even if no altLoc is detected (default: skip files without altLoc)."
+        "--force",
+        type=_parse_bool,
+        default=False,
+        help="Process files even if no altLoc is detected (default: skip files without altLoc). Use True/False.",
     )
     args = parser.parse_args(argv)
 

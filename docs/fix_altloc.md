@@ -36,13 +36,13 @@ pdb2reaction fix-altloc -i 1abc.pdb
 pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb
 
 # Process a directory recursively
-pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
+pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive True
 
 # Overwrite input files in-place (creates .bak backups)
-pdb2reaction fix-altloc -i ./structures --inplace --recursive
+pdb2reaction fix-altloc -i ./structures --inplace True --recursive True
 
 # Force processing even if no altLoc is detected
-pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
+pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 ```
 
 ## Workflow
@@ -63,10 +63,10 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file or directory. | Required |
 | `-o, --out PATH` | Output file (if input is a file) or directory (if input is a directory). | `<input>_clean.pdb` |
-| `--recursive` | Process `*.pdb` files recursively when input is a directory. | `False` |
-| `--inplace` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
-| `--overwrite` | Allow overwriting existing output files. | `False` |
-| `--force` | Process files even if no altLoc is detected. | `False` |
+| `--recursive {True\|False}` | Process `*.pdb` files recursively when input is a directory. | `False` |
+| `--inplace {True\|False}` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
+| `--overwrite {True\|False}` | Allow overwriting existing output files. | `False` |
+| `--force {True\|False}` | Process files even if no altLoc is detected. | `False` |
 
 ## Outputs
 - A PDB file with alternate locations removed:

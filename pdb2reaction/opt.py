@@ -282,8 +282,8 @@ def _convert_outputs(
     "--multiplicity",
     "spin",
     type=int,
-    default=1,
-    show_default=True,
+    default=None,
+    show_default=False,
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(

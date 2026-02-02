@@ -68,7 +68,7 @@ out_dir/ (デフォルト: ./result_freq/)
 
 ## 注意事項
 - 虚数モードは負の周波数として報告されます。`freq` は検出数を表示し、`--dump True` で詳細を出力します。
-- `--hessian-calc-mode` はYAMLマージ後に `calc.hessian_calc_mode` を上書きします。
+- `--hessian-calc-mode` は **デフォルト → CLI → YAML** の順で解決され、YAMLに `calc.hessian_calc_mode` があればCLIより優先されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`.gjf` 以外では、`-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）で、明示的な `-q` が常に優先されます。多重度は省略時に `1` がデフォルトです。
 
 

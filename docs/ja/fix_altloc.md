@@ -36,13 +36,13 @@ pdb2reaction fix-altloc -i 1abc.pdb
 pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb
 
 # ディレクトリを再帰的に処理
-pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
+pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive True
 
 # 入力ファイルをその場で上書き（.bakバックアップを作成）
-pdb2reaction fix-altloc -i ./structures --inplace --recursive
+pdb2reaction fix-altloc -i ./structures --inplace True --recursive True
 
 # altLocが検出されなくても強制的に処理
-pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
+pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 ```
 
 ## ワークフロー
@@ -63,10 +63,10 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 | --- | --- | --- |
 | `-i, --input PATH` | 入力PDBファイルまたはディレクトリ | 必須 |
 | `-o, --out PATH` | 出力ファイル（入力がファイルの場合）またはディレクトリ（入力がディレクトリの場合） | `<input>_clean.pdb` |
-| `--recursive` | 入力がディレクトリの場合、`*.pdb` ファイルを再帰的に処理 | `False` |
-| `--inplace` | 入力ファイルをその場で上書き（`.bak` バックアップを作成） | `False` |
-| `--overwrite` | 既存の出力ファイルの上書きを許可 | `False` |
-| `--force` | altLocが検出されなくてもファイルを処理 | `False` |
+| `--recursive {True\|False}` | 入力がディレクトリの場合、`*.pdb` ファイルを再帰的に処理 | `False` |
+| `--inplace {True\|False}` | 入力ファイルをその場で上書き（`.bak` バックアップを作成） | `False` |
+| `--overwrite {True\|False}` | 既存の出力ファイルの上書きを許可 | `False` |
+| `--force {True\|False}` | altLocが検出されなくてもファイルを処理 | `False` |
 
 ## 出力
 - 代替位置が削除されたPDBファイル:
