@@ -48,7 +48,7 @@ def run_cli(
     try:
         fn()
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.", err=True)
+        click.echo("Interrupted by user.")
         sys.exit(130)
     except Exception as e:
         if zero_step_exc is not None and isinstance(e, zero_step_exc):
@@ -60,7 +60,7 @@ def run_cli(
             sys.exit(2)
         if opt_exc is not None and isinstance(e, opt_exc):
             msg = opt_msg or "ERROR: Optimization failed - {e}"
-            click.echo(msg.format(e=e), err=True)
+            click.echo(msg.format(e=e))
             sys.exit(3)
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo(

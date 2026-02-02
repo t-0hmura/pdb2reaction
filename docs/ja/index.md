@@ -11,6 +11,7 @@
 
 getting-started
 concepts
+cli-conventions
 troubleshooting
 all
 extract
@@ -56,6 +57,7 @@ glossary
 
 - [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
+- [**CLI 規約**](cli-conventions.md) - ブーリアンオプション、セレクタ、電荷指定などの共通規約
 - [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
 - [**システム要件**](#システム要件) - ハードウェアとソフトウェアの前提条件
 

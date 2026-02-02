@@ -38,6 +38,7 @@ from .add_elem_info import cli as add_elem_info_cmd
 from .dft import cli as dft_cmd
 from .scan2d import cli as scan2d_cmd
 from .scan3d import cli as scan3d_cmd
+from .fix_altloc import cli as fix_altloc_cmd
 
 
 @click.group(
@@ -81,6 +82,7 @@ cli.add_command(add_elem_info_cmd, name="add-elem-info")
 cli.add_command(dft_cmd, name="dft")
 cli.add_command(scan2d_cmd, name="scan2d")
 cli.add_command(scan3d_cmd, name="scan3d")
+cli.add_command(fix_altloc_cmd, name="fix-altloc")
 
 # Disable pysisyphus logging
 import logging

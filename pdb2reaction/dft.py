@@ -193,7 +193,7 @@ def _safe_array(label: str, what: str, func):
         vals = func()
         return np.asarray(vals, dtype=float).tolist()
     except Exception as e:
-        click.echo(f"{label} WARNING: Failed to compute {what}: {e}", err=True)
+        click.echo(f"{label} WARNING: Failed to compute {what}: {e}")
         return None
 
 
@@ -462,7 +462,7 @@ def cli(
             try:
                 from pyscf import gto
             except Exception as e:
-                click.echo(f"ERROR: PySCF import failed: {e}", err=True)
+                click.echo(f"ERROR: PySCF import failed: {e}")
                 sys.exit(2)
 
             mol = gto.Mole()
@@ -618,17 +618,17 @@ def cli(
 
             # Exit codes: 0 if converged, 3 otherwise
             if not converged:
-                click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
+                click.echo("WARNING: SCF did not converge to the requested tolerance.")
                 sys.exit(3)
 
             click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))
 
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.", err=True)
+            click.echo("Interrupted by user.")
             sys.exit(130)
         except click.ClickException:
             raise
         except Exception as e:
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "), err=True)
+            click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "))
             sys.exit(1)

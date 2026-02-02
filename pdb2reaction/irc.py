@@ -327,9 +327,9 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.", err=True)
+            click.echo("Interrupted by user.")
             sys.exit(130)
         except Exception as e:
             tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
-            click.echo("Unhandled exception during IRC:\n" + tb, err=True)
+            click.echo("Unhandled exception during IRC:\n" + tb)
             sys.exit(1)

@@ -83,7 +83,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | 2 | ポケット抽出 | `-c` 指定時（アミノ酸・イオン・`--ligand-charge` を合算） |
 | 3 | `--ligand-charge`（数値） | 抽出失敗時またはスキップ時のフォールバック |
 | 4 | `.gjf` テンプレート | 埋め込み電荷/スピン情報 |
-| 5 | デフォルト | 0 |
+| 5 | デフォルト | なし（未解決ならエラー） |
 
 **スピンの解決:** `--mult`（CLI） → `.gjf` テンプレート → デフォルト (1)
 
@@ -106,7 +106,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt True` のみ単一入力可） | 必須 |
 | `--out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
 | `--convert-files {True\|False}` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
-| `--dump BOOLEAN` | MEP(GSM/DMF)軌跡を出力 | `False` |
+| `--dump {True\|False}` | MEP(GSM/DMF)軌跡を出力 | `False` |
 | `--args-yaml FILE` | 全サブコマンドへそのまま転送されるYAML | _None_ |
 
 ### 電荷・スピンオプション
@@ -124,23 +124,24 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
 | `-r, --radius FLOAT` | ポケット包含カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
-| `--include-H2O BOOLEAN` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
-| `--exclude-backbone BOOLEAN` | 非基質アミノ酸の主鎖原子を除去 | `True` |
-| `--add-linkH BOOLEAN` | 切断結合にリンク水素を付加 | `True` |
+| `--include-H2O {True\|False}` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
+| `--exclude-backbone {True\|False}` | 非基質アミノ酸の主鎖原子を除去 | `True` |
+| `--add-linkH {True\|False}` | 切断結合にリンク水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基 | `""` |
-| `--freeze-links BOOLEAN` | ポケットPDBでリンクHの親を凍結 | `True` |
-| `--verbose BOOLEAN` | 抽出器のINFOログを有効化 | `True` |
+| `--freeze-links {True\|False}` | ポケットPDBでリンクHの親を凍結 | `True` |
+| `--verbose {True\|False}` | 抽出器のINFOログを有効化 | `True` |
 
 ### MEP探索オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
+| `--mep-mode [gsm\|dmf]` | MEP探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
 | `--max-nodes INT` | MEP内部ノード数 | `10` |
 | `--max-cycles INT` | MEP最大最適化サイクル | `300` |
-| `--climb BOOLEAN` | 最初のセグメントでTSクライミングを有効化 | `True` |
+| `--climb {True\|False}` | 最初のセグメントでTSクライミングを有効化 | `True` |
 | `--opt-mode [light\|heavy]` | 最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`） | `gau` |
-| `--preopt BOOLEAN` | MEP前にポケット端点を事前最適化 | `True` |
+| `--preopt {True\|False}` | MEP前にポケット端点を事前最適化 | `True` |
 
 ### UMA計算機オプション
 
@@ -153,9 +154,9 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--tsopt BOOLEAN` | セグメントごとのTS最適化 + IRC を実行 | `False` |
-| `--thermo BOOLEAN` | R/TS/Pで振動解析を実行 | `False` |
-| `--dft BOOLEAN` | R/TS/PでDFT一点計算を実行 | `False` |
+| `--tsopt {True\|False}` | セグメントごとのTS最適化 + IRC を実行 | `False` |
+| `--thermo {True\|False}` | R/TS/Pで振動解析を実行 | `False` |
+| `--dft {True\|False}` | R/TS/PでDFT一点計算を実行 | `False` |
 | `--opt-mode-post [light\|heavy]` | TSOPT/IRC後最適化のプリセット | _None_ |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット | `baker` |
 | `--flatten-imag-mode {True\|False}` | 余分な虚数モードのフラット化 | `False` |
@@ -196,12 +197,12 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | --- | --- | --- |
 | `--scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
 | `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
-| `--scan-one-based BOOLEAN` | 1始まり/0始まりインデックス | `True` |
+| `--scan-one-based {True\|False}` | 1始まり/0始まりインデックス | `True` |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV/Å²） | `100` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
-| `--scan-preopt BOOLEAN` | scan事前最適化 | `True` |
-| `--scan-endopt BOOLEAN` | scanステージ終端最適化 | `True` |
+| `--scan-preopt {True\|False}` | scan事前最適化 | `True` |
+| `--scan-endopt {True\|False}` | scanステージ終端最適化 | `True` |
 
 ## 出力
 ```text

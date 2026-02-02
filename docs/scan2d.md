@@ -73,7 +73,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1 (CLI > template > 1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1. **Note:** Template inheritance is not supported; defaults to `1` when omitted. | `1` |
 | `--scan-lists TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True\|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
@@ -123,7 +123,7 @@ out_dir/ (default: ./result_scan2d/)
 - Charge inherits Gaussian template metadata when available. For non-`.gjf`
   inputs, `-q/--charge` is required unless `--ligand-charge` is provided
   (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still
-  overrides. Multiplicity defaults to `1` when omitted.
+  overrides. **Multiplicity always defaults to `1` when omitted (template inheritance is not supported).**
 
 ## YAML configuration (`--args-yaml`)
 A minimal example (extend with the same keys documented in [`opt`](opt.md#yaml-

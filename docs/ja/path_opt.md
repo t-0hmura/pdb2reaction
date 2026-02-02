@@ -29,7 +29,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 ### 主要な挙動
 - **エンドポイント**: 入力は2構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で軌跡/HEIのPDB出力が有効。
-- **電荷/スピン**: CLIが`.gjf`テンプレートを上書き。`-q` 省略時に `--ligand-charge` がある場合、エンドポイントは酵素–基質複合体として扱われ、PDB 入力では `extract.py` の電荷サマリーで総電荷を導出。明示的な `-q` が常に優先。テンプレート/導出がない場合は電荷 `0`、スピン `1` にフォールバックします。正しい状態のために明示指定を推奨します。
+- **電荷/スピン**: CLIが`.gjf`テンプレートを上書き。`-q` 省略時に `--ligand-charge` がある場合、エンドポイントは酵素–基質複合体として扱われ、PDB 入力では `extract.py` の電荷サマリーで総電荷を導出。明示的な `-q` が常に優先。`.gjf` 以外の入力で `-q` を省略すると、PDB での導出が成功しない限り中断します。`.gjf` 入力で電荷メタデータが無く `-q` も無い場合は中断し、多重度は省略時 `1` がデフォルトです。正しい状態のために明示指定を推奨します。
 - **MEPセグメント**: `--max-nodes` はGSM/DMFの内部ノード数を制御（GSMの総画像数は `max_nodes + 2`）。`--thresh` またはYAMLで収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）を指定。
 - **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
 - **ダンプ**: `--dump True` で StringOptimizer の `opt.dump=True` を有効化し、`out_dir` に軌跡/再開情報を出力。
@@ -40,8 +40,8 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | 反応物と生成物構造 | 必須 |
-| `-q, --charge INT` | 総電荷（`calc.charge`）。省略時は `.gjf` テンプレートまたは `--ligand-charge`（PDB 入力）が供給し、なければ `0` にフォールバック。両方指定時は `-q` が優先 | テンプレート/`0` |
-| `--ligand-charge TEXT` | `-q` 省略時に使用する総電荷または残基名ごとのマッピング。PDB 入力でextract方式の電荷導出を有効化し、それ以外では電荷は `0` にフォールバック | _None_ |
+| `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では PDB での `--ligand-charge` 導出が成功しない限り必須。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先 | テンプレート/導出がない限り必須 |
+| `--ligand-charge TEXT` | `-q` 省略時に使用する総電荷または残基名ごとのマッピング。PDB 入力のみでextract方式の電荷導出を有効化し、XYZ/GJF 入力では `-q` か `.gjf` メタデータが必要 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 | テンプレート/`1` |
 | `--freeze-links {True\|False}` | PDBのみ: リンクH親を凍結（YAMLとマージ） | `True` |

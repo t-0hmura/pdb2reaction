@@ -287,13 +287,13 @@ def main():
     args = ap.parse_args()
 
     if not os.path.isfile(args.in_pdb):
-        click.echo(f"[ERR] Input not found: {args.in_pdb}", err=True)
+        click.echo(f"[ERR] Input not found: {args.in_pdb}")
         sys.exit(1)
 
     try:
         assign_elements(args.in_pdb, args.out, overwrite=args.overwrite)
     except Exception as e:
-        click.echo(f"[ERR] Failed: {e}", err=True)
+        click.echo(f"[ERR] Failed: {e}")
         sys.exit(2)
 
 # -----------------------------
@@ -331,5 +331,5 @@ def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     except SystemExit as e:
         raise e
     except Exception as e:
-        click.echo(f"[ERR] Failed: {e}", err=True)
+        click.echo(f"[ERR] Failed: {e}")
         sys.exit(2)

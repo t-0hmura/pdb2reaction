@@ -707,7 +707,7 @@ def cli(
             )
             click.echo("[align] Completed input alignment.")
         except Exception as e:
-            click.echo(f"[align] WARNING: alignment skipped: {e}", err=True)
+            click.echo(f"[align] WARNING: alignment skipped: {e}")
 
         fix_atoms: List[int] = []
         try:
@@ -729,7 +729,7 @@ def cli(
                     dmf_cfg=dmf_cfg,
                 )
             except Exception as e:
-                click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
+                click.echo(f"[dmf] ERROR: DMF optimization failed: {e}")
                 sys.exit(3)
 
             try:
@@ -764,7 +764,7 @@ def cli(
                                 err=True,
                             )
             except Exception as e:
-                click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
+                click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}")
                 sys.exit(5)
 
             click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
@@ -848,7 +848,7 @@ def cli(
                     )
 
         except Exception as e:
-            click.echo(f"[write] ERROR: Failed to write final trajectory: {e}", err=True)
+            click.echo(f"[write] ERROR: Failed to write final trajectory: {e}")
             sys.exit(4)
 
         # --------------------------
@@ -894,16 +894,16 @@ def cli(
                 click.echo("[convert] Skipped HEI conversion (no PDB/GJF template).")
 
         except Exception as e:
-            click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
+            click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}")
             sys.exit(5)
 
         click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
 
     except OptimizationError as e:
-        click.echo(f"ERROR: Path optimization failed — {e}", err=True)
+        click.echo(f"ERROR: Path optimization failed — {e}")
         sys.exit(3)
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.", err=True)
+        click.echo("Interrupted by user.")
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

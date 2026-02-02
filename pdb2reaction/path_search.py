@@ -404,9 +404,9 @@ def _run_mep_between(
             close_matplotlib_figures()
             click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
         else:
-            click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
+            click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.")
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
+        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}")
 
     # Convert trajectory and HEI outputs based on the input template
     prepared_for_outputs = prepared_input
@@ -440,7 +440,7 @@ def _run_mep_between(
             )
         except Exception as e:
             click.echo(
-                f"[{tag}] WARNING: Failed to convert segment trajectory: {e}", err=True
+                f"[{tag}] WARNING: Failed to convert segment trajectory: {e}"
             )
 
     # Write HEI structure
@@ -474,7 +474,7 @@ def _run_mep_between(
                     err=True,
                 )
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
+        click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}")
 
     return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
 
@@ -559,7 +559,7 @@ def _run_dmf_between(
         close_matplotlib_figures()
         click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
+        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}")
 
     imgs: List[Any] = []
     for atoms in dmf_res.images:
@@ -892,7 +892,7 @@ def _build_multistep_path(
         try:
             changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
-            click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
+            click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}")
             changed, step_summary = True, ""
 
         try:
@@ -1004,7 +1004,7 @@ def _build_multistep_path(
     try:
         lr_changed, lr_summary = has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
-        click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
+        click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}")
         lr_changed, lr_summary = True, ""
     use_kink = (not lr_changed)
 
@@ -1567,7 +1567,7 @@ def _merge_final_and_write(final_images: List[Any],
                     f.write("END\n")
                 click.echo(f"[merge] Wrote merged HEI for segment → '{out_hei}'")
             except Exception as e:
-                click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}", err=True)
+                click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}")
 
 
 # -----------------------------------------------
@@ -2046,7 +2046,7 @@ def cli(
                 )
                 click.echo("[align] Completed input alignment.")
             except Exception as e:
-                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
+                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}")
         else:
             click.echo("[align] Skipping input alignment as requested by --align False.")
 
@@ -2162,7 +2162,7 @@ def cli(
             close_matplotlib_figures()
             click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
         except Exception as e:
-            click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
+            click.echo(f"[plot] WARNING: Failed to plot final energy: {e}")
 
         if needs_pdb or needs_gjf:
             try:
@@ -2175,7 +2175,7 @@ def cli(
                 )
                 click.echo("[convert] Wrote final MEP outputs.")
             except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
+                click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}")
 
         # Pocket‑only per‑segment trajectories & HEIs (bond‑change segments only)
         try:
@@ -2237,7 +2237,7 @@ def cli(
                                 err=True,
                             )
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
+            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}")
 
         if do_merge:
             click.echo("\n====== Full-system merge (pocket → templates) started ======\n")
@@ -2469,13 +2469,13 @@ def cli(
                 fig.write_image(str(png_path), scale=2)
                 click.echo(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'")
             except Exception as e:
-                click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}", err=True)
+                click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}")
 
             chain_text = " ".join(chain_tokens)
             click.echo(f"[diagram] State label sequence: {chain_text}")
 
         except Exception as e:
-            click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
+            click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}")
 
         # --------------------------
         # 7) Summary (YAML)
@@ -2555,7 +2555,7 @@ def cli(
             write_summary_log(out_dir_path / "summary.log", summary_payload)
             click.echo(f"[write] Wrote '{out_dir_path / 'summary.log'}'.")
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+            click.echo(f"[write] WARNING: Failed to write summary.log: {e}")
 
         # --------------------------
         # 8) Elapsed time

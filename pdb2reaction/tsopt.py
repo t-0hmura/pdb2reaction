@@ -1406,6 +1406,28 @@ def cli(
             ],
         )
 
+        # If opt.print_every is set in YAML, propagate to light/heavy optimizers
+        opt_yaml = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
+        opt_print_every = None
+        if isinstance(opt_yaml, dict) and "print_every" in opt_yaml:
+            try:
+                opt_print_every = int(opt_yaml["print_every"])
+            except (TypeError, ValueError):
+                opt_print_every = None
+        if opt_print_every is not None:
+            rsirfo_yaml = yaml_cfg.get("rsirfo") if isinstance(yaml_cfg, dict) else None
+            rsirfo_has_print = isinstance(rsirfo_yaml, dict) and "print_every" in rsirfo_yaml
+            if not rsirfo_has_print:
+                rsirfo_cfg["print_every"] = opt_print_every
+
+            hd_yaml = yaml_cfg.get("hessian_dimer") if isinstance(yaml_cfg, dict) else None
+            lbfgs_yaml = None
+            if isinstance(hd_yaml, dict):
+                lbfgs_yaml = hd_yaml.get("lbfgs")
+            lbfgs_has_print = isinstance(lbfgs_yaml, dict) and "print_every" in lbfgs_yaml
+            if not lbfgs_has_print and isinstance(simple_cfg.get("lbfgs"), dict):
+                simple_cfg["lbfgs"]["print_every"] = opt_print_every
+
         if not flatten_imag_mode:
             simple_cfg["flatten_max_iter"] = 0
 
@@ -1514,7 +1536,7 @@ def cli(
                         ):
                             click.echo("[convert] Wrote 'optimization_all' outputs.")
                     else:
-                        click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
+                        click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.")
 
             else:
                 # RS-I-RFO (heavy)
@@ -1632,12 +1654,12 @@ def cli(
                         ):
                             click.echo("[convert] Wrote 'optimization' outputs.")
                     else:
-                        click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+                        click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.")
 
                 # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
                 neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
                 if len(neg_idx) == 0:
-                    click.echo("[INFO] No imaginary mode found at the end for RSIRFO.", err=True)
+                    click.echo("[INFO] No imaginary mode found at the end for RSIRFO.")
                 else:
                     roots = rsirfo_kwargs.get("roots", [0])
                     main_root = int(roots[0]) if roots else 0
@@ -1674,16 +1696,16 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
 
         except ZeroStepLength:
-            click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
+            click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).")
             sys.exit(2)
         except OptimizationError as e:
-            click.echo(f"ERROR: Optimization failed — {e}", err=True)
+            click.echo(f"ERROR: Optimization failed — {e}")
             sys.exit(3)
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.", err=True)
+            click.echo("Interrupted by user.")
             sys.exit(130)
         except Exception as e:
             import traceback
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
+            click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "))
             sys.exit(1)

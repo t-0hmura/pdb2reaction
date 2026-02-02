@@ -81,7 +81,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | 2 | Pocket extraction | When `-c` is provided (sums amino acids, ions, `--ligand-charge`) |
 | 3 | `--ligand-charge` (numeric) | Fallback when extraction fails or is skipped |
 | 4 | `.gjf` template | Embedded charge/spin metadata |
-| 5 | Default | 0 |
+| 5 | Default | None (unresolved charge is an error) |
 
 **Spin resolution:** `--mult` (CLI) → `.gjf` template → default (1)
 
@@ -103,7 +103,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt True`). | Required |
 | `--out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files {True\|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump BOOLEAN` | Dump MEP (GSM/DMF) trajectories. | `False` |
+| `--dump {True\|False}` | Dump MEP (GSM/DMF) trajectories. | `False` |
 | `--args-yaml FILE` | YAML forwarded unchanged to all subcommands. | _None_ |
 
 ### Charge/Spin Options
@@ -121,23 +121,24 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
-| `--include-H2O BOOLEAN` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
-| `--exclude-backbone BOOLEAN` | Remove backbone atoms on non-substrate amino acids. | `True` |
-| `--add-linkH BOOLEAN` | Add link hydrogens for severed bonds. | `True` |
+| `--include-H2O {True\|False}` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--exclude-backbone {True\|False}` | Remove backbone atoms on non-substrate amino acids. | `True` |
+| `--add-linkH {True\|False}` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
-| `--freeze-links BOOLEAN` | Freeze link parents in pocket PDBs. | `True` |
-| `--verbose BOOLEAN` | Enable INFO-level extractor logging. | `True` |
+| `--freeze-links {True\|False}` | Freeze link parents in pocket PDBs. | `True` |
+| `--verbose {True\|False}` | Enable INFO-level extractor logging. | `True` |
 
 ### MEP Search Options
 
 | Option | Description | Default |
 | --- | --- | --- |
+| `--mep-mode [gsm\|dmf]` | MEP search algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | MEP internal nodes per segment. | `10` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
-| `--climb BOOLEAN` | Enable TS climbing for the first segment. | `True` |
+| `--climb {True\|False}` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`). | `gau` |
-| `--preopt BOOLEAN` | Pre-optimize pocket endpoints before MEP search. | `True` |
+| `--preopt {True\|False}` | Pre-optimize pocket endpoints before MEP search. | `True` |
 
 ### UMA Calculator Options
 
@@ -150,9 +151,9 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--tsopt BOOLEAN` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--thermo BOOLEAN` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
-| `--dft BOOLEAN` | Run single-point DFT on R/TS/P. | `False` |
+| `--tsopt {True\|False}` | Run TS optimization + IRC per reactive segment. | `False` |
+| `--thermo {True\|False}` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
+| `--dft {True\|False}` | Run single-point DFT on R/TS/P. | `False` |
 | `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC optimization. | _None_ |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--flatten-imag-mode {True\|False}` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
@@ -193,12 +194,12 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | --- | --- | --- |
 | `--scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based BOOLEAN` | Force scan indexing to 1-based or 0-based. | `True` |
+| `--scan-one-based {True\|False}` | Force scan indexing to 1-based or 0-based. | `True` |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV/Å²). | `100` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
-| `--scan-preopt BOOLEAN` | Override the scan preoptimization toggle. | `True` |
-| `--scan-endopt BOOLEAN` | Override the scan end-of-stage optimization toggle. | `True` |
+| `--scan-preopt {True\|False}` | Override the scan preoptimization toggle. | `True` |
+| `--scan-endopt {True\|False}` | Override the scan end-of-stage optimization toggle. | `True` |
 
 ## Outputs
 ```text

@@ -74,7 +74,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
 | `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1. | `1` |
+| `-m, --multiplicity INT` | Spin multiplicity 2S+1. **Note:** Template inheritance is not supported; defaults to `1` when omitted. | `1` |
 | `--scan-lists TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
 | `--one-based {True\|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |

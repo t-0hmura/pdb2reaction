@@ -383,9 +383,9 @@ def cli(
                 try:
                     optimizer0.run()
                 except ZeroStepLength:
-                    click.echo("[preopt] ZeroStepLength — continuing.", err=True)
+                    click.echo("[preopt] ZeroStepLength — continuing.")
                 except OptimizationError as e:
-                    click.echo(f"[preopt] OptimizationError — {e}", err=True)
+                    click.echo(f"[preopt] OptimizationError — {e}")
 
                 # Measure optimized distances and record preopt structure
                 try:
@@ -478,10 +478,10 @@ def cli(
                     opt1.run()
                 except ZeroStepLength:
                     click.echo(
-                        f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan.", err=True
+                        f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan."
                     )
                 except OptimizationError as e:
-                    click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
+                    click.echo(f"[d1 {i_idx}] OptimizationError — {e}")
 
                 geom_inner = _snapshot_geometry(geom_outer)
                 geom_inner.set_calculator(biased)
@@ -562,7 +562,7 @@ def cli(
                         converged = False
                     except OptimizationError as e:
                         click.echo(
-                            f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True
+                            f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}"
                         )
                         converged = False
 
@@ -638,13 +638,13 @@ def cli(
                         )
                     except Exception as e:
                         click.echo(
-                            f"[write] WARNING: failed to write '{trj_path}': {e}", err=True
+                            f"[write] WARNING: failed to write '{trj_path}': {e}"
                         )
 
             # ===== surface.csv (final output directly under result_scan2d) =====
             df = pd.DataFrame.from_records(records)
             if df.empty:
-                click.echo("No grid records produced; aborting.", err=True)
+                click.echo("No grid records produced; aborting.")
                 sys.exit(1)
 
             if baseline == "first":
@@ -671,7 +671,7 @@ def cli(
                 & np.isfinite(z_points)
             )
             if not np.any(mask):
-                click.echo("[plot] No finite data for plotting.", err=True)
+                click.echo("[plot] No finite data for plotting.")
                 sys.exit(1)
 
             x_min, x_max = float(np.min(d1_points[mask])), float(
@@ -916,7 +916,7 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start))
 
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.", err=True)
+            click.echo("Interrupted by user.")
             sys.exit(130)
         except Exception as e:
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

@@ -1,7 +1,7 @@
 # `uma_pysis` calculator
 
 ## Overview
-`uma_pysis` exposes Meta's UMA machine-learning interatomic potentials to PySisyphus as an ASE-compatible calculator. It returns energies, forces, and Hessians (via analytical autograd or finite differences) in Hartree units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`uma_pysis` exposes Meta's UMA machine-learning interatomic potentials to PySisyphus as a calculator (using ASE and FAIR-Chem internally). It returns energies, forces, and Hessians (via analytical autograd or finite differences) in Hartree units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
 
 ## Quick start
 ```python
@@ -19,9 +19,10 @@ coords_bohr = np.array([
 
 symbols = ["C", "O"]
 
-energy_h = calc.get_energy(symbols, coords_bohr)
-forces_h_bohr = calc.get_forces(symbols, coords_bohr)
-hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)
+# NOTE: These methods return dicts; extract values with the appropriate key
+energy_h = calc.get_energy(symbols, coords_bohr)["energy"]              # float (Hartree)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"]         # ndarray (Hartree/Bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"]     # ndarray (Hartree/Bohr²)
 ```
 
 - Coordinates are supplied in **Bohr**; the wrapper converts to Å for UMA and converts energies/derivatives back to Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻².

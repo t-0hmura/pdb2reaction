@@ -26,7 +26,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
-- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. When no template/derivation applies, the charge defaults to `0` (spin defaults to `1`). Always set them explicitly for correct states.
+- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge for PDB inputs; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` aborts unless PDB derivation succeeds. If `.gjf` inputs lack charge metadata and `-q` is not provided, the command aborts; multiplicity defaults to `1` when omitted. Always set them explicitly for correct states.
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and the optional climbing-image refinement share a convergence threshold preset supplied via `--thresh` or YAML (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
 - **Dumping**: `--dump True` mirrors `opt.dump=True` for the StringOptimizer, producing trajectory/restart dumps inside `out_dir`.
@@ -36,8 +36,8 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
-| `-q, --charge INT` | Total charge (`calc.charge`). Optional; when omitted, `.gjf` templates or `--ligand-charge` (PDB inputs) may supply it, otherwise it falls back to `0`. Overrides `--ligand-charge` when both are set. | Template/`0` |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs; otherwise the charge falls back to `0`. | _None_ |
+| `-q, --charge INT` | Total charge (`calc.charge`). Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds for PDB inputs. `.gjf` templates can supply it; if `.gjf` inputs lack charge metadata, the run aborts unless `-q` is provided. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. PDB-only: triggers extract-style charge derivation on the full complex; XYZ/GJF inputs must use `-q` or `.gjf` metadata. | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links {True\|False}` | PDB-only: freeze link-H parents (merged with YAML). | `True` |

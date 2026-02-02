@@ -742,6 +742,38 @@ def build_energy_diagram(
 # =============================================================================
 # Coordinate conversion utilities
 # =============================================================================
+def _read_pdb_symbols(pdb_path: Path) -> List[str]:
+    """Read element symbols from a PDB file using an extended column range.
+
+    Standard PDB format places element symbols in columns 77-78 (1-indexed),
+    but some tools write them slightly left-shifted. This function reads
+    columns 76-78 (0-indexed: 75:78) to handle such cases robustly.
+
+    Args:
+        pdb_path: Path to the PDB file.
+
+    Returns:
+        List of element symbols (e.g., ['C', 'H', 'Ca', ...]).
+    """
+    symbols = []
+    with open(pdb_path, "r") as f:
+        for line in f:
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                # Read extended range (columns 76-78, 0-indexed: 75:78) to handle shifted elements
+                elem = line[75:78].strip() if len(line) > 75 else ""
+                if elem:
+                    # Capitalize properly: first letter uppercase, rest lowercase (e.g., CA -> Ca)
+                    elem = elem[0].upper() + elem[1:].lower() if len(elem) > 1 else elem.upper()
+                    symbols.append(elem)
+                else:
+                    # Fallback: extract from atom name (columns 13-16)
+                    atom_name = line[12:16].strip() if len(line) > 16 else ""
+                    elem = "".join(c for c in atom_name if c.isalpha())[:2]
+                    elem = elem[0].upper() + elem[1:].lower() if len(elem) > 1 else elem.upper()
+                    symbols.append(elem)
+    return symbols
+
+
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
 
@@ -761,16 +793,17 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
 
-    ref_symbols = ref_atoms.get_chemical_symbols()
+    # Use custom PDB parser to handle shifted element columns (e.g., 'Ca' misread as 'A')
+    ref_symbols = _read_pdb_symbols(ref_pdb_path)
 
     for step, frame in enumerate(traj):
         xyz_symbols = frame.get_chemical_symbols()
         xyz_positions = frame.get_positions()
 
         if xyz_symbols != ref_symbols:
-            raise ValueError(
-                "Atom ordering mismatch between XYZ and PDB; "
-                "expected identical ordering when converting coordinates."
+            click.echo(
+                f"[convert] WARNING: Atom ordering mismatch between '{xyz_path.name}' and "
+                f"'{ref_pdb_path.name}'; expected identical ordering when converting coordinates.",
             )
 
         atoms = ref_atoms.copy()
@@ -928,7 +961,7 @@ def set_freeze_atoms_or_warn(
     try:
         geom.freeze_atoms = np.array(sorted({int(i) for i in freeze_atoms}), dtype=int)
     except Exception:
-        click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.", err=True)
+        click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.")
 
 
 def read_xyz_energies(path: Path | str) -> List[float]:
@@ -1320,7 +1353,12 @@ def resolve_charge_spin(
             raise click.ClickException(
                 "-q/--charge is required unless the input is a .gjf template with charge metadata."
             )
-        resolved_charge = charge_default
+        if cleanup_on_error:
+            cleanup_on_error()
+        raise click.ClickException(
+            "Charge metadata was not found in the .gjf input(s). Provide -q/--charge "
+            "or add charge/spin metadata to the .gjf template."
+        )
 
     if resolved_spin is None:
         resolved_spin = spin_default
@@ -1447,7 +1485,7 @@ def convert_xyz_like_outputs(
             convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
     except Exception as e:
         if on_error == "warn":
-            click.echo(f"[convert] WARNING: Failed to convert {context}: {e}", err=True)
+            click.echo(f"[convert] WARNING: Failed to convert {context}: {e}")
             return False
         raise click.ClickException(f"[convert] Failed to convert {context}: {e}") from e
     return True
@@ -1985,7 +2023,7 @@ def resolve_freeze_atoms(
         return merge_detected_freeze_links(geom_cfg, source_path, prefix=prefix)
     except Exception as e:
         if on_error == "warn":
-            click.echo(f"{prefix} WARNING: Could not detect link parents: {e}", err=True)
+            click.echo(f"{prefix} WARNING: Could not detect link parents: {e}")
             return list(geom_cfg.get("freeze_atoms", []))
         raise
 

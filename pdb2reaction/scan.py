@@ -395,9 +395,9 @@ def cli(
                 try:
                     optimizer0.run()
                 except ZeroStepLength:
-                    click.echo(f"[preopt] ZeroStepLength — continuing.", err=True)
+                    click.echo(f"[preopt] ZeroStepLength — continuing.")
                 except OptimizationError as e:
-                    click.echo(f"[preopt] OptimizationError — {e}", err=True)
+                    click.echo(f"[preopt] OptimizationError — {e}")
 
                 # Write preopt result
                 pre_xyz = pre_dir / "result.xyz"
@@ -481,9 +481,9 @@ def cli(
                             )
                             end_optimizer.run()
                         except ZeroStepLength:
-                            click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
+                            click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.")
                         except OptimizationError as e:
-                            click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
+                            click.echo(f"[stage {k}] endopt OptimizationError — {e}")
 
                     # Bond changes: start vs final (possibly endopt)
                     try:
@@ -496,7 +496,7 @@ def cli(
                         srec["bond_change"]["changed"] = bool(changed)
                         srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
                     except Exception as e:
-                        click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
+                        click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}")
 
                     # Write current (possibly endopted) geometry as the stage result
                     final_xyz = stage_dir / "result.xyz"
@@ -548,9 +548,9 @@ def cli(
                     try:
                         optimizer.run()
                     except ZeroStepLength:
-                        click.echo(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.", err=True)
+                        click.echo(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.")
                     except OptimizationError as e:
-                        click.echo(f"[stage {k}] step {s}: OptimizationError — {e}", err=True)
+                        click.echo(f"[stage {k}] step {s}: OptimizationError — {e}")
 
                     # Record trajectory block only when requested (biased result)
                     if dump and trj_blocks is not None:
@@ -575,9 +575,9 @@ def cli(
                         )
                         end_optimizer.run()
                     except ZeroStepLength:
-                        click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", err=True)
+                        click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.")
                     except OptimizationError as e:
-                        click.echo(f"[stage {k}] endopt OptimizationError — {e}", err=True)
+                        click.echo(f"[stage {k}] endopt OptimizationError — {e}")
 
                 # Bond changes: start vs final (possibly endopt)
                 try:
@@ -590,7 +590,7 @@ def cli(
                     srec["bond_change"]["changed"] = bool(changed)
                     srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
                 except Exception as e:
-                    click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
+                    click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}")
 
                 # Stage outputs
                 if dump and trj_blocks:

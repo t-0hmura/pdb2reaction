@@ -257,7 +257,7 @@ def cli(
             try:
                 df = pd.read_csv(resolved_csv_path)
             except Exception as e:
-                click.echo(f"[read] Failed to read CSV '{resolved_csv_path}': {e}", err=True)
+                click.echo(f"[read] Failed to read CSV '{resolved_csv_path}': {e}")
                 sys.exit(1)
             click.echo(f"[read] Loaded precomputed grid from '{resolved_csv_path}'.")
         else:
@@ -296,9 +296,9 @@ def cli(
                 try:
                     optimizer0.run()
                 except ZeroStepLength:
-                    click.echo("[preopt] ZeroStepLength — continuing.", err=True)
+                    click.echo("[preopt] ZeroStepLength — continuing.")
                 except OptimizationError as e:
-                    click.echo(f"[preopt] OptimizationError — {e}", err=True)
+                    click.echo(f"[preopt] OptimizationError — {e}")
 
             # Measure the three bias distances on the starting structure
             # (pre-optimized when --preopt True, otherwise the input geometry)
@@ -326,7 +326,7 @@ def cli(
                     f.write(s_pre)
                 click.echo(f"[preopt] Wrote '{preopt_xyz_path}'.")
             except Exception as e:
-                click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
+                click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}")
 
             convert_xyz_like_outputs(
                 preopt_xyz_path,
@@ -418,9 +418,9 @@ def cli(
                 try:
                     opt1.run()
                 except ZeroStepLength:
-                    click.echo(f"[d1 {i_idx}] ZeroStepLength — continuing to d2/d3 scan.", err=True)
+                    click.echo(f"[d1 {i_idx}] ZeroStepLength — continuing to d2/d3 scan.")
                 except OptimizationError as e:
-                    click.echo(f"[d1 {i_idx}] OptimizationError — {e}", err=True)
+                    click.echo(f"[d1 {i_idx}] OptimizationError — {e}")
 
                 # Snapshot after d1 relaxation for inner loops and cache
                 geom_after_d1 = _snapshot_geometry(geom_outer_i)
@@ -471,9 +471,9 @@ def cli(
                     try:
                         opt2.run()
                     except ZeroStepLength:
-                        click.echo(f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — continuing to d3 scan.", err=True)
+                        click.echo(f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — continuing to d3 scan.")
                     except OptimizationError as e:
-                        click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}", err=True)
+                        click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}")
 
                     geom_after_d2 = _snapshot_geometry(geom_mid)
                     d2_store[j_idx] = geom_after_d2
@@ -551,7 +551,7 @@ def cli(
                             with open(xyz_path, "w") as f:
                                 f.write(s)
                         except Exception as e:
-                            click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
+                            click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}")
                         else:
                             convert_xyz_like_outputs(
                                 xyz_path,
@@ -588,7 +588,7 @@ def cli(
                                 f.write("".join(trj_blocks))
                             click.echo(f"[write] Wrote '{trj_path}'.")
                         except Exception as e:
-                            click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
+                            click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}")
                         else:
                             convert_xyz_like_outputs(
                                 trj_path,
@@ -606,7 +606,7 @@ def cli(
 
         # ===== surface.csv handling & baseline =====
         if df.empty:
-            click.echo("No grid records produced; aborting.", err=True)
+            click.echo("No grid records produced; aborting.")
             sys.exit(1)
 
         d1_label_csv = _extract_axis_label(df, "d1_label", d1_label_csv)
@@ -670,7 +670,7 @@ def cli(
             & np.isfinite(z_points)
         )
         if not np.any(mask):
-            click.echo("[plot] No finite data for plotting.", err=True)
+            click.echo("[plot] No finite data for plotting.")
             sys.exit(1)
 
         x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))
@@ -873,9 +873,9 @@ def cli(
         else:
             _run_scan3d(None, charge, spin, None, None)
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.", err=True)
+        click.echo("Interrupted by user.")
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "), err=True)
+        click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "))
         sys.exit(1)

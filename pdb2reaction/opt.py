@@ -224,7 +224,7 @@ def _convert_outputs(
             ):
                 click.echo("[convert] Wrote 'optimization' outputs.")
         else:
-            click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+            click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.")
 
 
 # -----------------------------------------------
@@ -502,7 +502,7 @@ def cli(
                 try:
                     resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
                 except click.BadParameter as e:
-                    click.echo(f"ERROR: {e}", err=True)
+                    click.echo(f"ERROR: {e}")
                     sys.exit(1)
                 click.echo(
                     pretty_block(

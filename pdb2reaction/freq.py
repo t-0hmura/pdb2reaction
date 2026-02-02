@@ -778,23 +778,23 @@ def cli(
                 click.echo(f"[dump] Wrote thermoanalysis summary → {out_yaml}")
 
         except ImportError:
-            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.", err=True)
+            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.")
         except Exception as e:
             import traceback
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "), err=True)
+            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "))
 
         click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
 
         click.echo(format_elapsed("[time] Elapsed Time for Freq", time_start))
 
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.", err=True)
+        click.echo("Interrupted by user.")
         sys.exit(130)
     except Exception as e:
         import traceback
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "), err=True)
+        click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "))
         sys.exit(1)
     finally:
         prepared_input.cleanup()

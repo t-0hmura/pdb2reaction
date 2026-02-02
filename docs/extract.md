@@ -108,6 +108,84 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
 - Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
 
+## PDB Naming Requirements
+
+```{important}
+For `extract` to work correctly, **residue names and atom names in the input PDB must conform to standard PDB naming conventions**. The tool relies on internal dictionaries to recognize amino acids, ions, water molecules, and backbone atoms. Non-standard naming will cause residues to be misclassified or charges to be incorrectly assigned.
+```
+
+The following internal constants define the recognized names:
+
+### `AMINO_ACIDS`
+
+A dictionary mapping residue names to their nominal integer charges. Membership in this dictionary determines whether a residue is treated as an amino acid for backbone handling, truncation, and charge calculation.
+
+**Standard 20 amino acids** (charges reflect physiological pH):
+- Neutral: `ALA`, `ASN`, `CYS`, `GLN`, `GLY`, `HIS`, `ILE`, `LEU`, `MET`, `PHE`, `PRO`, `SER`, `THR`, `TRP`, `TYR`, `VAL`
+- Positive (+1): `ARG`, `LYS`
+- Negative (−1): `ASP`, `GLU`
+
+**Canonical extras:**
+- `SEC` (selenocysteine, 0), `PYL` (pyrrolysine, +1)
+
+**Protonation/tautomer variants** (Amber/CHARMM style):
+- `HIP` (+1, fully protonated His), `HID` (0, Nδ-protonated His), `HIE` (0, Nε-protonated His)
+- `ASH` (0, neutral Asp), `GLH` (0, neutral Glu), `LYN` (0, neutral Lys), `ARN` (0, neutral Arg)
+- `TYM` (−1, deprotonated Tyr phenolate)
+
+**Phosphorylated residues:**
+- Dianionic (−2): `SEP`, `TPO`, `PTR`
+- Monoanionic (−1): `S1P`, `T1P`, `Y1P`
+- Phospho-His (phosaa19SB): `H1D` (0), `H2D` (−1), `H1E` (0), `H2E` (−1)
+
+**Cysteine variants:**
+- `CYX` (0, disulfide), `CSO` (0, sulfenic acid), `CSD` (−1, sulfinic acid), `CSX` (0, generic derivative)
+- `OCS` (−1, cysteic acid), `CYM` (−1, deprotonated Cys)
+
+**Lysine variants / carboxylation:**
+- `MLY` (+1), `LLP` (+1), `KCX` (−1, Nz-carboxylic acid)
+
+**D-amino acids** (19 residues):
+- `DAL`, `DAR`, `DSG`, `DAS`, `DCY`, `DGN`, `DGL`, `DHI`, `DIL`, `DLE`, `DLY`, `MED`, `DPN`, `DPR`, `DSN`, `DTH`, `DTR`, `DTY`, `DVA`
+
+**Other modified residues:**
+- `CGU` (−2, gamma-carboxy-glutamate), `CGA` (−1), `PCA` (0, pyroglutamate), `MSE` (0, selenomethionine), `OMT` (0, methionine sulfone), `HYP` (0, hydroxyproline)
+- Various others: `ASA`, `CIR`, `FOR`, `MVA`, `IIL`, `AIB`, `HTN`, `SAR`, `NMC`, `PFF`, `NFA`, `ALY`, `AZF`, `CNX`, `CYF`
+
+**N-terminal variants** (prefix `N`): `NALA` (+1), `NARG` (+2), `NASP` (0), `NGLU` (0), `NLYS` (+2), etc., plus `ACE` (0), `NTER` (+1, generic)
+
+**C-terminal variants** (prefix `C`): `CALA` (−1), `CARG` (0), `CASP` (−2), `CGLU` (−2), `CLYS` (0), etc., plus `NHE` (0), `NME` (0), `CTER` (−1, generic)
+
+### `BACKBONE_ATOMS`
+
+A set of atom names considered backbone atoms for amino acids. These are used when `--exclude-backbone True` to determine which atoms to remove from non-substrate residues:
+
+```
+N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
+```
+
+### `ION`
+
+A dictionary mapping ion residue names to their formal charges. Recognized ions are automatically assigned correct charges in the charge summary.
+
+| Charge | Residue Names |
+|--------|---------------|
+| +1 | `LI`, `NA`, `K`, `RB`, `CS`, `TL`, `AG`, `CU1`, `Ag`, `K+`, `NA+`, `NH4`, `H3O+` |
+| +2 | `MG`, `CA`, `SR`, `BA`, `MN`, `FE2`, `CO`, `NI`, `CU`, `ZN`, `CD`, `HG`, `PB`, `BE`, `PD`, `PT`, `SN`, `RA`, `YB2`, `V2+` |
+| +3 | `FE`, `AU3`, `AL`, `GA`, `IN`, `CE`, `CR`, `DY`, `EU`, `EU3`, `ER`, `GD3`, `LA`, `LU`, `ND`, `PR`, `SM`, `TB`, `TM`, `Y`, `PU` |
+| +4 | `U4+`, `TH`, `HF`, `ZR` |
+| −1 | `F`, `CL`, `BR`, `I`, `CL-`, `IOD` |
+
+### `WATER_RES`
+
+A set of residue names recognized as water molecules. Waters are included by default (`--include-H2O True`) and assigned zero charge:
+
+```
+HOH, WAT, H2O, DOD, TIP, TIP3, SOL
+```
+
+---
+
 ## Notes
 - `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).
 - Waters can be excluded with `--include-H2O False`.

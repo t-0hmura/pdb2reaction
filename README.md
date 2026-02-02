@@ -115,8 +115,8 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 
 | Subcommand   | Role                                                                                  | Documentation                             |
 | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `all`        | End-to-end workflow: extraction → MEP search → TS optimization → IRC → freq → DFT              | [`docs/all.md`](docs/all.md)              |
-| `extract`    | Extract active-site pocket (cluster model) from protein–ligand complex                               | [`docs/extract.md`](docs/extract.md)      |
+| `all`        | End-to-end workflow: extraction → MEP search → TS optimization → IRC → freq → DFT     | [`docs/all.md`](docs/all.md)              |
+| `extract`    | Extract active-site pocket (cluster model) from protein–ligand complex                | [`docs/extract.md`](docs/extract.md)      |
 | `opt`        | Single-structure geometry optimization (L-BFGS or RFO)                                | [`docs/opt.md`](docs/opt.md)              |
 | `tsopt`      | Transition state optimization (Dimer or RS-I-RFO)                                     | [`docs/tsopt.md`](docs/tsopt.md)          |
 | `path-opt`   | MEP optimization via GSM or DMF                                                       | [`docs/path_opt.md`](docs/path_opt.md)    |

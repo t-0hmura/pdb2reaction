@@ -1,7 +1,7 @@
 # `uma_pysis` 計算機
 
 ## 概要
-`uma_pysis` は、MetaのUMA機械学習ポテンシャルをPySisyphus向けのASE互換計算機として公開します。エネルギー/力/ヘシアン（解析自動微分または有限差分）を Hartree 単位で返し、デバイス配置・グラフ構築・単位変換を内部で処理します。`pdb2reaction` では最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
+`uma_pysis` は、MetaのUMA機械学習ポテンシャルをPySisyphus向けの計算機（内部でASEとFAIR-Chemを使用）として公開します。エネルギー/力/ヘシアン（解析自動微分または有限差分）を Hartree 単位で返し、デバイス配置・グラフ構築・単位変換を内部で処理します。`pdb2reaction` では最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
 
 ## クイックスタート
 ```python
@@ -19,9 +19,10 @@ coords_bohr = np.array([
 
 symbols = ["C", "O"]
 
-energy_h = calc.get_energy(symbols, coords_bohr)
-forces_h_bohr = calc.get_forces(symbols, coords_bohr)
-hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)
+# 注: これらのメソッドは dict を返すため、適切なキーで値を取り出します
+energy_h = calc.get_energy(symbols, coords_bohr)["energy"]              # float (Hartree)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"]         # ndarray (Hartree/Bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"]     # ndarray (Hartree/Bohr²)
 ```
 
 - 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。

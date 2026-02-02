@@ -98,6 +98,7 @@ def _echo_section(message: str, **kwargs) -> None:
     _log_started = True
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
+from .fix_altloc import has_altloc as _has_altloc, fix_altloc_file as _fix_altloc
 from . import irc as _irc_cli
 
 
@@ -116,7 +117,7 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         return True
     except Exception as e:
         shown = label or src
-        _echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}", err=True)
+        _echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}")
         return False
 
 
@@ -141,11 +142,11 @@ def _run_cli_main(
         if code not in (None, 0):
             if on_nonzero == "raise":
                 raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
-            _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
+            _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}")
     except Exception as e:
         if on_exception == "raise":
             raise click.ClickException(f"[{label}] {cmd_name} failed: {e}")
-        _echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
+        _echo(f"[{label}] WARNING: {cmd_name} failed: {e}")
     finally:
         sys.argv = saved
         _echo("\n")
@@ -665,7 +666,7 @@ def _write_segment_energy_diagram(
         fig.write_image(str(png), scale=2)
         _echo(f"[diagram] Wrote energy diagram → {png.name}")
     except Exception as e:
-        _echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
+        _echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}")
 
     payload: Dict[str, Any] = {
         "name": prefix.stem,
@@ -721,7 +722,7 @@ def _concat_images_horizontally(
     try:
         from PIL import Image
     except Exception:
-        _echo(f"[irc_all] Pillow not available; skipping '{out_path.name}'.", err=True)
+        _echo(f"[irc_all] Pillow not available; skipping '{out_path.name}'.")
         return
 
     images = [Image.open(str(p)) for p in existing]
@@ -763,7 +764,7 @@ def _merge_irc_trajectories_to_single_plot(
         try:
             blocks = read_xyz_as_blocks(trj_path)
         except click.ClickException as e:
-            _echo(str(e), err=True)
+            _echo(str(e))
             continue
         if not blocks:
             continue
@@ -779,7 +780,7 @@ def _merge_irc_trajectories_to_single_plot(
     try:
         tmp_trj.write_text("\n".join(all_blocks) + "\n", encoding="utf-8")
     except Exception as e:
-        _echo(f"[irc_all] WARNING: Failed to write concatenated IRC trajectory: {e}", err=True)
+        _echo(f"[irc_all] WARNING: Failed to write concatenated IRC trajectory: {e}")
         return
 
     try:
@@ -787,7 +788,7 @@ def _merge_irc_trajectories_to_single_plot(
         close_matplotlib_figures()
         _echo(f"[irc_all] Wrote aggregated IRC plot → {out_png}")
     except Exception as e:
-        _echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}", err=True)
+        _echo(f"[irc_all] WARNING: failed to plot concatenated IRC trajectory: {e}")
     finally:
         try:
             tmp_trj.unlink()
@@ -1141,7 +1142,7 @@ def _run_tsopt_on_hei(
                 out_gjf_path=ts_gjf if needs_gjf else None,
             )
         except Exception as e:
-            _echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
+            _echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}")
 
     if ts_xyz.exists():
         ts_geom_path = ts_xyz
@@ -1251,7 +1252,7 @@ def _irc_and_match(
             if ref_for_conv is not None:
                 _path_search._convert_to_pdb_logged(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
     except Exception as e:
-        _echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}", err=True)
+        _echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}")
 
     elems, c_first, c_last = read_xyz_first_last(finished_trj)
 
@@ -1323,7 +1324,7 @@ def _irc_and_match(
                     err=True,
                 )
         except Exception as e:
-            _echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
+            _echo(f"[irc] WARNING: segment endpoint mapping failed: {e}")
     else:
         # TSOPT-only mode: use raw IRC orientation.
         _echo(f"[irc] TSOPT-only mode: Use raw irc orientation.")
@@ -1334,7 +1335,7 @@ def _irc_and_match(
             run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
             close_matplotlib_figures()
     except Exception as e:
-        _echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
+        _echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}")
 
     return {
         "left_min_geom": g_left,
@@ -2064,7 +2065,33 @@ def cli(
         else:
             inputs_for_extract.append(p.resolve())
 
-    extract_inputs = tuple(inputs_for_extract)
+    # --- fix_altloc: drop alternate locations (only when altLoc is detected) ---
+    altloc_tmp_dir = out_dir / "fix_altloc"
+    final_inputs: List[Path] = []
+    altloc_fix_echo = False
+    for p in inputs_for_extract:
+        if _has_altloc(p):
+            if not altloc_fix_echo:
+                _echo_section(
+                    "\n====== [all] Preflight — fix_altloc (only when altLoc is detected) started ======"
+                )
+                altloc_fix_echo = True
+            ensure_dir(altloc_tmp_dir)
+            out_p = (altloc_tmp_dir / p.name).resolve()
+            try:
+                _fix_altloc(str(p), str(out_p), overwrite=True, skip_if_no_altloc=False)
+                _echo(f"[all] fix_altloc: fixed altLoc → {out_p}")
+                final_inputs.append(out_p)
+            except Exception as e:
+                _echo(
+                    f"[all] WARNING: fix_altloc failed for {p}: {e} — using original file.",
+                    err=True,
+                )
+                final_inputs.append(p)
+        else:
+            final_inputs.append(p)
+
+    extract_inputs = tuple(final_inputs)
 
     pocket_outputs: List[Path] = []
     if not skip_extract:
@@ -2195,7 +2222,7 @@ def cli(
         )
         if resolved_charge is not None:
             override_msg += f" (would otherwise use {int(resolved_charge):+d} from workflow)"
-        _echo(override_msg, err=True)
+        _echo(override_msg)
     else:
         q_int = int(resolved_charge) if resolved_charge is not None else 0
 
@@ -2413,7 +2440,7 @@ def cli(
                     energy_diagrams.append(diag_payload)
             except Exception as e:
                 _echo(
-                    f"[thermo] WARNING: failed to build Gibbs diagram: {e}", err=True
+                    f"[thermo] WARNING: failed to build Gibbs diagram: {e}"
                 )
 
         if do_dft:
@@ -2457,7 +2484,7 @@ def cli(
                 if diag_payload:
                     energy_diagrams.append(diag_payload)
             except Exception as e:
-                _echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
+                _echo(f"[dft] WARNING: failed to build DFT diagram: {e}")
 
             if do_thermo:
                 try:
@@ -2646,7 +2673,7 @@ def cli(
                 write_summary_log(tsroot / "summary.log", summary_payload)
                 _copy_logged(tsroot / "summary.log", out_dir / "summary.log", label="summary.log", echo=False)
             except Exception as e:
-                _echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
+                _echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}")
         except Exception as e:
             _echo(
                 f"[write] WARNING: Failed to write summary.yaml for TSOPT-only run: {e}",
@@ -3045,7 +3072,7 @@ def cli(
             close_matplotlib_figures()
             _echo(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
         except Exception as e:
-            _echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
+            _echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}")
 
         try:
             if pockets_for_path[0].suffix.lower() == ".pdb":
@@ -3058,7 +3085,7 @@ def cli(
                     _echo(f"[all] Copied concatenated MEP PDB → {dst}")
         except Exception as e:
             _echo(
-                f"[all] WARNING: Failed to convert/copy concatenated MEP to PDB: {e}", err=True
+                f"[all] WARNING: Failed to convert/copy concatenated MEP to PDB: {e}"
             )
 
         try:
@@ -3083,7 +3110,7 @@ def cli(
                 if diag_payload:
                     energy_diagrams.append(diag_payload)
         except Exception as e:
-            _echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
+            _echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}")
 
         segments_summary: List[Dict[str, Any]] = []
         bond_cfg = dict(_path_search.BOND_KW)
@@ -3137,7 +3164,7 @@ def cli(
                 yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
             _echo(f"[write] Wrote '{path_dir / 'summary.yaml'}'.")
         except Exception as e:
-            _echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
+            _echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}")
 
         try:
             for name in (
@@ -3161,7 +3188,7 @@ def cli(
                         _copy_logged(src, dst, label=src.name)
         except Exception as e:
             _echo(
-                f"[all] WARNING: Failed to relocate path-opt summary files: {e}", err=True
+                f"[all] WARNING: Failed to relocate path-opt summary files: {e}"
             )
         try:
             diag_for_log: Dict[str, Any] = {}
@@ -3279,7 +3306,7 @@ def cli(
                         _copy_logged(src, dst, label=src.name)
         except Exception as e:
             _echo(
-                f"[all] WARNING: Failed to relocate path_search summary files: {e}", err=True
+                f"[all] WARNING: Failed to relocate path_search summary files: {e}"
             )
 
     # -------------------------------------------------------------------------
@@ -3370,7 +3397,7 @@ def cli(
             except Exception:
                 pass
         except Exception as e:
-            _echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+            _echo(f"[write] WARNING: Failed to write summary.log: {e}")
 
     if not (do_tsopt or do_thermo or do_dft):
         if energy_diagrams:
@@ -3855,7 +3882,7 @@ def cli(
                         )
                 except Exception as e:
                     _echo(
-                        f"[dft] WARNING: failed to build DFT diagram: {e}", err=True
+                        f"[dft] WARNING: failed to build DFT diagram: {e}"
                     )
 
                 if do_thermo:
