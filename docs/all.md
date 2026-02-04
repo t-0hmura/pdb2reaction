@@ -121,7 +121,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
-| `--include-H2O {True\|False}` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--include-H2O, --include-h2o {True\|False}` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
 | `--exclude-backbone {True\|False}` | Remove backbone atoms on non-substrate amino acids. | `True` |
 | `--add-linkH {True\|False}` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
@@ -139,6 +139,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode [light\|heavy]` | Optimizer preset (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`). | `gau` |
 | `--preopt {True\|False}` | Pre-optimize pocket endpoints before MEP search. | `True` |
+| `--refine-path {True\|False}` | If True, run recursive `path_search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### UMA Calculator Options
 
@@ -192,7 +193,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
+| `--scan-lists, --scan-list TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
 | `--scan-one-based {True\|False}` | Force scan indexing to 1-based or 0-based. | `True` |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |

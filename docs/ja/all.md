@@ -124,7 +124,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
 | `-r, --radius FLOAT` | ポケット包含カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
-| `--include-H2O {True\|False}` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
+| `--include-H2O, --include-h2o {True\|False}` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone {True\|False}` | 非基質アミノ酸の主鎖原子を除去 | `True` |
 | `--add-linkH {True\|False}` | 切断結合にリンク水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基 | `""` |
@@ -142,6 +142,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode [light\|heavy]` | 最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`） | `gau` |
 | `--preopt {True\|False}` | MEP前にポケット端点を事前最適化 | `True` |
+| `--refine-path {True\|False}` | True の場合は再帰的 `path_search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
 ### UMA計算機オプション
 
@@ -195,7 +196,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
+| `--scan-lists, --scan-list TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
 | `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
 | `--scan-one-based {True\|False}` | 1始まり/0始まりインデックス | `True` |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |

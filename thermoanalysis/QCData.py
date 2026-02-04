@@ -1,8 +1,15 @@
 from pathlib import Path
 import re
 
-import cclib
-import h5py
+try:
+    import cclib
+except ModuleNotFoundError:
+    cclib = None
+
+try:
+    import h5py
+except ModuleNotFoundError:
+    h5py = None
 import numpy as np
 
 from thermoanalysis.constants import C, ANG2M, AMU2KG, PLANCK, KB, AU2EV, ANG2AU
@@ -59,6 +66,8 @@ class QCData:
         self._linear = (abs(w[0]) < 1e-8) and (abs(w[1] - w[2]) < 1e-8)
 
     def from_pysis_hdf5_hessian(self, fn):
+        if h5py is None:
+            raise CCLibParserError("h5py is required to read .h5 Hessians.")
         with h5py.File(fn, "r") as handle:
             data = {
                 "masses": handle["masses"][:],
@@ -70,6 +79,8 @@ class QCData:
         return data
 
     def from_cclib(self, fn):
+        if cclib is None:
+            raise CCLibParserError("cclib is required to parse quantum chemistry outputs.")
         parser = cclib.io.ccopen(fn)
         try:
             data = parser.parse()

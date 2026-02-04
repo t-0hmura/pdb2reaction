@@ -11,8 +11,6 @@
 
 getting-started
 concepts
-cli-conventions
-troubleshooting
 all
 extract
 add_elem_info
@@ -30,6 +28,8 @@ dft
 trj2fig
 yaml-reference
 uma_pysis
+cli-conventions
+troubleshooting
 glossary
 ```
 
@@ -113,7 +113,7 @@ glossary
 
 ### ハードウェア
 - **OS**: Linux（Ubuntu 20.04+、CentOS 8+で動作確認）
-- **GPU**: CUDA 12.x互換（RTX 30xx/40xx、A100、H100で動作確認）
+- **GPU**: CUDA 12.x互換  
 - **VRAM**: 最小8 GB（1000原子以上には16 GB以上推奨）
 - **RAM**: 16 GB以上推奨
 

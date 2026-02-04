@@ -2,6 +2,8 @@
 
 ## Overview
 
+> **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to build a continuous MEP from two or more structures. It automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate.
+
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO. When `--convert-files` is enabled (default), the command also writes `.pdb` companions when PDB references exist, and `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling full-template merges when `--ref-full-pdb` is provided (XYZ/GJF inputs still do not produce PDB companions).
 
 ## Usage

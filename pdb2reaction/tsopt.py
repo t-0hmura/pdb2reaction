@@ -642,12 +642,14 @@ class HessianDimer:
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in light mode.
                  geom_kwargs: Optional[Dict[str, Any]] = None,
+                 prepared_input: Optional["PreparedInputStructure"] = None,
                  ) -> None:
 
         self.fn = fn
         self.out_dir = Path(out_dir); self.out_dir.mkdir(parents=True, exist_ok=True)
         self.vib_dir = self.out_dir / "vib"; self.vib_dir.mkdir(parents=True, exist_ok=True)
         self.ref_pdb: Optional[Path] = Path(fn) if Path(fn).suffix.lower() == ".pdb" else None
+        self.prepared_input = prepared_input
 
         self.thresh_loose = thresh_loose
         self.thresh = thresh
@@ -1148,6 +1150,7 @@ class HessianDimer:
                 comment=f"imag {freqs_cm[primary_idx]:+.2f} cm-1",
                 ref_pdb=self.ref_pdb,
                 write_pdb=self.ref_pdb is not None,
+                prepared_input=self.prepared_input,
                 out_pdb=out_pdb,
             )
 
@@ -1504,6 +1507,7 @@ def cli(
                     flatten_loop_bofill=bool(simple_cfg.get("flatten_loop_bofill", False)),
                     # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                     geom_kwargs=dict(geom_cfg),
+                    prepared_input=prepared_input,
                 )
 
                 click.echo("\n====== TS optimization (Hessian Dimer) started ======\n")
@@ -1687,6 +1691,7 @@ def cli(
                         comment=f"imag {freqs_cm[pick_idx]:+.2f} cm-1",
                         ref_pdb=ref_pdb,
                         write_pdb=ref_pdb is not None,
+                        prepared_input=prepared_input,
                         out_pdb=out_pdb,
                     )
 

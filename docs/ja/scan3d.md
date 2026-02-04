@@ -46,7 +46,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
 | `--ligand-charge TEXT` | `-q` が省略された場合に使う総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `--scan-lists TEXT` | **単一**のPythonリテラルで3つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--csv` 未指定時は必須 |
+| `--scan-lists, --scan-list TEXT` | **単一**のPythonリテラルで3つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--csv` 未指定時は必須 |
 | `--one-based {True\|False}` | `(i, j)` のインデックス解釈 | `True` |
 | `--max-step-size FLOAT` | 1距離あたりの最大増分（Å）。グリッド密度を制御 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²）。`bias.k` を上書き | `100` |

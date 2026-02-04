@@ -2,6 +2,8 @@
 
 ## Overview
 
+> **Summary:** Uses IRC to trace the path from a transition state to reactant and product. By default it runs both forward and backward directions. When VRAM permits, `--hessian-calc-mode Analytical` is recommended.
+
 `pdb2reaction irc` traces the intrinsic reaction coordinate from a transition state toward reactant and product. Both forward and backward branches run by default. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits.
 
 The command runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion.

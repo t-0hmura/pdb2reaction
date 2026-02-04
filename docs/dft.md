@@ -2,6 +2,8 @@
 
 ## Overview
 
+> **Summary:** Runs single-point DFT with GPU4PySCF (or CPU PySCF fallback). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energies and population analysis (Mulliken, meta-Löwdin, IAO charges).
+
 `pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 The backend is controlled by `--engine`:

@@ -2,6 +2,8 @@
 
 ## Overview
 
+> **Summary:** Scans bond distances with harmonic restraints to drive a reaction coordinate. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
+
 `pdb2reaction scan` drives a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
 
 The command performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
@@ -74,7 +76,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `--scan-lists TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `--scan-lists, --scan-list TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True\|False}` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |

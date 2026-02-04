@@ -11,8 +11,6 @@
 
 getting-started
 concepts
-cli-conventions
-troubleshooting
 all
 extract
 add_elem_info
@@ -30,6 +28,8 @@ dft
 trj2fig
 yaml-reference
 uma_pysis
+cli-conventions
+troubleshooting
 glossary
 ja/index
 ```
@@ -47,6 +47,9 @@ ja/index
 | Search for minimum energy path | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
+| Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
+| Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
+| Look up abbreviations and terms | — | [Glossary](glossary.md) |
 
 ---
 
@@ -113,10 +116,118 @@ ja/index
 
 ---
 
+## System Requirements
+
+### Hardware
+- **OS**: Linux (Ubuntu 20.04+ or CentOS 8+ tested)
+- **GPU**: CUDA 12.x compatible
+- **VRAM**: Minimum 8 GB (16 GB+ recommended for 1000+ atoms)
+- **RAM**: 16 GB+ recommended
+
+### Software
+- Python 3.11
+- PyTorch with CUDA support
+- CUDA 12.x toolkit
+
+---
+
+## Quick Examples
+
+### Basic MEP search
+```bash
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+```
+
+### Full workflow with TS optimization
+```bash
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+    --tsopt True --thermo True --dft True
+```
+
+### Single-structure scan mode
+```bash
+pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+```
+
+### TS-only optimization
+```bash
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+    --tsopt True
+```
+
+---
+
+## Key Concepts
+
+### Charge and spin
+- Use `--ligand-charge` to specify unknown residue charges: `'SAM:1,GPP:-3'`
+- Use `-q/--charge` to override the total charge
+- Spin multiplicity is set with `-m/--mult` (the `all` command) or `-m/--multiplicity` (other subcommands); default is `1`
+
+### Boolean options
+All boolean CLI options must be explicitly set to `True` or `False`:
+```bash
+--tsopt True --thermo True --dft False
+```
+
+### YAML configuration
+Advanced settings can be provided with `--args-yaml`.
+```bash
+pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
+```
+See the [YAML Reference](yaml-reference.md) for all options.
+
+---
+
+## Output Structure
+
+Typical `pdb2reaction all` output:
+```
+result_all/
+├── summary.log              # Human-readable summary
+├── summary.yaml             # Machine-readable summary
+├── pockets/                 # Extracted cluster models
+├── scan/                    # (Optional) scan results
+├── path_search/             # MEP trajectories and diagrams
+│   ├── mep.trj              # MEP trajectory
+│   ├── mep.pdb              # MEP in PDB format
+│   ├── mep_w_ref.pdb        # MEP merged with full system
+│   ├── mep_plot.png         # Energy profile plot
+│   └── seg_*/               # Per-segment details
+└── path_search/post_seg_*/  # Post-processing outputs
+    ├── tsopt/               # TS optimization results
+    ├── irc/                 # IRC trajectories
+    ├── freq/                # Vibrational modes
+    └── dft/                 # DFT results
+```
+
+---
+
+## Citation
+
+A preprint describing `pdb2reaction` is in preparation. Please check back later for citation details.
+
+## License
+
+`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** and is derived from Pysisyphus.
+
+---
+
+## References
+
+1. Wood, B. M. et al. (2025). UMA: A Family of Universal Models for Atoms. [arXiv:2506.23971](http://arxiv.org/abs/2506.23971)
+2. Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. *Int. J. Quantum Chem.*, 121(3). [DOI:10.1002/qua.26390](https://doi.org/10.1002/qua.26390)
+
+---
+
 ## Getting Help
 
 ```bash
+# General help
 pdb2reaction --help
+
+# Command help
 pdb2reaction <subcommand> --help
 ```
 

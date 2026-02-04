@@ -50,7 +50,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で extract 方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `--scan-lists TEXT` | `(i,j,targetÅ)` タプルを含むPythonリテラル。各リテラルが1ステージ; 1つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
+| `--scan-lists, --scan-list TEXT` | `(i,j,targetÅ)` タプルを含むPythonリテラル。各リテラルが1ステージ; 1つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based {True\|False}` | 原子インデックスを1始まり/0始まりとして解釈 | `True` |
 | `--max-step-size FLOAT` | 1ステップあたりの最大距離変化（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²）。`bias.k` を上書き | `100` |
