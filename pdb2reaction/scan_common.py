@@ -18,7 +18,7 @@ def add_scan_common_options(
     max_step_help: str = "Maximum step size in either distance [Å].",
     thresh_default: str | None = "baker",
     max_step_size_default: float = 0.20,
-    bias_k_default: float = 100.0,
+    bias_k_default: float = 300.0,
     relax_max_cycles_default: int = 10000,
     opt_mode_default: str = "light",
     freeze_links_default: bool = True,
@@ -28,6 +28,7 @@ def add_scan_common_options(
     one_based_default: bool = True,
     include_baseline: bool = True,
     include_zmin_zmax: bool = True,
+    args_yaml_sections: str = "geom, calc, opt, lbfgs, rfo, bias",
 ) -> Callable[[Callable], Callable]:
     """Attach the shared scan2d/scan3d CLI options to a Click command."""
     thresh_note = f" Defaults to '{thresh_default}'." if thresh_default is not None else ""
@@ -105,7 +106,7 @@ def add_scan_common_options(
             show_default=True,
             help=(
                 "Maximum optimizer cycles per grid relaxation. When explicitly provided, "
-                "overrides opt.max_cycles from YAML."
+                "used unless YAML sets opt.max_cycles."
             ),
         ),
         click.option(
@@ -164,7 +165,7 @@ def add_scan_common_options(
             "--args-yaml",
             type=click.Path(path_type=Path, exists=True, dir_okay=False),
             default=None,
-            help="YAML file with extra args (sections: geom, calc, opt, lbfgs, rfo, bias).",
+            help=f"YAML file with extra args (sections: {args_yaml_sections}).",
         ),
         click.option(
             "--preopt",

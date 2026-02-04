@@ -150,6 +150,7 @@ def _build_scan_context(
     freeze: List[int] = []
     if source_path is not None:
         freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
+    calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
     out_dir_path = Path(opt_cfg["out_dir"]).resolve()
     ensure_dir(out_dir_path)
@@ -268,6 +269,10 @@ def cli(
             time_start = time.perf_counter()
 
             yaml_cfg = load_yaml_dict(args_yaml)
+            yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
+            relax_override_requested = cycles_overridden and not (
+                isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
+            )
 
             (
                 geom_cfg,
@@ -296,7 +301,7 @@ def cli(
                 bias_k=float(bias_k),
                 opt_mode=opt_mode,
                 relax_max_cycles=relax_max_cycles,
-                relax_override_requested=cycles_overridden,
+                relax_override_requested=relax_override_requested,
                 max_step_size=max_step_size,
                 source_path=source_path,
                 freeze_links=freeze_links,
@@ -376,7 +381,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr=max_step_bohr_local,
                     relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=cycles_overridden,
+                    relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix="preopt_",
                 )
@@ -470,7 +475,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr=max_step_bohr,
                     relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=cycles_overridden,
+                    relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}_",
                 )
@@ -547,7 +552,7 @@ def cli(
                         opt_cfg,
                         max_step_bohr=max_step_bohr,
                         relax_max_cycles=relax_max_cycles,
-                        relax_override_requested=cycles_overridden,
+                        relax_override_requested=relax_override_requested,
                         out_dir=tmp_opt_dir,
                         prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
                     )

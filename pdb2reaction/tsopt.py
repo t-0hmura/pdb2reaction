@@ -1336,7 +1336,7 @@ def _build_rsirfo_kwargs(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="Choose UMA Hessian evaluation mode (overrides YAML/calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
+    help="Choose UMA Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
 )
 def cli(
     input_path: Path,

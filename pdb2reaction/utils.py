@@ -511,6 +511,9 @@ def build_scan_configs(
     if thresh is not None:
         opt_cfg["thresh"] = str(thresh)
 
+    if bias_k is not None:
+        bias_cfg["k"] = float(bias_k)
+
     apply_yaml_overrides(
         yaml_cfg,
         [
@@ -523,9 +526,6 @@ def build_scan_configs(
             *list(extra_overrides),
         ],
     )
-
-    if bias_k is not None:
-        bias_cfg["k"] = float(bias_k)
 
     return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
 

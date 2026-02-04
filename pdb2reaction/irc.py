@@ -115,7 +115,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=None,
     help=(
-        "Maximum number of IRC steps; overrides irc.max_cycles from YAML. "
+        "Maximum number of IRC steps; used unless YAML sets irc.max_cycles. "
         "Defaults to 125 when not provided."
     ),
 )
@@ -124,7 +124,7 @@ def _echo_convert_trj_if_exists(
     type=float,
     default=None,
     help=(
-        "Step length in mass-weighted coordinates; overrides irc.step_length from YAML. "
+        "Step length in mass-weighted coordinates; used unless YAML sets irc.step_length. "
         "Defaults to 0.10."
     ),
 )
@@ -133,7 +133,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=None,
     help=(
-        "Imaginary mode index used for the initial displacement; overrides irc.root from YAML. "
+        "Imaginary mode index used for the initial displacement; used unless YAML sets irc.root. "
         "Defaults to 0."
     ),
 )
@@ -142,7 +142,7 @@ def _echo_convert_trj_if_exists(
     type=bool,
     default=None,
     help=(
-        "Run the forward IRC; overrides irc.forward from YAML. Specify True/False explicitly. "
+        "Run the forward IRC; used unless YAML sets irc.forward. Specify True/False explicitly. "
         "Defaults to True."
     ),
 )
@@ -151,7 +151,7 @@ def _echo_convert_trj_if_exists(
     type=bool,
     default=None,
     help=(
-        "Run the backward IRC; overrides irc.backward from YAML. Specify True/False explicitly. "
+        "Run the backward IRC; used unless YAML sets irc.backward. Specify True/False explicitly. "
         "Defaults to True."
     ),
 )
@@ -177,12 +177,18 @@ def _echo_convert_trj_if_exists(
     default=None,
     help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
-@click.option("--out-dir", type=str, default="./result_irc/", show_default=True, help="Output directory; overrides irc.out_dir from YAML.")
+@click.option(
+    "--out-dir",
+    type=str,
+    default="./result_irc/",
+    show_default=True,
+    help="Output directory (used unless YAML sets irc.out_dir).",
+)
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="How UMA builds the Hessian (Analytical or FiniteDifference); overrides calc.hessian_calc_mode from YAML. Defaults to 'FiniteDifference'.",
+    help="How UMA builds the Hessian (Analytical or FiniteDifference); used unless YAML sets calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
 )
 @click.option(
     "--args-yaml",

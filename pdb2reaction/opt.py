@@ -446,6 +446,7 @@ def cli(
 
             # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
             resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
+            calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
             # Normalize and select optimizer kind
             kind = normalize_choice(

@@ -49,7 +49,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "workers_per_node": 1,
     "hessian_calc_mode": "FiniteDifference",
     "out_hess_torch": True,
-    "hessian_double": False,
+    "hessian_double": True,
     "return_partial_hessian": False,
 }
 

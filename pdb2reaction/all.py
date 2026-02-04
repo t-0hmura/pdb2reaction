@@ -1821,7 +1821,7 @@ def _irc_and_match(
     "--scan-bias-k",
     type=float,
     default=None,
-    help="Override scan harmonic bias strength k (eV/Å^2). Defaults to 100.",
+    help="Override scan harmonic bias strength k (eV/Å^2). Defaults to 300.",
 )
 @click.option(
     "--scan-relax-max-cycles",

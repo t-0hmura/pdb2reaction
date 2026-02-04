@@ -555,13 +555,12 @@ def cli(
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
 
-        # Use external Kabsch alignment; keep internal align disabled.
-        opt_cfg["align"] = False
-
         lbfgs_cfg["dump"] = bool(dump)
         rfo_cfg["dump"] = bool(dump)
         lbfgs_cfg["out_dir"] = out_dir
         rfo_cfg["out_dir"] = out_dir
+        lbfgs_cfg["max_cycles"] = int(preopt_max_cycles)
+        rfo_cfg["max_cycles"] = int(preopt_max_cycles)
 
         apply_yaml_overrides(
             yaml_cfg,
@@ -575,6 +574,8 @@ def cli(
                 (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
             ],
         )
+        # Use external Kabsch alignment; keep internal align disabled.
+        opt_cfg["align"] = False
 
         opt_kind = opt_mode.strip().lower()
         mep_mode_kind = mep_mode.strip().lower()
@@ -588,7 +589,6 @@ def cli(
             raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
 
         sopt_cfg = dict(sopt_cfg)
-        sopt_cfg["max_cycles"] = int(preopt_max_cycles)
 
         # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
@@ -641,6 +641,13 @@ def cli(
                     freeze_list = list(geom_cfg.get("freeze_atoms", []))
                 freeze_effective[prepared.source_path.name] = freeze_list
             click.echo(pretty_block("freeze_atoms (effective)", freeze_effective))
+
+        # Keep UMA freeze_atoms aligned with the resolved geometry freeze list.
+        if geoms:
+            freeze_union = sorted(
+                {int(i) for g in geoms for i in getattr(g, "freeze_atoms", [])}
+            )
+            calc_cfg["freeze_atoms"] = freeze_union
 
         # Shared UMA calculator (reuse the same instance for all images)
         shared_calc = uma_pysis(**calc_cfg)

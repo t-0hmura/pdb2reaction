@@ -1940,25 +1940,13 @@ def cli(
         if "max_nodes_segment" not in yaml_cfg.get("search", {}):
             search_cfg["max_nodes_segment"] = int(max_nodes)
 
-        out_dir_path = Path(out_dir).resolve()
+        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_geom_for_echo(calc_cfg)
         echo_gs   = dict(gs_cfg)
         echo_opt  = dict(opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
-        opt_yaml = yaml_cfg.get("opt")
-        if isinstance(opt_yaml, dict) and "out_dir" in opt_yaml:
-            yaml_out_dir = opt_yaml.get("out_dir")
-            if yaml_out_dir is not None:
-                try:
-                    yaml_out_dir_resolved = str(Path(str(yaml_out_dir)).resolve())
-                except Exception:
-                    yaml_out_dir_resolved = str(yaml_out_dir)
-                if yaml_out_dir_resolved != str(out_dir_path):
-                    echo_opt["out_dir_yaml"] = str(yaml_out_dir)
-                    echo_opt["out_dir_note"] = (
-                        "CLI --out-dir takes precedence; YAML opt.out_dir is ignored."
-                    )
+        # out_dir may be overridden by YAML (defaults ← CLI ← YAML)
 
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
@@ -2001,6 +1989,12 @@ def cli(
             click.echo(freeze_text)
 
         main_prepared = prepared_inputs[0] if prepared_inputs else None
+
+        if geoms:
+            freeze_union = sorted(
+                {int(i) for g in geoms for i in getattr(g, "freeze_atoms", [])}
+            )
+            calc_cfg["freeze_atoms"] = freeze_union
 
         shared_calc = uma_pysis(**calc_cfg)
         for g in geoms:

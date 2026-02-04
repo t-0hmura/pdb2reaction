@@ -183,6 +183,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     thresh_default=None,
     include_baseline=False,
     include_zmin_zmax=False,
+    args_yaml_sections="geom, calc, opt, lbfgs, rfo, bias, bond",
 )
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
@@ -235,6 +236,10 @@ def cli(
             # 1) Assemble configuration (defaults ← CLI ← YAML) - create fresh copies for merging
             # ------------------------------------------------------------------
             yaml_cfg = load_yaml_dict(args_yaml)
+            yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
+            relax_override_requested = cycles_overridden and not (
+                isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
+            )
 
             geom_cfg = dict(GEOM_KW_DEFAULT)
             calc_cfg = dict(UMA_CALC_KW)
@@ -271,13 +276,14 @@ def cli(
 
             # Resolve freeze list before logging so printed config matches runtime.
             freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
+            calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
             # Present final config
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()
             echo_geom = format_geom_for_echo(geom_cfg)
             echo_calc = format_geom_for_echo(calc_cfg)
             echo_opt  = dict(opt_cfg)
-            if cycles_overridden:
+            if relax_override_requested:
                 echo_opt["max_cycles"] = int(relax_max_cycles)
             echo_opt["out_dir"] = str(out_dir_path)
             echo_bias = dict(bias_cfg)
@@ -293,7 +299,7 @@ def cli(
                 opt_cfg,
                 max_step_bohr_for_log,
                 relax_max_cycles,
-                cycles_overridden,
+                relax_override_requested,
                 out_dir_path,
                 str(opt_cfg.get("prefix", "")),
             )
@@ -388,7 +394,7 @@ def cli(
                     opt_cfg,
                     max_step_bohr,
                     relax_max_cycles,
-                    cycles_overridden,
+                    relax_override_requested,
                     pre_dir,
                     "preopt_",
                 )
@@ -475,7 +481,7 @@ def cli(
                                 opt_cfg,
                                 max_step_bohr,
                                 relax_max_cycles,
-                                cycles_overridden,
+                                relax_override_requested,
                                 stage_dir,
                                 "endopt_",
                             )
@@ -540,7 +546,7 @@ def cli(
                         opt_cfg,
                         max_step_bohr,
                         relax_max_cycles,
-                        cycles_overridden,
+                        relax_override_requested,
                         stage_dir,
                         prefix,
                     )
@@ -569,7 +575,7 @@ def cli(
                             opt_cfg,
                             max_step_bohr,
                             relax_max_cycles,
-                            cycles_overridden,
+                            relax_override_requested,
                             stage_dir,
                             "endopt_",
                         )
