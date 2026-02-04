@@ -200,7 +200,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
 | `--scan-one-based {True\|False}` | 1始まり/0始まりインデックス | `True` |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
-| `--scan-bias-k FLOAT` | 調和バイアス強度（eV/Å²） | `100` |
+| `--scan-bias-k FLOAT` | 調和バイアス強度（eV/Å²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
 | `--scan-preopt {True\|False}` | scan事前最適化 | `True` |
 | `--scan-endopt {True\|False}` | scanステージ終端最適化 | `True` |

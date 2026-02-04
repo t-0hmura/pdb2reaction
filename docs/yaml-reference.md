@@ -45,6 +45,7 @@ geom:
 **Notes:**
 - `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB inputs
 - Frozen atoms have zeroed forces; their Hessian columns are also zeroed
+- For `irc`, `geom.coord_type` is forced to `cart` after YAML/CLI merging
 
 ---
 
@@ -72,6 +73,8 @@ calc:
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
 - `workers > 1` disables analytical Hessians
 - Charge/spin inherit `.gjf` template metadata when available
+- IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` regardless of YAML.
+- For `irc`, `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging
 
 ---
 
@@ -442,7 +445,7 @@ Harmonic bias settings for scans.
 
 ```yaml
 bias:
-  k: 100.0                             # Harmonic bias strength (eV·Å⁻²)
+  k: 300.0                             # Harmonic bias strength (eV·Å⁻²)
 ```
 
 ---

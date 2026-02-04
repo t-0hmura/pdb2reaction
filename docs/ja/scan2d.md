@@ -43,8 +43,8 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--scan-lists, --scan-list TEXT` | **単一**のPythonリテラルで2つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based {True\|False}` | `(i, j)` のインデックス解釈 | `True` |
 | `--max-step-size FLOAT` | 1距離あたりの最大増分（Å）。グリッド密度を制御 | `0.20` |
-| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²）。`bias.k` を上書き | `100` |
-| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル。`opt.max_cycles` を上書き | `10000` |
+| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
+| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル（YAML が `opt.max_cycles` を指定していない場合に使用） | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
 | `--freeze-links {True\|False}` | PDB 入力でリンクHの親を凍結 | `True` |
 | `--dump {True\|False}` | 外側ループごとの `inner_path_d1_###.trj` を保存 | `False` |
@@ -58,10 +58,10 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケール下限/上限（kcal/mol） | 自動 |
 
 ### 共有YAMLセクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキー。`opt.dump` は `False` に強制され、軌跡制御はCLIで行います。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキー。`opt.dump` はYAMLで設定可能で、軌跡出力は `--dump` で制御します。
 
 ### セクション `bias`
-- `k`（`100`）: 調和バイアス強度（eV·Å⁻²）。`--bias-k` で上書き。
+- `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
 
 ## 出力
 ```
@@ -97,7 +97,7 @@ calc:
 opt:
   thresh: baker              # convergence preset (default: baker)
   max_cycles: 10000          # optimizer cycle cap
-  dump: false                # trajectory dumping disabled (CLI controls dumping)
+  dump: false                # optimizer dumps (scan trajectories are controlled by --dump)
   out_dir: ./result_scan2d/  # output directory
 lbfgs:
   max_step: 0.3              # maximum step length
@@ -106,8 +106,8 @@ rfo:
   trust_radius: 0.1          # trust-region radius
   out_dir: ./result_scan2d/  # RFO-specific output directory
 bias:
-  k: 100.0                  # harmonic bias strength (eV·Å⁻²)
+  k: 300.0                  # harmonic bias strength (eV·Å⁻²)
 ```
 
 `opt` の詳細は [docs/opt.md](opt.md) を参照してください。
-`--relax-max-cycles` は明示的に指定された場合のみ `opt.max_cycles` を上書き。未指定の場合はYAMLの `opt.max_cycles` が使われます（デフォルト `10000`）。
+`--relax-max-cycles` は**明示的に指定され**、かつYAMLが `opt.max_cycles` を指定していない場合にのみ適用されます（デフォルト `10000`）。

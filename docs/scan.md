@@ -61,7 +61,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
    `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
 4. March through all steps, updating the temporary targets, applying the
    harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with UMA.
-   Optimizer cycles are capped by `--relax-max-cycles` (overriding YAML).
+   Optimizer cycles are capped by `--relax-max-cycles` unless YAML specifies `opt.max_cycles`.
 5. After the last step of each stage, optionally run an unbiased relaxation
    (`--endopt True`) before reporting covalent bond changes and writing the
    `result.*` files.
@@ -79,8 +79,8 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--scan-lists, --scan-list TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True\|False}` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
-| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
-| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Overrides `opt.max_cycles`. | `10000` |
+| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
+| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links {True\|False}` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump {True\|False}` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
@@ -94,12 +94,12 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
-  [YAML Reference](yaml-reference.md). `opt.dump` is internally forced
-  to `False`; use `--dump` to control stage trajectories.
-- `--relax-max-cycles` overrides `opt.max_cycles` only when explicitly provided; otherwise YAML `opt.max_cycles` is honored (default `10000`).
+  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  use `--dump` to control scan-stage trajectories.
+- `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ### Section `bias`
-- `k` (`100`): Harmonic strength in eV·Å⁻².
+- `k` (`300`): Harmonic strength in eV·Å⁻².
 
 ### Section `bond`
 UMA-based bond-change detection mirrored from `path_search`:
@@ -242,7 +242,7 @@ rfo:
   gdiis_test_direction: true # test descent direction before DIIS
   adapt_step_func: true      # adaptive step scaling toggle
 bias:
-  k: 100                    # harmonic bias strength (eV·Å⁻²)
+  k: 300                    # harmonic bias strength (eV·Å⁻²)
 bond:
   device: cuda               # UMA device for bond analysis
   bond_factor: 1.2           # covalent-radius scaling

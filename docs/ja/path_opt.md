@@ -4,7 +4,7 @@
 
 > **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つの構造間の MEP を見つけます。経路軌跡と最高エネルギー画像（HEI）を出力します。複数構造での再帰的精密化には `path-search` を使用してください。
 
-`pdb2reaction path-opt` は、`--mep-mode` で選択されるpysisyphusのGrowing String法（GSM）またはDirect Max Flux（DMF）を使用して、2つのエンドポイント構造間の最小エネルギー経路（MEP）を探索します。UMAはすべてのイメージにエネルギー/勾配/ヘシアンを提供し、外部の剛体アライメントルーチンがオプティマイザー開始前にストリングを整えます。設定は **デフォルト → CLI → `--args-yaml`** の優先順位で `geom`/`calc`/`gs`/`opt` に適用されます。`--convert-files`（デフォルト有効）を有効にすると、PDB 参照がある場合は軌跡を `.pdb` コンパニオンへ、Gaussianテンプレートがある場合はXYZスナップショット（例: HEI）を `.gjf` コンパニオンへミラーします。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、PDB変換が可能です。GSMがデフォルトの経路生成器です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。
+`pdb2reaction path-opt` は、`--mep-mode` で選択されるpysisyphusのGrowing String法（GSM）またはDirect Max Flux（DMF）を使用して、2つのエンドポイント構造間の最小エネルギー経路（MEP）を探索します。UMAはすべてのイメージにエネルギー/勾配/ヘシアンを提供し、外部の剛体アライメントルーチンがオプティマイザー開始前にストリングを整えます。設定は **デフォルト → CLI → `--args-yaml`** の優先順位で `geom`/`calc`/`gs`/`opt`/`dmf`/`sopt.*` に適用されます。`--convert-files`（デフォルト有効）を有効にすると、PDB 参照がある場合は軌跡を `.pdb` コンパニオンへ、Gaussianテンプレートがある場合はXYZスナップショット（例: HEI）を `.gjf` コンパニオンへミラーします。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、PDB変換が可能です。GSMがデフォルトの経路生成器です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。
 
 ## 使用法
 ```bash
@@ -21,7 +21,6 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 1. **事前アライメント & 凍結解決**
    - 最初以降のすべてのエンドポイントは最初の構造にKabschアライメントされます。いずれかのエンドポイントで `freeze_atoms` が定義されている場合、その原子のみでRMSDフィットし、変換は全原子に適用されます。
    - `--freeze-links=True`（デフォルト）のPDB 入力では、リンク水素の親原子が検出され `freeze_atoms` にマージされます。
-   - 明示的なアライメント/リファインがあるため、`StringOptimizer.align` は無効のまま維持されます。
 
 2. **ストリング成長とHEIエクスポート**
    - 経路が成長・精密化された後、最高エネルギー内部局所極大を優先的に探索します。内部局所極大がない場合は内部ノードの最大値へ、内部ノードが無い場合は全体最大へフォールバックします。
@@ -55,7 +54,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--ref-pdb FILE` | XYZ/GJF入力用の参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | GSM/ストリングオプティマイザーの収束プリセットを上書き | `gau` |
-| `--args-yaml FILE` | YAML 上書き（セクション `geom`、`calc`、`gs`、`opt`） | _None_ |
+| `--args-yaml FILE` | YAML 上書き（セクション `geom`、`calc`、`gs`、`opt`、`dmf`、`sopt.lbfgs`、`sopt.rfo`） | _None_ |
 | `--preopt {True\|False}` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
 | `--fix-ends {True\|False}` | GSM成長/精密化中にエンドポイント構造を固定 | `False` |
@@ -90,7 +89,10 @@ YAML 値はCLIを上書きし、CLIはデフォルトを上書きします。
 - Growing String表現の制御: `max_nodes`, `perp_thresh`, 再パラメータ化（`reparam_check`, `reparam_every`, `reparam_every_full`, `param`）、`max_micro_cycles`, DLCリセット、climb関連、scheduler。
 
 ### `opt`
-- StringOptimizer設定: type, `stop_in_when_full`, `align=False`（固定）、`scale_step`, `max_cycles`, dump系、`reparam_thresh`, `coord_diff_thresh`, `out_dir`, `print_every`。
+- StringOptimizer設定: type, `stop_in_when_full`, `scale_step`, `max_cycles`, dump系、`reparam_thresh`, `coord_diff_thresh`, `out_dir`, `print_every`。
+
+### `sopt.lbfgs` / `sopt.rfo`
+- エンドポイント事前最適化の単一構造オプティマイザー設定。キーは [YAML リファレンス](yaml-reference.md) の `lbfgs` / `rfo` と同等で、YAML が CLI の `--preopt-max-cycles` を上書きします。
 
 ### YAML例（デフォルト値）
 ```yaml
@@ -130,7 +132,6 @@ gs:
 opt:
   type: string               # optimizer type label
   stop_in_when_full: 300     # early stop threshold when string is full
-  align: false               # alignment toggle (kept off)
   scale_step: global         # step scaling mode
   max_cycles: 300            # maximum optimization cycles
   dump: false                # dump trajectory/restart data

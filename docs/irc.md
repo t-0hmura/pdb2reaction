@@ -33,7 +33,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## Workflow
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs.
-2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Always set them explicitly to remain on the intended PES.
+2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Always set them explicitly to remain on the intended PES. **IRC always forces Cartesian coordinates (`geom.coord_type = cart`) and `calc.return_partial_hessian = false`, regardless of YAML.**
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
 4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, when a reference PDB is available, mirrored to `.pdb`.
 
@@ -41,20 +41,20 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge; overrides `calc.charge`. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `-q, --charge INT` | Total charge; used unless YAML sets `calc.charge`. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Explicit `-q` still overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1); overrides `calc.spin`. | `.gjf` template value or `1` |
-| `--max-cycles INT` | Maximum IRC steps; overrides `irc.max_cycles`. | `125` |
-| `--step-size FLOAT` | Step length in mass-weighted coordinates; overrides `irc.step_length`. | `0.10` |
-| `--root INT` | Imaginary-mode index for the initial displacement; overrides `irc.root`. | `0` |
-| `--forward {True\|False}` | Run forward branch (`irc.forward`). | `True` |
-| `--backward {True\|False}` | Run backward branch (`irc.backward`). | `True` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1); used unless YAML sets `calc.spin`. | `.gjf` template value or `1` |
+| `--max-cycles INT` | Maximum IRC steps; used unless YAML sets `irc.max_cycles`. | `125` |
+| `--step-size FLOAT` | Step length in mass-weighted coordinates; used unless YAML sets `irc.step_length`. | `0.10` |
+| `--root INT` | Imaginary-mode index for the initial displacement; used unless YAML sets `irc.root`. | `0` |
+| `--forward {True\|False}` | Run forward branch (`irc.forward`), used unless YAML sets `irc.forward`. | `True` |
+| `--backward {True\|False}` | Run backward branch (`irc.backward`), used unless YAML sets `irc.backward`. | `True` |
 | `--freeze-links {True\|False}` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
-| `--out-dir TEXT` | Output directory (`irc.out_dir`). | `./result_irc/` |
+| `--out-dir TEXT` | Output directory (`irc.out_dir`), used unless YAML sets `irc.out_dir`. | `./result_irc/` |
 | `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB companions when a reference PDB is available. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`). | `FiniteDifference` |
+| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`), used unless YAML sets `calc.hessian_calc_mode`. | `FiniteDifference` |
 | `--args-yaml FILE` | YAML overrides (see below). | _None_ |
 
 ## Outputs
@@ -75,7 +75,7 @@ out_dir/ (default: ./result_irc/)
 - `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
 
 ## YAML configuration (`--args-yaml`)
-Provide a mapping; YAML overrides CLI. Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block.
+Provide a mapping; YAML overrides CLI. Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
@@ -87,7 +87,7 @@ Provide a mapping; YAML overrides CLI. Shared sections reuse [YAML Reference](ya
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  coord_type: cart           # forced to cart for irc (YAML value ignored)
   freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
   charge: 0                  # total charge (CLI/template override)
@@ -101,7 +101,7 @@ calc:
   out_hess_torch: true       # request torch-form Hessian
   freeze_atoms: null         # calculator-level frozen atoms
   hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+  return_partial_hessian: false         # forced false for irc (full Hessian)
 irc:
   step_length: 0.1           # integration step length
   max_cycles: 125            # maximum steps along IRC

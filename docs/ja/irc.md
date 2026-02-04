@@ -31,7 +31,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## ワークフロー
 1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。`.pdb` 入力ではEulerPC軌跡を元のトポロジーでPDBに自動変換し、`--freeze-links` がリンク水素の親原子を凍結して `geom.freeze_atoms` にマージします。
-2. **設定マージ** – デフォルト → CLI → YAML（`geom`、`calc`、`irc`）。電荷/多重度は `.gjf` テンプレートがあれば継承し、`.gjf` 以外では `-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）です。明示的な `-q` は常に優先され、複数度は省略時 `1` がデフォルトです。
+2. **設定マージ** – デフォルト → CLI → YAML（`geom`、`calc`、`irc`）。電荷/多重度は `.gjf` テンプレートがあれば継承し、`.gjf` 以外では `-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）です。明示的な `-q` は常に優先され、複数度は省略時 `1` がデフォルトです。**IRC は常に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAMLより優先）。**
 3. **IRC積分** – EulerPCが `irc.forward/backward`、`irc.step_length`、`irc.root` に従って順方向/逆方向分岐を積分します。ヘシアンはUMA設定（`calc.*`、`--hessian-calc-mode`）に従い、更新スキーム（既定 `bofill`）や再計算間隔を反映します。
 4. **出力** – 軌跡（`finished`、`forward`、`backward`）は `.trj` として書き込まれ、PDB 入力の場合は `.pdb` にミラーリングされます。`dump_every` > 0 の場合はHDF5ダンプも作成されます。
 
@@ -39,20 +39,20 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
-| `-q, --charge INT` | 総電荷; `calc.charge` を上書き。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須 | テンプレート/導出が適用されない限り必須 |
+| `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。明示的な `-q` は `--ligand-charge` より優先 | テンプレート/導出が適用されない限り必須 |
 | `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
-| `-m, --multiplicity INT` | スピン多重度（2S+1）。`calc.spin` を上書き | `.gjf` テンプレート値または `1` |
-| `--max-cycles INT` | 最大IRCステップ | `125` |
-| `--step-size FLOAT` | 質量重み付き座標でのステップ長 | `0.10` |
-| `--root INT` | 初期変位の虚数モードインデックス | `0` |
-| `--forward {True\|False}` | 順方向分岐を実行 | `True` |
-| `--backward {True\|False}` | 逆方向分岐を実行 | `True` |
+| `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
+| `--max-cycles INT` | 最大IRCステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
+| `--step-size FLOAT` | 質量重み付き座標でのステップ長（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
+| `--root INT` | 初期変位の虚数モードインデックス（YAML が `irc.root` を指定していない場合に使用） | `0` |
+| `--forward {True\|False}` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
+| `--backward {True\|False}` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
 | `--freeze-links {True\|False}` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ） | `True` |
-| `--out-dir TEXT` | 出力ディレクトリ | `./result_irc/` |
+| `--out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
 | `--convert-files {True\|False}` | PDB 入力用のXYZ/TRJ → PDBコンパニオンをトグル | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
-| `--hessian-calc-mode CHOICE` | UMAヘシアンモード | `FiniteDifference` |
+| `--hessian-calc-mode CHOICE` | UMAヘシアンモード（YAML が `calc.hessian_calc_mode` を指定していない場合に使用） | `FiniteDifference` |
 | `--args-yaml FILE` | YAML 上書き | _None_ |
 
 ## 出力
@@ -75,7 +75,7 @@ out_dir/ (デフォルト: ./result_irc/)
 
 
 ## YAML 設定（`--args-yaml`）
-YAMLはマッピングで指定します。YAMLはCLIを上書きします。共通セクションは [YAML リファレンス](yaml-reference.md) のジオメトリ/計算機キーを再利用します: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。
+YAMLはマッピングで指定します。YAMLはCLIを上書きします。共通セクションは [YAML リファレンス](yaml-reference.md) のジオメトリ/計算機キーを再利用します: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -87,7 +87,7 @@ YAMLはマッピングで指定します。YAMLはCLIを上書きします。共
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
+  coord_type: cart           # irc では cart に強制（YAML値は無視）
   freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
 calc:
   charge: 0                  # total charge (CLI/template override)
@@ -101,7 +101,7 @@ calc:
   out_hess_torch: true       # request torch-form Hessian
   freeze_atoms: null         # calculator-level frozen atoms
   hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+  return_partial_hessian: false         # irc では false に強制（完全ヘシアン）
 irc:
   step_length: 0.1           # integration step length
   max_cycles: 125            # maximum steps along IRC

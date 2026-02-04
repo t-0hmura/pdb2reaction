@@ -4,7 +4,7 @@
 
 > **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to find the MEP between exactly two structures. It outputs the path trajectory and the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead.
 
-`pdb2reaction path-opt` finds the minimum-energy path (MEP) between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). It outputs the path trajectory and identifies the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across the `geom`, `calc`, `gs`, and `opt` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
+`pdb2reaction path-opt` finds the minimum-energy path (MEP) between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). It outputs the path trajectory and identifies the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across `geom`, `calc`, `gs`, `opt`, `dmf`, and `sopt.*` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
 
 ## Usage
 ```bash
@@ -21,7 +21,6 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 1. **Pre-alignment & freeze resolution**
    - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
    - For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
-   - `StringOptimizer.align` remains disabled because the explicit alignment/refinement already handles the superposition.
 2. **String growth and HEI export**
    - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
    - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
@@ -53,7 +52,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | `gau` |
-| `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`). | _None_ |
+| `--args-yaml FILE` | YAML overrides (sections `geom`, `calc`, `gs`, `opt`, `dmf`, `sopt.lbfgs`, `sopt.rfo`). | _None_ |
 | `--preopt {True\|False}` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
 | `--fix-ends {True\|False}` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
@@ -87,7 +86,10 @@ YAML inputs override CLI, which override the defaults listed below.
 - Controls the Growing String representation: `max_nodes`, `perp_thresh`, reparameterization cadence (`reparam_check`, `reparam_every`, `reparam_every_full`, `param`), `max_micro_cycles`, DLC resets, climb toggles/thresholds, and optional scheduler hooks.
 
 ### `opt`
-- StringOptimizer settings: type labels, `stop_in_when_full`, `align=False` (kept off), `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
+- StringOptimizer settings: type labels, `stop_in_when_full`, `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
+
+### `sopt.lbfgs` / `sopt.rfo`
+- Single-structure preoptimization settings for endpoints. Keys mirror the `lbfgs`/`rfo` sections in [YAML Reference](yaml-reference.md). YAML overrides CLI `--preopt-max-cycles`.
 
 ### Example YAML (default value)
 ```yaml
@@ -127,7 +129,6 @@ gs:
 opt:
   type: string               # optimizer type label
   stop_in_when_full: 300     # early stop threshold when string is full
-  align: false               # alignment toggle (kept off)
   scale_step: global         # step scaling mode
   max_cycles: 300            # maximum optimization cycles
   dump: false                # dump trajectory/restart data

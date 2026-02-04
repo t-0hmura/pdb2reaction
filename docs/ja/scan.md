@@ -38,7 +38,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 2. `--preopt True` が指定された場合、バイアスをかける前に無バイアスの前処理最適化を実行します。
 3. `--scan-lists` で与えられた各ステージリテラルについて `(i, j)` を解析・正規化（デフォルトは1始まり）。PDB 入力では、各エントリは整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタは空白/カンマ/スラッシュ/バッククォート/バックスラッシュで区切れ、トークン順序は任意（フォールバックは resname, resseq, atom を想定）。
    各結合について `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` に分割します。各結合は `δ = Δ / N` ずつ更新されます。
-4. すべてのステップを進めながら一時ターゲットを更新し、調和井戸 `E = Σ ½ k (|ri − rj| − target)²` を適用してUMAで最小化します。最適化サイクルは `--relax-max-cycles` で上限が設定され、YAML 値を上書きします。
+4. すべてのステップを進めながら一時ターゲットを更新し、調和井戸 `E = Σ ½ k (|ri − rj| − target)²` を適用してUMAで最小化します。最適化サイクルは `--relax-max-cycles` で上限が設定されます（YAML が `opt.max_cycles` を指定していない場合）。
 5. 各ステージの最終ステップ後に、必要に応じて無バイアス緩和（`--endopt True`）を実行し、共有結合の変化を報告して `result.*` を出力します。
 6. すべてのステージで繰り返し、`--dump True` の場合のみ軌跡を保存します。
 
@@ -53,8 +53,8 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--scan-lists, --scan-list TEXT` | `(i,j,targetÅ)` タプルを含むPythonリテラル。各リテラルが1ステージ; 1つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based {True\|False}` | 原子インデックスを1始まり/0始まりとして解釈 | `True` |
 | `--max-step-size FLOAT` | 1ステップあたりの最大距離変化（Å）。ステップ数を決定 | `0.20` |
-| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²）。`bias.k` を上書き | `100` |
-| `--relax-max-cycles INT` | 前処理/各バイアスステップ/後処理の最適化サイクル上限。`opt.max_cycles` を上書き | `10000` |
+| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
+| `--relax-max-cycles INT` | 前処理/各バイアスステップ/後処理の最適化サイクル上限（YAMLが `opt.max_cycles` を指定していない場合に使用） | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
 | `--freeze-links {True\|False}` | PDB 入力時にリンク水素の親を凍結 | `True` |
 | `--dump {True\|False}` | バイアス付き軌跡（`scan.trj`/`scan.pdb`）を出力 | `False` |
@@ -67,11 +67,11 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--endopt {True\|False}` | 各ステージ後に無バイアス最適化を実行 | `True` |
 
 ### 共有YAMLセクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキー。`opt.dump` は内部的に `False` に固定されるため、ステージ軌跡は `--dump` で制御します。
-- `--relax-max-cycles` は明示的に指定された場合のみ `opt.max_cycles` を上書き。未指定の場合はYAMLの `opt.max_cycles` が使われます（デフォルト `10000`）。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキー。`opt.dump` はYAMLで設定可能で、ステージ軌跡は `--dump` で制御します。
+- `--relax-max-cycles` は**明示的に指定され**、かつYAMLが `opt.max_cycles` を指定していない場合にのみ適用されます（デフォルト `10000`）。
 
 ### セクション `bias`
-- `k`（`100`）: 調和バイアス強度（eV·Å⁻²）。
+- `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
 
 (section-bond)=
 ### セクション `bond`
@@ -205,7 +205,7 @@ rfo:
   gdiis_test_direction: true # test descent direction before DIIS
   adapt_step_func: true      # adaptive step scaling toggle
 bias:
-  k: 100                    # harmonic bias strength (eV·Å⁻²)
+  k: 300                    # harmonic bias strength (eV·Å⁻²)
 bond:
   device: cuda               # UMA device for bond analysis
   bond_factor: 1.2           # covalent-radius scaling

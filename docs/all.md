@@ -197,7 +197,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
 | `--scan-one-based {True\|False}` | Force scan indexing to 1-based or 0-based. | `True` |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
-| `--scan-bias-k FLOAT` | Harmonic bias strength (eV/Å²). | `100` |
+| `--scan-bias-k FLOAT` | Harmonic bias strength (eV/Å²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
 | `--scan-preopt {True\|False}` | Override the scan preoptimization toggle. | `True` |
 | `--scan-endopt {True\|False}` | Override the scan end-of-stage optimization toggle. | `True` |

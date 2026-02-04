@@ -77,8 +77,8 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--scan-lists, --scan-list TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based {True\|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
-| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². Overrides `bias.k`. | `100` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Overrides `opt.max_cycles`. | `10000` |
+| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links {True\|False}` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump {True\|False}` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
@@ -93,11 +93,11 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [YAML Reference](yaml-reference.md). `opt.dump` is forced to `False`
-  so trajectory control stays on the CLI.
+  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  scan trajectory output is controlled by `--dump`.
 
 ### Section `bias`
-- `k` (`100`): Harmonic strength in eV·Å⁻². Overridden by `--bias-k`.
+- `k` (`300`): Harmonic strength in eV·Å⁻².
 
 ## Outputs
 ```
@@ -141,7 +141,7 @@ calc:
 opt:
   thresh: baker              # convergence preset (default: baker)
   max_cycles: 10000          # optimizer cycle cap
-  dump: false                # trajectory dumping disabled (CLI controls dumping)
+  dump: false                # optimizer dumps (scan trajectories are controlled by --dump)
   out_dir: ./result_scan2d/  # output directory
 lbfgs:
   max_step: 0.3              # maximum step length
@@ -150,8 +150,8 @@ rfo:
   trust_radius: 0.1          # trust-region radius
   out_dir: ./result_scan2d/  # RFO-specific output directory
 bias:
-  k: 100.0                  # harmonic bias strength (eV·Å⁻²)
+  k: 300.0                  # harmonic bias strength (eV·Å⁻²)
 ```
 
 More YAML options about `opt` are available in [docs/opt.md](opt.md).
-`--relax-max-cycles` overrides `opt.max_cycles` only when explicitly provided; otherwise YAML `opt.max_cycles` is honored (default `10000`).
+`--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).

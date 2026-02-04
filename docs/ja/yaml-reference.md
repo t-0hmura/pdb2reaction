@@ -45,6 +45,7 @@ geom:
 **注記:**
 - `freeze_atoms` は PDB 入力時の `--freeze-links` 検出原子とマージされます。
 - 凍結原子は力がゼロ化され、ヘシアンの該当行/列もゼロ化されます。
+- `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
 ---
 
@@ -72,6 +73,8 @@ calc:
 - VRAMが十分な場合は `hessian_calc_mode: Analytical` を推奨します。
 - `workers > 1` の場合、解析ヘシアンは無効化されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
+- IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = false` を常に強制します（YAMLより優先）。
+- `irc` では `calc.return_partial_hessian` が YAML/CLI マージ後に `false` へ強制されます。
 
 ---
 
@@ -442,7 +445,7 @@ dft:
 
 ```yaml
 bias:
-  k: 100.0                             # Harmonic bias strength (eV·Å⁻²)
+  k: 300.0                             # Harmonic bias strength (eV·Å⁻²)
 ```
 
 ---
