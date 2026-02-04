@@ -62,7 +62,7 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file or directory. | Required |
-| `-o, --out PATH` | Output file (if input is a file) or directory (if input is a directory). | `<input>_clean.pdb` |
+| `-o, --out PATH` | Output file (if input is a file) or directory (if input is a directory). | File input: `<input>_clean.pdb`; directory input: `<input>_clean/` |
 | `--recursive {True\|False}` | Process `*.pdb` files recursively when input is a directory. | `False` |
 | `--inplace {True\|False}` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
 | `--overwrite {True\|False}` | Allow overwriting existing output files. | `False` |
@@ -70,7 +70,8 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 
 ## Outputs
 - A PDB file with alternate locations removed:
-  - `<input>_clean.pdb` by default (when `-o/--out` is omitted)
+  - File input: `<input>_clean.pdb` by default (when `-o/--out` is omitted)
+  - Directory input: `<input>_clean/` directory by default (mirrors subpaths)
   - `OUTPUT.pdb` if `-o/--out` is provided
   - Original file overwritten if `--inplace` is set (backup saved as `<input>.pdb.bak`)
 

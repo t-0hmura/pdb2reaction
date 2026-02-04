@@ -178,6 +178,7 @@ SCAN_RFO_KW: Dict[str, Any] = {
 # -----------------------------------------------
 
 DMF_KW: Dict[str, Any] = {
+    "max_cycles": 300,
     "correlated": True,
     "sequential": True,
     "fbenm_only_endpoints": False,

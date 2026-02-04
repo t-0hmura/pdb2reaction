@@ -216,6 +216,14 @@ def _run_dmf_mep(
             image.calc = calc_uma
 
     mxflx.add_ipopt_options({"output_file": str(out_dir_path / "dmf_ipopt.out")})
+    max_cycles = dmf_cfg.get("max_cycles") if isinstance(dmf_cfg, dict) else None
+    if max_cycles is not None:
+        try:
+            max_iter = int(max_cycles)
+            if max_iter > 0:
+                mxflx.add_ipopt_options({"max_iter": max_iter})
+        except Exception:
+            pass
     mxflx.solve(tol="tight")
 
     calc_eval_kw = dict(calc_cfg)
@@ -541,6 +549,7 @@ def cli(
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
+        dmf_cfg["max_cycles"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
         gs_cfg["climb_lanczos"] = bool(climb)
         gs_cfg["fix_first"] = bool(fix_ends)

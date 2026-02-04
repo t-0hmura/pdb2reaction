@@ -1887,6 +1887,7 @@ def cli(
         gs_cfg["max_nodes"] = int(max_nodes)
         opt_cfg["max_cycles"] = int(max_cycles)
         opt_cfg["stop_in_when_full"] = int(max_cycles)
+        dmf_cfg["max_cycles"] = int(max_cycles)
         gs_cfg["climb"] = bool(climb)
         gs_cfg["climb_lanczos"] = bool(climb)
 

@@ -62,7 +62,7 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | 入力PDBファイルまたはディレクトリ | 必須 |
-| `-o, --out PATH` | 出力ファイル（入力がファイルの場合）またはディレクトリ（入力がディレクトリの場合） | `<input>_clean.pdb` |
+| `-o, --out PATH` | 出力ファイル（入力がファイルの場合）またはディレクトリ（入力がディレクトリの場合） | 入力がファイル: `<input>_clean.pdb`、入力がディレクトリ: `<input>_clean/` |
 | `--recursive {True\|False}` | 入力がディレクトリの場合、`*.pdb` ファイルを再帰的に処理 | `False` |
 | `--inplace {True\|False}` | 入力ファイルをその場で上書き（`.bak` バックアップを作成） | `False` |
 | `--overwrite {True\|False}` | 既存の出力ファイルの上書きを許可 | `False` |
@@ -70,7 +70,8 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 
 ## 出力
 - 代替位置が削除されたPDBファイル:
-  - デフォルト: `<input>_clean.pdb`（`-o/--out` が省略された場合）
+  - 入力がファイル: デフォルトは `<input>_clean.pdb`（`-o/--out` が省略された場合）
+  - 入力がディレクトリ: デフォルトは `<input>_clean/`（サブパスを保持）
   - `-o/--out` 指定時: `OUTPUT.pdb`
   - `--inplace` 設定時: 元のファイルを上書き（バックアップは `<input>.pdb.bak` として保存）
 

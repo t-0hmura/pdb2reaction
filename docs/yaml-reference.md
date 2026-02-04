@@ -63,7 +63,10 @@ calc:
   max_neigh: null                      # Maximum neighbors for graph construction
   radius: null                         # Cutoff radius for neighbor search
   r_edges: false                       # Store radial edges
+  workers: 1                           # UMA inference workers (workers>1 disables analytical Hessians)
+  workers_per_node: 1                  # Workers per node for parallel predictor
   out_hess_torch: true                 # Return Hessian as torch.Tensor
+  hessian_double: true                 # Assemble/return Hessian in float64
   # freeze_atoms: null                 # Inherited from geom.freeze_atoms; do not set directly
   hessian_calc_mode: FiniteDifference  # Hessian mode: "Analytical" or "FiniteDifference"
   return_partial_hessian: false        # Return only active-DOF Hessian block
@@ -73,6 +76,7 @@ calc:
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
 - `workers > 1` disables analytical Hessians
 - Charge/spin inherit `.gjf` template metadata when available
+- `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` regardless of YAML.
 - For `irc`, `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging
 
@@ -84,7 +88,11 @@ Shared optimizer controls used by both L-BFGS and RFO.
 
 ```yaml
 opt:
+  type: string                         # StringOptimizer-only (path-opt/path-search): optimizer type label
   thresh: gau                          # Convergence preset: gau_loose, gau, gau_tight, gau_vtight, baker, never
+  stop_in_when_full: 300               # StringOptimizer-only: early stop threshold when string is full
+  align: false                         # StringOptimizer-only: alignment toggle
+  scale_step: global                   # StringOptimizer-only: step scaling mode
   max_cycles: 10000                    # Maximum optimizer iterations
   print_every: 100                     # Logging stride
   min_step_norm: 1.0e-08               # Minimum step norm for acceptance
@@ -99,6 +107,8 @@ opt:
   line_search: true                    # Enable line search
   dump: false                          # Dump trajectory/restart data
   dump_restart: false                  # Dump restart checkpoints
+  reparam_thresh: 0.0                  # StringOptimizer-only: reparameterization threshold
+  coord_diff_thresh: 0.0               # StringOptimizer-only: coordinate difference threshold
   prefix: ""                           # Filename prefix
   out_dir: ./result_opt/               # Output directory
 ```
@@ -198,6 +208,7 @@ Direct Max Flux settings for MEP optimization.
 
 ```yaml
 dmf:
+  max_cycles: 300                      # Maximum DMF/IPOPT iterations (overridden by --max-cycles)
   correlated: true                     # Correlated DMF propagation
   sequential: true                     # Sequential DMF execution
   fbenm_only_endpoints: false          # Run FB-ENM beyond endpoints

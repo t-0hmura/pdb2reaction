@@ -63,8 +63,11 @@ calc:
   max_neigh: null                      # Maximum neighbors for graph construction
   radius: null                         # Cutoff radius for neighbor search
   r_edges: false                       # Store radial edges
+  workers: 1                           # UMA inference workers (workers>1 disables analytical Hessians)
+  workers_per_node: 1                  # Workers per node for parallel predictor
   out_hess_torch: true                 # Return Hessian as torch.Tensor
-  freeze_atoms: null                   # Calculator-level frozen atoms (usually set via geom)
+  hessian_double: true                 # Assemble/return Hessian in float64
+  # freeze_atoms: null                 # geom.freeze_atoms から継承されるため直接指定しない
   hessian_calc_mode: FiniteDifference  # Hessian mode: "Analytical" or "FiniteDifference"
   return_partial_hessian: false        # Return only active-DOF Hessian block
 ```
@@ -73,6 +76,7 @@ calc:
 - VRAMが十分な場合は `hessian_calc_mode: Analytical` を推奨します。
 - `workers > 1` の場合、解析ヘシアンは無効化されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
+- `freq` は既定で `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = false` を常に強制します（YAMLより優先）。
 - `irc` では `calc.return_partial_hessian` が YAML/CLI マージ後に `false` へ強制されます。
 
@@ -84,7 +88,11 @@ L-BFGS/RFOで共通の最適化設定。
 
 ```yaml
 opt:
+  type: string                         # StringOptimizer 専用（path-opt/path-search）：optimizer type label
   thresh: gau                          # Convergence preset: gau_loose, gau, gau_tight, gau_vtight, baker, never
+  stop_in_when_full: 300               # StringOptimizer 専用：string が満たされたときの早期停止閾値
+  align: false                         # StringOptimizer 専用：alignment の有効/無効
+  scale_step: global                   # StringOptimizer 専用：step scaling モード
   max_cycles: 10000                    # Maximum optimizer iterations
   print_every: 100                     # Logging stride
   min_step_norm: 1.0e-08               # Minimum step norm for acceptance
@@ -99,6 +107,8 @@ opt:
   line_search: true                    # Enable line search
   dump: false                          # Dump trajectory/restart data
   dump_restart: false                  # Dump restart checkpoints
+  reparam_thresh: 0.0                  # StringOptimizer 専用：再パラメータ化の閾値
+  coord_diff_thresh: 0.0               # StringOptimizer 専用：座標差分の閾値
   prefix: ""                           # Filename prefix
   out_dir: ./result_opt/               # Output directory
 ```
@@ -198,6 +208,7 @@ Direct Max Flux（DMF）によるMEP最適化。
 
 ```yaml
 dmf:
+  max_cycles: 300                      # DMF/IPOPT の最大反復数（--max-cycles で上書き）
   correlated: true                     # Correlated DMF propagation
   sequential: true                     # Sequential DMF execution
   fbenm_only_endpoints: false          # Run FB-ENM beyond endpoints

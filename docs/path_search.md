@@ -151,6 +151,7 @@ opt:
   out_dir: ./result_path_search/   # output directory
   print_every: 10            # logging stride
 dmf:
+  max_cycles: 300            # maximum DMF/IPOPT iterations
   correlated: true           # correlated DMF propagation
   sequential: true           # sequential DMF execution
   fbenm_only_endpoints: false   # run FB-ENM beyond endpoints
