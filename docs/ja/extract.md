@@ -93,7 +93,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `-c, --center SPEC` | 基質指定（PDB パス、残基ID、または残基名） | 必須 |
 | `-o, --output PATH...` | ポケット PDB出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
-| `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0` |
+| `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-H2O {True\|False}` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
 | `--exclude-backbone {True\|False}` | 非基質アミノ酸の主鎖原子を除去 | `True` |
 | `--add-linkH {True\|False}` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |

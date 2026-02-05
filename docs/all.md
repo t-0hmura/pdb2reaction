@@ -103,7 +103,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt True`). | Required |
 | `--out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files {True\|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump {True\|False}` | Dump MEP (GSM/DMF) trajectories. | `False` |
+| `--dump {True\|False}` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path_search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--dump False`. | `False` |
 | `--args-yaml FILE` | YAML forwarded unchanged to all subcommands. | _None_ |
 
 ### Charge/Spin Options
@@ -137,7 +137,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb {True\|False}` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
-| `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`). | `gau` |
+| `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt {True\|False}` | Pre-optimize pocket endpoints before MEP search. | `True` |
 | `--refine-path {True\|False}` | If True, run recursive `path_search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
@@ -156,8 +156,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--thermo {True\|False}` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
 | `--dft {True\|False}` | Run single-point DFT on R/TS/P. | `False` |
 | `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC optimization. | _None_ |
-| `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
+| `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten-imag-mode {True\|False}` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
+
+TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`heavy`).
 
 ### TSOPT Overrides
 

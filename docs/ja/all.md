@@ -106,7 +106,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt True` のみ単一入力可） | 必須 |
 | `--out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
 | `--convert-files {True\|False}` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
-| `--dump {True\|False}` | MEP(GSM/DMF)軌跡を出力 | `False` |
+| `--dump {True\|False}` | MEP(GSM/DMF)軌跡を出力。`path_search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--dump False` で無効化。 | `False` |
 | `--args-yaml FILE` | 全サブコマンドへそのまま転送されるYAML | _None_ |
 
 ### 電荷・スピンオプション
@@ -140,7 +140,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--max-cycles INT` | MEP最大最適化サイクル | `300` |
 | `--climb {True\|False}` | 最初のセグメントでTSクライミングを有効化 | `True` |
 | `--opt-mode [light\|heavy]` | 最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
-| `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`） | `gau` |
+| `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt {True\|False}` | MEP前にポケット端点を事前最適化 | `True` |
 | `--refine-path {True\|False}` | True の場合は再帰的 `path_search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
@@ -159,8 +159,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--thermo {True\|False}` | R/TS/Pで振動解析を実行 | `False` |
 | `--dft {True\|False}` | R/TS/PでDFT一点計算を実行 | `False` |
 | `--opt-mode-post [light\|heavy]` | TSOPT/IRC後最適化のプリセット | _None_ |
-| `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット | `baker` |
+| `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten-imag-mode {True\|False}` | 余分な虚数モードのフラット化 | `False` |
+
+TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`heavy`）の順で決まります。
 
 ### TSOPT 上書き
 

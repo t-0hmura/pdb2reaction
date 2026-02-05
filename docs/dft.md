@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Runs single-point DFT with GPU4PySCF (or CPU PySCF fallback). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energies and population analysis (Mulliken, meta-Löwdin, IAO charges).
+> **Summary:** Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-TZVPD. Results include energies and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 `pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
@@ -34,7 +34,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
 2. **Configuration merge** – Defaults → CLI → YAML (`dft` block). YAML overrides take precedence over CLI flags. Charge/multiplicity inherit `.gjf` metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the structure is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted.
-3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` tries GPU4PySCF before falling back; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
+3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options

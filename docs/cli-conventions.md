@@ -81,7 +81,7 @@ When selecting by residue name, if multiple residues share the same name, **all*
 5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge`)
 
 ```{note}
-`--ligand-charge` derivation is only applied for PDB inputs and only when charge is **not yet resolved**. If a `.gjf` template already provides a charge value before `--ligand-charge` is evaluated, the template charge takes precedence and `--ligand-charge` will not override it.
+`--ligand-charge` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. If a `.gjf` template already provides a charge value before `--ligand-charge` is evaluated, the template charge takes precedence and `--ligand-charge` will not override it.
 ```
 
 ```{tip}

@@ -609,15 +609,12 @@ def cli(
                         prepared_input,
                         ref_pdb_path=ref_pdb,
                         out_pdb_path=stage_dir / "scan.pdb" if needs_pdb else None,
-                        out_gjf_path=stage_dir / "scan.gjf" if needs_gjf else None,
                         context="stage trajectory",
                     ):
-                        if needs_pdb or needs_gjf:
+                        if needs_pdb:
                             written = []
                             if needs_pdb:
                                 written.append("'scan.pdb'")
-                            if needs_gjf:
-                                written.append("'scan.gjf'")
                             click.echo(f"[convert] Wrote {', '.join(written)}.")
 
                 final_xyz = stage_dir / "result.xyz"

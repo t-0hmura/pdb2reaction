@@ -81,7 +81,7 @@ CLI は真値として `True`, `true`, `TRUE`, `1`, `yes`, `Yes`, `y`, `t` を�
 5. デフォルト: なし（未解決なら中断。`-q`/`.gjf` 電荷メタデータ、または PDB の `--ligand-charge` で解決）
 
 ```{note}
-`--ligand-charge` による導出は、PDB 入力のみで電荷が**まだ解決されていない**場合に適用されます。`.gjf` テンプレートが `--ligand-charge` の評価前に電荷値を提供している場合、テンプレートの電荷が優先され、`--ligand-charge` は上書きしません。
+`--ligand-charge` による導出は、PDB 入力のみ（`--ref-pdb` を付けた XYZ/GJF 入力を含む）で電荷が**まだ解決されていない**場合に適用されます。`.gjf` テンプレートが `--ligand-charge` の評価前に電荷値を提供している場合、テンプレートの電荷が優先され、`--ligand-charge` は上書きしません。
 ```
 
 ```{tip}
