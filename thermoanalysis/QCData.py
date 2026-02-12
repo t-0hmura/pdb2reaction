@@ -1,23 +1,9 @@
-from pathlib import Path
 import re
+from collections.abc import Mapping
 
-try:
-    import cclib
-except ModuleNotFoundError:
-    cclib = None
-
-try:
-    import h5py
-except ModuleNotFoundError:
-    h5py = None
 import numpy as np
 
-from thermoanalysis.constants import C, ANG2M, AMU2KG, PLANCK, KB, AU2EV, ANG2AU
-from thermoanalysis.parser import parse
-
-
-class CCLibParserError(Exception):
-    pass
+from thermoanalysis.constants import C, ANG2M, AMU2KG, PLANCK, KB
 
 
 class QCData:
@@ -29,30 +15,12 @@ class QCData:
     ):
         self.point_group = point_group.lower()
         self.symmetry_number = self.get_symmetry_number()
-
-        try:
-            inp_path = Path(inp)
-        except TypeError:
-            inp_path = None
-
-        if inp_path and inp_path.exists():
-            inp = str(inp)
-            self.fn = inp
-            # Try to read as pysisyphus HDF5 Hessian
-            if inp.endswith(".h5"):
-                data = self.from_pysis_hdf5_hessian(inp)
-
-            # Try cclib
-            try:
-                data = self.from_cclib(inp)
-            # Try own parser
-            except CCLibParserError:
-                with open(inp) as handle:
-                    text = handle.read()
-                data = self.from_parser(text)
-        # Treat inp as dict
-        else:
-            data = inp
+        if not isinstance(inp, Mapping):
+            raise TypeError(
+                "QCData in pdb2reaction expects a mapping with keys: "
+                "coords3d, wavenumbers, scf_energy, masses, mult."
+            )
+        data = dict(inp)
 
         if mult is not None:
             data["mult"] = mult
@@ -64,45 +32,6 @@ class QCData:
         I = self.inertia_tensor()
         w, v = np.linalg.eigh(I)
         self._linear = (abs(w[0]) < 1e-8) and (abs(w[1] - w[2]) < 1e-8)
-
-    def from_pysis_hdf5_hessian(self, fn):
-        if h5py is None:
-            raise CCLibParserError("h5py is required to read .h5 Hessians.")
-        with h5py.File(fn, "r") as handle:
-            data = {
-                "masses": handle["masses"][:],
-                "wavenumbers": handle["vibfreqs"][:],
-                "coords": handle["coords3d"][:] / ANG2AU,  # in Angstrom
-                "scf_energy": handle.attrs["energy"],
-                "mult": handle.attrs["mult"],
-            }
-        return data
-
-    def from_cclib(self, fn):
-        if cclib is None:
-            raise CCLibParserError("cclib is required to parse quantum chemistry outputs.")
-        parser = cclib.io.ccopen(fn)
-        try:
-            data = parser.parse()
-        except:
-            raise CCLibParserError
-
-        try:
-            wavenumbers = data.vibfreqs
-        # Single atoms don't vibrate
-        except AttributeError:
-            wavenumbers = list()
-        results = {
-            "coords3d": data.atomcoords[-1],  # in Angstrom
-            "wavenumbers": wavenumbers,
-            "scf_energy": data.scfenergies[-1] / AU2EV,
-            "masses": data.atommasses,
-            "mult": data.mult,
-        }
-        return results
-
-    def from_parser(self, fn):
-        return parse(fn)
 
     def set_data(self, data):
         expect = set("coords3d wavenumbers scf_energy masses mult".split())
