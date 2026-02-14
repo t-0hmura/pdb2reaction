@@ -2,8 +2,6 @@
 
 This page explains the key terms in pdb2reaction—pockets, templates, segments, and images—and how the `all` command ties together the subcommands.
 
-> **New to pdb2reaction?** Start with [Getting Started](getting-started.md) for installation and your first run.
-
 ---
 
 ## Workflow at a glance

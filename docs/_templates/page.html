@@ -17,38 +17,64 @@
   }
 
   function filterSidebar() {
-    var topLevel = document.querySelector('.sidebar-tree > ul');
-    if (!topLevel) return;
-    var topItems = topLevel.querySelectorAll(':scope > li');
-    topItems.forEach(function(li) {
-      var link = li.querySelector(':scope > a');
-      if (!link) return;
-      var href = link.getAttribute('href') || '';
-      var isJaSection = href.includes('ja/') || href.includes('ja%2F');
-      var isEnglishFromJa = href.startsWith('../');
-      var nestedUl = li.querySelector(':scope > ul');
+    var tree = document.querySelector('.sidebar-tree');
+    if (!tree) return;
 
-      // Reset language-root marker every run to keep behavior idempotent.
-      li.classList.remove('lang-nav-root');
+    var groups = tree.querySelectorAll(':scope > ul');
+    groups.forEach(function(ul) {
+      var topItems = ul.querySelectorAll(':scope > li');
+      var visibleCount = 0;
 
-      if (isJa) {
-        // Japanese page: hide English items (relative ../ links).
-        if (isEnglishFromJa) {
-          setHidden(li, true);
-          return;
+      topItems.forEach(function(li) {
+        var link = li.querySelector(':scope > a');
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        var isJaSection = href.includes('ja/') || href.includes('ja%2F');
+        var isEnglishFromJa = href.startsWith('../');
+        var nestedUl = li.querySelector(':scope > ul');
+
+        // Reset language-root marker every run to keep behavior idempotent.
+        li.classList.remove('lang-nav-root');
+
+        if (isJa) {
+          // Japanese page: hide English items (relative ../ links).
+          if (isEnglishFromJa) {
+            setHidden(li, true);
+            return;
+          }
+          setHidden(li, false);
+
+          // Keep JP wrapper in place and avoid DOM reordering.
+          // We only mark it and keep children expanded.
+          if (nestedUl) {
+            li.classList.add('lang-nav-root');
+            var checkbox = li.querySelector(':scope > input.toctree-checkbox');
+            if (checkbox) checkbox.checked = true;
+          }
+        } else {
+          // English page: hide Japanese section.
+          setHidden(li, isJaSection);
         }
-        setHidden(li, false);
 
-        // Keep JP wrapper in place and avoid DOM reordering.
-        // We only mark it and keep children expanded.
-        if (nestedUl) {
-          li.classList.add('lang-nav-root');
-          var checkbox = li.querySelector(':scope > input.toctree-checkbox');
-          if (checkbox) checkbox.checked = true;
+        if (!li.classList.contains('lang-hidden')) {
+          visibleCount += 1;
         }
-      } else {
-        // English page: hide Japanese section.
-        setHidden(li, isJaSection);
+      });
+
+      // Hide empty groups (and their captions) after language filtering.
+      var caption = ul.previousElementSibling;
+      var captionText = '';
+      if (caption) {
+        var captionTextEl = caption.querySelector('.caption-text');
+        captionText = (captionTextEl ? captionTextEl.textContent : caption.textContent || '').trim().toLowerCase();
+      }
+      var hideGroup = visibleCount === 0;
+      if (isJa && captionText === 'language') {
+        hideGroup = true;
+      }
+      setHidden(ul, hideGroup);
+      if (caption && caption.classList && caption.classList.contains('caption')) {
+        setHidden(caption, hideGroup);
       }
     });
   }
@@ -94,6 +120,8 @@
         <button class="theme-toggle">
           <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
           <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
@@ -166,6 +194,8 @@
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>

@@ -14,6 +14,11 @@ tutorial
 concepts
 troubleshooting
 cli-conventions
+ja/getting-started
+ja/tutorial
+ja/concepts
+ja/troubleshooting
+ja/cli-conventions
 ```
 
 ```{toctree}
@@ -37,6 +42,22 @@ irc
 dft
 trj2fig
 energy-diagram
+ja/all
+ja/extract
+ja/fix_altloc
+ja/add_elem_info
+ja/opt
+ja/tsopt
+ja/path_opt
+ja/path_search
+ja/scan
+ja/scan2d
+ja/scan3d
+ja/freq
+ja/irc
+ja/dft
+ja/trj2fig
+ja/energy-diagram
 ```
 
 ```{toctree}
@@ -47,6 +68,9 @@ energy-diagram
 yaml-reference
 uma_pysis
 glossary
+ja/yaml-reference
+ja/uma_pysis
+ja/glossary
 ```
 
 ```{toctree}

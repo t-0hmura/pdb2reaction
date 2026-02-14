@@ -6,7 +6,7 @@
 
 ```{toctree}
 :maxdepth: 2
-:caption: ガイド
+:caption: Guides
 :hidden:
 
 getting-started
@@ -18,7 +18,7 @@ cli-conventions
 
 ```{toctree}
 :maxdepth: 2
-:caption: コマンド
+:caption: Commands
 :hidden:
 
 all
@@ -41,7 +41,7 @@ energy-diagram
 
 ```{toctree}
 :maxdepth: 2
-:caption: リファレンス
+:caption: Reference
 :hidden:
 
 yaml-reference
