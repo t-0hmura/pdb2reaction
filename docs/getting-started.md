@@ -4,7 +4,7 @@
 
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** using machine-learning interatomic potentials (MLIPs).
 
-In most cases, a **single command** like the one below is enough to model an enzymatic reaction pathway:
+In many workflows, a **single command** like the one below is enough to generate a useful **first-pass** reaction path:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
@@ -16,11 +16,15 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 ```
 ---
 
-Given **(i) two or more full protein–ligand PDBs** `.pdb` (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
+Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
 
 - extracts an **active-site pocket** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
+
+```{important}
+Treat single-command TS outputs as initial candidates. For enzyme reactions, iterative refinement is common (endpoint quality, pocket definition, constraints, scan targets), and TS validation with both `freq` and `irc` is required before interpretation.
+```
 
 At the UMA stage, calculations use Meta's UMA machine-learning interatomic potential (MLIP).
 
@@ -35,7 +39,8 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to lar
 
 ```{tip}
 If you're new to the project, read [Concepts & Workflow](concepts.md) first.
-If you hit an error during setup or runtime, jump to [Troubleshooting](troubleshooting.md).
+If you encounter an error during setup or runtime, refer to [Troubleshooting](troubleshooting.md).
+For worked examples, see [Tutorial](tutorial.md) (bezA enzyme case study + smoke test matrix).
 ```
 
 ### CLI conventions
@@ -48,6 +53,8 @@ If you hit an error during setup or runtime, jump to [Troubleshooting](troublesh
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` |
 
 For full details, see [CLI Conventions](cli-conventions.md).
+
+`path-search` naming note: the CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
 
 
 ### Recommended tools for hydrogen addition
@@ -200,7 +207,7 @@ pdb2reaction all [OPTIONS] ...
 
 The `all` command runs the full pipeline—cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT—in a single invocation.
 
-All high‑level workflows share two important options when you want cluster extraction:
+All high-level workflows share two important options when you use cluster extraction:
 
 - `-i/--input`: one or more **full structures** (reactant, intermediate(s), product).
 - `-c/--center`: how to define the **substrate / extraction center** (e.g., residue names or residue IDs).
@@ -231,7 +238,7 @@ Behavior:
 
 - takes two or more **full systems** in reaction order,
 - extracts catalytic cluster models for each structure,
-- performs a **recursive MEP search** via `path_search` by default,
+- performs a **recursive MEP search** via `path-search` by default (outputs under `path_search/`),
 - optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
@@ -270,7 +277,7 @@ Key points:
   - automatically remapped to the cluster-model indices.
 - Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals after a single flag (repeated flags are not accepted).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
-- The default `all` workflow refines the concatenated stages with recursive `path_search`.
+- The default `all` workflow refines the concatenated stages with recursive `path-search`.
 - With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
 
 This mode is useful for building reaction paths starting from a single structure.
@@ -350,7 +357,7 @@ They typically contain:
 - per‑segment barrier heights and key bond changes,
 - energies from UMA, thermochemistry, and DFT post‑processing (where enabled).
 
-Each `path_search` segment directory also gets its own `summary.log` and `summary.yaml`, so you can inspect local refinements independently.
+Each segment directory under `path_search/` also gets its own `summary.log` and `summary.yaml`, so you can inspect local refinements independently.
 
 ---
 
@@ -373,6 +380,7 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `freq` | Vibrational analysis | [freq](freq.md) |
 | `dft` | Single-point DFT | [dft](dft.md) |
 | `trj2fig` | Plot energy profiles | [trj2fig](trj2fig.md) |
+| `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy-diagram.md) |
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
 ```{important}

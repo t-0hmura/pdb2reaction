@@ -1,10 +1,10 @@
-## Test Data and Smoke Tests
+## Test Data and Smoke Tests (Developer-Oriented)
 
 The repository includes a small `test/` folder with sample inputs and a
 convenience script for quick smoke checks:
 
 ```
-pdb2reaction/test/
+test/
 ├── run.sh          # Batch of CLI smoke tests (redirects output to test*.out)
 ├── *.pdb/*.xyz/*.gjf
 └── input.yaml      # Example YAML overrides
@@ -15,13 +15,13 @@ pdb2reaction/test/
 From the repository root:
 
 ```bash
-bash pdb2reaction/test/run.sh
+bash test/run.sh
 ```
 
 Or from inside the `test/` directory:
 
 ```bash
-cd pdb2reaction/test
+cd test
 bash run.sh
 ```
 
@@ -31,3 +31,10 @@ Notes:
 - Some tests use GPU UMA models; make sure CUDA, PyTorch, and UMA are available
   and that you have authenticated to Hugging Face (see Getting Started).
 - The DFT test uses `--engine cpu` to avoid GPU4PySCF requirements.
+
+### Scope of this file
+
+This file is intentionally concise and aimed at regression/smoke checking for developers.
+
+For user-facing walkthroughs and case selection:
+- `docs/tutorial.md` (worked examples: bezA case study + smoke test matrix)

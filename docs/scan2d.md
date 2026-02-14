@@ -126,8 +126,7 @@ out_dir/ (default: ./result_scan2d/)
   overrides. **Multiplicity inherits `.gjf` metadata when available, otherwise defaults to `1`.**
 
 ## YAML configuration (`--args-yaml`)
-A minimal example (extend with the same keys documented in [`opt`](opt.md#yaml-
-configuration-args-yaml)):
+A minimal example (extend with the same keys documented in [`opt`](opt.md#yaml-configuration-args-yaml)):
 
 ```yaml
 geom:

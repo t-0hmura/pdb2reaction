@@ -4,7 +4,11 @@
 
 `pdb2reaction all` runs the entire workflow end-to-end:
 
-pocket extraction → (optional) staged UMA scan → recursive MEP search (`path_search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
+pocket extraction → (optional) staged UMA scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
+
+```{important}
+`--tsopt True` produces **TS candidates**. Always validate them (imaginary mode + connectivity) with `freq` and `irc` before mechanistic interpretation.
+```
 
 It supports three common modes:
 
@@ -28,7 +32,7 @@ pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
     --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links True \
     --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
-    --out-dir result_all_${date} --tsopt True --thermo True --dft True
+    --out-dir ./result_all --tsopt True --thermo True --dft True
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
@@ -54,9 +58,9 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on pockets (recursive GSM/DMF)**
-   - Executes `path_search` by default using the extracted pockets (or the original entire structures if extraction is skipped). Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
+   - Executes `path-search` by default using the extracted pockets (or the original entire structures if extraction is skipped). Outputs are written under `<out-dir>/path_search/`. Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
    - Use `--refine-path False` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
-   - For multi-input PDB runs, the full-system templates are automatically passed to `path_search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
+   - For multi-input PDB runs, the full-system templates are automatically passed to `path-search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
 4. **Merge pockets back to the full systems**
    - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
@@ -103,7 +107,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt True`). | Required |
 | `--out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files {True\|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump {True\|False}` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path_search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--dump False`. | `False` |
+| `--dump {True\|False}` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--dump False`. | `False` |
 | `--args-yaml FILE` | YAML forwarded unchanged to all subcommands. | _None_ |
 
 ### Charge/Spin Options
@@ -139,7 +143,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode [light\|heavy]` | Optimizer preset (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt {True\|False}` | Pre-optimize pocket endpoints before MEP search. | `True` |
-| `--refine-path {True\|False}` | If True, run recursive `path_search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--refine-path {True\|False}` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### UMA Calculator Options
 
@@ -235,7 +239,7 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 
 ## Notes
 - Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/MEP/TSOPT/DFT.
-- Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path_search` is intentionally hidden in this wrapper.
+- Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
 - Convergence presets: `--thresh` defaults to `gau`; `--thresh-post` defaults to `baker`.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
@@ -248,7 +252,7 @@ The same YAML file is forwarded unchanged to **every** invoked subcommand. Each 
 
 | Subcommand | YAML Sections |
 |------------|---------------|
-| [`path_search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
+| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |

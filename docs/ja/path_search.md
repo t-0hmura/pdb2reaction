@@ -3,9 +3,15 @@
 
 ## 概要
 
-> **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つ以上の構造から連続的な MEP を構築します。結合変化のある領域を自動的に精密化し、最高エネルギー画像（HEI）を TS 候補として特定します。
+> **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つ以上の構造から連続的な MEP を構築します。結合変化のある領域を自動的に精密化し、最高エネルギー画像（HEI）を TS 候補として特定します。HEI は freq/IRC での検証が必要です。
 
-反応座標に沿って順序付けられた**2つ以上**の構造にわたって連続的な最小エネルギー経路（MEP）を構築します。`path-search` はGSM**またはDMF**セグメントを連鎖させ、共有結合変化のある領域のみを選択的に精密化し、（オプションで）PDB ポケットをフルサイズテンプレートにマージします。`--mep-mode` でどちらを選んでも同じ再帰ワークフローが動作し、**GSMがデフォルト**です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。フォーマット対応の変換は、PDB 参照がある場合に軌跡を `.pdb` に、Gaussianテンプレートがある場合にXYZスナップショット（例: HEI）を `.gjf` にミラーします（`--convert-files` 有効時、デフォルト）。XYZ/GJF入力では `--ref-pdb` がポケット PDB トポロジーを提供しXYZ座標を保持するため、`--ref-full-pdb` が与えられればフルテンプレートマージが可能になります（XYZ/GJF入力ではPDBコンパニオン自体は生成されません）。
+反応座標に沿って順序付けられた**2つ以上**の構造にわたって連続的な最小エネルギー経路（MEP）を構築します。結合変化のある領域は自動的に精密化され、最高エネルギー画像（HEI）が TS 候補として報告されます。
+
+`path-search` は GSM **または** DMF セグメントを連鎖させ、共有結合変化のある領域のみを選択的に精密化し、（オプションで）PDB ポケットをフルサイズテンプレートにマージします。`--mep-mode` でどちらを選んでも同じ再帰ワークフローが動作し、**GSM がデフォルト**です。デフォルトの `--opt-mode` は **light**（LBFGS）で、RFO を使用する場合は `--opt-mode heavy` を指定します。
+
+`--convert-files` が有効（デフォルト）な場合、PDB 参照があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し、XYZ 座標を保持したまま `--ref-full-pdb` でフルテンプレートマージを行えます（XYZ/GJF入力では PDB コンパニオン自体は生成されません）。
+
+HEI が得られた時点では TS 検証は完了していません。続けて [tsopt](tsopt.md)、[freq](freq.md)、[irc](irc.md) で確認してください。
 
 ## 使用法
 
@@ -95,7 +101,7 @@ out_dir/ (デフォルト: ./result_path_search/)
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`-q` が省略され `--ligand-charge` が与えられている場合、入力は酵素–基質複合体として扱われ、PDB 入力では `extract.py` の電荷サマリーで総電荷が導出されます。明示的な `-q` は常に優先されます。`.gjf` 以外で `--ligand-charge` が使えない場合は実行が中断され、多重度は省略時に `1` がデフォルトです。
 
 ## YAML 設定（`--args-yaml`）
-YAML ルートはマッピングでなければなりません。YAML 値はCLIを上書きします。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path_opt` に記載のStringOptimizer設定を継承します。
+YAML ルートはマッピングでなければなりません。YAML 値はCLIを上書きします。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 

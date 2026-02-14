@@ -95,3 +95,16 @@ h4 { font-size: 1.15rem; }
 .lang-hidden {
     display: none !important;
 }
+
+/* Keep JA navigation stable without DOM node reordering */
+body[data-lang="ja"] .sidebar-tree > ul > li.lang-nav-root > a,
+body[data-lang="ja"] .sidebar-tree > ul > li.lang-nav-root > label,
+body[data-lang="ja"] .sidebar-tree > ul > li.lang-nav-root > input.toctree-checkbox {
+    display: none !important;
+}
+
+body[data-lang="ja"] .sidebar-tree > ul > li.lang-nav-root > ul {
+    display: block !important;
+    margin: 0;
+    padding-left: 0;
+}

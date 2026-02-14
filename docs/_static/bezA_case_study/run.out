@@ -1,0 +1,2370 @@
+
+====== [all] Stage 1/3 — Active-site pocket extraction (multi-structure union when applicable) started ======
+[extract] Substrate residues matched: resseq [320, 321, 322]
+[extract] Raw atoms: 507
+[extract] Atoms after truncation: 375
+[extract] Link-H to add: 22
+[extract] Binding-Pocket (Active Site) + link-H saved to ./bezA_case_study/pockets/pocket_r.pdb
+[extract] Per-resname ligand charges: GPP: -3, SAM: 1
+[extract] Net protein charge: +1
+[extract] Net ligand charge: -2
+[extract] Ion charges (each):
+   :322 MG  ->  +2
+[extract] Net ion charge: +2
+[extract] Total pocket charge: +1
+[all] Pocket files:
+  - ./bezA_case_study/pockets/pocket_r.pdb
+[all] Charge summary from extractor (model #1):
+  Protein: +1,  Ligand: -2,  Ions: +2,  Total: +1
+
+
+====== [all] Stage 1b — Staged scan on input started ======
+
+[all] Remapped --scan-lists indices from the full PDB to the pocket ordering.
+
+[all] Invoking scan with arguments:
+  -i ./bezA_case_study/pockets/pocket_r.pdb -q 1 -m 1 --out-dir ./bezA_case_study/scan --freeze-links True --convert-files True --preopt True --endopt True --opt-mode light --ref-pdb ./bezA_case_study/pockets/pocket_r.pdb --args-yaml /tmp/tmp_path_search_dl4uu7f7/args_freeze_atoms.yaml --scan-lists [(275,334,1.6)] [(335,133,0.9)]
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: false
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+opt
+---
+thresh: gau
+max_cycles: 10000
+print_every: 100
+min_step_norm: 1.0e-08
+assert_min_step: true
+rms_force: null
+rms_force_only: false
+max_force_only: false
+force_only: false
+converge_to_geom_rms_thresh: 0.05
+overachieve_factor: 0.0
+check_eigval_structure: false
+line_search: true
+dump: false
+dump_restart: false
+prefix: ''
+out_dir: ./bezA_case_study/scan
+
+lbfgs
+-----
+keep_last: 7
+beta: 1.0
+gamma_mult: false
+max_step: 0.3
+control_step: true
+double_damp: true
+mu_reg: null
+max_mu_reg_adaptions: 10
+
+bias
+----
+k: 300.0
+
+bond
+----
+device: cuda
+bond_factor: 1.2
+margin_fraction: 0.05
+delta_fraction: 0.05
+
+[scan] Received 2 stage(s).
+[scan] PDB atom details for scanned pairs:
+        legend:    id atom res  resid el
+  Stage 1:
+    pair 1 i:   275 CS1  SAM   320 C 
+           j:   334 C7   GPP   321 C 
+  Stage 2:
+    pair 1 i:   335 H11  GPP   321 H 
+           j:   133 OE2  GLU   186 O 
+[preopt] Unbiased relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.057079     0.008828     0.057079     0.008828       124.06 
+       -----------------------------------------------------------------------------------
+        100    -0.000121*    0.000888     0.000145*    0.004323     0.000729*        0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000085*    0.001498     0.000120*    0.007503     0.000599*        0.13 
+       -----------------------------------------------------------------------------------
+        300    -0.000083*    0.000981     0.000118*    0.005125     0.000592*        0.13 
+       -----------------------------------------------------------------------------------
+        400    -0.000113*    0.001896     0.000141*    0.009503     0.000698*        0.13 
+       -----------------------------------------------------------------------------------
+        500    -0.000119*    0.000932     0.000099*    0.002453     0.000426*        0.13 
+       -----------------------------------------------------------------------------------
+        600    -0.000029*    0.000548     0.000072*    0.002053     0.000361*        0.13 
+       -----------------------------------------------------------------------------------
+        700    -0.000026*    0.000506     0.000066*    0.001854     0.000331*        0.13 
+        733    -0.000023*    0.000439*    0.000064*    0.001798*    0.000324*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000439 hartree/bohr
+        	rms(forces,cartesian): 0.000064 hartree/bohr
+        	energy: -9936.28315568 hartree
+       Wrote final, hopefully optimized, geometry to 'preopt__final_geometry.xyz'
+[write] Wrote './bezA_case_study/scan/preopt/result.xyz'.
+[convert] Wrote 'result.pdb'.
+[stage] Stage 1/2
+Targets (i,j,target Å): [(274, 333, 1.6)]
+[stage 1] initial distances (Å) = ['3.009']
+[stage 1] target distances  (Å) = ['1.600']
+[stage 1] steps N = 8
+[stage 1] step 1/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.749974     0.042101     0.300000     0.016841         0.13 
+         55    -0.000027*    0.000390*    0.000066*    0.001687*    0.000326*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000390 hartree/bohr
+        	rms(forces,cartesian): 0.000066 hartree/bohr
+        	energy: -9936.28493308 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0001__final_geometry.xyz'
+[stage 1] step 2/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.756285     0.042102     0.300000     0.016701         0.13 
+         46    -0.000022*    0.000381*    0.000064*    0.001765*    0.000306*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000381 hartree/bohr
+        	rms(forces,cartesian): 0.000064 hartree/bohr
+        	energy: -9936.28278979 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0002__final_geometry.xyz'
+[stage 1] step 3/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.757986     0.042096     0.300000     0.016661         0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000058*    0.009007     0.000497     0.009049     0.001203         0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000023*    0.000505     0.000057*    0.002740     0.000264*        0.13 
+        214    -0.000023*    0.000307*    0.000053*    0.001776*    0.000243*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000307 hartree/bohr
+        	rms(forces,cartesian): 0.000053 hartree/bohr
+        	energy: -9936.29085117 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0003__final_geometry.xyz'
+[stage 1] step 4/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.733813     0.042100     0.300000     0.017211         0.13 
+         51    -0.000012*    0.000340*    0.000048*    0.001708*    0.000226*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000340 hartree/bohr
+        	rms(forces,cartesian): 0.000048 hartree/bohr
+        	energy: -9936.28083470 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0004__final_geometry.xyz'
+[stage 1] step 5/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.741543     0.042113     0.300000     0.017037         0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.001127*    0.004543     0.000339     0.009357     0.001500         0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000019*    0.000574     0.000054*    0.003751     0.000515*        0.13 
+       -----------------------------------------------------------------------------------
+        300    -0.000011*    0.000546     0.000044*    0.002821     0.000224*        0.13 
+       -----------------------------------------------------------------------------------
+        400    -0.000010*    0.000415*    0.000039*    0.003873     0.000353*        0.13 
+       -----------------------------------------------------------------------------------
+        500    -0.000010*    0.000466     0.000041*    0.002378     0.000205*        0.13 
+       -----------------------------------------------------------------------------------
+        600    -0.000067*    0.000471     0.000038*    0.002378     0.000181*        0.13 
+        637    -0.000005*    0.000323*    0.000035*    0.001755*    0.000169*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000323 hartree/bohr
+        	rms(forces,cartesian): 0.000035 hartree/bohr
+        	energy: -9936.31354863 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0005__final_geometry.xyz'
+[stage 1] step 6/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.730800     0.042116     0.300000     0.017289         0.13 
+         32    -0.000017*    0.000292*    0.000039*    0.001697*    0.000184*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000292 hartree/bohr
+        	rms(forces,cartesian): 0.000039 hartree/bohr
+        	energy: -9936.33085936 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0006__final_geometry.xyz'
+[stage 1] step 7/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.733654     0.042109     0.300000     0.017219         0.13 
+         38    -0.000022*    0.000368*    0.000047*    0.001657*    0.000194*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000368 hartree/bohr
+        	rms(forces,cartesian): 0.000047 hartree/bohr
+        	energy: -9936.35017585 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0007__final_geometry.xyz'
+[stage 1] step 8/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.737400     0.042097     0.300000     0.017127         0.13 
+       -----------------------------------------------------------------------------------
+         50    -0.000016*    0.000423*    0.000045*    0.000622*    0.000098*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000423 hartree/bohr
+        	rms(forces,cartesian): 0.000045 hartree/bohr
+        	energy: -9936.36528232 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0008__final_geometry.xyz'
+[stage 1] endopt (unbiased) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.016990     0.000944     0.016990     0.000944*        0.13 
+         12    -0.000018*    0.000448*    0.000050*    0.001543*    0.000227*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000448 hartree/bohr
+        	rms(forces,cartesian): 0.000050 hartree/bohr
+        	energy: -9936.36680881 hartree
+       Wrote final, hopefully optimized, geometry to 'endopt__final_geometry.xyz'
+[stage 1] Covalent-bond changes (start vs final): Yes
+  Bond formed (1):
+    - C275-C334 : 3.009 Å --> 1.537 Å
+  Bond broken (1):
+    - S274-C275 : 1.791 Å --> 3.505 Å
+[write] Wrote './bezA_case_study/scan/stage_01/result.xyz'.
+[convert] Wrote 'result.pdb'.
+[stage] Stage 2/2
+Targets (i,j,target Å): [(334, 132, 0.9)]
+[stage 2] initial distances (Å) = ['2.412']
+[stage 2] target distances  (Å) = ['0.900']
+[stage 2] steps N = 8
+[stage 2] step 1/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.839078     0.045199     0.300000     0.016160         0.13 
+         34    -0.000009*    0.000312*    0.000040*    0.000890*    0.000141*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000312 hartree/bohr
+        	rms(forces,cartesian): 0.000040 hartree/bohr
+        	energy: -9936.36649897 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0001__final_geometry.xyz'
+[stage 2] step 2/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.849370     0.045203     0.300000     0.015966         0.13 
+         41    -0.000009*    0.000375*    0.000038*    0.001521*    0.000174*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000375 hartree/bohr
+        	rms(forces,cartesian): 0.000038 hartree/bohr
+        	energy: -9936.36489676 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0002__final_geometry.xyz'
+[stage 2] step 3/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.855830     0.045199     0.300000     0.015844         0.13 
+         41    -0.000035*    0.000385*    0.000044*    0.001539*    0.000159*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000385 hartree/bohr
+        	rms(forces,cartesian): 0.000044 hartree/bohr
+        	energy: -9936.36122187 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0003__final_geometry.xyz'
+[stage 2] step 4/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.859740     0.045206     0.300000     0.015774         0.13 
+         45    -0.000082*    0.000392*    0.000047*    0.001612*    0.000192*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000392 hartree/bohr
+        	rms(forces,cartesian): 0.000047 hartree/bohr
+        	energy: -9936.35451738 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0004__final_geometry.xyz'
+[stage 2] step 5/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.859304     0.045198     0.300000     0.015779         0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000014*    0.000422*    0.000047*    0.004066     0.000435*        0.13 
+        165    -0.000009*    0.000356*    0.000041*    0.001799*    0.000204*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000356 hartree/bohr
+        	rms(forces,cartesian): 0.000041 hartree/bohr
+        	energy: -9936.34630587 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0005__final_geometry.xyz'
+[stage 2] step 6/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.840978     0.045197     0.300000     0.016123         0.13 
+         97    -0.000008*    0.000225*    0.000033*    0.000755*    0.000148*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000225 hartree/bohr
+        	rms(forces,cartesian): 0.000033 hartree/bohr
+        	energy: -9936.33119943 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0006__final_geometry.xyz'
+[stage 2] step 7/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.766049     0.045197     0.300000     0.017700         0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000025*    0.000555     0.000068*    0.002245     0.000319*        0.13 
+        154    -0.000015*    0.000259*    0.000050*    0.001330*    0.000243*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000259 hartree/bohr
+        	rms(forces,cartesian): 0.000050 hartree/bohr
+        	energy: -9936.35757934 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0007__final_geometry.xyz'
+[stage 2] step 8/8: relaxation (lbfgs) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.910250     0.045204     0.300000     0.014898         0.13 
+         29    -0.000016*    0.000429*    0.000055*    0.001719*    0.000269*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000429 hartree/bohr
+        	rms(forces,cartesian): 0.000055 hartree/bohr
+        	energy: -9936.36253702 hartree
+       Wrote final, hopefully optimized, geometry to 'scan_s0008__final_geometry.xyz'
+[stage 2] endopt (unbiased) ...
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.054161     0.002763     0.054161     0.002763         0.13 
+         45    -0.000026*    0.000377*    0.000047*    0.001308*    0.000214*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000377 hartree/bohr
+        	rms(forces,cartesian): 0.000047 hartree/bohr
+        	energy: -9936.36909331 hartree
+       Wrote final, hopefully optimized, geometry to 'endopt__final_geometry.xyz'
+[stage 2] Covalent-bond changes (start vs final): Yes
+  Bond formed (1):
+    - O133-H335 : 2.412 Å --> 0.970 Å
+  Bond broken (1):
+    - C334-H335 : 1.095 Å --> 2.669 Å
+[write] Wrote './bezA_case_study/scan/stage_02/result.xyz'.
+[convert] Wrote 'result.pdb'.
+
+====== Scan summary started ======
+
+[stage 1] Targets (i,j,target Å): [(275, 334, 1.6)]
+[stage 1] initial distances (Å) = ['3.009']
+[stage 1] target distances  (Å) = ['1.600']
+[stage 1] per_pair_step     (Å) = ['-0.176']
+[stage 1] steps N = 8
+[stage 1] Covalent-bond changes (start vs final): Yes
+  Bond formed (1):
+    - C275-C334 : 3.009 Å --> 1.537 Å
+  Bond broken (1):
+    - S274-C275 : 1.791 Å --> 3.505 Å
+
+[stage 2] Targets (i,j,target Å): [(335, 133, 0.9)]
+[stage 2] initial distances (Å) = ['2.412']
+[stage 2] target distances  (Å) = ['0.900']
+[stage 2] per_pair_step     (Å) = ['-0.189']
+[stage 2] steps N = 8
+[stage 2] Covalent-bond changes (start vs final): Yes
+  Bond formed (1):
+    - O133-H335 : 2.412 Å --> 0.970 Å
+  Bond broken (1):
+    - C334-H335 : 1.095 Å --> 2.669 Å
+
+====== Scan summary finished ======
+
+
+====== Scan finished ======
+
+[time] Elapsed Time for Scan: 00:07:38.870
+
+
+[all] Collected scan stage pocket files:
+  - ./bezA_case_study/scan/stage_01/result.xyz
+  - ./bezA_case_study/scan/stage_02/result.xyz
+
+
+====== [all] Stage 2/3 — MEP search on input structures (recursive GSM) started ======
+
+[all] Invoking path_search with arguments:
+  -i ./bezA_case_study/pockets/pocket_r.pdb -i ./bezA_case_study/scan/stage_01/result.xyz -i ./bezA_case_study/scan/stage_02/result.xyz -q 1 -m 1 --freeze-links True --mep-mode gsm --max-nodes 10 --max-cycles 300 --climb True --opt-mode light --dump False --out-dir ./bezA_case_study/path_search --preopt True --convert-files True --args-yaml /tmp/tmp_path_search_dl4uu7f7/args_freeze_atoms.yaml --ref-full-pdb r.pdb --ref-full-pdb r.pdb --ref-full-pdb r.pdb --ref-pdb ./bezA_case_study/pockets/pocket_r.pdb --ref-pdb ./bezA_case_study/scan/stage_01/result.pdb --ref-pdb ./bezA_case_study/scan/stage_02/result.pdb
+
+
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: false
+freeze_atoms: null
+
+gs
+--
+fix_first: true
+fix_last: true
+max_nodes: 10
+perp_thresh: 0.005
+reparam_check: rms
+reparam_every: 1
+reparam_every_full: 1
+param: equi
+max_micro_cycles: 10
+reset_dlc: true
+climb: true
+climb_rms: 0.0005
+climb_lanczos: true
+climb_lanczos_rms: 0.0005
+climb_fixed: false
+scheduler: null
+
+opt
+---
+type: string
+stop_in_when_full: 300
+align: false
+scale_step: global
+max_cycles: 300
+dump: false
+dump_restart: false
+reparam_thresh: 0.0
+coord_diff_thresh: 0.0
+out_dir: ./bezA_case_study/path_search
+print_every: 10
+
+sopt.lbfgs
+----------
+thresh: gau
+max_cycles: 10000
+print_every: 100
+min_step_norm: 1.0e-08
+assert_min_step: true
+rms_force: null
+rms_force_only: false
+max_force_only: false
+force_only: false
+converge_to_geom_rms_thresh: 0.05
+overachieve_factor: 0.0
+check_eigval_structure: false
+line_search: true
+dump: false
+dump_restart: false
+prefix: ''
+out_dir: ./bezA_case_study/path_search
+keep_last: 7
+beta: 1.0
+gamma_mult: false
+max_step: 0.3
+control_step: true
+double_damp: true
+mu_reg: null
+max_mu_reg_adaptions: 10
+out_dir_per_tag: ./bezA_case_study/path_search/<tag>_lbfgs_opt
+
+bond
+----
+device: cuda
+bond_factor: 1.2
+margin_fraction: 0.05
+delta_fraction: 0.05
+
+search
+------
+max_depth: 10
+stitch_rmsd_thresh: 0.0001
+bridge_rmsd_thresh: 0.0001
+rmsd_align: true
+max_nodes_segment: 10
+max_nodes_bridge: 5
+kink_max_nodes: 3
+max_seq_kink: 2
+refine_mode: peak
+
+run_flags
+---------
+preopt: true
+align: true
+mep_mode: gsm
+
+[freeze-links] pocket_r.pdb: Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+freeze_atoms
+------------
+0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+
+====== [init00] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.057079     0.008828     0.057079     0.008828         1.79 
+       -----------------------------------------------------------------------------------
+        100    -0.000210*    0.002020     0.000198*    0.009906     0.000945*        0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000071*    0.001036     0.000109*    0.005154     0.000547*        0.13 
+       -----------------------------------------------------------------------------------
+        300    -0.000112*    0.001661     0.000138*    0.009257     0.000728*        0.13 
+       -----------------------------------------------------------------------------------
+        400    -0.000041*    0.000525     0.000084*    0.002671     0.000419*        0.13 
+       -----------------------------------------------------------------------------------
+        500    -0.000031*    0.000475     0.000072*    0.002219     0.000364*        0.13 
+       -----------------------------------------------------------------------------------
+        600    -0.000024*    0.000410*    0.000066*    0.001966     0.000329*        0.13 
+        671    -0.000022*    0.000409*    0.000062*    0.001800*    0.000309*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000409 hartree/bohr
+        	rms(forces,cartesian): 0.000062 hartree/bohr
+        	energy: -9936.28420765 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [init00] Single-structure LBFGS finished ======
+
+
+====== [init01] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.000447*    0.000050*    0.000447*    0.000050*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000447 hartree/bohr
+        	rms(forces,cartesian): 0.000050 hartree/bohr
+        	energy: -9936.36680699 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [init01] Single-structure LBFGS finished ======
+
+
+====== [init02] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.000377*    0.000047*    0.000377*    0.000047*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000377 hartree/bohr
+        	rms(forces,cartesian): 0.000047 hartree/bohr
+        	energy: -9936.36909331 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [init02] Single-structure LBFGS finished ======
+
+
+====== Aligning all inputs to the first structure (freeze-guided scan + relaxation) started ======
+
+[stage] [align+scan] Pair 00: image 0 (ref) ← image 1 (mobile)
+[align] kabsch:     RMSD 0.000000 Å → 0.000000 Å (used 22)
+[scan] step 001: max remaining = 0.000000 Å
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.000447*    0.000050*    0.000447*    0.000050*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000447 hartree/bohr
+        	rms(forces,cartesian): 0.000050 hartree/bohr
+        	energy: -9936.36680657 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+[stage] [align+scan] Pair 01: image 1 (ref) ← image 2 (mobile)
+[align] kabsch:     RMSD 0.000000 Å → 0.000000 Å (used 22)
+[scan] step 001: max remaining = 0.000000 Å
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.000377*    0.000047*    0.000377*    0.000047*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000377 hartree/bohr
+        	rms(forces,cartesian): 0.000047 hartree/bohr
+        	energy: -9936.36909373 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+[align] Completed input alignment.
+
+====== Multistep MEP search (multi-structure) started ======
+
+[stage] Processing pair 00: image 0 → 1
+Path with 2 moving images.
+
+====== [seg_000] GSM started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.002500 E_h a_0⁻¹
+	  rms(force) <= 0.001700 E_h a_0⁻¹
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.052722     0.003755     0.052722*    0.003755*        0.53 
+       	String=  2+2 HEI=02/04 (E_hei-E_0)=  10.7 kcal/mol norm(forces_true,hei)=0.127104 E_h/a_0
+       -----------------------------------------------------------------------------------
+         10    -0.028326*    0.027796     0.000961*    0.088804*    0.003242*        1.31 
+       	String= Full HEI=05/12 (E_hei-E_0)=  10.7 kcal/mol norm(forces_true,hei)=0.026403 E_h/a_0
+Will use climbing image(s) in next cycle.
+Will use Lanczos algorithm for HEI tangent in next cycle.
+       -----------------------------------------------------------------------------------
+         20    -0.001061*    0.003040     0.000178*    0.016052*    0.000832*        1.70 
+       	String= Full HEI=05/12 (E_hei-E_0)=   7.4 kcal/mol norm(forces_true,hei)=0.012025 E_h/a_0
+         28    -0.000461*    0.002396*    0.000127*    0.007335*    0.000589*        1.70 
+       	String= Full HEI=05/12 (E_hei-E_0)=   7.2 kcal/mol norm(forces_true,hei)=0.008279 E_h/a_0
+       Converged!
+
+       Wrote final, hopefully optimized, geometry to 'final_geometries.trj'
+
+====== [seg_000] GSM finished ======
+
+[seg_000] Wrote './bezA_case_study/path_search/seg_000_mep/final_geometries.trj'.
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/seg_000_mep/mep_plot.png
+[seg_000] Saved energy plot → './bezA_case_study/path_search/seg_000_mep/mep_plot.png'
+[seg_000] Wrote './bezA_case_study/path_search/seg_000_mep/hei.xyz'.
+[seg_000] Refining HEI±1 (peak mode).
+
+====== [seg_000_left] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.001840     0.000165*    0.001840     0.000165*        0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000040*    0.000928     0.000083*    0.004619     0.000415*        0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000025*    0.000787     0.000066*    0.003972     0.000332*        0.13 
+       -----------------------------------------------------------------------------------
+        300    -0.000016*    0.000668     0.000054*    0.003392     0.000271*        0.13 
+       -----------------------------------------------------------------------------------
+        400    -0.000011*    0.000452     0.000045*    0.002390     0.000228*        0.13 
+        442    -0.000016*    0.000344*    0.000043*    0.001748*    0.000206*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000344 hartree/bohr
+        	rms(forces,cartesian): 0.000043 hartree/bohr
+        	energy: -9936.30729528 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [seg_000_left] Single-structure LBFGS finished ======
+
+
+====== [seg_000_right] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.006044     0.000350     0.006044     0.000350*        0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000030*    0.000474     0.000058*    0.002228     0.000266*        0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000013*    0.000480     0.000041*    0.002429     0.000203*        0.13 
+       -----------------------------------------------------------------------------------
+        300    -0.000011*    0.000515     0.000041*    0.002583     0.000207*        0.13 
+       -----------------------------------------------------------------------------------
+        400    -0.000010*    0.000540     0.000041*    0.002705     0.000206*        0.13 
+       -----------------------------------------------------------------------------------
+        500    -0.000012*    0.000410*    0.000036*    0.002106     0.000176*        0.13 
+        525    -0.000012*    0.000346*    0.000034*    0.001787*    0.000166*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000346 hartree/bohr
+        	rms(forces,cartesian): 0.000034 hartree/bohr
+        	energy: -9936.36569488 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [seg_000_right] Single-structure LBFGS finished ======
+
+[seg_000] Kink not detected (covalent changes present between End1 and End2).
+  Bond formed (1):
+    - C275-C334 : 3.016 Å --> 1.535 Å
+  Bond broken (1):
+    - S274-C275 : 1.792 Å --> 3.457 Å
+Path with 2 moving images.
+
+====== [seg_000_refine] GSM started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.002500 E_h a_0⁻¹
+	  rms(force) <= 0.001700 E_h a_0⁻¹
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.057332     0.002939     0.057332*    0.002939*        0.52 
+       	String=  2+2 HEI=02/04 (E_hei-E_0)=   7.2 kcal/mol norm(forces_true,hei)=0.097773 E_h/a_0
+       -----------------------------------------------------------------------------------
+         10    -0.014396*    0.022515     0.000655*    0.057970*    0.002033*        1.31 
+       	String= Full HEI=05/12 (E_hei-E_0)=  15.2 kcal/mol norm(forces_true,hei)=0.016911 E_h/a_0
+Will use climbing image(s) in next cycle.
+Will use Lanczos algorithm for HEI tangent in next cycle.
+       -----------------------------------------------------------------------------------
+         20    -0.000809*    0.003596     0.000137*    0.011664*    0.000666*        2.36 
+       	String= Full HEI=05/12 (E_hei-E_0)=  14.6 kcal/mol norm(forces_true,hei)=0.010552 E_h/a_0
+         23    -0.000439*    0.002200*    0.000123*    0.011534*    0.000634*        1.70 
+       	String= Full HEI=05/12 (E_hei-E_0)=  14.9 kcal/mol norm(forces_true,hei)=0.008917 E_h/a_0
+       Converged!
+
+       Wrote final, hopefully optimized, geometry to 'final_geometries.trj'
+
+====== [seg_000_refine] GSM finished ======
+
+[seg_000_refine] Wrote './bezA_case_study/path_search/seg_000_refine_mep/final_geometries.trj'.
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/seg_000_refine_mep/mep_plot.png
+[seg_000_refine] Saved energy plot → './bezA_case_study/path_search/seg_000_refine_mep/mep_plot.png'
+[seg_000_refine] Wrote './bezA_case_study/path_search/seg_000_refine_mep/hei.xyz'.
+[seg_000] Covalent changes (A vs left_end): No
+[seg_000] Covalent changes (right_end vs B): No
+[stage] Processing pair 01: image 1 → 2
+Path with 2 moving images.
+
+====== [seg_001] GSM started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.002500 E_h a_0⁻¹
+	  rms(force) <= 0.001700 E_h a_0⁻¹
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.046212     0.002872     0.046212*    0.002872*        0.52 
+       	String=  2+2 HEI=02/04 (E_hei-E_0)=   8.0 kcal/mol norm(forces_true,hei)=0.113356 E_h/a_0
+       -----------------------------------------------------------------------------------
+         10    -0.018102*    0.021015     0.000695*    0.079678*    0.002624*        1.30 
+       	String= Full HEI=07/12 (E_hei-E_0)=  31.8 kcal/mol norm(forces_true,hei)=0.038295 E_h/a_0
+Will use climbing image(s) in next cycle.
+Will use Lanczos algorithm for HEI tangent in next cycle.
+       -----------------------------------------------------------------------------------
+         20    -0.001477*    0.007967     0.000231*    0.040296*    0.001046*        1.83 
+       	String= Full HEI=07/12 (E_hei-E_0)=  19.4 kcal/mol norm(forces_true,hei)=0.016479 E_h/a_0
+         28    -0.001141*    0.002441*    0.000149*    0.013398*    0.000702*        1.70 
+       	String= Full HEI=07/12 (E_hei-E_0)=  17.1 kcal/mol norm(forces_true,hei)=0.009057 E_h/a_0
+       Converged!
+
+       Wrote final, hopefully optimized, geometry to 'final_geometries.trj'
+
+====== [seg_001] GSM finished ======
+
+[seg_001] Wrote './bezA_case_study/path_search/seg_001_mep/final_geometries.trj'.
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/seg_001_mep/mep_plot.png
+[seg_001] Saved energy plot → './bezA_case_study/path_search/seg_001_mep/mep_plot.png'
+[seg_001] Wrote './bezA_case_study/path_search/seg_001_mep/hei.xyz'.
+[seg_001] Refining HEI±1 (peak mode).
+
+====== [seg_001_left] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.021343     0.001075     0.021343     0.001075*        0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000008*    0.000416*    0.000042*    0.002367     0.000230*        0.13 
+        137    -0.000015*    0.000340*    0.000033*    0.001701*    0.000161*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000340 hartree/bohr
+        	rms(forces,cartesian): 0.000033 hartree/bohr
+        	energy: -9936.36894261 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [seg_001_left] Single-structure LBFGS finished ======
+
+
+====== [seg_001_right] Single-structure LBFGS started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000450 E_h a_0⁻¹
+	  rms(force) <= 0.000300 E_h a_0⁻¹
+	 max(|step|) <= 0.001800 a_0
+	   rms(step) <= 0.001200 a_0
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.010060     0.000483     0.010060     0.000483*        0.13 
+       -----------------------------------------------------------------------------------
+        100    -0.000023*    0.000648     0.000065*    0.002429     0.000328*        0.13 
+       -----------------------------------------------------------------------------------
+        200    -0.000013*    0.000507     0.000050*    0.002101     0.000250*        0.13 
+       -----------------------------------------------------------------------------------
+        300    -0.000048*    0.001649     0.000079*    0.002388     0.000241*        0.13 
+       -----------------------------------------------------------------------------------
+        400    -0.000011*    0.000443*    0.000043*    0.002274     0.000214*        0.13 
+       -----------------------------------------------------------------------------------
+        500    -0.000020*    0.000477     0.000047*    0.012694     0.001186*        0.13 
+       -----------------------------------------------------------------------------------
+        600    -0.000012*    0.000466     0.000045*    0.002492     0.000231*        0.13 
+       -----------------------------------------------------------------------------------
+        700    -0.000012*    0.000479     0.000045*    0.002386     0.000222*        0.13 
+       -----------------------------------------------------------------------------------
+        800    -0.000024*    0.000461     0.000047*    0.002206     0.000227*        0.13 
+        896    -0.000010*    0.000298*    0.000037*    0.001346*    0.000161*        0.13 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000298 hartree/bohr
+        	rms(forces,cartesian): 0.000037 hartree/bohr
+        	energy: -9936.38239640 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== [seg_001_right] Single-structure LBFGS finished ======
+
+[seg_001] Kink not detected (covalent changes present between End1 and End2).
+  Bond formed (1):
+    - O133-H335 : 2.308 Å --> 0.970 Å
+  Bond broken (1):
+    - C334-H335 : 1.095 Å --> 4.593 Å
+Path with 2 moving images.
+
+====== [seg_001_refine] GSM started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.002500 E_h a_0⁻¹
+	  rms(force) <= 0.001700 E_h a_0⁻¹
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.222258     0.008080     0.100000*    0.003635*        0.52 
+       	String=  2+2 HEI=02/04 (E_hei-E_0)=  20.5 kcal/mol norm(forces_true,hei)=0.129435 E_h/a_0
+       -----------------------------------------------------------------------------------
+         10    -0.022163*    0.020820     0.000788*    0.062861*    0.002803*        1.30 
+       	String= Full HEI=04/12 (E_hei-E_0)=  55.3 kcal/mol norm(forces_true,hei)=0.064557 E_h/a_0
+Will use climbing image(s) in next cycle.
+Will use Lanczos algorithm for HEI tangent in next cycle.
+       -----------------------------------------------------------------------------------
+         20    -0.004166*    0.006842     0.000319*    0.033233*    0.001500*        1.69 
+       	String= Full HEI=04/12 (E_hei-E_0)=  46.7 kcal/mol norm(forces_true,hei)=0.027593 E_h/a_0
+       -----------------------------------------------------------------------------------
+         30    -0.001970*    0.005101     0.000231*    0.021011*    0.001035*        1.69 
+       	String= Full HEI=04/12 (E_hei-E_0)=  40.5 kcal/mol norm(forces_true,hei)=0.011940 E_h/a_0
+         35    -0.001469*    0.002427*    0.000187*    0.015659*    0.000843*        1.69 
+       	String= Full HEI=04/12 (E_hei-E_0)=  38.9 kcal/mol norm(forces_true,hei)=0.010437 E_h/a_0
+       Converged!
+
+       Wrote final, hopefully optimized, geometry to 'final_geometries.trj'
+
+====== [seg_001_refine] GSM finished ======
+
+[seg_001_refine] Wrote './bezA_case_study/path_search/seg_001_refine_mep/final_geometries.trj'.
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/seg_001_refine_mep/mep_plot.png
+[seg_001_refine] Saved energy plot → './bezA_case_study/path_search/seg_001_refine_mep/mep_plot.png'
+[seg_001_refine] Wrote './bezA_case_study/path_search/seg_001_refine_mep/hei.xyz'.
+[seg_001] Covalent changes (A vs left_end): No
+[seg_001] Covalent changes (right_end vs B): No
+[seg_000_seg_001] Gap detected between segments (RMSD=3.8946e-01 Å) — bridging via GSM.
+Path with 2 moving images.
+
+====== [seg_000_seg_001_bridge] GSM started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.002500 E_h a_0⁻¹
+	  rms(force) <= 0.001700 E_h a_0⁻¹
+	'Superscript *' indicates convergence
+
+Spent 0.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.003098     0.000443*    0.003098*    0.000443*        0.52 
+       	String=  2+2 HEI=01/04 (E_hei-E_0)=   0.0 kcal/mol norm(forces_true,hei)=0.000000 E_h/a_0
+          4    -0.000894*    0.001143*    0.000127*    0.002467*    0.000195*        0.65 
+       	String= Full HEI=01/07 (E_hei-E_0)=   0.0 kcal/mol norm(forces_true,hei)=0.000000 E_h/a_0
+       Converged!
+
+       Wrote final, hopefully optimized, geometry to 'final_geometries.trj'
+
+====== [seg_000_seg_001_bridge] GSM finished ======
+
+[seg_000_seg_001_bridge] Wrote './bezA_case_study/path_search/seg_000_seg_001_bridge_mep/final_geometries.trj'.
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/seg_000_seg_001_bridge_mep/mep_plot.png
+[seg_000_seg_001_bridge] Saved energy plot → './bezA_case_study/path_search/seg_000_seg_001_bridge_mep/mep_plot.png'
+[seg_000_seg_001_bridge] Wrote './bezA_case_study/path_search/seg_000_seg_001_bridge_mep/hei.xyz'.
+
+====== Multistep MEP search (multi-structure) finished ======
+
+[write] Wrote './bezA_case_study/path_search/mep.trj'.
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/mep_plot.png
+[plot] Saved energy plot → './bezA_case_study/path_search/mep_plot.png'
+[convert] Wrote final MEP outputs.
+[write] Wrote per-segment pocket trajectory → './bezA_case_study/path_search/mep_seg_01.trj'
+[write] Wrote segment HEI (pocket) → './bezA_case_study/path_search/hei_seg_01.xyz'
+[write] Wrote per-segment pocket trajectory → './bezA_case_study/path_search/mep_seg_03.trj'
+[write] Wrote segment HEI (pocket) → './bezA_case_study/path_search/hei_seg_03.xyz'
+
+====== Full-system merge (pocket → templates) started ======
+
+[merge] Wrote concatenated full-system trajectory → './bezA_case_study/path_search/mep_w_ref.pdb'
+[merge] Wrote per-segment merged trajectory → './bezA_case_study/path_search/mep_w_ref_seg_01.pdb'
+[merge] Wrote merged HEI for segment → './bezA_case_study/path_search/hei_w_ref_seg_01.pdb'
+[merge] Wrote per-segment merged trajectory → './bezA_case_study/path_search/mep_w_ref_seg_03.pdb'
+[merge] Wrote merged HEI for segment → './bezA_case_study/path_search/hei_w_ref_seg_03.pdb'
+
+====== Full-system merge finished ======
+
+
+====== MEP summary started ======
+
+[overall] Covalent-bond changes between first and last image:
+  Bond formed (2):
+    - O133-H335 : 2.376 Å --> 0.970 Å
+    - C275-C334 : 3.016 Å --> 1.495 Å
+  Bond broken (2):
+    - S274-C275 : 1.792 Å --> 3.845 Å
+    - C334-H335 : 1.086 Å --> 4.593 Å
+[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:
+  [01] (SEG) seg_000_refine  |  ΔE‡ = 14.90 kcal/mol,  ΔE = -36.65 kcal/mol
+      Bond formed (1):
+        - C275-C334 : 3.016 Å --> 1.535 Å
+      Bond broken (1):
+        - S274-C275 : 1.792 Å --> 3.457 Å
+  [02] (BRIDGE) seg_000_seg_001_bridge  |  ΔE‡ = 0.00 kcal/mol,  ΔE = -2.04 kcal/mol
+  [03] (SEG) seg_001_refine  |  ΔE‡ = 38.90 kcal/mol,  ΔE = -8.44 kcal/mol
+      Bond formed (1):
+        - O133-H335 : 2.308 Å --> 0.970 Å
+      Bond broken (1):
+        - C334-H335 : 1.095 Å --> 4.593 Å
+
+====== MEP summary finished ======
+
+[diagram] build_energy_diagram.labels = ["R", "TS1", "IM1_1", "IM1_2", "TS2", "P"]
+[diagram] build_energy_diagram.energies_kcal = [0.000000, 14.904325, -36.646745, -38.684899, 0.214644, -47.127637]
+[diagram] Wrote energy diagram (PNG) → './bezA_case_study/path_search/energy_diagram_MEP.png'
+[diagram] State label sequence: R --> TS1 --> IM1_1 -|--> IM1_2 --> TS2 --> P
+[write] Wrote './bezA_case_study/path_search/summary.yaml'.
+[write] Wrote './bezA_case_study/path_search/summary.log'.
+[time] Elapsed for Path Search: 00:11:41.833
+
+
+[all] Copied mep_plot.png → ./bezA_case_study/mep_plot.png
+[all] Copied energy_diagram_MEP.png → ./bezA_case_study/energy_diagram_MEP.png
+[all] Copied mep.pdb → ./bezA_case_study/mep.pdb
+[all] Copied mep_w_ref.pdb → ./bezA_case_study/mep_w_ref.pdb
+[all] Copied summary.yaml → ./bezA_case_study/summary.yaml
+[all] Copied summary.log → ./bezA_case_study/summary.log
+[all] Copied mep.trj → ./bezA_case_study/mep.trj
+
+
+====== [all] Stage 3/3 — Merge into full-system templates started ======
+
+[all] Merging was carried out by path_search using the original inputs as templates.
+[all] Final products can be found under: ./bezA_case_study/path_search
+  - mep_w_ref.pdb            (full-system merged trajectory; also copied to <out-dir>/)
+  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)
+  - summary.yaml             (segment barriers, ΔE, labels)
+  - energy_diagram_MEP.png / energy_diagram.* (copied summary at <out-dir>/)
+
+
+====== [all] Pipeline (core path) successfully finished ======
+
+
+
+====== [all] Stage 4 — Post-processing per reactive segment started ======
+[stage] [post] Segment 01 (seg_000_refine)
+
+[tsopt] Running tsopt on HEI → out=./bezA_case_study/path_search/post_seg_01/ts
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: false
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+opt
+---
+thresh: baker
+max_cycles: 10000
+print_every: 100
+min_step_norm: 1.0e-08
+assert_min_step: true
+rms_force: null
+rms_force_only: false
+max_force_only: false
+force_only: false
+converge_to_geom_rms_thresh: 0.05
+overachieve_factor: 0.0
+check_eigval_structure: false
+line_search: true
+dump: false
+dump_restart: false
+prefix: ''
+out_dir: ./bezA_case_study/path_search/post_seg_01/ts
+
+rsirfo
+------
+trust_radius: 0.1
+trust_update: true
+trust_min: 0.0
+trust_max: 0.1
+max_energy_incr: null
+hessian_update: bofill
+hessian_init: calc
+hessian_recalc: 200
+hessian_recalc_adapt: null
+small_eigval_thresh: 1.0e-08
+alpha0: 1.0
+max_micro_cycles: 50
+rfo_overlaps: false
+roots:
+- 0
+hessian_ref: null
+rx_modes: null
+prim_coord: null
+rx_coords: null
+hessian_recalc_reset: true
+augment_bonds: false
+min_line_search: true
+max_line_search: true
+assert_neg_eigval: false
+
+
+====== TS optimization (RS-I-RFO) started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000300 E_h a_0⁻¹
+	  rms(force) <= 0.000200 E_h a_0⁻¹
+	 max(|step|) <= 0.000300 a_0
+	   rms(step) <= 0.000200 a_0
+	'Superscript *' indicates convergence
+
+Spent 297.6 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.004114     0.000258     0.030200     0.002899         2.70 
+       -----------------------------------------------------------------------------------
+        100    -0.000205*    0.001839     0.000125*    0.033419     0.002904         2.74 
+       -----------------------------------------------------------------------------------
+        200    -0.000091*    0.000157*    0.000019*    0.024144     0.002905         2.43 
+       Unexpected energy increase (0.000005 au)! Trust radius: old=0.1, new=0.025
+       -----------------------------------------------------------------------------------
+        300    -0.000068*    0.001289     0.000096*    0.059165     0.002919         2.75 
+       -----------------------------------------------------------------------------------
+        400    -0.000091*    0.000086*    0.000016*    0.016394     0.002906         3.03 
+       -----------------------------------------------------------------------------------
+        500    -0.000065*    0.004327     0.000228     0.045617     0.002903         3.01 
+       Unexpected energy increase (0.000034 au)! Trust radius: old=0.1, new=0.025
+       -----------------------------------------------------------------------------------
+        600    -0.000037*    0.000167*    0.000017*    0.026889     0.002903         2.39 
+       -----------------------------------------------------------------------------------
+        700    -0.000036*    0.001991     0.000116*    0.020646     0.002902         2.98 
+       -----------------------------------------------------------------------------------
+        800    -0.000028*    0.000135*    0.000013*    0.027283     0.002903         2.36 
+       -----------------------------------------------------------------------------------
+        900    -0.000022*    0.000795     0.000068*    0.025462     0.002901         3.00 
+        986    -0.000000*    0.000176*    0.000013*    0.001087     0.000104*        4.79 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000176 hartree/bohr
+        	rms(forces,cartesian): 0.000013 hartree/bohr
+        	energy: -9936.34772845 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== TS optimization (RS-I-RFO) finished ======
+
+[Imaginary modes] n=2  ([-205.29048588533186, -24.127290186612505])
+[convert] Wrote 'final_geometry' outputs.
+[time] Elapsed Time for TS Opt: 01:19:55.611
+
+
+
+[irc] Running EulerPC IRC → out=./bezA_case_study/path_search/post_seg_01/irc
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: false
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+irc
+---
+step_length: 0.1
+max_cycles: 125
+downhill: false
+forward: true
+backward: true
+root: 0
+hessian_init: calc
+displ: energy
+displ_energy: 0.001
+displ_length: 0.1
+rms_grad_thresh: 0.001
+hard_rms_grad_thresh: null
+energy_thresh: 1.0e-06
+imag_below: 0.0
+force_inflection: true
+check_bonds: false
+out_dir: ./bezA_case_study/path_search/post_seg_01/irc
+prefix: ''
+hessian_update: bofill
+hessian_recalc: null
+max_pred_steps: 500
+loose_cycles: 3
+corr_func: mbs
+
+
+====== IRC (EulerPC) started ======
+
+Convergence thresholds (non mass-weighted gradient):
+	     rms(|gradient|) <= 0.001000 E_h a_0⁻¹
+	             Δenergy <= 0.000001 E_h
+
+Calculating energy and gradient at TS.
+Transition vector is mode 0 with wavenumber -205.26 cm⁻¹.
+Crossover temperature T_c: 47.00 K
+Energy-based (ΔE=0.001 au) initial displacement from the TS using 2rd derivatives.
+Initial step lengths (not mass-weighted):
+	 Forward: 0.3890 au
+	Backward: 0.3890 au
+IRC length in mw. coords, max(|grad|) and rms(grad) in unweighted coordinates.
+
+                               #################
+                               # IRC - FORWARD #
+                               #################
+
+Requested energy lowering:  0.0010 au ( 2.63 kJ mol⁻¹)
+   Actual energy lowering:  0.0029 au ( 7.58 kJ mol⁻¹)
+                        Δ: -0.0019 au (-4.95 kJ mol⁻¹)
+
+
+        Step   IRC length      dE / au  max(|grad|)    rms(grad)
+        --------------------------------------------------------
+          0     0.267870    -0.002308     0.021650     0.001021 
+          1     0.557116    -0.003540     0.030624     0.001441 
+          2     0.849857    -0.004992     0.042104     0.001996 
+          3     1.146483    -0.006932     0.054880     0.002625 
+          4     1.449894    -0.008381     0.058477     0.002774 
+          5     1.754974    -0.008216     0.054017     0.002513 
+          6     2.049283    -0.006891     0.045546     0.002053 
+          7     2.316839    -0.004943     0.034393     0.001478 
+          8     2.548490    -0.002996     0.022209     0.000905 
+        rms(grad) converged!
+
+                               ##################
+                               # IRC - BACKWARD #
+                               ##################
+
+Requested energy lowering:  0.0010 au ( 2.63 kJ mol⁻¹)
+   Actual energy lowering:  0.0028 au ( 7.44 kJ mol⁻¹)
+                        Δ: -0.0018 au (-4.81 kJ mol⁻¹)
+
+
+        Step   IRC length      dE / au  max(|grad|)    rms(grad)
+        --------------------------------------------------------
+          0     0.296440    -0.002416     0.020123     0.000874 
+          1     0.606305    -0.002820     0.023975     0.001040 
+          2     0.903700    -0.003182     0.027226     0.001187 
+          3     1.194472    -0.003387     0.028289     0.001224 
+          4     1.471629    -0.003183     0.026816     0.001134 
+          5     1.730564    -0.002681     0.023500     0.000956 
+        rms(grad) converged!
+
+====== IRC (EulerPC) finished ======
+
+[convert] Wrote 'finished_irc.pdb'.
+[convert] Wrote 'forward_irc.pdb'.
+[convert] Wrote 'backward_irc.pdb'.
+[time] Elapsed Time for IRC: 00:05:08.800
+
+
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/post_seg_01/irc/irc_plot.png
+[convert] Wrote './bezA_case_study/path_search/post_seg_01/structures/reactant_irc.pdb'.
+[convert] Wrote './bezA_case_study/path_search/post_seg_01/structures/ts.pdb'.
+[convert] Wrote './bezA_case_study/path_search/post_seg_01/structures/product_irc.pdb'.
+[endpoint-opt] Optimizing 'seg_01_reactant' with RFO → ./bezA_case_study/path_search/post_seg_01/endpoint_opt/seg_01_reactant_rfo_opt
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000300 E_h a_0⁻¹
+	  rms(force) <= 0.000200 E_h a_0⁻¹
+	 max(|step|) <= 0.000300 a_0
+	   rms(step) <= 0.000200 a_0
+	'Superscript *' indicates convergence
+
+Spent 299.5 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.023500     0.000956     0.066533     0.002912         3.76 
+       -----------------------------------------------------------------------------------
+        100    -0.000030*    0.000295*    0.000026*    0.026108     0.002899         6.93 
+       Unexpected energy increase (0.000043 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.002338 au)! Trust radius: old=0.1, new=0.025
+        147    -0.000000*    0.000281*    0.000041*    0.017532     0.002989         1.77 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000281 hartree/bohr
+        	rms(forces,cartesian): 0.000041 hartree/bohr
+        	energy: -9936.38194009 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+[endpoint-opt] Optimizing 'seg_01_product' with RFO → ./bezA_case_study/path_search/post_seg_01/endpoint_opt/seg_01_product_rfo_opt
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000300 E_h a_0⁻¹
+	  rms(force) <= 0.000200 E_h a_0⁻¹
+	 max(|step|) <= 0.000300 a_0
+	   rms(step) <= 0.000200 a_0
+	'Superscript *' indicates convergence
+
+Spent 299.9 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.022209     0.000905     0.051858     0.002910         3.77 
+       Unexpected energy increase (0.000373 au)! Trust radius: old=0.1, new=0.025
+       -----------------------------------------------------------------------------------
+        100    -0.000105*    0.000227*    0.000032*    0.027037     0.002903         4.53 
+       Unexpected energy increase (0.001277 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.000724 au)! Trust radius: old=0.05, new=0.0125
+       Unexpected energy increase (0.000012 au)! Trust radius: old=0.025, new=0.00625
+       Unexpected energy increase (0.000157 au)! Trust radius: old=0.025, new=0.00625
+       Unexpected energy increase (0.000045 au)! Trust radius: old=0.0125, new=0.003125
+       -----------------------------------------------------------------------------------
+        200    -0.000005*    0.000100*    0.000021*    0.001826     0.000376         6.46 
+       Unexpected energy increase (0.002517 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.002882 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.000387 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.001476 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.001055 au)! Trust radius: old=0.05, new=0.0125
+       Unexpected energy increase (0.000001 au)! Trust radius: old=0.025, new=0.00625
+       Unexpected energy increase (0.003867 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.003289 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.000315 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.000031 au)! Trust radius: old=0.025, new=0.00625
+       Unexpected energy increase (0.000001 au)! Trust radius: old=0.0125, new=0.003125
+       Unexpected energy increase (0.000012 au)! Trust radius: old=0.00625, new=0.001563
+       Unexpected energy increase (0.000009 au)! Trust radius: old=0.00625, new=0.001563
+       Unexpected energy increase (0.000270 au)! Trust radius: old=0.025, new=0.00625
+       Unexpected energy increase (0.000000 au)! Trust radius: old=0.0125, new=0.003125
+       -----------------------------------------------------------------------------------
+        300    -0.000001*    0.000649     0.000042*    0.008220     0.001461         7.90 
+       Unexpected energy increase (0.000005 au)! Trust radius: old=0.1, new=0.025
+       -----------------------------------------------------------------------------------
+        400    -0.000077*    0.000125*    0.000022*    0.016018     0.002905         4.50 
+       -----------------------------------------------------------------------------------
+        500    -0.000044*    0.000363     0.000043*    0.017751     0.002903         4.56 
+       Unexpected energy increase (0.000002 au)! Trust radius: old=0.1, new=0.025
+        511    -0.000001*    0.000139*    0.000016*    0.002898     0.000380         4.70 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000139 hartree/bohr
+        	rms(forces,cartesian): 0.000016 hartree/bohr
+        	energy: -9936.44322840 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+[endpoint-opt] Clean endpoint-opt working dir.
+[convert] Wrote './bezA_case_study/path_search/post_seg_01/structures/reactant.pdb'.
+[convert] Wrote './bezA_case_study/path_search/post_seg_01/structures/product.pdb'.
+[diagram] Wrote energy diagram → energy_diagram_UMA.png
+[all] Copied TS structure for segment 01 → ./bezA_case_study/ts_seg_01.pdb
+
+[thermo] Segment 01: freq on R/TS/P
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: true
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+freq
+----
+amplitude_ang: 0.8
+n_frames: 20
+max_write: 10
+sort: value
+out_dir: ./bezA_case_study/path_search/post_seg_01/freq/R
+
+thermo
+------
+temperature: 298.15
+pressure_atm: 1.0
+dump: true
+
+[INFO] Total modes: 1119  → write first 10 modes (value ascending).
+
+====== Thermochemistry summary started ======
+
+Temperature (K)         = 298.15
+Pressure    (atm)       = 1.0000
+[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.
+Number of Imaginary Freq = 2
+
+Electronic Energy (EE)                 = -9936.381939 Ha
+Zero-point Energy Correction           =  3.304145 Ha
+Thermal Correction to Energy           =  3.497146 Ha
+Thermal Correction to Enthalpy         =  3.498090 Ha
+Thermal Correction to Free Energy      =  3.108316 Ha
+EE + Zero-point Energy                 = -9933.077794 Ha
+EE + Thermal Energy Correction         = -9932.884794 Ha
+EE + Thermal Enthalpy Correction       = -9932.883849 Ha
+EE + Thermal Free Energy Correction    = -9933.273623 Ha
+
+E (Thermal)                            =  2194492.00 cal/mol
+Heat Capacity (Cv)                     =  736.88 cal/(mol*K)
+Entropy (S)                            =  820.35 cal/(mol*K)
+
+====== Thermochemistry summary finished ======
+
+[dump] Wrote thermoanalysis summary → ./bezA_case_study/path_search/post_seg_01/freq/R/thermoanalysis.yaml
+[DONE] Wrote modes and list → ./bezA_case_study/path_search/post_seg_01/freq/R
+[time] Elapsed Time for Freq: 00:05:01.616
+
+
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: true
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+freq
+----
+amplitude_ang: 0.8
+n_frames: 20
+max_write: 10
+sort: value
+out_dir: ./bezA_case_study/path_search/post_seg_01/freq/TS
+
+thermo
+------
+temperature: 298.15
+pressure_atm: 1.0
+dump: true
+
+[INFO] Total modes: 1119  → write first 10 modes (value ascending).
+
+====== Thermochemistry summary started ======
+
+Temperature (K)         = 298.15
+Pressure    (atm)       = 1.0000
+[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.
+Number of Imaginary Freq = 2
+
+Electronic Energy (EE)                 = -9936.347727 Ha
+Zero-point Energy Correction           =  3.302807 Ha
+Thermal Correction to Energy           =  3.496154 Ha
+Thermal Correction to Enthalpy         =  3.497098 Ha
+Thermal Correction to Free Energy      =  3.106247 Ha
+EE + Zero-point Energy                 = -9933.044920 Ha
+EE + Thermal Energy Correction         = -9932.851573 Ha
+EE + Thermal Enthalpy Correction       = -9932.850629 Ha
+EE + Thermal Free Energy Correction    = -9933.241480 Ha
+
+E (Thermal)                            =  2193869.91 cal/mol
+Heat Capacity (Cv)                     =  738.15 cal/(mol*K)
+Entropy (S)                            =  822.62 cal/(mol*K)
+
+====== Thermochemistry summary finished ======
+
+[dump] Wrote thermoanalysis summary → ./bezA_case_study/path_search/post_seg_01/freq/TS/thermoanalysis.yaml
+[DONE] Wrote modes and list → ./bezA_case_study/path_search/post_seg_01/freq/TS
+[time] Elapsed Time for Freq: 00:05:04.440
+
+
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: true
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+freq
+----
+amplitude_ang: 0.8
+n_frames: 20
+max_write: 10
+sort: value
+out_dir: ./bezA_case_study/path_search/post_seg_01/freq/P
+
+thermo
+------
+temperature: 298.15
+pressure_atm: 1.0
+dump: true
+
+[INFO] Total modes: 1119  → write first 10 modes (value ascending).
+
+====== Thermochemistry summary started ======
+
+Temperature (K)         = 298.15
+Pressure    (atm)       = 1.0000
+[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.
+Number of Imaginary Freq = 3
+
+Electronic Energy (EE)                 = -9936.443229 Ha
+Zero-point Energy Correction           =  3.302501 Ha
+Thermal Correction to Energy           =  3.493911 Ha
+Thermal Correction to Enthalpy         =  3.494856 Ha
+Thermal Correction to Free Energy      =  3.108270 Ha
+EE + Zero-point Energy                 = -9933.140727 Ha
+EE + Thermal Energy Correction         = -9932.949317 Ha
+EE + Thermal Enthalpy Correction       = -9932.948373 Ha
+EE + Thermal Free Energy Correction    = -9933.334958 Ha
+
+E (Thermal)                            =  2192462.48 cal/mol
+Heat Capacity (Cv)                     =  734.08 cal/(mol*K)
+Entropy (S)                            =  813.64 cal/(mol*K)
+
+====== Thermochemistry summary finished ======
+
+[dump] Wrote thermoanalysis summary → ./bezA_case_study/path_search/post_seg_01/freq/P/thermoanalysis.yaml
+[DONE] Wrote modes and list → ./bezA_case_study/path_search/post_seg_01/freq/P
+[time] Elapsed Time for Freq: 00:05:06.922
+
+
+[diagram] Wrote energy diagram → energy_diagram_G_UMA.png
+[stage] [post] Segment 03 (seg_001_refine)
+
+[tsopt] Running tsopt on HEI → out=./bezA_case_study/path_search/post_seg_03/ts
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: false
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+opt
+---
+thresh: baker
+max_cycles: 10000
+print_every: 100
+min_step_norm: 1.0e-08
+assert_min_step: true
+rms_force: null
+rms_force_only: false
+max_force_only: false
+force_only: false
+converge_to_geom_rms_thresh: 0.05
+overachieve_factor: 0.0
+check_eigval_structure: false
+line_search: true
+dump: false
+dump_restart: false
+prefix: ''
+out_dir: ./bezA_case_study/path_search/post_seg_03/ts
+
+rsirfo
+------
+trust_radius: 0.1
+trust_update: true
+trust_min: 0.0
+trust_max: 0.1
+max_energy_incr: null
+hessian_update: bofill
+hessian_init: calc
+hessian_recalc: 200
+hessian_recalc_adapt: null
+small_eigval_thresh: 1.0e-08
+alpha0: 1.0
+max_micro_cycles: 50
+rfo_overlaps: false
+roots:
+- 0
+hessian_ref: null
+rx_modes: null
+prim_coord: null
+rx_coords: null
+hessian_recalc_reset: true
+augment_bonds: false
+min_line_search: true
+max_line_search: true
+assert_neg_eigval: false
+
+
+====== TS optimization (RS-I-RFO) started ======
+
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000300 E_h a_0⁻¹
+	  rms(force) <= 0.000200 E_h a_0⁻¹
+	 max(|step|) <= 0.000300 a_0
+	   rms(step) <= 0.000200 a_0
+	'Superscript *' indicates convergence
+
+Spent 297.0 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.002423     0.000302     0.024385     0.002899         2.26 
+       -----------------------------------------------------------------------------------
+        100    -0.000086*    0.001408     0.000097*    0.014388     0.002906         2.66 
+       -----------------------------------------------------------------------------------
+        200    -0.000020*    0.000059*    0.000010*    0.014973     0.002903         2.36 
+       -----------------------------------------------------------------------------------
+        300    -0.000042*    0.001269     0.000093*    0.028633     0.002900         2.93 
+       -----------------------------------------------------------------------------------
+        400    -0.000036*    0.000228*    0.000019*    0.034886     0.002906         2.32 
+       -----------------------------------------------------------------------------------
+        500    -0.000039*    0.000964     0.000083*    0.023983     0.002900         2.93 
+       -----------------------------------------------------------------------------------
+        600    -0.000069*    0.000245*    0.000020*    0.031700     0.002908         2.33 
+       -----------------------------------------------------------------------------------
+        700    -0.000054*    0.002476     0.000195*    0.016985     0.002907         2.90 
+       -----------------------------------------------------------------------------------
+        800    -0.000046*    0.000069*    0.000011*    0.018533     0.002905         2.35 
+       -----------------------------------------------------------------------------------
+        900    -0.000012*    0.001021     0.000059*    0.013382     0.001450         3.54 
+       -----------------------------------------------------------------------------------
+       1000    -0.000013*    0.000050*    0.000006*    0.023375     0.002898         2.63 
+       -----------------------------------------------------------------------------------
+       1100    -0.000010*    0.000484     0.000033*    0.012928     0.001469         3.22 
+       -----------------------------------------------------------------------------------
+       1200    -0.000010*    0.000042*    0.000006*    0.021582     0.002913         2.33 
+       -----------------------------------------------------------------------------------
+       1300    -0.000025*    0.000931     0.000091*    0.021037     0.002904         2.93 
+       -----------------------------------------------------------------------------------
+       1400    -0.000023*    0.000095*    0.000012*    0.023193     0.002907         2.34 
+       -----------------------------------------------------------------------------------
+       1500    -0.000079*    0.003093     0.000165*    0.025931     0.002899         2.92 
+       -----------------------------------------------------------------------------------
+       1600    -0.000022*    0.000095*    0.000011*    0.023710     0.002904         2.33 
+       -----------------------------------------------------------------------------------
+       1700    -0.000007*    0.000865     0.000056*    0.030244     0.002901         2.92 
+       Unexpected energy increase (0.000000 au)! Trust radius: old=0.0125, new=0.003125
+       1713     0.000000*    0.000083*    0.000006*    0.001814     0.000103*        4.15 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000083 hartree/bohr
+        	rms(forces,cartesian): 0.000006 hartree/bohr
+        	energy: -9936.40255285 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+
+====== TS optimization (RS-I-RFO) finished ======
+
+[Imaginary modes] n=3  ([-1067.1244850171686, -63.57493540829746, -7.4054487313303605])
+[convert] Wrote 'final_geometry' outputs.
+[time] Elapsed Time for TS Opt: 02:14:35.533
+
+
+
+[irc] Running EulerPC IRC → out=./bezA_case_study/path_search/post_seg_03/irc
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: false
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+irc
+---
+step_length: 0.1
+max_cycles: 125
+downhill: false
+forward: true
+backward: true
+root: 0
+hessian_init: calc
+displ: energy
+displ_energy: 0.001
+displ_length: 0.1
+rms_grad_thresh: 0.001
+hard_rms_grad_thresh: null
+energy_thresh: 1.0e-06
+imag_below: 0.0
+force_inflection: true
+check_bonds: false
+out_dir: ./bezA_case_study/path_search/post_seg_03/irc
+prefix: ''
+hessian_update: bofill
+hessian_recalc: null
+max_pred_steps: 500
+loose_cycles: 3
+corr_func: mbs
+
+
+====== IRC (EulerPC) started ======
+
+Convergence thresholds (non mass-weighted gradient):
+	     rms(|gradient|) <= 0.001000 E_h a_0⁻¹
+	             Δenergy <= 0.000001 E_h
+
+Calculating energy and gradient at TS.
+Transition vector is mode 0 with wavenumber -1067.16 cm⁻¹.
+Crossover temperature T_c: 244.37 K
+Energy-based (ΔE=0.001 au) initial displacement from the TS using 2rd derivatives.
+Initial step lengths (not mass-weighted):
+	 Forward: 0.1773 au
+	Backward: 0.1773 au
+IRC length in mw. coords, max(|grad|) and rms(grad) in unweighted coordinates.
+
+                               #################
+                               # IRC - FORWARD #
+                               #################
+
+Requested energy lowering:  0.0010 au ( 2.63 kJ mol⁻¹)
+   Actual energy lowering:  0.0006 au ( 1.63 kJ mol⁻¹)
+                        Δ:  0.0004 au ( 0.99 kJ mol⁻¹)
+
+
+        Step   IRC length      dE / au  max(|grad|)    rms(grad)
+        --------------------------------------------------------
+          0     0.217626    -0.001177     0.012349     0.000534 
+          1     0.442882    -0.001317     0.012761     0.000566 
+          2     0.671530    -0.001334     0.012194     0.000547 
+          3     0.899480    -0.001219     0.010717     0.000494 
+          4     1.120643    -0.001062     0.009141     0.000437 
+          5     1.335475    -0.000909     0.007731     0.000383 
+          6     1.548750    -0.000791     0.006516     0.000334 
+          7     1.756596    -0.000673     0.005494     0.000288 
+          8     1.957955    -0.000566     0.004634     0.000247 
+          9     2.151465    -0.000476     0.003908     0.000212 
+         10     2.336552    -0.000405     0.003285     0.000183 
+         11     2.511927    -0.000347     0.002757     0.000159 
+         12     2.677732    -0.000297     0.002374     0.000141 
+         13     2.836418    -0.000266     0.002197     0.000127 
+         14     2.990382    -0.000238     0.002039     0.000115 
+         15     3.140377    -0.000221     0.001902     0.000106 
+         16     3.287479    -0.000205     0.001785     0.000099 
+         17     3.433566    -0.000194     0.001689     0.000093 
+         18     3.579347    -0.000183     0.001613     0.000089 
+         19     3.727068    -0.000181     0.001559     0.000087 
+         20     3.876481    -0.000166     0.001539     0.000102 
+         21     3.919182    -0.000048     0.001426     0.000100 
+         22     4.054261    -0.000105     0.003118     0.000202 
+        Integrator indicated convergence!
+
+                               ##################
+                               # IRC - BACKWARD #
+                               ##################
+
+Requested energy lowering:  0.0010 au ( 2.63 kJ mol⁻¹)
+   Actual energy lowering:  0.0016 au ( 4.33 kJ mol⁻¹)
+                        Δ: -0.0006 au (-1.70 kJ mol⁻¹)
+
+
+        Step   IRC length      dE / au  max(|grad|)    rms(grad)
+        --------------------------------------------------------
+          0     0.109717    -0.002988     0.032437     0.001709 
+          1     0.217242    -0.004608     0.040446     0.002247 
+          2     0.326722    -0.004741     0.041192     0.002196 
+          3     0.447052    -0.004050     0.042317     0.001988 
+          4     0.592066    -0.003802     0.037812     0.001548 
+          5     0.745120    -0.002971     0.030955     0.001205 
+          6     0.897094    -0.002219     0.024659     0.000950 
+        rms(grad) converged!
+
+====== IRC (EulerPC) finished ======
+
+[convert] Wrote 'finished_irc.pdb'.
+[convert] Wrote 'forward_irc.pdb'.
+[convert] Wrote 'backward_irc.pdb'.
+[time] Elapsed Time for IRC: 00:05:17.956
+
+
+[trj2fig] Saved figure -> ./bezA_case_study/path_search/post_seg_03/irc/irc_plot.png
+[convert] Wrote './bezA_case_study/path_search/post_seg_03/structures/reactant_irc.pdb'.
+[convert] Wrote './bezA_case_study/path_search/post_seg_03/structures/ts.pdb'.
+[convert] Wrote './bezA_case_study/path_search/post_seg_03/structures/product_irc.pdb'.
+[endpoint-opt] Optimizing 'seg_03_reactant' with RFO → ./bezA_case_study/path_search/post_seg_03/endpoint_opt/seg_03_reactant_rfo_opt
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000300 E_h a_0⁻¹
+	  rms(force) <= 0.000200 E_h a_0⁻¹
+	 max(|step|) <= 0.000300 a_0
+	   rms(step) <= 0.000200 a_0
+	'Superscript *' indicates convergence
+
+Spent 303.2 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.003118     0.000202     0.050290     0.002899         4.27 
+       Unexpected energy increase (0.002535 au)! Trust radius: old=0.1, new=0.025
+       Unexpected energy increase (0.000001 au)! Trust radius: old=0.025, new=0.00625
+         72     0.000000*    0.000140*    0.000013*    0.000435     0.000074*        5.17 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000140 hartree/bohr
+        	rms(forces,cartesian): 0.000013 hartree/bohr
+        	energy: -9936.42129676 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+[endpoint-opt] Optimizing 'seg_03_product' with RFO → ./bezA_case_study/path_search/post_seg_03/endpoint_opt/seg_03_product_rfo_opt
+If not specified otherwise, all quantities are given in au.
+
+Convergence thresholds:
+	max(|force|) <= 0.000300 E_h a_0⁻¹
+	  rms(force) <= 0.000200 E_h a_0⁻¹
+	 max(|step|) <= 0.000300 a_0
+	   rms(step) <= 0.000200 a_0
+	'Superscript *' indicates convergence
+
+Spent 302.8 s preparing the first cycle.
+       cycle    Δ(energy) max(|force|)   rms(force)  max(|step|)    rms(step)      s/cycle
+          0          nan*    0.024659     0.000950     0.071361     0.002904         3.69 
+       Unexpected energy increase (0.000063 au)! Trust radius: old=0.1, new=0.025
+       -----------------------------------------------------------------------------------
+        100    -0.000006*    0.000125*    0.000017*    0.028683     0.002899         5.00 
+       Unexpected energy increase (0.001196 au)! Trust radius: old=0.1, new=0.025
+        109    -0.000000*    0.000110*    0.000007*    0.001216     0.000186*        0.18 
+       Converged!
+
+Final summary:
+        	max(forces,cartesian): 0.000110 hartree/bohr
+        	rms(forces,cartesian): 0.000007 hartree/bohr
+        	energy: -9936.44008750 hartree
+       Wrote final, hopefully optimized, geometry to 'final_geometry.xyz'
+[endpoint-opt] Clean endpoint-opt working dir.
+[convert] Wrote './bezA_case_study/path_search/post_seg_03/structures/reactant.pdb'.
+[convert] Wrote './bezA_case_study/path_search/post_seg_03/structures/product.pdb'.
+[diagram] Wrote energy diagram → energy_diagram_UMA.png
+[all] Copied TS structure for segment 03 → ./bezA_case_study/ts_seg_03.pdb
+
+[thermo] Segment 03: freq on R/TS/P
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: true
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+freq
+----
+amplitude_ang: 0.8
+n_frames: 20
+max_write: 10
+sort: value
+out_dir: ./bezA_case_study/path_search/post_seg_03/freq/R
+
+thermo
+------
+temperature: 298.15
+pressure_atm: 1.0
+dump: true
+
+[INFO] Total modes: 1119  → write first 10 modes (value ascending).
+
+====== Thermochemistry summary started ======
+
+Temperature (K)         = 298.15
+Pressure    (atm)       = 1.0000
+[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.
+Number of Imaginary Freq = 3
+
+Electronic Energy (EE)                 = -9936.421298 Ha
+Zero-point Energy Correction           =  3.302853 Ha
+Thermal Correction to Energy           =  3.495269 Ha
+Thermal Correction to Enthalpy         =  3.496213 Ha
+Thermal Correction to Free Energy      =  3.108050 Ha
+EE + Zero-point Energy                 = -9933.118445 Ha
+EE + Thermal Energy Correction         = -9932.926028 Ha
+EE + Thermal Enthalpy Correction       = -9932.925084 Ha
+EE + Thermal Free Energy Correction    = -9933.313247 Ha
+
+E (Thermal)                            =  2193314.61 cal/mol
+Heat Capacity (Cv)                     =  734.96 cal/(mol*K)
+Entropy (S)                            =  816.96 cal/(mol*K)
+
+====== Thermochemistry summary finished ======
+
+[dump] Wrote thermoanalysis summary → ./bezA_case_study/path_search/post_seg_03/freq/R/thermoanalysis.yaml
+[DONE] Wrote modes and list → ./bezA_case_study/path_search/post_seg_03/freq/R
+[time] Elapsed Time for Freq: 00:05:07.372
+
+
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: true
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+freq
+----
+amplitude_ang: 0.8
+n_frames: 20
+max_write: 10
+sort: value
+out_dir: ./bezA_case_study/path_search/post_seg_03/freq/TS
+
+thermo
+------
+temperature: 298.15
+pressure_atm: 1.0
+dump: true
+
+[INFO] Total modes: 1119  → write first 10 modes (value ascending).
+
+====== Thermochemistry summary started ======
+
+Temperature (K)         = 298.15
+Pressure    (atm)       = 1.0000
+[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.
+Number of Imaginary Freq = 3
+
+Electronic Energy (EE)                 = -9936.402552 Ha
+Zero-point Energy Correction           =  3.299398 Ha
+Thermal Correction to Energy           =  3.491948 Ha
+Thermal Correction to Enthalpy         =  3.492892 Ha
+Thermal Correction to Free Energy      =  3.104625 Ha
+EE + Zero-point Energy                 = -9933.103154 Ha
+EE + Thermal Energy Correction         = -9932.910605 Ha
+EE + Thermal Enthalpy Correction       = -9932.909661 Ha
+EE + Thermal Free Energy Correction    = -9933.297928 Ha
+
+E (Thermal)                            =  2191230.29 cal/mol
+Heat Capacity (Cv)                     =  735.75 cal/(mol*K)
+Entropy (S)                            =  817.18 cal/(mol*K)
+
+====== Thermochemistry summary finished ======
+
+[dump] Wrote thermoanalysis summary → ./bezA_case_study/path_search/post_seg_03/freq/TS/thermoanalysis.yaml
+[DONE] Wrote modes and list → ./bezA_case_study/path_search/post_seg_03/freq/TS
+[time] Elapsed Time for Freq: 00:05:07.243
+
+
+
+
+[freeze-links] Freeze atoms (0-based): 0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250
+geom
+----
+coord_type: cart
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+calc
+----
+charge: 1
+spin: 1
+model: uma-s-1p1
+task_name: omol
+device: auto
+max_neigh: null
+radius: null
+r_edges: false
+workers: 1
+workers_per_node: 1
+hessian_calc_mode: FiniteDifference
+out_hess_torch: true
+hessian_double: true
+return_partial_hessian: true
+freeze_atoms: '[0,15,31,47,62,77,88,93,103,111,124,133,138,153,171,186,200,208,222,240,245,250]'
+
+freq
+----
+amplitude_ang: 0.8
+n_frames: 20
+max_write: 10
+sort: value
+out_dir: ./bezA_case_study/path_search/post_seg_03/freq/P
+
+thermo
+------
+temperature: 298.15
+pressure_atm: 1.0
+dump: true
+
+[INFO] Total modes: 1119  → write first 10 modes (value ascending).
+
+====== Thermochemistry summary started ======
+
+Temperature (K)         = 298.15
+Pressure    (atm)       = 1.0000
+[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.
+Number of Imaginary Freq = 1
+
+Electronic Energy (EE)                 = -9936.440088 Ha
+Zero-point Energy Correction           =  3.306384 Ha
+Thermal Correction to Energy           =  3.500268 Ha
+Thermal Correction to Enthalpy         =  3.501212 Ha
+Thermal Correction to Free Energy      =  3.109811 Ha
+EE + Zero-point Energy                 = -9933.133704 Ha
+EE + Thermal Energy Correction         = -9932.939820 Ha
+EE + Thermal Enthalpy Correction       = -9932.938875 Ha
+EE + Thermal Free Energy Correction    = -9933.330276 Ha
+
+E (Thermal)                            =  2196451.30 cal/mol
+Heat Capacity (Cv)                     =  739.28 cal/(mol*K)
+Entropy (S)                            =  823.77 cal/(mol*K)
+
+====== Thermochemistry summary finished ======
+
+[dump] Wrote thermoanalysis summary → ./bezA_case_study/path_search/post_seg_03/freq/P/thermoanalysis.yaml
+[DONE] Wrote modes and list → ./bezA_case_study/path_search/post_seg_03/freq/P
+[time] Elapsed Time for Freq: 00:05:05.487
+
+
+[diagram] Wrote energy diagram → energy_diagram_G_UMA.png
+[diagram] Wrote energy diagram → energy_diagram_UMA_all.png
+[diagram] Wrote energy diagram → energy_diagram_G_UMA_all.png
+[trj2fig] Saved figure -> ./bezA_case_study/irc_plot_all.png
+[irc_all] Wrote aggregated IRC plot → ./bezA_case_study/irc_plot_all.png
+[write] Updated './bezA_case_study/path_search/summary.yaml' with energy diagrams.
+[all] Copied summary.yaml → ./bezA_case_study/summary.yaml
+[all] Copied summary.log → ./bezA_case_study/summary.log
+[all] Elapsed for Whole Pipeline: 06:18:16.091

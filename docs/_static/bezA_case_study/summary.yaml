@@ -1,0 +1,169 @@
+out_dir: ./bezA_case_study/path_search
+n_images: 29
+n_segments: 3
+segments:
+- index: 1
+  tag: seg_000_refine
+  kind: seg
+  barrier_kcal: 14.9043252473205
+  delta_kcal: -36.64674545003105
+  bond_changes:
+  - Bond formed (1):
+    - 'C275-C334 : 3.016 Å --> 1.535 Å'
+  - Bond broken (1):
+    - 'S274-C275 : 1.792 Å --> 3.457 Å'
+- index: 2
+  tag: seg_000_seg_001_bridge
+  kind: bridge
+  barrier_kcal: 0.0
+  delta_kcal: -2.038153966047389
+  bond_changes: ''
+- index: 3
+  tag: seg_001_refine
+  kind: seg
+  barrier_kcal: 38.899543793580236
+  delta_kcal: -8.442737649329219
+  bond_changes:
+  - Bond formed (1):
+    - 'O133-H335 : 2.308 Å --> 0.970 Å'
+  - Bond broken (1):
+    - 'C334-H335 : 1.095 Å --> 4.593 Å'
+energy_diagrams:
+- name: energy_diagram_MEP
+  labels:
+  - R
+  - TS1
+  - IM1_1
+  - IM1_2
+  - TS2
+  - P
+  energies_kcal:
+  - 0.0
+  - 14.9043252473205
+  - -36.64674545003105
+  - -38.68489941607844
+  - 0.21464437750179854
+  - -47.127637065407654
+  ylabel: ΔE (kcal/mol)
+  energies_au:
+  - -9936.307294715029
+  - -9936.283543160887
+  - -9936.365695021263
+  - -9936.368943026353
+  - -9936.30695265744
+  - -9936.382397385209
+  image: ./bezA_case_study/path_search/energy_diagram_MEP.png
+- name: energy_diagram_UMA
+  labels:
+  - R
+  - TS1
+  - P
+  energies_kcal:
+  - 0.0
+  - 21.467605020387964
+  - -38.45925890484906
+  ylabel: ΔE (kcal/mol)
+  title: (UMA, TSOPT + IRC)
+  energies_au:
+  - -9936.381939813073
+  - -9936.34772900685
+  - -9936.443228543354
+  image: ./bezA_case_study/path_search/post_seg_01/energy_diagram_UMA.png
+- name: energy_diagram_G_UMA
+  labels:
+  - R
+  - TS1
+  - P
+  energies_kcal:
+  - 0.0
+  - 20.169552388522355
+  - -38.48862416114673
+  ylabel: ΔG (kcal/mol)
+  title: (UMA + Thermal Correction)
+  energies_au:
+  - -9933.273622711176
+  - -9933.241480483493
+  - -9933.334958237972
+  image: ./bezA_case_study/path_search/post_seg_01/energy_diagram_G_UMA.png
+- name: energy_diagram_UMA
+  labels:
+  - R
+  - TS3
+  - P
+  energies_kcal:
+  - 0.0
+  - 11.762424126417647
+  - -11.791102027692233
+  ylabel: ΔE (kcal/mol)
+  title: (UMA, TSOPT + IRC)
+  energies_au:
+  - -9936.421297604775
+  - -9936.402552988777
+  - -9936.440087921917
+  image: ./bezA_case_study/path_search/post_seg_03/energy_diagram_UMA.png
+- name: energy_diagram_G_UMA
+  labels:
+  - R
+  - TS3
+  - P
+  energies_kcal:
+  - 0.0
+  - 9.613154813700717
+  - -10.685782014572952
+  ylabel: ΔG (kcal/mol)
+  title: (UMA + Thermal Correction)
+  energies_au:
+  - -9933.313247434653
+  - -9933.297927897322
+  - -9933.330276312234
+  image: ./bezA_case_study/path_search/post_seg_03/energy_diagram_G_UMA.png
+- name: energy_diagram_UMA_all
+  labels:
+  - R
+  - TS1
+  - IM1_1
+  - IM1_2
+  - TS2
+  - P
+  energies_kcal:
+  - 0.0
+  - 21.467605020387964
+  - -38.45925890484906
+  - -24.69738717123632
+  - -12.934963044818671
+  - -36.488489198928555
+  ylabel: ΔE (kcal/mol)
+  title: (UMA, TSOPT + IRC; all segments)
+  energies_au:
+  - -9936.381939813073
+  - -9936.34772900685
+  - -9936.443228543354
+  - -9936.421297604775
+  - -9936.402552988777
+  - -9936.440087921917
+  image: ./bezA_case_study/energy_diagram_UMA_all.png
+- name: energy_diagram_G_UMA_all
+  labels:
+  - R
+  - TS1
+  - IM1_1
+  - IM1_2
+  - TS2
+  - P
+  energies_kcal:
+  - 0.0
+  - 20.169552388522355
+  - -38.48862416114673
+  - -24.864889388728763
+  - -15.251734575028046
+  - -35.55067140330171
+  ylabel: ΔG (kcal/mol)
+  title: (UMA + Thermal Correction; all segments)
+  energies_au:
+  - -9933.273622711176
+  - -9933.241480483493
+  - -9933.334958237972
+  - -9933.313247434653
+  - -9933.297927897322
+  - -9933.330276312234
+  image: ./bezA_case_study/energy_diagram_G_UMA_all.png

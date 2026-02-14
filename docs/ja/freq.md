@@ -107,7 +107,7 @@ thermo:
 
 ## 関連項目
 
-- [tsopt](tsopt.md) — 遷移状態最適化（虚数振動数が1つ必要）
+- [tsopt](tsopt.md) — 遷移状態最適化（妥当なTSなら虚数振動数は1本が期待される）
 - [irc](irc.md) — TSからのIRC（端点でのfreqと組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー精密化のためのDFT一点計算
 - [all](all.md) — `--thermo True` を使用したエンドツーエンドワークフロー

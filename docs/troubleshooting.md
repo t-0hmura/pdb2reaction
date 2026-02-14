@@ -1,6 +1,8 @@
 # Troubleshooting
 
-This page collects common failure modes and practical fixes. It is written to be copy-paste friendly: search the page for the error message you see.
+This page collects common failure modes and practical fixes. It is written to be copy-and-paste friendly: search this page for the error message you see.
+
+For worked examples, see [Tutorial](tutorial.md) (bezA enzyme case study + smoke test matrix).
 
 ---
 
@@ -170,7 +172,7 @@ Symptoms:
 Fixes to try:
 - Reduce step size: `--step-size 0.05` (default is 0.10).
 - Increase max cycles: `--max-cycles 200`.
-- Check if the TS has only one imaginary frequency before running IRC.
+- Check if the TS candidate has only one imaginary frequency before running IRC.
 
 ---
 

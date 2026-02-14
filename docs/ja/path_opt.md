@@ -4,7 +4,7 @@
 
 > **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つの構造間の MEP を見つけます。経路軌跡と最高エネルギー画像（HEI）を出力します。複数構造での再帰的精密化には `path-search` を使用してください。
 
-`pdb2reaction path-opt` は、`--mep-mode` で選択されるpysisyphusのGrowing String法（GSM）またはDirect Max Flux（DMF）を使用して、2つのエンドポイント構造間の最小エネルギー経路（MEP）を探索します。UMAはすべてのイメージにエネルギー/勾配/ヘシアンを提供し、外部の剛体アライメントルーチンがオプティマイザー開始前にストリングを整えます。設定は **デフォルト → CLI → `--args-yaml`** の優先順位で `geom`/`calc`/`gs`/`opt`/`dmf`/`sopt.*` に適用されます。`--convert-files`（デフォルト有効）を有効にすると、PDB 参照がある場合は軌跡を `.pdb` コンパニオンへ、Gaussianテンプレートがある場合はXYZスナップショット（例: HEI）を `.gjf` コンパニオンへミラーします。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、PDB変換が可能です。GSMがデフォルトの経路生成器です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。
+`pdb2reaction path-opt` は、`--mep-mode` で選択されるpysisyphusのGrowing String法（GSM）またはDirect Max Flux（DMF）を使用して、2つのエンドポイント構造間の最小エネルギー経路（MEP）を探索します。経路軌跡と最高エネルギー画像（HEI）を出力しますが、HEI は TS候補として扱い、`freq`/`irc` で検証してください。UMAはすべてのイメージにエネルギー/勾配/ヘシアンを提供し、外部の剛体アライメントルーチンがオプティマイザー開始前にストリングを整えます。設定は **デフォルト → CLI → `--args-yaml`** の優先順位で `geom`/`calc`/`gs`/`opt`/`dmf`/`sopt.*` に適用されます。`--convert-files`（デフォルト有効）を有効にすると、PDB 参照がある場合は軌跡を `.pdb` コンパニオンへ、Gaussianテンプレートがある場合はXYZスナップショット（例: HEI）を `.gjf` コンパニオンへミラーします。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、PDB変換が可能です。GSMがデフォルトの経路生成器です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。
 
 ## 使用法
 ```bash
@@ -176,7 +176,7 @@ dmf:
 ## 関連項目
 
 - [path-search](path_search.md) — 自動精密化を伴う再帰的MEP探索（2+構造用）
-- [tsopt](tsopt.md) — HEIを遷移状態として最適化
+- [tsopt](tsopt.md) — HEIをTS候補として最適化（freq/IRCで検証）
 - [extract](extract.md) — path-opt入力用のポケットPDBを生成
 - [all](all.md) — エンドツーエンドワークフロー（デフォルトでpath-searchを使用）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`opt` の完全な設定オプション

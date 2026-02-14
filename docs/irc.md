@@ -133,7 +133,7 @@ irc:
 ## See Also
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
-- [freq](freq.md) — Verify TS has one imaginary frequency; analyze IRC endpoints
+- [freq](freq.md) — Verify the TS candidate has one imaginary frequency; analyze IRC endpoints
 - [opt](opt.md) — Optimize IRC endpoints to true minima
 - [all](all.md) — End-to-end workflow that runs IRC after tsopt
 - [YAML Reference](yaml-reference.md) — Full `irc` configuration options

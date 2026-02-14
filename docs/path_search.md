@@ -2,9 +2,15 @@
 
 ## Overview
 
-> **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to build a continuous MEP from two or more structures. It automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate.
+> **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to build a continuous MEP from two or more structures. It automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate that must be validated with freq/IRC.
 
-`pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate. `path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO. When `--convert-files` is enabled (default), the command also writes `.pdb` companions when PDB references exist, and `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling full-template merges when `--ref-full-pdb` is provided (XYZ/GJF inputs still do not produce PDB companions).
+`pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It automatically refines regions with bond changes and reports the highest-energy image (HEI) as a TS candidate.
+
+`path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
+
+When `--convert-files` is enabled (default), the command writes `.pdb` companions when PDB references exist, and `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling full-template merges when `--ref-full-pdb` is provided (XYZ/GJF inputs still do not produce PDB companions).
+
+HEI output alone does not validate a transition state. Follow with [tsopt](tsopt.md), [freq](freq.md), and [irc](irc.md).
 
 ## Usage
 ```bash
@@ -91,7 +97,7 @@ out_dir/ (default: ./result_path_search/)
 - Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. For non-`.gjf` inputs without a usable `--ligand-charge`, the command aborts; multiplicity defaults to `1` when omitted.
 
 ## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path_opt`.
+The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 

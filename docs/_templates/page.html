@@ -12,6 +12,10 @@
   var isJa = {{ 'true' if is_ja else 'false' }};
   document.body.dataset.lang = isJa ? 'ja' : 'en';
 
+  function setHidden(el, hidden) {
+    el.classList.toggle('lang-hidden', hidden);
+  }
+
   function filterSidebar() {
     var topLevel = document.querySelector('.sidebar-tree > ul');
     if (!topLevel) return;
@@ -22,27 +26,29 @@
       var href = link.getAttribute('href') || '';
       var isJaSection = href.includes('ja/') || href.includes('ja%2F');
       var isEnglishFromJa = href.startsWith('../');
+      var nestedUl = li.querySelector(':scope > ul');
+
+      // Reset language-root marker every run to keep behavior idempotent.
+      li.classList.remove('lang-nav-root');
 
       if (isJa) {
-        // Japanese page: hide English items (relative ../ links)
+        // Japanese page: hide English items (relative ../ links).
         if (isEnglishFromJa) {
-          li.classList.add('lang-hidden');
+          setHidden(li, true);
           return;
         }
-        // Flatten the ja/index wrapper so JP pages align with EN nav structure
-        var nestedUl = li.querySelector(':scope > ul');
+        setHidden(li, false);
+
+        // Keep JP wrapper in place and avoid DOM reordering.
+        // We only mark it and keep children expanded.
         if (nestedUl) {
-          var children = Array.from(nestedUl.children);
-          children.forEach(function(child) {
-            topLevel.appendChild(child);
-          });
-          li.classList.add('lang-hidden');
-          return;
+          li.classList.add('lang-nav-root');
+          var checkbox = li.querySelector(':scope > input.toctree-checkbox');
+          if (checkbox) checkbox.checked = true;
         }
-        li.classList.remove('lang-hidden');
       } else {
-        // English page: hide Japanese section
-        if (isJaSection) li.classList.add('lang-hidden');
+        // English page: hide Japanese section.
+        setHidden(li, isJaSection);
       }
     });
   }

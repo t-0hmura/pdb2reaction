@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **Summary:** Optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, `--hessian-calc-mode Analytical` improves performance. A converged TS should have exactly one imaginary frequency.
+> **Summary:** Optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, `--hessian-calc-mode Analytical` improves performance. A validated TS is expected to exhibit exactly one imaginary frequency; always confirm the mode/connectivity with freq/IRC.
 
-`pdb2reaction tsopt` optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, use `--hessian-calc-mode Analytical` for faster convergence. The optimized TS has exactly one imaginary frequency.
+`pdb2reaction tsopt` optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, use `--hessian-calc-mode Analytical` for faster convergence. Treat the resulting structure as a TS candidate until frequency analysis and IRC confirm the expected mode/connectivity.
 
 The command supports two complementary workflows:
 
@@ -270,7 +270,7 @@ rsirfo:
 
 - [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
 - [irc](irc.md) — Trace the reaction path from an optimized TS
-- [freq](freq.md) — Confirm exactly one imaginary frequency
+- [freq](freq.md) — Confirm a single imaginary frequency (expected for a validated TS)
 - [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
 - [YAML Reference](yaml-reference.md) — Full `hessian_dimer` and `rsirfo` configuration options
 - [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

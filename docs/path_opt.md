@@ -4,7 +4,7 @@
 
 > **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to find the MEP between exactly two structures. It outputs the path trajectory and the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead.
 
-`pdb2reaction path-opt` finds the minimum-energy path (MEP) between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). It outputs the path trajectory and identifies the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across `geom`, `calc`, `gs`, `opt`, `dmf`, and `sopt.*` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
+`pdb2reaction path-opt` finds the minimum-energy path (MEP) between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). It outputs the path trajectory and identifies the highest-energy image (HEI). Treat the HEI as a TS candidate until validated with `freq`/`irc`. For multi-structure workflows with automatic refinement, use `path-search` instead. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across `geom`, `calc`, `gs`, `opt`, `dmf`, and `sopt.*` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
 
 ## Usage
 ```bash
@@ -173,7 +173,7 @@ dmf:
 ## See Also
 
 - [path-search](path_search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
-- [tsopt](tsopt.md) — Optimize the HEI as a transition state
+- [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (validate with freq/IRC)
 - [extract](extract.md) — Generate pocket PDBs for path-opt inputs
 - [all](all.md) — End-to-end workflow (uses path-search by default)
 - [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `opt` configuration options

@@ -102,7 +102,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 - `k` (`300`): Harmonic strength in eV·Å⁻².
 
 ### Section `bond`
-UMA-based bond-change detection mirrored from `path_search`:
+UMA-based bond-change detection shared with `path-search`:
 - `device` (`"cuda"`): UMA device for graph analysis.
 - `bond_factor` (`1.20`): Covalent-radius scaling for cutoff.
 - `margin_fraction` (`0.05`): Fractional tolerance for comparisons.

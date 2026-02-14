@@ -4,7 +4,7 @@
 
 `pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を用いて **PDB 構造** から **酵素反応経路** を自動的に構築する Python 製の CLI ツールキットです。
 
-多くの場合、次のような **1 コマンド** で反応経路をモデル化できます。
+多くのケースで、次のような **1 コマンド** から反応経路の**初期案（first-pass）**を得られます。
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
@@ -22,6 +22,10 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP)** を探索
 - 必要に応じて **遷移状態** を最適化し、**振動解析**・**IRC 計算**・**DFT 一点計算** を実行
 
+```{important}
+単一コマンドの TS 結果は「候補」として扱ってください。酵素反応では、endpoint 品質、ポケット定義、拘束、scan ターゲットの調整を伴う反復が一般的です。最終解釈の前に、`freq` と `irc` の両方で TS を必ず検証してください。
+```
+
 UMA レベルの計算には Meta の UMA（MLIP）を用います。
 
 一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
@@ -36,6 +40,7 @@ UMA レベルの計算には Meta の UMA（MLIP）を用います。
 ```{tip}
 初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。
 セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
+実例ベースの手順は [チュートリアル](tutorial.md)（bezA ケーススタディ、smoke test マトリクス）を参照してください。
 ```
 
 ### CLI の慣習
@@ -46,6 +51,8 @@ UMA レベルの計算には Meta の UMA（MLIP）を用います。
 | **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
 | **電荷マッピング** | `--ligand-charge 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
 | **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
+
+表記メモ: CLI サブコマンド名は `path-search`、ドキュメントファイル名は [`path_search.md`](path_search.md) です。
 
 
 ### 水素原子付与の推奨ツール
@@ -68,7 +75,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 ## インストール
 
-`pdb2reaction` は、CUDA対応GPUを備えたLinux環境（ローカルワークステーションまたはHPC クラスター）向けに設計されています。特に **PyTorch**、**fairchem-core (UMA)**、**gpu4pyscf-cuda12x** などの依存関係は、動作するCUDAインストールを前提としています。
+`pdb2reaction` は、CUDA 対応 GPU を備えた Linux 環境（ローカルワークステーションまたは HPC クラスター）向けに設計されています。特に **PyTorch**、**fairchem-core (UMA)**、**gpu4pyscf-cuda12x** などの依存関係は、動作する CUDA インストールを前提としています。
 
 詳細は上流プロジェクトを参照してください:
 
@@ -105,7 +112,7 @@ huggingface-cli login
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-- MEP 探索でDirect Max Flux法を使用する場合は、conda環境を作成し、インストール前にcyipoptをインストールしてください:
+- MEP 探索で Direct Max Flux 法を使用する場合は、conda 環境を作成し、インストール前に cyipopt をインストールしてください:
   ```bash
   # 専用のconda環境を作成してアクティブ化
   conda create -n pdb2reaction python=3.11 -y
@@ -196,9 +203,9 @@ pdb2reaction [OPTIONS] ...
 pdb2reaction all [OPTIONS] ...
 ```
 
-`all` ワークフローは**オーケストレーター**です: クラスター抽出、MEP 探索、TS 最適化、振動解析、オプションのDFT 一点計算を単一コマンドに連鎖させます。
+`all` ワークフローは、クラスター抽出、MEP 探索、TS 最適化、振動解析、オプションの DFT 一点計算を 1 つのコマンドで連続実行する**オーケストレーター**です。
 
-クラスター抽出を行う場合、すべての高レベルワークフローは2つの重要なオプションを共有します:
+クラスター抽出を行う場合、すべての高レベルワークフローは 2 つの重要なオプションを共有します:
 
 - `-i/--input`: 1つ以上の**完全構造**（反応物、中間体、生成物）
 - `-c/--center`: **基質/抽出中心**の定義方法（例: 残基名または残基ID）
@@ -211,7 +218,7 @@ pdb2reaction all [OPTIONS] ...
 
 ### 複数構造MEPワークフロー（反応物 → 生成物）
 
-推定反応座標に沿った複数の完全PDB 構造（例: R → I1 → I2 → P）がすでにある場合に使用します。
+推定反応座標に沿った複数の完全な PDB 構造（例: R → I1 → I2 → P）がすでにある場合に使用します。
 
 **最小例**
 
@@ -229,8 +236,8 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 
 - 反応順序で2つ以上の**完全系**を受け取る
 - 各構造の触媒クラスターモデルを抽出
-- デフォルトで `path_search` による**再帰的 MEP 探索**を実行
-- `--refine-path False` でオプションで**シングルパス** `path-opt` 実行に切り替え
+- デフォルトで `path-search` による**再帰的 MEP 探索**を実行（出力は `path_search/`）
+- `--refine-path False` で**シングルパス** `path-opt` 実行に切り替え
 - PDB テンプレートが利用可能な場合、クラスターモデルMEPを**完全系**にマージ
 - オプションで各セグメントに対してTS 最適化、振動解析、DFT 一点計算を実行
 
@@ -244,7 +251,7 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 
 ### 単一構造 + 段階的スキャン（MEP 精密化への入力）
 
-**1つのPDB 構造**しかないが、反応に沿ってどの原子間距離が変化するかを知っている場合に使用します。
+**1 つの PDB 構造**しかないが、反応に沿ってどの原子間距離が変化するかが分かっている場合に使用します。
 
 `--scan-lists` と一緒に単一の `-i` を指定します:
 
@@ -268,7 +275,7 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
   - クラスターモデルのインデックスに自動的に再マッピング
 - 1つの `--scan-lists` リテラルは単一スキャンステージを実行; 複数のリテラルは順次ステージを実行。単一フラグの後に複数のリテラルを渡します（フラグの繰り返しは不可）
 - 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
-- デフォルトの `all` ワークフローは連結されたステージを再帰的 `path_search` で精密化
+- デフォルトの `all` ワークフローは連結されたステージを再帰的 `path-search` で精密化
 - `--refine-path False` を使用すると、シングルパス `path-opt` チェーンを実行し、再帰的精密化をスキップ（マージされた `mep_w_ref*.pdb` なし）
 
 このモードは単一構造から反応経路を構築するのに便利です。
@@ -279,7 +286,7 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
 
 すでに**遷移状態候補**があり、それを最適化して IRC 計算を行いたい場合に使用します。
 
-正確に1つのPDBを指定し、`--tsopt` を有効にします:
+PDB を 1 つだけ指定し、`--tsopt` を有効にします:
 
 **最小例**
 
@@ -309,14 +316,14 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 ---
 
-## 重要なCLI オプションと動作
+## 重要な CLI オプションと動作
 
 以下はワークフロー全体で最もよく使用されるオプションです。
 
 | オプション | 説明 |
 |----------|------|
-| `-i, --input PATH...` | 入力構造。**2つ以上のPDB** → MEP 探索; **1つのPDB + `--scan-lists`** → 段階的スキャン → GSM; **1つのPDB + `--tsopt True`** → TSOPT のみモード |
-| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、またはPDB パスをサポート |
+| `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt True`** → TSOPT のみモード |
+| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、または PDB パスをサポート |
 | `--ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --mult INT` | スピン多重度（例: シングレットは `1`）。注: `all` 以外のサブコマンドでは `--multiplicity` を使用してください。 |
@@ -348,7 +355,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 - セグメントごとの障壁高さと主要な結合変化
 - UMA、熱化学、DFT後処理からのエネルギー（有効な場合）
 
-各 `path_search` セグメントディレクトリにも独自の `summary.log` と `summary.yaml` があり、ローカルな精密化を個別に検査できます。
+`path_search/` 配下の各セグメントディレクトリにも独自の `summary.log` と `summary.yaml` があり、ローカルな精密化を個別に検査できます。
 
 ---
 
@@ -371,6 +378,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `freq` | 振動解析 | [freq](freq.md) |
 | `dft` | DFT 一点計算 | [dft](dft.md) |
 | `trj2fig` | エネルギープロファイルプロット | [trj2fig](trj2fig.md) |
+| `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy-diagram.md) |
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{important}

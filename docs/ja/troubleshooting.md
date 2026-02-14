@@ -3,11 +3,13 @@
 このページでは、`pdb2reaction` でよく遭遇するエラーと対処法をまとめます。  
 コンソールに出てきたメッセージをそのまま検索（ページ内検索）すると見つけやすいように書いています。
 
+実例ベースの導線は [チュートリアル](tutorial.md) を参照してください。
+
 ---
 
 ## 実行前チェックリスト
 
-長い計算を回す前に、最低限つぎを確認してください。
+長い計算を回す前に、最低限次を確認してください。
 
 - `pdb2reaction -h` でヘルプが表示される
 - UMA のモデルがダウンロードできる（Hugging Face のログイン/トークンが利用可能）
@@ -18,7 +20,7 @@
 
 ## 入力 / 抽出の問題
 
-### 「Element symbols are missing … add-elem-info を実行して下さい」
+### 「Element symbols are missing … add-elem-info を実行してください」
 典型的なメッセージ:
 
 ```text
@@ -27,7 +29,7 @@ Please run `pdb2reaction add-elem-info -i ...` to populate element columns befor
 ```
 
 対処:
-- 次を実行して element 列を補完します。
+- 次を実行して element 列（元素記号列）を補完します。
 
   ```bash
   pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
@@ -102,7 +104,7 @@ Please run `pdb2reaction add-elem-info -i ...` to populate element columns befor
   huggingface-cli login
   ```
 
-- HPC では、compute node から HF キャッシュ（ホームディレクトリ等）が書き込み可能か確認してください。
+- HPC では、計算ノードから HF キャッシュ（ホームディレクトリ等）に書き込み可能か確認してください。
 
 ---
 
@@ -134,7 +136,7 @@ DMF（`--mep-mode dmf`）を使うときに IPOPT/cyipopt の import エラー�
 
 ---
 
-### 図の export が失敗する（Chrome がない）
+### 図のエクスポートが失敗する（Chrome がない）
 Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 対処:
@@ -162,7 +164,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 ---
 
-### IRCが正常に終了しない
+### IRC が正常に終了しない
 
 症状:
 - IRCが明確な極小に到達する前に停止
@@ -171,18 +173,18 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処の例:
 - ステップサイズを減らす: `--step-size 0.05`（デフォルトは0.10）
 - 最大サイクル数を増やす: `--max-cycles 200`
-- IRC実行前にTSに虚振動数が1つだけあることを確認
+- IRC実行前にTS候補で虚数振動数が1本であることを確認
 
 ---
 
 ### MEP 探索（GSM/DMF）が失敗または予期しない結果
 
 症状:
-- 経路探索が有効なMEPなしで終了
+- 経路探索が有効な MEP なしで終了
 - 結合変化が正しく検出されない
 
 対処の例:
-- `--max-nodes` を増やす（複雑な反応には15や20など）
+- `--max-nodes` を増やす（複雑な反応には 15 や 20 など）
 - 端点の事前最適化を有効にする: `--preopt True`
 - 別のMEP手法を試す: `--mep-mode dmf`（GSMが失敗した場合）またはその逆
 - YAMLで結合検出パラメータを調整（`bond.bond_factor`、`bond.delta_fraction`）

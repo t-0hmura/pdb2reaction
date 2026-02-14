@@ -4,7 +4,11 @@
 
 `pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。典型的なフローは次のとおりです。
 
-ポケット抽出 →（任意）段階的 UMA スキャン → 再帰的 MEP 探索（`path_search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化 + IRC（`tsopt`）→（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+ポケット抽出 →（任意）段階的 UMA スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化 + IRC（`tsopt`）→（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+
+```{important}
+`--tsopt True` の出力は **TS候補** です。最終解釈の前に、`freq`（虚数モード）と `irc`（端点極小）で必ず検証してください。
+```
 
 主なモードは 3 つあります。
 
@@ -28,7 +32,7 @@ pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
     --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links True \
     --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
-    --out-dir result_all_${date} --tsopt True --thermo True --dft True
+    --out-dir ./result_all --tsopt True --thermo True --dft True
 
 # 単一構造段階的スキャン + GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
@@ -41,21 +45,21 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 ```
 
 ## ワークフロー
-1. **活性部位ポケット抽出**（`-c/--center` が提供された場合）
-   - 基質はPDB パス、残基ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
+1. **活性部位ポケット抽出**（`-c/--center` が指定された場合）
+   - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
    - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
-   - 入力ごとのポケット PDBは `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
-   - **最初のポケットの総電荷**がスキャン/MEP/TSOPTに伝播
+   - 入力ごとのポケット PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
+   - **最初のポケットの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
-   - 各 `--scan-lists` 引数はUMA スキャンステージを記述する `(i,j,target_Å)` タプルのPythonライクなリスト
-   - 単一リテラルは1ステージスキャンを実行; 複数リテラルは**順次**実行
-   - スキャンは電荷/スピン、`--freeze-links`、UMA最適化プリセット（`--opt-mode`）、`--args-yaml`、`--preopt` を継承。`--dump` はこのコマンドで明示指定された場合のみスキャンへ転送され、それ以外は scan 側のデフォルト（`False`）を使用
+   - 各 `--scan-lists` 引数は UMA スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト
+   - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行
+   - スキャンは電荷/スピン、`--freeze-links`、UMA 最適化プリセット（`--opt-mode`）、`--args-yaml`、`--preopt` を継承。`--dump` はこのコマンドで明示指定された場合のみスキャンへ転送され、それ以外は `scan` 側のデフォルト（`False`）を使用
    - `--scan-out-dir`、`--scan-one-based`、`--scan-max-step-size`、`--scan-bias-k`、`--scan-relax-max-cycles`、`--scan-preopt`、`--scan-endopt` などの上書きフラグが利用可能
-   - ステージエンドポイント（`stage_XX/result.pdb`）が後続MEPステップに供給される順序付き中間体となる
+   - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
-3. **ポケットでのMEP 探索（再帰的GSM/DMF）**
-   - 抽出されたポケット（または抽出がスキップされた場合は元の全構造）を使用してデフォルトで `path_search` を実行
+3. **ポケットでの MEP 探索（再帰的 GSM/DMF）**
+   - 抽出されたポケット（または抽出がスキップされた場合は元の全構造）を使用してデフォルトで `path-search` を実行（出力は `<out-dir>/path_search/`）
    - `--refine-path False` で再帰的精密化なしのシングルパス `path-opt` GSM/DMFチェーンに切り替え
 
 4. **ポケットを全系にマージ**
@@ -106,7 +110,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt True` のみ単一入力可） | 必須 |
 | `--out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
 | `--convert-files {True\|False}` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
-| `--dump {True\|False}` | MEP(GSM/DMF)軌跡を出力。`path_search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--dump False` で無効化。 | `False` |
+| `--dump {True\|False}` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--dump False` で無効化。 | `False` |
 | `--args-yaml FILE` | 全サブコマンドへそのまま転送されるYAML | _None_ |
 
 ### 電荷・スピンオプション
@@ -142,7 +146,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode [light\|heavy]` | 最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt {True\|False}` | MEP前にポケット端点を事前最適化 | `True` |
-| `--refine-path {True\|False}` | True の場合は再帰的 `path_search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
+| `--refine-path {True\|False}` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
 ### UMA計算機オプション
 
@@ -240,7 +244,7 @@ YAMLは機械可読サマリーです。代表的なトップレベルキーは�
 
 ## 注意事項
 - 形式電荷が推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFTへ正しい総電荷を伝播させてください。
-- マージ用の参照 PDB テンプレートは元の入力から自動導出されます。`path_search` の `--ref-full-pdb` はこのラッパーでは意図的に隠されています。
+- マージ用の参照 PDB テンプレートは元の入力から自動導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に隠されています。
 - 収束プリセット: `--thresh` の既定は `gau`、`--thresh-post` の既定は `baker`。
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - ダイアグラムのエネルギーは反応物（最初の状態）基準の kcal/mol で報告されます。
@@ -253,7 +257,7 @@ YAMLは機械可読サマリーです。代表的なトップレベルキーは�
 
 | サブコマンド | YAML セクション |
 |------------|-----------------|
-| [`path_search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
+| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |

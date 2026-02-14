@@ -75,7 +75,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 
 (section-bond)=
 ### セクション `bond`
-`path_search` と同一のUMAベース結合変化検出:
+`path-search` と共通の UMA ベース結合変化検出:
 - `device`（`"cuda"`）: 結合解析用UMAデバイス。
 - `bond_factor`（`1.20`）: 共有結合半径のスケーリング。
 - `margin_fraction`（`0.05`）: 比較用の相対許容。

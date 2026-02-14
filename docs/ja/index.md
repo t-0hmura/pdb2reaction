@@ -10,6 +10,7 @@
 :hidden:
 
 getting-started
+tutorial
 concepts
 all
 extract
@@ -26,6 +27,7 @@ irc
 freq
 dft
 trj2fig
+energy-diagram
 yaml-reference
 uma_pysis
 cli-conventions
@@ -39,13 +41,15 @@ glossary
 
 | やりたいこと | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
-| PDBから完全な反応経路探索を実行 | `pdb2reaction all` | [all.md](all.md) |
+| PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt.md](opt.md) |
 | 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
 | 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
+| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
+| チュートリアルから学ぶ | — | [tutorial.md](tutorial.md) |
 | 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
@@ -57,6 +61,9 @@ glossary
 ### はじめに
 
 - [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
+- [**チュートリアル**](tutorial.md) - 実例ベース（bezA ケーススタディ、smoke test マトリクス）
+- [**bezA 酵素反応ケーススタディ**](tutorial.md#ja-tutorial-case-study) - 結果の読み方とTS検証ポイント
+- [**Smoke test マトリクス**](tutorial.md#ja-tutorial-smoke-tests) - `test/run.sh` の用途別ガイド
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
 - [**CLI 規約**](cli-conventions.md) - ブーリアンオプション、セレクタ、電荷指定などの共通規約
 - [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
@@ -72,7 +79,7 @@ glossary
 | サブコマンド | 説明 |
 |---------|------|
 | [`extract`](extract.md) | タンパク質-リガンド複合体から活性部位ポケット（クラスターモデル）を抽出 |
-| [`add-elem-info`](add_elem_info.md) | PDB元素カラム（77-78）を修復 |
+| [`add-elem-info`](add_elem_info.md) | PDB の元素カラム（77-78）を修復 |
 
 #### 構造最適化
 | サブコマンド | 説明 |
@@ -89,7 +96,7 @@ glossary
 #### スキャン
 | サブコマンド | 説明 |
 |---------|------|
-| [`scan`](scan.md) | 拘束条件付き1D結合長スキャン |
+| [`scan`](scan.md) | 拘束条件付き 1D 結合長スキャン |
 | [`scan2d`](scan2d.md) | 2D距離グリッドスキャン |
 | [`scan3d`](scan3d.md) | 3D距離グリッドスキャン |
 
@@ -100,6 +107,7 @@ glossary
 | [`freq`](freq.md) | 振動数解析と熱化学 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
+| [`energy-diagram`](energy-diagram.md) | 数値入力から状態エネルギーダイアグラムを作成 |
 
 ### 設定・リファレンス
 
@@ -126,7 +134,7 @@ glossary
 
 ## クイック例
 
-### 基本的なMEP 探索
+### 基本的な MEP 探索
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
@@ -159,7 +167,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 - スピン多重度は `-m/--mult`（`all` コマンド）または `-m/--multiplicity`（他のサブコマンド）で設定（デフォルト: 1）
 
 ### ブール値オプション
-すべてのブール値CLI オプションは明示的に `True` または `False` を指定する必要があります:
+すべてのブール値 CLI オプションは明示的に `True` または `False` を指定する必要があります:
 ```bash
 --tsopt True --thermo True --dft False
 ```

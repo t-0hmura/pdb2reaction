@@ -135,7 +135,7 @@ irc:
 ## 関連項目
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
-- [freq](freq.md) — TSの虚数振動数を確認; IRC端点を解析
+- [freq](freq.md) — TS候補の虚数振動数を確認し、IRC端点を解析
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行するエンドツーエンドワークフロー
 - [YAML リファレンス](yaml-reference.md) — `irc` の完全な設定オプション

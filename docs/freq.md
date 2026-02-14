@@ -139,7 +139,7 @@ thermo:
 
 ## See Also
 
-- [tsopt](tsopt.md) — Optimize transition states (should have one imaginary frequency)
+- [tsopt](tsopt.md) — Optimize TS candidates (validate with freq/IRC; expected: one imaginary frequency)
 - [irc](irc.md) — IRC from TS (often paired with freq on endpoints)
 - [dft](dft.md) — Single-point DFT for higher-level energy refinement
 - [all](all.md) — End-to-end workflow with `--thermo True`

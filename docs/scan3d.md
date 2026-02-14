@@ -98,12 +98,10 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
   [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
   scan trajectory output is controlled by `--dump`.
 
-More YAML options about `opt` are available in [docs/opt.md](opt.md#yaml-
-configuration-args-yaml).
+More YAML options about `opt` are available in [docs/opt.md](opt.md#yaml-configuration-args-yaml).
 
 ## YAML configuration (`--args-yaml`)
-A minimal example (extend using the keys documented for [`opt`](opt.md#yaml-
-configuration-args-yaml)):
+A minimal example (extend using the keys documented for [`opt`](opt.md#yaml-configuration-args-yaml)):
 
 ```yaml
 geom:
