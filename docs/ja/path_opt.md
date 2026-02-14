@@ -2,9 +2,20 @@
 
 ## 概要
 
-> **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つの構造間の MEP を見つけます。経路軌跡と最高エネルギー画像（HEI）を出力します。複数構造での再帰的精密化には `path-search` を使用してください。
+> **要約:** **2 つの構造**（R → P）から、GSM（デフォルト）または DMF（`--mep-mode dmf`）で MEP を最適化します。経路軌跡を書き出し、最高エネルギー画像（HEI）を TS 候補として出力します。
 
-`pdb2reaction path-opt` は、`--mep-mode` で選択されるpysisyphusのGrowing String法（GSM）またはDirect Max Flux（DMF）を使用して、2つのエンドポイント構造間の最小エネルギー経路（MEP）を探索します。経路軌跡と最高エネルギー画像（HEI）を出力しますが、HEI は TS候補として扱い、`freq`/`irc` で検証してください。UMAはすべてのイメージにエネルギー/勾配/ヘシアンを提供し、外部の剛体アライメントルーチンがオプティマイザー開始前にストリングを整えます。設定は **デフォルト → CLI → `--args-yaml`** の優先順位で `geom`/`calc`/`gs`/`opt`/`dmf`/`sopt.*` に適用されます。`--convert-files`（デフォルト有効）を有効にすると、PDB 参照がある場合は軌跡を `.pdb` コンパニオンへ、Gaussianテンプレートがある場合はXYZスナップショット（例: HEI）を `.gjf` コンパニオンへミラーします。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、PDB変換が可能です。GSMがデフォルトの経路生成器です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOを使用する場合は `--opt-mode heavy` を指定してください。
+### ひと目で分かる
+- **使いどころ:** 反応物/生成物の **2 端点**があり、まずは MEP の初期案が欲しいとき。
+- **手法:** 既定は GSM。`--mep-mode dmf` で DMF に切り替え可能。
+- **主な出力:** `final_geometries.trj`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
+- **既定値:** `--opt-mode light`（LBFGS）、`--climb True`、`--max-nodes 10`、`--thresh gau`。
+- **次にやること:** HEI は **TS 候補**です。`tsopt` → `freq`（虚数振動数は **1 つ**） → `irc` で検証します。
+
+`pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[freq](freq.md) と [irc](irc.md) によるモード/接続性の確認が必須です。**2 構造以上**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path_search.md) を使用してください。
+
+UMA 計算機で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングが不安定になりにくいようにします。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用します（変換自体は全原子へ適用されます）。
+
+設定の優先順位は **デフォルト → CLI → `--args-yaml`** です（`geom`, `calc`, `gs`, `opt`, `dmf`, `sopt.*`）。`--convert-files` が有効（デフォルト）な場合、参照 PDB があるときは `.pdb`、Gaussian テンプレートがあるときは `.gjf` のコンパニオンが生成されます。
 
 ## 使用法
 ```bash
@@ -24,10 +35,10 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 
 2. **ストリング成長とHEIエクスポート**
    - 経路が成長・精密化された後、最高エネルギー内部局所極大を優先的に探索します。内部局所極大がない場合は内部ノードの最大値へ、内部ノードが無い場合は全体最大へフォールバックします。
-   - 最高エネルギーイメージ（HEI）は `.xyz` と、PDB 参照がある場合は `.pdb` として書き込み、Gaussianテンプレートがある場合は `.gjf` も出力します（いずれも `--convert-files` を尊重）。
+   - 最高エネルギーイメージ（HEI）は `.xyz` と、PDB 参照がある場合は `.pdb` として書き込み、Gaussian テンプレートがある場合は `.gjf` も出力します（いずれも `--convert-files` を尊重）。
 
 ### 主要な挙動
-- **エンドポイント**: 入力は2構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で軌跡/HEIのPDB出力が有効。
+- **エンドポイント**: 入力は2構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で軌跡/HEIのPDB 出力が有効。
 - **電荷/スピン**: CLIが`.gjf`テンプレートを上書き。`-q` 省略時に `--ligand-charge` がある場合、エンドポイントは酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）では `extract.py` の電荷サマリーで総電荷を導出。明示的な `-q` が常に優先。`.gjf` 以外の入力で `-q` を省略すると、導出が成功しない限り中断します。`.gjf` 入力で電荷メタデータが無く `-q` も無い場合は中断し、多重度は省略時 `1` がデフォルトです。正しい状態のために明示指定を推奨します。
 - **MEPセグメント**: `--max-nodes` はGSM/DMFの内部ノード数を制御（GSMの総画像数は `max_nodes + 2`）。`--thresh` またはYAMLで収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）を指定。
 - **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
@@ -51,7 +62,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--dump {True\|False}` | MEP軌跡/リスタートをダンプ | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`light` = LBFGS、`heavy` = RFO） | `light` |
 | `--convert-files {True\|False}` | PDB/Gaussian入力用のXYZ/TRJ → PDB/GJFコンパニオンをトグル | `True` |
-| `--ref-pdb FILE` | XYZ/GJF入力用の参照 PDB トポロジー | _None_ |
+| `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | GSM/ストリングオプティマイザーの収束プリセットを上書き | `gau` |
 | `--args-yaml FILE` | YAML 上書き（セクション `geom`、`calc`、`gs`、`opt`、`dmf`、`sopt.lbfgs`、`sopt.rfo`） | _None_ |
@@ -66,7 +77,7 @@ out_dir/
 ├─ final_geometries.pdb        # PDB 参照が利用可能で変換が有効な場合
 ├─ hei.xyz                     # 最高エネルギーイメージ
 ├─ hei.pdb                     # PDB 参照が利用可能な場合のHEI（変換有効時）
-├─ hei.gjf                     # Gaussianテンプレートを使用して書き込まれたHEI（変換有効時）
+├─ hei.gjf                     # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
 ├─ align_refine/               # 剛体アライメント/リファイン段階の中間ファイル（アライメント実行時）
 └─ <オプティマイザーダンプ/リスタート>
 ```
@@ -175,8 +186,8 @@ dmf:
 
 ## 関連項目
 
-- [path-search](path_search.md) — 自動精密化を伴う再帰的MEP探索（2+構造用）
-- [tsopt](tsopt.md) — HEIをTS候補として最適化（freq/IRCで検証）
+- [path-search](path_search.md) — 自動精密化を伴う再帰的MEP 探索（2+構造用）
+- [tsopt](tsopt.md) — HEIをTS 候補として最適化（freq/IRCで検証）
 - [extract](extract.md) — path-opt入力用のポケットPDBを生成
 - [all](all.md) — エンドツーエンドワークフロー（デフォルトでpath-searchを使用）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`opt` の完全な設定オプション

@@ -1,7 +1,7 @@
 # `add-elem-info`
 
 ## 概要
-`add-elem-info` は、PDBファイルの ATOM/HETATM レコードにある元素記号カラム（77–78）を修復します。
+`add-elem-info` は、PDB ファイルの ATOM/HETATM レコードにある元素記号カラム（77–78）を修復します。
 
 ### 出力の挙動
 - `-o/--out` が**省略**され、`--overwrite` が **`True` でない**場合、出力は `<input>_add_elem.pdb` に書き込まれます（末尾の `.pdb` を `_add_elem.pdb` に置換）。
@@ -39,12 +39,12 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | 入力PDBファイル | 必須 |
+| `-i, --input PATH` | 入力 PDB ファイル | 必須 |
 | `-o, --out PATH` | 出力パス。指定した場合 `--overwrite` は無視される | _None_ → `<input>_add_elem.pdb` |
 | `--overwrite {True\|False}` | `-o/--out` が省略された場合に入力を上書き | `False` |
 
 ## 出力
-- 元素記号が補完/修正されたPDBファイル:
+- 元素記号が補完/修正されたPDB ファイル:
   - デフォルト: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
   - `-o/--out` 指定時: `OUTPUT.pdb`（`--overwrite` の値に関わらず）
   - `--overwrite True` を `-o/--out` なしで指定: `INPUT.pdb` をその場で上書き

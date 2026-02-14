@@ -3,15 +3,20 @@
 
 ## 概要
 
-> **要約:** GSM（デフォルト）または DMF（`--mep-mode dmf`）を使用して、2つ以上の構造から連続的な MEP を構築します。結合変化のある領域を自動的に精密化し、最高エネルギー画像（HEI）を TS 候補として特定します。HEI は freq/IRC での検証が必要です。
+> **要約:** **2 構造以上**から、GSM（デフォルト）または DMF（`--mep-mode dmf`）で連続的な MEP を構築します。共有結合変化のある領域のみを自動で精密化し、最高エネルギー画像（HEI）を TS 候補として出力します（freq/IRC で検証）。
 
-反応座標に沿って順序付けられた**2つ以上**の構造にわたって連続的な最小エネルギー経路（MEP）を構築します。結合変化のある領域は自動的に精密化され、最高エネルギー画像（HEI）が TS 候補として報告されます。
+### ひと目で分かる
+- **使いどころ:** R → … → P のように **2 構造以上**があり、精密化込みで 1 本の MEP にまとめたいとき。
+- **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
+- **主な出力:** `mep.trj`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
+- **既定値:** `--mep-mode gsm`、`--opt-mode light`（LBFGS）、`--preopt True`、`--align True`、`--thresh gau`。
+- **次にやること:** HEI は **TS 候補**です。単独では TS 検証になりません。続けて [tsopt](tsopt.md) → [freq](freq.md) → [irc](irc.md) を実行してください。
 
-`path-search` は GSM **または** DMF セグメントを連鎖させ、共有結合変化のある領域のみを選択的に精密化し、（オプションで）PDB ポケットをフルサイズテンプレートにマージします。`--mep-mode` でどちらを選んでも同じ再帰ワークフローが動作し、**GSM がデフォルト**です。デフォルトの `--opt-mode` は **light**（LBFGS）で、RFO を使用する場合は `--opt-mode heavy` を指定します。
+`pdb2reaction path-search` は、反応順に並んだ 2 構造以上を入力として連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
 
-`--convert-files` が有効（デフォルト）な場合、PDB 参照があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し、XYZ 座標を保持したまま `--ref-full-pdb` でフルテンプレートマージを行えます（XYZ/GJF入力では PDB コンパニオン自体は生成されません）。
+`--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し（XYZ 座標は保持）、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では PDB コンパニオンは生成されません）。
 
-HEI が得られた時点では TS 検証は完了していません。続けて [tsopt](tsopt.md)、[freq](freq.md)、[irc](irc.md) で確認してください。
+**2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path_opt.md) の方がシンプルです。
 
 ## 使用法
 
@@ -63,8 +68,8 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--args-yaml FILE` | YAML 上書き（下記参照） | _None_ |
 | `--preopt {True\|False}` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
 | `--align {True\|False}` | 探索前にすべての入力を最初の構造にアライメント | `True` |
-| `--ref-full-pdb PATH...` | フルサイズテンプレートPDB（`--align` があれば先頭のみ再利用可） | _None_ |
-| `--ref-pdb PATH...` | 入力がXYZ/GJFの場合のポケット参照 PDB（XYZ座標は保持） | _None_ |
+| `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（`--align` があれば先頭のみ再利用可） | _None_ |
+| `--ref-pdb PATH...` | 入力がXYZ/GJFの場合のポケット参照 PDB（XYZ 座標は保持） | _None_ |
 
 ## ワークフロー
 
@@ -81,7 +86,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 ```
 out_dir/ (デフォルト: ./result_path_search/)
 ├─ mep.trj                  # プライマリMEP軌跡
-├─ mep.pdb                  # 入力がPDB テンプレートで変換が有効な場合のPDBコンパニオン
+├─ mep.pdb                  # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
 ├─ mep_w_ref.pdb            # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb     # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml             # すべての再帰セグメントの障壁と分類サマリー

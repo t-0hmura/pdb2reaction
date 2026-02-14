@@ -2,14 +2,20 @@
 
 ## 概要
 
-> **要約:** Dimer（`--opt-mode light`）または RS-I-RFO（`--opt-mode heavy`、デフォルト）を使用して遷移状態を最適化します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` でパフォーマンスが向上します。妥当な TS は虚数振動数が1つであることが期待され、freq/IRC による検証が必要です。
+> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode light`）または RS‑I‑RFO（`--opt-mode heavy`、デフォルト）で最適化します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` により高速化できることが多いです。妥当な TS は虚数振動数が **1 つ**であることが期待され、freq/IRC による検証が必要です。
 
-`pdb2reaction tsopt` は2つの補完的なワークフローを使用して遷移状態を最適化します:
+### ひと目で分かる
+- **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
+- **モード:** `heavy` = RS‑I‑RFO（既定、比較的ロバスト）。`light` = Hessian Dimer（反復あたりが軽いことが多い）。
+- **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
+- **任意の後処理:** `--flatten-imag-mode True` は、余分な虚数モードが残る場合に除去を試みます。
+- **出力変換:** `--convert-files True`（デフォルト）で、PDB 入力は（`--dump True` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
 
-- **light** モード: 定期的な正確ヘシアン更新を伴うHessian Dimer探索、余分な虚数モードを除去するためのオプションのメモリ効率的なフラットンループ（デフォルトで無効）、活性自由度のPHVA対応ヘシアン更新
-- **heavy** モード: 設定可能な信頼領域セーフガードを持つRS-I-RFOオプティマイザー、収束後に余分な虚数モードが残る場合のオプションの後最適化フラットンループ
+### `--opt-mode` の選び方
+- **`--opt-mode heavy`（RS‑I‑RFO）**: デフォルト。ヘシアン計算を許容でき、堅牢性を優先したい場合に推奨。
+- **`--opt-mode light`（Dimer）**: 複数の TS 初期構造を素早く試したい場合や、軽量な探索を優先したい場合に有効。
 
-両モードはエネルギー/勾配/ヘシアンにUMA 計算機を使用し、YAMLから `geom`/`calc`/`opt` 設定を継承し、最終的な虚数モードを常に `.trj` に書き込みます。`--convert-files`（デフォルト有効）を有効にすると、PDB 入力は軌跡を `.pdb` コンパニオンにミラーし、Gaussianテンプレートは最終構造の `.gjf` を出力します（軌跡は `.gjf` に変換されません）。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、PDB/GJFへのフォーマット対応変換が可能です。デフォルトの `--opt-mode` は **heavy**（RS-I-RFO）です。Hessian Dimerワークフローを実行するには `--opt-mode light` に切り替えてください。
+XYZ/GJF 入力では `--ref-pdb` により参照 PDB トポロジーを与え、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換ができます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を得てから `tsopt` → `freq` → `irc` の順で検証してください。
 
 ## 使用法
 ```bash
@@ -46,7 +52,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
   - `--flatten-imag-mode` が有効な場合、フラットンループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラットン → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
   - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten-imag-mode` が有効で収束後も虚数モードが複数残る場合、追加モードをフラットンしてRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
-- **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*.trj` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は `--dump True` のときPDBに変換され、Gaussianテンプレートでは最終構造のみ `.gjf` が生成されます。
+- **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*.trj` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は `--dump True` のときPDBに変換され、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -75,9 +81,9 @@ out_dir/ (デフォルト: ./result_tsopt/)
 ├─ final_geometry.pdb            # 入力がPDBの場合（変換有効時）
 ├─ final_geometry.gjf            # 入力がGaussianの場合（変換有効時）
 ├─ optimization_all.trj          # --dumpがTrueのときのLightモードダンプ
-├─ optimization_all.pdb          # PDB入力のLightモードPDBコンパニオン（変換有効時、--dump True）
+├─ optimization_all.pdb          # PDB 入力のLightモードPDB コンパニオン（変換有効時、--dump True）
 ├─ optimization.trj              # --dumpがTrueのときのHeavyモード軌跡
-├─ optimization.pdb              # HeavyモードPDBコンパニオン（変換有効時、--dump True）
+├─ optimization.pdb              # HeavyモードPDB コンパニオン（変換有効時、--dump True）
 ├─ vib/
 │  ├─ final_imag_mode_±XXXX.Xcm-1.trj
 │  └─ final_imag_mode_±XXXX.Xcm-1.pdb
@@ -224,7 +230,7 @@ rsirfo:
 
 ## 関連項目
 
-- [path-search](path_search.md) — TS候補（HEI）を特定するMEP探索
+- [path-search](path_search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 虚数振動数が1本であることを確認（妥当なTSの期待値）
 - [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するエンドツーエンドワークフロー

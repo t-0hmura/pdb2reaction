@@ -1,17 +1,19 @@
 # `scan2d`
 
 ## Overview
-`scan2d` performs a two-distance (d₁, d₂) grid scan using harmonic restraints
-and UMA-based relaxations. You supply one `--scan-lists` literal with two
-quadruples `(i, j, lowÅ, highÅ)`; the tool constructs linear grids for both
-ranges using `--max-step-size`, then **reorders each axis so that points closest
-to the (pre)optimized structure are visited first**. Each grid point is relaxed
-and written alongside a ready-to-plot CSV/figure bundle. Energies reported in
-`surface.csv` are always evaluated **without bias** so you can compare grid
-points directly. Optimizations use LBFGS when `--opt-mode light` (default)
-or RFOptimizer when `--opt-mode heavy`.
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
-enabling format-aware PDB/GJF output conversion.
+
+> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and UMA relaxations. You provide one `--scan-lists` literal with two quadruples `(i, j, lowÅ, highÅ)`.
+
+### At a glance
+- **Input:** One structure + **one** `--scan-lists` literal containing exactly two quadruples.
+- **Grid ordering:** Each axis is reordered so the point closest to the (pre)optimized structure is visited first.
+- **Energies:** Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
+- **Outputs:** `surface.csv` plus `scan2d_map.png` and `scan2d_landscape.html`, and per-point structures under `grid/`.
+- **Caution:** Grid size grows quickly as `(high − low) / --max-step-size` increases.
+
+`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased UMA energies for visualization. Use `--opt-mode heavy` when you need RFOptimizer instead of LBFGS.
+
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
@@ -126,7 +128,7 @@ out_dir/ (default: ./result_scan2d/)
   overrides. **Multiplicity inherits `.gjf` metadata when available, otherwise defaults to `1`.**
 
 ## YAML configuration (`--args-yaml`)
-A minimal example (extend with the same keys documented in [`opt`](opt.md#yaml-configuration-args-yaml)):
+A minimal example (extend with the same keys documented in {ref}`opt <yaml-configuration-args-yaml>`):
 
 ```yaml
 geom:

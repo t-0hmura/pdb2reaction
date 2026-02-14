@@ -1,10 +1,19 @@
 # `scan3d`
 
 ## 概要
-`scan3d` は、UMA 計算機と調和拘束を使った**3距離のグリッドスキャン**を実行します。`--scan-lists` には 3つの四つ組 `(i, j, lowÅ, highÅ)` を含む**1つのリテラル**を与えます。`--max-step-size` で各距離の線形グリッドを作り、（事前最適化された）開始構造に近い値が先に訪れられるよう並べ替えます。ループは外側 d₁ → 中間 d₂ → 内側 d₃ の順です。各グリッド点は対応する拘束をかけて緩和され、**バイアスを除去した**エネルギーが記録されます。`surface.csv` を事前に用意して、再計算せずに可視化だけを行うことも可能です。デフォルトの `--opt-mode` は **light**（LBFGS）です。RFOptimizerを使用する場合は `--opt-mode heavy` を指定してください。
-XYZ/GJF入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ座標は保持されるため、PDB/GJF変換が可能になります。
 
-> 3D図の視認性を調整したい場合は、スキャン完了後にCSVを読み込むモードにして `--zmin` / `--zmax` を変更する運用を推奨します。
+> **要約:** 調和拘束と UMA 緩和により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行います。`--scan-lists` に 3 つの四つ組 `(i, j, lowÅ, highÅ)` を含む **1 つのリテラル**を与えるか、`--csv` で既存 `surface.csv` の可視化のみを実行できます。
+
+### ひと目で分かる
+- **入力:** 1 つの構造 + `--scan-lists` の **単一**リテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能。
+- **訪問順:** 事前最適化構造に近い値が先に訪れられるよう、各軸が並べ替えられます。
+- **エネルギー:** 記録されるエネルギーは **バイアスを除去して**評価されるため、格子点を直接比較できます。
+- **主な出力:** `surface.csv`、`grid/` 配下の各点の構造、HTML の等値面図（`scan3d_density.html`）。
+- **注意:** 3D グリッドは点数が急増します。まずは範囲を狭める/`--max-step-size` を粗くする運用を推奨します。
+
+`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは LBFGS（`--opt-mode light`）で、RFOptimizer が必要な場合は `--opt-mode heavy` を指定してください。
+
+XYZ/GJF 入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 使用法
 ```bash
@@ -31,7 +40,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
 ```
 
 ## ワークフロー
-1. `geom_loader` で構造を読み込み、CLIまたはGaussianテンプレートから電荷/スピンを解決し、`--preopt True` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` が与えられている場合、構造は酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で `extract.py` の電荷サマリーから総電荷を導出します。
+1. `geom_loader` で構造を読み込み、CLIまたはGaussian テンプレートから電荷/スピンを解決し、`--preopt True` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` が与えられている場合、構造は酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で `extract.py` の電荷サマリーから総電荷を導出します。
 2. 単一の `--scan-lists` リテラル（デフォルト1始まり、`--one-based False` で0始まり）を3つの四つ組に解析します。PDB 入力では、各原子指定は整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用できます。区切りは空白/カンマ/スラッシュ/バッククォート/バックスラッシュで、トークン順は任意です。`h = --max-step-size` で各距離の線形グリッドを生成し、開始距離に近い値が先に訪れられるよう並べ替えます。
 3. 外側ループで `d1[i]` を回し、**d₁拘束のみ**を適用して緩和します。近い d₁ 値の既存構造から開始します。
 4. 中間ループで `d2[j]` を回し、**d₁ + d₂拘束**を適用して緩和します。近い (d₁, d₂) 構造から開始します。
@@ -55,7 +64,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
 | `--freeze-links {True\|False}` | PDB 入力でリンクHの親を凍結 | `True` |
 | `--dump {True\|False}` | `inner_path_d1_###_d2_###.trj` を保存 | `False` |
 | `--convert-files {True\|False}` | PDB/Gaussian入力の XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
-| `--ref-pdb FILE` | XYZ/GJF入力時の参照 PDB トポロジー（XYZ座標を保持） | _None_ |
+| `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan3d/` |
 | `--csv PATH` | 既存 `surface.csv` を読み込みプロットのみ実行（新規スキャンなし） | _None_ |
 | `--thresh TEXT` | 収束プリセット上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
@@ -70,7 +79,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
 `opt` の詳細は [docs/opt.md](opt.md) を参照してください。
 
 ## YAML 設定（`--args-yaml`）
-最小例（詳細は {ref}`opt <yaml-configuration-args-yaml>` を参照）:
+最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:
@@ -107,7 +116,7 @@ out_dir/ (デフォルト: ./result_scan3d/)
 ├─ surface.csv                     # グリッドメタデータ（i=j=k=-1 の参照行を含む場合あり）
 ├─ scan3d_density.html             # 3Dエネルギー等値面の可視化
 ├─ grid/point_i###_j###_k###.xyz   # 各グリッド点の緩和構造（Å×100 タグ）
-├─ grid/point_i###_j###_k###.pdb   # 変換有効時のPDBコンパニオン
+├─ grid/point_i###_j###_k###.pdb   # 変換有効時のPDB コンパニオン
 ├─ grid/point_i###_j###_k###.gjf   # テンプレートがある場合のGaussianコンパニオン
 ├─ grid/preopt_i###_j###_k###.xyz  # スキャン開始前の構造（--preopt True の場合は最適化済み）
 └─ grid/inner_path_d1_###_d2_###.trj # --dump True の場合のみ（変換有効時は .pdb/.gjf も生成）

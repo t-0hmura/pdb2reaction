@@ -4,18 +4,29 @@
 
 **pdb2reaction** は、機械学習原子間ポテンシャル (MLIP) を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 
+
+英語版ドキュメント: [docs/index.md](../index.md)
 ```{toctree}
 :maxdepth: 2
-:caption: 目次
+:caption: ガイド
 :hidden:
 
 getting-started
 tutorial
 concepts
+troubleshooting
+cli-conventions
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: コマンド
+:hidden:
+
 all
 extract
-add_elem_info
 fix_altloc
+add_elem_info
 opt
 tsopt
 path_opt
@@ -23,17 +34,23 @@ path_search
 scan
 scan2d
 scan3d
-irc
 freq
+irc
 dft
 trj2fig
 energy-diagram
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: リファレンス
+:hidden:
+
 yaml-reference
 uma_pysis
-cli-conventions
-troubleshooting
 glossary
 ```
+
 
 ---
 
@@ -62,10 +79,10 @@ glossary
 
 - [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
 - [**チュートリアル**](tutorial.md) - 実例ベース（bezA ケーススタディ、smoke test マトリクス）
-- [**bezA 酵素反応ケーススタディ**](tutorial.md#ja-tutorial-case-study) - 結果の読み方とTS検証ポイント
-- [**Smoke test マトリクス**](tutorial.md#ja-tutorial-smoke-tests) - `test/run.sh` の用途別ガイド
+- {ref}`bezA 酵素反応ケーススタディ <ja-tutorial-case-study>` - 結果の読み方とTS 検証ポイント
+- {ref}`Smoke test マトリクス <ja-tutorial-smoke-tests>` - `test/run.sh` の用途別ガイド
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
-- [**CLI 規約**](cli-conventions.md) - ブーリアンオプション、セレクタ、電荷指定などの共通規約
+- [**CLI 規約**](cli-conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
 - [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
 - [**システム要件**](#システム要件) - ハードウェアとソフトウェアの前提条件
 
@@ -121,13 +138,13 @@ glossary
 
 ### ハードウェア
 - **OS**: Linux（Ubuntu 20.04+、CentOS 8+で動作確認）
-- **GPU**: CUDA 12.x互換  
+- **GPU**: CUDA 12.x 互換  
 - **VRAM**: 最小8 GB（1000原子以上には16 GB以上推奨）
 - **RAM**: 16 GB以上推奨
 
 ### ソフトウェア
 - Python 3.11
-- CUDAサポート付きPyTorch
+- CUDA サポート付き PyTorch
 - CUDA 12.xツールキット
 
 ---

@@ -1,7 +1,7 @@
 # `fix-altloc`
 
 ## 概要
-`fix-altloc` は、PDBファイルから代替位置（altLoc）指示子を削除します。
+`fix-altloc` は、PDB ファイルから代替位置（altLoc）指示子を削除します。
 各原子について占有率（occupancy）に基づいて最良のコンフォーマーを選択し、
 重複を除去します。
 
@@ -61,7 +61,7 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | 入力PDBファイルまたはディレクトリ | 必須 |
+| `-i, --input PATH` | 入力 PDB ファイルまたはディレクトリ | 必須 |
 | `-o, --out PATH` | 出力ファイル（入力がファイルの場合）またはディレクトリ（入力がディレクトリの場合） | 入力がファイル: `<input>_clean.pdb`、入力がディレクトリ: `<input>_clean/` |
 | `--recursive {True\|False}` | 入力がディレクトリの場合、`*.pdb` ファイルを再帰的に処理 | `False` |
 | `--inplace {True\|False}` | 入力ファイルをその場で上書き（`.bak` バックアップを作成） | `False` |
@@ -69,7 +69,7 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 | `--force {True\|False}` | altLocが検出されなくてもファイルを処理 | `False` |
 
 ## 出力
-- 代替位置が削除されたPDBファイル:
+- 代替位置が削除されたPDB ファイル:
   - 入力がファイル: デフォルトは `<input>_clean.pdb`（`-o/--out` が省略された場合）
   - 入力がディレクトリ: デフォルトは `<input>_clean/`（サブパスを保持）
   - `-o/--out` 指定時: `OUTPUT.pdb`

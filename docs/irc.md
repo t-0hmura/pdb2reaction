@@ -2,11 +2,18 @@
 
 ## Overview
 
-> **Summary:** Uses IRC to trace the path from a transition state to reactant and product. By default it runs both forward and backward directions. When VRAM permits, `--hessian-calc-mode Analytical` is recommended.
+> **Summary:** Trace the intrinsic reaction coordinate (IRC) from a transition state toward reactant and product. By default it runs both forward and backward directions. When VRAM permits, `--hessian-calc-mode Analytical` is recommended.
 
-`pdb2reaction irc` traces the intrinsic reaction coordinate from a transition state toward reactant and product. Both forward and backward branches run by default. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits.
+### At a glance
+- **Input:** A TS structure (ideally already optimized and validated).
+- **Branches:** Runs both directions by default (`--forward True`, `--backward True`).
+- **Key knobs:** `--step-size` (mass-weighted step length) and `--max-cycles` (number of steps).
+- **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` after merge (even if YAML sets them).
+- **Outputs:** `finished_irc.trj` plus `forward_irc.trj`/`backward_irc.trj` (and `.pdb` companions when a PDB reference exists and conversion is enabled).
 
-The command runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow: anything not listed below must be provided through YAML so that geometry handling, calculator settings, and low-level EulerPC knobs remain explicit and reproducible. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion.
+`pdb2reaction irc` runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
+
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `freq` (confirm **one** imaginary mode) → `irc`.
 
 ## Usage
 ```bash

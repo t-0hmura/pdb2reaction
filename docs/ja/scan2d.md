@@ -1,8 +1,19 @@
 # `scan2d`
 
 ## 概要
-`scan2d` は、2つの距離 (d₁, d₂) のグリッドスキャンを調和拘束とUMA最適化で実行します。1つの `--scan-lists` リテラルに2つの四つ組 `(i, j, lowÅ, highÅ)` を与えると、`--max-step-size` に基づいて両軸の線形グリッドが作成されます。その後、**（事前最適化された）構造に最も近い点を先に訪れる**ように各軸が並べ替えられます。各グリッド点は緩和され、プロット可能なCSV/図出力が生成されます。`surface.csv` のエネルギーは常に**バイアスなし**で評価されるため、グリッド点を直接比較できます。最適化は `--opt-mode light`（デフォルト）の LBFGS、または `--opt-mode heavy` の RFOptimizer を使用します。
-XYZ/GJF入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ座標は保持されるため、PDB/GJF変換が可能になります。
+
+> **要約:** 調和拘束と UMA 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`--scan-lists` に 2 つの四つ組 `(i, j, lowÅ, highÅ)` を含む **1 つのリテラル**を与えます。
+
+### ひと目で分かる
+- **入力:** 1 つの構造 + `--scan-lists` の **単一**リテラル（四つ組はちょうど 2 つ）。
+- **訪問順:** 各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。
+- **エネルギー:** `surface.csv` の値は常に **バイアスなし**で評価されるため、格子点を直接比較できます。
+- **主な出力:** `surface.csv`、`scan2d_map.png`、`scan2d_landscape.html`、および `grid/` 配下の各点の構造。
+- **注意:** `(high − low) / --max-step-size` が大きいと格子点数が急増します。
+
+`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、可視化に使える CSV/図を生成します。LBFGS ではなく RFOptimizer が必要な場合は `--opt-mode heavy` を指定してください。
+
+XYZ/GJF 入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 使用法
 ```bash
@@ -49,7 +60,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 | `--freeze-links {True\|False}` | PDB 入力でリンクHの親を凍結 | `True` |
 | `--dump {True\|False}` | 外側ループごとの `inner_path_d1_###.trj` を保存 | `False` |
 | `--convert-files {True\|False}` | PDB/Gaussian入力の XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
-| `--ref-pdb FILE` | XYZ/GJF入力時の参照 PDB トポロジー（XYZ座標を保持） | _None_ |
+| `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan2d/` |
 | `--thresh TEXT` | 収束プリセット上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--args-yaml FILE` | YAML 上書き（`geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`） | _None_ |
@@ -70,9 +81,9 @@ out_dir/ (デフォルト: ./result_scan2d/)
 ├─ scan2d_map.png             # 2Dコンター（Kaleido必須; PNG出力に失敗すると停止）
 ├─ scan2d_landscape.html      # 3Dサーフェス可視化
 ├─ grid/point_i###_j###.xyz   # 各(i, j)の緩和構造
-├─ grid/point_i###_j###.pdb   # 変換有効時のPDBコンパニオン
+├─ grid/point_i###_j###.pdb   # 変換有効時のPDB コンパニオン
 ├─ grid/point_i###_j###.gjf   # テンプレートがある場合のGaussianコンパニオン
-└─ grid/inner_path_d1_###.trj # --dump True の場合のみ（PDB入力時は .pdb にも変換）
+└─ grid/inner_path_d1_###.trj # --dump True の場合のみ（PDB 入力時は .pdb にも変換）
 ```
 
 ## 注意事項
@@ -83,7 +94,7 @@ out_dir/ (デフォルト: ./result_scan2d/)
 - 電荷はテンプレートがあればそれを優先。`.gjf` 以外の入力では `-q/--charge` が必須ですが、`--ligand-charge` がある場合は例外（PDB 入力、または `--ref-pdb` 付きXYZ/GJF）。明示的な `-q` が常に優先されます。**多重度は `.gjf` テンプレートがあれば継承され、未指定時は `1` です。**
 
 ## YAML 設定（`--args-yaml`）
-最小例（詳細は {ref}`opt <yaml-configuration-args-yaml>` を参照）:
+最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:

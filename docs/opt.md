@@ -70,6 +70,7 @@ out_dir/
 ```
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
+(yaml-configuration-args-yaml)=
 ## YAML configuration (`--args-yaml`)
 YAML values override CLI, which override the defaults below.
 

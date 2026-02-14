@@ -2,18 +2,18 @@
 
 ## Overview
 
-> **Summary:** Computes vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using UMA. When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
+> **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with UMA. When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
-`pdb2reaction freq` computes vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using UMA. Use `--hessian-calc-mode Analytical` for faster Hessian evaluation when VRAM permits. Imaginary frequencies appear as negative values.
+### At a glance
+- **Use when:** You want to validate a minimum/TS candidate and/or compute thermo corrections from UMA.
+- **Frozen atoms:** Supported via PHVA (partial Hessian vibrational analysis).
+- **Outputs:** `frequencies_cm-1.txt`, per-mode `.trj` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
+- **TS check:** A properly converged TS is expected to have **exactly one** imaginary frequency (negative cm⁻¹).
+- **Performance:** If you have ample VRAM, `--hessian-calc-mode Analytical` is usually recommended.
 
-The command performs vibrational analysis with the UMA calculator, honoring any frozen atoms via partial Hessian vibrational analysis (PHVA). It exports mass-weighted
-normal modes as `.trj`/`.pdb` animations, prints a Gaussian-style thermochemistry summary
-when the optional `thermoanalysis` package is installed, and can emit a YAML summary when
-`--dump True`. Configuration starts from defaults, applies CLI switches, and finally
-applies YAML overrides (`geom`, `calc`, `freq`, `thermo`) with highest precedence, so the same
-template can drive both standalone runs and workflows launched by other subcommands.
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
-enabling format-aware PDB output conversion.
+`pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring frozen atoms via PHVA. It exports normal-mode animations as `.trj` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
+
+Configuration follows **defaults → CLI → `--args-yaml`** (`geom`, `calc`, `freq`, `thermo`). For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion.
 
 ## Usage
 ```bash

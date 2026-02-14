@@ -2,9 +2,18 @@
 
 ## 概要
 
-> **要約:** IRC を使用して TS から反応物と生成物への反応経路を追跡します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
+> **要約:** IRC を使用して TS から反応物・生成物へ向かう反応経路を追跡します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
 
-UMAを使用してEulerPCベースの固有反応座標（IRC）積分を実行します。CLIは意図的に狭く設計されています: 以下に記載されていないものはすべてYAMLで提供する必要があります。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、フォーマット対応のPDB/GJF変換が可能です。
+### ひと目で分かる
+- **入力:** TS 構造（できれば `tsopt`/`freq` 済み）。
+- **分岐:** 既定で両方向（`--forward True`, `--backward True`）。
+- **主要パラメータ:** `--step-size`（質量重み付き座標でのステップ長）、`--max-cycles`（ステップ数）。
+- **強制上書き:** IRC はマージ後に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAML 設定より優先）。
+- **主な出力:** `finished_irc.trj` と `forward_irc.trj`/`backward_irc.trj`（参照 PDB があり変換が有効なら `.pdb` も生成）。
+
+`pdb2reaction irc` は UMA を用いて EulerPC ベースの固有反応座標（IRC）積分を実行します。CLI は意図的に狭く設計されており、CLI に出ていない詳細パラメータは YAML 側で明示的に指定する運用を想定しています。
+
+XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `freq`（虚数振動数が **1 つ**であることを確認）→ `irc` です。
 
 ## 使用法
 ```bash
@@ -25,7 +34,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward True --backward False \
                 --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
-# PDB入力: 完成軌跡と方向別軌跡もPDBとしてエクスポート
+# PDB 入力: 完成軌跡と方向別軌跡もPDBとしてエクスポート
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
@@ -50,7 +59,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--backward {True\|False}` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
 | `--freeze-links {True\|False}` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ） | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
-| `--convert-files {True\|False}` | PDB 入力用のXYZ/TRJ → PDBコンパニオンをトグル | `True` |
+| `--convert-files {True\|False}` | PDB 入力用のXYZ/TRJ → PDB コンパニオンをトグル | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（YAML が `calc.hessian_calc_mode` を指定していない場合に使用） | `FiniteDifference` |
 | `--args-yaml FILE` | YAML 上書き | _None_ |
@@ -62,7 +71,7 @@ out_dir/ (デフォルト: ./result_irc/)
 ├─ <prefix>finished_irc.trj   # 完全なIRC軌跡
 ├─ <prefix>forward_irc.trj    # 順方向分岐が実行された場合
 ├─ <prefix>backward_irc.trj   # 逆方向分岐が実行された場合
-└─ *.pdb                      # PDB入力用の軌跡コンパニオン（変換有効時）
+└─ *.pdb                      # PDB 入力用の軌跡コンパニオン（変換有効時）
 ```
 コンソールには解決済みの `geom`/`calc`/`irc` 設定と経過時間が表示されます。
 
@@ -135,7 +144,7 @@ irc:
 ## 関連項目
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
-- [freq](freq.md) — TS候補の虚数振動数を確認し、IRC端点を解析
+- [freq](freq.md) — TS 候補の虚数振動数を確認し、IRC端点を解析
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行するエンドツーエンドワークフロー
 - [YAML リファレンス](yaml-reference.md) — `irc` の完全な設定オプション

@@ -2,9 +2,20 @@
 
 ## Overview
 
-> **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to find the MEP between exactly two structures. It outputs the path trajectory and the highest-energy image (HEI). For multi-structure workflows with automatic refinement, use `path-search` instead.
+> **Summary:** Find an MEP between **exactly two** structures with GSM (default) or DMF (`--mep-mode dmf`). Writes the path trajectory and exports the highest-energy image (HEI) as a TS candidate.
 
-`pdb2reaction path-opt` finds the minimum-energy path (MEP) between exactly two structures using GSM (default) or DMF (`--mep-mode dmf`). It outputs the path trajectory and identifies the highest-energy image (HEI). Treat the HEI as a TS candidate until validated with `freq`/`irc`. For multi-structure workflows with automatic refinement, use `path-search` instead. UMA supplies energies/gradients/Hessians for every image, while an external rigid-body alignment routine keeps the string well-behaved before the optimizer begins. Configuration follows the precedence **defaults → CLI → `--args-yaml`** across `geom`, `calc`, `gs`, `opt`, `dmf`, and `sopt.*` sections. When `--convert-files` is enabled (default), trajectories are mirrored to `.pdb` companions when PDB references exist, and XYZ snapshots (for example the HEI) are mirrored to `.gjf` companions when Gaussian templates exist. GSM is the default path generator. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
+### At a glance
+- **Use when:** You have reactant and product endpoints (R → P) and want a first-pass MEP.
+- **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
+- **Outputs:** `final_geometries.trj` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
+- **Defaults:** `--opt-mode light` (LBFGS), `--climb True`, `--max-nodes 10`, `--thresh gau`.
+- **Next step:** Validate the HEI with `tsopt` → `freq` (expect **one** imaginary mode) → `irc`.
+
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [freq](freq.md) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
+
+UMA provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
+
+Configuration is merged in the order **defaults → CLI → `--args-yaml`** for `geom`, `calc`, `gs`, `opt`, `dmf`, and `sopt.*`. When `--convert-files` is enabled (default), trajectories and snapshots are mirrored into `.pdb` companions when a PDB reference exists and into `.gjf` companions when a Gaussian template exists.
 
 ## Usage
 ```bash

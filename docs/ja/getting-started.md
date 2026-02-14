@@ -84,10 +84,10 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 ### クイックスタート
 
-以下は多くのCUDA 12.9クラスターで動作する最小限のセットアップ例です。モジュール名とバージョンはシステムに合わせて調整してください。以下はデフォルトのGSM MEPモード（DMFなし）を想定しています。DMFを使用する場合は、最初にcondaでcyipoptをインストールしてください。
+以下は多くのCUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名とバージョンはシステムに合わせて調整してください。以下はデフォルトのGSM MEPモード（DMFなし）を想定しています。DMFを使用する場合は、最初にcondaでcyipoptをインストールしてください。
 
 ```bash
-# 1) CUDA対応のPyTorchビルドをインストール
+# 1) CUDA 対応の PyTorchビルドをインストール
 # 2) GitHubからpdb2reactionをインストール
 # 3) Plotly図表エクスポート用のヘッドレスChromeをインストール
 
@@ -118,7 +118,7 @@ huggingface-cli login
   conda create -n pdb2reaction python=3.11 -y
   conda activate pdb2reaction
 
-  # cyipoptをインストール（MEP探索のDMF法に必要）
+  # cyipoptをインストール（MEP 探索のDMF法に必要）
   conda install -c conda-forge cyipopt -y
   ```
 
@@ -244,7 +244,7 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 これは適度に間隔を置いた中間体（ドッキング、MD、または手動モデリングなど）を生成できる場合に推奨されるモードです。
 
 ```{important}
-`pdb2reaction` は複数の入力PDBが**まったく同じ原子を同じ順序**で含むことを前提としています（座標のみ異なる可能性があります）。入力間で座標以外のフィールドが異なる場合、エラーが発生します。入力 PDB ファイルには**水素原子**も含まれている必要があります。
+`pdb2reaction` は複数の入力 PDBが**まったく同じ原子を同じ順序**で含むことを前提としています（座標のみ異なる可能性があります）。入力間で座標以外のフィールドが異なる場合、エラーが発生します。入力 PDB ファイルには**水素原子**も含まれている必要があります。
 ```
 
 ---

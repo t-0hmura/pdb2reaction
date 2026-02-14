@@ -193,9 +193,9 @@ Use these when you want TS behavior checks without full multistructure MEP setup
 
 #### Standalone subcommand checks
 
-- `dft` CPU sanity
-- `freq` sanity
-- `tsopt` sanity
+- `dft` CPU quick check
+- `freq` quick check
+- `tsopt` quick check
 
 Use these for targeted debugging when `all` is too broad.
 

@@ -7,7 +7,7 @@
 ポケット抽出 →（任意）段階的 UMA スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化 + IRC（`tsopt`）→（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
 
 ```{important}
-`--tsopt True` の出力は **TS候補** です。最終解釈の前に、`freq`（虚数モード）と `irc`（端点極小）で必ず検証してください。
+`--tsopt True` の出力は **TS 候補** です。最終解釈の前に、`freq`（虚数モード）と `irc`（端点極小）で必ず検証してください。
 ```
 
 主なモードは 3 つあります。
@@ -135,11 +135,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--freeze-links {True\|False}` | ポケットPDBでリンクHの親を凍結 | `True` |
 | `--verbose {True\|False}` | 抽出器のINFOログを有効化 | `True` |
 
-### MEP探索オプション
+### MEP 探索オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--mep-mode [gsm\|dmf]` | MEP探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
+| `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
 | `--max-nodes INT` | MEP内部ノード数 | `10` |
 | `--max-cycles INT` | MEP最大最適化サイクル | `300` |
 | `--climb {True\|False}` | 最初のセグメントでTSクライミングを有効化 | `True` |
@@ -286,7 +286,7 @@ dft:
 - [はじめに](getting-started.md) — インストールと初回実行
 - [概念とワークフロー](concepts.md) — ポケット、セグメント、ステージの全体像
 - [extract](extract.md) — 単独のポケット抽出（`all` が内部で呼び出し）
-- [path-search](path_search.md) — 単独のMEP探索（`all` が内部で呼び出し）
+- [path-search](path_search.md) — 単独のMEP 探索（`all` が内部で呼び出し）
 - [tsopt](tsopt.md) — 単独のTS最適化
 - [freq](freq.md) — 単独の振動解析
 - [dft](dft.md) — 単独のDFT計算

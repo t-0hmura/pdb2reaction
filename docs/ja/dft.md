@@ -4,7 +4,7 @@
 
 > **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-TZVPD です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
-GPU（利用可能な場合はGPU4PySCF、そうでない場合はCPU PySCF）を使用してDFT 一点計算を実行します。総エネルギーに加えて、Mulliken、meta-Löwdin、およびIAO原子電荷/スピン密度を報告します。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数の検証や（`--ligand-charge` 使用時の）電荷導出に用いられますが、`dft` 自体はPDB/GJF出力を生成しません。
+GPU（利用可能な場合はGPU4PySCF、そうでない場合はCPU PySCF）を使用してDFT 一点計算を実行します。総エネルギーに加えて、Mulliken、meta-Löwdin、およびIAO原子電荷/スピン密度を報告します。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数の検証や（`--ligand-charge` 使用時の）電荷導出に用いられますが、`dft` 自体はPDB/GJF出力を生成しません。
 
 ## 使用法
 ```bash
@@ -25,7 +25,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 ```
 
 ## ワークフロー
-1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/.trj/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートします。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT段階はPDB/GJF出力を行いません。
+1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/.trj/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートします。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT段階はPDB/GJF出力を行いません。
 2. **設定マージ** – デフォルト → CLI → YAML（`dft` ブロック）。YAMLがCLIより優先されます。電荷/多重度は `.gjf` があればそのメタデータを継承し、`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱って `extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `-q` が無く `--ligand-charge` も使えない場合は中断します。多重度は省略時 `1` がデフォルトです。
 3. **SCFビルド** – `--func-basis` を汎関数と基底に解析し、密度フィッティングはPySCFデフォルトで自動的に有効化します。`--engine` でGPU/CPUの優先度を制御します（`gpu` はGPU4PySCF必須、`cpu` はCPU固定、`auto` はGPU→CPUの順）。非局所補正（例: VV10）はバックエンドの既定以上には明示設定しません。
 4. **電子密度解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとのMulliken/meta-Löwdin/IAO電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
@@ -44,7 +44,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | バックエンドポリシー: GPU4PySCF優先、CPUのみ、または自動 | `gpu` |
 | `--convert-files {True\|False}` | インターフェース一貫性のために受け入れ; `dft` はPDB/GJF出力を生成しない | `True` |
-| `--ref-pdb FILE` | 原子数検証とXYZ/GJF入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
+| `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--args-yaml FILE` | YAML 上書き | _None_ |
 
 ## 出力

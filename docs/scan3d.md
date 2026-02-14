@@ -1,20 +1,19 @@
 # `scan3d`
 
 ## Overview
-`scan3d` performs a three-distance grid scan with harmonic restraints using the
-UMA calculator. You provide exactly one `--scan-lists` literal containing three
-quadruples `(i, j, lowÅ, highÅ)`. The tool builds linear grids for each distance
-with `--max-step-size`, reorders the values so that those nearest to the
-(pre-optimized) starting structure are visited first, and then nests the loops
-(outer d₁, middle d₂, inner d₃). Each grid point is relaxed with the
-appropriate restraints active; unbiased energies are recorded so you can compare
-points directly. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFOptimizer. A precomputed `surface.csv` can also be visualized without
-rerunning the scan.
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
-enabling format-aware PDB/GJF output conversion.
 
-> If you want to tweak the plot for better visibility, load the CSV after the scan
-finishes and adjust `--zmin` and `--zmax`.
+> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and UMA relaxations. You provide one `--scan-lists` literal with three quadruples `(i, j, lowÅ, highÅ)`, or plot an existing `surface.csv` via `--csv`.
+
+### At a glance
+- **Input:** One structure + **one** `--scan-lists` literal (three quadruples), unless you use `--csv` to plot only.
+- **Grid ordering:** Values are reordered so points closest to the (pre)optimized structure are visited first.
+- **Energies:** Recorded energies are evaluated **without bias**, so grid points are directly comparable.
+- **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
+- **Caution:** 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
+
+`scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is LBFGS (`--opt-mode light`); switch to `--opt-mode heavy` for RFOptimizer.
+
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash
@@ -98,10 +97,10 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out
   [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
   scan trajectory output is controlled by `--dump`.
 
-More YAML options about `opt` are available in [docs/opt.md](opt.md#yaml-configuration-args-yaml).
+More YAML options about `opt` are available in {ref}`opt <yaml-configuration-args-yaml>`.
 
 ## YAML configuration (`--args-yaml`)
-A minimal example (extend using the keys documented for [`opt`](opt.md#yaml-configuration-args-yaml)):
+A minimal example (extend using the keys documented for {ref}`opt <yaml-configuration-args-yaml>`):
 
 ```yaml
 geom:

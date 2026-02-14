@@ -2,15 +2,20 @@
 
 ## Overview
 
-> **Summary:** Uses GSM (default) or DMF (`--mep-mode dmf`) to build a continuous MEP from two or more structures. It automatically refines regions with bond changes and identifies the highest-energy image (HEI) as a TS candidate that must be validated with freq/IRC.
+> **Summary:** Build a continuous MEP from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). Automatically refines only regions with bond changes and exports the highest-energy image (HEI) as a TS candidate (validate with freq/IRC).
 
-`pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It automatically refines regions with bond changes and reports the highest-energy image (HEI) as a TS candidate.
+### At a glance
+- **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
+- **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
+- **Outputs:** `mep.trj` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode light` (LBFGS), `--preopt True`, `--align True`, `--thresh gau`.
+- **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md), [freq](freq.md), and [irc](irc.md).
 
-`path-search` chains together GSM **or DMF** segments, selectively refines only those regions with covalent changes, and (optionally) merges PDB pockets back into full-size templates. The same recursive workflow runs for either segment generator via `--mep-mode`, with **GSM as the default**. The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFO.
+`pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
 
-When `--convert-files` is enabled (default), the command writes `.pdb` companions when PDB references exist, and `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket-level PDB topologies while keeping XYZ coordinates, enabling full-template merges when `--ref-full-pdb` is provided (XYZ/GJF inputs still do not produce PDB companions).
+When `--convert-files` is enabled (default), the command mirrors trajectories into `.pdb` companions when PDB references exist, and writes `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies a pocket-level PDB topology while keeping XYZ coordinates, and `--ref-full-pdb` enables full-template merges (XYZ/GJF inputs still do not produce PDB companions).
 
-HEI output alone does not validate a transition state. Follow with [tsopt](tsopt.md), [freq](freq.md), and [irc](irc.md).
+If you only have **two** endpoints and do not need recursive refinement, [path-opt](path_opt.md) is the simpler option.
 
 ## Usage
 ```bash

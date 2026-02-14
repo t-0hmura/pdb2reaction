@@ -6,11 +6,11 @@
 
 `pdb2reaction opt` は、UMAがエネルギー、勾配、ヘシアンを提供しながら、pysisyphus LBFGS（"light"）またはRFOptimizer（"heavy"）エンジンで単一構造の構造最適化を実行します。入力構造は `.pdb`、`.xyz`、`.trj`、または `geom_loader` でサポートされる任意の形式が可能です。設定は**組み込みデフォルト → CLI 上書き → `--args-yaml` 上書き**の順序で適用され（YAMLが最も優先）、軽量なデフォルトを維持しながら選択的にオプションを上書きできます。オプティマイザープリセットは現在LBFGSベースの**`light`**モードがデフォルトです。
 
-開始構造がPDBまたはGaussianテンプレートの場合、フォーマット対応変換は最適化された構造を `.pdb`（PDB 入力）および `.gjf`（Gaussianテンプレート）コンパニオンにミラーリングします（`--convert-files {True\|False}` で制御、デフォルトで有効）。
+開始構造がPDBまたはGaussian テンプレートの場合、フォーマット対応変換は最適化された構造を `.pdb`（PDB 入力）および `.gjf`（Gaussian テンプレート）コンパニオンにミラーリングします（`--convert-files {True\|False}` で制御、デフォルトで有効）。
 PDB固有の利便性:
 - `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（0始まり）。
-- 出力変換では `final_geometry.pdb`（および `--dump True` の場合は `optimization.pdb`）を入力PDBを参照して書き出します。
-XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、フォーマット対応のPDB/GJF出力変換が可能です。
+- 出力変換では `final_geometry.pdb`（および `--dump True` の場合は `optimization.pdb`）を入力 PDBを参照して書き出します。
+XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ 座標を保持するため、フォーマット対応のPDB/GJF出力変換が可能です。
 
 Gaussian `.gjf` テンプレートは電荷/スピンの既定値を与え、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
 
@@ -50,7 +50,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--max-cycles INT` | 最適化反復のハードリミット | `10000` |
 | `--opt-mode TEXT` | オプティマイザー選択: `light`（LBFGS）または `heavy`（RFO） | `light` |
 | `--dump {True\|False}` | 軌跡ダンプ（`optimization.trj`）を出力 | `False` |
-| `--convert-files {True\|False}` | PDB 入力用のXYZ/TRJ → PDBコンパニオンおよびGaussianテンプレート用のXYZ → GJFコンパニオンを有効/無効化 | `True` |
+| `--convert-files {True\|False}` | PDB 入力用のXYZ/TRJ → PDB コンパニオンおよびGaussian テンプレート用のXYZ → GJFコンパニオンを有効/無効化 | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | すべてのファイルの出力ディレクトリ | `./result_opt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |
@@ -61,14 +61,14 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 out_dir/
 ├─ final_geometry.xyz          # 常に書き込み
 ├─ final_geometry.pdb          # 入力がPDBで変換が有効な場合のみ
-├─ final_geometry.gjf          # Gaussianテンプレートが検出され変換が有効な場合
+├─ final_geometry.gjf          # Gaussian テンプレートが検出され変換が有効な場合
 ├─ optimization.trj            # ダンプが有効な場合のみ
-├─ optimization.pdb            # 軌跡のPDB変換（PDB入力、変換有効時）
+├─ optimization.pdb            # 軌跡のPDB変換（PDB 入力、変換有効時）
 └─ restart*.yml                # opt.dump_restartが設定されている場合のオプションのリスタート
 ```
 コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
 
-(yaml-configuration-args-yaml)=
+(ja-yaml-configuration-args-yaml)=
 ## YAML 設定（`--args-yaml`）
 YAML 値はCLIを上書きし、CLIはデフォルトを上書きします。
 

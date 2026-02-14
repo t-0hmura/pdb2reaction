@@ -4,7 +4,16 @@
 
 > **要約:** UMA を使用して振動数と熱化学（ZPE、ギブズエネルギーなど）を計算します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` でヘシアン評価が高速化します。虚数振動数は負の値で表示されます。
 
-`pdb2reaction freq` は、凍結原子を部分ヘシアン振動解析（PHVA）で考慮しながら、UMA 計算機を使用して振動解析を実行します。質量重み付き基準モードを `.trj`/`.pdb` アニメーションとしてエクスポートし、オプションの `thermoanalysis` パッケージがインストールされている場合はGaussianスタイルの熱化学サマリーを出力し、`--dump True` の場合はYAML サマリーを出力できます。設定はデフォルト → CLI → YAML（`geom`/`calc`/`freq`）の順に適用され、YAMLが最も優先されます。XYZ/GJF入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ座標を保持するため、フォーマット対応のPDB出力変換が可能です。
+### ひと目で分かる
+- **使いどころ:** 構造が極小か TS かを確認したい、あるいは熱化学補正（ZPE/ΔG など）が欲しいとき。
+- **凍結原子:** PHVA（部分ヘシアン振動解析）として扱われます。
+- **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`.trj`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
+- **TS のチェック:** 妥当な TS では虚数振動数は **1 つ**であることが期待されます。
+- **性能:** VRAM が十分なら `--hessian-calc-mode Analytical` を推奨します。
+
+`pdb2reaction freq` は UMA 計算機で振動解析を行い、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。正規モードは `.trj` として出力され、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` コンパニオンも生成されます。オプションの `thermoanalysis` パッケージがインストールされている場合、Gaussian 風の熱化学サマリーも出力できます。
+
+設定は **デフォルト → CLI → `--args-yaml`**（`geom`, `calc`, `freq`, `thermo`）の順で解決されます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB 出力変換が可能になります。
 
 ## 使用法
 ```bash
@@ -52,7 +61,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--pressure FLOAT` | 熱化学圧力（atm） | `1.0` |
 | `--dump {True\|False}` | `thermoanalysis.yaml` を書き込み | `False` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード | `FiniteDifference` |
-| `--convert-files {True\|False}` | PDB テンプレートが利用可能な場合のXYZ/TRJ → PDBコンパニオンをトグル（GJFは出力しません） | `True` |
+| `--convert-files {True\|False}` | PDB テンプレートが利用可能な場合のXYZ/TRJ → PDB コンパニオンをトグル（GJFは出力しません） | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--args-yaml FILE` | YAML 上書き（セクション: `geom`、`calc`、`freq`、`thermo`） | _None_ |
 

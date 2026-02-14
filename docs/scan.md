@@ -2,21 +2,20 @@
 
 ## Overview
 
-> **Summary:** Scans bond distances with harmonic restraints to drive a reaction coordinate. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
+> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to define target distances. Multiple stages run sequentially, each starting from the previous stage’s relaxed result.
 
-`pdb2reaction scan` drives a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to specify target distances. Multiple stages run sequentially, each starting from the previous result.
+### At a glance
+- **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
+- **Input:** One structure + one or more `--scan-lists` literals (each literal = one stage).
+- **Defaults:** `--opt-mode light` (LBFGS), `--preopt True`, `--endopt True`, `--max-step-size 0.20 Å`.
+- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump True`.
+- **Note:** `--scan-lists` is parsed as a **Python literal**; quoting/escaping matters (see examples).
 
-The command performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. Each tuple `(i, j, targetÅ)` defines a distance target. At
-every integration step the temporary targets are updated, the restraint wells
-are applied, and the entire structure is relaxed with LBFGS or RFOptimizer.
-The default `--opt-mode` is **light** (LBFGS); use `--opt-mode heavy` for RFOptimizer. After the biased walk, you can optionally
-run unbiased pre-/post-optimizations to clean up the geometries that get written
-to disk.
-When `--scan-lists` is supplied once, the scan runs as a single stage; supplying
-multiple literals runs sequential stages, each starting from the previous stage’s
-relaxed result.
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
-enabling format-aware PDB/GJF output conversion.
+`pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode light`) or RFOptimizer (`--opt-mode heavy`).
+
+When you provide multiple `--scan-lists` literals after a single flag, stages run sequentially and each stage starts from the previous stage’s relaxed structure. After the biased walk, optional unbiased pre-/post-optimizations (`--preopt`, `--endopt`) can clean up geometries before writing `result.*` to disk.
+
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Usage
 ```bash

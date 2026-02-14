@@ -2,9 +2,18 @@
 
 ## Overview
 
-> **Summary:** Extracts a cluster model (active-site pocket) from a protein-ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge` for non-standard residue charges.
+> **Summary:** Extract a cluster model (active-site pocket) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge` for non-standard residue charges.
 
-`pdb2reaction extract` creates an active-site pocket (cluster model) from a protein–ligand PDB. Specify substrates with `-c` (residue names, IDs, or a PDB path), and use `--ligand-charge` for non-standard residue charges. Link hydrogens cap severed bonds automatically. The tool applies chemically-aware residue selection (distance cutoffs plus heuristics for disulfides, PRO adjacency, etc.), truncates side chains/backbone segments, optionally appends link hydrogens, and can process single structures or ensembles.
+### At a glance
+- **Input:** One or more complex PDBs with consistent atom ordering (ensemble mode supported).
+- **Substrate selection (`-c`):** residue IDs (`A:123A`), residue names (`GPP,SAM`), or a substrate PDB that matches the complex coordinates.
+- **Selection logic:** distance cutoff (`--radius`) plus optional hetero–hetero proximity (`--radius-het2het`) and peptide/disulfide/PRO safeguards.
+- **Truncation & capping:** trims residues/segments and optionally adds link hydrogens (`--add-linkH True` by default).
+- **Charges:** unknown residues default to 0 unless `--ligand-charge` supplies a total charge or per-resname mapping.
+
+`pdb2reaction extract` creates an active-site pocket (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
+
+If you run into misclassification (e.g., unusual residue/atom naming), see the appendix below on naming requirements and the internal reference lists.
 
 ## Usage
 ```bash
@@ -110,7 +119,9 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
 - Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
 
-## PDB Naming Requirements
+## Appendix: PDB naming requirements and reference lists
+
+This appendix is mainly for debugging cases where `extract` misclassifies residues due to **non-standard residue/atom naming**. If your inputs follow standard PDB conventions, you can usually skip it.
 
 ```{important}
 For `extract` to work correctly, **residue names and atom names in the input PDB must conform to standard PDB naming conventions**. The tool relies on internal dictionaries to recognize amino acids, ions, water molecules, and backbone atoms. Non-standard naming will cause residues to be misclassified or charges to be incorrectly assigned.

@@ -2,11 +2,20 @@
 
 ## 概要
 
-> **要約:** 調和拘束を使用して結合距離をスキャンし、反応座標を駆動します。`--scan-lists` でターゲット距離を指定します。複数ステージは順次実行され、各ステージは前の結果から開始します。
+> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`--scan-lists` でターゲット距離を指定します。複数ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。
 
-`scan` は、UMA 計算機と調和拘束を使った**段階的な結合長スキャン**を実行します。各タプル `(i, j, targetÅ)` が距離ターゲットを定義します。各積分ステップで一時ターゲットを更新し、拘束井戸を適用したうえで、構造全体を LBFGS（`--opt-mode` light、デフォルト）または RFOptimizer（`--opt-mode` heavy）で緩和します。バイアス付きの走査後、書き出す構造を整えるために無バイアスの前処理/後処理最適化を任意で追加できます。
-`--scan-lists` が一度だけ指定された場合は単一ステージ、複数リテラルを与えると**順次ステージ**として実行され、各ステージは直前の緩和構造から開始します。
-XYZ/GJF入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ座標は保持されるため、PDB/GJF出力変換が可能になります。
+### ひと目で分かる
+- **使いどころ:** 単一構造から特定距離を「押して」探索したいとき（`path-search` / `path-opt` の前処理として使うことが多い）。
+- **入力:** 1 つの構造 + `--scan-lists` の 1 個以上のリテラル（**1 リテラル = 1 ステージ**）。
+- **既定値:** `--opt-mode light`（LBFGS）、`--preopt True`、`--endopt True`、`--max-step-size 0.20 Å`。
+- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）。`--dump True` なら結合した軌跡も保存。
+- **注意:** `--scan-lists` は **Python リテラル**として解釈されます。クォート/エスケープに注意してください（例を参照）。
+
+`pdb2reaction scan` は、UMA 計算機と調和拘束を使った段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束井戸を適用したうえで、構造全体を LBFGS（`--opt-mode light`）または RFOptimizer（`--opt-mode heavy`）で緩和します。
+
+`--scan-lists` に複数リテラルを与えると、ステージは順次実行され、各ステージは直前の緩和構造から開始します。バイアス付き走査の前後には、必要に応じて無バイアス最適化（`--preopt`, `--endopt`）を実行できます。
+
+XYZ/GJF 入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 使用法
 ```bash
@@ -34,7 +43,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 ```
 
 ## ワークフロー
-1. `geom_loader` で構造を読み込み、CLIの上書き・埋め込みGaussianテンプレート（存在する場合）・デフォルトから電荷/スピンを解決します。`-q` が省略され `--ligand-charge` が与えられている場合、入力を酵素–基質複合体として扱い、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。
+1. `geom_loader` で構造を読み込み、CLIの上書き・埋め込みGaussian テンプレート（存在する場合）・デフォルトから電荷/スピンを解決します。`-q` が省略され `--ligand-charge` が与えられている場合、入力を酵素–基質複合体として扱い、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。
 2. `--preopt True` が指定された場合、バイアスをかける前に無バイアスの前処理最適化を実行します。
 3. `--scan-lists` で与えられた各ステージリテラルについて `(i, j)` を解析・正規化（デフォルトは1始まり）。PDB 入力では、各エントリは整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタは空白/カンマ/スラッシュ/バッククォート/バックスラッシュで区切れ、トークン順序は任意（フォールバックは resname, resseq, atom を想定）。
    各結合について `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` に分割します。各結合は `δ = Δ / N` ずつ更新されます。
@@ -59,7 +68,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 | `--freeze-links {True\|False}` | PDB 入力時にリンク水素の親を凍結 | `True` |
 | `--dump {True\|False}` | バイアス付き軌跡（`scan.trj`/`scan.pdb`）を出力 | `False` |
 | `--convert-files {True\|False}` | PDB/Gaussian入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換はPDBのみ） | `True` |
-| `--ref-pdb FILE` | XYZ/GJF入力時の参照 PDB トポロジー（XYZ座標は保持） | _None_ |
+| `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
 | `--thresh TEXT` | 収束プリセット上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--args-yaml FILE` | YAML 上書き（`geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`） | _None_ |
@@ -86,14 +95,14 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 out_dir/ (デフォルト: ./result_scan/)
 ├─ preopt/                   # --preopt が True の場合
 │  ├─ result.xyz
-│  ├─ result.pdb             # PDB入力かつ変換有効時
-│  └─ result.gjf             # Gaussianテンプレートがあり変換有効時
+│  ├─ result.pdb             # PDB 入力かつ変換有効時
+│  └─ result.gjf             # Gaussian テンプレートがあり変換有効時
 └─ stage_XX/                 # ステージごとのフォルダ
     ├─ result.xyz
     ├─ result.pdb             # 最終構造のPDBミラー（変換有効時）
     ├─ result.gjf             # テンプレートがある場合のGaussianミラー（変換有効時）
     ├─ scan.trj               # --dump True の場合
-    └─ scan.pdb               # PDB入力で変換有効時の軌跡コンパニオン（scan.gjf は生成しない）
+    └─ scan.pdb               # PDB 入力で変換有効時の軌跡コンパニオン（scan.gjf は生成しない）
 ```
 - `geom`/`calc`/`opt`/`bias`/`bond` と最適化ブロックの解決結果、および各ステージの結合変化レポートがコンソールに出力されます。
 
@@ -218,7 +227,7 @@ bond:
 ## 関連項目
 
 - [all](all.md) — 単一構造入力に `--scan-lists` を使用したエンドツーエンドワークフロー
-- [path-search](path_search.md) — スキャン端点を中間体としてMEP探索
+- [path-search](path_search.md) — スキャン端点を中間体としてMEP 探索
 - [extract](extract.md) — スキャン前にポケットPDBを生成
 - [YAML リファレンス](yaml-reference.md) — `bias` と `bond` の完全な設定オプション
 - [用語集](glossary.md) — MEP、セグメントの定義

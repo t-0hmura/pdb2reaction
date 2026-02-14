@@ -2,26 +2,20 @@
 
 ## Overview
 
-> **Summary:** Optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, `--hessian-calc-mode Analytical` improves performance. A validated TS is expected to exhibit exactly one imaginary frequency; always confirm the mode/connectivity with freq/IRC.
+> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode light`) or RS‑I‑RFO (`--opt-mode heavy`, default). When VRAM permits, `--hessian-calc-mode Analytical` usually improves performance. A validated TS should show **exactly one** imaginary frequency; always confirm the mode/connectivity with freq/IRC.
 
-`pdb2reaction tsopt` optimizes a transition state using Dimer (`--opt-mode light`) or RS-I-RFO (`--opt-mode heavy`, default). When VRAM permits, use `--hessian-calc-mode Analytical` for faster convergence. Treat the resulting structure as a TS candidate until frequency analysis and IRC confirm the expected mode/connectivity.
+### At a glance
+- **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
+- **Modes:** `heavy` = RS‑I‑RFO (default, generally more robust). `light` = Hessian Dimer (often cheaper per step).
+- **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
+- **Optional cleanup:** `--flatten-imag-mode True` attempts to remove surplus imaginary modes when they remain after convergence.
+- **Output conversion:** With `--convert-files True` (default), PDB inputs can be mirrored to `.pdb` (when `--dump True`), and Gaussian templates write a `.gjf` for the final geometry.
 
-The command supports two complementary workflows:
+### Choosing `--opt-mode`
+- Use **`--opt-mode heavy` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
+- Use **`--opt-mode light` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
 
-- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
-  optional memory-conscious flatten loop (disabled by default) to remove surplus
-  imaginary modes, and PHVA-aware Hessian updates for the active degrees of freedom.
-- **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards, plus an
-  optional post-optimization flatten loop when extra imaginary modes remain.
-
-Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
-settings from YAML, and always write the final imaginary mode in `.trj`. When
-`--convert-files` is enabled (default), PDB inputs mirror trajectories into `.pdb`
-companions when `--dump True`, and Gaussian templates receive `.gjf` output for the
-final geometry (trajectories are not written as `.gjf`).
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
-enabling format-aware PDB/GJF output conversion. The default `--opt-mode` is **heavy** (RS-I-RFO);
-switch to `--opt-mode light` to run the Hessian Dimer workflow.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then validate/optimize the HEI with `tsopt` → `freq` → `irc`.
 
 ## Usage
 ```bash
