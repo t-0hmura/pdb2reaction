@@ -542,7 +542,19 @@ def qrrho_vibrational_part_func(
     weights = chai_head_gordon_weights(frequencies, cutoff, alpha)
 
     def prod(q_vibs):
-        return np.prod((q_vibs**weights) * (q_hr ** (1 - weights)))
+        # Work in log-domain to avoid overflow in large mode products.
+        tiny = np.finfo(float).tiny
+        max_log = np.log(np.finfo(float).max)
+        min_log = np.log(tiny)
+        log_q = np.sum(
+            weights * np.log(np.clip(q_vibs, tiny, None))
+            + (1 - weights) * np.log(np.clip(q_hr, tiny, None))
+        )
+        if log_q >= max_log:
+            return float("inf")
+        if log_q <= min_log:
+            return 0.0
+        return float(np.exp(log_q))
 
     q_qrrho = prod(q_vibs)
     q_qrrho_V0 = prod(q_vibs_V0)
