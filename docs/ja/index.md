@@ -51,7 +51,7 @@ glossary
 
 ## 目的別ガイド
 
-| やりたいこと | 推奨コマンド | ガイド |
+| 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |

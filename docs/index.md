@@ -82,7 +82,7 @@ ja/index
 
 ## Quick Start by Goal
 
-| What do you want to do? | Command | Guide |
+| Objectives | Command | Guide |
 |-------------------------|---------|-------|
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
