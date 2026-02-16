@@ -112,7 +112,7 @@ YAML ルートはマッピングでなければなりません。YAML 値はCLI�
 
 `sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
 
-`bond` は UMA ベースの結合変化検出パラメータで、[`scan`](scan.md#section-bond) と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
+`bond` は UMA ベースの結合変化検出パラメータで、{ref}`scan の bond セクション <section-bond>` と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
 `search` は再帰ロジックを制御します: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, `max_seq_kink`, `refine_mode`（`null` の場合は GSM→`peak`、DMF→`minima` を自動選択）。旧 `rmsd_align` フラグは互換性のため保持されますが無視されます。
 
