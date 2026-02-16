@@ -10,12 +10,10 @@
 :hidden:
 
 getting-started
-tutorial
 concepts
 troubleshooting
 cli-conventions
 ja/getting-started
-ja/tutorial
 ja/concepts
 ja/troubleshooting
 ja/cli-conventions
@@ -96,7 +94,6 @@ ja/index
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
 | Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
-| Follow worked tutorials | — | [tutorial.md](tutorial.md) |
 | Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
@@ -108,7 +105,6 @@ ja/index
 | Topic | Page |
 |-------|------|
 | **Installation & first run** | [Getting Started](getting-started.md) |
-| **Hands-on tutorials** | [Tutorial](tutorial.md) (bezA enzyme case study + smoke test matrix) |
 | **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
 | **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |

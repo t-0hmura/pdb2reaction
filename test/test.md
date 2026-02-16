@@ -35,6 +35,3 @@ Notes:
 ### Scope of this file
 
 This file is intentionally concise and aimed at regression/smoke checking for developers.
-
-For user-facing walkthroughs and case selection:
-- `docs/tutorial.md` (worked examples: bezA case study + smoke test matrix)

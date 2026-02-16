@@ -40,7 +40,6 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to lar
 ```{tip}
 If you are new to the project, read [Concepts & Workflow](concepts.md) first.
 If you encounter an error during setup or runtime, refer to [Troubleshooting](troubleshooting.md).
-For worked examples, see [Tutorial](tutorial.md) (bezA enzyme case study + smoke test matrix).
 ```
 
 ### CLI conventions

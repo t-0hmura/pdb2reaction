@@ -2,8 +2,6 @@
 
 This page collects common failure modes and practical fixes. It is written to be copy-and-paste friendly: search this page for the error message you see.
 
-For worked examples, see [Tutorial](tutorial.md) (bezA enzyme case study + smoke test matrix).
-
 ---
 
 ## Preflight checklist

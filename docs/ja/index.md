@@ -10,7 +10,6 @@
 :hidden:
 
 getting-started
-tutorial
 concepts
 troubleshooting
 cli-conventions
@@ -64,7 +63,6 @@ glossary
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
 | 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
-| チュートリアルから学ぶ | — | [tutorial.md](tutorial.md) |
 | 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
@@ -76,9 +74,6 @@ glossary
 ### はじめに
 
 - [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
-- [**チュートリアル**](tutorial.md) - 実例ベース（bezA ケーススタディ、smoke test マトリクス）
-- {ref}`bezA 酵素反応ケーススタディ <ja-tutorial-case-study>` - 結果の読み方とTS 検証ポイント
-- {ref}`Smoke test マトリクス <ja-tutorial-smoke-tests>` - `test/run.sh` の用途別ガイド
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
 - [**CLI 規約**](cli-conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
 - [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
