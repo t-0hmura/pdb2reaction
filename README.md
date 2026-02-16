@@ -46,7 +46,7 @@ For detailed documentation, please refer to:
 - [**Getting Started**](docs/getting-started.md) — Installation, quick start, and workflow overview
 - [**Concepts & Workflow**](docs/concepts.md) — Key terms: pockets, templates, segments, and stages
 - [**Troubleshooting**](docs/troubleshooting.md) — Common errors and fixes
-- **Full command index**: [docs/index.md](docs/index.md) (English) / [docs/ja/index.md](docs/ja/index.md) (日本語)
+- **Full command index**: [docs/index.md](docs/index.md)  
 
 
 ***This software is still under development. Please use it at your own risk.***
