@@ -18,11 +18,11 @@ Full system(s) (PDB/XYZ/GJF)
    │        ├─ (optional) staged scan [scan]       ← single-structure workflows
    │        │        ↓
    │        │   Ordered intermediates
-   │        │
+   │        │        ↓
    │        └─ MEP search             [path-search] or [path-opt]
    │                 ↓
    │            MEP trajectory (mep.trj) + energy diagrams
-   │
+   │                 ↓
    └─ (optional) TS optimization + IRC  [tsopt] → [irc]
              └─ (optional) thermo     [freq]
              └─ (optional) single-point DFT     [dft]
