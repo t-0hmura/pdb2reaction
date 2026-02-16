@@ -475,7 +475,7 @@ bond:
 
 ---
 
-## 例: 複数セクションを含む設定ファイル
+## 例: 設定ファイルの全体例
 
 ```yaml
 # pdb2reaction configuration example
@@ -537,7 +537,7 @@ dft:
 
 ## 参照
 
-- [all](all.md) - メインワークフロー
+- [all](all.md) - エンドツーエンドワークフロー
 - [opt](opt.md) - 単一構造最適化
 - [tsopt](tsopt.md) - 遷移状態最適化
 - [path-search](path_search.md) - 再帰的 MEP 探索

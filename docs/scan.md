@@ -42,6 +42,68 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
     '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
+## `--scan-lists` format
+
+`--scan-lists` accepts **Python literal** strings evaluated by the CLI. Shell quoting matters.
+
+### Basic structure
+
+Each literal is a Python list of triples `(atom1, atom2, target_Å)`:
+
+```
+--scan-lists '[(atom1, atom2, target_Å), ...]'
+```
+
+- Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
+- Each triple drives the distance between `atom1`–`atom2` toward `target_Å`.
+- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `--scan-lists` flag (do not repeat the flag).
+
+### Specifying atoms
+
+Atoms can be given as **integer indices** or **PDB selector strings**:
+
+| Method | Example | Notes |
+| --- | --- | --- |
+| Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based True`) |
+| PDB selector | `("TYR,285,CA", "MMT,309,C10", 2.0)` | Residue name, residue number, atom name |
+
+PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
+
+```bash
+# All of these specify the same atom:
+"TYR,285,CA"
+"TYR 285 CA"
+"TYR/285/CA"
+"285,TYR,CA"   # order is flexible
+```
+
+### Quoting rules
+
+```bash
+# Correct: single-quote the list, double-quote selector strings inside
+--scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+
+# Correct: integer indices need no inner quotes
+--scan-lists '[(1, 5, 2.0)]'
+
+# Avoid: double-quoting the outer literal requires escaping inner quotes
+--scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]"
+```
+
+### Multiple stages
+
+Pass multiple literals after a single `--scan-lists` flag. Each literal becomes one stage:
+
+```bash
+# Stage 1: drive one bond to 1.35 Å
+# Stage 2: drive two bonds simultaneously
+--scan-lists \
+    '[("TYR,285,CA","MMT,309,C10",1.35)]' \
+    '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+```
+
+Stages run sequentially; each starts from the previous stage's relaxed result. **Do not repeat the `--scan-lists` flag** — supply all stage literals after a single flag.
+
 ## Workflow
 1. Load the structure through `geom_loader`, resolving charge/spin from the CLI
    overrides, the embedded Gaussian template (if present), or defaults. If `-q`

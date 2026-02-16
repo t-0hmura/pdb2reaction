@@ -74,7 +74,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 6. **TSOPT のみモード**（単一入力、`--tsopt True`、`--scan-lists` なし）
    - MEP/マージステージをスキップ。ポケット（または抽出がスキップされた場合は完全入力）で `tsopt` を実行し、EulerPC IRCを実行
-   - 高エネルギー側のIRC終端を反応物 (R) として識別し、同じ種類のエネルギーダイアグラムとオプションの freq/DFT 出力を生成
+   - 高エネルギー側の IRC 終端を反応物 (R) として識別し、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成
 
 
 ### 電荷とスピンの優先順位
@@ -214,8 +214,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 ## 出力
 ```text
 out_dir/ (デフォルト: ./result_all/)
-├─ summary.log               # クイック検査用フォーマット済みサマリー
-├─ summary.yaml              # YAML バージョンサマリー
+├─ summary.log               # テキスト形式の結果要約
+├─ summary.yaml              # YAML 形式の結果要約
 ├─ pockets/                  # 抽出実行時の入力ごとのポケット PDB
 ├─ scan/                     # 段階的ポケットスキャン結果（--scan-lists提供時）
 ├─ path_search/              # MEP結果: 軌跡、マージPDB、ダイアグラム
@@ -228,14 +228,14 @@ out_dir/ (デフォルト: ./result_all/)
 
 ### `summary.log` の読み方
 ログは番号付きセクションで構成されます:
-- **[1] グローバルMEP概要** – 画像/セグメント数、MEP軌跡プロットのパス、MEP全体のエネルギーダイアグラム。
+- **[1] グローバル MEP 概要** – イメージ/セグメント数、MEP 軌跡プロットのパス、MEP 全体のエネルギーダイアグラム。
 - **[2] セグメント別MEPサマリー（UMAパス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。
 - **[3] セグメント別後処理（TSOPT / Thermo / DFT）** – TS虚数振動数チェック、IRC出力、UMA/熱化学/DFTのエネルギーテーブル。
 - **[4] エネルギーダイアグラム（概要）** – MEP/UMA/Gibbs/DFT 系の図表と、任意の横断サマリー表。
 - **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
 
 ### `summary.yaml` の読み方
-YAMLは機械可読サマリーです。代表的なトップレベルキーは以下です:
+YAML はプログラムから処理しやすい形式の要約です。代表的なトップレベルキーは以下のとおりです。
 - `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
 - `segments` – `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` を含むセグメント配列。
 - `energy_diagrams`（任意） – `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` などを含む図表データ。

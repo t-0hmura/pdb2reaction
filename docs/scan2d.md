@@ -35,6 +35,54 @@ pdb2reaction scan2d -i input.pdb -q 0 \
     --preopt True --baseline min
 ```
 
+## `--scan-lists` format
+
+`--scan-lists` accepts a **single Python literal** string. Shell quoting matters.
+
+### Basic structure
+
+The literal is a Python list of exactly **two** quadruples `(atom1, atom2, low_Å, high_Å)`:
+
+```
+--scan-lists '[(atom1, atom2, low_Å, high_Å), (atom3, atom4, low_Å, high_Å)]'
+```
+
+- Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
+- Each quadruple defines one scan axis: the distance between `atom1`–`atom2` is scanned from `low_Å` to `high_Å`.
+- Unlike `scan`, only **one literal** is accepted (no multi-stage support).
+
+### Specifying atoms
+
+Atoms can be given as **integer indices** or **PDB selector strings**:
+
+| Method | Example | Notes |
+| --- | --- | --- |
+| Integer index | `(1, 5, 1.30, 3.10)` | 1-based by default (`--one-based True`) |
+| PDB selector | `("TYR,285,CA", "MMT,309,C10", 1.30, 3.10)` | Residue name, residue number, atom name |
+
+PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
+
+```bash
+# All of these specify the same atom:
+"TYR,285,CA"
+"TYR 285 CA"
+"TYR/285/CA"
+"285,TYR,CA"   # order is flexible
+```
+
+### Quoting rules
+
+```bash
+# Correct: single-quote the list, double-quote selector strings inside
+--scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+
+# Correct: integer indices need no inner quotes
+--scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
+
+# Avoid: double-quoting the outer literal requires escaping inner quotes
+--scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10), ...]"
+```
+
 ## Workflow
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
    run an unbiased preoptimization when `--preopt True`. If `-q` is omitted but

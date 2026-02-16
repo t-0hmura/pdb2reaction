@@ -110,8 +110,8 @@ altLoc Bには N, CA, CB, CD がある場合）、`fix-altloc` は以下のよ�
   ATOM   6  CD BALA A 1 ...  0.40  # altLoc B のみ
 
 出力:
-  ATOM   1  N   ALA A 1 ...  0.50  # Aから（高occupancy）
-  ATOM   2  CA  ALA A 1 ...  0.50  # Aから（高occupancy）
+  ATOM   1  N   ALA A 1 ...  0.50  # A から（占有率が高い）
+  ATOM   2  CA  ALA A 1 ...  0.50  # A から（占有率が高い）
   ATOM   3  CG  ALA A 1 ...  0.50  # 保持（Aのみ）
   ATOM   6  CD  ALA A 1 ...  0.40  # 保持（Bのみ）
 ```

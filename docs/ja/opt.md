@@ -4,15 +4,15 @@
 
 > **要約:** L-BFGS（`--opt-mode light`、デフォルト）または RFO（`--opt-mode heavy`）を使用して単一構造を局所極小に最適化します。PDB 入力の場合、リンク水素の親原子は自動的に凍結されます。
 
-`pdb2reaction opt` は、UMAがエネルギー、勾配、ヘシアンを提供しながら、pysisyphus LBFGS（"light"）またはRFOptimizer（"heavy"）エンジンで単一構造の構造最適化を実行します。入力構造は `.pdb`、`.xyz`、`.trj`、または `geom_loader` でサポートされる任意の形式が可能です。設定は**組み込みデフォルト → CLI 上書き → `--args-yaml` 上書き**の順序で適用され（YAMLが最も優先）、軽量なデフォルトを維持しながら選択的にオプションを上書きできます。オプティマイザープリセットは現在LBFGSベースの**`light`**モードがデフォルトです。
+`pdb2reaction opt` は、pysisyphus LBFGS（"light"）または RFOptimizer（"heavy"）エンジンを用い、UMA がエネルギー・勾配・ヘシアンを提供して単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`.trj`、または `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト → CLI → YAML** です（YAML が最優先）。
 
-開始構造がPDBまたはGaussian テンプレートの場合、フォーマット対応変換は最適化された構造を `.pdb`（PDB 入力）および `.gjf`（Gaussian テンプレート）コンパニオンにミラーリングします（`--convert-files {True\|False}` で制御、デフォルトで有効）。
-PDB固有の利便性:
+開始構造が PDB または Gaussian テンプレートの場合、最適化された構造を `.pdb`（PDB 入力）および `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files {True\|False}` で制御、デフォルトで有効）。
+PDB 固有の便利機能:
 - `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（0始まり）。
 - 出力変換では `final_geometry.pdb`（および `--dump True` の場合は `optimization.pdb`）を入力 PDBを参照して書き出します。
-XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供しXYZ 座標を保持するため、フォーマット対応のPDB/GJF出力変換が可能です。
+XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
 
-Gaussian `.gjf` テンプレートは電荷/スピンの既定値を与え、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
+Gaussian `.gjf` テンプレートは電荷/スピンの既定値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
 
 ## 使用法
 ```bash
@@ -27,14 +27,14 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ## ワークフロー
 - **オプティマイザー**: `--opt-mode light`（デフォルト）→ L-BFGS; `--opt-mode heavy` → 信頼領域制御付きRational Function Optimizer
 - **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈し、3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--one-based False` で0始まりに切り替えられます。
-- **電荷/スピン解決**: CLI `-q/-m` は `.gjf` テンプレートメタデータを上書きし、それは `calc` デフォルトを上書きします。`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱い、`extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が無い場合は中断します。多重度は省略時 `1` がデフォルトです。
+- **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルトより優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱い、`extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が無い場合は中断します。多重度は省略時 `1` がデフォルトです。
 - **凍結原子**: CLIのリンク検出はYAMLの `geom.freeze_atoms` とマージされ、UMA 計算機の `calc.freeze_atoms` に反映されます。
 - **ダンプ & 変換**: `--dump True` は `opt.dump=True` を反映し `optimization.trj` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
-- **終了コード**: `0` 成功、`2` ゼロステップ（`min_step_norm` 未満）、`3` 最適化失敗、`130` 割り込み、`1` 予期せぬエラー。
+- **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
 
 ## CLI オプション
 
-> **注記:** 表示されているデフォルト値は、オプション未指定時に使用される内部デフォルトです。
+> **注記:** 表示されているデフォルト値は、オプション未指定時に使用される値です。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
@@ -43,14 +43,14 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック | テンプレート/`1` |
-| `--dist-freeze TEXT` | 調和拘束用の `(i,j,target_A)` タプルを記述するPythonリテラルとして解析される文字列 | _None_ |
+| `--dist-freeze TEXT` | 調和拘束用の `(i,j,target_A)` タプルを記述する Python リテラル文字列（繰り返し指定可） | _None_ |
 | `--one-based {True\|False}` | `--dist-freeze` インデックスを1始まり（デフォルト）または0始まりとして解釈 | `True` |
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `10.0` |
-| `--freeze-links {True\|False}` | リンク水素親凍結をトグル（PDB 入力のみ） | `True` |
-| `--max-cycles INT` | 最適化反復のハードリミット | `10000` |
+| `--freeze-links {True\|False}` | リンク水素の親原子の凍結を切り替え（PDB 入力のみ） | `True` |
+| `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | オプティマイザー選択: `light`（LBFGS）または `heavy`（RFO） | `light` |
 | `--dump {True\|False}` | 軌跡ダンプ（`optimization.trj`）を出力 | `False` |
-| `--convert-files {True\|False}` | PDB 入力用のXYZ/TRJ → PDB コンパニオンおよびGaussian テンプレート用のXYZ → GJFコンパニオンを有効/無効化 | `True` |
+| `--convert-files {True\|False}` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | すべてのファイルの出力ディレクトリ | `./result_opt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |
@@ -59,12 +59,12 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ## 出力
 ```
 out_dir/
-├─ final_geometry.xyz          # 常に書き込み
+├─ final_geometry.xyz          # 常に出力
 ├─ final_geometry.pdb          # 入力がPDBで変換が有効な場合のみ
 ├─ final_geometry.gjf          # Gaussian テンプレートが検出され変換が有効な場合
 ├─ optimization.trj            # ダンプが有効な場合のみ
 ├─ optimization.pdb            # 軌跡のPDB変換（PDB 入力、変換有効時）
-└─ restart*.yml                # opt.dump_restartが設定されている場合のオプションのリスタート
+└─ restart*.yml                # opt.dump_restart 設定時のリスタートファイル（任意）
 ```
 コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
 
@@ -74,11 +74,11 @@ YAML 値はCLIを上書きし、CLIはデフォルトを上書きします。
 
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
-- `freeze_atoms`（`[]`）: 0始まりの凍結インデックス; CLIリンク検出と自動マージ
+- `freeze_atoms`（`[]`）: 0 始まりの凍結原子インデックス。CLI のリンク検出結果と自動的にマージされます
 
 ### `calc`
 - UMA設定（`model`、`task_name`、デバイス選択、近傍半径、ヘシアン形式など）
-- `charge`/`spin` はCLI オプションをミラー（`.gjf` がある場合はテンプレート値が既定）
+- `charge`/`spin` は CLI オプションに対応（`.gjf` がある場合はテンプレート値が既定）
 
 ### `opt`
 LBFGSとRFOの両方で使用される共有オプティマイザー制御:
@@ -86,10 +86,10 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
-L-BFGS固有で `opt` を拡張: `keep_last`、`beta`、`gamma_mult`、`max_step`、`control_step`、`double_damp`、およびオプションの正則化パラメータ `mu_reg`/`max_mu_reg_adaptions`
+`opt` を L-BFGS 固有の設定で拡張: `keep_last`、`beta`、`gamma_mult`、`max_step`、`control_step`、`double_damp`、およびオプションの正則化パラメータ `mu_reg`/`max_mu_reg_adaptions`
 
 ### `rfo`
-RFOptimizerフィールドで `opt` を拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、ヘシアン管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIISヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
+`opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、ヘシアン管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIISヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
 
 
 ### YAML例
@@ -199,7 +199,7 @@ rfo:
 
 - [tsopt](tsopt.md) — 極小ではなく遷移状態（鞍点）を最適化
 - [freq](freq.md) — 最適化が極小に達したことを確認する振動解析
-- [extract](extract.md) — 最適化前にポケットPDBを生成
+- [extract](extract.md) — 最適化前にポケット PDB を生成
 - [all](all.md) — 端点を事前最適化するエンドツーエンドワークフロー
 - [YAML リファレンス](yaml-reference.md) — `opt`、`lbfgs`、`rfo` の完全な設定オプション
 - [用語集](glossary.md) — L-BFGS、RFOの定義

@@ -25,11 +25,11 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 ```
 
 ## ワークフロー
-1. `Bio.PDB.PDBParser` で入力を解析し、`extract.py` で使用する残基定義（`AMINO_ACIDS`、`WATER_RES`、`ION`）に合わせる。
+1. `Bio.PDB.PDBParser` で入力を解析し、`extract.py` で使用される残基定義（`AMINO_ACIDS`、`WATER_RES`、`ION`）と照合する。
 2. 各原子について、原子名・残基名・HETATMフラグを組み合わせて元素を推定:
-   - `ION` 辞書にある単原子イオン残基は対応元素を使用
+   - `ION` 辞書に登録された単原子イオン残基は対応する元素を使用
    - タンパク質/核酸/水はH/DやSeの特例を扱い、C/N/O/P/Sは先頭文字で判定（炭素側鎖ラベルはC）
-   - それ以外のリガンドは原子名の接頭辞で判定し、ハロゲン認識や重水素→水素の正規化でフォールバック
+   - その他のリガンドは原子名の接頭辞で判定し、ハロゲン認識や重水素→水素の正規化にフォールバック
 3. `PDBIO` で書き出し:
    - デフォルト出力: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
    - `-o/--out`: 指定パスへ書き込み（この場合 `--overwrite` は無視）
@@ -52,5 +52,5 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 
 ## 注意事項
 - 変更されるのは列 77–78 のみ。座標、占有率、B因子、電荷、altloc、挿入コード、レコード順序は保持されます。
-- すべてのモデル/チェーン/残基に渡る ATOM/HETATM レコードを処理します。
+- すべてのモデル/チェーン/残基にわたる ATOM/HETATM レコードを処理します。
 - 重水素は水素に正規化され、セレン（`SE*`）やハロゲンは自動認識されます。

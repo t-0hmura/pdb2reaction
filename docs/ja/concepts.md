@@ -1,7 +1,6 @@
 # 概念とワークフロー
 
-このページでは、`pdb2reaction` を使ううえでの **全体像（メンタルモデル）** を説明します。
-「ポケット」「テンプレート」「セグメント」「画像（image）」が何を指すのか、そしてトップレベルの `all` が各サブコマンドをどう組み合わせるのかを把握するためのページです。
+このページでは、`pdb2reaction` の主要な概念——ポケット、テンプレート、セグメント、イメージ（image）——と、`all` コマンドが各サブコマンドをどのように連携させるかを説明します。
 
 ---
 
@@ -47,16 +46,16 @@
 - `-c/--center`: 基質の指定（残基ID、残基名、または基質のみのPDB）
 - `-r/--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`
 
-### 画像（image）とセグメント
-- **画像（image）**: 経路上の1つの幾何（1ノード）。
-- **セグメント**: 2つの端点を結ぶ MEP。多構造入力は、隣接する端点ペアごとのセグメントに分解されます。
+### イメージ（image）とセグメント
+- **イメージ（image）**: 経路上の 1 つの構造（1 ノード）。
+- **セグメント**: 隣接する 2 つの端点を結ぶ MEP 区間。多構造入力はセグメントに分解されます（例: R → I1, I1 → I2, …）。
 
 ### テンプレートとファイル変換（`--convert-files`）
 `pdb2reaction` は軌跡（例: `mep.trj`, `irc.trj`）を出力します。  
-PDB テンプレートや Gaussian 入力がある場合、必要に応じて companion ファイルも出力できます。
+PDB テンプレートや Gaussian 入力がある場合、対応する付随ファイルも出力できます。
 
-- PDB テンプレートがあるとき: `.pdb` companion
-- Gaussian テンプレートがあるとき: `.gjf` companion
+- PDB テンプレートがあるとき → `.pdb` 付随ファイル
+- Gaussian テンプレートがあるとき → `.gjf` 付随ファイル
 
 この挙動は `--convert-files {True|False}`（デフォルト: `True`）で制御します。
 
@@ -106,7 +105,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 
 ---
 
-## 知っておくとつまずきにくい CLI の注意点
+## CLI の注意点
 
 ```{important}
 - ブール値オプションは `True`/`False` を明示して渡します（例: `--tsopt True`）。

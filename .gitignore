@@ -16,6 +16,7 @@ env2/
 *.code-workspace
 
 *.log
+improvement_plan.md
 
 build/
 dist/

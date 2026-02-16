@@ -11,11 +11,11 @@
 | **MEP** | Minimum Energy Path | 反応物から生成物へ至る最小エネルギー経路（ポテンシャルエネルギー面上の最も低い経路）。 |
 | **TS** | Transition State | 反応座標に沿ったエネルギー極大に対応する一次の鞍点。 |
 | **IRC** | Intrinsic Reaction Coordinate | TS から反応物側・生成物側へ向かう、質量重み付き最急降下経路。TS の接続検証によく使われます。 |
-| **GSM** | Growing String Method | 端点からストリング（画像列）を伸長・最適化して MEP を近似する手法。 |
+| **GSM** | Growing String Method | 端点からストリング（イメージ列）を伸長・最適化して MEP を近似する手法。 |
 | **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します。 |
-| **NEB** | Nudged Elastic Band | 画像間にばね力を導入し、画像間隔を保ちながら経路を最適化する chain-of-states 手法。 |
-| **HEI** | Highest-Energy Image | MEP 上でエネルギーが最大の画像。TS の初期推定としてよく使われます。 |
-| **画像（Image）** | — | 経路上の1つの幾何（1ノード）。 |
+| **NEB** | Nudged Elastic Band | イメージ間にばね力を導入し、間隔を保ちながら経路を最適化する chain-of-states 手法。 |
+| **HEI** | Highest-Energy Image | MEP 上でエネルギーが最大のイメージ。TS の初期推定としてよく使われます。 |
+| **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。 |
 | **セグメント** | — | 2つの隣接する端点を結ぶ MEP（例: R → I1, I1 → I2, …）。 |
 
 ---

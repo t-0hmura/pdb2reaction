@@ -4,16 +4,16 @@
 
 > **要約:** 調和拘束と UMA 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`--scan-lists` に 2 つの四つ組 `(i, j, lowÅ, highÅ)` を含む **1 つのリテラル**を与えます。
 
-### ひと目で分かる
+### 要点
 - **入力:** 1 つの構造 + `--scan-lists` の **単一**リテラル（四つ組はちょうど 2 つ）。
 - **訪問順:** 各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。
-- **エネルギー:** `surface.csv` の値は常に **バイアスなし**で評価されるため、格子点を直接比較できます。
+- **エネルギー:** `surface.csv` の値は常に **バイアスなし**で評価されるため、格子点間で直接比較できます。
 - **主な出力:** `surface.csv`、`scan2d_map.png`、`scan2d_landscape.html`、および `grid/` 配下の各点の構造。
 - **注意:** `(high − low) / --max-step-size` が大きいと格子点数が急増します。
 
-`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、可視化に使える CSV/図を生成します。LBFGS ではなく RFOptimizer が必要な場合は `--opt-mode heavy` を指定してください。
+`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、バイアスなしの UMA エネルギーを記録し可視化用の出力を生成します。LBFGS の代わりに RFOptimizer を使用する場合は `--opt-mode heavy` を指定してください。
 
-XYZ/GJF 入力では、`--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
+XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 使用法
 ```bash
@@ -35,41 +35,88 @@ pdb2reaction scan2d -i input.pdb -q 0 \
     --preopt True --baseline min
 ```
 
+## `--scan-lists` の書式
+
+`--scan-lists` は **1 つの Python リテラル文字列**として CLI に渡します。シェルのクォート処理に注意が必要です。
+
+### 基本構造
+
+リテラルは、ちょうど **2 つ**の四つ組 `(原子1, 原子2, 下限Å, 上限Å)` を含む Python リストです。
+
+```
+--scan-lists '[(原子1, 原子2, 下限Å, 上限Å), (原子3, 原子4, 下限Å, 上限Å)]'
+```
+
+- リスト全体を **シングルクォート** `'...'` で囲みます（シェルがカッコや空白を解釈しないようにするため）。
+- 各四つ組は 1 つのスキャン軸を定義し、`原子1`–`原子2` 間の距離を `下限Å` から `上限Å` まで走査します。
+- `scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
+
+### 原子の指定方法
+
+原子は**整数インデックス**または **PDB セレクタ文字列**で指定します。
+
+| 方法 | 例 | 備考 |
+| --- | --- | --- |
+| 整数インデックス | `(1, 5, 1.30, 3.10)` | デフォルトは 1 始まり（`--one-based True`） |
+| PDB セレクタ | `("TYR,285,CA", "MMT,309,C10", 1.30, 3.10)` | 残基名、残基番号、原子名の三つ組 |
+
+PDB セレクタのトークンは、カンマ `,`、スペース、スラッシュ `/`、バッククォート `` ` ``、バックスラッシュ `\` のいずれでも区切れます。トークンの順序も任意です。
+
+```bash
+# 以下はすべて同じ原子を指定:
+"TYR,285,CA"
+"TYR 285 CA"
+"TYR/285/CA"
+"285,TYR,CA"   # 順序は自由
+```
+
+### クォートの規則
+
+```bash
+# 正しい: シングルクォートでリストを囲み、セレクタはダブルクォート
+--scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+
+# 正しい: 整数インデックスなら内側のダブルクォートは不要
+--scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
+
+# 非推奨: ダブルクォートで外側を囲むとエスケープが必要
+--scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10), ...]"
+```
+
 ## ワークフロー
-1. `geom_loader` で入力構造をロードし、電荷/スピンを解決し、`--preopt True` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_i###_j###.*` に保存され、`surface.csv` には `i = j = -1` で無バイアスエネルギーが記録されます。
-2. 単一の `--scan-lists` リテラルを2つの四つ組に解析し、インデックスを正規化（デフォルトは1始まり）。PDB 入力では、各エントリは整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白/カンマ/スラッシュ/バッククォート/バックスラッシュで、トークン順序は任意（フォールバックは resname, resseq, atom）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端含む）で構成し（`h = --max-step-size`）、長さ0の範囲は1点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えます。
-3. `d1[i]`（近い順）ごとに外側ループを回します。各値で **d₁拘束のみ**を適用して緩和し、その構造をスナップショットします。
-4. 内側ループで `d2[j]` を回し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から開始して緩和します。
-5. 各 `(i, j)` で、`<out-dir>/grid/point_i###_j###.xyz` に構造を保存し、バイアス収束の可否を記録し、バイアスを外したUMAエネルギーを評価します。`--dump True` の場合、外側ループごとの内側軌跡が `inner_path_d1_###.trj` に保存されます。
-6. すべての点を訪れたら、`<out-dir>/surface.csv` を作成し、`--baseline {min|first}` で kcal/mol の基準を設定します。`--baseline first` では、基準は `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2Dコンター）と `scan2d_landscape.html`（3Dサーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
+1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt True` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_i###_j###.*` に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
+2. 単一の `--scan-lists` リテラルを 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
+3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
+4. 各 `(i, j)` について、`<out-dir>/grid/point_i###_j###.xyz` に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した UMA エネルギーを評価します。`--dump True` の場合、外側ループごとの内側軌跡が `inner_path_d1_###.trj` として保存されます。
+5. すべての点を走査したら、`<out-dir>/surface.csv` を作成します。`--baseline {min|first}` で kcal/mol の基準を設定します。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
-| `--ligand-charge TEXT` | `-q` が省略された場合に使う総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で電荷導出を有効化 | _None_ |
-| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
+| `--ligand-charge TEXT` | `-q` 省略時に使う総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で電荷導出を有効化 | _None_ |
+| `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `--scan-lists, --scan-list TEXT` | **単一**のPythonリテラルで2つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
-| `--one-based {True\|False}` | `(i, j)` のインデックス解釈 | `True` |
-| `--max-step-size FLOAT` | 1距離あたりの最大増分（Å）。グリッド密度を制御 | `0.20` |
+| `--scan-lists, --scan-list TEXT` | **単一**の Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
+| `--one-based {True\|False}` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
+| `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
-| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル（YAML が `opt.max_cycles` を指定していない場合に使用） | `10000` |
+| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
-| `--freeze-links {True\|False}` | PDB 入力でリンクHの親を凍結 | `True` |
+| `--freeze-links {True\|False}` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--dump {True\|False}` | 外側ループごとの `inner_path_d1_###.trj` を保存 | `False` |
-| `--convert-files {True\|False}` | PDB/Gaussian入力の XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
+| `--convert-files {True\|False}` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan2d/` |
-| `--thresh TEXT` | 収束プリセット上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
-| `--args-yaml FILE` | YAML 上書き（`geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`） | _None_ |
+| `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
+| `--args-yaml FILE` | YAML による上書き（`geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`） | _None_ |
 | `--preopt {True\|False}` | スキャン前に無バイアス最適化を実行 | `True` |
-| `--baseline {min,first}` | kcal/mol の基準をグローバル最小 or 最初の格子点に設定 | `min` |
-| `--zmin FLOAT`, `--zmax FLOAT` | カラースケール下限/上限（kcal/mol） | 自動 |
+| `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または最初の格子点に設定 | `min` |
+| `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
 
-### 共有YAMLセクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキー。`opt.dump` はYAMLで設定可能で、軌跡出力は `--dump` で制御します。
+### 共有 YAML セクション
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
 
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
@@ -78,20 +125,20 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 ```
 out_dir/ (デフォルト: ./result_scan2d/)
 ├─ surface.csv                # 構造化グリッド表
-├─ scan2d_map.png             # 2Dコンター（Kaleido必須; PNG出力に失敗すると停止）
-├─ scan2d_landscape.html      # 3Dサーフェス可視化
-├─ grid/point_i###_j###.xyz   # 各(i, j)の緩和構造
-├─ grid/point_i###_j###.pdb   # 変換有効時のPDB コンパニオン
-├─ grid/point_i###_j###.gjf   # テンプレートがある場合のGaussianコンパニオン
+├─ scan2d_map.png             # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
+├─ scan2d_landscape.html      # 3D サーフェス可視化
+├─ grid/point_i###_j###.xyz   # 各 (i, j) の緩和構造
+├─ grid/point_i###_j###.pdb   # 変換有効時の PDB コンパニオン
+├─ grid/point_i###_j###.gjf   # テンプレートがある場合の Gaussian コンパニオン
 └─ grid/inner_path_d1_###.trj # --dump True の場合のみ（PDB 入力時は .pdb にも変換）
 ```
 
 ## 注意事項
-- UMA via `uma_pysis` が唯一の計算機で、1Dスキャンと同じ `HarmonicBiasCalculator` を再利用します。
-- Å単位の制限は内部でBohrに変換され、LBFGSステップやRFO信頼半径を制御します。最適化の一時ファイルはテンポラリディレクトリに置かれます。
-- バイアスは最終エネルギー評価前に必ず除去されるため、`surface.csv` を下流のフィッティングや可視化に再利用できます。
-- `--freeze-links` は `freeze_atoms` とリンクH親原子をマージし、抽出ポケットを固定します。
-- 電荷はテンプレートがあればそれを優先。`.gjf` 以外の入力では `-q/--charge` が必須ですが、`--ligand-charge` がある場合は例外（PDB 入力、または `--ref-pdb` 付きXYZ/GJF）。明示的な `-q` が常に優先されます。**多重度は `.gjf` テンプレートがあれば継承され、未指定時は `1` です。**
+- `uma_pysis` 経由の UMA が唯一の計算バックエンドであり、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
+- バイアスは最終エネルギー記録前に必ず除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま再利用できます。
+- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットを固定します。
+- 電荷は Gaussian テンプレートがあれば継承されます。`.gjf` 以外の入力では `-q/--charge` が必須ですが、`--ligand-charge` がある場合は例外です（PDB 入力、または `--ref-pdb` 付き XYZ/GJF）。明示的な `-q` は常に最優先されます。**多重度は `.gjf` テンプレートがあれば継承され、未指定時は `1` になります。**
 
 ## YAML 設定（`--args-yaml`）
 最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
@@ -121,4 +168,4 @@ bias:
 ```
 
 `opt` の詳細は [docs/opt.md](opt.md) を参照してください。
-`--relax-max-cycles` は**明示的に指定され**、かつYAMLが `opt.max_cycles` を指定していない場合にのみ適用されます（デフォルト `10000`）。
+`--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。

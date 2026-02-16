@@ -5,8 +5,8 @@
 
 > **要約:** **2 構造以上**から、GSM（デフォルト）または DMF（`--mep-mode dmf`）で連続的な MEP を構築します。共有結合変化のある領域のみを自動で精密化し、最高エネルギー画像（HEI）を TS 候補として出力します（freq/IRC で検証）。
 
-### ひと目で分かる
-- **使いどころ:** R → … → P のように **2 構造以上**があり、精密化込みで 1 本の MEP にまとめたいとき。
+### 要点
+- **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep.trj`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
 - **既定値:** `--mep-mode gsm`、`--opt-mode light`（LBFGS）、`--preopt True`、`--align True`、`--thresh gau`。
@@ -85,24 +85,24 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 ## 出力
 ```
 out_dir/ (デフォルト: ./result_path_search/)
-├─ mep.trj                  # プライマリMEP軌跡
+├─ mep.trj                  # 主要 MEP 軌跡
 ├─ mep.pdb                  # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
 ├─ mep_w_ref.pdb            # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb     # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml             # すべての再帰セグメントの障壁と分類サマリー
 ├─ mep_plot.png             # ΔEプロファイル（kcal/mol、反応物基準）
 ├─ energy_diagram_MEP.png   # MEP状態エネルギーダイアグラムの静的エクスポート
-└─ seg_000_*/               # セグメントごとのGSM/DMFダンプ、HEIスナップショット
+└─ seg_000_*/               # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
 ```
 
 
-- 設定解決済みの `geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search` ブロックはコンソールに出力されます。
+- コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`）が出力されます。
 
 ## 注意事項
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - `--ref-full-pdb` は1回の指定で複数ファイルを続けて渡せます。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - UMA 計算機は全構造で共有され、効率化されます。
-- `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡および再開用YAMLが出力されます。
+- `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`-q` が省略され `--ligand-charge` が与えられている場合、入力は酵素–基質複合体として扱われ、PDB 入力では `extract.py` の電荷サマリーで総電荷が導出されます。明示的な `-q` は常に優先されます。`.gjf` 以外で `--ligand-charge` が使えない場合は実行が中断され、多重度は省略時に `1` がデフォルトです。
 
 ## YAML 設定（`--args-yaml`）
@@ -112,7 +112,7 @@ YAML ルートはマッピングでなければなりません。YAML 値はCLI�
 
 `sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
 
-`bond` は UMA ベースの結合変化検出で、{ref}`scan <section-bond>` と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
+`bond` は UMA ベースの結合変化検出パラメータで、[`scan`](scan.md#section-bond) と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
 `search` は再帰ロジックを制御します: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, `max_seq_kink`, `refine_mode`（`null` の場合は GSM→`peak`、DMF→`minima` を自動選択）。旧 `rmsd_align` フラグは互換性のため保持されますが無視されます。
 
