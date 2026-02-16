@@ -169,4 +169,4 @@ A preprint describing `pdb2reaction` is in preparation. Please check back for ci
 
 ## License
 
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** derived from Pysisyphus.
+`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.
