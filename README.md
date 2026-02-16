@@ -57,10 +57,10 @@ For detailed documentation, please refer to:
 
 `pdb2reaction` is intended for Linux environments with a CUDA‑capable GPU.
 
-### Minimal setup (CUDA 12.9)
+### Minimal setup (CUDA 12.9, torch 2.8.0)
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu129
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
@@ -79,7 +79,7 @@ If you want to use Direct Max Flux (DMF) for MEP search, install cyipopt first:
 conda create -n pdb2reaction python=3.11 -y
 conda activate pdb2reaction
 conda install -c conda-forge cyipopt -y
-pip install torch --index-url https://download.pytorch.org/whl/cu129
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
