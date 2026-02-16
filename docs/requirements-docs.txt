@@ -3,3 +3,4 @@ sphinx-rtd-theme
 sphinx-autodoc-typehints
 myst-parser
 sphinx-copybutton
+furo
