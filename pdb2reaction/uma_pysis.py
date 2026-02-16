@@ -1,102 +1,14 @@
+# pdb2reaction/uma_pysis.py
+
 """
-uma_pysis — UMA calculator wrapper for PySisyphus
-====================================================================
+UMA calculator wrapper for PySisyphus providing energy, forces, and Hessians.
 
-Usage (API)
------------
-    from pdb2reaction.uma_pysis import uma_pysis
-
-Examples
---------
+Example:
     >>> from pdb2reaction.uma_pysis import uma_pysis
     >>> calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1")
     >>> calc.get_energy(["C", "O"], coords)
-    {'energy': -228.123456}
 
-Description
------------
-- Provides energy, forces, and Hessian for molecular systems using FAIR‑Chem UMA
-  pretrained ML potentials via ASE/AtomicData.
-- Two Hessian modes (on the selected device; GPU if available):
-  - **Analytical**: second‑order autograd of the UMA energy.
-    Requires more VRAM/time than finite differences. During evaluation,
-    model parameter gradients are disabled; dropout layers are force‑disabled;
-    the model is temporarily toggled to `train()` only to build the autograd
-    graph and then restored to `eval()`.
-      * if `return_partial_hessian=True`, the Hessian is reduced to the Active‑DOF
-        block (non‑frozen atoms);
-      * otherwise the full matrix is returned and columns for frozen DOF are zeroed.
-  - **FiniteDifference**: central differences of forces, assembled on the selected
-    device. Columns for frozen DOF are skipped; optionally return only the
-    active‑DOF block. Default step: ε = 1.0e‑3 Å.
-- Device handling: `device="auto"` selects CUDA if available, else CPU.
-- **Precision / dtype**:
-    * UMA models run in their native precision (currently float32). We no longer
-      upcast the full model and graph to float64.
-    * Energies and forces returned by the PySisyphus API are always float64
-      (Hartree / Hartree·Bohr⁻¹).
-    * The Hessian dtype is controlled by `hessian_double`:
-        - `hessian_double=True` (default): assemble and return the Hessian in
-          float64 (double precision) on the host/device, without changing the
-          internal model precision.
-        - `hessian_double=False`: assemble and return the Hessian in the model
-          dtype (typically float32).
-- Neighborhood/graph: optional overrides for `max_neigh`, `radius`, `r_edges`.
-  On‑the‑fly graphs are built (`otf_graph=True`), and `task_name` is attached to
-  the batch; charge/spin are stored in `Atoms.info`.
-- Robustness: analytical path catches CUDA out‑of‑memory and advises switching to
-  finite differences.
-- Default Hessian mode at construction is `"FiniteDifference"`. If `hessian_calc_mode`
-  is falsy *or unrecognized* in `get_hessian`, `"FiniteDifference"` is used.
-
-- **Parallel inference workers** (`workers`, `workers_per_node`):
-    * If `workers > 1`, this wrapper directly instantiates FAIR‑Chem's
-      `ParallelMLIPPredictUnit` (instead of calling `pretrained_mlip.get_predict_unit`)
-      using:
-        - `num_workers = workers`
-        - `num_workers_per_node = workers_per_node`
-    * When `workers>1`, FAIR‑Chem returns a parallel predictor that does **not**
-      expose `predictor.model`. Therefore:
-        - all `predictor.model`-related operations (eval/train toggles, dropout
-          neutering, parameter requires_grad modifications) are skipped;
-        - **Analytical Hessian is disabled**, and `get_hessian()` always uses
-          **FiniteDifference** regardless of `hessian_calc_mode`.
-
-- Units: UMA runs in Å and eV; PySisyphus public API converts to Hartree/Bohr:
-  energy eV→Hartree, forces eV·Å⁻¹→Hartree·Bohr⁻¹, Hessian eV·Å⁻²→Hartree·Bohr⁻².
-
-Outputs (& Directory Layout)
-----------------------------
-In-memory calculator interface (`implemented_properties = ["energy", "forces", "hessian"]`)
-  ├─ get_energy(elem, coords)  → ``{"energy": E}`` (E in Hartree; coords supplied in Bohr and converted to Å internally)
-  ├─ get_forces(elem, coords)  → ``{"energy": E, "forces": F}`` (F has 3N components in Hartree/Bohr; frozen DOF set to 0)
-  └─ get_hessian(elem, coords) → ``{"energy": E, "forces": F, "hessian": H}``
-        • ``H`` has shape (3N, 3N) in Hartree/Bohr² or (3N_active, 3N_active) when ``return_partial_hessian=True``
-        • Columns for frozen DOF are zeroed in the full-size form
-
-
-Notes
------
-- `freeze_atoms`: list of 0‑based atom indices; **applies to both Analytical and
-  FiniteDifference**. Forces on frozen atoms are returned as 0. In Hessians,
-  either the matrix is reduced to the Active‑DOF block (`return_partial_hessian=True`)
-  or (for full size) columns for frozen DOF are zeroed.
-- `return_partial_hessian`: if True, return only the Active‑DOF submatrix in both modes.
-  Full Hessians (default; `return_partial_hessian=False`) avoid shape mismatches with
-  pysisyphus optimizers.
-- UMA loader:
-    * `workers == 1`:
-        `pretrained_mlip.get_predict_unit(model, device=...)`
-    * `workers > 1`:
-        direct instantiation of `ParallelMLIPPredictUnit(...)`
-- During analytical Hessian evaluation, model parameters have `requires_grad=False`;
-  the model is briefly set to `train()` to enable autograd and then restored to `eval()`.
-  CUDA caches are cleared if needed.
-- Neighborhood defaults come from the model backbone (e.g., `max_neighbors`, `cutoff`)
-  unless explicitly overridden. If the backbone is not available (e.g. workers>1),
-  AtomicData defaults are used (radius defaults to 6.0 Å).
-- CLI entry point: `run_pysis()` registers the calculator, enabling:
-  `uma_pysis input.yaml`.
+For detailed documentation, see: docs/uma_pysis.md
 """
 
 from __future__ import annotations
@@ -107,7 +19,7 @@ import torch
 import torch.nn as nn
 from ase import Atoms
 
-from fairchem.core import pretrained_mlip
+from fairchem.core import pretrained_mlip, FAIRChemCalculator
 from fairchem.core.datasets.atomic_data import AtomicData
 from fairchem.core.datasets import data_list_collater
 
@@ -121,48 +33,17 @@ except Exception:
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
-from pysisyphus import run
 
 # ------------ unit conversion constants ----------------------------
 EV2AU          = 1.0 / AU2EV                     # eV → Hartree
 F_EVAA_2_AU    = EV2AU / ANG2BOHR                # eV Å⁻¹ → Hartree Bohr⁻¹
 H_EVAA_2_AU    = EV2AU / ANG2BOHR / ANG2BOHR     # eV Å⁻² → Hartree Bohr⁻²
 
-# Default for potential geometry loader integrations (kept for completeness)
-GEOM_KW_DEFAULT: Dict[str, Any] = {
-    "coord_type": "cart",       # coordinate representation (cart | dlc | redund (Cartesian, Delocalized Internal Coordinates, Z-matrix))
-    "freeze_atoms": [],         # list[int], 0-based atom indices to freeze
-}
+# Import defaults from centralized configuration
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW
 
-# UMA calculator defaults
-CALC_KW: Dict[str, Any] = {
-    # Charge and multiplicity
-    "charge": 0,              # int, total charge
-    "spin": 1,                # int, multiplicity (2S+1)
-
-    # Model selection
-    "model": "uma-s-1p1",     # str, UMA pretrained model ID
-    "task_name": "omol",      # str, dataset/task tag carried into UMA's AtomicData
-
-    # Device & graph construction
-    "device": "auto",         # str, "cuda" | "cpu" | "auto"
-    "workers": 1,             # int, predictor workers; if >1, ParallelMLIPPredictUnit is instantiated directly and Analytical Hessian is disabled
-    "workers_per_node": 1,   # int, num_workers_per_node passed to ParallelMLIPPredictUnit when workers>1
-    "max_neigh": None,        # Optional[int], override model's neighbor cap
-    "radius": None,           # Optional[float], cutoff radius (Å)
-    "r_edges": False,         # bool, store edge vectors in graph (UMA option)
-    "out_hess_torch": True,   # bool, return Hessian as torch.Tensor
-
-    # Freeze atoms
-    "freeze_atoms": None,     # Optional[Sequence[int]], list of freeze atoms
-
-    # Hessian interfaces to UMA
-    "hessian_calc_mode": "FiniteDifference",  # "Analytical" | "FiniteDifference" (default)
-    "return_partial_hessian": False,          # receive the full Hessian (safer for pysisyphus)
-
-    # Hessian precision (energy/forces are always returned as float64)
-    "hessian_double": True,                   # if True, assemble/return Hessian in float64
-}
+# Use centralized UMA calculator defaults (no local redefinition)
+CALC_KW = UMA_CALC_KW
 
 # ===================================================================
 #                         UMA core wrapper
@@ -241,15 +122,9 @@ class UMAcore:
                 num_workers_per_node=self.workers_per_node,
             )
         else:
-            # Keep a defensive fallback if the installed fairchem build doesn't accept `workers`
-            try:
-                self.predict = pretrained_mlip.get_predict_unit(
-                    model, device=self.device_str, workers=self.workers
-                )
-            except TypeError:
-                self.predict = pretrained_mlip.get_predict_unit(model, device=self.device_str)
-                self.workers = 1
-                self.parallel_predict = False
+            self.predict = pretrained_mlip.get_predict_unit(
+                model, device=self.device_str, workers=self.workers
+            )
 
         # Detect whether we can access an underlying torch model
         self.has_torch_model = hasattr(self.predict, "model") and isinstance(
@@ -268,9 +143,9 @@ class UMAcore:
         self.spin = spin
         self.task_name = task_name
 
-        self._max_neigh_user = max_neigh
-        self._radius_user = radius
-        self._r_edges_user = r_edges
+        self._max_neigh = max_neigh
+        self._radius = radius
+        self._r_edges = r_edges
 
     # ----------------------------------------------------------------
     def _model_backbone(self):
@@ -305,9 +180,9 @@ class UMAcore:
         if default_radius is None:
             default_radius = 6.0
 
-        max_neigh = self._max_neigh_user if self._max_neigh_user is not None else default_max_neigh
-        radius = self._radius_user if self._radius_user is not None else default_radius
-        r_edges = self._r_edges_user
+        max_neigh = self._max_neigh if self._max_neigh is not None else default_max_neigh
+        radius = self._radius if self._radius is not None else default_radius
+        r_edges = self._r_edges
 
         atoms.info.update({"charge": self.charge, "spin": self.spin})
         data = self._AtomicData.from_ase(
@@ -494,7 +369,14 @@ class uma_pysis(Calculator):
         )
         self.out_hess_torch = out_hess_torch
         self.hessian_calc_mode = hessian_calc_mode
-        self.freeze_atoms: List[int] = sorted(set(int(i) for i in (freeze_atoms or [])))
+        if freeze_atoms is None:
+            freeze_iter: List[int] = []
+        else:
+            try:
+                freeze_iter = [int(i) for i in list(freeze_atoms)]
+            except Exception:
+                freeze_iter = []
+        self.freeze_atoms = sorted(set(freeze_iter))
         self.return_partial_hessian = bool(return_partial_hessian)
         self.hessian_double = bool(hessian_double)
 
@@ -502,15 +384,6 @@ class uma_pysis(Calculator):
     def _ensure_core(self, elem: Sequence[str]):
         if self._core is None:
             self._core = UMAcore(elem, **self._core_kw)
-
-    @staticmethod
-    def _au_energy(E: float) -> float:
-        return E * EV2AU
-
-    @staticmethod
-    def _au_forces(F: np.ndarray) -> np.ndarray:
-        F64 = np.asarray(F, dtype=np.float64)
-        return (F64 * F_EVAA_2_AU).reshape(-1)
 
     def _au_hessian(self, H: torch.Tensor):
         """
@@ -690,7 +563,7 @@ class uma_pysis(Calculator):
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         res = self._core.compute(coord_ang, forces=False, hessian=False)
-        return {"energy": self._au_energy(res["energy"])}
+        return {"energy": res["energy"] * EV2AU}
 
     def get_forces(self, elem, coords):
         self._ensure_core(elem)
@@ -701,8 +574,8 @@ class uma_pysis(Calculator):
         F_ev = self._zero_frozen_forces_ev(res["forces"])
 
         return {
-            "energy": self._au_energy(res["energy"]),
-            "forces": self._au_forces(F_ev),
+            "energy": res["energy"] * EV2AU,
+            "forces": (np.asarray(F_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
         }
 
     def get_hessian(self, elem, coords):
@@ -762,8 +635,8 @@ class uma_pysis(Calculator):
             H = self._apply_analytical_active_trim(res["hessian"])
 
             return {
-                "energy": self._au_energy(res["energy"]),
-                "forces": self._au_forces(res_forces_ev),
+                "energy": res["energy"] * EV2AU,
+                "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
                 "hessian": self._au_hessian(H),
             }
 
@@ -774,16 +647,58 @@ class uma_pysis(Calculator):
         res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
 
         return {
-            "energy": self._au_energy(res["energy"]),
-            "forces": self._au_forces(res_forces_ev),
+            "energy": res["energy"] * EV2AU,
+            "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
             "hessian": self._au_hessian(res["hessian"]),
         }
 
 
-# ---------- CLI ----------------------------------------
-def run_pysis():
-    """
-    Enable `uma_pysis input.yaml`.
-    """
-    run.CALC_DICT["uma_pysis"] = uma_pysis
-    run.run()
+class uma_ase(FAIRChemCalculator):
+    def __init__(
+        self,
+        *,
+        model: str = "uma-s-1p1",
+        device: str = "auto",
+        task_name: str = "omol",
+        workers: int = 1,
+        workers_per_node: int = 1,
+    ):
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        num_workers = int(workers) if workers is not None else 1
+        if num_workers < 1:
+            num_workers = 1
+
+        num_workers_per_node = int(workers_per_node) if workers_per_node is not None else 1
+        if num_workers_per_node < 1:
+            num_workers_per_node = 1
+
+        if num_workers > 1:
+            if (ParallelMLIPPredictUnit is None) or (guess_inference_settings is None):
+                raise ImportError(
+                    "workers>1 requested, but ParallelMLIPPredictUnit/guess_inference_settings "
+                    "could not be imported from fairchem. Please ensure your FAIR-Chem installation "
+                    "includes `fairchem-core[extras]`."
+                )
+            ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
+            inference_settings = guess_inference_settings("default")
+
+            atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
+            form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
+
+            predictor = ParallelMLIPPredictUnit(
+                inference_model_path=str(ckpt_path),
+                device=device,
+                inference_settings=inference_settings,
+                atom_refs=atom_refs,
+                form_elem_refs=form_elem_refs,
+                num_workers=num_workers,
+                num_workers_per_node=num_workers_per_node,
+            )
+        else:
+            predictor = pretrained_mlip.get_predict_unit(
+                model,
+                device=device,
+                workers=num_workers,
+            )
+        super().__init__(predictor, task_name=str(task_name))

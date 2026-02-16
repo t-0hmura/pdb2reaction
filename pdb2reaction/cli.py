@@ -2,6 +2,8 @@
 
 import click
 
+from pdb2reaction import __version__
+
 class DefaultGroup(click.Group):
     def __init__(self, *args, default: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -15,6 +17,12 @@ class DefaultGroup(click.Group):
             if not args or args[0].startswith("-"):
                 args.insert(0, self._default_cmd)
         return super().parse_args(ctx, args)
+
+    def invoke(self, ctx):
+        # Add a leading blank line for subcommands (except "all") to separate CLI tool logs.
+        if ctx.invoked_subcommand and ctx.invoked_subcommand != "all":
+            click.echo()
+        return super().invoke(ctx)
 
 
 from .all import cli as all_cmd
@@ -30,6 +38,8 @@ from .add_elem_info import cli as add_elem_info_cmd
 from .dft import cli as dft_cmd
 from .scan2d import cli as scan2d_cmd
 from .scan3d import cli as scan3d_cmd
+from .fix_altloc import cli as fix_altloc_cmd
+from .energy_diagram import cli as energy_diagram_cmd
 
 
 @click.group(
@@ -38,6 +48,7 @@ from .scan3d import cli as scan3d_cmd
     help="pdb2reaction: Root command to execute each subcommands.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
+@click.version_option(version=__version__, prog_name="pdb2reaction")
 def cli() -> None:
     pass
 
@@ -53,17 +64,9 @@ def cli() -> None:
 )
 @click.pass_context
 def extract_cmd(ctx: click.Context) -> None:
-    import sys
-    import os
     from . import extract as _extract_mod
-
-    argv_backup = sys.argv[:]
-    try:
-        prog_base = (ctx.find_root().info_name or os.path.basename(sys.argv[0]))
-        sys.argv = [f"{prog_base} extract"] + list(ctx.args)
-        _extract_mod.extract()
-    finally:
-        sys.argv = argv_backup
+    args = _extract_mod.parse_args(list(ctx.args))
+    _extract_mod.extract(args)
 
 
 cli.add_command(all_cmd, name="all")
@@ -80,12 +83,14 @@ cli.add_command(add_elem_info_cmd, name="add-elem-info")
 cli.add_command(dft_cmd, name="dft")
 cli.add_command(scan2d_cmd, name="scan2d")
 cli.add_command(scan3d_cmd, name="scan3d")
+cli.add_command(fix_altloc_cmd, name="fix-altloc")
+cli.add_command(energy_diagram_cmd, name="energy-diagram")
 
 # Disable pysisyphus logging
 import logging
 logging.disable(logging.CRITICAL)
 
-# Filter noisy UMA/torch_dmf warnings that clutter CLI output
+# Filter noisy UMA/pydmf warnings that clutter CLI output
 import warnings
 
 warnings.filterwarnings(
@@ -97,12 +102,6 @@ warnings.filterwarnings(
 warnings.filterwarnings(
     "ignore",
     category=UserWarning,
-    message=r"Sparse CSR tensor support is in beta state.*",
-    module=r"torch_dmf"
-)
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
     message=r"t_eval update skipped due to insufficient candidates",
-    module=r"torch_dmf"
+    module=r"dmf"
 )

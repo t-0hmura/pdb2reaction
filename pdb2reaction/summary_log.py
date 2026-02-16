@@ -1,3 +1,5 @@
+# pdb2reaction/summary_log.py
+
 """
 User-friendly summary log writer used by ``path_search`` and ``all``.
 
@@ -9,7 +11,6 @@ post-processing energies, and key output paths in a single place.
 from __future__ import annotations
 
 import textwrap
-import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
@@ -49,13 +50,19 @@ def _format_energy_rows(
     energies_kcal: Optional[Sequence[Optional[float]]],
 ) -> List[str]:
     rows: List[str] = []
-    energies_au = list(energies_au or [])
-    energies_kcal = list(energies_kcal or [])
-    base_e = energies_au[0] if energies_au else None
+    try:
+        energies_au_list = list(energies_au) if energies_au is not None else []
+    except Exception:
+        energies_au_list = []
+    try:
+        energies_kcal_list = list(energies_kcal) if energies_kcal is not None else []
+    except Exception:
+        energies_kcal_list = []
+    base_e = energies_au_list[0] if energies_au_list else None
 
     for i, lab in enumerate(labels):
-        abs_e = energies_au[i] if i < len(energies_au) else None
-        rel_e = energies_kcal[i] if i < len(energies_kcal) else None
+        abs_e = energies_au_list[i] if i < len(energies_au_list) else None
+        rel_e = energies_kcal_list[i] if i < len(energies_kcal_list) else None
         if rel_e is None and abs_e is not None and base_e is not None:
             rel_e = (abs_e - base_e) * AU2KCALPERMOL
 
@@ -152,6 +159,97 @@ def _emit_energy_block(
                 lines.append(f"         {key}: {_shorten_path(structs.get(key), root_out)}")
 
 
+def _tree_rel_path(root: Path, p: Path) -> str:
+    try:
+        return p.relative_to(root).as_posix()
+    except ValueError:
+        return p.name
+
+
+def _tree_annotate(annotations: Dict[str, str], rel: str) -> str:
+    note = annotations.get(rel)
+    return f"  # {note}" if note else ""
+
+
+def _tree_leaf_files(dir_path: Path) -> Optional[List[str]]:
+    try:
+        inner_children = sorted(dir_path.iterdir(), key=lambda p: p.name.lower())
+    except Exception:
+        return None
+
+    if any(p.is_dir() for p in inner_children):
+        return None
+    return [p.name for p in inner_children if p.is_file()]
+
+
+def _walk_directory_tree(
+    dir_path: Path,
+    prefix: str,
+    depth: int,
+    *,
+    root: Path,
+    annotations: Dict[str, str],
+    max_depth: int,
+    max_entries: int,
+    lines: List[str],
+    entries_seen_ref: List[int],
+) -> bool:
+    try:
+        children = sorted(
+            dir_path.iterdir(),
+            key=lambda p: (p.is_file(), p.name.lower()),
+        )
+    except Exception:
+        return False
+
+    for idx, child in enumerate(children):
+        connector = "└─" if idx == len(children) - 1 else "├─"
+        rel = _tree_rel_path(root, child)
+        if child.is_dir():
+            leaf_names = _tree_leaf_files(child) if depth < max_depth else None
+            if leaf_names is not None:
+                lines.append(f"{prefix}{connector} {child.name}/{_tree_annotate(annotations, rel)}")
+                entries_seen_ref[0] += 1
+                if entries_seen_ref[0] >= max_entries:
+                    lines.append(
+                        f"{prefix}   ... (truncated after {max_entries} entries)"
+                    )
+                    return True
+
+                next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
+                grouped = ",".join(leaf_names)
+                lines.append(f"{next_prefix}└─ {{{grouped}}}")
+                entries_seen_ref[0] += 1
+                if entries_seen_ref[0] >= max_entries:
+                    lines.append(
+                        f"{next_prefix}   ... (truncated after {max_entries} entries)"
+                    )
+                    return True
+                continue
+
+        name = child.name + ("/" if child.is_dir() else "")
+        lines.append(f"{prefix}{connector} {name}{_tree_annotate(annotations, rel)}")
+        entries_seen_ref[0] += 1
+        if entries_seen_ref[0] >= max_entries:
+            lines.append(f"{prefix}   ... (truncated after {max_entries} entries)")
+            return True
+        if child.is_dir() and depth < max_depth:
+            next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
+            if _walk_directory_tree(
+                child,
+                next_prefix,
+                depth + 1,
+                root=root,
+                annotations=annotations,
+                max_depth=max_depth,
+                max_entries=max_entries,
+                lines=lines,
+                entries_seen_ref=entries_seen_ref,
+            ):
+                return True
+    return False
+
+
 def _format_directory_tree(
     root: Path,
     annotations: Dict[str, str],
@@ -168,78 +266,73 @@ def _format_directory_tree(
     """
 
     lines: List[str] = []
-    entries_seen = 0
-
-    def _rel_path(p: Path) -> str:
-        try:
-            return p.relative_to(root).as_posix()
-        except ValueError:
-            return p.name
-
-    def _annotate(rel: str) -> str:
-        note = annotations.get(rel)
-        return f"  # {note}" if note else ""
-
-    def _leaf_files(dir_path: Path) -> Optional[List[str]]:
-        try:
-            inner_children = sorted(dir_path.iterdir(), key=lambda p: p.name.lower())
-        except Exception:
-            return None
-
-        if any(p.is_dir() for p in inner_children):
-            return None
-        return [p.name for p in inner_children if p.is_file()]
-
-    def _walk(dir_path: Path, prefix: str, depth: int) -> bool:
-        nonlocal entries_seen
-        try:
-            children = sorted(
-                dir_path.iterdir(),
-                key=lambda p: (p.is_file(), p.name.lower()),
-            )
-        except Exception:
-            return False
-
-        for idx, child in enumerate(children):
-            connector = "└─" if idx == len(children) - 1 else "├─"
-            rel = _rel_path(child)
-            if child.is_dir():
-                leaf_names = _leaf_files(child) if depth < max_depth else None
-                if leaf_names is not None:
-                    lines.append(f"{prefix}{connector} {child.name}/{_annotate(rel)}")
-                    entries_seen += 1
-                    if entries_seen >= max_entries:
-                        lines.append(
-                            f"{prefix}   ... (truncated after {max_entries} entries)"
-                        )
-                        return True
-
-                    next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
-                    grouped = ",".join(leaf_names)
-                    lines.append(f"{next_prefix}└─ {{{grouped}}}")
-                    entries_seen += 1
-                    if entries_seen >= max_entries:
-                        lines.append(
-                            f"{next_prefix}   ... (truncated after {max_entries} entries)"
-                        )
-                        return True
-                    continue
-
-            name = child.name + ("/" if child.is_dir() else "")
-            lines.append(f"{prefix}{connector} {name}{_annotate(rel)}")
-            entries_seen += 1
-            if entries_seen >= max_entries:
-                lines.append(f"{prefix}   ... (truncated after {max_entries} entries)")
-                return True
-            if child.is_dir() and depth < max_depth:
-                next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
-                if _walk(child, next_prefix, depth + 1):
-                    return True
-        return False
-
-    lines.append(f"  {root.name}/" + _annotate("."))
-    _walk(root, "  ", 1)
+    entries_seen_ref = [0]
+    lines.append(f"  {root.name}/" + _tree_annotate(annotations, "."))
+    _walk_directory_tree(
+        root,
+        "  ",
+        1,
+        root=root,
+        annotations=annotations,
+        max_depth=max_depth,
+        max_entries=max_entries,
+        lines=lines,
+        entries_seen_ref=entries_seen_ref,
+    )
     return lines
+
+
+def _segment_table_value(entry: Dict[str, Any], key: str, col_width: int) -> str:
+    if entry.get("kind") == "bridge" and not key.startswith("mep_"):
+        return "---".rjust(col_width)
+    val = entry.get(key)
+    if val is None:
+        return "---".rjust(col_width)
+    return f"{val:>{col_width}.2f}"
+
+
+def _classify_diagram_method(diag: Dict[str, Any]) -> str:
+    name = str(diag.get("name", "")).lower()
+    ylabel_txt = str(diag.get("ylabel", "")).lower()
+
+    if "g_dft" in name or "gibbs_dft" in name or ("gibbs" in ylabel_txt and "dft" in name):
+        return "gibbs_dft_uma"
+    if "dft" in name:
+        return "dft"
+    if "g_uma" in name or "gibbs" in name or "gibbs" in ylabel_txt:
+        return "gibbs_uma"
+    if "uma" in name:
+        return "uma"
+    return "mep"
+
+
+def _format_diag_row(
+    diag: Optional[Dict[str, Any]],
+    label: str,
+    col_width: int,
+    states: Sequence[str],
+    label_width: int,
+) -> str:
+    if not diag:
+        values = " ".join("---".rjust(col_width) for _ in states)
+        return f"    {label:<{label_width}} {values}"
+
+    try:
+        labels_iter = list(diag.get("labels", []))
+    except Exception:
+        labels_iter = []
+    labels_map = {lab: i for i, lab in enumerate(labels_iter)}
+    energies_raw = diag.get("energies_kcal", [])
+    try:
+        energies = list(energies_raw) if energies_raw is not None else []
+    except Exception:
+        energies = []
+    row_vals: List[str] = []
+    for st in states:
+        idx = labels_map.get(st)
+        val = energies[idx] if idx is not None and idx < len(energies) else None
+        row_vals.append(f"{val:>{col_width}.2f}" if val is not None else "---".rjust(col_width))
+    return f"    {label:<{label_width}} {' '.join(row_vals)}"
 
 
 def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
@@ -285,9 +378,16 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
 
-    freeze_atoms_raw = payload.get("freeze_atoms") or []
+    freeze_atoms_raw = payload.get("freeze_atoms")
+    if freeze_atoms_raw is None:
+        freeze_atoms_iter: List[Any] = []
+    else:
+        try:
+            freeze_atoms_iter = list(freeze_atoms_raw)
+        except Exception:
+            freeze_atoms_iter = []
     try:
-        freeze_atoms_list = sorted({int(i) for i in freeze_atoms_raw})
+        freeze_atoms_list = sorted({int(i) for i in freeze_atoms_iter})
     except Exception:
         freeze_atoms_list = []
     if freeze_atoms_list:
@@ -445,14 +545,6 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         label_width = max(len(label) for label, _ in table_rows) + 2
         col_width = max(max(len(h) for h in headers), 8)
 
-        def _fmt_value(entry: Dict[str, Any], key: str) -> str:
-            if entry.get("kind") == "bridge" and not key.startswith("mep_"):
-                return "---".rjust(col_width)
-            val = entry.get(key)
-            if val is None:
-                return "---".rjust(col_width)
-            return f"{val:>{col_width}.2f}"
-
         lines.append("")
         lines.append("  Segment overview table")
         lines.append(
@@ -461,7 +553,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
             + " ".join(f"{h:>{col_width}}" for h in headers)
         )
         for label, key in table_rows:
-            values = " ".join(_fmt_value(entry, key) for entry in sorted_entries)
+            values = " ".join(_segment_table_value(entry, key, col_width) for entry in sorted_entries)
             lines.append(f"    {label:<{label_width}} {values}")
 
     lines.append("")
@@ -469,39 +561,6 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     diagrams: Iterable[Dict[str, Any]] = payload.get("energy_diagrams", []) or []
     diag_by_method: Dict[str, Dict[str, Any]] = {}
     state_order: List[str] = []
-
-    def _classify_method(diag: Dict[str, Any]) -> str:
-        name = str(diag.get("name", "")).lower()
-        ylabel_txt = str(diag.get("ylabel", "")).lower()
-
-        if "g_dft" in name or "gibbs_dft" in name or ("gibbs" in ylabel_txt and "dft" in name):
-            return "gibbs_dft_uma"
-        if "dft" in name:
-            return "dft"
-        if "g_uma" in name or "gibbs" in name or "gibbs" in ylabel_txt:
-            return "gibbs_uma"
-        if "uma" in name:
-            return "uma"
-        return "mep"
-
-    def _format_diag_row(
-        diag: Optional[Dict[str, Any]],
-        label: str,
-        col_width: int,
-        states: Sequence[str],
-    ) -> str:
-        if not diag:
-            values = " ".join("---".rjust(col_width) for _ in states)
-            return f"    {label:<{label_width}} {values}"
-
-        labels_map = {lab: i for i, lab in enumerate(diag.get("labels", []) or [])}
-        energies = list(diag.get("energies_kcal", []) or [])
-        row_vals: List[str] = []
-        for st in states:
-            idx = labels_map.get(st)
-            val = energies[idx] if idx is not None and idx < len(energies) else None
-            row_vals.append(f"{val:>{col_width}.2f}" if val is not None else "---".rjust(col_width))
-        return f"    {label:<{label_width}} {' '.join(row_vals)}"
 
     if diagrams:
         for diag_payload in diagrams:
@@ -525,7 +584,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                     f"    Image : {_shorten_path(diag_payload.get('image'), root_out_path)}"
                 )
 
-            method_key = _classify_method(diag_payload)
+            method_key = _classify_diagram_method(diag_payload)
             diag_by_method.setdefault(method_key, diag_payload)
             if not state_order and labels:
                 state_order = list(labels)
@@ -555,7 +614,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
         for label, method in table_rows:
             diag_payload = diag_by_method.get(method)
-            lines.append(_format_diag_row(diag_payload, label, col_width, state_order))
+            lines.append(_format_diag_row(diag_payload, label, col_width, state_order, label_width))
 
     lines.append("")
     lines.append("[5] Output directory structure")

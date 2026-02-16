@@ -1,26 +1,30 @@
-# `tsopt` subcommand
+# `tsopt`
 
 ## Overview
-`pdb2reaction tsopt` optimizes transition states using two complementary workflows:
 
-- **light** mode: Hessian Dimer search with periodic exact-Hessian refreshes, an
-  optional memory-conscious flatten loop (disabled by default) to remove surplus
-  imaginary modes, and PHVA-aware Hessian updates for the active degrees of freedom.
-- **heavy** mode: RS-I-RFO optimizer with configurable trust-region safeguards.
+> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode light`) or RS‑I‑RFO (`--opt-mode heavy`, default). When VRAM permits, `--hessian-calc-mode Analytical` usually improves performance. A validated TS should show **exactly one** imaginary frequency; always confirm the mode/connectivity with freq/IRC.
 
-Both modes use the UMA calculator for energies/gradients/Hessians, inherit `geom`/`calc`/`opt`
-settings from YAML, and always write the final imaginary mode in `.trj`. When
-`--convert-files` is enabled (default), PDB inputs mirror trajectories into `.pdb`
-companions and Gaussian templates receive multi-geometry `.gjf` exports.
+### At a glance
+- **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
+- **Modes:** `heavy` = RS‑I‑RFO (default, generally more robust). `light` = Hessian Dimer (often cheaper per step).
+- **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
+- **Optional cleanup:** `--flatten-imag-mode True` attempts to remove surplus imaginary modes when they remain after convergence.
+- **Output conversion:** With `--convert-files True` (default), PDB inputs can be mirrored to `.pdb` (when `--dump True`), and Gaussian templates write a `.gjf` for the final geometry.
+
+### Choosing `--opt-mode`
+- Use **`--opt-mode heavy` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
+- Use **`--opt-mode light` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
+
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then validate/optimize the HEI with `tsopt` → `freq` → `irc`.
 
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                    [--opt-mode light|heavy] \
-                    [--freeze-links {True|False}] [--max-cycles N] [--thresh PRESET] \
-                    [--dump {True|False}] [--out-dir DIR] [--args-yaml FILE] \
+                    [--opt-mode light|heavy] [--flatten-imag-mode {True\|False}] \
+                    [--freeze-links {True\|False}] [--max-cycles N] [--thresh PRESET] \
+                    [--dump {True\|False}] [--out-dir DIR] [--args-yaml FILE] \
                     [--hessian-calc-mode Analytical|FiniteDifference] \
-                    [--convert-files {True|False}]
+                    [--convert-files {True\|False}] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -43,8 +47,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 - **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
   template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
   treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
-  charge; explicit `-q` still overrides. Otherwise `-q/--charge` is required and multiplicity
-  defaults to `1`. Override them explicitly to ensure UMA runs on the intended state.
+  charge for PDB inputs (or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Otherwise
+  `-q/--charge` is required and multiplicity defaults to `1`. Override them explicitly to ensure
+  UMA runs on the intended state.
 - **Geometry loading & freeze-links**: structures are read via
   `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links True` finds link hydrogens
   and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
@@ -67,28 +72,32 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
     follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
   R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
+  When `--flatten-imag-mode` is enabled and more than one imaginary mode remains after
+  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
+  imaginary mode remains or the flatten iteration cap is reached.
 - **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
-  and mirrored to `.pdb`/`.gjf` when conversion is enabled. When the input was PDB, the optimization
-  trajectory and final geometry are also converted to PDB via the input template; Gaussian templates
-  receive multi-geometry `.gjf` companions.
+  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
+  trajectory and final geometry are also converted to PDB via the input template when `--dump True`;
+  Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. Required unless the input is a `.gjf` template with charge metadata. Overrides `--ligand-charge` when both are set. | Required when not in template |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex. | `None` |
+| `-q, --charge INT` | Total charge. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links BOOL` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
+| `--freeze-links {True\|False}` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `light` |
-| `--dump BOOL` | Explicit `True`/`False`. Dump trajectories. | `False` |
+| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
+| `--dump {True\|False}` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten-imag-mode {True|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). | `True` |
-| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | _None_ (uses YAML/default of `FiniteDifference`) |
-| `--convert-files {True|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
+| `--flatten-imag-mode {True\|False}` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to both light (dimer loop) and heavy (post-RSIRFO) modes. | `False` |
+| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
+| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
+| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--args-yaml FILE` | YAML overrides (`geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo`). | _None_ |
 
 ## Outputs (& directory layout)
@@ -98,29 +107,29 @@ out_dir/ (default: ./result_tsopt/)
 ├─ final_geometry.pdb            # When the input was PDB (conversion enabled)
 ├─ final_geometry.gjf            # When the input was Gaussian (conversion enabled)
 ├─ optimization_all.trj          # Light-mode dump when --dump is True
-├─ optimization_all.pdb          # Light-mode companion for PDB inputs (conversion enabled)
-├─ optimization.trj              # Heavy-mode trajectory
-├─ optimization.pdb              # Heavy-mode PDB companion when conversion is enabled
+├─ optimization_all.pdb          # Light-mode companion for PDB inputs (conversion enabled, --dump True)
+├─ optimization.trj              # Heavy-mode trajectory when --dump is True
+├─ optimization.pdb              # Heavy-mode PDB companion when conversion is enabled and --dump is True
 ├─ vib/
 │  ├─ final_imag_mode_±XXXX.Xcm-1.trj
-│  └─ final_imag_mode_±XXXX.Xcm-1.pdb/.gjf
+│  └─ final_imag_mode_±XXXX.Xcm-1.pdb
 └─ .dimer_mode.dat               # Light-mode orientation seed
 ```
 
 ## Notes
 - `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
-  algorithm rather than adjusting YAML keys manually (default: `light`).
+  algorithm rather than adjusting YAML keys manually (default: `heavy`).
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
   `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
   exported when multiple remain.
-- `--hessian-calc-mode` overrides `calc.hessian_calc_mode` after YAML merging, mirroring the
-  behavior of other subcommands.
+- `--hessian-calc-mode` follows the standard precedence (defaults → CLI → YAML); if YAML
+  specifies `calc.hessian_calc_mode`, it overrides the CLI value.
 - PHVA translation/rotation projection mirrors the implementation in `freq`, reducing GPU
   memory consumption while preserving correct eigenvectors in the active space.
 
 ## YAML configuration (`--args-yaml`)
 Provide a mapping; YAML values override CLI. Shared sections reuse
-[`opt`](opt.md#yaml-configuration-args-yaml). Keep the full block below intact if it already
+[YAML Reference](yaml-reference.md). Keep the full block below intact if it already
 matches your workflow—adjust only the values you need to change.
 
 ```yaml
@@ -164,7 +173,7 @@ hessian_dimer:
   update_interval_hessian: 500   # Hessian rebuild cadence
   neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
   flatten_amp_ang: 0.1       # flattening amplitude (Å)
-  flatten_max_iter: 50       # flattening iteration cap (default: Disabled)
+  flatten_max_iter: 50       # flattening iteration cap (disabled when --flatten-imag-mode False)
   flatten_sep_cutoff: 0.0    # minimum distance between representative atoms (Å)
   flatten_k: 10              # representative atoms sampled per mode
   flatten_loop_bofill: false # Bofill update for flatten displacements
@@ -208,7 +217,7 @@ hessian_dimer:
     dump: false                # dump trajectory/restart data
     dump_restart: false        # dump restart checkpoints
     prefix: ""                 # filename prefix
-    out_dir: ./result_opt/     # output directory
+    out_dir: ./result_tsopt/   # output directory
     keep_last: 7               # history size for LBFGS buffers
     beta: 1.0                  # initial damping beta
     gamma_mult: false          # multiplicative gamma update toggle
@@ -234,7 +243,7 @@ rsirfo:
   dump: false                # dump trajectory/restart data
   dump_restart: false        # dump restart checkpoints
   prefix: ""                 # filename prefix
-  out_dir: ./result_opt/     # output directory
+  out_dir: ./result_tsopt/   # output directory
   roots: [0]                 # target root indices
   hessian_ref: null          # reference Hessian
   rx_modes: null             # reaction-mode definitions for projection
@@ -248,3 +257,14 @@ rsirfo:
   max_line_search: true      # enforce maximum line-search step
   assert_neg_eigval: false   # require a negative eigenvalue at convergence
 ```
+
+---
+
+## See Also
+
+- [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
+- [irc](irc.md) — Trace the reaction path from an optimized TS
+- [freq](freq.md) — Confirm a single imaginary frequency (expected for a validated TS)
+- [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
+- [YAML Reference](yaml-reference.md) — Full `hessian_dimer` and `rsirfo` configuration options
+- [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

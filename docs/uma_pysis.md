@@ -1,19 +1,30 @@
 # `uma_pysis` calculator
 
 ## Overview
-`uma_pysis` exposes Meta's UMA machine-learning interatomic potentials to PySisyphus as an ASE-compatible calculator. It returns energies, forces, and Hessians (via analytical autograd or finite differences) in Hartree units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`uma_pysis` exposes Meta's UMA machine-learning interatomic potentials to PySisyphus as a calculator (using ASE and FAIR-Chem internally). It returns energies, forces, and Hessians (via analytical autograd or finite differences) in Hartree units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
 
 ## Quick start
 ```python
+import numpy as np
 from pdb2reaction.uma_pysis import uma_pysis
 
-# Build a calculator for a neutral singlet system on GPU when available
+# Example: a neutral singlet diatomic on GPU when available
 calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
-energy_only = calc.get_energy(["C", "O"], coords_bohr)
-forces = calc.get_forces(["C", "O"], coords_bohr)
-hessian = calc.get_hessian(["C", "O"], coords_bohr)
+# uma_pysis expects coordinates in Bohr (shape: [n_atoms, 3])
+coords_bohr = np.array([
+    [0.0, 0.0, 0.0],
+    [2.2, 0.0, 0.0],  # ~1.16 Å
+])
+
+symbols = ["C", "O"]
+
+# NOTE: These methods return dicts; extract values with the appropriate key
+energy_h = calc.get_energy(symbols, coords_bohr)["energy"]              # float (Hartree)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"]         # ndarray (Hartree/Bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"]     # ndarray (Hartree/Bohr²)
 ```
+
 - Coordinates are supplied in **Bohr**; the wrapper converts to Å for UMA and converts energies/derivatives back to Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻².
 - Attach the calculator to a `pysisyphus` geometry object or call it directly as above.
 
@@ -47,6 +58,7 @@ conda activate pdb2reaction
 # -------------------
 
 
+# --- Ray setting ---
 # Stable CUDA/NCCL
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
@@ -154,6 +166,7 @@ RAY_LAUNCH_PID=$!
 
 sleep 10 # Wait for workers
 ray status || true
+# --- Ray setup end ---
 
 pdb2reaction opt -i test.pdb -q -5 -m 1
 ```
@@ -170,17 +183,10 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
-| `freeze_atoms` | List of 0-based atom indices to freeze. | `None` |
+| `freeze_atoms` | List of 0-based atom indices to freeze. | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |
 | `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `False` |
 | `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |
 | `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
 
-## CLI and YAML usage
-`uma_pysis` is registered as a PySisyphus calculator entry point. With a YAML input file matching these keywords you can run:
-
-```bash
-uma_pysis input.yaml
-```
-
-Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under `calc.kwargs` to reuse the same UMA configuration across stages.
+Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under the `calc` key to reuse the same UMA configuration across stages.

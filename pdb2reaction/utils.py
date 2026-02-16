@@ -1,136 +1,75 @@
 # pdb2reaction/utils.py
 
 """
-utils — concise utilities for configuration, plotting, coordinates, Gaussian templates, and link-freezing
-=========================================================================================================
+Utilities for configuration, plotting, coordinates, Gaussian templates, and link-freezing.
 
-Usage (API)
------------
-    from pdb2reaction.utils import (
-        build_energy_diagram,
-        convert_xyz_to_pdb,
-        detect_freeze_links,
-        merge_freeze_atom_indices,
-        normalize_choice,
-        pretty_block,
-    )
+Categories:
+    - Generic helpers: pretty_block, format_elapsed, deep_update, load_yaml_dict, etc.
+    - Gaussian (.gjf): parse_gjf_template, prepare_input_structure, convert_xyz_to_gjf
+    - Plotting: build_energy_diagram (Plotly-based energy diagrams)
+    - Coordinate conversion: convert_xyz_to_pdb (XYZ to PDB with reference topology)
+    - Link-freezing: detect_freeze_links, resolve_freeze_atoms (for PDB link hydrogens)
 
-Examples
---------
-    >>> from pathlib import Path
-    >>> block = pretty_block("Geometry", {"freeze_atoms": [0, 1, 5]})
-    >>> diagram = build_energy_diagram([0.0, 12.3, 5.4], ["R", "TS", "P"])
-    >>> indices = detect_freeze_links(Path("pocket.pdb"))
-
-Description
------------
-- **Generic helpers**
-  - `pretty_block(title, content)`: Return a YAML-formatted block with an underlined title. Uses
-    `yaml.safe_dump` with `allow_unicode=True`, `sort_keys=False`. Empty mappings render as `"{}"`.
-  - `format_geom_for_echo(geom_cfg)`: Normalize geometry configuration for CLI echo. If `"freeze_atoms"`
-    is an iterable (but not a string), convert it to a comma-separated string; `None`/string/other types are
-    left unchanged. Empty iterables become `"[]"`.
-  - `format_elapsed(prefix, start_time, end_time=None)`: Format a wall-clock duration (HH:MM:SS.sss) given
-    a start time and optional end time, using `time.perf_counter()` when the end time is omitted.
-  - `merge_freeze_atom_indices(geom_cfg, *indices)`: Merge one or more iterables of atom indices into
-    `geom_cfg["freeze_atoms"]`. Preserve existing entries, de-duplicate, sort numerically, and return the
-    updated list (in place).
-  - `normalize_choice(value, *, param, alias_groups, allowed_hint)`: Canonicalize CLI-style string options
-    using alias groups. Returns the mapped value or raises `click.BadParameter` with the provided hint when
-    no alias matches.
-  - `deep_update(dst, src)`: Recursively update mapping `dst` with `src`. Nested dicts are merged,
-    non-dicts overwrite; returns `dst`.
-  - `_get_mapping_section(cfg, path)`: Internal helper to resolve a nested mapping section. Returns a `dict`
-    or `None`.
-  - `apply_yaml_overrides(yaml_cfg, overrides)`: For each target dictionary and its candidate key paths,
-    find the first existing path in `yaml_cfg` and apply it via `deep_update`. Centralizes repeated
-    `yaml_cfg.get(...)`-style merging.
-  - `load_yaml_dict(path)`: Load a YAML file whose root must be a mapping. Returns `{}` when `path` is `None`.
-    Raises `ValueError` if the YAML root is not a mapping.
-
-- **Gaussian input (.gjf) helpers**
-  - `parse_gjf_template(path)`: Parse a Gaussian input template to extract charge/multiplicity and coordinate
-    lines while preserving non-coordinate text. Returns a `GjfTemplate`.
-  - `prepare_input_structure(path)`: If `path` is a `.gjf`, write a temporary XYZ (derived from the template)
-    and return a `PreparedInputStructure` context manager that cleans up the temporary file on exit; otherwise
-    returns a structure referring to `path` directly.
-  - `fill_charge_spin_from_gjf(charge, spin, template)`: Fill `charge`/`spin` from a template when unspecified.
-  - `resolve_charge_spin_or_raise(prepared, charge, spin, spin_default=1, charge_default=0)`: Resolve charge
-    and multiplicity using a template when present, otherwise fall back to the provided defaults; returns
-    integers `(charge, spin)`. Raises a user-facing error when *prepared* is **not** a `.gjf` template and
-    no `charge` was supplied on the CLI.
-  - `convert_xyz_to_gjf(xyz_path, template, out_path)`: Render new coordinates into the given `.gjf` template
-    while preserving formatting.
-  - `maybe_convert_xyz_to_gjf(xyz_path, template, out_path=None)`: Convenience wrapper that returns the output
-    path when conversion occurs, otherwise `None`.
-
-- **Plotly: Energy diagram builder**
-  - `build_energy_diagram(energies, labels, ylabel="ΔE", baseline=False, showgrid=False)`:
-    Render an energy diagram where each state is a thick horizontal segment and adjacent states are connected
-    by dotted diagonals (right end of left state → left end of right state). Segment length shrinks as the
-    number of states grows to keep gaps readable. X ticks are centered on states and labeled by `labels`.
-    Optional dotted baseline at the first state’s energy; optional grid. Energies are plotted as provided
-    (no unit conversion). Returns a `plotly.graph_objs.Figure`. Validates equal lengths for `energies`/`labels`
-    and non-empty input.
-
-- **Coordinate conversion utilities**
-  - `convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)`:
-    Overlay coordinates from an XYZ file (single or multi-frame) onto the atom ordering/topology of a
-    reference PDB and write to `out_pdb_path`. The first frame creates/overwrites; subsequent frames append
-    using `MODEL`/`ENDMDL`. Implemented with ASE (`ase.io.read`/`write`). Raises `ValueError` if no frames
-    are found in the XYZ.
-
-- **Link-freezing helpers**
-  - `parse_pdb_coords(pdb_path)`: Parse `ATOM`/`HETATM` records, separating all atoms (as “others”) from
-    link hydrogens `HL` in residue `LKH` (as “lkhs”). Coordinates are read from standard PDB columns
-    (1‑based): X 31–38, Y 39–46, Z 47–54. Returns `(others, lkhs)` as lists of `(x, y, z, line)`.
-  - `nearest_index(point, pool)`: Find the Euclidean nearest neighbor of a given `(x, y, z)` within `pool`;
-    returns `(index, distance)` where `index` is 0‑based or `-1` if `pool` is empty (distance will be `inf`).
-  - `detect_freeze_links(pdb_path)`: For each `LKH`/`HL` atom, find the nearest atom among all other `ATOM`/
-    `HETATM` records and return the corresponding 0‑based indices into the sequence of non‑`LKH` atoms
-    (“others”). Returns an empty list if no link hydrogens are present.
-  - `detect_freeze_links_safe(pdb_path)`: Wrapper that catches unexpected parser failures, prints a
-    `[freeze-links]` warning, and always returns a list (possibly empty).
-
-Outputs (& Directory Layout)
-----------------------------
-General behavior
-  ├─ The module does not create directories on its own.
-  ├─ Most helpers return Python objects or mutate dictionaries in place.
-  └─ On-disk effects occur only when explicitly invoked:
-        • ``convert_xyz_to_pdb`` writes to ``out_pdb_path`` (first frame overwrite, subsequent frames append MODEL/ENDMDL).
-        • ``convert_xyz_to_gjf`` / ``maybe_convert_xyz_to_gjf`` render updated ``.gjf`` files.
-        • ``prepare_input_structure`` emits a temporary ``.xyz`` for ``.gjf`` inputs and cleans it up at context exit.
-        • ``build_energy_diagram`` returns a Plotly ``Figure``; saving/exporting is up to the caller.
-
-Notes
------
-- Energy units in `build_energy_diagram` are passed through unchanged; ensure consistent units across states.
-- Axis/line styling in `build_energy_diagram` is fixed-width with automatic padding; segment length adapts to the number of states.
-- `load_yaml_dict` uses `yaml.safe_load` and enforces a mapping at the YAML root; empty files yield `{}`.
-- `apply_yaml_overrides` tries candidate key paths in order and applies only the first existing mapping section per target.
-- `parse_pdb_coords` skips unparseable coordinate fields and considers only `ATOM`/`HETATM` lines.
-- Dependencies: PyYAML, ASE (`ase.io.read`/`write`, `ase.data.chemical_symbols`), Plotly (graph objects), Click (for CLI error reporting/options). Ensure these are installed.
+Dependencies: PyYAML, ASE, Plotly, Click
 """
 
+import ast
+import functools
 import math
+import os
 import re
 import tempfile
 import time
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
+from numbers import Real, Integral
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, TypeVar
+from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, Iterator
 
 import click
-import math
+from click.core import ParameterSource
+import numpy as np
 import yaml
 from ase.data import chemical_symbols
 from ase.io import read, write
 import plotly.graph_objs as go
 
 from .add_elem_info import guess_element
+from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
+from pysisyphus.helpers import geom_loader
 
+# =============================================================================
+# YAML helpers (shared representers)
+# =============================================================================
+
+
+class YamlLiteralStr(str):
+    """String marker to force literal block style when dumping YAML."""
+
+
+class YamlFlowList(list):
+    """List marker to force flow style when dumping YAML."""
+
+
+def register_yaml_representers() -> None:
+    """Register shared YAML representers (literal strings and flow lists)."""
+    yaml.add_representer(
+        YamlLiteralStr,
+        lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    )
+    yaml.add_representer(
+        YamlLiteralStr,
+        lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|"),
+        Dumper=yaml.SafeDumper
+    )
+    yaml.SafeDumper.add_representer(
+        YamlFlowList,
+        lambda dumper, data: dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+    )
+
+
+register_yaml_representers()
 
 # =============================================================================
 # Generic helpers
@@ -145,6 +84,26 @@ def pretty_block(title: str, content: Dict[str, Any]) -> str:
     """
     body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
     return f"{title}\n" + "-" * len(title) + "\n" + body + "\n"
+
+
+def strip_inherited_keys(
+    child_cfg: Dict[str, Any],
+    base_cfg: Mapping[str, Any],
+    *,
+    mode: str = "present",
+) -> Dict[str, Any]:
+    """Return child_cfg without inherited keys (for concise logs)."""
+    trimmed: Dict[str, Any] = {}
+    if mode not in {"present", "same"}:
+        raise ValueError(f"Unknown strip_inherited_keys mode: {mode}")
+    for key, value in child_cfg.items():
+        if key in base_cfg:
+            if mode == "present":
+                continue
+            if base_cfg.get(key) == value:
+                continue
+        trimmed[key] = value
+    return trimmed
 
 
 def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -169,35 +128,161 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     return g
 
 
-def format_freeze_atoms_for_echo(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Return a copy of ``cfg`` with ``freeze_atoms`` flattened for logging."""
-
-    if "freeze_atoms" not in cfg:
-        return dict(cfg)
-
-    g = dict(cfg)
-    freeze_atoms = g.get("freeze_atoms")
-
-    if isinstance(freeze_atoms, str):
-        return g
-
-    try:
-        items = list(freeze_atoms)
-    except TypeError:
-        return g
-
-    joined = ",".join(map(str, items))
-    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
-    return g
-
-
 def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
     """Return a formatted elapsed-time string with the provided ``prefix`` label."""
-    finish = end_time if end_time is not None else time.perf_counter()
-    elapsed = max(0.0, finish - start_time)
+    elapsed = max(0.0, (end_time or time.perf_counter()) - start_time)
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+
+
+def xyz_string_with_energy(geom: Any, energy: Optional[float] = None) -> str:
+    """Return an XYZ string, optionally overwriting the comment line with an energy value."""
+    s = geom.as_xyz()
+    lines = s.splitlines()
+    if energy is not None and len(lines) >= 2 and lines[0].strip().isdigit():
+        lines[1] = f"{energy:.12f}"
+        s = "\n".join(lines)
+    if not s.endswith("\n"):
+        s += "\n"
+    return s
+
+
+def distance_A_from_coords(coords_bohr: "np.ndarray", i: int, j: int) -> float:
+    """Return interatomic distance in Å given coords in Bohr."""
+    diff = coords_bohr[i] - coords_bohr[j]
+    return float(np.linalg.norm(diff) / ANG2BOHR)
+
+
+def distance_tag(value_A: float, *, digits: int = 2, pad: int = 3) -> str:
+    """Format a distance in Å as a zero-padded integer tag (default: ×10^2)."""
+    scale = 10 ** digits
+    return f"{int(round(value_A * scale)):0{pad}d}"
+
+
+def as_list(raw: Any) -> List[Any]:
+    """Return ``raw`` as a list, or [] when not iterable/None."""
+    if raw is None:
+        return []
+    try:
+        return list(raw)
+    except Exception:
+        return []
+
+
+def ensure_dir(path: Path) -> None:
+    """Create a directory (parents ok); noop if it already exists."""
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
+    """
+    Collect values following a flag that may appear once with multiple space-separated values,
+    e.g., "-i A B C".
+    """
+    vals: List[str] = []
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                vals.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    return vals
+
+
+def collect_single_option_values(
+    argv: Sequence[str],
+    names: Sequence[str],
+    label: str,
+) -> List[str]:
+    """Collect values following a flag that must appear at most once."""
+    vals: List[str] = []
+    seen = 0
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in names:
+            seen += 1
+            j = i + 1
+            while j < len(argv) and not argv[j].startswith("-"):
+                vals.append(argv[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    if seen > 1:
+        raise click.BadParameter(
+            f"Use a single {label} followed by multiple values; repeated flags are not accepted."
+        )
+    return vals
+
+
+def geom_from_xyz_string(
+    xyz_text: str,
+    *,
+    coord_type: str,
+    freeze_atoms: Optional[Sequence[int]] = None,
+) -> Any:
+    """Load a pysisyphus Geometry from an XYZ text string (tempfile-backed)."""
+    s = xyz_text if xyz_text.endswith("\n") else (xyz_text + "\n")
+    freeze_atoms = list(freeze_atoms) if freeze_atoms is not None else []
+    tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
+    try:
+        tmp.write(s)
+        tmp.flush()
+        tmp.close()
+
+        g = geom_loader(
+            Path(tmp.name),
+            coord_type=coord_type,
+            freeze_atoms=freeze_atoms,
+        )
+        try:
+            g.freeze_atoms = np.array(sorted(set(map(int, freeze_atoms))), dtype=int)
+        except Exception:
+            click.echo(
+                "[geom] WARNING: Failed to attach freeze_atoms to geometry.",
+                err=True,
+            )
+        return g
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
+def snapshot_geometry(geom: Any, *, coord_type_default: str) -> Any:
+    """Create an independent pysisyphus Geometry snapshot from the given Geometry."""
+    s = geom.as_xyz()
+    return geom_from_xyz_string(
+        s,
+        coord_type=getattr(geom, "coord_type", coord_type_default),
+        freeze_atoms=getattr(geom, "freeze_atoms", []),
+    )
+
+
+def make_snapshot_geometry(coord_type_default: str) -> Callable[[Any], Any]:
+    """Return a snapshot helper bound to a default coord_type (scan helpers)."""
+    return functools.partial(snapshot_geometry, coord_type_default=coord_type_default)
+
+
+def normalize_freeze_atoms(raw: Any) -> List[int]:
+    """Normalize freeze_atoms values (string/list/iterable) into a list of integers."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        tokens = re.findall(r"-?\d+", raw)
+        return [int(tok) for tok in tokens]
+    try:
+        return [int(i) for i in raw]
+    except Exception:
+        return []
 
 
 def merge_freeze_atom_indices(
@@ -210,16 +295,81 @@ def merge_freeze_atom_indices(
     The updated list is returned.
     """
     merged: set[int] = set()
-    base = geom_cfg.get("freeze_atoms", [])
-    if isinstance(base, _Iterable):
-        merged.update(int(i) for i in base)
+    base = geom_cfg.get("freeze_atoms", None)
+    merged.update(normalize_freeze_atoms(base))
     for seq in indices:
-        if seq is None:
-            continue
-        merged.update(int(i) for i in seq)
+        merged.update(normalize_freeze_atoms(seq))
     result = sorted(merged)
     geom_cfg["freeze_atoms"] = result
     return result
+
+
+def merge_freeze_atom_groups(*groups: Sequence[int]) -> List[int]:
+    """Merge multiple freeze_atoms groups into a sorted list of ints."""
+    merged: set[int] = set()
+    for group in groups:
+        merged.update(normalize_freeze_atoms(group))
+    return sorted(merged)
+
+
+def build_sopt_kwargs(
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    out_dir: Path,
+    prefix: str,
+) -> Dict[str, Any]:
+    """Build LBFGS/RFO optimizer kwargs with a shared max-step cap."""
+    common = dict(opt_cfg)
+    common["out_dir"] = str(out_dir)
+    common["prefix"] = prefix
+    if kind == "lbfgs":
+        args = {**lbfgs_cfg, **common}
+        args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
+    else:
+        args = {**rfo_cfg, **common}
+        tr = float(rfo_cfg.get("trust_radius", 0.10))
+        args["trust_radius"] = min(tr, max_step_bohr)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
+    if relax_override_requested:
+        args["max_cycles"] = int(relax_max_cycles)
+    return args
+
+
+def make_sopt_optimizer(
+    geom: Any,
+    kind: str,
+    lbfgs_cfg: Dict[str, Any],
+    rfo_cfg: Dict[str, Any],
+    opt_cfg: Dict[str, Any],
+    max_step_bohr: float,
+    relax_max_cycles: int,
+    relax_override_requested: bool,
+    out_dir: Path,
+    prefix: str,
+):
+    """Construct an LBFGS/RFO optimizer based on shared settings."""
+    args = build_sopt_kwargs(
+        kind,
+        lbfgs_cfg,
+        rfo_cfg,
+        opt_cfg,
+        max_step_bohr,
+        relax_max_cycles,
+        relax_override_requested,
+        out_dir,
+        prefix,
+    )
+    from pysisyphus.optimizers.LBFGS import LBFGS
+    from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+
+    if kind == "lbfgs":
+        return LBFGS(geom, **args)
+    return RFOptimizer(geom, **args)
 
 
 def normalize_choice(
@@ -238,6 +388,15 @@ def normalize_choice(
     hint = allowed_hint.strip()
     detail = f" Allowed: {hint}." if hint else ""
     raise click.BadParameter(f"Unknown value for {param} '{value}'.{detail}")
+
+
+def cli_param_overridden(ctx: click.Context, name: str) -> bool:
+    """Return True when a CLI parameter value was explicitly provided."""
+    try:
+        source = ctx.get_parameter_source(name)
+    except Exception:
+        return True
+    return source not in (None, ParameterSource.DEFAULT)
 
 
 def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -311,6 +470,91 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
         raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
 
     return data
+
+
+def build_scan_configs(
+    yaml_cfg: Mapping[str, Any],
+    *,
+    geom_kw: Dict[str, Any],
+    calc_kw: Dict[str, Any],
+    opt_kw: Dict[str, Any],
+    lbfgs_kw: Dict[str, Any],
+    rfo_kw: Dict[str, Any],
+    bias_kw: Dict[str, Any],
+    extra_overrides: Sequence[Tuple[Dict[str, Any], _Sequence[_Sequence[str]]]] = (),
+    charge: Optional[int] = None,
+    spin: Optional[int] = None,
+    workers: int = 1,
+    workers_per_node: int = 1,
+    out_dir: str = ".",
+    thresh: Optional[str] = None,
+    bias_k: Optional[float] = None,
+    set_charge_spin: bool = True,
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    """Build common scan configs (defaults ← CLI ← YAML)."""
+    geom_cfg = dict(geom_kw)
+    calc_cfg = dict(calc_kw)
+    opt_cfg = dict(opt_kw)
+    lbfgs_cfg = dict(lbfgs_kw)
+    rfo_cfg = dict(rfo_kw)
+    bias_cfg = dict(bias_kw)
+
+    if set_charge_spin:
+        if charge is not None:
+            calc_cfg["charge"] = int(charge)
+        if spin is not None:
+            calc_cfg["spin"] = int(spin)
+    calc_cfg["workers"] = int(workers)
+    calc_cfg["workers_per_node"] = int(workers_per_node)
+    opt_cfg["out_dir"] = out_dir
+    opt_cfg["dump"] = False
+    if thresh is not None:
+        opt_cfg["thresh"] = str(thresh)
+
+    if bias_k is not None:
+        bias_cfg["k"] = float(bias_k)
+
+    apply_yaml_overrides(
+        yaml_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (opt_cfg, (("opt",),)),
+            (lbfgs_cfg, (("lbfgs",),)),
+            (rfo_cfg, (("rfo",),)),
+            (bias_cfg, (("bias",),)),
+            *list(extra_overrides),
+        ],
+    )
+
+    return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
+
+
+def convert_xyz_to_gjf_if_enabled(
+    xyz_path: Path,
+    template: Optional["GjfTemplate"],
+    *,
+    out_path: Optional[Path] = None,
+    context: str = "GJF",
+    on_error: str = "raise",
+) -> Optional[Path]:
+    """Convert XYZ to GJF when enabled; return output path or None."""
+    if not (_CONVERT_FILES_ENABLED and template is not None and xyz_path.exists()):
+        return None
+    target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
+    try:
+        convert_xyz_to_gjf(xyz_path, template, target)
+        return target
+    except Exception as e:
+        if on_error == "warn":
+            click.echo(
+                f"[convert] WARNING: Failed to convert '{xyz_path.name}' to {context}: {e}",
+                err=True,
+            )
+            return None
+        raise click.ClickException(
+            f"[convert] Failed to convert '{xyz_path.name}' to {context}: {e}"
+        ) from e
 
 
 # =============================================================================
@@ -498,6 +742,38 @@ def build_energy_diagram(
 # =============================================================================
 # Coordinate conversion utilities
 # =============================================================================
+def _read_pdb_symbols(pdb_path: Path) -> List[str]:
+    """Read element symbols from a PDB file using an extended column range.
+
+    Standard PDB format places element symbols in columns 77-78 (1-indexed),
+    but some tools write them slightly left-shifted. This function reads
+    columns 76-78 (0-indexed: 75:78) to handle such cases robustly.
+
+    Args:
+        pdb_path: Path to the PDB file.
+
+    Returns:
+        List of element symbols (e.g., ['C', 'H', 'Ca', ...]).
+    """
+    symbols = []
+    with open(pdb_path, "r") as f:
+        for line in f:
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                # Read extended range (columns 76-78, 0-indexed: 75:78) to handle shifted elements
+                elem = line[75:78].strip() if len(line) > 75 else ""
+                if elem:
+                    # Capitalize properly: first letter uppercase, rest lowercase (e.g., CA -> Ca)
+                    elem = elem[0].upper() + elem[1:].lower() if len(elem) > 1 else elem.upper()
+                    symbols.append(elem)
+                else:
+                    # Fallback: extract from atom name (columns 13-16)
+                    atom_name = line[12:16].strip() if len(line) > 16 else ""
+                    elem = "".join(c for c in atom_name if c.isalpha())[:2]
+                    elem = elem[0].upper() + elem[1:].lower() if len(elem) > 1 else elem.upper()
+                    symbols.append(elem)
+    return symbols
+
+
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
 
@@ -512,16 +788,26 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         ref_pdb_path: Path to a reference PDB providing atom ordering/topology.
         out_pdb_path: Destination PDB file to write.
     """
-    if not _CONVERT_FILES_ENABLED:
-        return
     ref_atoms = read(ref_pdb_path)  # Reference topology/ordering (single frame)
     traj = read(xyz_path, index=":", format="xyz")  # Load all frames from the XYZ
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
 
+    # Use custom PDB parser to handle shifted element columns (e.g., 'Ca' misread as 'A')
+    ref_symbols = _read_pdb_symbols(ref_pdb_path)
+
     for step, frame in enumerate(traj):
+        xyz_symbols = frame.get_chemical_symbols()
+        xyz_positions = frame.get_positions()
+
+        if xyz_symbols != ref_symbols:
+            click.echo(
+                f"[convert] WARNING: Atom ordering mismatch between '{xyz_path.name}' and "
+                f"'{ref_pdb_path.name}'; expected identical ordering when converting coordinates.",
+            )
+
         atoms = ref_atoms.copy()
-        atoms.set_positions(frame.get_positions())
+        atoms.set_positions(xyz_positions)
         if step == 0:
             write(out_pdb_path, atoms)  # Create/overwrite on the first frame
         else:
@@ -631,6 +917,170 @@ class GjfTemplate:
         for atom in self.coord_lines:
             lines.append(f"{atom.symbol}  {atom.x:.10f}  {atom.y:.10f}  {atom.z:.10f}")
         return "\n".join(lines) + "\n"
+
+
+def write_xyz_trj_with_energy(images: Sequence[Any], energies: Sequence[float], path: Path) -> None:
+    """Write an XYZ `.trj` with the energy on line 2 of each block."""
+    blocks: List[str] = []
+    E = np.array(energies, dtype=float)
+    for geom, e in zip(images, E):
+        if hasattr(geom, "as_xyz"):
+            blocks.append(xyz_string_with_energy(geom, energy=float(e)))
+            continue
+        # ASE Atoms fallback
+        symbols = geom.get_chemical_symbols()
+        coords = geom.get_positions()
+        lines = [str(len(symbols)), f"{float(e):.12f}"]
+        lines.extend(
+            f"{sym} {x:.15f} {y:.15f} {z:.15f}"
+            for sym, (x, y, z) in zip(symbols, coords)
+        )
+        blocks.append("\n".join(lines) + "\n")
+    with open(path, "w") as f:
+        f.write("".join(blocks))
+
+
+def set_freeze_atoms_or_warn(
+    geom: Any,
+    freeze_atoms: Sequence[int],
+    *,
+    context: str,
+) -> None:
+    """Attach freeze_atoms to a geometry; warn once on failure."""
+    if freeze_atoms is None:
+        return
+    try:
+        if isinstance(freeze_atoms, np.ndarray):
+            if freeze_atoms.size == 0:
+                return
+        elif len(freeze_atoms) == 0:
+            return
+    except TypeError:
+        if not freeze_atoms:
+            return
+    try:
+        geom.freeze_atoms = np.array(sorted({int(i) for i in freeze_atoms}), dtype=int)
+    except Exception:
+        click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.")
+
+
+def read_xyz_energies(path: Path | str) -> List[float]:
+    """
+    Extract energies from the second-line comment of each XYZ frame.
+    The first numeric token found on the comment line is used.
+    """
+    energies: List[float] = []
+    with open(path, encoding="utf-8") as fh:
+        while (hdr := fh.readline()):
+            try:
+                nat = int(hdr.strip())
+            except ValueError:
+                break
+            comment = fh.readline().strip()
+            m = re.search(
+                r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
+                comment,
+            )
+            if not m:
+                raise RuntimeError(f"Energy not found in comment: {comment}")
+            energies.append(float(m.group(1)))
+            for _ in range(nat):
+                fh.readline()
+    if not energies:
+        raise RuntimeError(f"No energy data in {path}")
+    return energies
+
+
+def parse_xyz_block(
+    block: Sequence[str],
+    *,
+    path: Path,
+    frame_idx: int,
+) -> Tuple[List[str], np.ndarray]:
+    if not block:
+        raise click.ClickException(f"[xyz] Empty XYZ frame in {path}")
+    try:
+        nat = int(block[0].strip().split()[0])
+    except Exception:
+        raise click.ClickException(
+            f"[xyz] Malformed XYZ/TRJ header in frame {frame_idx} of {path}"
+        )
+    if len(block) < 2 + nat:
+        raise click.ClickException(
+            f"[xyz] Incomplete XYZ frame {frame_idx} in {path} (expected {nat} atoms)."
+        )
+    elems: List[str] = []
+    coords: List[List[float]] = []
+    for k in range(nat):
+        parts = block[2 + k].split()
+        if len(parts) < 4:
+            raise click.ClickException(
+                f"[xyz] Malformed atom line in frame {frame_idx} of {path}"
+            )
+        elems.append(parts[0])
+        coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
+    return elems, np.array(coords, dtype=float)
+
+
+def xyz_blocks_first_last(
+    blocks: Sequence[Sequence[str]],
+    *,
+    path: Path,
+) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    if not blocks:
+        raise click.ClickException(f"[xyz] No frames found in {path}")
+    first_elems, first_coords = parse_xyz_block(blocks[0], path=path, frame_idx=1)
+    last_elems, last_coords = parse_xyz_block(blocks[-1], path=path, frame_idx=len(blocks))
+    if first_elems != last_elems:
+        raise click.ClickException(f"[xyz] Element list changed across frames in {path}")
+    return first_elems, first_coords, last_coords
+
+
+def read_xyz_first_last(trj_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    """
+    Lightweight XYZ trajectory reader: return (elements, first_coords[Å], last_coords[Å]).
+    Assumes standard multi-frame XYZ: natoms line, comment line, natoms atom lines.
+    """
+    blocks = read_xyz_as_blocks(trj_path, strict=True)
+    return xyz_blocks_first_last(blocks, path=trj_path)
+
+
+def read_xyz_as_blocks(trj_path: Path, *, strict: bool = False) -> List[List[str]]:
+    """
+    Read a multi-frame XYZ/TRJ file and return a list of frames, each as a list of lines.
+
+    When *strict* is True, malformed headers or truncated frames raise a ClickException.
+    """
+    try:
+        lines = trj_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception as e:
+        raise click.ClickException(f"[xyz] Failed to read XYZ/TRJ: {trj_path} ({e})")
+
+    blocks: List[List[str]] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        while i < n and not lines[i].strip():
+            i += 1
+        if i >= n:
+            break
+        header = lines[i].strip()
+        try:
+            nat = int(header.split()[0])
+        except Exception:
+            if strict:
+                raise click.ClickException(f"[xyz] Malformed header at line {i+1} in {trj_path}")
+            break
+        block = lines[i : i + 2 + nat]
+        if len(block) < 2 + nat:
+            if strict:
+                raise click.ClickException(
+                    f"[xyz] Incomplete frame at line {i+1} in {trj_path} (expected {nat} atoms)."
+                )
+            break
+        blocks.append(block)
+        i += 2 + nat
+    return blocks
 
 
 @dataclass
@@ -854,8 +1304,8 @@ def _derive_charge_from_ligand_charge(
         return None
 
 
-def resolve_charge_spin_or_raise(
-    prepared: PreparedInputStructure,
+def resolve_charge_spin(
+    prepared_inputs: PreparedInputStructure | Sequence[PreparedInputStructure],
     charge: Optional[int],
     spin: Optional[int],
     *,
@@ -863,29 +1313,84 @@ def resolve_charge_spin_or_raise(
     charge_default: int = 0,
     ligand_charge: Optional[float | str | Dict[str, float]] = None,
     prefix: str = "[charge]",
+    cleanup_on_error: Optional[Callable[[], None]] = None,
 ) -> Tuple[int, int]:
-    charge, spin = fill_charge_spin_from_gjf(charge, spin, prepared.gjf_template)
-    source_suffix = prepared.source_path.suffix.lower()
-    if ligand_charge is not None and source_suffix in {".xyz", ".gjf"}:
-        prepared.cleanup()
-        raise click.ClickException(
-            "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+    """Resolve charge/spin from CLI args, GJF templates, and ligand metadata.
+
+    Accepts either a single PreparedInputStructure or a sequence of them.
+    """
+    # Normalize to sequence
+    if isinstance(prepared_inputs, PreparedInputStructure):
+        inputs = [prepared_inputs]
+        cleanup_on_error = cleanup_on_error or prepared_inputs.cleanup
+    else:
+        inputs = list(prepared_inputs)
+
+    resolved_charge = charge
+    resolved_spin = spin
+    for prepared in inputs:
+        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
+            resolved_charge, resolved_spin, prepared.gjf_template
         )
-    if charge is None and ligand_charge is not None:
-        charge = _derive_charge_from_ligand_charge(
-            prepared, ligand_charge, prefix=prefix
-        )
-    if charge is None:
-        if prepared.is_gjf:
-            charge = charge_default
-        else:
-            prepared.cleanup()
+
+    if ligand_charge is not None:
+        for prepared in inputs:
+            if prepared.source_path.suffix.lower() in {".xyz", ".gjf"}:
+                if cleanup_on_error:
+                    cleanup_on_error()
+                raise click.ClickException(
+                    "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+                )
+        if resolved_charge is None:
+            resolved_charge = _derive_charge_from_ligand_charge(
+                inputs[0], ligand_charge, prefix=prefix
+            )
+
+    if resolved_charge is None:
+        if any(not p.is_gjf for p in inputs):
+            if cleanup_on_error:
+                cleanup_on_error()
             raise click.ClickException(
                 "-q/--charge is required unless the input is a .gjf template with charge metadata."
             )
-    if spin is None:
-        spin = spin_default
-    return int(charge), int(spin)
+        if cleanup_on_error:
+            cleanup_on_error()
+        raise click.ClickException(
+            "Charge metadata was not found in the .gjf input(s). Provide -q/--charge "
+            "or add charge/spin metadata to the .gjf template."
+        )
+
+    if resolved_spin is None:
+        resolved_spin = spin_default
+    return int(resolved_charge), int(resolved_spin)
+
+
+# Backwards compatibility aliases
+resolve_charge_spin_or_raise = resolve_charge_spin
+resolve_charge_spin_multi = resolve_charge_spin
+
+
+@contextmanager
+def prepared_cli_input(
+    input_path: Path,
+    *,
+    ref_pdb: Optional[Path],
+    charge: Optional[int],
+    spin: Optional[int],
+    ligand_charge: Optional[float | str | Dict[str, float]] = None,
+    prefix: str = "[charge]",
+) -> Iterator[Tuple[PreparedInputStructure, int, int]]:
+    """Context-managed input preparation with charge/spin resolution."""
+    with prepare_input_structure(input_path) as prepared:
+        apply_ref_pdb_override(prepared, ref_pdb)
+        charge_res, spin_res = resolve_charge_spin(
+            prepared,
+            charge,
+            spin,
+            ligand_charge=ligand_charge,
+            prefix=prefix,
+        )
+        yield prepared, charge_res, spin_res
 
 
 _CONVERT_FILES_ENABLED: bool = True
@@ -906,13 +1411,9 @@ def set_convert_file_enabled(enabled: bool) -> None:
 def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) -> None:
     """Render single- or multi-frame XYZ/TRJ coordinates into a Gaussian template.
 
-    Respects the global conversion toggle (see :func:`set_convert_file_enabled`).
     Multi-frame trajectories are emitted as blank-separated geometries suitable
     for QST-style Gaussian inputs.
     """
-
-    if not _CONVERT_FILES_ENABLED:
-        return
     traj = read(xyz_path, index=":", format="xyz")
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
@@ -935,18 +1436,6 @@ def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) ->
     out_path.write_text(text)
 
 
-def maybe_convert_xyz_to_gjf(
-    xyz_path: Path,
-    template: Optional[GjfTemplate],
-    out_path: Optional[Path] = None,
-) -> Optional[Path]:
-    if not _CONVERT_FILES_ENABLED or template is None or not xyz_path.exists():
-        return None
-    target = out_path or xyz_path.with_suffix(".gjf")
-    convert_xyz_to_gjf(xyz_path, template, target)
-    return target
-
-
 def convert_xyz_like_outputs(
     xyz_path: Path,
     prepared_input: PreparedInputStructure,
@@ -954,7 +1443,9 @@ def convert_xyz_like_outputs(
     ref_pdb_path: Optional[Path],
     out_pdb_path: Optional[Path] = None,
     out_gjf_path: Optional[Path] = None,
-) -> None:
+    context: str = "outputs",
+    on_error: str = "raise",
+) -> bool:
     """Convert an XYZ/TRJ file to PDB outputs (and XYZ to GJF) based on the original input type.
 
     Parameters
@@ -969,10 +1460,11 @@ def convert_xyz_like_outputs(
         Targets for the converted files. Conversions are skipped when the
         corresponding output path is ``None`` or when the input type does not
         request that format.
+    Returns True when at least one conversion was attempted and succeeded; False otherwise.
     """
 
     if not _CONVERT_FILES_ENABLED:
-        return
+        return False
 
     source_suffix = prepared_input.source_path.suffix.lower()
     needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
@@ -983,10 +1475,44 @@ def convert_xyz_like_outputs(
         and out_gjf_path is not None
     )
 
-    if needs_pdb:
-        convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
-    if needs_gjf:
-        convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
+    if not (needs_pdb or needs_gjf):
+        return False
+
+    try:
+        if needs_pdb:
+            convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)
+        if needs_gjf:
+            convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
+    except Exception as e:
+        if on_error == "warn":
+            click.echo(f"[convert] WARNING: Failed to convert {context}: {e}")
+            return False
+        raise click.ClickException(f"[convert] Failed to convert {context}: {e}") from e
+    return True
+
+
+def _convert_to_pdb_logged(
+    src_path: Path, ref_pdb_path: Optional[Path], out_path: Optional[Path] = None
+) -> Optional[Path]:
+    """Convert an XYZ/TRJ to PDB when conversion is enabled; return path or None."""
+    try:
+        if ref_pdb_path is None or not _CONVERT_FILES_ENABLED:
+            return None
+        src_path = Path(src_path)
+        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
+            return None
+        out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
+        convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)
+        if out_path.exists():
+            click.echo(f"[convert] Wrote '{out_path}'.")
+            return out_path
+        return None
+    except Exception as e:
+        click.echo(
+            f"[convert] WARNING: Failed to convert '{src_path}' to PDB: {e}",
+            err=True,
+        )
+        return None
 
 
 # =============================================================================
@@ -997,25 +1523,49 @@ def parse_pdb_coords(pdb_path):
 
     Returns:
         A tuple (others, lkhs) where:
-            - others: list of tuples (x, y, z, line) for all atoms except the 'HL' atom
-              of residue 'LKH'.
-            - lkhs: list of tuples (x, y, z, line) for atoms where residue name is 'LKH'
-              and atom name is 'HL'.
+            - others: list of tuples (index, x, y, z, line) for all atoms except the
+              'HL' atom of residue 'LKH'. ``index`` is the 0-based position in the
+              atom sequence as loaded from the *first* MODEL (or the full file if no
+              MODEL records are present).
+            - lkhs: list of tuples (x, y, z, line) for atoms where residue name is
+              'LKH' and atom name is 'HL' in the same MODEL selection.
 
     Notes
     -----
         - Coordinates are read from standard PDB columns:
           X: columns 31–38, Y: 39–46, Z: 47–54 (1-based indexing).
+        - If multiple MODEL blocks are present, only the first model is considered,
+          matching typical geom_loader behavior.
     """
     with open(pdb_path, "r") as f:
         lines = f.readlines()
 
     others = []
     lkhs = []
+    model_seen = False
+    in_first_model = True
+    atom_index = 0
     for line in lines:
+        if line.startswith("MODEL"):
+            if not model_seen:
+                model_seen = True
+                in_first_model = True
+            else:
+                in_first_model = False
+            continue
+        if line.startswith("ENDMDL"):
+            if model_seen and in_first_model:
+                break
+            continue
+        if model_seen and not in_first_model:
+            continue
         if not (line.startswith("ATOM") or line.startswith("HETATM")):
             continue
-        name    = line[12:16].strip()
+
+        current_index = atom_index
+        atom_index += 1
+
+        name = line[12:16].strip()
         resname = line[17:20].strip()
         try:
             x = float(line[30:38])
@@ -1027,7 +1577,7 @@ def parse_pdb_coords(pdb_path):
         if resname == "LKH" and name == "HL":
             lkhs.append((x, y, z, line))
         else:
-            others.append((x, y, z, line))
+            others.append((current_index, x, y, z, line))
     return others, lkhs
 
 
@@ -1036,7 +1586,7 @@ def nearest_index(point, pool):
 
     Args:
         point: Tuple (x, y, z) representing the query coordinate.
-        pool: Iterable of tuples (x, y, z, line) to search.
+        pool: Iterable of tuples (index, x, y, z, line) to search.
 
     Returns:
         A tuple (index, distance) where:
@@ -1046,11 +1596,11 @@ def nearest_index(point, pool):
     x, y, z = point
     best_i = -1
     best_d2 = float("inf")
-    for i, (a, b, c, _) in enumerate(pool):
+    for atom_index, a, b, c, _ in pool:
         d2 = (a - x) ** 2 + (b - y) ** 2 + (c - z) ** 2
         if d2 < best_d2:
             best_d2 = d2
-            best_i = i
+            best_i = atom_index
     return best_i, math.sqrt(best_d2)
 
 
@@ -1097,6 +1647,9 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 
 
 def _split_atom_spec_tokens(spec: str) -> List[str]:
+    # Split an atom selector string into tokens using whitespace, comma, slash, backtick, or backslash.
+    # Split the atom specification without parsing spaces by replacing spaces with commas before splitting.
+    # Without replacing, it didn't work well for specs like "ALA 25 CA", somehow.
     tokens = [t for t in re.split(r"[\s/`,\\]+", spec.strip().replace(' ',',')) if t]
     return tokens
 
@@ -1159,6 +1712,225 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
     raise ValueError(f"Atom spec '{spec}' did not match any atom.")
 
 
+def values_from_bounds(low: float, high: float, h: float) -> "np.ndarray":
+    """Return evenly spaced values from low→high with step cap h (inclusive)."""
+    if h <= 0.0:
+        raise click.BadParameter("--max-step-size must be > 0.")
+    delta = abs(high - low)
+    if delta < 1e-12:
+        return np.array([low], dtype=float)
+    N = int(math.ceil(delta / h))
+    return np.linspace(low, high, N + 1, dtype=float)
+
+
+def atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
+    if index < 0 or index >= len(atom_meta):
+        return f"idx{index}"
+    meta = atom_meta[index]
+    resname = (meta.get("resname") or "?").strip() or "?"
+    resseq = meta.get("resseq")
+    resseq_txt = "?" if resseq is None else str(resseq)
+    atom = (meta.get("name") or "?").strip() or "?"
+    return f"{resname}-{resseq_txt}-{atom}"
+
+
+def axis_label_csv(
+    axis_name: str,
+    i_idx: int,
+    j_idx: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+    pair_raw: Optional[Tuple[Any, Any, float, float]] = None,
+) -> str:
+    if pair_raw and (isinstance(pair_raw[0], str) or isinstance(pair_raw[1], str)) and atom_meta:
+        i_label = atom_label_from_meta(atom_meta, i_idx)
+        j_label = atom_label_from_meta(atom_meta, j_idx)
+        return f"{axis_name}_{i_label}_{j_label}_A"
+    i_disp = i_idx + 1 if one_based else i_idx
+    j_disp = j_idx + 1 if one_based else j_idx
+    return f"{axis_name}_{i_disp}_{j_disp}_A"
+
+
+def axis_label_html(label: str) -> str:
+    parts = label.split("_")
+    if len(parts) >= 4 and parts[-1] == "A":
+        axis = parts[0]
+        i_disp = parts[1]
+        j_disp = parts[2]
+        return f"{axis} ({i_disp},{j_disp}) (Å)"
+    return label
+
+
+def parse_scan_list_quads_checked(
+    raw: str,
+    *,
+    expected_len: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    option_name: str,
+) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]]]:
+    parsed, raw_pairs = parse_scan_list_quads(
+        raw,
+        expected_len=expected_len,
+        one_based=one_based,
+        atom_meta=atom_meta,
+        option_name=option_name,
+    )
+    for i, j, low, high in parsed:
+        if low <= 0.0 or high <= 0.0:
+            raise click.BadParameter(f"Distances must be positive: {(i, j, low, high)}")
+    return parsed, raw_pairs
+
+
+def parse_scan_list_triples(
+    raw: str,
+    *,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    option_name: str,
+    return_one_based: bool = False,
+) -> Tuple[List[Tuple[int, int, float]], List[Tuple[Any, Any, float]]]:
+    """Parse --scan-list style triples into indices (0-based by default)."""
+    try:
+        obj = ast.literal_eval(raw)
+    except Exception as e:
+        raise click.BadParameter(f"Invalid literal for {option_name}: {e}")
+
+    if not isinstance(obj, (list, tuple)):
+        raise click.BadParameter(
+            f"{option_name} must be a list/tuple of (i,j,target)."
+        )
+
+    parsed: List[Tuple[int, int, float]] = []
+    for entry_idx, t in enumerate(obj, start=1):
+        if not (
+            isinstance(t, (list, tuple))
+            and len(t) == 3
+            and isinstance(t[2], Real)
+        ):
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} must be (i,j,target): got {t}"
+            )
+
+        i = resolve_scan_index(
+            t[0],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (i)",
+        )
+        j = resolve_scan_index(
+            t[1],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (j)",
+        )
+        if return_one_based:
+            i += 1
+            j += 1
+        parsed.append((i, j, float(t[2])))
+
+    return parsed, list(obj)
+
+
+def unbiased_energy_hartree(geom, base_calc) -> float:
+    """Evaluate UMA energy (Hartree) without harmonic bias."""
+    import numpy as np
+
+    coords_bohr = np.asarray(geom.coords)
+    elems = getattr(geom, "atoms", None)
+    if elems is None:
+        return float("nan")
+    try:
+        return float(base_calc.get_energy(elems, coords_bohr)["energy"])
+    except Exception:
+        return float("nan")
+
+
+def close_matplotlib_figures() -> None:
+    """Best-effort cleanup for matplotlib figures to avoid open-figure warnings."""
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+        plt.close("all")
+    except Exception:
+        pass
+
+
+def resolve_scan_index(
+    value: Any,
+    *,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    context: str,
+) -> int:
+    """Resolve an index or atom-spec string for scan lists with consistent errors."""
+    if isinstance(value, Integral):
+        idx_val = int(value)
+        if one_based:
+            idx_val -= 1
+        if idx_val < 0:
+            raise click.BadParameter(
+                f"Negative atom index after base conversion in {context}: {idx_val} (0-based expected)."
+            )
+        return idx_val
+    if isinstance(value, str):
+        if not atom_meta:
+            raise click.BadParameter(
+                f"{context} uses a string atom spec, but no PDB metadata is available."
+            )
+        try:
+            return resolve_atom_spec_index(value, atom_meta)
+        except ValueError as exc:
+            raise click.BadParameter(f"{context} {exc}")
+    raise click.BadParameter(f"{context} must be an int index or atom spec string.")
+
+
+def parse_scan_list_quads(
+    raw: str,
+    *,
+    expected_len: int,
+    one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
+    option_name: str,
+) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]]]:
+    """Parse --scan-list style quadruples into 0-based indices."""
+    try:
+        obj = ast.literal_eval(raw)
+    except Exception as e:
+        raise click.BadParameter(f"Invalid literal for {option_name}: {e}")
+
+    if not (isinstance(obj, (list, tuple)) and len(obj) == expected_len):
+        quads = ",".join([f"(i{n},j{n},low{n},high{n})" for n in range(1, expected_len + 1)])
+        raise click.BadParameter(
+            f"{option_name} must contain exactly {expected_len} quadruples: [{quads}]"
+        )
+
+    parsed: List[Tuple[int, int, float, float]] = []
+    for entry_idx, q in enumerate(obj, start=1):
+        if not (
+            isinstance(q, (list, tuple))
+            and len(q) == 4
+            and isinstance(q[2], Real)
+            and isinstance(q[3], Real)
+        ):
+            raise click.BadParameter(f"{option_name} entry must be (i,j,low,high): got {q}")
+
+        i = resolve_scan_index(
+            q[0],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (i)",
+        )
+        j = resolve_scan_index(
+            q[1],
+            one_based=one_based,
+            atom_meta=atom_meta,
+            context=f"{option_name} entry {entry_idx} (j)",
+        )
+        parsed.append((i, j, float(q[2]), float(q[3])))
+
+    return parsed, list(obj)
+
+
 def format_pdb_atom_metadata_header() -> str:
     """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
 
@@ -1187,36 +1959,99 @@ def detect_freeze_links(pdb_path):
     """Identify link-parent atom indices for 'LKH'/'HL' link hydrogens.
 
     For each 'HL' atom in residue 'LKH', find the nearest atom among all other
-    ATOM/HETATM records and return the indices of those nearest neighbors.
+    ATOM/HETATM records and return the indices of those nearest neighbors in the
+    same atom ordering used by geometry loading (first MODEL if present).
 
     Args:
         pdb_path: Path to the input PDB file.
 
     Returns:
-        List of 0-based indices into the sequence of non-LKH atoms ("others") corresponding
-        to the nearest neighbors (link parents). Returns an empty list if no LKH/HL atoms
-        are present. When the input contains link hydrogens but no other atoms, the list
-        will contain ``-1`` entries to indicate missing parents.
+        List of 0-based indices into the full atom sequence (including any link H atoms)
+        corresponding to the nearest neighbors (link parents). Returns an empty list if
+        no LKH/HL atoms are present or if link hydrogens exist without any other atoms.
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
-    if not lkhs:
+    if not lkhs or not others:
         return []
 
     indices = []
     for (x, y, z, line) in lkhs:
         idx, dist = nearest_index((x, y, z), others)
-        indices.append(idx)
+        if idx >= 0:
+            indices.append(idx)
     return indices
 
 
-def detect_freeze_links_safe(pdb_path: Path) -> List[int]:
-    """Return link-parent indices with a `[freeze-links]` warning instead of raising."""
+def detect_freeze_links_logged(pdb_path: Path) -> List[int]:
+    """Return link-parent indices and raise a user-facing error on failure."""
     try:
         return list(detect_freeze_links(pdb_path))
     except Exception as e:  # pragma: no cover - defensive logging helper
-        click.echo(
-            f"[freeze-links] WARNING: Could not detect link parents for '{pdb_path.name}': {e}",
-            err=True,
+        raise click.ClickException(
+            f"[freeze-links] Failed to detect link parents for '{pdb_path.name}': {e}"
+        ) from e
+
+
+def merge_detected_freeze_links(
+    geom_cfg: Dict[str, Any],
+    pdb_path: Path,
+    *,
+    prefix: str = "[freeze-links]",
+) -> List[int]:
+    """Detect link-parent atoms and merge them into ``geom_cfg['freeze_atoms']``."""
+    detected = detect_freeze_links_logged(pdb_path)
+    merged = merge_freeze_atom_indices(geom_cfg, detected)
+    if merged:
+        click.echo(f"{prefix} Freeze atoms (0-based): {','.join(map(str, merged))}")
+    return merged
+
+
+def resolve_freeze_atoms(
+    geom_cfg: Dict[str, Any],
+    source_path: Optional[Path],
+    freeze_links: bool,
+    *,
+    prefix: str = "[freeze-links]",
+    on_error: str = "raise",
+) -> List[int]:
+    """Normalize freeze_atoms and optionally merge detected link-parent atoms."""
+    merge_freeze_atom_indices(geom_cfg)
+    if not freeze_links or source_path is None or source_path.suffix.lower() != ".pdb":
+        return list(geom_cfg.get("freeze_atoms", []))
+    try:
+        return merge_detected_freeze_links(geom_cfg, source_path, prefix=prefix)
+    except Exception as e:
+        if on_error == "warn":
+            click.echo(f"{prefix} WARNING: Could not detect link parents: {e}")
+            return list(geom_cfg.get("freeze_atoms", []))
+        raise
+
+
+def load_prepared_geometries(
+    prepared_inputs: Sequence["PreparedInputStructure"],
+    *,
+    coord_type: str,
+    base_freeze: Sequence[int],
+    auto_freeze_links: bool,
+    prefix: str = "[freeze-links]",
+) -> List[Any]:
+    """Load multiple PreparedInputStructure geometries and apply freeze atom logic."""
+    geoms: List[Any] = []
+
+    for prepared in prepared_inputs:
+        src_path = prepared.source_path
+        geom_path = prepared.geom_path
+        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
+        freeze = resolve_freeze_atoms(
+            cfg,
+            src_path,
+            auto_freeze_links,
+            prefix=f"{prefix} {src_path.name}:",
         )
-        return []
+
+        g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
+        g.freeze_atoms = np.array(freeze, dtype=int)
+        geoms.append(g)
+
+    return geoms

@@ -1,4 +1,4 @@
-# `add-elem-info` subcommand
+# `add-elem-info`
 
 ## Overview
 `add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM
@@ -12,7 +12,7 @@ records in a PDB file.
 
 ## Usage
 ```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True|False}]
+pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True\|False}]
 ```
 
 ## Examples
@@ -32,11 +32,11 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
    definitions used in `extract.py` (`AMINO_ACIDS`, `WATER_RES`, `ION`).
 2. For each atom, guess the element by combining the atom name, residue name,
    and whether the record is HETATM:
-   - Monatomic ion residues in `ION` dict: use corresponding elements.
+   - Monatomic ion residues in the `ION` dict: use the corresponding element.
    - Proteins/nucleic acids/water: apply special handling for H/D, Se, and
-     first-letter mapping for C/N/O/P/S; carbon sidechain labels default to C.
+     first-letter mapping for C/N/O/P/S; carbon side-chain labels default to C.
    - Other ligands: use atom-name prefixes and fall back to element-symbol
-     normalization (recognising halogens, deuterium → hydrogen, etc.).
+     normalization (recognizing halogens, deuterium → hydrogen, etc.).
 3. Write the structure through `PDBIO`:
    - default output: `<input>_add_elem.pdb` (when `-o/--out` is omitted and `--overwrite` is not `True`)
    - `-o/--out`: write to the specified path; `--overwrite` is ignored when this is provided
@@ -49,7 +49,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file. | Required |
 | `-o, --out PATH` | Output path. When set, `--overwrite` is ignored. | _None_ → `<input>_add_elem.pdb` |
-| `--overwrite {True|False}` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
+| `--overwrite {True\|False}` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
 
 ## Outputs
 - A PDB file with element symbols populated/corrected:

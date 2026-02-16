@@ -1,103 +1,16 @@
 # pdb2reaction/align_freeze_atoms.py
 
 """
-align_freeze_atoms — Rigid alignment and staged “scan + relaxation” utilities for pysisyphus Geometry objects
-====================================================================
+Rigid alignment and staged scan+relaxation utilities for pysisyphus Geometry objects.
 
-Usage (API)
------------
-    from pdb2reaction.align_freeze_atoms import (
-        align_and_refine_pair_inplace,
-        align_and_refine_sequence_inplace,
-        align_second_to_first_kabsch_inplace,
-        kabsch_R_t,
-        scan_freeze_atoms_toward_target_inplace,
-    )
+Main Functions:
+    - kabsch_R_t: Row-vector Kabsch solver for (N,3) point sets.
+    - align_second_to_first_kabsch_inplace: Rigidly align g_mob to g_ref in place.
+    - scan_freeze_atoms_toward_target_inplace: Move freeze_atoms toward reference with relaxation.
+    - align_and_refine_pair_inplace: Rigid alignment + scan/relaxation for a geometry pair.
+    - align_and_refine_sequence_inplace: Apply pair procedure along a sequence of geometries.
 
-Examples
---------
-    >>> from pdb2reaction.align_freeze_atoms import align_and_refine_pair_inplace
-    >>> result = align_and_refine_pair_inplace(g_ref, g_mob, verbose=False)
-    >>> result["align"]["mode"]
-    'kabsch'
-
-Description
------------
-API-only utilities to co-align and refine preoptimized `pysisyphus.Geometry` objects—typically adjacent
-images along a reaction path—using `freeze_atoms`. A rigid alignment is performed first (with special
-handling when the **union** of `freeze_atoms` across the pair has size 1 or 2), followed by a staged
-“scan toward reference + local relaxation” that moves the selected anchor atoms (the **union** of
-`freeze_atoms` from `g_ref` and `g_mob`) toward the reference in small steps while relaxing the surroundings.
-All updates are applied in place on the mobile geometry.
-
-Provided functionality (concise):
-- kabsch_R_t(P, Q)
-    Row-vector Kabsch solver for two (N, 3) point sets. Returns (R, t) minimizing ||(Q @ R + t) − P||.
-- align_second_to_first_kabsch_inplace(g_ref, g_mob, *, verbose=True)
-    Rigidly aligns `g_mob` to `g_ref` in place. Special cases (selection = union of `freeze_atoms`):
-      - length = 1: translate to match the anchor; restrict rotations about that anchor;
-        minimizes all-atom RMSD; RMSD reported on all atoms.
-      - length = 2: align the axis defined by the two anchors; optimize rotation around
-        that axis; RMSD reported on all atoms. If the axis is degenerate, falls back to Kabsch.
-      - otherwise: Kabsch on the union selection (or all atoms if empty); apply the transform
-        to all atoms; RMSD reported on the same selection used by Kabsch.
-    Returns: dict(before_A, after_A, n_used, mode) with RMSD in Å and mode ∈ {"one_anchor","two_anchor","kabsch"}.
-- scan_freeze_atoms_toward_target_inplace(
-      g_ref, g_mob, *, step_A=0.1, per_step_cycles=50, final_cycles=200, max_steps=1000,
-      thresh="gau", shared_calc=None, out_dir=Path("./result_align_refine/"),
-      charge=0, spin=1, model="uma-s-1p1", device="auto", verbose=True)
-    Moves the **union** of `freeze_atoms` toward `g_ref` by `step_A` Å per iteration. At each step the
-    anchors are held fixed and the surroundings are relaxed with LBFGS. When the maximum remaining distance
-    is below one step, enforce exact coincidence of the anchors and run a finishing relaxation.
-    Returns: dict(max_remaining_A, n_steps, converged).
-- align_and_refine_pair_inplace(
-      g_ref, g_mob, *, shared_calc=None, out_dir=Path("./result_align_refine/"),
-      step_A=0.1, per_step_cycles=50, final_cycles=200, max_steps=1000,
-      thresh="gau", charge=0, spin=1, model="uma-s-1p1", device="auto", verbose=True)
-    High-level pair API: (1) rigid alignment, then (2) scan + relaxation toward the reference.
-    Returns: {"align": {...}, "scan": {...}}.
-- align_and_refine_sequence_inplace(
-      geoms, *, shared_calc=None, out_dir=Path("./result_align_refine/"),
-      step_A=0.1, per_step_cycles=1000, final_cycles=1000, max_steps=10000,
-      thresh="gau", charge=0, spin=1, model="uma-s-1p1", device="auto", verbose=True)
-    Applies the pair procedure along [g0, g1, g2, ...] as (g0←g1), (g1←g2), ... and returns a list of per-pair results.
-
-Outputs (& Directory Layout)
-----------------------------
-When the scan stage runs (i.e., union(`freeze_atoms`) is non-empty):
-
-out_dir/ (default: ./result_align_refine/)
-  ├─ <pair>/                         # Pair API writes stepwise and final LBFGS artifacts directly under out_dir
-  └─ pair_00/, pair_01/, ...         # Sequence API creates one subdirectory per adjacent pair
-
-Directories are only created when scan/relaxation artifacts are produced (``dump=False`` is still used for LBFGS).
-
-Notes
------
-- Units & conventions:
-  - User-facing distances/thresholds are in Å; internal coordinates are in bohr (conversion via `BOHR2ANG`).
-  - Row-vector convention for rigid transforms: points `Q` are mapped as `Q @ R + t`.
-  - Indices in `freeze_atoms` are 0-based.
-- Selection policy:
-  - The selection used for special-cased alignment and for scanning is the **union** of `freeze_atoms`
-    from `g_ref` and `g_mob`. If the union is empty, Kabsch uses all atoms; the scan is skipped.
-- Calculator handling:
-  - If `shared_calc` is supplied, it is set on the geometries even when a calculator is already present.
-  - Otherwise an existing calculator is reused; if none is present, UMA (`uma_pysis`) is attached automatically.
-    (`charge`, `spin`, `model`, and `device` are configurable.)
-- Rigid alignment priority and RMSD reporting:
-  - union length = 1 → rotations about the single anchor only; RMSD minimized and reported on all atoms.
-  - union length = 2 → align anchor-defined axis; optimize rotation about that axis; RMSD reported on all atoms.
-  - else → Kabsch on the union selection (or all atoms if empty); transform applied to all atoms;
-    RMSD reported on the same selection used by Kabsch.
-- Scan + relaxation details:
-  - At each step: move anchors by `step_A` Å toward the reference, hold them fixed, run a short LBFGS on the surroundings.
-  - Finalization: enforce exact coincidence of anchors, then run a finishing LBFGS.
-  - The original `freeze_atoms` of `g_mob` is restored after the scan, even on exceptions.
-- Error handling:
-  - `LBFGS` exceptions (`ZeroStepLength`, `OptimizationError`) are caught and logged; the procedure continues when reasonable.
-- Internals:
-  - Uses Rodrigues-based rotations, vector-alignment, and planar projection helpers to implement axis-constrained motions.
+Units: User-facing distances in Å; internal coordinates in bohr. Indices are 0-based.
 """
 
 from __future__ import annotations
@@ -106,6 +19,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Tuple, Dict, Any
 
 import numpy as np
+import click
 
 # pysisyphus
 from pysisyphus.optimizers.LBFGS import LBFGS
@@ -119,6 +33,8 @@ try:
 except Exception:
     # Direct execution, etc.
     from pdb2reaction.uma_pysis import uma_pysis
+
+from .utils import as_list
 
 
 # =============================================================================
@@ -255,9 +171,10 @@ def _freeze_union(g_ref, g_mob, n_atoms: Optional[int] = None) -> List[int]:
     Union of `freeze_atoms` from `g_ref` and `g_mob` (0-based).
     If `n_atoms` is given, out-of-range indices are removed. Returns [] if empty.
     """
-    fa0 = getattr(g_ref, "freeze_atoms", np.array([], int))
-    fa1 = getattr(g_mob, "freeze_atoms", np.array([], int))
-    cand = sorted(set(int(i) for i in list(fa0) + list(fa1)))
+    fa0 = getattr(g_ref, "freeze_atoms", None)
+    fa1 = getattr(g_mob, "freeze_atoms", None)
+
+    cand = sorted(set(int(i) for i in (as_list(fa0) + as_list(fa1))))
     if n_atoms is None:
         return cand
     good = [i for i in cand if 0 <= i < int(n_atoms)]
@@ -293,9 +210,6 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     N = P.shape[0]
     idx = _freeze_union(g_ref, g_mob, n_atoms=N)
 
-    def _set_all(Q_new: np.ndarray) -> None:
-        _set_all_coords_disabling_freeze(g_mob, Q_new)
-
     mode = "kabsch"
     report_all_atoms = False
 
@@ -312,11 +226,11 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             Vt[-1] *= -1.0
             R = Vt.T @ U.T
         Q_aln = (Q_rel @ R) + p0
-        _set_all(Q_aln)
+        _set_all_coords_disabling_freeze(g_mob, Q_aln)
         after = _rmsd(P, Q_aln)
         mode = "one_anchor"
         if verbose:
-            print(f"[align] one-anchor: RMSD {before:.6f} Å → {after:.6f} Å (idx={i})")
+            click.echo(f"[align] one-anchor: RMSD {before:.6f} Å → {after:.6f} Å (idx={i})")
         return {"before_A": before, "after_A": after, "n_used": 1, "mode": mode}
 
     # ---- 2 anchors ----
@@ -346,11 +260,11 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
             R_axis = _rodrigues(u, theta)
             Q1 = ((Q0 - c) @ R_axis.T) + c
-            _set_all(Q1)
+            _set_all_coords_disabling_freeze(g_mob, Q1)
             after = _rmsd(P, Q1)
             mode = "two_anchor"
             if verbose:
-                print(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))")
+                click.echo(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))")
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
         # If the axis is degenerate, fall through to the generic Kabsch case.
         report_all_atoms = True
@@ -372,13 +286,13 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
     R, t = kabsch_R_t(P_sel, Q_sel)
     Q_aln = (Q @ R) + t
-    _set_all(Q_aln)
+    _set_all_coords_disabling_freeze(g_mob, Q_aln)
 
     after_sel = _rmsd(P_sel, Q_aln[use])
     after_report = _rmsd(P, Q_aln) if report_all_atoms else after_sel
 
     if verbose:
-        print(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})")
+        click.echo(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})")
 
     return {"before_A": before_report, "after_A": after_report, "n_used": n_used, "mode": mode}
 
@@ -435,7 +349,7 @@ def scan_freeze_atoms_toward_target_inplace(
 
         if len(idx) == 0:
             if verbose:
-                print("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
+                click.echo("[scan] freeze_atoms list is empty. Skipping scan and relaxation.")
             return {"max_remaining_A": 0.0, "n_steps": 0, "converged": True}
 
         _attach_calc_if_needed(g_mob, shared_calc, charge=charge, spin=spin, model=model, device=device)
@@ -456,7 +370,7 @@ def scan_freeze_atoms_toward_target_inplace(
             max_rem_bohr = float(rem_bohr.max()) if len(rem_bohr) else 0.0
             max_remaining_A = max_rem_bohr * BOHR2ANG
             if verbose:
-                print(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å")
+                click.echo(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å")
 
             if max_rem_bohr <= step_bohr + 1e-12:
                 # Final step: enforce exact coincidence
@@ -475,7 +389,7 @@ def scan_freeze_atoms_toward_target_inplace(
                     ).run()
                 except (ZeroStepLength, OptimizationError) as e:
                     if verbose:
-                        print(f"[scan] WARNING: Exception occurred in final relaxation: {e} (continuing)")
+                        click.echo(f"[scan] WARNING: Exception occurred in final relaxation: {e} (continuing)")
                 g_mob.freeze_atoms = np.array([], int)
                 converged = True
                 n_steps_done = istep
@@ -501,14 +415,14 @@ def scan_freeze_atoms_toward_target_inplace(
                 ).run()
             except (ZeroStepLength, OptimizationError) as e:
                 if verbose:
-                    print(f"[scan] WARNING: Exception occurred in relaxation: {e} (continuing)")
+                    click.echo(f"[scan] WARNING: Exception occurred in relaxation: {e} (continuing)")
             finally:
                 g_mob.freeze_atoms = np.array([], int)
 
             n_steps_done = istep
         else:
             if verbose:
-                print(f"[scan] WARNING: Reached max_steps={max_steps}.")
+                click.echo(f"[scan] WARNING: Reached max_steps={max_steps}.")
 
         return {"max_remaining_A": float(max_remaining_A or 0.0),
                 "n_steps": int(n_steps_done),
@@ -604,7 +518,7 @@ def align_and_refine_sequence_inplace(
         pair_out = out_dir / f"pair_{i:02d}"
 
         if verbose:
-            print(f"\n[align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
+            click.echo(f"[stage] [align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)")
 
         res = align_and_refine_pair_inplace(
             g_ref, g_mob,

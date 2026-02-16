@@ -1,57 +1,12 @@
 # pdb2reaction/add_elem_info.py
 
 """
-add-elem-info — repair PDB element symbols (columns 77–78) with Biopython
-===========================================================================
+Repair PDB element symbols (columns 77-78) with Biopython inference.
 
-Usage (CLI)
------------
-    pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True|False}]
-
-Examples
---------
-    # Populate element fields and write to "<input>_add_elem.pdb"
+Example:
     pdb2reaction add-elem-info -i 1abc.pdb
 
-    # Write to a specific output file
-    pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
-
-    # Overwrite the input file in-place
-    pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
-
-Output behavior
----------------------------
-- If `-o/--out` is omitted and `--overwrite` is not `True`, write to `<input>_add_elem.pdb` (replace a
-  trailing `.pdb` with `_add_elem.pdb`; otherwise append `_add_elem.pdb`).
-- If `--overwrite True` is set without `-o/--out`, overwrite the input file in-place.
-- When `-o/--out` is supplied, write to that path and ignore `--overwrite`.
-
-Workflow
---------
-- Parse the input with `Bio.PDB.PDBParser`, sharing residue definitions with `extract.py`
-  (`AMINO_ACIDS`, `WATER_RES`, `ION`).
-- Infer elements per atom using the atom name, residue name, and HETATM flag:
-  - Ion residues from the `ION` dict: use residue-derived elements (polyatomic ions handled per
-    atom; D* → H).
-  - Proteins/nucleic acids/water: special handling for H/D, Se, and first-letter mapping for
-    C/N/O/P/S; carbon sidechain labels default to C.
-  - Other ligands: use atom-name prefixes (C*/P*, excluding CL) and fall back to element-symbol
-    normalization (recognizing halogens and D → H).
-- Write the structure through `PDBIO` and print a summary: totals for processed/assigned atoms,
-  per-element counts, and up to 50 unresolved atoms.
-
-Outputs
--------
-- PDB with element columns 77–78 populated/corrected at the path determined above.
-- Console report with totals, per-element counts, and truncated unresolved-atom list.
-
-Notes
------
-- Only element columns are modified; coordinates, occupancies, B-factors, charges, altlocs,
-  insertion codes, and record ordering stay untouched.
-- Supports ATOM and HETATM records across all models/chains/residues.
-- Depends on Biopython (`Bio.PDB`) and Click; deuterium labels map to hydrogen; selenium (`SE*`) and
-  halogens are recognized automatically.
+For detailed documentation, see: docs/add_elem_info.md
 """
 
 from __future__ import annotations
@@ -203,8 +158,15 @@ def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
             return sym
 
     # 3) Non-polymers (ligands / cofactors)
+    # H, C, N, O, P map directly by first letter (similar to polymers)
+    if name_u.startswith(("H", "D")):
+        return "H"
     if name_u.startswith("C") and not name_u.startswith("CL"):
         return "C"
+    if name_u.startswith("N"):
+        return "N"
+    if name_u.startswith("O"):
+        return "O"
     if name_u.startswith("P"):
         return "P"
 
@@ -274,14 +236,14 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     io.save(out_path)
 
     # Summary
-    print(f"[OK] Wrote: {out_path}")
-    print(f"  total atoms                 : {total}")
-    print(f"  assigned/updated            : {assigned_or_updated}")
+    click.echo(f"[OK] Wrote: {out_path}")
+    click.echo(f"  total atoms                 : {total}")
+    click.echo(f"  assigned/updated            : {assigned_or_updated}")
     if by_element:
         top = ", ".join(f"{k}:{v}" for k, v in by_element.most_common())
-        print(f"  assignment breakdown        : {top}")
+        click.echo(f"  assignment breakdown        : {top}")
     if unknown:
-        print(f"[WARN] Could not confidently assign {len(unknown)} atoms; left unchanged.")
+        click.echo(f"[WARN] Could not confidently assign {len(unknown)} atoms; left unchanged.")
         for (mid, chid, resid, resn, aname, serial) in unknown[:50]:
             if isinstance(resid, tuple):
                 resseq = resid[1]
@@ -289,18 +251,15 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
             else:
                 resseq, icode = "?", ""
             s_str = f" serial {serial}" if serial is not None else ""
-            print(f"    model {mid} chain {chid} {resn} {resseq}{icode} : {aname}{s_str}")
+            click.echo(f"    model {mid} chain {chid} {resn} {resseq}{icode} : {aname}{s_str}")
     if len(unknown) > 50:
-        print("    ... (truncated) ...")
+        click.echo("    ... (truncated) ...")
 
 
 def _parse_bool(value: str) -> bool:
-    value_lower = value.strip().lower()
-    if value_lower in {"true", "1", "yes", "y", "t"}:
-        return True
-    if value_lower in {"false", "0", "no", "n", "f"}:
-        return False
-    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value!r}. Use True/False.")
+    from .cli_utils import argparse_bool
+
+    return argparse_bool(value)
 
 
 def main():
@@ -328,13 +287,13 @@ def main():
     args = ap.parse_args()
 
     if not os.path.isfile(args.in_pdb):
-        print(f"[ERR] Input not found: {args.in_pdb}", file=sys.stderr)
+        click.echo(f"[ERR] Input not found: {args.in_pdb}")
         sys.exit(1)
 
     try:
         assign_elements(args.in_pdb, args.out, overwrite=args.overwrite)
     except Exception as e:
-        print(f"[ERR] Failed: {e}", file=sys.stderr)
+        click.echo(f"[ERR] Failed: {e}")
         sys.exit(2)
 
 # -----------------------------
@@ -372,5 +331,5 @@ def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     except SystemExit as e:
         raise e
     except Exception as e:
-        click.echo(f"[ERR] Failed: {e}", err=True)
+        click.echo(f"[ERR] Failed: {e}")
         sys.exit(2)

@@ -1,4 +1,4 @@
-# `trj2fig` subcommand
+# `trj2fig`
 
 ## Overview
 `trj2fig` converts an XYZ trajectory into polished energy profiles. By default it
@@ -33,7 +33,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 
 ## Workflow
 1. Parse the XYZ trajectory. By default, read the first floating-point number
-   found in every frame comment (scientific notation is not supported). If
+   found in every frame comment (scientific notation such as `1.5e-3` is supported). If
    `-q/-m` is present, recompute Hartree energies for each frame with
    `uma_pysis` using those charge/spin values instead of the comment.
    If no energies are found or produced, the run aborts.
@@ -58,7 +58,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-r, --reference TEXT` | Reference specification (`init`, `None`, or 0-based integer). | `init` |
 | `-q, --charge INT` | Total charge; triggers energy recomputation with `uma_pysis` when provided. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation with `uma_pysis` when provided. | _None_ |
-| `--reverse-x {True|False}` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
+| `--reverse-x {True\|False}` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 
 ## Outputs
 ```

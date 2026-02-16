@@ -1,67 +1,18 @@
 # pdb2reaction/trj2fig.py
 
 """
-trj2fig — Energy-profile utility for XYZ trajectories
-====================================================================
+Energy-profile plotting utility for XYZ trajectories.
 
-Usage (CLI)
------------
-    pdb2reaction trj2fig -i traj.xyz [-o OUTPUT ...] [-r {init|None|INT}] \
-        [-q CHARGE] [-m MULT] [--unit {kcal|hartree}] [--reverse-x {True|False}]
-
-Examples
---------
-    # High-resolution PNG with x-axis reversed (reference is the last frame)
+Example:
     pdb2reaction trj2fig -i traj.xyz --reverse-x True
 
-    # Recompute energies with explicit charge/spin before plotting (kcal/mol)
-    pdb2reaction trj2fig -i traj.xyz -q 0 -m 1
-
-    # CSV + figure (reference frame #5; output values in hartree)
-    pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
-
-    # Produce multiple outputs in one run (PNG, HTML, PDF)
-    pdb2reaction trj2fig -i traj.xyz -o energy.png energy.html energy.pdf
-
-Description
------------
-- Extracts Hartree energies from the second-line comment of each XYZ frame
-  (uses the first decimal number on that line; scientific notation/exponents are not parsed).
-- When -q/--charge or -m/--multiplicity is supplied, energies are recomputed for every
-  frame with `uma_pysis` using the provided charge/spin instead of reading the comments.
-- Computes either ΔE (relative to a chosen reference) or absolute E; units: kcal/mol (default) or hartree.
-  Reference specification:
-    - -r init  : use the initial frame (or the last frame if --reverse-x is set).
-    - -r None  : use absolute energies (no reference). Also accepts "none"/"null" (case-insensitive).
-    - -r <int> : use the given 0-based frame index as the reference.
-- Generates a polished Plotly figure (no title) with strong ticks, consistent fonts, markers,
-  and a smoothed spline curve. Supported figure outputs: PNG (default), JPEG/JPG, HTML, SVG, PDF.
-- Optionally writes a CSV table of the data.
-- --reverse-x flips the x-axis so the last frame appears on the left
-  (and makes -r init point to that last frame).
-
-Outputs (& Directory Layout)
-----------------------------
-Current working directory (default output path)
-  ├─ energy.png                    # Default PNG figure when no -o is supplied
-  └─ <custom outputs from -o>      # Multiple filenames may be provided; Click also allows repeating -o
-        • .png / .jpg / .jpeg  → Raster Plotly exports (PNG uses scale=2)
-        • .html                → Standalone interactive Plotly figure
-        • .svg / .pdf          → Vector exports
-        • .csv                 → Tabular data with columns ``frame``, ``energy_hartree``, and the relevant ΔE/E column based on --unit/-r
-
-Notes
------
-- The legacy --output-peak option has been removed.
-- If a frame comment lacks a parseable decimal number, an error is raised; if no energies are found, the run fails.
-- Unsupported file extensions in -o cause an error.
+For detailed documentation, see: docs/trj2fig.md
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import re
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
@@ -71,7 +22,7 @@ from ase import Atoms
 from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
-from .uma_pysis import uma_pysis
+from .utils import read_xyz_energies
 
 AXIS_WIDTH = 3         # axis and tick thickness
 FONT_SIZE = 18         # tick-label font size
@@ -84,29 +35,8 @@ MARKER_SIZE = 6        # marker size
 #  File helpers
 # ---------------------------------------------------------------------
 def read_energies_xyz(fname: Path | str) -> List[float]:
-    """
-    Extract Hartree energies from the second-line comment of each XYZ frame.
-
-    The first decimal number found on the comment line is used
-    (scientific notation/exponents are not parsed).
-    """
-    energies: List[float] = []
-    with open(fname, encoding="utf-8") as fh:
-        while (hdr := fh.readline()):
-            try:
-                nat = int(hdr.strip())
-            except ValueError:  # reached a non-XYZ header
-                break
-            comment = fh.readline().strip()
-            m = re.search(r"(-?\d+(?:\.\d+)?)", comment)
-            if not m:
-                raise RuntimeError(f"Energy not found in comment: {comment}")
-            energies.append(float(m.group(1)))
-            for _ in range(nat):  # skip coordinates
-                fh.readline()
-    if not energies:
-        raise RuntimeError(f"No energy data in {fname}")
-    return energies
+    """Compatibility wrapper for utils.read_xyz_energies()."""
+    return read_xyz_energies(fname)
 
 
 def recompute_energies(
@@ -115,6 +45,8 @@ def recompute_energies(
     """
     Recalculate Hartree energies for every frame using uma_pysis.
     """
+    # Import lazily so comment-only mode does not require torch/UMA deps.
+    from .uma_pysis import uma_pysis
 
     frames_obj = read(traj_path, index=":", format="xyz")
     frames = [frames_obj] if isinstance(frames_obj, Atoms) else list(frames_obj)
@@ -272,14 +204,14 @@ def save_outputs(
         elif ext == ".html":
             assert fig is not None
             fig.write_html(out)
-            print(f"[trj2fig] Saved figure -> {out}")
+            click.echo(f"[trj2fig] Saved figure -> {out}")
         elif ext in {".png", ".jpg", ".jpeg", ".pdf", ".svg"}:
             assert fig is not None
             kw = {"engine": "kaleido"}
             if ext == ".png":
                 kw["scale"] = 2  # high-resolution PNG
             fig.write_image(out, **kw)
-            print(f"[trj2fig] Saved figure -> {out}")
+            click.echo(f"[trj2fig] Saved figure -> {out}")
         else:
             raise ValueError(f"Unsupported format: {ext}")
 
@@ -300,7 +232,7 @@ def write_csv(
         w.writerow(["frame", "energy_hartree", colname])
         for i, (eh, y) in enumerate(zip(energies_hartree, series)):
             w.writerow([i, f"{eh:.8f}", f"{y:.6f}"])
-    print(f"[trj2fig] Saved CSV -> {out}")
+    click.echo(f"[trj2fig] Saved CSV -> {out}")
 
 
 # ---------------------------------------------------------------------

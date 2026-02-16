@@ -1,244 +1,12 @@
 # pdb2reaction/extract.py
 
 """
-extract — Automated binding‑pocket (active‑site) extractor
-====================================================================
+Automated binding-pocket (active-site) extraction from protein-substrate complexes.
 
-Usage (CLI)
------------
-    pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
-                        -c SUBSTRATE_SPEC
-                        [-o POCKET.pdb [POCKET2.pdb ...]]
-                        [--radius Å] [--radius-het2het Å]
-                        [--include-H2O true|false]
-                        [--exclude-backbone true|false]
-                        [--add-linkH true|false]
-                        [--selected-resn LIST]
-                        [--ligand-charge MAP_OR_NUMBER]
-                        [--verbose true|false]
-
-Examples
---------
-    # Minimal (ID-based substrate) with explicit total ligand charge
+Example:
     pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
 
-    # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-    pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
-
-    # Name-based substrate selection including all matches (WARNING is logged)
-    pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
-
-    # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
-
-    # Multi-structure to multi outputs with hetero-hetero proximity enabled
-    pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --ligand-charge 'GPP:-3,SAM:1'
-
-Description
------------
-Extracts an active-site pocket around specified substrate residue(s) from a protein–substrate complex PDB,
-then applies geometry-aware truncation (backbone/side-chain capping with safeguards), optionally appends
-carbon-only link hydrogens for cut bonds, and logs a simple formal-charge summary.
-
-This module exposes:
-- ``extract(args: argparse.Namespace | None = None, api: bool = False)``
-- ``extract_api(...)`` convenience wrapper returning a dict result.
-
-Residue inclusion
------------------
-- Always include the substrate residue(s) (and **never delete substrate atoms** during truncation).
-
-- Standard distance cutoff (``--radius``, default 2.6 Å):
-  - If ``--exclude-backbone false``: include a residue if **any atom** is within the cutoff of **any substrate atom**.
-  - If ``--exclude-backbone true`` (default): for **amino-acid residues** (``resname`` in ``AMINO_ACIDS``),
-    the qualifying neighbor atom must be **non-backbone** (not in ``BACKBONE_ATOMS``);
-    non–amino-acid residues qualify by **any atom**.
-
-- Independent hetero–hetero proximity (``--radius-het2het``):
-  add residues if a **substrate hetero atom** (element not in {C,H}) is within the cutoff of a
-  **neighbor hetero atom** (element not in {C,H}). This is evaluated against *all* atoms in the structure
-  (typically protein O/N/S, cofactors, ions, other ligands, etc.).
-  With ``--exclude-backbone true``, amino-acid neighbors must still be **non-backbone** atoms.
-
-- Waters are included by default (``--include-H2O true``; any of: HOH/WAT/H2O/DOD/TIP/TIP3/SOL).
-
-- ``--selected-resn`` force-includes residues by residue ID tokens (chain and insertion codes supported).
-  *In multi-structure mode, forced residues must exist in every input structure.*
-
-Backbone-contact context (only when ``--exclude-backbone false``)
------------------------------------------------------------------
-When backbone exclusion is OFF, the selector also tracks amino-acid residues that contact the substrate
-via a **backbone atom name** (any of ``BACKBONE_ATOMS``) within either cutoff. For each such residue:
-- include its immediate peptide-adjacent N-side and C-side amino-acid neighbors
-  (peptide adjacency is determined by **C(prev)–N(next) ≤ 1.9 Å**, i.e., geometry-based).
-- if a peptide-adjacent neighbor is not found on a side (true terminus / chain break by geometry),
-  preserve the corresponding terminal cap atoms on the contacting residue:
-  - N-side missing → keep N/H* (do not delete N-cap)
-  - C-side missing → keep C/O/OXT (do not delete C-cap)
-
-Safeguards / special inclusions
--------------------------------
-- **Disulfide safeguard:** if a selected CYS/CYX forms an SG–SG contact ≤ 2.5 Å with another CYS/CYX,
-  include both partners.
-
-- **Proline safeguard (TER-aware by geometry):** if a selected **PRO** has a peptide-adjacent preceding
-  amino acid (C–N ≤ 1.9 Å), include that preceding residue.
-  For that neighbor:
-  - **CA is always kept**.
-  - With ``--exclude-backbone true``, also keep **C** and **O/OXT** to preserve the peptide bond into PRO–N.
-
-Truncation (capping)
---------------------
-Truncation decides which atoms to delete from **non-substrate** residues; substrate residues are kept intact.
-
-- TER-aware segmentation uses the peptide-adjacency test (C–N ≤ 1.9 Å) to split the selected residues in
-  each chain into peptide-bonded segments (this is geometric; it typically avoids chain breaks when atoms
-  are missing or far apart).
-
-- With ``--exclude-backbone false``:
-  - **Continuous peptide segments** keep internal backbone; only terminal caps are removed:
-    - N-cap (first residue of a segment): remove N/H* (unless PRO/HYP or explicitly preserved by the
-      backbone-contact terminus rule).
-    - C-cap (last residue of a segment): remove C/O/OXT (unless explicitly preserved by the
-      backbone-contact terminus rule).
-  - **Isolated single residues** are reduced to a side-chain-only representation:
-    remove N/H*, CA/HA*, and C/O/OXT.
-    - **Exception:** if the backbone-contact terminus rule preserves an N-cap and/or C-cap on this residue,
-      the corresponding N/H* and/or C/O/OXT atoms are retained (CA/HA* removal still applies for non‑PRO/HYP).
-    - **PRO/HYP** retain N, CA, and H/HA* atoms to keep the ring, but may still lose C/O/OXT as C-cap.
-
-- With ``--exclude-backbone true`` (default):
-  delete the full backbone set (``BACKBONE_ALL``) from every **non-substrate amino-acid** residue.
-  - **PRO/HYP** retain N, CA, and H/HA* (ring preservation).
-  - The PRO N-side neighbor preservation rule above re-adds CA always, and (when backbone exclusion is on)
-    preserves C and O/OXT for the neighbor if peptide-adjacent.
-
-- **Non–amino-acid residues** are never modified by the capping logic: even if they contain atom names
-  like N/CA/H, they are not subject to amino-acid backbone deletion.
-
-Link hydrogens (``--add-linkH``)
---------------------------------
-Optionally adds carbon-only link H atoms for bonds cut by truncation.
-
-- Placement:
-  - Normal residues: test these possible cut bonds:
-    **CB–CA**, **CA–N**, **CA–C**.
-  - **PRO/HYP**: test **CA–C** only.
-  - A link H is added only if:
-    1) the **parent atom** remains in the output,
-    2) the **partner atom** exists in the original residue and is deleted by truncation, and
-    3) the parent atom is **Carbon**.
-  - Coordinates: 1.09 Å from the parent along the (parent → deleted-partner) unit vector.
-
-- Output format:
-  - Link H atoms are written as a contiguous **HETATM** block with atom name **HL** in residue **LKH**,
-    chain **L**, one pseudo-residue per H (resseq 1..N).
-  - Atom serial numbers continue from the maximum serial present in the main (truncated) output block.
-  - A **TER** record is placed immediately before the link-H block (if one is already present, another
-    TER may still appear depending on writer output).
-
-- Multi-structure mode:
-  - The code requires that the **set and ordering of link-H targets** (which cut bonds would be capped)
-    is identical across models; otherwise it raises an error. Coordinates remain model-specific.
-  - This consistency check is performed regardless of whether link-H atoms are ultimately written.
-
-Charge summary
---------------
-A simple nominal-charge summary is computed from the **first** input structure and logged:
-
-- ``AMINO_ACIDS`` provides nominal integer charges for many amino-acid residue names
-  (standard, protonation variants, common modified residues, and N-/C-terminus variants).
-- ``ION`` provides formal charges for common ions by residue name. Waters are always 0.
-
-Residues are categorized as:
-- **protein**: residues whose ``resname`` is in ``AMINO_ACIDS``
-- **ions**: residues whose ``resname`` is in ``ION``
-- **waters**: residues in ``WATER_RES`` (always 0)
-- **unknown**: anything else (default 0 unless ``--ligand-charge`` is provided)
-
-``--ligand-charge`` handling (applies only to **unknown** residues):
-- ``--ligand-charge <number>``: assign the given total charge equally across **unknown substrate residues**;
-  if there are none, distribute across **all unknown residues** in the pocket.
-- ``--ligand-charge 'RES1:Q1,RES2:Q2'``: per-resname charges for unknown residues; unspecified unknowns remain 0.
-
-The logged summary includes:
-- net protein charge, net unknown/ligand charge, ion list and net ion charge, and total pocket charge.
-
-Multi-structure ensembles
--------------------------
-Multiple input PDBs can be provided with ``-i``:
-
-- Requirements / assumptions:
-  - All inputs must have the same atom count.
-  - Atom ordering is assumed identical; it is **spot-checked** on the first and last ~10 atoms.
-
-- Selection logic:
-  - Each structure is selected independently using the same rules.
-  - The **union** of selected residues (by a cross-structure key: chain, hetflag, resseq, insertion code, resname)
-    is applied to all structures. This means a residue selected in any model is included in every model.
-  - Disulfide inclusion, PRO N-side neighbor inclusion, forced inclusion (``--selected-resn``), and (if enabled)
-    backbone-contact neighbor inclusion are also unioned.
-
-- Outputs:
-  - Provide **one** output path → write a single **multi-MODEL** PDB (one MODEL per input).
-  - Provide **N** output paths where **N == number of inputs** → write **N** single-model PDBs.
-  - If ``-o`` is omitted with multiple inputs → defaults to per-file outputs
-    ``pocket_{input_basename}.pdb`` (in the current directory unless a path is provided).
-
-- Diagnostics:
-  - Raw atom counts (before truncation) and kept atom counts (after truncation) are logged per model.
-
-Substrate specification
------------------------
-``-c/--center`` accepts:
-
-- a **PDB path**:
-  substrate residues are identified by **exact atom-name + coordinate match** (tolerance 1e-3 Å) against
-  the *first* input structure. In multi-structure mode, the matched residues are then propagated to other
-  inputs by residue IDs (chain/resseq/icode), so numbering must be consistent across inputs.
-
-- a list of **residue IDs** (comma/space separated):
-  ``'123,124'``, ``'A:123,B:456'``, ``'123A'``, ``'A:123A'`` (insertion codes supported).
-  Chain may be omitted (matches all chains); insertion code may be omitted (matches any insertion code for that resseq).
-
-- a list of **residue names** (comma/space separated, case-insensitive), e.g., ``'GPP,SAM'``.
-  If multiple residues share the same residue name, **all** matches are included and a WARNING is logged.
-
-Outputs (& Paths)
------------------
-- The extractor writes standard PDB text via Biopython PDBIO plus optional appended link-H HETATM records.
-- Output directories are not created automatically; ensure the directory for ``-o`` exists.
-
-Defaults:
-- Single input and no ``-o``: ``pocket.pdb``
-- Multiple inputs and no ``-o``: ``pocket_{input_basename}.pdb`` for each input
-
-Link hydrogens, logs, and programmatic use
-------------------------------------------
-- When added, the link-H block follows a TER as contiguous HETATM records (HL/LKH, chain L).
-- INFO logs summarize substrate matching, residue selection, atom counts, and the charge summary
-  (set ``--verbose false`` to keep warnings only).
-- Programmatic use:
-  - ``extract(..., api=True)`` and ``extract_api(...)`` return
-    ``{"outputs": [...], "counts": [...], "charge_summary": {...}}``.
-
-Notes
------
-- Defaults / behavior:
-  - ``--radius`` default: **2.6 Å**. If given **0**, internally clamped to **0.001 Å**.
-  - ``--radius-het2het`` default: **0 Å** (effectively off); internally clamped to **0.001 Å** if ``0`` is given.
-  - ``--include-H2O`` default: **true**.
-  - ``--exclude-backbone`` default: **true**.
-  - ``--add-linkH`` default: **true**.
-  - ``--verbose`` default: **true** for the CLI entry; ``extract_api(..., verbose=False)`` defaults to warnings only.
-  - ``--ligand-charge`` default: **None** (unknown residues remain 0 unless set).
-  - Input PDBs are assumed to be **single-model**; files containing ``MODEL``/``ENDMDL`` records are not supported.
-
-- Geometry thresholds:
-  - Peptide adjacency: **C(prev)–N(next) ≤ 1.9 Å** (distance-based).
-  - Disulfide detection: **SG–SG ≤ 2.5 Å**.
-  - Link-H distance: **1.09 Å** (C–H) along the cut-bond direction.
-  - Exact match tolerance for substrate PDB: **1e‑3 Å** per atom.
+For detailed documentation, see: docs/extract.md
 """
 
 from __future__ import annotations
@@ -249,7 +17,7 @@ import io as _io
 import os
 import re
 import sys
-from typing import Dict, List, Set, Tuple, Iterable, Any, Optional
+from typing import Dict, List, Set, Tuple, Iterable, Any, Optional, Sequence
 
 import click
 import numpy as np
@@ -311,7 +79,7 @@ AMINO_ACIDS: Dict[str, int] = {
     "CYM": -1,   # deprotonated Cys
 
     # --- Lys variants / carboxylation ---
-    "MLY": +1, "LLP": +1, "DLY": +1,
+    "MLY": +1, "LLP": +1,
     "KCX": -1,   # Lysine Nz-Carboxylic Acid
 
     # --- D isomers (19 residues) ---
@@ -356,18 +124,18 @@ AMINO_ACIDS: Dict[str, int] = {
 ION: Dict[str, int] = {
     # +1
     "LI": +1, "NA": +1, "K": +1, "RB": +1, "CS": +1, "TL": +1, "AG": +1, "CU1": +1,
-    "Ag": +1, "K+": +1, "NA+": +1, "NH4": +1, "H3O+": +1, "TL": +1,
+    "Ag": +1, "K+": +1, "NA+": +1, "NH4": +1, "H3O+": +1,
 
     # +2
     "MG": +2, "CA": +2, "SR": +2, "BA": +2, "MN": +2, "FE2": +2, "CO": +2, "NI": +2,
     "CU": +2, "ZN": +2, "CD": +2, "HG": +2, "PB": +2, "BE": +2, "PD": +2, "PT": +2,
-    "SN": +2, "RA": +2, "YB2": +2, "V2+": +2,
+    "SN": +2, "RA": +2, "YB2": +2, "V2+": +2, 
 
     # +3
     "FE": +3, "AU3": +3, "AL": +3, "GA": +3, "IN": +3,
     "CE": +3, "CR": +3, "DY": +3, "EU": +3, "EU3": +3, "ER": +3,
     "GD3": +3, "LA": +3, "LU": +3, "ND": +3, "PR": +3, "SM": +3, "TB": +3,
-    "TM": +3, "Y": +3, "PU": +3,
+    "TM": +3, "Y": +3, "PU": +3, 
 
     # +4
     "U4+": +4, "TH": +4, "HF": +4, "ZR": +4,
@@ -388,15 +156,13 @@ ResidueKey = Tuple[str, str, int, str, str]
 # ---------------------------------------------------------------------
 
 def str2bool(v: str) -> bool:
-    """
-    Return a boolean for common truthy strings.
-    """
-    if isinstance(v, bool):
-        return v
-    return v.lower() in {"true", "1", "yes", "y"}
+    """Return a boolean for common truthy strings."""
+    from .cli_utils import argparse_bool
+
+    return argparse_bool(v)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """
     Parse CLI arguments.
 
@@ -474,7 +240,7 @@ def parse_args() -> argparse.Namespace:
         help=("Enable INFO-level logging."
               " Default: True.")
     )
-    return p.parse_args()
+    return p.parse_args(args=argv)
 
 
 def load_structure(path: str, name: str) -> PDB.Structure.Structure:
@@ -483,6 +249,17 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     """
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(name, path)
+    models = list(structure.get_models())
+    if len(models) > 1:
+        logging.warning(
+            "Input '%s' contains %d MODELs; extract supports single-model PDBs only. "
+            "Using first model (%s) and ignoring the rest.",
+            path,
+            len(models),
+            models[0].id,
+        )
+        for model in models[1:]:
+            structure.detach_child(model.id)
     missing_elem = [a for a in structure.get_atoms() if not (getattr(a, "element", "") or "").strip()]
     if missing_elem:
         raise ValueError(
@@ -711,6 +488,27 @@ def are_peptide_adjacent(prev_res: PDB.Residue.Residue,
 #   Residue selection around the substrate
 # ---------------------------------------------------------------------
 
+def _is_amino_backbone_atom(atom: PDB.Atom.Atom) -> bool:
+    res = atom.get_parent()
+    return (res.get_resname() in AMINO_ACIDS) and (atom.get_name() in BACKBONE_ATOMS)
+
+
+def _add_residue_if_eligible(
+    atom: PDB.Atom.Atom,
+    include_h2o: bool,
+    selected_ids: Set[Tuple],
+    backbone_contact_ids: Set[Tuple],
+    via_backbone: bool,
+) -> None:
+    res = atom.get_parent()
+    if not include_h2o and res.get_resname() in WATER_RES:
+        return
+    fid = res.get_full_id()
+    selected_ids.add(fid)
+    if via_backbone and res.get_resname() in AMINO_ACIDS:
+        backbone_contact_ids.add(fid)
+
+
 def select_residues(complex_struct,
                     substrate_res_list: List[PDB.Residue.Residue],
                     r_as: float,
@@ -746,36 +544,35 @@ def select_residues(complex_struct,
     selected_ids: Set[Tuple] = {res.get_full_id() for res in substrate_res_list}
     backbone_contact_ids: Set[Tuple] = set()
 
-    def is_amino_backbone_atom(atom: PDB.Atom.Atom) -> bool:
-        res = atom.get_parent()
-        return (res.get_resname() in AMINO_ACIDS) and (atom.get_name() in BACKBONE_ATOMS)
-
-    def maybe_add(atom, via_backbone: bool):
-        res = atom.get_parent()
-        if not include_h2o and res.get_resname() in WATER_RES:
-            return
-        fid = res.get_full_id()
-        selected_ids.add(fid)
-        if via_backbone and res.get_resname() in AMINO_ACIDS:
-            backbone_contact_ids.add(fid)
-
     # standard radius: any atom within r_as (with backbone filter when exclude_backbone==True)
     for atom in substrate_atoms:
         for neigh in ns.search(atom.get_coord(), r_as):
-            if exclude_backbone and is_amino_backbone_atom(neigh):
+            if exclude_backbone and _is_amino_backbone_atom(neigh):
                 continue  # require non-backbone atom for amino-acid residues
             via_backbone_neigh = (neigh.get_name() in BACKBONE_ATOMS)
-            maybe_add(neigh, via_backbone_neigh)
+            _add_residue_if_eligible(
+                neigh,
+                include_h2o,
+                selected_ids,
+                backbone_contact_ids,
+                via_backbone_neigh,
+            )
 
     # hetero-hetero radius: both sides non-C/H (and non-backbone filter for amino acids when exclude_backbone==True)
     for atom in substrate_het:
         for neigh in ns.search(atom.get_coord(), r_het):
             if neigh.element in ("C", "H"):
                 continue
-            if exclude_backbone and is_amino_backbone_atom(neigh):
+            if exclude_backbone and _is_amino_backbone_atom(neigh):
                 continue
             via_backbone_neigh = (neigh.get_name() in BACKBONE_ATOMS)
-            maybe_add(neigh, via_backbone_neigh)
+            _add_residue_if_eligible(
+                neigh,
+                include_h2o,
+                selected_ids,
+                backbone_contact_ids,
+                via_backbone_neigh,
+            )
 
     return selected_ids, backbone_contact_ids
 
