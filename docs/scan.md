@@ -2,14 +2,14 @@
 
 ## Overview
 
-> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists` to define target distances. Multiple stages run sequentially, each starting from the previous stage’s relaxed result.
+> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--spec` (YAML/JSON, recommended) to define targets; `--scan-lists` remains as a legacy Python-literal input.
 
 ### At a glance
 - **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
-- **Input:** One structure + one or more `--scan-lists` literals (each literal = one stage).
-- **Defaults:** `--opt-mode light` (LBFGS), `--preopt True`, `--endopt True`, `--max-step-size 0.20 Å`.
-- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump True`.
-- **Note:** `--scan-lists` is parsed as a **Python literal**; quoting/escaping matters (see examples).
+- **Input:** One structure + `--spec scan.yaml` (recommended), or one or more legacy `--scan-lists` literals (each literal = one stage).
+- **Defaults:** `--opt-mode light` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
+- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump`.
+- **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported as legacy.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode light`) or RFOptimizer (`--opt-mode heavy`).
 
@@ -17,24 +17,65 @@ When you provide multiple `--scan-lists` literals after a single flag, stages ru
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
+## Minimal example
+
+```bash
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-dir ./result_scan
+```
+
+## Output checklist
+
+- `result_scan/stage_01/result.pdb` (or `result.xyz`)
+- `result_scan/stage_02/result.pdb` (or `result.xyz`)
+- `result_scan/stage_*/scan.trj` and `scan.pdb` when `--dump` is enabled
+
+## Common examples
+
+1. First validate parsed scan targets from YAML spec.
+
+```bash
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
+```
+
+2. Use legacy literal input for compatibility.
+
+```bash
+pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+```
+
+3. Dump trajectories for stage-by-stage inspection.
+
+```bash
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./result_scan_dump
+```
+
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                  --scan-lists '[(i,j,targetÅ), ...]' [options]
-                  [--convert-files {True\|False}] [--ref-pdb FILE]
+                  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ), ...]'] [options]
+                  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### Examples
 ```bash
-# Single-stage, minimal inputs
+# Recommended: YAML/JSON spec
+cat > scan.yaml << 'YAML'
+one_based: true
+stages:
+  - [["TYR,285,CA", "MMT,309,C10", 1.35]]
+  - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+YAML
+pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml --print-parsed
+
+# Legacy: Python literal
 pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
 
 # Two stages, LBFGS relaxations, and trajectory dumping
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
     '[("TYR,285,CA","MMT,309,C10",1.35)]' \
     '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
-    --max-step-size 0.20 --dump True --out-dir ./result_scan/ --opt-mode light \
-    --preopt True --endopt True
+    --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode light \
+    --preopt --endopt
 
 # Supply multiple stage literals after a single --scan-lists
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
@@ -42,9 +83,24 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
     '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
+## `--spec` format (recommended)
+
+`--spec` accepts YAML/JSON with a mapping root:
+
+```yaml
+one_based: true   # optional; defaults to CLI --one-based
+stages:
+  - [[1, 5, 1.35]]
+  - [[1, 5, 2.20], [2, 8, 1.80]]
+```
+
+- `stages` is required.
+- Each stage is a list of `(i, j, target_Å)` triples.
+- Indices may be integers or PDB selectors, same as `--scan-lists`.
+
 ## `--scan-lists` format
 
-`--scan-lists` accepts **Python literal** strings evaluated by the CLI. Shell quoting matters.
+`--scan-lists` is the legacy advanced input mode. It accepts **Python literal** strings evaluated by the CLI. Shell quoting matters.
 
 ### Basic structure
 
@@ -64,7 +120,7 @@ Atoms can be given as **integer indices** or **PDB selector strings**:
 
 | Method | Example | Notes |
 | --- | --- | --- |
-| Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based True`) |
+| Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based`) |
 | PDB selector | `("TYR,285,CA", "MMT,309,C10", 2.0)` | Residue name, residue number, atom name |
 
 PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
@@ -110,9 +166,9 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
    is omitted but `--ligand-charge` is provided, the input is treated as an
    enzyme–substrate complex and `extract.py`’s charge summary derives the total
    charge before any scans.
-2. Optionally run an unbiased preoptimization (`--preopt True`) before any
+2. Optionally run an unbiased preoptimization (`--preopt`) before any
    biasing so the starting point is relaxed.
-3. For each stage literal supplied via `--scan-lists`, parse and normalize the
+3. Parse stage targets from `--spec` (recommended) or legacy `--scan-lists`, then normalize the
    `(i, j)` indices (1-based by default). When the input is a PDB, each entry
    may be either an integer index or an atom selector string like `'TYR,285,CA'`;
    selector fields can be separated by spaces, commas, slashes, backticks, or
@@ -124,7 +180,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
    harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with UMA.
    Optimizer cycles are capped by `--relax-max-cycles` unless YAML specifies `opt.max_cycles`.
 5. After the last step of each stage, optionally run an unbiased relaxation
-   (`--endopt True`) before reporting covalent bond changes and writing the
+   (`--endopt`) before reporting covalent bond changes and writing the
    `result.*` files.
 6. Repeat for every stage; optional trajectories are dumped only when `--dump`
    is `True`.
@@ -137,21 +193,23 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `--scan-lists, --scan-list TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
-| `--one-based {True\|False}` | Interpret atom indices as 1- or 0-based. | `True` |
+| `--spec FILE` | YAML/JSON scan spec with `stages`; optional `one_based`. | Recommended |
+| `--scan-lists, --scan-list TEXT` | Legacy Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
+| `--one-based/--no-one-based` | Interpret atom indices as 1- or 0-based. | `True` |
+| `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--spec`/`--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
-| `--freeze-links {True\|False}` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
-| `--dump {True\|False}` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
-| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
+| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
+| `--dump/--no-dump` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
-| `--preopt {True\|False}` | Run an unbiased optimization before scanning. | `True` |
-| `--endopt {True\|False}` | Run an unbiased optimization after each stage. | `True` |
+| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
+| `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `True` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
@@ -186,16 +244,14 @@ out_dir/ (default: ./result_scan/)
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
 - Provide multiple literals after a single `--scan-lists` flag; repeated flags are not accepted.
   Tuples must have positive targets. Atom indices are normalized to 0-based internally. For
   PDB inputs, `i`/`j` can be selector strings with flexible delimiters
   (space/comma/slash/backtick/backslash) and unordered tokens.
 - `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
   atoms in PDB files so pockets stay rigid.
-- Charge inherits Gaussian template metadata when available. For non-`.gjf`
-  inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for
-  PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. **Multiplicity
-  inherits `.gjf` metadata when available, otherwise defaults to `1`.**
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are written
   regardless of `--dump`; trajectories are written only when `--dump` is `True`
   and converted to `scan.pdb` (PDB inputs only) when conversion is enabled.
@@ -314,6 +370,8 @@ bond:
 ---
 
 ## See Also
+
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [all](all.md) — End-to-end workflow with `--scan-lists` for single-structure inputs
 - [path-search](path_search.md) — MEP search using scan endpoints as intermediates

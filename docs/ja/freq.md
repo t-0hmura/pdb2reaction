@@ -13,17 +13,54 @@
 
 `pdb2reaction freq` は UMA 計算機で振動解析を行い、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `.trj` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力されます。
 
-設定は **デフォルト → CLI → `--args-yaml`**（`geom`, `calc`, `freq`, `thermo`）の優先順位で解決されます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したまま PDB 出力変換が可能になります。
+設定は **デフォルト < `--config` < 明示CLI < `--override-yaml`**（`geom`, `calc`, `freq`, `thermo`）の優先順位で解決されます。`--args-yaml` は `--override-yaml` の legacy alias として引き続き利用できます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したまま PDB 出力変換が可能になります。
+
+## 最小例
+
+```bash
+pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
+```
+
+## 出力の見方
+
+- `result_freq/summary.md`
+- `result_freq/key_frequencies.txt`
+- `result_freq/key_mode_1.trj`
+- `result_freq/frequencies_cm-1.txt`
+- `result_freq/mode_*.trj`
+- `result_freq/mode_*.pdb`（PDB 入力かつ変換有効時）
+
+## よくある例
+
+1. まずは出力モード数を絞って確認する。
+
+```bash
+pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --max-write 6 --out-dir ./result_freq_quick
+```
+
+2. freeze-links + 熱化学ダンプを有効化して実行する。
+
+```bash
+pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
+```
+
+3. VRAM に余裕があるノードで解析的ヘシアンを使う。
+
+```bash
+pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
+  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
+```
 
 ## 使用法
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                  [--freeze-links {True\|False}] \
+                  [--freeze-links/--no-freeze-links] \
                   [--max-write N] [--amplitude-ang Å] [--n-frames N] \
-                  [--sort value|abs] [--out-dir DIR] [--args-yaml FILE] \
-                  [--temperature K] [--pressure atm] [--dump {True\|False}] \
+                  [--sort value|abs] [--out-dir DIR] [--config FILE] [--override-yaml FILE|--args-yaml FILE] \
+                  [--show-config] [--dry-run] \
+                  [--temperature K] [--pressure atm] [--dump/--no-dump] \
                   [--hessian-calc-mode Analytical|FiniteDifference] \
-                  [--convert-files {True\|False}] [--ref-pdb FILE]
+                  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### 例
@@ -31,16 +68,16 @@ pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numbe
 # 明示的な電荷とスピンでの最小実行
 pdb2reaction freq -i a.pdb -q 0 -m 1
 
-# YAML 上書きとカスタム出力ディレクトリを使用したPHVA
-pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq/
+# YAML 設定ファイルとカスタム出力ディレクトリを使用した PHVA
+pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 ```
 
 ## ワークフロー
-- **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links True` によりリンク水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、UMA と PHVA に伝播されます。
+- **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` によりリンク水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、UMA と PHVA に伝播されます。
 - **UMA 計算機**: `--hessian-calc-mode` で解析的または有限差分ヘシアンを選択します。凍結原子がある場合、UMAは活性ブロックのみのヘシアンを返すことがあります。VRAMが十分な場合は `Analytical` を強く推奨します。
 - **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N ヘシアンと活性ブロックヘシアンの両方に対応し、振動数は cm⁻¹ で報告されます（負の値は虚振動数）。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。`--sort abs` を指定すると絶対値順にソートされます。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `.trj` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
-- **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump True` を指定すると `thermoanalysis.yaml` も書き込まれます。
+- **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。
 - **性能と終了挙動**: GPU メモリ使用量を最小化するため、ヘシアンは 1 つだけ保持し、上三角固有値分解（`UPLO="U"`）を優先します。キーボード割り込みは終了コード 130、その他のエラーはトレースバックを出力して終了コード 1 で終了します。
 
 ## CLI オプション
@@ -51,7 +88,7 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links {True\|False}` | PDBのみ。リンク水素の親を凍結し `geom.freeze_atoms` にマージ | `True` |
+| `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結し `geom.freeze_atoms` にマージ | `True` |
 | `--max-write INT` | エクスポートするモード数 | `10` |
 | `--amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
 | `--n-frames INT` | モードアニメーションのフレーム数 | `20` |
@@ -59,15 +96,24 @@ pdb2reaction freq -i a.xyz -q -1 --args-yaml ./args.yaml --out-dir ./result_freq
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_freq/` |
 | `--temperature FLOAT` | 熱化学計算の温度（K） | `298.15` |
 | `--pressure FLOAT` | 熱化学計算の圧力（atm） | `1.0` |
-| `--dump {True\|False}` | `thermoanalysis.yaml` を書き込み | `False` |
+| `--dump/--no-dump` | `thermoanalysis.yaml` を書き込み | `False` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード | `FiniteDifference` |
-| `--convert-files {True\|False}` | PDB テンプレートが利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか（GJF は出力しない） | `True` |
+| `--convert-files/--no-convert-files` | PDB テンプレートが利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか（GJF は出力しない） | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
-| `--args-yaml FILE` | YAML 上書き（セクション: `geom`、`calc`、`freq`、`thermo`） | _None_ |
+| `--config FILE` | 明示CLI適用前に読み込むベース YAML。 | _None_ |
+| `--override-yaml FILE` | 最終 YAML 上書き（YAML レイヤー最優先）。 | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の legacy alias。 | _None_ |
+| `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
 
 ## 出力
 ```
 out_dir/ (デフォルト: ./result_freq/)
+├─ summary.md                # 主要成果物のインデックス
+├─ key_frequencies.txt       # frequencies_cm-1.txt へのショートカット
+├─ key_mode_1.trj            # 代表モード軌跡へのショートカット
+├─ key_mode_1.pdb            # 代表モードPDBへのショートカット（存在時）
+├─ key_thermo.yaml           # thermoanalysis.yaml へのショートカット（存在時）
 ├─ mode_XXXX_±freqcm-1.trj  # モードごとのアニメーション
 ├─ mode_XXXX_±freqcm-1.pdb  # PDB テンプレートが存在し変換が有効な場合のみ
 ├─ frequencies_cm-1.txt     # 選択したソート順での全振動数リスト
@@ -76,13 +122,14 @@ out_dir/ (デフォルト: ./result_freq/)
 コンソールには確定済みの `geom`/`calc`/`freq` 設定と熱化学設定の要約が出力されます。
 
 ## 注意事項
-- 虚振動モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump True` で詳細を出力します。
-- `--hessian-calc-mode` は **デフォルト → CLI → YAML** の優先順位で解決されます。YAML で `calc.hessian_calc_mode` が指定されている場合、CLI の値より優先されます。
-- 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`.gjf` 以外では、`-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）で、明示的な `-q` が常に優先されます。多重度は省略時に `1` がデフォルトです。意図した状態を確実にするため、明示的に指定してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
+- 虚振動モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
+- `--hessian-calc-mode` は **デフォルト < config < 明示CLI < override** の優先順位で解決されます。YAML で `calc.hessian_calc_mode` が指定されている場合、最終 override レイヤーが優先されます。
 
 
-## YAML 設定（`--args-yaml`）
-マッピング形式で指定します。YAML の値はデフォルトと CLI の両方を上書きします（最優先）。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
+## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
 
 ```yaml
 geom:
@@ -116,9 +163,11 @@ thermo:
 
 ## 関連項目
 
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+
 - [tsopt](tsopt.md) — 遷移状態の最適化（妥当な TS であれば虚振動数は 1 つのみ）
 - [irc](irc.md) — TS からの IRC（端点での freq と組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
-- [all](all.md) — `--thermo True` を含むエンドツーエンドワークフロー
+- [all](all.md) — `--thermo` を含むエンドツーエンドワークフロー
 - [YAML リファレンス](yaml-reference.md) — `freq` と `thermo` の設定オプション一覧
 - [用語集](glossary.md) — ZPE、ギブズエネルギー、エンタルピー、エントロピーの定義

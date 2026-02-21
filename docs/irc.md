@@ -6,7 +6,7 @@
 
 ### At a glance
 - **Input:** A TS structure (ideally already optimized and validated).
-- **Branches:** Runs both directions by default (`--forward True`, `--backward True`).
+- **Branches:** Runs both directions by default (`--forward`, `--backward`).
 - **Key knobs:** `--step-size` (mass-weighted step length) and `--max-cycles` (number of steps).
 - **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` after merge (even if YAML sets them).
 - **Outputs:** `finished_irc.trj` plus `forward_irc.trj`/`backward_irc.trj` (and `.pdb` companions when a PDB reference exists and conversion is enabled).
@@ -15,23 +15,62 @@
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `freq` (confirm **one** imaginary mode) → `irc`.
 
+## Minimal example
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
+```
+
+## Output checklist
+
+- `result_irc/summary.md`
+- `result_irc/key_irc.trj`
+- `result_irc/key_irc_forward.trj`
+- `result_irc/finished_irc.trj`
+- `result_irc/forward_irc.trj`
+- `result_irc/backward_irc.trj`
+
+## Common examples
+
+1. Run only the forward branch.
+
+```bash
+pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward --no-backward \
+  --out-dir ./result_irc_forward
+```
+
+2. Increase step size and use analytical Hessians.
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
+  --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
+```
+
+3. Keep both branches and raise the step limit.
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 150 \
+  --out-dir ./result_irc_long
+```
+
 ## Usage
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
                  [--workers N] [--workers-per-node N] [-m 2S+1]
                  [--max-cycles N] [--step-size Δs] [--root k]
-                 [--forward True|False] [--backward True|False]
-                 [--freeze-links True|False]
+                 [--forward/--no-forward] [--backward/--no-backward]
+                 [--freeze-links/--no-freeze-links]
                  [--out-dir DIR]
-                 [--convert-files {True\|False}] [--ref-pdb FILE]
+                 [--convert-files/--no-convert-files] [--ref-pdb FILE]
                  [--hessian-calc-mode Analytical|FiniteDifference]
-                 [--args-yaml FILE]
+                 [--config FILE] [--override-yaml FILE|--args-yaml FILE]
+                 [--show-config] [--dry-run]
 ```
 
 ### Examples
 ```bash
 # Forward-only branch, finite-difference Hessian, larger step size
-pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward True --backward False \
+pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward --no-backward \
                 --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
 # PDB input so finished and directional trajectories are also exported as PDB
@@ -40,7 +79,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## Workflow
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs.
-2. **Configuration merge** – Defaults → CLI → YAML (`geom`, `calc`, `irc`). Charge/multiplicity inherit `.gjf` template metadata when available. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Always set them explicitly to remain on the intended PES. **IRC always forces Cartesian coordinates (`geom.coord_type = cart`) and `calc.return_partial_hessian = false`, regardless of YAML.**
+2. **Configuration merge** – Defaults → `--config` → explicit CLI → `--override-yaml` (`geom`, `calc`, `irc`). `--args-yaml` is a legacy alias of `--override-yaml`. Charge/multiplicity inherit `.gjf` template metadata when available. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Always set them explicitly to remain on the intended PES. **IRC always forces Cartesian coordinates (`geom.coord_type = cart`) and `calc.return_partial_hessian = false`, regardless of YAML.**
 3. **IRC integration** – EulerPC integrates forward/backward branches according to `irc.forward/backward`, `irc.step_length`, `irc.root`, and the Hessian workflow configured through UMA (`calc.*`, `--hessian-calc-mode`). Hessians are updated with the configured scheme (`bofill` by default) and can be recalculated periodically.
 4. **Outputs** – Trajectories (`finished`, `forward`, `backward`) are written as `.trj` and, when a reference PDB is available, mirrored to `.pdb`.
 
@@ -55,18 +94,28 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--max-cycles INT` | Maximum IRC steps; used unless YAML sets `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates; used unless YAML sets `irc.step_length`. | `0.10` |
 | `--root INT` | Imaginary-mode index for the initial displacement; used unless YAML sets `irc.root`. | `0` |
-| `--forward {True\|False}` | Run forward branch (`irc.forward`), used unless YAML sets `irc.forward`. | `True` |
-| `--backward {True\|False}` | Run backward branch (`irc.backward`), used unless YAML sets `irc.backward`. | `True` |
-| `--freeze-links {True\|False}` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
+| `--forward/--no-forward` | Run forward branch (`irc.forward`), used unless YAML sets `irc.forward`. | `True` |
+| `--backward/--no-backward` | Run backward branch (`irc.backward`), used unless YAML sets `irc.backward`. | `True` |
+| `--freeze-links/--no-freeze-links` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). | `True` |
 | `--out-dir TEXT` | Output directory (`irc.out_dir`), used unless YAML sets `irc.out_dir`. | `./result_irc/` |
-| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB companions when a reference PDB is available. | `True` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions when a reference PDB is available. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`), used unless YAML sets `calc.hessian_calc_mode`. | `FiniteDifference` |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
+| `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
+| `--override-yaml FILE` | Final YAML override (highest-priority YAML layer). | _None_ |
+| `--args-yaml FILE` | Legacy alias of `--override-yaml`. | _None_ |
+| `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
+| `--dry-run/--no-dry-run` | Validate and print execution plan without running IRC. | `False` |
 
 ## Outputs
 ```
 out_dir/ (default: ./result_irc/)
+├─ summary.md                # Quick index of key outputs
+├─ key_irc.trj               # Shortcut to finished_irc.trj
+├─ key_irc_forward.trj       # Shortcut to forward_irc.trj
+├─ key_irc_backward.trj      # Shortcut to backward_irc.trj
+├─ key_irc.pdb               # Shortcut to finished_irc.pdb (when available)
+├─ key_irc_data.h5           # Shortcut to irc_data.h5 (when available)
 ├─ <prefix>finished_irc.trj   # Complete IRC trajectory
 ├─ <prefix>forward_irc.trj    # Present when the forward branch runs
 ├─ <prefix>backward_irc.trj   # Present when the backward branch runs
@@ -75,14 +124,16 @@ out_dir/ (default: ./result_irc/)
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## Notes
-- CLI booleans (`--forward`, `--backward`) must be spelled out (`True`/`False`) to be merged into YAML when desired.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
+- CLI booleans (`--forward`, `--backward`) are toggle-style (`--forward/--no-forward`, `--backward/--no-backward`).
 - UMA is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
 - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
-- Charge/spin inherit `.gjf` metadata when possible. For non-`.gjf` inputs, `-q/--charge` is required unless `--ligand-charge` is provided (supported for PDB inputs or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Multiplicity defaults to `1` when omitted. Override them explicitly for non-standard states.
 - `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
 
-## YAML configuration (`--args-yaml`)
-Provide a mapping; YAML overrides CLI. Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
+## YAML configuration (`--config`, `--override-yaml`, `--args-yaml`)
+Provide mappings with merge order **defaults < config < explicit CLI < override**.
+`--args-yaml` is a legacy alias of `--override-yaml`. Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
@@ -138,6 +189,8 @@ irc:
 ---
 
 ## See Also
+
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
 - [freq](freq.md) — Verify the TS candidate has one imaginary frequency; analyze IRC endpoints

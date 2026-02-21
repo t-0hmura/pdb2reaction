@@ -13,13 +13,51 @@ The backend is controlled by `--engine`:
 
 In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 
+## Minimal example
+
+```bash
+pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
+```
+
+## Output checklist
+
+- `result_dft/input_geometry.xyz`
+- `result_dft/result.yaml`
+- `result_dft/summary.md`
+- `result_dft/key_input_geometry.xyz`, `result_dft/key_result.yaml` (symlink/copy shortcuts)
+- Engine metadata (`gpu4pyscf` / `pyscf(cpu)`) in `result.yaml`
+
+## Common examples
+
+1. Run with a larger basis and tighter SCF settings.
+
+```bash
+pdb2reaction dft -i input.pdb -q 0 -m 1 \
+  --func-basis 'wb97m-v/def2-tzvpd' --conv-tol 1e-10 --max-cycle 200 \
+  --engine auto --out-dir ./result_dft_tight
+```
+
+2. Force CPU backend for portability.
+
+```bash
+pdb2reaction dft -i input.pdb -q 0 -m 1 --engine cpu --out-dir ./result_dft_cpu
+```
+
+3. Derive total charge from ligand mapping when `-q` is omitted.
+
+```bash
+pdb2reaction dft -i input.pdb --ligand-charge 'LIG:0' -m 1 \
+  --engine auto --out-dir ./result_dft_ligand
+```
+
 ## Usage
 ```bash
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
                  [--func-basis 'FUNC/BASIS'] \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True\|False}] \
-                 [--ref-pdb FILE] [--args-yaml FILE]
+                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+                 [--ref-pdb FILE] [--config FILE] [--override-yaml FILE] \
+                 [--show-config] [--dry-run] [--args-yaml FILE]
 ```
 
 ### Examples
@@ -33,7 +71,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/.trj/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
-2. **Configuration merge** – Defaults → CLI → YAML (`dft` block). YAML overrides take precedence over CLI flags. Charge/multiplicity inherit `.gjf` metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the structure is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted.
+2. **Configuration merge** – Defaults → `--config` → explicit CLI options → `--override-yaml` (`dft` block). `--args-yaml` is retained as a legacy alias of `--override-yaml`. Charge/multiplicity inherit `.gjf` metadata when present. If `-q` is omitted but `--ligand-charge` is provided, the structure is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted.
 3. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 4. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
@@ -50,15 +88,22 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
-| `--convert-files {True\|False}` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
+| `--convert-files/--no-convert-files` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
+| `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
+| `--override-yaml FILE` | Final YAML override file (highest priority YAML layer). | _None_ |
+| `--args-yaml FILE` | _Legacy alias_ of `--override-yaml` (deprecated). | _None_ |
+| `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and print execution plan without running DFT. | `False` |
 
 ## Outputs
 ```
 out_dir/ (default: ./result_dft/)
 ├─ input_geometry.xyz   # Geometry snapshot sent to PySCF
-└─ result.yaml          # Energy/charge/spin summaries with convergence/engine metadata
+├─ result.yaml          # Energy/charge/spin summaries with convergence/engine metadata
+├─ summary.md           # Quick guide to key outputs
+├─ key_input_geometry.xyz  # Shortcut to geometry snapshot (symlink/copy)
+└─ key_result.yaml      # Shortcut to result summary (symlink/copy)
 ```
 - `result.yaml` expands to:
   - `energy`: Hartree/kcal·mol⁻¹ values, convergence flag, wall time, engine metadata
@@ -69,6 +114,8 @@ out_dir/ (default: ./result_dft/)
   convergence knobs, and resolved output directory.
 
 ## Notes
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
 - `--engine gpu` (default) requires GPU4PySCF and **raises an error** if a GPU is unavailable. Use `--engine auto` for automatic fallback to CPU PySCF when GPU resources are not detected, or `--engine cpu` to force CPU-only execution.
 - If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
 - Compiled GPU4PySCF wheels may not support Blackwell-architecture GPUs, and non-x86 systems require compiling from source; we recommend using the CPU backend or building GPU4PySCF yourself in these situations. (see https://github.com/pyscf/gpu4pyscf)
@@ -76,8 +123,12 @@ out_dir/ (default: ./result_dft/)
 - The YAML input file must have a mapping root; the `dft` section is optional. Non-mapping roots raise an error via `load_yaml_dict`.
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 
-## YAML configuration (`--args-yaml`)
-Accepts a mapping root; the `dft` section (and optional `geom`) is applied when present. YAML values override CLI values.
+## YAML configuration (`--config` / `--override-yaml` / `--args-yaml`)
+Accepts a mapping root; the `dft` section (and optional `geom`) is applied when present. Merge order is:
+- defaults
+- `--config`
+- explicit CLI options
+- `--override-yaml` (or `--args-yaml`, legacy alias)
 
 `dft` keys (defaults in parentheses):
 - `func` (`"wb97m-v"`): Exchange–correlation functional.
@@ -108,7 +159,9 @@ dft:
 
 ## See Also
 
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+
 - [freq](freq.md) — UMA-based vibrational analysis (often precedes DFT refinement)
-- [all](all.md) — End-to-end workflow with `--dft True`
+- [all](all.md) — End-to-end workflow with `--dft`
 - [YAML Reference](yaml-reference.md) — Full `dft` configuration options
 - [Glossary](glossary.md) — Definitions of DFT, SP (Single Point)

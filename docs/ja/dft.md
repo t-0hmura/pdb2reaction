@@ -13,13 +13,51 @@
 
 総エネルギーに加えて、Mulliken、meta-Löwdin、IAO の原子電荷およびスピン密度も報告します。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、原子数の検証や電荷導出に使われますが、DFT 段階自体は PDB/GJF 出力を生成しません。
 
+## 最小例
+
+```bash
+pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
+```
+
+## 出力の見方
+
+- `result_dft/input_geometry.xyz`
+- `result_dft/result.yaml`
+- `result_dft/summary.md`
+- `result_dft/key_input_geometry.xyz`, `result_dft/key_result.yaml`（symlink/copy ショートカット）
+- `result.yaml` 内のエンジン情報（`gpu4pyscf` / `pyscf(cpu)`）
+
+## よくある例
+
+1. 大きい基底と厳しい SCF 条件で実行する。
+
+```bash
+pdb2reaction dft -i input.pdb -q 0 -m 1 \
+  --func-basis 'wb97m-v/def2-tzvpd' --conv-tol 1e-10 --max-cycle 200 \
+  --engine auto --out-dir ./result_dft_tight
+```
+
+2. 可搬性重視で CPU バックエンドを強制する。
+
+```bash
+pdb2reaction dft -i input.pdb -q 0 -m 1 --engine cpu --out-dir ./result_dft_cpu
+```
+
+3. `-q` を省略し、リガンド定義から総電荷を導出する。
+
+```bash
+pdb2reaction dft -i input.pdb --ligand-charge 'LIG:0' -m 1 \
+  --engine auto --out-dir ./result_dft_ligand
+```
+
 ## 使用法
 ```bash
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
                  [--func-basis 'FUNC/BASIS'] \
                  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
-                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files {True\|False}] \
-                 [--ref-pdb FILE] [--args-yaml FILE]
+                 [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+                 [--ref-pdb FILE] [--config FILE] [--override-yaml FILE] \
+                 [--show-config] [--dry-run] [--args-yaml FILE]
 ```
 
 ### 例
@@ -33,7 +71,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 
 ## ワークフロー
 1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/.trj/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートされます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT 段階自体は PDB/GJF 出力を生成しません。
-2. **設定マージ** – デフォルト → CLI → YAML（`dft` ブロック）。YAMLがCLIより優先されます。電荷/多重度は `.gjf` があればそのメタデータを継承し、`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱って `extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `-q` が無く `--ligand-charge` も使えない場合は中断します。多重度は省略時 `1` がデフォルトです。
+2. **設定マージ** – デフォルト → `--config` → 明示指定された CLI オプション → `--override-yaml`（`dft` ブロック）。`--args-yaml` は `--override-yaml` の legacy alias として保持されます。電荷/多重度は `.gjf` があればそのメタデータを継承し、`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱って `extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `-q` が無く `--ligand-charge` も使えない場合は中断します。多重度は省略時 `1` がデフォルトです。
 3. **SCFビルド** – `--func-basis` を汎関数と基底に解析し、密度フィッティングは PySCF のデフォルト設定で自動的に有効化されます。`--engine` でGPU/CPUの優先度を制御します（`gpu` はGPU4PySCF必須、`cpu` はCPU固定、`auto` はGPU→CPUの順）。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
 4. **電子密度解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとのMulliken/meta-Löwdin/IAO電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
 
@@ -50,15 +88,22 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--grid-level INT` | PySCF数値積分グリッドレベル | `3` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | バックエンドポリシー: GPU4PySCF優先、CPUのみ、または自動 | `gpu` |
-| `--convert-files {True\|False}` | インターフェースの一貫性のために受け付けるが、`dft` では PDB/GJF 出力は生成されない | `True` |
+| `--convert-files/--no-convert-files` | インターフェースの一貫性のために受け付けるが、`dft` では PDB/GJF 出力は生成されない | `True` |
 | `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
-| `--args-yaml FILE` | YAML 上書き | _None_ |
+| `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
+| `--override-yaml FILE` | 最後に適用される YAML 上書き（最優先） | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の _legacy alias_（廃止予定） | _None_ |
+| `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う | `False` |
 
 ## 出力
 ```
 out_dir/ (デフォルト: ./result_dft/)
-├─ input_geometry.xyz   # PySCFに送信された構造スナップショット
-└─ result.yaml          # 収束/エンジンメタデータを含むエネルギー/電荷/スピンサマリー
+├─ input_geometry.xyz      # PySCFに送信された構造スナップショット
+├─ result.yaml             # 収束/エンジンメタデータを含むエネルギー/電荷/スピンサマリー
+├─ summary.md              # 主要出力を追うためのクイックガイド
+├─ key_input_geometry.xyz  # 構造スナップショットへのショートカット（symlink/copy）
+└─ key_result.yaml         # 結果サマリーへのショートカット（symlink/copy）
 ```
 - `result.yaml` には以下が含まれます:
   - `energy`: Hartree/kcal·mol⁻¹、収束フラグ、実行時間、エンジン情報（`gpu4pyscf`/`pyscf(cpu)`、`used_gpu`）
@@ -67,6 +112,8 @@ out_dir/ (デフォルト: ./result_dft/)
 - 電荷・多重度（2S）、汎関数/基底、収束設定、出力ディレクトリも要約されます。
 
 ## 注意事項
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
 - `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。GPU リソースが検出されない場合に自動フォールバックさせるには `--engine auto` を使用してください。CPU のみで実行するには `--engine cpu` を指定します。
 - **Blackwellアーキテクチャ**GPUが検出された場合、現在のGPU4PySCFがサポートされていない可能性があるため警告が出力されます。
 - GPU4PySCFのコンパイル済みホイールはBlackwellをサポートしない場合があり、非x86環境ではソースビルドが必要です。該当環境ではCPUバックエンドまたは自身でのビルドを推奨します（参照: https://github.com/pyscf/gpu4pyscf）。
@@ -75,8 +122,12 @@ out_dir/ (デフォルト: ./result_dft/)
 - IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当列は `null` となり警告が出力されます。
 
 
-## YAML 設定（`--args-yaml`）
-マッピングルートで指定します。`dft` セクション（および任意の `geom`）が存在する場合に適用されます。YAML の値は CLI を上書きします。
+## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
+マッピングルートで指定します。`dft` セクション（および任意の `geom`）が存在する場合に適用されます。マージ順は次の通りです。
+- defaults
+- `--config`
+- 明示的に指定した CLI オプション
+- `--override-yaml`（または legacy alias の `--args-yaml`）
 
 `dft` キー（括弧内はデフォルト）:
 - `func` (`"wb97m-v"`): 交換相関汎関数
@@ -107,7 +158,9 @@ dft:
 
 ## 関連項目
 
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+
 - [freq](freq.md) — UMAベースの振動解析（DFT精密化の前に行うことが多い）
-- [all](all.md) — `--dft True` を使用したエンドツーエンドワークフロー
+- [all](all.md) — `--dft` を使用したエンドツーエンドワークフロー
 - [YAML リファレンス](yaml-reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

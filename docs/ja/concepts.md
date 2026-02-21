@@ -57,7 +57,7 @@ PDB テンプレートや Gaussian 入力がある場合、対応する付随フ
 - PDB テンプレートがあるとき → `.pdb` 付随ファイル
 - Gaussian テンプレートがあるとき → `.gjf` 付随ファイル
 
-この挙動は `--convert-files {True|False}`（デフォルト: `True`）で制御します。
+この挙動は `--convert-files/--no-convert-files`（デフォルト: `True`）で制御します。
 
 ---
 
@@ -88,7 +88,7 @@ TS 候補がすでにある、あるいは1構造で TS 最適化だけ試した
 例:
 
 ```bash
-pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
+pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ```
 
 ---
@@ -108,7 +108,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 ## CLI の注意点
 
 ```{important}
-- ブール値オプションは `True`/`False` を明示して渡します（例: `--tsopt True`）。
+- ブール値オプションは toggle 形式（`--flag` / `--no-flag`）で指定します（例: `--tsopt`, `--no-tsopt`）。
 - 複数 PDB を与える場合、各ファイルは **同じ原子が同じ順序** で並んでいることが重要です（座標だけが異なる）。
 - 酵素の反応機構解析では、水素を含んだ入力 PDB を用意することを強く推奨します。
 ```
@@ -119,6 +119,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 
 ### 入門
 - [はじめに](getting-started.md) — インストールと初回実行
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 
 ### 主要サブコマンド

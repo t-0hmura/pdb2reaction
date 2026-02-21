@@ -49,6 +49,7 @@ from .utils import (
     build_sopt_kwargs,
     make_sopt_optimizer,
     parse_scan_list_quads_checked,
+    parse_scan_spec_quads,
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
@@ -212,8 +213,15 @@ def _build_scan_context(
     "--scan-lists",
     "scan_list_raw",
     type=str,
-    required=True,
+    required=False,
     help="Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.",
+)
+@click.option(
+    "--spec",
+    "spec_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=False,
+    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-list.",
 )
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
@@ -221,6 +229,13 @@ def _build_scan_context(
     out_dir_default="./result_scan2d/",
     baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
     dump_help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
+)
+@click.option(
+    "--print-parsed/--no-print-parsed",
+    "print_parsed",
+    default=False,
+    show_default=True,
+    help="Print parsed scan targets after resolving --spec/--scan-list.",
 )
 @click.pass_context
 def cli(
@@ -231,7 +246,8 @@ def cli(
     workers: int,
     workers_per_node: int,
     spin: Optional[int],
-    scan_list_raw: str,
+    scan_list_raw: Optional[str],
+    spec_path: Optional[Path],
     one_based: bool,
     max_step_size: float,
     bias_k: float,
@@ -245,6 +261,7 @@ def cli(
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
+    print_parsed: bool,
     baseline: str,
     zmin: Optional[float],
     zmax: Optional[float],
@@ -311,18 +328,45 @@ def cli(
             if source_path.suffix.lower() == ".pdb":
                 pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
-            parsed, raw_pairs = parse_scan_list_quads_checked(
-                scan_list_raw,
-                expected_len=2,
-                one_based=one_based,
-                atom_meta=pdb_atom_meta,
-                option_name="--scan-list",
-            )
+            if spec_path is not None and scan_list_raw is not None:
+                raise click.BadParameter("Use either --spec or --scan-list, not both.")
+            scan_one_based = bool(one_based)
+            scan_source = "--scan-list"
+            if spec_path is not None:
+                parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
+                    spec_path,
+                    expected_len=2,
+                    one_based_default=one_based,
+                    atom_meta=pdb_atom_meta,
+                    option_name="--spec",
+                )
+                scan_source = f"--spec ({spec_path})"
+            else:
+                if scan_list_raw is None:
+                    raise click.BadParameter("Provide either --spec or --scan-list.")
+                parsed, raw_pairs = parse_scan_list_quads_checked(
+                    scan_list_raw,
+                    expected_len=2,
+                    one_based=scan_one_based,
+                    atom_meta=pdb_atom_meta,
+                    option_name="--scan-list",
+                )
             (i1, j1, low1, high1), (i2, j2, low2, high2) = parsed
-            d1_label_csv = axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
-            d2_label_csv = axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
+            d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
+            d2_label_csv = axis_label_csv("d2", i2, j2, scan_one_based, pdb_atom_meta, raw_pairs[1])
             d1_label_html = axis_label_html(d1_label_csv)
             d2_label_html = axis_label_html(d2_label_csv)
+            if print_parsed:
+                click.echo(
+                    pretty_block(
+                        "scan-parsed",
+                        {
+                            "source": scan_source,
+                            "one_based": bool(scan_one_based),
+                            "pairs_0based": parsed,
+                        },
+                    )
+                )
             click.echo(
                 pretty_block(
                     "scan-list (0-based)",

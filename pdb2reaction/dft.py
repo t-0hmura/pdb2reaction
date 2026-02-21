@@ -11,9 +11,11 @@ For detailed documentation, see: docs/dft.md
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, List, Union
 
+import shutil
 import sys
 import traceback
 import textwrap
@@ -21,6 +23,7 @@ import time
 from functools import reduce
 
 import click
+from click.core import ParameterSource
 import yaml
 import numpy as np
 
@@ -30,6 +33,7 @@ from pysisyphus.constants import AU2KCALPERMOL
 from .utils import (
     load_yaml_dict,
     apply_yaml_overrides,
+    deep_update,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
@@ -121,6 +125,132 @@ def _format_row_value_for_echo(x: Union[int, str, float, None]) -> str:
     if isinstance(x, float):
         return f"{x:.10g}"
     return str(x)
+
+
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    for pattern in patterns:
+        matches = sorted(out_dir.glob(pattern))
+        if matches:
+            return matches[0]
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    try:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir() and not dst.is_symlink():
+                shutil.rmtree(dst)
+            else:
+                dst.unlink()
+        os.symlink(src.resolve(), dst)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        artifact_specs = [
+            ("key_input_geometry.xyz", "Input geometry snapshot (XYZ)", ["input_geometry.xyz"]),
+            ("key_result.yaml", "DFT result summary", ["result.yaml"]),
+        ]
+
+        found: List[Tuple[str, str, Path]] = []
+        missing: List[Tuple[str, str]] = []
+        for key_name, label, patterns in artifact_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                missing.append((key_name, label))
+                continue
+            dst = out_dir / key_name
+            try:
+                same = dst.exists() and src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                missing.append((key_name, label))
+                continue
+            found.append((key_name, label, src))
+
+        lines: List[str] = [
+            "# DFT Output Summary",
+            "",
+            "## Location",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Main Artifacts",
+        ]
+        if found:
+            for key_name, label, src in found:
+                rel = src.relative_to(out_dir)
+                lines.append(f"- {label}: `{rel}` (shortcut: `{key_name}`)")
+        else:
+            lines.append("- No expected DFT artifacts were found in this output directory.")
+
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if found:
+            for key_name, label, _ in found:
+                lines.append(f"- `{key_name}` -> {label}")
+        if missing:
+            lines.append("- Missing shortcuts (source file not found or linking failed):")
+            for key_name, label in missing:
+                lines.append(f"  - `{key_name}` ({label})")
+
+        lines.extend(
+            [
+                "",
+                "## Quick Next Checks",
+            ]
+        )
+        if any(k == "key_result.yaml" for k, _, _ in found):
+            lines.append("- Start from `key_result.yaml` to review energies and charge/spin tables.")
+        if any(k == "key_input_geometry.xyz" for k, _, _ in found):
+            lines.append("- Compare `key_input_geometry.xyz` with the intended input geometry.")
+        if not found:
+            lines.append("- Re-run DFT and check warnings in stdout/stderr to regenerate outputs.")
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        click.echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def _load_merged_yaml_cfg(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged
 
 
 # This function is based on https://pyscf.org/_modules/pyscf/lo/iao.html
@@ -320,9 +450,8 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region (inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
-    "--convert-files",
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Accepted for interface consistency; dft does not emit PDB/GJF outputs.",
@@ -353,12 +482,42 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Preferred SCF backend: GPU (strict), CPU, or auto (try GPU then CPU if unavailable).",
 )
 @click.option(
-    "--args-yaml",
+    "--config",
+    "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help='Optional YAML overrides under keys "dft" (func/basis, conv_tol, max_cycle, grid_level, verbose, out_dir) and "geom".',
+    help="Base YAML configuration file applied before explicit CLI options.",
 )
+@click.option(
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
+    "--args-yaml",
+    "args_yaml_legacy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running DFT.",
+)
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -371,8 +530,34 @@ def cli(
     grid_level: int,
     out_dir: str,
     engine: str,
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+    show_config: bool,
+    dry_run: bool,
 ) -> None:
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    merged_yaml_cfg = _load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+    )
+
     set_convert_file_enabled(convert_files)
     with prepared_cli_input(
         input_path,
@@ -386,34 +571,40 @@ def cli(
         try:
             time_start = time.perf_counter()
             # --------------------------
-            # 1) Assemble configuration (defaults ← CLI ← YAML)
+            # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
             # --------------------------
-            yaml_cfg = load_yaml_dict(args_yaml)
             geom_cfg = dict(GEOM_KW_DEFAULT)
             dft_cfg = dict(DFT_KW)
 
-            # CLI overrides
-            dft_cfg["conv_tol"] = float(conv_tol)
-            dft_cfg["max_cycle"] = int(max_cycle)
-            dft_cfg["grid_level"] = int(grid_level)
-            dft_cfg["out_dir"] = out_dir
-            cli_xc, cli_basis = _parse_func_basis(func_basis)
-            dft_cfg["func"] = cli_xc
-            dft_cfg["basis"] = cli_basis
-
             apply_yaml_overrides(
-                yaml_cfg,
+                merged_yaml_cfg,
                 [
                     (geom_cfg, (("geom",),)),
                     (dft_cfg, (("dft",),)),
                 ],
             )
 
-            if "func_basis" in dft_cfg:
-                # Allow a combined "FUNC/BASIS" field in YAML for convenience.
-                yaml_func, yaml_basis = _parse_func_basis(str(dft_cfg["func_basis"]))
-                dft_cfg["func"] = yaml_func
-                dft_cfg["basis"] = yaml_basis
+            if _is_param_explicit("conv_tol"):
+                dft_cfg["conv_tol"] = float(conv_tol)
+            if _is_param_explicit("max_cycle"):
+                dft_cfg["max_cycle"] = int(max_cycle)
+            if _is_param_explicit("grid_level"):
+                dft_cfg["grid_level"] = int(grid_level)
+            if _is_param_explicit("out_dir"):
+                dft_cfg["out_dir"] = out_dir
+
+            func_basis_value = str(
+                dft_cfg.get(
+                    "func_basis",
+                    f"{DFT_DEFAULT_FUNC}/{DFT_DEFAULT_BASIS}",
+                )
+            )
+            if _is_param_explicit("func_basis"):
+                func_basis_value = func_basis
+            if func_basis_value:
+                cfg_func, cfg_basis = _parse_func_basis(func_basis_value)
+                dft_cfg["func"] = cfg_func
+                dft_cfg["basis"] = cfg_basis
 
             xc = str(dft_cfg.get("func", "")).strip()
             basis = str(dft_cfg.get("basis", "")).strip()
@@ -425,6 +616,9 @@ def cli(
             spin2s = multiplicity - 1  # PySCF expects 2S
 
             # Echo resolved config
+            engine_name = str(dft_cfg.get("engine", engine if engine else "gpu")).strip().lower()
+            if _is_param_explicit("engine"):
+                engine_name = (engine or "gpu").strip().lower()
             out_dir_path = Path(dft_cfg["out_dir"]).resolve()
             echo_cfg = {
                 "charge": int(resolved_charge),
@@ -436,10 +630,38 @@ def cli(
                 "max_cycle": dft_cfg["max_cycle"],
                 "grid_level": dft_cfg["grid_level"],
                 "out_dir": str(out_dir_path),
-                "engine": engine,
+                "engine": engine_name,
             }
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
             click.echo(pretty_block("dft", echo_cfg))
+            if show_config:
+                click.echo(
+                    pretty_block(
+                        "yaml_layers",
+                        {
+                            "config": None if config_yaml is None else str(config_yaml),
+                            "override_yaml": None if override_yaml is None else str(override_yaml),
+                            "merged_keys": sorted(merged_yaml_cfg.keys()),
+                        },
+                    )
+                )
+            if dry_run:
+                click.echo(
+                    pretty_block(
+                        "dry_run_plan",
+                        {
+                            "input_geometry": str(geom_input_path),
+                            "output_dir": str(out_dir_path),
+                            "engine": engine_name,
+                            "convert_files": bool(convert_files),
+                            "will_run_scf": True,
+                            "will_write_result_yaml": True,
+                            "will_run_population_analysis": True,
+                        },
+                    )
+                )
+                click.echo("[dry-run] Validation complete. DFT execution was skipped.")
+                return
 
             # --------------------------
             # 2) Load geometry
@@ -478,7 +700,7 @@ def cli(
             # --------------------------
             # 4) Activate GPU & build SCF object
             # --------------------------
-            engine = (engine or "gpu").strip().lower()
+            engine = engine_name
             using_gpu = False
             engine_label = "pyscf(cpu)"
             make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
@@ -608,6 +830,7 @@ def cli(
                 yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True)
             )
             click.echo(f"[write] Wrote '{out_dir_path / 'result.yaml'}'.")
+            _write_output_summary_md(out_dir_path)
 
             # --------------------------
             # 8) Final print: energies

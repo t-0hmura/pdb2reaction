@@ -53,6 +53,7 @@ from .utils import (
     format_elapsed,
     normalize_choice,
     parse_scan_list_triples,
+    parse_scan_spec_stages,
     prepared_cli_input,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -173,6 +174,13 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     help="Python-like list of (i,j,target) per stage. Pass a single --scan-list(s) followed by "
          "multiple literals to run sequential stages, e.g. --scan-lists '[(0,1,1.50)]' '[(5,7,1.20)]'.",
 )
+@click.option(
+    "--spec",
+    "spec_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=False,
+    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-list(s).",
+)
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
@@ -184,6 +192,13 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     include_baseline=False,
     include_zmin_zmax=False,
     args_yaml_sections="geom, calc, opt, lbfgs, rfo, bias, bond",
+)
+@click.option(
+    "--print-parsed/--no-print-parsed",
+    "print_parsed",
+    default=False,
+    show_default=True,
+    help="Print parsed scan targets after resolving --spec/--scan-list(s).",
 )
 @click.option("--endopt", type=click.BOOL, default=True, show_default=True,
               help="After each stage, run an additional unbiased optimization of the stage result.")
@@ -197,6 +212,7 @@ def cli(
     workers_per_node: int,
     spin: Optional[int],
     scan_lists_raw: Sequence[str],
+    spec_path: Optional[Path],
     one_based: bool,
     max_step_size: float,
     bias_k: Optional[float],
@@ -210,6 +226,7 @@ def cli(
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
+    print_parsed: bool,
     endopt: bool,
 ) -> None:
     set_convert_file_enabled(convert_files)
@@ -315,27 +332,53 @@ def cli(
             # ------------------------------------------------------------------
             # 2) Parse scan lists
             # ------------------------------------------------------------------
-            scan_lists_raw = collect_single_option_values(
+            cli_scan_values = collect_single_option_values(
                 sys.argv[1:], ("--scan-lists", "--scan-list"), "--scan-list/--scan-lists"
             )
-            if not scan_lists_raw:
-                raise click.BadParameter("--scan-list(s) must be provided at least once.")
-            stages: List[List[Tuple[int, int, float]]] = []
-            for idx, raw in enumerate(scan_lists_raw, start=1):
-                parsed, _ = parse_scan_list_triples(
-                    raw,
-                    one_based=one_based,
+            if spec_path is not None and cli_scan_values:
+                raise click.BadParameter("Use either --spec or --scan-list(s), not both.")
+
+            stages: List[List[Tuple[int, int, float]]]
+            scan_one_based = bool(one_based)
+            scan_source = "--scan-list(s)"
+            if spec_path is not None:
+                stages, scan_one_based = parse_scan_spec_stages(
+                    spec_path,
+                    one_based_default=one_based,
                     atom_meta=pdb_atom_meta,
-                    option_name=f"--scan-lists #{idx}",
+                    option_name="--spec",
                 )
-                for i, j, r in parsed:
-                    if r <= 0.0:
-                        raise click.BadParameter(
-                            f"Non-positive target length in --scan-lists #{idx}: {(i, j, r)}."
-                        )
-                stages.append(parsed)
+                scan_source = f"--spec ({spec_path})"
+            else:
+                if not cli_scan_values:
+                    raise click.BadParameter("Provide either --spec or --scan-list(s).")
+                stages = []
+                for idx, raw in enumerate(cli_scan_values, start=1):
+                    parsed, _ = parse_scan_list_triples(
+                        raw,
+                        one_based=scan_one_based,
+                        atom_meta=pdb_atom_meta,
+                        option_name=f"--scan-lists #{idx}",
+                    )
+                    for i, j, r in parsed:
+                        if r <= 0.0:
+                            raise click.BadParameter(
+                                f"Non-positive target length in --scan-lists #{idx}: {(i, j, r)}."
+                            )
+                    stages.append(parsed)
             K = len(stages)
             click.echo(f"[scan] Received {K} stage(s).")
+            if print_parsed:
+                click.echo(
+                    pretty_block(
+                        "scan-parsed",
+                        {
+                            "source": scan_source,
+                            "one_based": bool(scan_one_based),
+                            "stages_0based": stages,
+                        },
+                    )
+                )
 
             if pdb_atom_meta:
                 click.echo("[scan] PDB atom details for scanned pairs:")

@@ -55,7 +55,7 @@ Pocket extraction is controlled by:
 - `.pdb` companions when a PDB template exists
 - `.gjf` companions when a Gaussian template exists
 
-This behavior is controlled globally by `--convert-files {True|False}` (default: `True`).
+This behavior is controlled globally by `--convert-files/--no-convert-files` (default: `True`).
 
 ---
 
@@ -86,7 +86,7 @@ Use this when you already have a TS candidate (or want a quick TS optimization o
 Typical command:
 
 ```bash
-pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
+pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ```
 
 ---
@@ -106,7 +106,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 ## A few CLI conventions worth knowing
 
 ```{important}
-- Boolean options are passed explicitly as `True`/`False` (e.g., `--tsopt True`).
+- Boolean options are toggle-style: use `--flag` / `--no-flag` (e.g., `--tsopt`, `--no-tsopt`).
 - With multiple PDB inputs, all files should have the **same atoms in the same order** (only coordinates differ).
 - For enzyme use-cases, you usually want hydrogens present in the input PDB.
 ```
@@ -117,6 +117,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt True
 
 ### Getting started
 - [Getting Started](getting-started.md) — installation and first run
+- [Common Error Recipes](recipes-common-errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
 
 ### Core subcommands

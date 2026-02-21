@@ -8,7 +8,11 @@
 :hidden:
 
 getting-started
+quickstart-all
+quickstart-scan-spec
+quickstart-tsopt-freq
 concepts
+recipes-common-errors
 troubleshooting
 cli-conventions
 ```
@@ -19,6 +23,7 @@ cli-conventions
 :hidden:
 
 all
+init
 extract
 fix_altloc
 add_elem_info
@@ -53,7 +58,11 @@ glossary
 
 | 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
+| 最初の 1 回を実行（エンドツーエンド） | `pdb2reaction all` | [クイックスタート: all](quickstart-all.md) |
+| 単一構造スキャン（`--spec`） | `pdb2reaction scan` | [クイックスタート: scan + spec](quickstart-scan-spec.md) |
+| TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart-tsopt-freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
+| `all` 用 YAML テンプレートを生成 | `pdb2reaction init` | [init.md](init.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt.md](opt.md) |
 | 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
@@ -61,6 +70,7 @@ glossary
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
 | 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
+| 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes-common-errors.md) |
 | 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
@@ -73,6 +83,7 @@ glossary
 
 - [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
+- [**典型エラー別レシピ**](recipes-common-errors.md) - 症状別の最短対処ルート
 - [**CLI 規約**](cli-conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
 - [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
 - [**システム要件**](#システム要件) - 必要なハードウェア・ソフトウェア
@@ -80,6 +91,7 @@ glossary
 ### メインワークフロー
 
 - [`all`](all.md) - **エンドツーエンドワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
+- [`init`](init.md) - `pdb2reaction all` 用 YAML テンプレートを生成
 
 ### CLI サブコマンド
 
@@ -119,6 +131,8 @@ glossary
 
 ### 設定・リファレンス
 
+- [**CLI コマンドリファレンス（自動生成）**](../reference/commands/index.md)
+- [**YAML スキーマ（自動生成）**](../reference/yaml.md)
 - [**YAML リファレンス**](yaml-reference.md) - 全サブコマンドの YAML 設定オプション
 - [**UMA 計算機**](uma_pysis.md) - UMA 機械学習ポテンシャル設定
 - [**用語集**](glossary.md) - 略語と技術用語の定義
@@ -150,19 +164,18 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ### TS 最適化を含む完全ワークフロー
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True --thermo True --dft True
+    --tsopt --thermo --dft
 ```
 
 ### 単一構造スキャンモード
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
 ```
 
 ### TS 最適化のみ
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True
+    --tsopt
 ```
 
 ---
@@ -175,15 +188,16 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 - スピン多重度は `-m/--mult`（`all` コマンド）または `-m/--multiplicity`（他のサブコマンド）で設定（デフォルト: 1）
 
 ### ブール値オプション
-すべてのブール値 CLI オプションは明示的に `True` または `False` を指定する必要があります:
+ブール値 CLI オプションは toggle 形式（`--flag` / `--no-flag`）で指定します:
 ```bash
---tsopt True --thermo True --dft False
+--tsopt --thermo --no-dft
 ```
 
 ### YAML 設定
-高度な設定は `--args-yaml` で指定できます。
+設定の多層適用には `--config` と `--override-yaml` を推奨します。
+（`--args-yaml` は `--override-yaml` の legacy alias として残っています。）
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
+pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml override.yaml
 ```
 すべてのオプションについては [YAML リファレンス](yaml-reference.md) を参照してください。
 

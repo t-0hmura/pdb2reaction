@@ -2,10 +2,10 @@
 
 ## Overview
 
-> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and UMA relaxations. You provide one `--scan-lists` literal with three quadruples `(i, j, lowÅ, highÅ)`, or plot an existing `surface.csv` via `--csv`.
+> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and UMA relaxations. Use `--spec` (YAML/JSON, recommended) or legacy `--scan-lists`; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
-- **Input:** One structure + **one** `--scan-lists` literal (three quadruples), unless you use `--csv` to plot only.
+- **Input:** One structure + `--spec scan3d.yaml` (recommended) or one legacy `--scan-lists` literal (three quadruples), unless you use `--csv` to plot only.
 - **Grid ordering:** Values are reordered so points closest to the (pre)optimized structure are visited first.
 - **Energies:** Recorded energies are evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
@@ -18,30 +18,54 @@ For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping 
 ## Usage
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    [--scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
-                    [--convert-files {True\|False}] [--ref-pdb FILE] [--csv PATH]
+                    [--spec scan3d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+                    [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
-Note: `-i/--input` and `--scan-lists` are required unless `--csv` is provided.
+Note: `-i/--input` and one of `--spec`/`--scan-lists` are required unless `--csv` is provided.
 
 ### Examples
 ```bash
-# Minimal three-distance scan
+# Recommended: YAML/JSON spec
+cat > scan3d.yaml << 'YAML'
+one_based: true
+pairs:
+  - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
+  - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
+  - ["TYR,285,CG", "MMT,309,C12", 1.10, 3.00]
+YAML
+pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --print-parsed
+
+# Legacy: Python literal
 pdb2reaction scan3d -i input.pdb -q 0 \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
 
 # LBFGS relaxations, dumped inner trajectories, and an HTML isosurface plot
 pdb2reaction scan3d -i input.pdb -q 0 \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
-    --max-step-size 0.20 --dump True --out-dir ./result_scan3d/ --opt-mode light \
-    --preopt True --baseline min
+    --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode light \
+    --preopt --baseline min
 
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
 
+## `--spec` format (recommended)
+
+```yaml
+one_based: true   # optional; defaults to CLI --one-based
+pairs:
+  - [1, 5, 1.30, 3.10]
+  - [2, 8, 1.20, 3.20]
+  - [3, 12, 1.10, 3.00]
+```
+
+- `pairs` is required and must contain exactly 3 quadruples.
+- Each quadruple is `(i, j, low_Å, high_Å)`.
+- Indices may be integers or PDB selectors, same as `--scan-lists`.
+
 ## `--scan-lists` format
 
-`--scan-lists` accepts a **single Python literal** string. Shell quoting matters.
+`--scan-lists` is the legacy advanced input mode. It accepts a **single Python literal** string. Shell quoting matters.
 
 ### Basic structure
 
@@ -61,7 +85,7 @@ Atoms can be given as **integer indices** or **PDB selector strings**:
 
 | Method | Example | Notes |
 | --- | --- | --- |
-| Integer index | `(1, 5, 1.30, 3.10)` | 1-based by default (`--one-based True`) |
+| Integer index | `(1, 5, 1.30, 3.10)` | 1-based by default (`--one-based`) |
 | PDB selector | `("TYR,285,CA", "MMT,309,C10", 1.30, 3.10)` | Residue name, residue number, atom name |
 
 PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
@@ -90,12 +114,12 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 ## Workflow
 1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
    embedded Gaussian templates, and optionally run an unbiased preoptimization
-   when `--preopt True`. If `-q` is omitted but `--ligand-charge` is provided, the
+   when `--preopt`. If `-q` is omitted but `--ligand-charge` is provided, the
    structure is treated as an enzyme–substrate complex and `extract.py`’s charge
    summary derives the total charge before scanning (for PDB inputs, or XYZ/GJF
    when `--ref-pdb` is supplied).
-2. Parse the single `--scan-lists` literal (default 1-based indices unless
-   `--one-based False` is passed) into three quadruples. For PDB inputs, each
+2. Parse targets from `--spec` (recommended) or legacy `--scan-lists` (default 1-based indices unless
+   `--no-one-based` is passed) into three quadruples. For PDB inputs, each
    atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
    delimiters may be spaces, commas, slashes, backticks, or backslashes, and
    token order is flexible (fallback assumes resname, resseq, atom). Build each linear grid using
@@ -122,21 +146,23 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `--scan-lists, --scan-list TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
-| `--one-based {True\|False}` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
+| `--spec FILE` | YAML/JSON spec with `pairs` (3 quadruples); optional `one_based`. | Recommended unless `--csv` is provided |
+| `--scan-lists, --scan-list TEXT` | **Single legacy** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` unless `--csv` is provided |
+| `--one-based/--no-one-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
+| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--spec`/`--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
-| `--freeze-links {True\|False}` | When the input is PDB, freeze parents of link hydrogens. | `True` |
-| `--dump {True\|False}` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
-| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
+| `--dump/--no-dump` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
-| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--scan-lists` become optional. | _None_ |
+| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--spec`/`--scan-lists` become optional. | _None_ |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
-| `--preopt {True\|False}` | Run an unbiased optimization before scanning. | `True` |
+| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or `(i,j,k)=(0,0,0)` is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the isosurface color bands (kcal/mol). | Autoscaled |
 
@@ -193,6 +219,8 @@ out_dir/ (default: ./result_scan3d/)
 ```
 
 ## Notes
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
 - UMA via `uma_pysis` is the only calculator backend and reuses the same
   `HarmonicBiasCalculator` as the 1D/2D scans.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
@@ -203,3 +231,11 @@ out_dir/ (default: ./result_scan3d/)
   semi-transparent step-colored isosurfaces (no cross-sectional planes).
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
   PDB inputs, keeping extracted pockets rigid.
+
+## See Also
+- [scan](scan.md) -- 1D bond-distance scan
+- [scan2d](scan2d.md) -- 2D distance-grid scan
+- [opt](opt.md) -- single-structure optimization before/after scans
+- [all](all.md) -- end-to-end workflow wrapper
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide

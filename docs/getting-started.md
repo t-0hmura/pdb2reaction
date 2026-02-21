@@ -10,13 +10,13 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-You can also run **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** in a single run by adding `--tsopt True --thermo True --dft True`:
+You can also run **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
 
-Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt True`**, `pdb2reaction` automatically:
+Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
 
 - extracts an **active-site pocket** around user‑defined substrates to build a **cluster model**,
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
@@ -39,6 +39,7 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to lar
 
 ```{tip}
 If you are new to the project, read [Concepts & Workflow](concepts.md) first.
+For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md).
 If you encounter an error during setup or runtime, refer to [Troubleshooting](troubleshooting.md).
 ```
 
@@ -46,7 +47,7 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 
 | Convention | Example |
 |------------|---------|
-| **Boolean options** | `--tsopt True`, `--dft False` (case-insensitive; `true`/`1`/`yes` also work, but flag-style `--tsopt` alone is not allowed) |
+| **Boolean options** | `--tsopt`, `--no-dft` (recommended). Legacy value-style (`--tsopt True`, `--dft 0`) is still accepted with a deprecation warning. |
 | **Residue selectors** | `'SAM,GPP'` or `'A:123,B:456'` |
 | **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` |
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` |
@@ -192,6 +193,14 @@ If you prefer to build the environment piece by piece:
 
 ---
 
+## Quickstart routes (recommended)
+
+- [Quickstart: run `pdb2reaction all`](quickstart-all.md)
+- [Quickstart: run `pdb2reaction scan` with `--spec`](quickstart-scan-spec.md)
+- [Quickstart: validate TS with `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart-tsopt-freq.md)
+
+---
+
 ## Command line basics
 
 The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default subcommand is `all`.
@@ -230,7 +239,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 Behavior:
@@ -238,7 +247,7 @@ Behavior:
 - takes two or more **full systems** in reaction order,
 - extracts catalytic cluster models for each structure,
 - performs a **recursive MEP search** via `path-search` by default (outputs under `path_search/`),
-- optionally switches to a **single‑pass** `path-opt` run with `--refine-path False`,
+- optionally switches to a **single‑pass** `path-opt` run with `--no-refine-path`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
 
@@ -265,7 +274,7 @@ pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]' --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]' --mult 1 --out-dir ./result_scan_all --tsopt --thermo --dft
 ```
 
 Key points:
@@ -277,7 +286,7 @@ Key points:
 - Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals after a single flag (repeated flags are not accepted).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path-search`.
-- With `--refine-path False`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
+- With `--no-refine-path`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).
 
 This mode is useful for building reaction paths starting from a single structure.
 
@@ -292,13 +301,13 @@ Provide exactly one PDB and enable `--tsopt`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True --out-dir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
 ```
 
 Behavior:
@@ -312,7 +321,7 @@ Behavior:
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
 
 ```{important}
-Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt True` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
+Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 ```
 
 ---
@@ -323,17 +332,17 @@ Below are the most commonly used options across workflows.
 
 | Option | Description |
 |--------|-------------|
-| `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt True`** → TSOPT‑only mode. |
+| `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT‑only mode. |
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
 | `--ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of total system charge. |
 | `-m, --mult INT` | Spin multiplicity (e.g., `1` for singlet). Note: Use `--multiplicity` in subcommands other than `all`. |
 | `--scan-lists TEXT...` | Staged distance scans for single‑input runs. |
 | `--out-dir PATH` | Top‑level output directory. |
-| `--tsopt {True\|False}` | Enable TS optimization and IRC. |
-| `--thermo {True\|False}` | Run vibrational analysis and thermochemistry. |
-| `--dft {True\|False}` | Perform single‑point DFT calculations. |
-| `--refine-path {True\|False}` | Recursive MEP refinement (default) vs single‑pass. |
+| `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
+| `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
+| `--dft/--no-dft` | Perform single‑point DFT calculations. |
+| `--refine-path/--no-refine-path` | Recursive MEP refinement (default) vs single‑pass. |
 | `--opt-mode light\|heavy` | Optimization method: Light (LBFGS/Dimer) or Heavy (RFO/RS-I-RFO). |
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian calculation mode. **Analytical recommended when VRAM available.** |
@@ -363,10 +372,13 @@ Each segment directory under `path_search/` also gets its own `summary.log` and 
 ## CLI commands
 
 Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands—each supports `-h/--help`.
+`pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the complete list.
+`scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
 
 | Subcommand | Role | Documentation |
 |------------|------|---------------|
 | `all` | End-to-end workflow | [all](all.md) |
+| `init` | Generate a starter YAML template for `pdb2reaction all` | [init](init.md) |
 | `extract` | Extract active-site pocket (cluster model) | [extract](extract.md) |
 | `opt` | Geometry optimization | [opt](opt.md) |
 | `tsopt` | Transition state optimization | [tsopt](tsopt.md) |
@@ -402,13 +414,13 @@ pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
 
 # Full workflow with post-processing
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True --thermo True --dft True
+    --tsopt --thermo --dft
 
 # Single structure with staged scan
 pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
 
 # TS-only optimization
-pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
+pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
 ```
 
 **Essential options:**
@@ -418,9 +430,9 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
 | `-i` | Input structure(s) |
 | `-c` | Substrate definition for pocket extraction |
 | `--ligand-charge` | Substrate charges (e.g., `'SAM:1,GPP:-3'`) |
-| `--tsopt True` | Enable TS optimization + IRC |
-| `--thermo True` | Run vibrational analysis |
-| `--dft True` | Run single-point DFT |
+| `--tsopt` | Enable TS optimization + IRC |
+| `--thermo` | Run vibrational analysis |
+| `--dft` | Run single-point DFT |
 | `--out-dir` | Output directory |
 
 ---
@@ -431,8 +443,11 @@ For any subcommand:
 
 ```bash
 pdb2reaction <subcommand> --help
+pdb2reaction <subcommand> --help-advanced
+pdb2reaction all --help-advanced
 ```
 
-This prints the available options, defaults, and a short description. For detailed UMA calculator options, see [UMA Calculator](uma_pysis.md).
+For `all`, `--help` is intentionally short. Use `--help-advanced` to see every option.
+For detailed UMA calculator options, see [UMA Calculator](uma_pysis.md).
 
 If you encounter any issues, please open an Issue on the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).

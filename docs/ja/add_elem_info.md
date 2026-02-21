@@ -5,11 +5,11 @@
 
 ### 出力の挙動
 - `-o/--out` が**省略**され、`--overwrite` が **`True` でない**場合、出力は `<input>_add_elem.pdb` に書き込まれます（末尾の `.pdb` を `_add_elem.pdb` に置換）。
-- `--overwrite True` **かつ** `-o/--out` が**省略**されている場合、**入力ファイルをその場で上書き**します。`-o/--out` が指定された場合、`--overwrite` は無視されます。
+- `--overwrite` **かつ** `-o/--out` が**省略**されている場合、**入力ファイルをその場で上書き**します。`-o/--out` が指定された場合、`--overwrite` は無視されます。
 
 ## 使用法
 ```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite {True\|False}]
+pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
 ```
 
 ## 例
@@ -21,7 +21,7 @@ pdb2reaction add-elem-info -i 1abc.pdb
 pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 
 # 入力ファイルをその場で上書き
-pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
+pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
 
 ## ワークフロー
@@ -33,7 +33,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 3. `PDBIO` で書き出し:
    - デフォルト出力: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
    - `-o/--out`: 指定パスへ書き込み（この場合 `--overwrite` は無視）
-   - `--overwrite True`（`-o/--out` なし）: 入力パスを上書き
+   - `--overwrite`（`-o/--out` なし）: 入力パスを上書き
 4. 割り当て/再割り当て数、元素別合計、未解決原子のリスト（最大50件）を要約表示。
 
 ## CLI オプション
@@ -41,16 +41,24 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite True
 | --- | --- | --- |
 | `-i, --input PATH` | 入力 PDB ファイル | 必須 |
 | `-o, --out PATH` | 出力パス。指定した場合 `--overwrite` は無視される | _None_ → `<input>_add_elem.pdb` |
-| `--overwrite {True\|False}` | `-o/--out` が省略された場合に入力を上書き | `False` |
+| `--overwrite/--no-overwrite` | `-o/--out` が省略された場合に入力を上書き | `False` |
 
 ## 出力
 - 元素記号が補完/修正されたPDB ファイル:
   - デフォルト: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
   - `-o/--out` 指定時: `OUTPUT.pdb`（`--overwrite` の値に関わらず）
-  - `--overwrite True` を `-o/--out` なしで指定: `INPUT.pdb` をその場で上書き
+  - `--overwrite` を `-o/--out` なしで指定: `INPUT.pdb` をその場で上書き
 - コンソールに、処理/割り当て原子数、元素別カウント、未解決原子（最大50件）を出力
 
 ## 注意事項
 - 変更されるのは列 77–78 のみ。座標、占有率、B因子、電荷、altloc、挿入コード、レコード順序は保持されます。
 - すべてのモデル/チェーン/残基にわたる ATOM/HETATM レコードを処理します。
 - 重水素は水素に正規化され、セレン（`SE*`）やハロゲンは自動認識されます。
+---
+
+## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
+- [extract](extract.md) -- 元素カラム修正後のポケット抽出
+- [all](all.md) -- エンドツーエンドワークフローの入口

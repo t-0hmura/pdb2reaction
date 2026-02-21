@@ -6,19 +6,21 @@ This page documents the conventions used across all `pdb2reaction` commands. Und
 
 ## Boolean Options
 
-All boolean CLI options require an explicit value—you cannot use flag-style `--tsopt` alone:
+Boolean options are normalized at the root CLI.
+Use toggle style by default:
 
 ```bash
-# Correct (any of these work)
---tsopt True --thermo True --dft False
---tsopt true --thermo TRUE --dft false   # case-insensitive
---tsopt 1 --thermo yes --dft 0           # 1/0, yes/no also accepted
+# Recommended
+--tsopt --thermo --no-dft
+--dump                 # same as legacy: --dump True
+--no-dump              # same as legacy: --dump False
 
-# Wrong (will not work)
---tsopt         # flag-style (no value) is not supported
+# Also supported for backward compatibility (deprecated)
+--tsopt True --thermo yes --dft 0
 ```
 
-The CLI accepts `True`, `true`, `TRUE`, `1`, `yes`, `Yes`, `y`, `t` for truthy values, and `False`, `false`, `FALSE`, `0`, `no`, `No`, `n`, `f` for falsy values.
+Legacy value-style boolean syntax (`--flag True/False`) is still accepted but emits a deprecation warning.
+The legacy parser accepts `True/False`, `1/0`, `yes/no`, `y/n`, `t/f`, and `on/off` (case-insensitive).
 
 Common boolean options:
 - `--tsopt`, `--thermo`, `--dft` — enable post-processing stages
@@ -27,6 +29,30 @@ Common boolean options:
 - `--preopt`, `--endopt` — pre/post optimization toggles
 - `--climb` — enable climbing image in MEP search
 - `--convert-files` — generate PDB/GJF companion files
+
+---
+
+## Progressive Help (`all`)
+
+`pdb2reaction all` uses two help levels:
+
+```bash
+pdb2reaction all --help            # core options only
+pdb2reaction all --help-advanced   # full option list
+```
+
+`scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
+
+---
+
+## Init Template
+
+Generate a starter YAML and run a parse-only check:
+
+```bash
+pdb2reaction init --out pdb2reaction_all.config.yaml
+pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
+```
 
 ---
 
@@ -144,15 +170,15 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 
 ## YAML Configuration
 
-Advanced settings can be passed via `--args-yaml`:
+Advanced settings can be passed via layered YAML inputs:
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
+pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config config.yaml --override-yaml override.yaml
 ```
 
-YAML values take **highest precedence**:
+Precedence:
 ```
-defaults → CLI options → YAML (wins)
+defaults < config < CLI options < override-yaml
 ```
 
 See [YAML Reference](yaml-reference.md) for all available options.
@@ -184,5 +210,6 @@ Default output directories:
 ## See Also
 
 - [Getting Started](getting-started.md) — Installation and first run
+- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Common errors and fixes
 - [YAML Reference](yaml-reference.md) — Complete configuration options

@@ -8,27 +8,69 @@
 - **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep.trj` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode light` (LBFGS), `--preopt True`, `--align True`, `--thresh gau`.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode light` (LBFGS), `--preopt`, `--align`, `--thresh gau`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md), [freq](freq.md), and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
+
+Configuration precedence is **defaults < config < explicit CLI < override** (`--config`, then `--override-yaml`; `--args-yaml` is a legacy alias).
 
 When `--convert-files` is enabled (default), the command mirrors trajectories into `.pdb` companions when PDB references exist, and writes `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies a pocket-level PDB topology while keeping XYZ coordinates, and `--ref-full-pdb` enables full-template merges (XYZ/GJF inputs still do not produce PDB companions).
 
 If you only have **two** endpoints and do not need recursive refinement, [path-opt](path_opt.md) is the simpler option.
 
+## Minimal example
+
+```bash
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+  --out-dir ./result_path_search
+```
+
+## Output checklist
+
+- `result_path_search/mep.trj`
+- `result_path_search/summary.yaml`
+- `result_path_search/summary.log`
+- `result_path_search/summary.md`
+- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz` (when available)
+- `result_path_search/mep_plot.png` (when plotting succeeds)
+
+## Common examples
+
+1. Provide explicit intermediates for a multistep path.
+
+```bash
+pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+  --out-dir ./result_path_search_multi
+```
+
+2. Enable merged full-system outputs with template references.
+
+```bash
+pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+```
+
+3. Use DMF mode with minima refinement.
+
+```bash
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
+```
+
 ## Usage
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
                          [--workers N] [--workers-per-node N]
-                         [--mep-mode {gsm|dmf}] [--freeze-links {True\|False}] [--thresh PRESET]
+                         [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
                          [--refine-mode {peak|minima}]
-                         [--max-nodes N] [--max-cycles N] [--climb {True\|False}]
-                         [--opt-mode light|heavy] [--dump {True\|False}]
-                         [--out-dir DIR] [--preopt {True\|False}]
-                         [--align {True\|False}] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
-                         [--convert-files {True\|False}]
-                         [--args-yaml FILE]
+                         [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
+                         [--opt-mode light|heavy] [--dump/--no-dump]
+                         [--out-dir DIR] [--preopt/--no-preopt]
+                         [--align/--no-align] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
+                         [--convert-files/--no-convert-files]
+                         [--config FILE] [--override-yaml FILE] [--args-yaml FILE]
+                         [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
 ### Examples
@@ -40,7 +82,8 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
   ```bash
   pdb2reaction path-search \
       -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-      --args-yaml params.yaml --ref-full-pdb holo_template.pdb --out-dir ./run_ps
+      --config base.yaml --override-yaml override.yaml \
+      --ref-full-pdb holo_template.pdb --out-dir ./run_ps
   ```
 
 ## CLI options
@@ -51,20 +94,24 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs. | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links {True\|False}` | When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
+| `--freeze-links/--no-freeze-links` | When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
-| `--climb {True\|False}` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
+| `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `light` maps to LBFGS; `heavy` maps to RFO. | `light` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
-| `--dump {True\|False}` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
-| `--convert-files {True\|False}` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
+| `--dump/--no-dump` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--args-yaml FILE` | YAML overrides (see below). | _None_ |
-| `--preopt {True\|False}` | Pre-optimize each endpoint before MEP search (recommended). | `True` |
-| `--align {True\|False}` | Align all inputs to the first structure before searching. | `True` |
+| `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
+| `--override-yaml FILE` | Final YAML override layer (highest-priority YAML). | _None_ |
+| `--args-yaml FILE` | Legacy alias of `--override-yaml`. | _None_ |
+| `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
+| `--preopt/--no-preopt` | Pre-optimize each endpoint before MEP search (recommended). | `True` |
+| `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 | `--ref-pdb PATH...` | Pocket reference PDBs to use when inputs are XYZ/GJF (one per input; keeps XYZ coordinates). | _None_ |
 
@@ -88,6 +135,13 @@ out_dir/ (default: ./result_path_search/)
 ├─ mep_w_ref.pdb            # Merged full-system MEP (requires ref PDB/template)
 ├─ mep_w_ref_seg_XX.pdb     # Merged per-segment paths when covalent changes exist (requires ref PDB)
 ├─ summary.yaml             # Barrier and classification summary for every recursive segment
+├─ summary.log              # Human-readable summary
+├─ summary.md               # Quick navigation page with key artifact links
+├─ key_mep.trj              # Root shortcut to primary MEP trajectory (symlink/copy)
+├─ key_mep.pdb              # Root shortcut to primary MEP PDB (symlink/copy)
+├─ key_ts.xyz / key_ts.pdb  # Root shortcuts to TS candidate snapshots (when available)
+├─ key_mep_plot.png         # Root shortcut to MEP profile plot (when available)
+├─ key_energy_diagram_MEP.png # Root shortcut to state energy diagram (when available)
 ├─ mep_plot.png             # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
 ├─ energy_diagram_MEP.png   # Static export of the MEP state-energy diagram (relative to reactant)
 └─ seg_000_*/               # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
@@ -95,14 +149,18 @@ out_dir/ (default: ./result_path_search/)
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
 
 ## Notes
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
 - `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
-- Charge/spin inherit `.gjf` template metadata when available. If `-q` is omitted but `--ligand-charge` is provided, the inputs are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge when the inputs are PDBs; explicit `-q` still overrides. For non-`.gjf` inputs without a usable `--ligand-charge`, the command aborts; multiplicity defaults to `1` when omitted.
+- `summary.md` is generated after the run and points to the main artifacts plus `key_*` root shortcuts.
 
-## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. YAML parameters override the CLI values. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
+## YAML configuration (`--config`, `--override-yaml`, `--args-yaml`)
+Merge order is **defaults < config < explicit CLI < override**.
+`--args-yaml` is kept as a legacy alias of `--override-yaml`.
+The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
@@ -274,6 +332,8 @@ search:
 ---
 
 ## See Also
+
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [path-opt](path_opt.md) — Single-pass MEP optimization (no recursive refinement)
 - [tsopt](tsopt.md) — Optimize the HEI as a transition state

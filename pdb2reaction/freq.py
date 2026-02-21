@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import sys
 import textwrap
+import os
+import shutil
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, Sequence
 
 import click
+from click.core import ParameterSource
 import numpy as np
 import torch
 from ase.data import atomic_masses
@@ -33,6 +36,7 @@ from .uma_pysis import uma_pysis
 from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, FREQ_KW, THERMO_KW
 from .utils import (
     load_yaml_dict,
+    deep_update,
     apply_yaml_overrides,
     convert_xyz_like_outputs,
     pretty_block,
@@ -44,6 +48,144 @@ from .utils import (
     set_convert_file_enabled,
     resolve_freeze_atoms,
 )
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def _load_merged_yaml_cfg(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged
+
+
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    """Resolve the first existing artifact for a list of relative patterns."""
+    for pattern in patterns:
+        if any(ch in pattern for ch in "*?[]"):
+            for candidate in sorted(out_dir.glob(pattern)):
+                if candidate.is_file():
+                    return candidate.resolve()
+            continue
+        candidate = out_dir / pattern
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    """Create a symlink when possible; fall back to copy."""
+    try:
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir():
+                return False
+            dst.unlink()
+        rel = os.path.relpath(src, start=dst.parent)
+        dst.symlink_to(rel)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        if not out_dir.exists():
+            return
+
+        root_specs: List[Tuple[str, Sequence[str]]] = [
+            ("Frequencies table", ["frequencies_cm-1.txt"]),
+            ("Lowest written mode trajectory", ["mode_0001_*.trj", "mode_*.trj"]),
+            ("Lowest written mode (PDB)", ["mode_0001_*.pdb", "mode_*.pdb"]),
+            ("Thermochemistry dump", ["thermoanalysis.yaml"]),
+        ]
+        root_lines: List[str] = []
+        for label, patterns in root_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            rel = os.path.relpath(src, start=out_dir)
+            root_lines.append(f"- {label}: [`{rel}`]({rel})")
+
+        shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
+            ("key_frequencies.txt", "Frequencies table", ["frequencies_cm-1.txt"]),
+            ("key_mode_1.trj", "Lowest written mode trajectory", ["mode_0001_*.trj", "mode_*.trj"]),
+            ("key_mode_1.pdb", "Lowest written mode (PDB)", ["mode_0001_*.pdb", "mode_*.pdb"]),
+            ("key_thermo.yaml", "Thermochemistry dump", ["thermoanalysis.yaml"]),
+        ]
+        shortcut_lines: List[str] = []
+        for name, label, patterns in shortcut_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            dst = out_dir / name
+            try:
+                same = src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                continue
+            src_rel = os.path.relpath(src, start=out_dir)
+            shortcut_lines.append(
+                f"- {label}: [`{name}`]({name}) (source: `{src_rel}`)"
+            )
+
+        lines: List[str] = [
+            "# Freq Summary",
+            "",
+            f"- Generated: `{time.strftime('%Y-%m-%d %H:%M:%S %Z')}`",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Primary Artifacts",
+        ]
+        if root_lines:
+            lines.extend(root_lines)
+        else:
+            lines.append("- No primary artifacts detected yet.")
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if shortcut_lines:
+            lines.extend(shortcut_lines)
+        else:
+            lines.append("- No shortcuts were generated.")
+        lines.extend(
+            [
+                "",
+                "## Notes",
+                "- Start from `key_frequencies.txt`; TS validation should confirm one dominant imaginary mode.",
+            ]
+        )
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        click.echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
 
 
 def _torch_device(auto: str = "auto") -> torch.device:
@@ -470,12 +612,16 @@ CALC_KW["return_partial_hessian"] = True
     ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
-@click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
-              help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(
-    "--convert-files",
+    "--freeze-links/--no-freeze-links",
+    "freeze_links",
+    default=True,
+    show_default=True,
+    help="Freeze parent atoms of link hydrogens (PDB only).",
+)
+@click.option(
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB companions when a PDB template is available.",
@@ -496,10 +642,24 @@ CALC_KW["return_partial_hessian"] = True
               help="Sort modes by 'value' (cm^-1) or by absolute value.")
 @click.option("--out-dir", type=str, default="./result_freq/", show_default=True, help="Output directory")
 @click.option(
-    "--args-yaml",
+    "--config",
+    "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, freq, thermo).",
+    help="Base YAML configuration file applied before explicit CLI options.",
+)
+@click.option(
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
+    "--args-yaml",
+    "args_yaml_legacy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
 )
 # Thermochemistry options
 @click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,
@@ -507,14 +667,35 @@ CALC_KW["return_partial_hessian"] = True
 @click.option("--pressure", "pressure_atm",
               type=float, default=THERMO_KW["pressure_atm"], show_default=True,
               help="Pressure (atm) for thermochemistry summary.")
-@click.option("--dump", type=click.BOOL, default=THERMO_KW["dump"], show_default=True,
-              help="When True, write 'thermoanalysis.yaml' under out-dir.")
+@click.option(
+    "--dump/--no-dump",
+    "dump",
+    default=THERMO_KW["dump"],
+    show_default=True,
+    help="When True, write 'thermoanalysis.yaml' under out-dir.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running frequency analysis.",
+)
 # Hessian calculation mode
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"]),
               default=None,
               help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -529,14 +710,40 @@ def cli(
     n_frames: int,
     sort: str,
     out_dir: str,
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
     # thermo
     temperature: float,
     pressure_atm: float,
     dump: bool,
+    show_config: bool,
+    dry_run: bool,
     # hessian
     hessian_calc_mode: Optional[str],
 ) -> None:
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    merged_yaml_cfg = _load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+    )
+
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
@@ -552,34 +759,64 @@ def cli(
     )
 
     # --------------------------
-    # 1) Assemble configuration (defaults ← CLI ← YAML)
+    # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
     # --------------------------
-    yaml_cfg = load_yaml_dict(args_yaml)
+    config_layer_cfg = load_yaml_dict(config_yaml)
+    override_layer_cfg = load_yaml_dict(override_yaml)
     geom_cfg = dict(GEOM_KW)
     calc_cfg = dict(CALC_KW)
     freq_cfg = dict(FREQ_KW)
     thermo_cfg = dict(THERMO_KW)
 
-    # CLI overrides
-    calc_cfg["charge"] = int(charge)
-    calc_cfg["spin"]   = int(spin)
-    calc_cfg["workers"] = int(workers)
-    calc_cfg["workers_per_node"] = int(workers_per_node)
-    if hessian_calc_mode is not None:
-        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
-
-    freq_cfg["max_write"]     = int(max_write)
-    freq_cfg["amplitude_ang"] = float(amplitude_ang)
-    freq_cfg["n_frames"]      = int(n_frames)
-    freq_cfg["sort"]          = sort
-
-    thermo_cfg["temperature"]   = float(temperature)
-    thermo_cfg["pressure_atm"]  = float(pressure_atm)
-    thermo_cfg["dump"]          = bool(dump)
-
-    # YAML overrides (highest precedence)
     apply_yaml_overrides(
-        yaml_cfg,
+        config_layer_cfg,
+        [
+            (geom_cfg, (("geom",),)),
+            (calc_cfg, (("calc",),)),
+            (freq_cfg, (("freq",),)),
+            (thermo_cfg, (("thermo",),)),
+        ],
+    )
+
+    if _is_param_explicit("workers"):
+        calc_cfg["workers"] = int(workers)
+    if _is_param_explicit("workers_per_node"):
+        calc_cfg["workers_per_node"] = int(workers_per_node)
+    if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
+        calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+    if _is_param_explicit("max_write"):
+        freq_cfg["max_write"] = int(max_write)
+    if _is_param_explicit("amplitude_ang"):
+        freq_cfg["amplitude_ang"] = float(amplitude_ang)
+    if _is_param_explicit("n_frames"):
+        freq_cfg["n_frames"] = int(n_frames)
+    if _is_param_explicit("sort"):
+        freq_cfg["sort"] = str(sort)
+    if _is_param_explicit("out_dir"):
+        freq_cfg["out_dir"] = str(out_dir)
+    if _is_param_explicit("temperature"):
+        thermo_cfg["temperature"] = float(temperature)
+    if _is_param_explicit("pressure_atm"):
+        thermo_cfg["pressure_atm"] = float(pressure_atm)
+    if _is_param_explicit("dump"):
+        thermo_cfg["dump"] = bool(dump)
+
+    charge_value = calc_cfg.get("charge", charge)
+    if charge_value is None:
+        charge_value = charge
+    calc_cfg["charge"] = int(charge_value)
+    if _is_param_explicit("charge"):
+        calc_cfg["charge"] = int(charge)
+
+    spin_value = calc_cfg.get("spin", spin)
+    if spin_value is None:
+        spin_value = spin
+    calc_cfg["spin"] = int(spin_value)
+    if _is_param_explicit("spin"):
+        calc_cfg["spin"] = int(spin)
+
+    apply_yaml_overrides(
+        override_layer_cfg,
         [
             (geom_cfg, (("geom",),)),
             (calc_cfg, (("calc",),)),
@@ -595,7 +832,38 @@ def cli(
     calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
     calc_cfg.setdefault("return_partial_hessian", True)
 
-    out_dir_path = Path(out_dir).resolve()
+    out_dir_path = Path(freq_cfg.get("out_dir", out_dir)).resolve()
+
+    if show_config:
+        click.echo(
+            pretty_block(
+                "yaml_layers",
+                {
+                    "config": None if config_yaml is None else str(config_yaml),
+                    "override_yaml": None if override_yaml is None else str(override_yaml),
+                    "merged_keys": sorted(merged_yaml_cfg.keys()),
+                },
+            )
+        )
+
+    if dry_run:
+        click.echo(
+            pretty_block(
+                "dry_run_plan",
+                {
+                    "input_geometry": str(geom_input_path),
+                    "output_dir": str(out_dir_path),
+                    "freeze_links": bool(freeze_links),
+                    "convert_files": bool(convert_files),
+                    "will_run_frequency_analysis": True,
+                    "will_write_modes": True,
+                    "will_dump_thermo_yaml": bool(thermo_cfg.get("dump", False)),
+                },
+            )
+        )
+        click.echo("[dry-run] Validation complete. Frequency execution was skipped.")
+        return
+
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
     # Pretty-print config summary
@@ -695,9 +963,9 @@ def cli(
                 "wavenumbers": freqs_cm,                                 # cm^-1
                 "scf_energy": _calc_energy(geometry, calc_cfg),          # Hartree
                 "masses": masses_amu,
-                "mult": int(spin),
+                "mult": int(calc_cfg["spin"]),
             }
-            qc = QCData(qc_data, point_group="c1", mult=int(spin))
+            qc = QCData(qc_data, point_group="c1", mult=int(calc_cfg["spin"]))
 
             T = float(thermo_cfg["temperature"])
             p_atm = float(thermo_cfg["pressure_atm"])
@@ -779,6 +1047,7 @@ def cli(
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "))
 
+        _write_output_summary_md(out_dir_path)
         click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
 
         click.echo(format_elapsed("[time] Elapsed Time for Freq", time_start))

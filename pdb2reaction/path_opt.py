@@ -13,15 +13,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sys
 import traceback
 import textwrap
 import time
+import os
+import shutil
 
 import click
 import numpy as np
+from click.core import ParameterSource
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import geom_loader
@@ -58,6 +61,146 @@ from .utils import (
     write_xyz_trj_with_energy,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
+
+
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    """Resolve the first existing artifact for a list of relative patterns."""
+    for pattern in patterns:
+        if any(ch in pattern for ch in "*?[]"):
+            for candidate in sorted(out_dir.glob(pattern)):
+                if candidate.is_file():
+                    return candidate.resolve()
+            continue
+        candidate = out_dir / pattern
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    """Create a symlink when possible; fall back to copy."""
+    try:
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir():
+                return False
+            dst.unlink()
+        rel = os.path.relpath(src, start=dst.parent)
+        dst.symlink_to(rel)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        if not out_dir.exists():
+            return
+
+        root_specs: List[Tuple[str, str]] = [
+            ("final_geometries.trj", "MEP trajectory"),
+            ("final_geometries.pdb", "MEP trajectory (PDB)"),
+            ("final_geometries.gjf", "MEP trajectory (GJF)"),
+            ("hei.xyz", "TS candidate (XYZ)"),
+            ("hei.pdb", "TS candidate (PDB)"),
+            ("hei.gjf", "TS candidate (GJF)"),
+            ("dmf_initial.trj", "DMF initial interpolation"),
+        ]
+        root_lines: List[str] = []
+        for rel, label in root_specs:
+            if (out_dir / rel).is_file():
+                root_lines.append(f"- {label}: [`{rel}`]({rel})")
+
+        shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
+            ("key_mep.trj", "Primary MEP trajectory", ["final_geometries.trj"]),
+            ("key_mep.pdb", "Primary MEP PDB", ["final_geometries.pdb"]),
+            ("key_mep.gjf", "Primary MEP GJF", ["final_geometries.gjf"]),
+            ("key_ts.xyz", "TS candidate (XYZ)", ["hei.xyz"]),
+            ("key_ts.pdb", "TS candidate (PDB)", ["hei.pdb"]),
+            ("key_ts.gjf", "TS candidate (GJF)", ["hei.gjf"]),
+        ]
+        shortcut_lines: List[str] = []
+        for name, label, patterns in shortcut_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            dst = out_dir / name
+            try:
+                same = src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                continue
+            src_rel = os.path.relpath(src, start=out_dir)
+            shortcut_lines.append(
+                f"- {label}: [`{name}`]({name}) (source: `{src_rel}`)"
+            )
+
+        lines: List[str] = [
+            "# Path-Opt Summary",
+            "",
+            f"- Generated: `{time.strftime('%Y-%m-%d %H:%M:%S %Z')}`",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Primary Artifacts",
+        ]
+        if root_lines:
+            lines.extend(root_lines)
+        else:
+            lines.append("- No primary artifacts detected yet.")
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if shortcut_lines:
+            lines.extend(shortcut_lines)
+        else:
+            lines.append("- No shortcuts were generated.")
+        lines.extend(
+            [
+                "",
+                "## Notes",
+                "- Start from `final_geometries.trj` for the path and `hei.xyz` for the TS candidate snapshot.",
+            ]
+        )
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        click.echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def _load_merged_yaml_cfg(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
@@ -386,9 +529,8 @@ def _optimize_single(
     help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
-    "--freeze-links",
+    "--freeze-links/--no-freeze-links",
     "freeze_links_flag",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="If a PDB is provided, freeze the parent atoms of link hydrogens.",
@@ -408,8 +550,7 @@ def _optimize_single(
     help="Maximum optimization cycles.",
 )
 @click.option(
-    "--climb",
-    type=click.BOOL,
+    "--climb/--no-climb",
     default=True,
     show_default=True,
     help="Search for a transition state (climbing image) after path growth.",
@@ -422,16 +563,14 @@ def _optimize_single(
     help="Single-structure optimizer for endpoint preoptimization: light (=LBFGS) or heavy (=RFO).",
 )
 @click.option(
-    "--dump",
-    type=click.BOOL,
+    "--dump/--no-dump",
     default=False,
     show_default=True,
     help="Dump optimizer trajectory/restarts during the run.",
 )
 @click.option(
-    "--convert-files",
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -462,14 +601,41 @@ def _optimize_single(
     ),
 )
 @click.option(
-    "--args-yaml",
+    "--config",
+    "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, gs, opt, dmf, sopt.lbfgs, sopt.rfo).",
+    help="Base YAML configuration file applied before explicit CLI options.",
 )
 @click.option(
-    "--preopt",
-    type=click.BOOL,
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
+    "--args-yaml",
+    "args_yaml_legacy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running path optimization.",
+)
+@click.option(
+    "--preopt/--no-preopt",
     default=False,
     show_default=True,
     help="If True, preoptimize each endpoint via the selected single-structure optimizer (LBFGS/RFO) before alignment and GSM.",
@@ -482,13 +648,14 @@ def _optimize_single(
     help="Maximum cycles for endpoint preoptimization (applies to the chosen optimizer; only used when --preopt True).",
 )
 @click.option(
-    "--fix-ends",
-    type=click.BOOL,
+    "--fix-ends/--no-fix-ends",
     default=False,
     show_default=True,
     help="Fix structures of input endpoints during GSM.",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_paths: Sequence[Path],
     mep_mode: str,
     charge: Optional[int],
@@ -506,11 +673,37 @@ def cli(
     ref_pdb: Optional[Path],
     out_dir: str,
     thresh: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+    show_config: bool,
+    dry_run: bool,
     preopt: bool,
     preopt_max_cycles: int,
     fix_ends: bool,
 ) -> None:
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    merged_yaml_cfg = _load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+    )
+
     input_paths = tuple(Path(p) for p in input_paths)
     set_convert_file_enabled(convert_files)
     prepared_inputs = [prepare_input_structure(p) for p in input_paths]
@@ -521,9 +714,10 @@ def cli(
                 apply_ref_pdb_override(prepared, ref_pdb)
 
         # --------------------------
-        # 1) Assemble final config (defaults ← CLI ← YAML)
+        # 1) Assemble final config (defaults < config < CLI(explicit) < override)
         # --------------------------
-        yaml_cfg = load_yaml_dict(args_yaml)
+        config_layer_cfg = load_yaml_dict(config_yaml)
+        override_layer_cfg = load_yaml_dict(override_yaml)
 
         geom_cfg = dict(GEOM_KW_DEFAULT)
         calc_cfg = dict(UMA_CALC_KW)
@@ -533,46 +727,8 @@ def cli(
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg = dict(RFO_KW)
 
-        # Resolve charge/spin (defaults ← CLI/GJF/ligand-charge)
-        resolved_charge, resolved_spin = resolve_charge_spin_multi(
-            prepared_inputs,
-            charge=charge,
-            spin=spin,
-            ligand_charge=ligand_charge,
-            prefix="[path-opt]",
-        )
-        calc_cfg["charge"] = int(resolved_charge)
-        calc_cfg["spin"] = int(resolved_spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
-
-        gs_cfg["max_nodes"] = int(max_nodes)
-        opt_cfg["max_cycles"] = int(max_cycles)
-        opt_cfg["stop_in_when_full"] = int(max_cycles)
-        dmf_cfg["max_cycles"] = int(max_cycles)
-        gs_cfg["climb"] = bool(climb)
-        gs_cfg["climb_lanczos"] = bool(climb)
-        gs_cfg["fix_first"] = bool(fix_ends)
-        gs_cfg["fix_last"] = bool(fix_ends)
-
-        # Lanczos tangent estimation follows the CLI --climb flag by default but
-        # can still be overridden via YAML (`gs.climb_lanczos`).
-        opt_cfg["dump"] = bool(dump)
-        opt_cfg["out_dir"] = out_dir
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-            lbfgs_cfg["thresh"] = str(thresh)
-            rfo_cfg["thresh"] = str(thresh)
-
-        lbfgs_cfg["dump"] = bool(dump)
-        rfo_cfg["dump"] = bool(dump)
-        lbfgs_cfg["out_dir"] = out_dir
-        rfo_cfg["out_dir"] = out_dir
-        lbfgs_cfg["max_cycles"] = int(preopt_max_cycles)
-        rfo_cfg["max_cycles"] = int(preopt_max_cycles)
-
         apply_yaml_overrides(
-            yaml_cfg,
+            config_layer_cfg,
             [
                 (geom_cfg, (("geom",),)),
                 (calc_cfg, (("calc",),)),
@@ -583,8 +739,76 @@ def cli(
                 (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
             ],
         )
+
+        # Resolve charge/spin from templates/ligand charge and then apply precedence.
+        resolved_charge, resolved_spin = resolve_charge_spin_multi(
+            prepared_inputs,
+            charge=charge,
+            spin=spin,
+            ligand_charge=ligand_charge,
+            prefix="[path-opt]",
+        )
+        charge_value = calc_cfg.get("charge", resolved_charge)
+        if charge_value is None:
+            charge_value = resolved_charge
+        calc_cfg["charge"] = int(charge_value)
+        if _is_param_explicit("charge"):
+            calc_cfg["charge"] = int(resolved_charge)
+        spin_value = calc_cfg.get("spin", resolved_spin)
+        if spin_value is None:
+            spin_value = resolved_spin
+        calc_cfg["spin"] = int(spin_value)
+        if _is_param_explicit("spin"):
+            calc_cfg["spin"] = int(resolved_spin)
+
+        if _is_param_explicit("workers"):
+            calc_cfg["workers"] = int(workers)
+        if _is_param_explicit("workers_per_node"):
+            calc_cfg["workers_per_node"] = int(workers_per_node)
+        if _is_param_explicit("max_nodes"):
+            gs_cfg["max_nodes"] = int(max_nodes)
+        if _is_param_explicit("max_cycles"):
+            opt_cfg["max_cycles"] = int(max_cycles)
+            opt_cfg["stop_in_when_full"] = int(max_cycles)
+            dmf_cfg["max_cycles"] = int(max_cycles)
+        if _is_param_explicit("climb"):
+            gs_cfg["climb"] = bool(climb)
+            gs_cfg["climb_lanczos"] = bool(climb)
+        if _is_param_explicit("fix_ends"):
+            gs_cfg["fix_first"] = bool(fix_ends)
+            gs_cfg["fix_last"] = bool(fix_ends)
+        if _is_param_explicit("dump"):
+            opt_cfg["dump"] = bool(dump)
+            lbfgs_cfg["dump"] = bool(dump)
+            rfo_cfg["dump"] = bool(dump)
+        if _is_param_explicit("out_dir"):
+            opt_cfg["out_dir"] = out_dir
+            lbfgs_cfg["out_dir"] = out_dir
+            rfo_cfg["out_dir"] = out_dir
+        if _is_param_explicit("thresh") and thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
+            lbfgs_cfg["thresh"] = str(thresh)
+            rfo_cfg["thresh"] = str(thresh)
+        if _is_param_explicit("preopt_max_cycles"):
+            lbfgs_cfg["max_cycles"] = int(preopt_max_cycles)
+            rfo_cfg["max_cycles"] = int(preopt_max_cycles)
+
+        apply_yaml_overrides(
+            override_layer_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (dmf_cfg, (("dmf",),)),
+                (gs_cfg, (("gs",),)),
+                (opt_cfg, (("opt",),)),
+                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
+                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+            ],
+        )
+
         # Use external Kabsch alignment; keep internal align disabled.
         opt_cfg["align"] = False
+        opt_cfg["stop_in_when_full"] = int(opt_cfg.get("max_cycles", STOPT_KW["max_cycles"]))
 
         opt_kind = opt_mode.strip().lower()
         mep_mode_kind = mep_mode.strip().lower()
@@ -598,6 +822,7 @@ def cli(
             raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
 
         sopt_cfg = dict(sopt_cfg)
+        preopt_max_cycles_effective = int(sopt_cfg.get("max_cycles", preopt_max_cycles))
 
         # For display: resolved configuration
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
@@ -622,11 +847,43 @@ def cli(
                 "run_flags",
                 {
                     "preopt": bool(preopt),
-                    "preopt_max_cycles": int(preopt_max_cycles),
+                    "preopt_max_cycles": int(preopt_max_cycles_effective),
                     "mep_mode": mep_mode_kind,
                 },
             )
         )
+
+        if show_config:
+            click.echo(
+                pretty_block(
+                    "yaml_layers",
+                    {
+                        "config": None if config_yaml is None else str(config_yaml),
+                        "override_yaml": None if override_yaml is None else str(override_yaml),
+                        "merged_keys": sorted(merged_yaml_cfg.keys()),
+                    },
+                )
+            )
+        if dry_run:
+            click.echo(
+                pretty_block(
+                    "dry_run_plan",
+                    {
+                        "input_endpoints": [str(p) for p in input_paths],
+                        "output_dir": str(out_dir_path),
+                        "mep_mode": mep_mode_kind,
+                        "opt_mode": opt_kind,
+                        "preopt": bool(preopt),
+                        "preopt_max_cycles": int(preopt_max_cycles_effective),
+                        "freeze_links": bool(freeze_links_flag),
+                        "convert_files": bool(convert_files),
+                        "will_run_path_opt": True,
+                        "will_write_summary": True,
+                    },
+                )
+            )
+            click.echo("[dry-run] Validation complete. Path optimization execution was skipped.")
+            return
 
         # --------------------------
         # 2) Prepare structures (load two endpoints and apply freezing)
@@ -912,6 +1169,8 @@ def cli(
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}")
             sys.exit(5)
+
+        _write_output_summary_md(out_dir_path)
 
         click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
 

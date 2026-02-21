@@ -7,7 +7,7 @@
 pocket extraction → (optional) staged UMA scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
 
 ```{important}
-`--tsopt True` produces **TS candidates**. Always validate them (imaginary mode + connectivity) with `freq` and `irc` before mechanistic interpretation.
+`--tsopt` produces **TS candidates**. Always validate them (imaginary mode + connectivity) with `freq` and `irc` before mechanistic interpretation.
 ```
 
 It supports three common modes:
@@ -16,9 +16,45 @@ It supports three common modes:
 - **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists`. The scan generates an ordered set of intermediates that become MEP endpoints.
   - One `--scan-lists` literal runs a single scan stage.
   - Multiple stages are passed as multiple values after a single `--scan-lists` flag (the flag itself cannot be repeated).
-- **TSOPT-only pocket TS optimization** — Provide a single input structure, omit `--scan-lists`, and set `--tsopt True`. `all` extracts the pocket (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
+- **TSOPT-only pocket TS optimization** — Provide a single input structure, omit `--scan-lists`, and set `--tsopt`. `all` extracts the pocket (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
-PDB/GJF companion files are generated when templates are available, controlled by `--convert-files {True\|False}` (enabled by default).
+## Minimal example
+
+```bash
+pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
+```
+
+## Output checklist
+
+- `result_all/summary.md`
+- `result_all/summary.log`
+- `result_all/summary.yaml`
+- `result_all/path_search/mep.pdb` (or `result_all/path_search/seg_*/`)
+- `result_all/key_ts.pdb` / `result_all/key_freq_TS.csv` (when post-processing outputs exist)
+
+## Common examples
+
+1. Run full post-processing in one command.
+
+```bash
+pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
+  --tsopt --thermo --dft --out-dir ./result_all
+```
+
+2. Single-structure staged scan route.
+
+```bash
+pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.20)]" \
+  --mult 1 --out-dir ./result_scan_all
+```
+
+3. Validate parsing and plan only.
+
+```bash
+pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --dry-run
+```
+
+PDB/GJF companion files are generated when templates are available, controlled by `--convert-files/--no-convert-files` (enabled by default).
 
 
 ## Usage
@@ -26,22 +62,24 @@ PDB/GJF companion files are generated when templates are available, controlled b
 pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
 ```
 
+For help output, `pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the full option list.
+
 ### Examples
 ```bash
 # Multi-structure ensemble with explicit ligand charges and post-processing
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
-    --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links True \
-    --max-nodes 10 --max-cycles 100 --climb True --opt-mode light \
-    --out-dir ./result_all --tsopt True --thermo True --dft True
+    --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links \
+    --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
+    --out-dir ./result_all --tsopt --thermo --dft
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
     --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
-    --opt-mode heavy --tsopt True --thermo True --dft True
+    --opt-mode heavy --tsopt --thermo --dft
 
 # TSOPT-only workflow (no path search)
 pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
-    --ligand-charge 'GPP:-3,MMT:-1' --tsopt True --thermo True --dft True
+    --ligand-charge 'GPP:-3,MMT:-1' --tsopt --thermo --dft
 ```
 
 ## Workflow
@@ -54,25 +92,25 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 2. **Optional staged scan (single-input only)**
    - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
    - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals after a single flag (repeated flags are not accepted).
-   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), `--args-yaml`, and `--preopt`. The `--dump` flag is forwarded to scan only when explicitly set on this command; otherwise scan uses its own default (`False`). Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
+   - Scan inherits charge/spin, `--freeze-links`, the UMA optimizer preset (`--opt-mode`), effective YAML (`--config`/`--override-yaml`), and `--preopt`. The `--dump` flag is forwarded to scan only when explicitly set on this command; otherwise scan uses its own default (`False`). Overrides such as `--scan-out-dir`, `--scan-one-based`, `--scan-max-step-size`, `--scan-bias-k`, `--scan-relax-max-cycles`, `--scan-preopt`, and `--scan-endopt` apply per run.
    - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on pockets (recursive GSM/DMF)**
-   - Executes `path-search` by default using the extracted pockets (or the original entire structures if extraction is skipped). Outputs are written under `<out-dir>/path_search/`. Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--args-yaml`, and `--out-dir`.
-   - Use `--refine-path False` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
+   - Executes `path-search` by default using the extracted pockets (or the original entire structures if extraction is skipped). Outputs are written under `<out-dir>/path_search/`. Relevant options: `--mult`, `--freeze-links`, `--max-nodes`, `--max-cycles`, `--climb`, `--opt-mode`, `--dump`, `--preopt`, `--config`, `--override-yaml`, and `--out-dir`.
+   - Use `--no-refine-path` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
    - For multi-input PDB runs, the full-system templates are automatically passed to `path-search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
 4. **Merge pockets back to the full systems**
    - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
 
 5. **Optional per-segment post-processing**
-   - `--tsopt True`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
-   - `--thermo True`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
-   - `--dft True`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo True`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
+   - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
+   - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
+   - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
    - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten-imag-mode`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
    - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 
-6. **TSOPT-only mode** (single input, `--tsopt True`, no `--scan-lists`)
+6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
    - Skips the MEP/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
@@ -104,11 +142,15 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt True`). | Required |
+| `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt`). | Required |
 | `--out-dir PATH` | Top-level output directory. | `./result_all/` |
-| `--convert-files {True\|False}` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump {True\|False}` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--dump False`. | `False` |
-| `--args-yaml FILE` | YAML forwarded unchanged to all subcommands. | _None_ |
+| `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
+| `--dump/--no-dump` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
+| `--config FILE` | Base YAML applied first. | _None_ |
+| `--override-yaml FILE` | Final YAML override layer (highest YAML priority). | _None_ |
+| `--args-yaml FILE` | Legacy alias of `--override-yaml`. | _None_ |
+| `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
+| `--dry-run/--no-dry-run` | Validate and print plan without running stages. | `False` |
 
 ### Charge/Spin Options
 
@@ -125,12 +167,12 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
-| `--include-H2O, --include-h2o {True\|False}` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
-| `--exclude-backbone {True\|False}` | Remove backbone atoms on non-substrate amino acids. | `True` |
-| `--add-linkH {True\|False}` | Add link hydrogens for severed bonds. | `True` |
+| `--include-H2O, --include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `True` |
+| `--add-linkH/--no-add-linkH` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
-| `--freeze-links {True\|False}` | Freeze link parents in pocket PDBs. | `True` |
-| `--verbose {True\|False}` | Enable INFO-level extractor logging. | `True` |
+| `--freeze-links/--no-freeze-links` | Freeze link parents in pocket PDBs. | `True` |
+| `--verbose/--no-verbose` | Enable INFO-level extractor logging. | `True` |
 
 ### MEP Search Options
 
@@ -139,11 +181,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--mep-mode [gsm\|dmf]` | MEP search algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | MEP internal nodes per segment. | `10` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
-| `--climb {True\|False}` | Enable TS climbing for the first segment. | `True` |
+| `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [light\|heavy]` | Optimizer preset (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--preopt {True\|False}` | Pre-optimize pocket endpoints before MEP search. | `True` |
-| `--refine-path {True\|False}` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `True` |
+| `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### UMA Calculator Options
 
@@ -156,12 +198,12 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--tsopt {True\|False}` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--thermo {True\|False}` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
-| `--dft {True\|False}` | Run single-point DFT on R/TS/P. | `False` |
+| `--tsopt/--no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
+| `--thermo/--no-thermo` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
+| `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
 | `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC optimization. | _None_ |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten-imag-mode {True\|False}` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
+| `--flatten-imag-mode/--no-flatten-imag-mode` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`heavy`).
 
@@ -201,18 +243,25 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | --- | --- | --- |
 | `--scan-lists, --scan-list TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based {True\|False}` | Force scan indexing to 1-based or 0-based. | `True` |
+| `--scan-one-based/--no-scan-one-based` | Force scan indexing to 1-based or 0-based. | `True` |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV/Å²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
-| `--scan-preopt {True\|False}` | Override the scan preoptimization toggle. | `True` |
-| `--scan-endopt {True\|False}` | Override the scan end-of-stage optimization toggle. | `True` |
+| `--scan-preopt/--no-scan-preopt` | Override the scan preoptimization toggle. | `True` |
+| `--scan-endopt/--no-scan-endopt` | Override the scan end-of-stage optimization toggle. | `True` |
 
 ## Outputs
 ```text
 out_dir/ (default: ./result_all/)
+├─ summary.md                # quick navigation page with key artifact links
 ├─ summary.log               # formatted summary for quick inspection
 ├─ summary.yaml              # YAML version summary
+├─ key_mep.trj               # root shortcut (symlink/copy) to primary MEP trajectory
+├─ key_mep.pdb               # root shortcut (symlink/copy) to primary MEP PDB
+├─ key_ts.pdb / key_ts.xyz   # root shortcut to TS structure (when available)
+├─ key_freq_TS.csv           # root shortcut to TS frequencies (when available)
+├─ key_dft_TS.yaml           # root shortcut to TS DFT output (when available)
+├─ key_irc_plot.png          # root shortcut to IRC plot (when available)
 ├─ pockets/                  # Per-input pocket PDBs when extraction runs
 ├─ scan/                     # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/              # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
@@ -238,17 +287,29 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 `summary.yaml` intentionally omits the formatted tables and filesystem tree that appear in `summary.log`.
 
 ## Notes
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
 - Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/MEP/TSOPT/DFT.
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
 - Convergence presets: `--thresh` defaults to `gau`; `--thresh-post` defaults to `baker`.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
-- Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists` or `--tsopt True`.
-- `--args-yaml` lets you coordinate all calculators from a single configuration file. YAML values override CLI flags.
+- Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists` or `--tsopt`.
+- Use `--config` for shared/base settings and `--override-yaml` for final forced overrides.
 
-## YAML configuration (`--args-yaml`)
+## YAML configuration (`--config` / `--override-yaml`)
 
-The same YAML file is forwarded unchanged to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
+`all` supports layered YAML:
+
+- `--config FILE`: base settings.
+- `--override-yaml FILE`: final override layer.
+- `--args-yaml FILE`: legacy alias of `--override-yaml`.
+
+Effective precedence:
+
+`defaults < config < CLI < override-yaml`
+
+The effective YAML is forwarded to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
 
 | Subcommand | YAML Sections |
 |------------|---------------|
@@ -258,7 +319,7 @@ The same YAML file is forwarded unchanged to **every** invoked subcommand. Each 
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
 | [`dft`](dft.md) | `dft` |
 
-> **Note:** YAML contents take precedence over CLI values when both are provided.
+> **Note:** `--override-yaml` is applied after CLI values.
 
 **Minimal example:**
 ```yaml
@@ -285,6 +346,7 @@ For a complete reference of all YAML options, see **[YAML Configuration Referenc
 - [tsopt](tsopt.md) — Standalone TS optimization
 - [freq](freq.md) — Standalone vibrational analysis
 - [dft](dft.md) — Standalone DFT calculations
+- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Common errors and fixes
 - [YAML Reference](yaml-reference.md) — Complete YAML configuration options
 - [Glossary](glossary.md) — Definitions of MEP, TS, IRC, GSM, DMF

@@ -8,11 +8,19 @@
 :hidden:
 
 getting-started
+quickstart-all
+quickstart-scan-spec
+quickstart-tsopt-freq
 concepts
+recipes-common-errors
 troubleshooting
 cli-conventions
 ja/getting-started
+ja/quickstart-all
+ja/quickstart-scan-spec
+ja/quickstart-tsopt-freq
 ja/concepts
+ja/recipes-common-errors
 ja/troubleshooting
 ja/cli-conventions
 ```
@@ -23,6 +31,7 @@ ja/cli-conventions
 :hidden:
 
 all
+init
 extract
 fix_altloc
 add_elem_info
@@ -39,6 +48,7 @@ dft
 trj2fig
 energy-diagram
 ja/all
+ja/init
 ja/extract
 ja/fix_altloc
 ja/add_elem_info
@@ -61,6 +71,8 @@ ja/energy-diagram
 :caption: Reference
 :hidden:
 
+reference/commands/index
+reference/yaml
 yaml-reference
 uma_pysis
 glossary
@@ -84,7 +96,11 @@ ja/index
 
 | Objectives | Command | Guide |
 |-------------------------|---------|-------|
+| First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart-all.md) |
+| Single-structure staged scan (`--spec`) | `pdb2reaction scan` | [Quickstart: scan with spec](quickstart-scan-spec.md) |
+| TS validation (`tsopt` -> `freq`) | `pdb2reaction tsopt`, `pdb2reaction freq` | [Quickstart: tsopt -> freq](quickstart-tsopt-freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
+| Generate a starter YAML config for `all` | `pdb2reaction init` | [init.md](init.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt.md](opt.md) |
 | Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
@@ -92,6 +108,7 @@ ja/index
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
 | Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
+| Diagnose failures by symptom | — | [Common Error Recipes](recipes-common-errors.md) |
 | Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
@@ -104,6 +121,7 @@ ja/index
 |-------|------|
 | **Installation & first run** | [Getting Started](getting-started.md) |
 | **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
+| **Symptom-first failure routing** | [Common Error Recipes](recipes-common-errors.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
 | **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
 
@@ -115,6 +133,7 @@ ja/index
 | Subcommand | Description |
 |------------|-------------|
 | [`all`](all.md) | End-to-end workflow: extraction → MEP → TS optimization → IRC → freq → DFT |
+| [`init`](init.md) | Generate a starter YAML template for `pdb2reaction all` |
 
 ### Structure Preparation
 | Subcommand | Description |
@@ -156,6 +175,8 @@ ja/index
 
 | Topic | Page |
 |-------|------|
+| **CLI command reference (generated)** | [Command Reference](reference/commands/index.md) |
+| **YAML schema (generated)** | [YAML Schema (Generated)](reference/yaml.md) |
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
 | **UMA calculator settings** | [UMA Calculator](uma_pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
@@ -187,19 +208,18 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ### Full workflow with TS optimization
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True --thermo True --dft True
+    --tsopt --thermo --dft
 ```
 
 ### Single-structure scan mode
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
 ```
 
 ### TS-only optimization
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True
+    --tsopt
 ```
 
 ---
@@ -212,15 +232,16 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 - Spin multiplicity is set with `-m/--mult` (the `all` command) or `-m/--multiplicity` (other subcommands); default is `1`
 
 ### Boolean options
-All boolean CLI options must be explicitly set to `True` or `False`:
+Boolean CLI options use toggle form (`--flag` / `--no-flag`):
 ```bash
---tsopt True --thermo True --dft False
+--tsopt --thermo --no-dft
 ```
 
 ### YAML configuration
-Advanced settings can be provided with `--args-yaml`.
+Layered settings are recommended via `--config` and `--override-yaml`.
+(`--args-yaml` remains as a legacy alias of `--override-yaml`.)
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
+pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml override.yaml
 ```
 See the [YAML Reference](yaml-reference.md) for all options.
 

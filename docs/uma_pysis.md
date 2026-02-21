@@ -190,3 +190,13 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
 
 Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator settings can be supplied via `--args-yaml` under the `calc` key to reuse the same UMA configuration across stages.
+
+---
+
+## See Also
+
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
+- [opt](opt.md) -- Single-structure optimization using UMA
+- [path_opt](path_opt.md) -- MEP optimization with UMA calculator
+- [all](all.md) -- End-to-end workflow using UMA across stages

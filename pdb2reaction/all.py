@@ -55,6 +55,7 @@ from .utils import (
     collect_option_values,
     collect_single_option_values,
     convert_xyz_like_outputs,
+    deep_update,
     detect_freeze_links_logged,
     format_elapsed,
     merge_freeze_atom_groups,
@@ -121,6 +122,176 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         return False
 
 
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    """Resolve the first existing file for a list of relative patterns."""
+    for pattern in patterns:
+        if any(ch in pattern for ch in "*?[]"):
+            for candidate in sorted(out_dir.glob(pattern)):
+                if candidate.is_file():
+                    return candidate.resolve()
+            continue
+        candidate = out_dir / pattern
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    """Create a symlink when possible; fall back to copy."""
+    try:
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir():
+                return False
+            dst.unlink()
+        rel = os.path.relpath(src, start=dst.parent)
+        dst.symlink_to(rel)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        if not out_dir.exists():
+            return
+
+        root_specs: List[Tuple[str, str]] = [
+            ("summary.yaml", "YAML summary"),
+            ("summary.log", "Text summary"),
+            ("mep.trj", "MEP trajectory"),
+            ("mep.pdb", "MEP trajectory (PDB)"),
+            ("mep_w_ref.pdb", "MEP merged with reference"),
+            ("mep_plot.png", "MEP profile plot"),
+            ("energy_diagram_MEP.png", "State energy diagram"),
+            ("energy_diagram_UMA_all.png", "All-segment UMA diagram"),
+            ("irc_plot_all.png", "Aggregated IRC plot"),
+        ]
+        root_lines: List[str] = []
+        for rel, label in root_specs:
+            if (out_dir / rel).is_file():
+                root_lines.append(f"- {label}: [`{rel}`]({rel})")
+
+        shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
+            (
+                "key_mep.trj",
+                "Primary MEP trajectory",
+                ["mep.trj", "path_search/mep.trj", "path_opt/final_geometries.trj"],
+            ),
+            (
+                "key_mep.pdb",
+                "Primary MEP PDB",
+                ["mep.pdb", "path_search/mep.pdb", "path_opt/final_geometries.pdb"],
+            ),
+            (
+                "key_ts.pdb",
+                "TS structure (PDB)",
+                [
+                    "ts_seg_01.pdb",
+                    "path_search/post_seg_*/ts/final_geometry.pdb",
+                    "path_opt/post_seg_*/ts/final_geometry.pdb",
+                    "tsopt_single/ts/final_geometry.pdb",
+                ],
+            ),
+            (
+                "key_ts.xyz",
+                "TS structure (XYZ)",
+                [
+                    "ts_seg_01.xyz",
+                    "path_search/post_seg_*/ts/final_geometry.xyz",
+                    "path_opt/post_seg_*/ts/final_geometry.xyz",
+                    "tsopt_single/ts/final_geometry.xyz",
+                ],
+            ),
+            (
+                "key_freq_TS.csv",
+                "TS frequencies",
+                [
+                    "path_search/post_seg_*/freq/TS/frequencies.csv",
+                    "path_opt/post_seg_*/freq/TS/frequencies.csv",
+                    "tsopt_single/freq/TS/frequencies.csv",
+                ],
+            ),
+            (
+                "key_dft_TS.yaml",
+                "TS DFT result",
+                [
+                    "path_search/post_seg_*/dft/TS/result.yaml",
+                    "path_opt/post_seg_*/dft/TS/result.yaml",
+                    "tsopt_single/dft/TS/result.yaml",
+                ],
+            ),
+            (
+                "key_irc_plot.png",
+                "IRC plot",
+                [
+                    "irc_plot_all.png",
+                    "path_search/post_seg_*/irc/irc_plot.png",
+                    "path_opt/post_seg_*/irc/irc_plot.png",
+                    "tsopt_single/irc/irc_plot.png",
+                ],
+            ),
+        ]
+        shortcut_lines: List[str] = []
+        for name, label, patterns in shortcut_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            dst = out_dir / name
+            try:
+                same = src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                continue
+            src_rel = os.path.relpath(src, start=out_dir)
+            shortcut_lines.append(
+                f"- {label}: [`{name}`]({name}) (source: `{src_rel}`)"
+            )
+
+        lines: List[str] = [
+            "# Run Summary",
+            "",
+            f"- Generated: `{time.strftime('%Y-%m-%d %H:%M:%S %Z')}`",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Primary Artifacts",
+        ]
+        if root_lines:
+            lines.extend(root_lines)
+        else:
+            lines.append("- No primary artifacts detected yet.")
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if shortcut_lines:
+            lines.extend(shortcut_lines)
+        else:
+            lines.append("- No shortcuts were generated.")
+        lines.extend(
+            [
+                "",
+                "## Notes",
+                "- Start from `summary.log` for a concise narrative and from `summary.yaml` for machine-readable values.",
+            ]
+        )
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        _echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        _echo(f"[write] WARNING: Failed to write summary.md: {e}")
+
+
 def _run_cli_main(
     cmd_name: str,
     cli_obj,
@@ -169,6 +340,64 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     if override.is_absolute():
         return override
     return default.parent / override
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    """Resolve config/override YAML inputs and legacy alias usage."""
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+
+    used_legacy_alias = False
+    if args_yaml_legacy is not None:
+        used_legacy_alias = True
+        override_yaml = args_yaml_legacy
+
+    return config_yaml, override_yaml, used_legacy_alias
+
+
+def _build_effective_args_yaml(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    *,
+    tmp_prefix: str,
+) -> Tuple[Optional[Path], Dict[str, Any]]:
+    """
+    Build an effective args-yaml file path.
+
+    Precedence for file layering:
+      config_yaml < override_yaml
+    """
+    base_cfg = load_yaml_dict(config_yaml)
+    override_cfg = load_yaml_dict(override_yaml)
+
+    if config_yaml is None and override_yaml is None:
+        return None, {}
+    if config_yaml is None:
+        return override_yaml, override_cfg
+    if override_yaml is None:
+        return config_yaml, base_cfg
+
+    merged: Dict[str, Any] = {}
+    deep_update(merged, base_cfg)
+    deep_update(merged, override_cfg)
+
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        suffix=".yaml",
+        prefix=tmp_prefix,
+        delete=False,
+    ) as tf:
+        yaml.safe_dump(merged, tf, sort_keys=False, allow_unicode=True)
+        effective = Path(tf.name).resolve()
+
+    return effective, merged
 
 
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
@@ -1354,6 +1583,62 @@ def _irc_and_match(
 # CLI
 # -----------------------------
 
+_ALL_PRIMARY_HELP_OPTIONS = frozenset(
+    {
+        "-i",
+        "--input",
+        "-c",
+        "--center",
+        "--ligand-charge",
+        "-q",
+        "--charge",
+        "--out-dir",
+        "--tsopt",
+        "--thermo",
+        "--dft",
+        "--config",
+        "--dry-run",
+        "--help-advanced",
+    }
+)
+
+
+def _show_advanced_help(
+    ctx: click.Context, _param: click.Parameter, value: bool
+) -> None:
+    """Print full option help (including hidden advanced options) and exit."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    hidden = getattr(ctx.command, "_advanced_hidden_options", ())
+    restored: list[click.Option] = []
+    for opt in hidden:
+        if opt.hidden:
+            opt.hidden = False
+            restored.append(opt)
+    try:
+        click.echo(ctx.command.get_help(ctx))
+    finally:
+        for opt in restored:
+            opt.hidden = True
+    ctx.exit()
+
+
+def _configure_all_help_visibility(command: click.Command) -> None:
+    """Hide advanced options from default --help while keeping them functional."""
+    hidden_options: list[click.Option] = []
+    for param in command.params:
+        if not isinstance(param, click.Option):
+            continue
+        names = set(param.opts + param.secondary_opts)
+        if names & _ALL_PRIMARY_HELP_OPTIONS:
+            continue
+        if param.hidden:
+            continue
+        param.hidden = True
+        hidden_options.append(param)
+    setattr(command, "_advanced_hidden_options", tuple(hidden_options))
+
 
 @click.command(
     help=(
@@ -1367,6 +1652,14 @@ def _irc_and_match(
         "ignore_unknown_options": True,
         "allow_extra_args": True,
     },
+)
+@click.option(
+    "--help-advanced",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_show_advanced_help,
+    help="Show all options (including advanced settings) and exit.",
 )
 # ===== Inputs =====
 @click.option(
@@ -1615,13 +1908,40 @@ def _irc_and_match(
     ),
 )
 @click.option(
+    "--config",
+    "config_yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Base YAML configuration file applied before explicit CLI options.",
+)
+@click.option(
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
     "--args-yaml",
+    "args_yaml_legacy",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
-        "YAML forwarded unchanged to downstream subcommands (path_search/path-opt/scan/tsopt/freq/dft); "
-        "include the sections those commands accept (e.g., geom, calc, gs, opt, sopt, bond, search, dmf, bias, freq, thermo, dft)."
+        "[legacy] Alias of --override-yaml; kept for backward compatibility."
     ),
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running any stage.",
 )
 @click.option(
     "--preopt",
@@ -1873,7 +2193,11 @@ def cli(
     refine_path: bool,
     thresh: Optional[str],
     thresh_post: str,
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+    show_config: bool,
+    dry_run: bool,
     preopt: bool,
     hessian_calc_mode: Optional[str],
     do_tsopt: bool,
@@ -1929,6 +2253,22 @@ def cli(
         dump_override_requested = dump_source not in (None, ParameterSource.DEFAULT)
     except Exception:
         dump_override_requested = False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    args_yaml, merged_yaml_cfg = _build_effective_args_yaml(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        tmp_prefix="pdb2reaction_all_merged_",
+    )
 
     opt_mode_set = False
     opt_mode_post_set = False
@@ -2016,6 +2356,55 @@ def cli(
         dft_overrides["grid_level"] = int(dft_grid_level)
 
     dft_func_basis_use = dft_func_basis or "wb97m-v/def2-tzvpd"
+
+    if show_config or dry_run:
+        config_payload: Dict[str, Any] = {
+            "yaml": {
+                "config": str(config_yaml) if config_yaml else None,
+                "override_yaml": str(override_yaml) if override_yaml else None,
+                "effective_args_yaml": str(args_yaml) if args_yaml else None,
+            },
+            "all": {
+                "inputs": [str(p) for p in input_paths],
+                "center": (None if center_spec is None else str(center_spec)),
+                "out_dir": str(out_dir),
+                "charge_override": charge_override,
+                "spin": int(spin),
+                "mep_mode": str(mep_mode),
+                "max_nodes": int(max_nodes),
+                "max_cycles": int(max_cycles),
+                "climb": bool(climb),
+                "opt_mode": str(opt_mode),
+                "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
+                "dump": bool(dump),
+                "convert_files": bool(convert_files),
+                "refine_path": bool(refine_path),
+                "preopt": bool(preopt),
+                "tsopt": bool(do_tsopt),
+                "thermo": bool(do_thermo),
+                "dft": bool(do_dft),
+                "dft_engine": str(dft_engine),
+            },
+            "overrides": {
+                "tsopt": tsopt_overrides,
+                "freq": freq_overrides,
+                "dft": dft_overrides,
+            },
+        }
+        if merged_yaml_cfg:
+            config_payload["effective_yaml"] = merged_yaml_cfg
+        _echo_section("=== [all] Effective configuration ===")
+        click.echo(
+            yaml.safe_dump(config_payload, sort_keys=False, allow_unicode=True).rstrip()
+        )
+
+    if dry_run:
+        _echo("[all] Dry-run mode: no extraction/search/post-processing was executed.")
+        _echo(
+            "[all] Planned stages: extract -> optional scan -> path_search/path_opt -> optional tsopt/irc/freq/dft."
+        )
+        _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+        return
 
     yaml_cfg = load_yaml_dict(args_yaml)
     _set_yaml_freeze_atoms(yaml_cfg)
@@ -2727,6 +3116,7 @@ def cli(
         _echo_section(
             "\n====== [all] TSOPT-only pipeline successfully finished ======"
         )
+        _write_output_summary_md(out_dir)
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -3403,6 +3793,7 @@ def cli(
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
         _write_pipeline_summary_log([])
+        _write_output_summary_md(out_dir)
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -3415,6 +3806,7 @@ def cli(
 
     if not segments:
         _echo("[post] No segments found in summary; nothing to do.")
+        _write_output_summary_md(out_dir)
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -3430,6 +3822,7 @@ def cli(
     ]
     if not reactive:
         _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.")
+        _write_output_summary_md(out_dir)
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -4031,4 +4424,8 @@ def cli(
             err=True,
         )
 
+    _write_output_summary_md(out_dir)
     _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
+
+
+_configure_all_help_visibility(cli)

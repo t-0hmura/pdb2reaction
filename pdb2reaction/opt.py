@@ -14,12 +14,15 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import ast
 import inspect
+import os
+import shutil
 import sys
 
 import click
 import numpy as np
 import yaml
 import time
+from click.core import ParameterSource
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
@@ -39,6 +42,7 @@ from .defaults import (
 from .uma_pysis import uma_pysis
 from .utils import (
     resolve_freeze_atoms,
+    deep_update,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -56,6 +60,148 @@ EV2AU = 1.0 / AU2EV  # eV → Hartree
 H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 
 # Note: All defaults imported from defaults.py - no local copies needed
+
+
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    """Resolve the first existing artifact for a list of relative patterns."""
+    for pattern in patterns:
+        if any(ch in pattern for ch in "*?[]"):
+            for candidate in sorted(out_dir.glob(pattern)):
+                if candidate.is_file():
+                    return candidate.resolve()
+            continue
+        candidate = out_dir / pattern
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    """Create a symlink when possible; fall back to copy."""
+    try:
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir():
+                return False
+            dst.unlink()
+        rel = os.path.relpath(src, start=dst.parent)
+        dst.symlink_to(rel)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        if not out_dir.exists():
+            return
+
+        root_specs: List[Tuple[str, Sequence[str]]] = [
+            ("Optimized geometry (XYZ)", ["final_geometry.xyz"]),
+            ("Optimized geometry (PDB)", ["final_geometry.pdb"]),
+            ("Optimized geometry (GJF)", ["final_geometry.gjf"]),
+            ("Optimization trajectory", ["optimization.trj"]),
+            ("Optimization trajectory (PDB)", ["optimization.pdb"]),
+            ("Restart snapshot", ["restart*.yml"]),
+        ]
+        root_lines: List[str] = []
+        for label, patterns in root_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            rel = os.path.relpath(src, start=out_dir)
+            root_lines.append(f"- {label}: [`{rel}`]({rel})")
+
+        shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
+            ("key_opt.xyz", "Optimized geometry (XYZ)", ["final_geometry.xyz"]),
+            ("key_opt.pdb", "Optimized geometry (PDB)", ["final_geometry.pdb"]),
+            ("key_opt.gjf", "Optimized geometry (GJF)", ["final_geometry.gjf"]),
+            ("key_opt.trj", "Optimization trajectory", ["optimization.trj"]),
+            ("key_opt_traj.pdb", "Optimization trajectory (PDB)", ["optimization.pdb"]),
+            ("key_restart.yml", "Restart snapshot", ["restart*.yml"]),
+        ]
+        shortcut_lines: List[str] = []
+        for name, label, patterns in shortcut_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            dst = out_dir / name
+            try:
+                same = src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                continue
+            src_rel = os.path.relpath(src, start=out_dir)
+            shortcut_lines.append(
+                f"- {label}: [`{name}`]({name}) (source: `{src_rel}`)"
+            )
+
+        lines: List[str] = [
+            "# Opt Summary",
+            "",
+            f"- Generated: `{time.strftime('%Y-%m-%d %H:%M:%S %Z')}`",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Primary Artifacts",
+        ]
+        if root_lines:
+            lines.extend(root_lines)
+        else:
+            lines.append("- No primary artifacts detected yet.")
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if shortcut_lines:
+            lines.extend(shortcut_lines)
+        else:
+            lines.append("- No shortcuts were generated.")
+        lines.extend(
+            [
+                "",
+                "## Notes",
+                "- Start from `key_opt.xyz` (or `key_opt.pdb`) and inspect `key_opt.trj` when available.",
+            ]
+        )
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        click.echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def _load_merged_yaml_cfg(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged
 
 
 class HarmonicBiasCalculator:
@@ -296,9 +442,8 @@ def _convert_outputs(
     help="Python-like list(s) of (i,j,target_A) to restrain distances (target optional).",
 )
 @click.option(
-    "--one-based",
+    "--one-based/--zero-based",
     "one_based",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Interpret --dist-freeze indices as 1-based (default) or 0-based.",
@@ -311,16 +456,14 @@ def _convert_outputs(
     help="Harmonic restraint strength k [eV/Å^2] for --dist-freeze.",
 )
 @click.option(
-    "--freeze-links",
-    type=click.BOOL,
+    "--freeze-links/--no-freeze-links",
     default=True,
     show_default=True,
     help="Freeze the parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
-    "--convert-files",
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -346,8 +489,7 @@ def _convert_outputs(
     help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO).",
 )
 @click.option(
-    "--dump",
-    type=click.BOOL,
+    "--dump/--no-dump",
     default=False,
     show_default=True,
     help="Write optimization trajectory to 'optimization.trj'.",
@@ -370,12 +512,42 @@ def _convert_outputs(
     ),
 )
 @click.option(
-    "--args-yaml",
+    "--config",
+    "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra arguments (sections: geom, calc, opt, lbfgs, rfo).",
+    help="Base YAML configuration file applied before explicit CLI options.",
 )
+@click.option(
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
+    "--args-yaml",
+    "args_yaml_legacy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running optimization.",
+)
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -393,10 +565,38 @@ def cli(
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+    show_config: bool,
+    dry_run: bool,
 ) -> None:
     time_start = time.perf_counter()
+
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    merged_yaml_cfg = _load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+    )
+
     set_convert_file_enabled(convert_files)
+
     def _run() -> None:
         with prepared_cli_input(
             input_path,
@@ -412,29 +612,45 @@ def cli(
             dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
 
             # --------------------------
-            # 1) Assemble configuration (create fresh copies for merging)
+            # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
             # --------------------------
-            yaml_cfg = load_yaml_dict(args_yaml)
+            config_layer_cfg = load_yaml_dict(config_yaml)
+            override_layer_cfg = load_yaml_dict(override_yaml)
             geom_cfg = dict(GEOM_KW_DEFAULT)
             calc_cfg = dict(UMA_CALC_KW)
             opt_cfg = dict(OPT_BASE_KW)
             lbfgs_cfg = dict(LBFGS_KW)
             rfo_cfg = dict(RFO_KW)
 
-            # CLI overrides (defaults ← CLI)
+            apply_yaml_overrides(
+                config_layer_cfg,
+                [
+                    (geom_cfg, (("geom",),)),
+                    (calc_cfg, (("calc",),)),
+                    (opt_cfg, (("opt",),)),
+                    (lbfgs_cfg, (("lbfgs",),)),
+                    (rfo_cfg, (("rfo",),)),
+                ],
+            )
+
+            # CLI explicit overrides
             calc_cfg["charge"] = resolved_charge
             calc_cfg["spin"] = resolved_spin
-            calc_cfg["workers"] = int(workers)
-            calc_cfg["workers_per_node"] = int(workers_per_node)
-            opt_cfg["max_cycles"] = int(max_cycles)
-            opt_cfg["dump"] = bool(dump)
-            opt_cfg["out_dir"] = out_dir
-            if thresh is not None:
+            if _is_param_explicit("workers"):
+                calc_cfg["workers"] = int(workers)
+            if _is_param_explicit("workers_per_node"):
+                calc_cfg["workers_per_node"] = int(workers_per_node)
+            if _is_param_explicit("max_cycles"):
+                opt_cfg["max_cycles"] = int(max_cycles)
+            if _is_param_explicit("dump"):
+                opt_cfg["dump"] = bool(dump)
+            if _is_param_explicit("out_dir"):
+                opt_cfg["out_dir"] = out_dir
+            if _is_param_explicit("thresh") and thresh is not None:
                 opt_cfg["thresh"] = str(thresh)
 
-            # YAML has highest precedence (defaults ← CLI ← YAML)
             apply_yaml_overrides(
-                yaml_cfg,
+                override_layer_cfg,
                 [
                     (geom_cfg, (("geom",),)),
                     (calc_cfg, (("calc",),)),
@@ -464,6 +680,17 @@ def cli(
             echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
             echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
             click.echo(pretty_block(kind, echo_sopt))
+            if show_config:
+                click.echo(
+                    pretty_block(
+                        "yaml_layers",
+                        {
+                            "config": None if config_yaml is None else str(config_yaml),
+                            "override_yaml": None if override_yaml is None else str(override_yaml),
+                            "merged_keys": sorted(merged_yaml_cfg.keys()),
+                        },
+                    )
+                )
             if dist_freeze:
                 display_pairs = []
                 for (i, j, target) in dist_freeze:
@@ -478,6 +705,24 @@ def cli(
                         },
                     )
                 )
+
+            if dry_run:
+                click.echo(
+                    pretty_block(
+                        "dry_run_plan",
+                        {
+                            "input_geometry": str(geom_input_path),
+                            "output_dir": str(out_dir_path),
+                            "optimizer_mode": str(kind),
+                            "convert_files": bool(convert_files),
+                            "freeze_links": bool(freeze_links),
+                            "will_run_optimization": True,
+                            "will_write_final_geometry": True,
+                        },
+                    )
+                )
+                click.echo("[dry-run] Validation complete. Optimization execution was skipped.")
+                return
 
             # --------------------------
             # 2) Prepare geometry
@@ -555,6 +800,7 @@ def cli(
                 final_xyz_path=final_xyz_path,
             )
 
+            _write_output_summary_md(out_dir_path)
             click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
 
     run_cli(

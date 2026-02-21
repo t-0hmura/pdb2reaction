@@ -12,12 +12,15 @@ For detailed documentation, see: docs/irc.md
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Tuple, List
 
+import os
+import shutil
 import sys
 import textwrap
 
 import click
+from click.core import ParameterSource
 import yaml
 import time
 
@@ -27,6 +30,7 @@ from pdb2reaction.uma_pysis import uma_pysis
 from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW
 from pdb2reaction.utils import (
     load_yaml_dict,
+    deep_update,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
@@ -36,6 +40,30 @@ from pdb2reaction.utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
 )
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def _load_merged_yaml_cfg(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged
 
 
 def _echo_convert_trj_if_exists(
@@ -57,6 +85,124 @@ def _echo_convert_trj_if_exists(
             if targets:
                 written = ", ".join(f"'{p.name}'" for p in targets)
                 click.echo(f"[convert] Wrote {written}.")
+
+
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    """Resolve the first existing artifact for a list of relative patterns."""
+    for pattern in patterns:
+        if any(ch in pattern for ch in "*?[]"):
+            for candidate in sorted(out_dir.glob(pattern)):
+                if candidate.is_file():
+                    return candidate.resolve()
+            continue
+        candidate = out_dir / pattern
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    """Create a symlink when possible; fall back to copy."""
+    try:
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir():
+                return False
+            dst.unlink()
+        rel = os.path.relpath(src, start=dst.parent)
+        dst.symlink_to(rel)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        if not out_dir.exists():
+            return
+
+        root_specs: List[Tuple[str, Sequence[str]]] = [
+            ("Complete IRC trajectory", ["*finished_irc.trj"]),
+            ("Forward IRC trajectory", ["*forward_irc.trj"]),
+            ("Backward IRC trajectory", ["*backward_irc.trj"]),
+            ("Complete IRC trajectory (PDB)", ["*finished_irc.pdb"]),
+            ("Forward IRC trajectory (PDB)", ["*forward_irc.pdb"]),
+            ("Backward IRC trajectory (PDB)", ["*backward_irc.pdb"]),
+            ("IRC HDF5 dump", ["*irc_data.h5"]),
+        ]
+        root_lines: List[str] = []
+        for label, patterns in root_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            rel = os.path.relpath(src, start=out_dir)
+            root_lines.append(f"- {label}: [`{rel}`]({rel})")
+
+        shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
+            ("key_irc.trj", "Complete IRC trajectory", ["*finished_irc.trj"]),
+            ("key_irc_forward.trj", "Forward IRC trajectory", ["*forward_irc.trj"]),
+            ("key_irc_backward.trj", "Backward IRC trajectory", ["*backward_irc.trj"]),
+            ("key_irc.pdb", "Complete IRC trajectory (PDB)", ["*finished_irc.pdb"]),
+            ("key_irc_data.h5", "IRC HDF5 dump", ["*irc_data.h5"]),
+        ]
+        shortcut_lines: List[str] = []
+        for name, label, patterns in shortcut_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            dst = out_dir / name
+            try:
+                same = src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                continue
+            src_rel = os.path.relpath(src, start=out_dir)
+            shortcut_lines.append(
+                f"- {label}: [`{name}`]({name}) (source: `{src_rel}`)"
+            )
+
+        lines: List[str] = [
+            "# IRC Summary",
+            "",
+            f"- Generated: `{time.strftime('%Y-%m-%d %H:%M:%S %Z')}`",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Primary Artifacts",
+        ]
+        if root_lines:
+            lines.extend(root_lines)
+        else:
+            lines.append("- No primary artifacts detected yet.")
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if shortcut_lines:
+            lines.extend(shortcut_lines)
+        else:
+            lines.append("- No shortcuts were generated.")
+        lines.extend(
+            [
+                "",
+                "## Notes",
+                "- Start from `key_irc.trj` and compare `key_irc_forward.trj` / `key_irc_backward.trj` branches.",
+            ]
+        )
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        click.echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
 
 
 # --------------------------
@@ -138,35 +284,33 @@ def _echo_convert_trj_if_exists(
     ),
 )
 @click.option(
-    "--forward",
-    type=bool,
+    "--forward/--no-forward",
+    "forward",
     default=None,
     help=(
-        "Run the forward IRC; used unless YAML sets irc.forward. Specify True/False explicitly. "
+        "Run the forward IRC; used unless YAML sets irc.forward. "
         "Defaults to True."
     ),
 )
 @click.option(
-    "--backward",
-    type=bool,
+    "--backward/--no-backward",
+    "backward",
     default=None,
     help=(
-        "Run the backward IRC; used unless YAML sets irc.backward. Specify True/False explicitly. "
+        "Run the backward IRC; used unless YAML sets irc.backward. "
         "Defaults to True."
     ),
 )
 @click.option(
-    "--freeze-links",
+    "--freeze-links/--no-freeze-links",
     "freeze_links_flag",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Freeze parent atoms of link hydrogens when the input is PDB.",
 )
 @click.option(
-    "--convert-files",
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -191,12 +335,42 @@ def _echo_convert_trj_if_exists(
     help="How UMA builds the Hessian (Analytical or FiniteDifference); used unless YAML sets calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
 )
 @click.option(
-    "--args-yaml",
+    "--config",
+    "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML file providing extra parameters (sections: geom, calc, irc).",
+    help="Base YAML configuration file applied before explicit CLI options.",
 )
+@click.option(
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
+    "--args-yaml",
+    "args_yaml_legacy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running IRC.",
+)
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -213,8 +387,34 @@ def cli(
     ref_pdb: Optional[Path],
     out_dir: str,
     hessian_calc_mode: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+    show_config: bool,
+    dry_run: bool,
 ) -> None:
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    merged_yaml_cfg = _load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+    )
+
     set_convert_file_enabled(convert_files)
     with prepared_cli_input(
         input_path,
@@ -230,38 +430,59 @@ def cli(
             time_start = time.perf_counter()
 
             # --------------------------
-            # 1) Assemble configuration: defaults -> CLI overrides -> YAML overrides
+            # 1) Assemble configuration: defaults < config < CLI(explicit) < override
             # --------------------------
-            yaml_cfg = load_yaml_dict(args_yaml)
+            config_layer_cfg = load_yaml_dict(config_yaml)
+            override_layer_cfg = load_yaml_dict(override_yaml)
 
             geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
             calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
-            irc_cfg:  Dict[str, Any] = dict(IRC_KW)
-
-            # CLI overrides
-            calc_cfg["charge"] = int(resolved_charge)
-            calc_cfg["spin"]   = int(resolved_spin)
-            calc_cfg["workers"] = int(workers)
-            calc_cfg["workers_per_node"] = int(workers_per_node)
-
-            if hessian_calc_mode is not None:
-                calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
-
-            if max_cycles is not None:
-                irc_cfg["max_cycles"] = int(max_cycles)
-            if step_size is not None:
-                irc_cfg["step_length"] = float(step_size)
-            if root is not None:
-                irc_cfg["root"] = int(root)
-            if forward is not None:
-                irc_cfg["forward"] = bool(forward)
-            if backward is not None:
-                irc_cfg["backward"] = bool(backward)
-            if out_dir:
-                irc_cfg["out_dir"] = str(out_dir)
+            irc_cfg: Dict[str, Any] = dict(IRC_KW)
 
             apply_yaml_overrides(
-                yaml_cfg,
+                config_layer_cfg,
+                [
+                    (geom_cfg, (("geom",),)),
+                    (calc_cfg, (("calc",),)),
+                    (irc_cfg, (("irc",),)),
+                ],
+            )
+
+            if _is_param_explicit("workers"):
+                calc_cfg["workers"] = int(workers)
+            if _is_param_explicit("workers_per_node"):
+                calc_cfg["workers_per_node"] = int(workers_per_node)
+            if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
+                calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+            if _is_param_explicit("max_cycles") and max_cycles is not None:
+                irc_cfg["max_cycles"] = int(max_cycles)
+            if _is_param_explicit("step_size") and step_size is not None:
+                irc_cfg["step_length"] = float(step_size)
+            if _is_param_explicit("root") and root is not None:
+                irc_cfg["root"] = int(root)
+            if _is_param_explicit("forward") and forward is not None:
+                irc_cfg["forward"] = bool(forward)
+            if _is_param_explicit("backward") and backward is not None:
+                irc_cfg["backward"] = bool(backward)
+            if _is_param_explicit("out_dir"):
+                irc_cfg["out_dir"] = str(out_dir)
+
+            charge_value = calc_cfg.get("charge", resolved_charge)
+            if charge_value is None:
+                charge_value = resolved_charge
+            calc_cfg["charge"] = int(charge_value)
+            if _is_param_explicit("charge"):
+                calc_cfg["charge"] = int(resolved_charge)
+
+            spin_value = calc_cfg.get("spin", resolved_spin)
+            if spin_value is None:
+                spin_value = resolved_spin
+            calc_cfg["spin"] = int(spin_value)
+            if _is_param_explicit("spin"):
+                calc_cfg["spin"] = int(resolved_spin)
+
+            apply_yaml_overrides(
+                override_layer_cfg,
                 [
                     (geom_cfg, (("geom",),)),
                     (calc_cfg, (("calc",),)),
@@ -281,6 +502,34 @@ def cli(
             calc_cfg["return_partial_hessian"] = False
 
             out_dir_path = Path(irc_cfg["out_dir"]).resolve()
+            if show_config:
+                click.echo(
+                    pretty_block(
+                        "yaml_layers",
+                        {
+                            "config": None if config_yaml is None else str(config_yaml),
+                            "override_yaml": None if override_yaml is None else str(override_yaml),
+                            "merged_keys": sorted(merged_yaml_cfg.keys()),
+                        },
+                    )
+                )
+            if dry_run:
+                click.echo(
+                    pretty_block(
+                        "dry_run_plan",
+                        {
+                            "input_geometry": str(geom_input_path),
+                            "output_dir": str(out_dir_path),
+                            "freeze_links": bool(freeze_links_flag),
+                            "convert_files": bool(convert_files),
+                            "will_run_irc": True,
+                            "will_write_trajectories": True,
+                        },
+                    )
+                )
+                click.echo("[dry-run] Validation complete. IRC execution was skipped.")
+                return
+
             out_dir_path.mkdir(parents=True, exist_ok=True)
 
             # Pretty-print configuration (expand freeze_atoms for readability)
@@ -330,6 +579,7 @@ def cli(
                 out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
             )
 
+            _write_output_summary_md(out_dir_path)
             click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 
         except KeyboardInterrupt:

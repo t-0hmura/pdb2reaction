@@ -1,6 +1,6 @@
 # YAML 設定リファレンス
 
-このドキュメントは、`pdb2reaction` の各コマンドで利用される YAML 設定の完全なリファレンスです。設定ファイルは `--args-yaml` で指定し、適用順序は **デフォルト → CLI → YAML**（YAMLが最優先）です。
+このドキュメントは、`pdb2reaction` の各コマンドで利用される YAML 設定の完全なリファレンスです。`pdb2reaction all` では `--config` と `--override-yaml`（`--args-yaml` は `--override-yaml` の legacy alias）による多層指定をサポートし、適用順序は **デフォルト < config < CLI < override-yaml** です。
 
 ---
 

@@ -25,7 +25,7 @@ pdb2reaction trj2fig -i traj.xyz
 pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
 # Multiple figure formats with the x-axis reversed (reference becomes last frame)
-pdb2reaction trj2fig -i traj.xyz --reverse-x True -o energy.png energy.html energy.pdf
+pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pdf
 
 # Recompute all frame energies with UMA before plotting
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
@@ -58,7 +58,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-r, --reference TEXT` | Reference specification (`init`, `None`, or 0-based integer). | `init` |
 | `-q, --charge INT` | Total charge; triggers energy recomputation with `uma_pysis` when provided. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation with `uma_pysis` when provided. | _None_ |
-| `--reverse-x {True\|False}` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
+| `--reverse-x/--no-reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 
 ## Outputs
 ```
@@ -79,3 +79,12 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - `--reverse-x` flips both the axis direction and the behavior of `-r init` so
   the visualized path reads backwards.
 - The legacy `--output-peak` option was removed.
+---
+
+## See Also
+
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
+- [path_search](path_search.md) -- MEP trajectories for profiling
+- [irc](irc.md) -- IRC trajectories for profiling
+- [all](all.md) -- End-to-end workflow

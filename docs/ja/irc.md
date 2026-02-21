@@ -6,7 +6,7 @@
 
 ### 要点
 - **入力:** TS 構造（最適化・検証済みが望ましい）。
-- **分岐:** 既定で両方向（`--forward True`, `--backward True`）。
+- **分岐:** 既定で両方向（`--forward`, `--backward`）。
 - **主要パラメータ:** `--step-size`（質量重み付き座標でのステップ長）、`--max-cycles`（ステップ数）。
 - **強制上書き:** IRC はマージ後に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAML 設定より優先）。
 - **主な出力:** `finished_irc.trj` と `forward_irc.trj`/`backward_irc.trj`（参照 PDB があり変換が有効なら `.pdb` も生成）。
@@ -15,23 +15,62 @@
 
 XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `freq`（虚数振動数が **1 つ**であることを確認）→ `irc` です。
 
+## 最小例
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
+```
+
+## 出力の見方
+
+- `result_irc/summary.md`
+- `result_irc/key_irc.trj`
+- `result_irc/key_irc_forward.trj`
+- `result_irc/finished_irc.trj`
+- `result_irc/forward_irc.trj`
+- `result_irc/backward_irc.trj`
+
+## よくある例
+
+1. 正方向のみを実行する。
+
+```bash
+pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward --no-backward \
+  --out-dir ./result_irc_forward
+```
+
+2. ステップを大きくし、解析ヘシアンを使う。
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
+  --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
+```
+
+3. 両方向を維持したままステップ数上限を増やす。
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 150 \
+  --out-dir ./result_irc_long
+```
+
 ## 使用法
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
                  [--workers N] [--workers-per-node N] [-m 2S+1]
                  [--max-cycles N] [--step-size Δs] [--root k]
-                 [--forward True|False] [--backward True|False]
-                 [--freeze-links True|False]
+                 [--forward/--no-forward] [--backward/--no-backward]
+                 [--freeze-links/--no-freeze-links]
                  [--out-dir DIR]
-                 [--convert-files {True\|False}] [--ref-pdb FILE]
+                 [--convert-files/--no-convert-files] [--ref-pdb FILE]
                  [--hessian-calc-mode Analytical|FiniteDifference]
-                 [--args-yaml FILE]
+                 [--config FILE] [--override-yaml FILE|--args-yaml FILE]
+                 [--show-config] [--dry-run]
 ```
 
 ### 例
 ```bash
 # 順方向のみ、有限差分ヘシアン、大きいステップサイズ
-pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward True --backward False \
+pdb2reaction irc -i ts.xyz -q -1 -m 2 --forward --no-backward \
                 --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
 # PDB 入力: 完成軌跡と方向別軌跡もPDBとしてエクスポート
@@ -40,7 +79,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## ワークフロー
 1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（`.pdb` 入力または `--ref-pdb` 指定時）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` がリンク水素の親原子を凍結して `geom.freeze_atoms` にマージします。
-2. **設定マージ** – デフォルト → CLI → YAML（`geom`、`calc`、`irc`）。電荷/多重度は `.gjf` テンプレートがあれば継承し、`.gjf` 以外では `-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）です。明示的な `-q` は常に優先され、多重度は省略時 `1` がデフォルトです。**IRC は常に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAML の設定に関わらず）。**
+2. **設定マージ** – デフォルト → `--config` → 明示CLI → `--override-yaml`（`geom`、`calc`、`irc`）。`--args-yaml` は `--override-yaml` の legacy alias です。電荷/多重度は `.gjf` テンプレートがあれば継承し、`.gjf` 以外では `-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）です。明示的な `-q` は常に優先され、多重度は省略時 `1` がデフォルトです。**IRC は常に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAML の設定に関わらず）。**
 3. **IRC積分** – EulerPCが `irc.forward/backward`、`irc.step_length`、`irc.root` に従って順方向/逆方向分岐を積分します。ヘシアンはUMA設定（`calc.*`、`--hessian-calc-mode`）に従い、更新スキーム（既定 `bofill`）や再計算間隔を反映します。
 4. **出力** – 軌跡（`finished`、`forward`、`backward`）は `.trj` として書き込まれ、参照 PDB が利用可能な場合は `.pdb` にもミラーリングされます。
 
@@ -55,18 +94,28 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--max-cycles INT` | 最大IRCステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
 | `--step-size FLOAT` | 質量重み付き座標でのステップ長（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
 | `--root INT` | 初期変位の虚数モードインデックス（YAML が `irc.root` を指定していない場合に使用） | `0` |
-| `--forward {True\|False}` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
-| `--backward {True\|False}` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
-| `--freeze-links {True\|False}` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ） | `True` |
+| `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
+| `--backward/--no-backward` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
+| `--freeze-links/--no-freeze-links` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ） | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
-| `--convert-files {True\|False}` | 参照 PDB が利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか | `True` |
+| `--convert-files/--no-convert-files` | 参照 PDB が利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（YAML が `calc.hessian_calc_mode` を指定していない場合に使用） | `FiniteDifference` |
-| `--args-yaml FILE` | YAML 上書き | _None_ |
+| `--config FILE` | 明示CLI適用前に読み込むベース YAML。 | _None_ |
+| `--override-yaml FILE` | 最終 YAML 上書き（YAML レイヤー最優先）。 | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の legacy alias。 | _None_ |
+| `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
 
 ## 出力
 ```
 out_dir/ (デフォルト: ./result_irc/)
+├─ summary.md                # 主要成果物のインデックス
+├─ key_irc.trj               # finished_irc.trj へのショートカット
+├─ key_irc_forward.trj       # forward_irc.trj へのショートカット
+├─ key_irc_backward.trj      # backward_irc.trj へのショートカット
+├─ key_irc.pdb               # finished_irc.pdb へのショートカット（存在時）
+├─ key_irc_data.h5           # irc_data.h5 へのショートカット（存在時）
 ├─ <prefix>finished_irc.trj   # 完全な IRC 軌跡
 ├─ <prefix>forward_irc.trj    # 順方向分岐が実行された場合
 ├─ <prefix>backward_irc.trj   # 逆方向分岐が実行された場合
@@ -75,15 +124,16 @@ out_dir/ (デフォルト: ./result_irc/)
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
 ## 注意事項
-- CLIのブール値（`--forward`, `--backward`）は、YAMLに反映させたい場合に `True`/`False` を明示して指定する必要があります。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
+- CLI のブール値（`--forward`, `--backward`）は toggle 形式（`--forward/--no-forward`, `--backward/--no-backward`）で指定します。
 - UMAはIRC全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
 - VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨します。
-- 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`.gjf` 以外では、`-q/--charge` が必須（PDB 入力または `--ref-pdb` 付きXYZ/GJFに対する `--ligand-charge` がある場合を除く）で、明示的な `-q` が常に優先されます。多重度は省略時に `1` がデフォルトです。
 - `--freeze-links` はPDB 入力にのみ適用され、リンク水素の親原子を凍結したままヘシアンを構築します。
 
 
-## YAML 設定（`--args-yaml`）
-マッピング形式で指定します。YAML の値は CLI を上書きします。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
+## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -141,6 +191,8 @@ irc:
 ---
 
 ## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
 - [freq](freq.md) — TS 候補の虚数振動数を確認し、IRC端点を解析

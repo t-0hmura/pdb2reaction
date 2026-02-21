@@ -190,3 +190,13 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 
 `pdb2reaction` の各コマンド（`all`, `opt`, `path-opt` など）では、`--args-yaml` の `calc` キー配下に同等の設定を渡すことで、同一のUMA設定を再利用できます。
+
+---
+
+## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
+- [opt](opt.md) -- UMA を使う単一構造最適化
+- [path_opt](path_opt.md) -- UMA 計算機を使う MEP 最適化
+- [all](all.md) -- UMA を複数段で使うエンドツーエンドワークフロー

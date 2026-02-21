@@ -8,7 +8,7 @@
 - **入力:** 1 つ以上の複合体 PDB（アンサンブル対応。原子順序の整合性が必要）。
 - **基質指定（`-c`）:** 残基 ID（例: `A:123A`）、残基名（例: `GPP,SAM`）、または基質 PDB（先頭入力と座標一致が必要）。
 - **選択ロジック:** `--radius` を基本に、ヘテロ–ヘテロ近接（`--radius-het2het`）やジスルフィド/PRO 隣接などのセーフガードを併用。
-- **切断/キャッピング:** 主鎖/側鎖のトリミングと、リンク水素（`--add-linkH True` が既定）。
+- **切断/キャッピング:** 主鎖/側鎖のトリミングと、リンク水素（`--add-linkH` が既定）。
 - **電荷:** 未知残基は 0 が既定。必要に応じて `--ligand-charge`（総電荷または残基名マップ）で指定。
 
 `pdb2reaction extract` は、基質近傍の残基を選択してポケット（クラスターモデル）を生成し、規則に従ってトリミングしたうえで、必要に応じて切断結合をリンク水素でキャップします。単一構造だけでなく、複数 PDB を入力するアンサンブル処理も可能です。
@@ -21,12 +21,12 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
                      -c SUBSTRATE_SPEC
                      [-o POCKET.pdb [POCKET2.pdb ...]]
                      [--radius Å] [--radius-het2het Å]
-                     [--include-H2O {True\|False}]
-                     [--exclude-backbone {True\|False}]
-                     [--add-linkH {True\|False}]
+                     [--include-H2O/--no-include-H2O]
+                     [--exclude-backbone/--no-exclude-backbone]
+                     [--add-linkH/--no-add-linkH]
                      [--selected-resn LIST]
                      [--ligand-charge MAP_OR_NUMBER]
-                     [--verbose {True\|False}]
+                     [--verbose/--no-verbose]
 ```
 
 ### 例
@@ -51,24 +51,24 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 ### 残基包含
 - `-c/--center` からの基質残基を常に含める
 - **標準カットオフ（`--radius`、デフォルト2.6 Å）:**
-  - `--exclude-backbone False` の場合、カットオフ内の任意の原子が残基を対象にする
-  - `--exclude-backbone True` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O以外）で基質に接触する必要がある
+  - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
+  - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O以外）で基質に接触する必要がある
 - **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非C/H）がタンパク質ヘテロ原子の指定Å以内にある場合に残基を追加
-- **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOLはデフォルトで含まれる（`--include-H2O True`）
+- **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOLはデフォルトで含まれる（`--include-H2O`）
 - **強制包含:** `--selected-resn` はチェーン/挿入コード付きIDを受け入れる（例: `A:123A`）
 - **近傍セーフガード:**
-  - `--exclude-backbone False` で主鎖原子が基質に接触した場合、ペプチド隣接のN/C側残基（C–N ≤ 1.9 Å）を自動的に含める。末端はN/H*またはC/O/OXTのキャップを保持。
+  - `--no-exclude-backbone` で主鎖原子が基質に接触した場合、ペプチド隣接のN/C側残基（C–N ≤ 1.9 Å）を自動的に含める。末端はN/H*またはC/O/OXTのキャップを保持。
   - ジスルフィド結合（SG–SG ≤ 2.5 Å）は両方のCysを包含。
-  - 非末端PRO残基は常にN側隣接残基を含め、主鎖除去後もCAを保持します。`--exclude-backbone True` の場合は隣接残基のC/O/OXTを残し、ペプチド結合を維持。
+  - 非末端PRO残基は常にN側隣接残基を含め、主鎖除去後もCAを保持します。`--exclude-backbone` の場合は隣接残基のC/O/OXTを残し、ペプチド結合を維持。
 
 ### 切断/キャッピング
 - 孤立残基は側鎖原子のみを保持; アミノ酸主鎖原子（N, CA, C, O, OXT + N/CA水素）はPRO/HYP保護を除いて除去
 - 連続ペプチドストレッチは内部主鎖原子を保持; 末端キャップ（N/H*またはC/O/OXT）のみ除去
 - TERを認識し、チェーン切断を跨ぐキャッピングは行わない
-- `--exclude-backbone True` の場合、**非基質**アミノ酸の主鎖原子を除去（PRO/HYP保護とPRO近傍保持は適用）
+- `--exclude-backbone` の場合、**非基質**アミノ酸の主鎖原子を除去（PRO/HYP保護とPRO近傍保持は適用）
 - 非アミノ酸残基は主鎖様原子名を持つ原子を失わない
 
-### リンク水素（`--add-linkH True`）
+### リンク水素（`--add-linkH`）
 - 切断された結合ベクトルに沿って1.09 Åで炭素のみのリンク水素を追加（CB–CA、CA–N、CA–C; PRO/HYPはCA–Cのみ）
 - `TER` の後に残基 `LKH`（チェーン `L`）の連続した `HETATM` レコードとして `HL` という名前で挿入されます。シリアル番号は本体ブロックからの連番です
 - マルチ構造モードでは全モデルで同じ結合にキャップを付け、座標はモデルごとに保持されます
@@ -103,12 +103,12 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `-o, --output PATH...` | ポケット PDB 出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
-| `--include-H2O {True\|False}` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
-| `--exclude-backbone {True\|False}` | 非基質アミノ酸の主鎖原子を除去 | `True` |
-| `--add-linkH {True\|False}` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
+| `--include-H2O/--no-include-H2O` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
+| `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `True` |
+| `--add-linkH/--no-add-linkH` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基（オプションのチェーン/挿入コード付きID） | `""` |
 | `--ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
-| `-v, --verbose {True\|False}` | INFOレベルログを出力（`True`）または警告のみ（`False`） | `True` |
+| `-v, --verbose/--no-verbose` | INFOレベルログを出力（`True`）または警告のみ（`False`） | `True` |
 
 ## 出力
 ```text
@@ -174,7 +174,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 
 ### `BACKBONE_ATOMS`
 
-アミノ酸の主鎖原子と見なされる原子名のセットです。`--exclude-backbone True` の場合、非基質残基からどの原子を除去するかを決定するために使用されます：
+アミノ酸の主鎖原子と見なされる原子名のセットです。`--exclude-backbone` の場合、非基質残基からどの原子を除去するかを決定するために使用されます：
 
 ```
 N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
@@ -194,7 +194,7 @@ N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
 
 ### `WATER_RES`
 
-水分子として認識される残基名のセットです。水はデフォルトで含まれ（`--include-H2O True`）、電荷はゼロが割り当てられます：
+水分子として認識される残基名のセットです。水はデフォルトで含まれ（`--include-H2O`）、電荷はゼロが割り当てられます：
 
 ```
 HOH, WAT, H2O, DOD, TIP, TIP3, SOL
@@ -203,8 +203,10 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ---
 
 ## 注意事項
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
 - `--radius` のデフォルトは 2.6 Å。`0` を指定すると空選択を避けるため内部で 0.001 Å に調整されます。`--radius-het2het` もデフォルトは無効で、`0` 指定時は 0.001 Å に調整されます。
-- `--include-H2O False` で水を除外できます。
+- `--no-include-H2O` で水を除外できます。
 - 主鎖トリミングとキャッピングはチェーン切断や PRO/HYP 保護を尊重し、非アミノ酸残基は主鎖様の原子名を保持します。
 - リンク水素は炭素切断のみで挿入され、アンサンブルモードでは同一結合パターンを全モデルで再利用します。
 - INFOログに残基選択、切断数、電荷内訳が要約されます。
@@ -212,6 +214,8 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ---
 
 ## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [all](all.md) — `-c/--center` で内部的にextractを呼び出すエンドツーエンドワークフロー
 - [path-search](path_search.md) — 抽出されたポケットでのMEP 探索

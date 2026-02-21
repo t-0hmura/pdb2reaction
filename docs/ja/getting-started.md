@@ -10,13 +10,13 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-さらに `--tsopt True --thermo True --dft True` を追加すると、**MEP 探索 → TS 最適化 → IRC → 熱化学解析 → DFT 一点計算** までまとめて実行できます。
+さらに `--tsopt --thermo --dft` を追加すると、**MEP 探索 → TS 最適化 → IRC → 熱化学解析 → DFT 一点計算** までまとめて実行できます。
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
 
-入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt True` を与えると、`pdb2reaction` が次を自動化します。
+入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt` を与えると、`pdb2reaction` が次を自動化します。
 
 - ユーザーが指定した基質の周辺から **活性部位ポケット** を抽出し、計算用の **クラスターモデル** を構築
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP)** を探索
@@ -39,6 +39,7 @@ UMA レベルの計算には Meta の UMA（MLIP）を用います。
 
 ```{tip}
 初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。
+症状から切り分ける場合は、まず [典型エラー別レシピ](recipes-common-errors.md) を参照してください。
 セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
 ```
 
@@ -46,7 +47,7 @@ UMA レベルの計算には Meta の UMA（MLIP）を用います。
 
 | 規約 | 例 | 備考 |
 |-----|-----|------|
-| **真偽値オプション** | `--tsopt True`, `--dft False` | 大文字小文字は区別しない（`true`/`1`/`yes` も可）。ただしフラグ形式（`--tsopt` のみ）は不可 |
+| **真偽値オプション** | `--tsopt`, `--no-dft` | 推奨は toggle 形式。旧記法（`--tsopt True`, `--dft 0`）も当面は受理されるが deprecation warning が出る |
 | **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
 | **電荷マッピング** | `--ligand-charge 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
 | **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
@@ -190,6 +191,14 @@ huggingface-cli login
 
 ---
 
+## 推奨クイックスタート導線
+
+- [クイックスタート: `pdb2reaction all`](quickstart-all.md)
+- [クイックスタート: `pdb2reaction scan` + `--spec`](quickstart-scan-spec.md)
+- [クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart-tsopt-freq.md)
+
+---
+
 ## コマンドの基本構成
 
 `pip` でインストールされる `pdb2reaction` コマンドが主な起点です。内部的には **Click** ライブラリを使用しており、デフォルトのサブコマンドは `all` です。
@@ -228,7 +237,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 **詳細例**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt True --thermo True --dft True
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 処理の流れ:
@@ -236,7 +245,7 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 - 反応順に並んだ 2 つ以上の**完全系**を受け取る
 - 各構造から触媒クラスターモデルを抽出
 - デフォルトで `path-search` による**再帰的 MEP 探索**を実行（出力は `path_search/`）
-- `--refine-path False` を指定すると**シングルパス** `path-opt` に切り替え
+- `--no-refine-path` を指定すると**シングルパス** `path-opt` に切り替え
 - PDB テンプレートがある場合、クラスターモデル MEP を**完全系**にマージ
 - 必要に応じて各セグメントで TS 最適化、振動解析、DFT 一点計算を実行
 
@@ -263,7 +272,7 @@ pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '
 **詳細例**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]' --mult 1 --out-dir ./result_scan_all --tsopt True --thermo True --dft True
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]' --mult 1 --out-dir ./result_scan_all --tsopt --thermo --dft
 ```
 
 補足:
@@ -275,7 +284,7 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
 - 1 つの `--scan-lists` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます。`--scan-lists` フラグは 1 回だけ指定し、その後に複数リテラルを並べてください（フラグの繰り返しは不可）
 - 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
 - デフォルトの `all` ワークフローは連結されたステージを再帰的 `path-search` で精密化
-- `--refine-path False` を使用すると、シングルパス `path-opt` チェーンを実行し、再帰的精密化をスキップ（マージされた `mep_w_ref*.pdb` なし）
+- `--no-refine-path` を使用すると、シングルパス `path-opt` チェーンを実行し、再帰的精密化をスキップ（マージされた `mep_w_ref*.pdb` なし）
 
 このモードは単一構造から反応経路を構築するのに便利です。
 
@@ -290,13 +299,13 @@ PDB を 1 つだけ指定し、`--tsopt` を有効にします:
 **最小例**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt
 ```
 
 **詳細例**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt True --thermo True --dft True --out-dir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
 ```
 
 処理の流れ:
@@ -310,7 +319,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 `energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にミラーされます。
 
 ```{important}
-単一入力実行には **`--scan-lists`**（段階的スキャン → GSM）**または** `--tsopt True`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
+単一入力実行には **`--scan-lists`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
 ```
 
 ---
@@ -321,17 +330,17 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 | オプション | 説明 |
 |----------|------|
-| `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt True`** → TSOPT のみモード |
+| `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt`** → TSOPT のみモード |
 | `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、または PDB パスをサポート |
 | `--ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --mult INT` | スピン多重度（例: シングレットは `1`）。注: `all` 以外のサブコマンドでは `--multiplicity` を使用してください。 |
 | `--scan-lists TEXT...` | 単一入力実行用の段階的距離スキャン |
 | `--out-dir PATH` | トップレベル出力ディレクトリ |
-| `--tsopt {True\|False}` | TS 最適化と IRC を有効化 |
-| `--thermo {True\|False}` | 振動解析と熱化学を実行 |
-| `--dft {True\|False}` | DFT 一点計算を実行 |
-| `--refine-path {True\|False}` | 再帰的 MEP 精密化（デフォルト） vs シングルパス |
+| `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |
+| `--thermo/--no-thermo` | 振動解析と熱化学を実行 |
+| `--dft/--no-dft` | DFT 一点計算を実行 |
+| `--refine-path/--no-refine-path` | 再帰的 MEP 精密化（デフォルト） vs シングルパス |
 | `--opt-mode light\|heavy` | 最適化手法: Light (LBFGS/Dimer) または Heavy (RFO/RS-I-RFO) |
 | `--mep-mode gsm\|dmf` | MEP 手法: Growing String Method または Direct Max Flux |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン計算モード。**VRAMが十分な場合はAnalytical推奨** |
@@ -361,10 +370,13 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 ## CLI サブコマンド
 
 ほとんどのユーザーは `pdb2reaction all` を主に使用しますが、`pdb2reaction opt` などの個別サブコマンドも利用できます。各サブコマンドは `-h/--help` に対応しています。
+`pdb2reaction all --help` は主要オプションのみを表示し、`pdb2reaction all --help-advanced` で全オプションを表示できます。
+`scan` / `scan2d` / `scan3d` と計算系サブコマンド（`opt` / `path-opt` / `path-search` / `tsopt` / `freq` / `irc` / `dft`）に加え、`add-elem-info` / `trj2fig` / `energy-diagram` も同様に `--help` は主要オプションのみ、`--help-advanced` で全オプションを表示します。`extract` と `fix-altloc` も段階的 help に対応し、`--help-advanced` で parser の全オプションを表示します。
 
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
 | `all` | エンドツーエンドワークフロー | [all](all.md) |
+| `init` | `pdb2reaction all` 用 YAML テンプレート生成 | [init](init.md) |
 | `extract` | 活性部位ポケット（クラスターモデル）抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |
@@ -400,13 +412,13 @@ pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
 
 # 後処理付きフルワークフロー
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt True --thermo True --dft True
+    --tsopt --thermo --dft
 
 # 単一構造 + 段階的スキャン
 pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
 
 # TS のみ最適化
-pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
+pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
 ```
 
 **主要オプション一覧:**
@@ -416,9 +428,9 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
 | `-i` | 入力構造 |
 | `-c` | ポケット抽出用の基質定義 |
 | `--ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
-| `--tsopt True` | TS 最適化 + IRC を有効化 |
-| `--thermo True` | 振動解析を実行 |
-| `--dft True` | DFT 一点計算を実行 |
+| `--tsopt` | TS 最適化 + IRC を有効化 |
+| `--thermo` | 振動解析を実行 |
+| `--dft` | DFT 一点計算を実行 |
 | `--out-dir` | 出力ディレクトリ |
 
 ---
@@ -429,8 +441,10 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt True --thermo True
 
 ```bash
 pdb2reaction <subcommand> --help
+pdb2reaction <subcommand> --help-advanced
+pdb2reaction all --help-advanced
 ```
 
-利用可能なオプション、デフォルト値、簡単な説明が表示されます。UMA 計算機の詳細オプションについては [UMA 計算機](uma_pysis.md) を参照してください。
+`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。UMA 計算機の詳細オプションについては [UMA 計算機](uma_pysis.md) を参照してください。
 
 問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。

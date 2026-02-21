@@ -48,6 +48,7 @@ from .utils import (
     axis_label_html,
     make_sopt_optimizer,
     parse_scan_list_quads_checked,
+    parse_scan_spec_quads,
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
@@ -110,6 +111,13 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     ),
 )
 @click.option(
+    "--spec",
+    "spec_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-list.",
+)
+@click.option(
     "--csv",
     "csv_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -127,6 +135,13 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     dump_help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
     max_step_help="Maximum step size in each distance [Å].",
 )
+@click.option(
+    "--print-parsed/--no-print-parsed",
+    "print_parsed",
+    default=False,
+    show_default=True,
+    help="Print parsed scan targets after resolving --spec/--scan-list.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -137,6 +152,7 @@ def cli(
     workers_per_node: int,
     spin: Optional[int],
     scan_list_raw: Optional[str],
+    spec_path: Optional[Path],
     one_based: bool,
     max_step_size: float,
     bias_k: float,
@@ -151,6 +167,7 @@ def cli(
     thresh: Optional[str],
     args_yaml: Optional[Path],
     preopt: bool,
+    print_parsed: bool,
     baseline: str,
     zmin: Optional[float],
     zmax: Optional[float],
@@ -216,17 +233,44 @@ def cli(
             if source and source.suffix.lower() == ".pdb":
                 pdb_atom_meta = load_pdb_atom_metadata(source)
 
-            parsed, raw_pairs = parse_scan_list_quads_checked(
-                scan_list_raw,
-                expected_len=3,
-                one_based=one_based,
-                atom_meta=pdb_atom_meta,
-                option_name="--scan-list",
-            )
+            if spec_path is not None and scan_list_raw is not None:
+                raise click.BadParameter("Use either --spec or --scan-list, not both.")
+            scan_one_based = bool(one_based)
+            scan_source = "--scan-list"
+            if spec_path is not None:
+                parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
+                    spec_path,
+                    expected_len=3,
+                    one_based_default=one_based,
+                    atom_meta=pdb_atom_meta,
+                    option_name="--spec",
+                )
+                scan_source = f"--spec ({spec_path})"
+            else:
+                if scan_list_raw is None:
+                    raise click.BadParameter("Provide either --spec or --scan-list.")
+                parsed, raw_pairs = parse_scan_list_quads_checked(
+                    scan_list_raw,
+                    expected_len=3,
+                    one_based=scan_one_based,
+                    atom_meta=pdb_atom_meta,
+                    option_name="--scan-list",
+                )
             (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = parsed
-            d1_label_csv = axis_label_csv("d1", i1, j1, one_based, pdb_atom_meta, raw_pairs[0])
-            d2_label_csv = axis_label_csv("d2", i2, j2, one_based, pdb_atom_meta, raw_pairs[1])
-            d3_label_csv = axis_label_csv("d3", i3, j3, one_based, pdb_atom_meta, raw_pairs[2])
+            d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
+            d2_label_csv = axis_label_csv("d2", i2, j2, scan_one_based, pdb_atom_meta, raw_pairs[1])
+            d3_label_csv = axis_label_csv("d3", i3, j3, scan_one_based, pdb_atom_meta, raw_pairs[2])
+            if print_parsed:
+                click.echo(
+                    pretty_block(
+                        "scan-parsed",
+                        {
+                            "source": scan_source,
+                            "one_based": bool(scan_one_based),
+                            "pairs_0based": parsed,
+                        },
+                    )
+                )
             click.echo(
                 pretty_block(
                     "scan-list (0-based)",
@@ -857,8 +901,10 @@ def cli(
         if csv_path is None:
             if input_path is None:
                 raise click.ClickException("-i/--input is required unless --csv is provided.")
-            if scan_list_raw is None:
-                raise click.ClickException("--scan-list is required unless --csv is provided.")
+            if scan_list_raw is not None and spec_path is not None:
+                raise click.ClickException("Use either --spec or --scan-list, not both.")
+            if scan_list_raw is None and spec_path is None:
+                raise click.ClickException("--spec or --scan-list is required unless --csv is provided.")
             with prepared_cli_input(
                 input_path,
                 ref_pdb=ref_pdb,

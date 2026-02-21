@@ -36,13 +36,13 @@ pdb2reaction fix-altloc -i 1abc.pdb
 pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb
 
 # Process a directory recursively
-pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive True
+pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
 
 # Overwrite input files in-place (creates .bak backups)
-pdb2reaction fix-altloc -i ./structures --inplace True --recursive True
+pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 # Force processing even if no altLoc is detected
-pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
+pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 ```
 
 ## Workflow
@@ -63,10 +63,10 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 | --- | --- | --- |
 | `-i, --input PATH` | Input PDB file or directory. | Required |
 | `-o, --out PATH` | Output file (if input is a file) or directory (if input is a directory). | File input: `<input>_clean.pdb`; directory input: `<input>_clean/` |
-| `--recursive {True\|False}` | Process `*.pdb` files recursively when input is a directory. | `False` |
-| `--inplace {True\|False}` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
-| `--overwrite {True\|False}` | Allow overwriting existing output files. | `False` |
-| `--force {True\|False}` | Process files even if no altLoc is detected. | `False` |
+| `--recursive/--no-recursive` | Process `*.pdb` files recursively when input is a directory. | `False` |
+| `--inplace/--no-inplace` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
+| `--overwrite/--no-overwrite` | Allow overwriting existing output files. | `False` |
+| `--force/--no-force` | Process files even if no altLoc is detected. | `False` |
 
 ## Outputs
 - A PDB file with alternate locations removed:
@@ -117,6 +117,8 @@ Output:
 ```
 
 ## Notes
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+
 - Atom serial numbers are **NOT renumbered** (gaps may remain after duplicate removal).
 - `CONECT` and other connectivity/annotation records are **NOT updated**.
 - Only column 17 (altLoc) is modified; coordinates, occupancies, B-factors, charges,

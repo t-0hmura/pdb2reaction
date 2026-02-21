@@ -14,13 +14,16 @@ from __future__ import annotations
 import sys
 import math
 import textwrap
+import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, Sequence
 
 import click
 import numpy as np
 import torch
+from click.core import ParameterSource
 from ase import Atoms
 from ase.io import write
 from ase.data import atomic_masses
@@ -53,6 +56,7 @@ from .defaults import (
 )
 from .utils import (
     resolve_freeze_atoms,
+    deep_update,
     load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
@@ -73,6 +77,150 @@ from .freq import (
     _write_mode_trj_and_pdb,
     _frequencies_cm_and_modes,
 )
+
+
+def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
+    """Resolve the first existing artifact for a list of relative patterns."""
+    for pattern in patterns:
+        if any(ch in pattern for ch in "*?[]"):
+            for candidate in sorted(out_dir.glob(pattern)):
+                if candidate.is_file():
+                    return candidate.resolve()
+            continue
+        candidate = out_dir / pattern
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _link_or_copy_file(src: Path, dst: Path) -> bool:
+    """Create a symlink when possible; fall back to copy."""
+    try:
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir():
+                return False
+            dst.unlink()
+        rel = os.path.relpath(src, start=dst.parent)
+        dst.symlink_to(rel)
+        return True
+    except Exception:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+def _write_output_summary_md(out_dir: Path) -> None:
+    """Write summary.md and expose key outputs at out_dir root."""
+    try:
+        out_dir = out_dir.resolve()
+        if not out_dir.exists():
+            return
+
+        root_specs: List[Tuple[str, Sequence[str]]] = [
+            ("Final TS geometry (XYZ)", ["final_geometry.xyz"]),
+            ("Final TS geometry (PDB)", ["final_geometry.pdb"]),
+            ("Final TS geometry (GJF)", ["final_geometry.gjf"]),
+            ("Optimization trajectory", ["optimization_all.trj", "optimization.trj"]),
+            ("Optimization trajectory (PDB)", ["optimization_all.pdb", "optimization.pdb"]),
+            ("Imaginary mode trajectory", ["vib/final_imag_mode_*.trj"]),
+            ("Imaginary mode (PDB)", ["vib/final_imag_mode_*.pdb"]),
+        ]
+        root_lines: List[str] = []
+        for label, patterns in root_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            rel = os.path.relpath(src, start=out_dir)
+            root_lines.append(f"- {label}: [`{rel}`]({rel})")
+
+        shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
+            ("key_ts.xyz", "TS geometry (XYZ)", ["final_geometry.xyz"]),
+            ("key_ts.pdb", "TS geometry (PDB)", ["final_geometry.pdb"]),
+            ("key_ts.gjf", "TS geometry (GJF)", ["final_geometry.gjf"]),
+            ("key_opt.trj", "Optimization trajectory", ["optimization_all.trj", "optimization.trj"]),
+            ("key_opt.pdb", "Optimization trajectory (PDB)", ["optimization_all.pdb", "optimization.pdb"]),
+            ("key_imag_mode.trj", "Imaginary mode trajectory", ["vib/final_imag_mode_*.trj"]),
+            ("key_imag_mode.pdb", "Imaginary mode (PDB)", ["vib/final_imag_mode_*.pdb"]),
+        ]
+        shortcut_lines: List[str] = []
+        for name, label, patterns in shortcut_specs:
+            src = _first_existing_artifact(out_dir, patterns)
+            if src is None:
+                continue
+            dst = out_dir / name
+            try:
+                same = src.resolve() == dst.resolve()
+            except Exception:
+                same = False
+            if not same and not _link_or_copy_file(src, dst):
+                continue
+            src_rel = os.path.relpath(src, start=out_dir)
+            shortcut_lines.append(
+                f"- {label}: [`{name}`]({name}) (source: `{src_rel}`)"
+            )
+
+        lines: List[str] = [
+            "# TS-Opt Summary",
+            "",
+            f"- Generated: `{time.strftime('%Y-%m-%d %H:%M:%S %Z')}`",
+            f"- Output directory: `{out_dir}`",
+            "",
+            "## Primary Artifacts",
+        ]
+        if root_lines:
+            lines.extend(root_lines)
+        else:
+            lines.append("- No primary artifacts detected yet.")
+        lines.extend(
+            [
+                "",
+                "## Root Shortcuts",
+                "- `key_*` files are symlinks when possible, otherwise copied files.",
+            ]
+        )
+        if shortcut_lines:
+            lines.extend(shortcut_lines)
+        else:
+            lines.append("- No shortcuts were generated.")
+        lines.extend(
+            [
+                "",
+                "## Notes",
+                "- Start from `key_ts.xyz` (or `key_ts.pdb`) and `key_imag_mode.trj` for TS validation.",
+            ]
+        )
+
+        summary_md = out_dir / "summary.md"
+        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        click.echo(f"[write] Wrote '{summary_md}'.")
+    except Exception as e:
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+
+
+def _resolve_yaml_sources(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+) -> Tuple[Optional[Path], Optional[Path], bool]:
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def _load_merged_yaml_cfg(
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged
 
 
 # ===================================================================
@@ -1220,6 +1368,12 @@ def _build_rsirfo_kwargs(
     rs_args["roots"] = [int(x) for x in roots]
     rs_args.pop("root", None)
 
+    # Keep top-level opt knobs (max_cycles/dump/thresh/...) authoritative unless
+    # rsirfo.* explicitly overrides them to a non-default value.
+    for k in list(rs_args.keys()):
+        if k in opt_base and k in RSIRFO_KW and rs_args[k] == RSIRFO_KW[k]:
+            rs_args.pop(k, None)
+
     rsirfo_kwargs = {**opt_base, **rs_args}
 
     # RSIRFO ignores these DIIS-related knobs; drop them for clarity.
@@ -1280,12 +1434,16 @@ def _build_rsirfo_kwargs(
     ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
-@click.option("--freeze-links", type=click.BOOL, default=True, show_default=True,
-              help="Freeze parent atoms of link hydrogens (PDB only).")
 @click.option(
-    "--convert-files",
+    "--freeze-links/--no-freeze-links",
+    "freeze_links",
+    default=True,
+    show_default=True,
+    help="Freeze parent atoms of link hydrogens (PDB only).",
+)
+@click.option(
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -1298,9 +1456,8 @@ def _build_rsirfo_kwargs(
 )
 @click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
 @click.option(
-    "--flatten-imag-mode",
+    "--flatten-imag-mode/--no-flatten-imag-mode",
     "flatten_imag_mode",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help="Enable the extra-imaginary-mode flattening loop (light: dimer loop, heavy: post-RSIRFO; False forces flatten_max_iter=0).",
@@ -1312,8 +1469,12 @@ def _build_rsirfo_kwargs(
     show_default=True,
     help="light (=Dimer) or heavy (=RSIRFO)",
 )
-@click.option("--dump", type=click.BOOL, default=False, show_default=True,
-              help="Dump optimization trajectory")
+@click.option(
+    "--dump/--no-dump",
+    default=False,
+    show_default=True,
+    help="Dump optimization trajectory",
+)
 @click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory")
 @click.option(
     "--thresh",
@@ -1327,10 +1488,38 @@ def _build_rsirfo_kwargs(
     ),
 )
 @click.option(
-    "--args-yaml",
+    "--config",
+    "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML with extra args (sections: geom, calc, opt, hessian_dimer, rsirfo).",
+    help="Base YAML configuration file applied before explicit CLI options.",
+)
+@click.option(
+    "--override-yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Final YAML override file (highest priority YAML layer).",
+)
+@click.option(
+    "--args-yaml",
+    "args_yaml_legacy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running TS optimization.",
 )
 @click.option(
     "--hessian-calc-mode",
@@ -1338,7 +1527,9 @@ def _build_rsirfo_kwargs(
     default=None,
     help="Choose UMA Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -1354,9 +1545,35 @@ def cli(
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
+    show_config: bool,
+    dry_run: bool,
     hessian_calc_mode: Optional[str],
 ) -> None:
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
+    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
+    merged_yaml_cfg = _load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+    )
+
     set_convert_file_enabled(convert_files)
     with prepared_cli_input(
         input_path,
@@ -1371,68 +1588,81 @@ def cli(
         time_start = time.perf_counter()
 
         # --------------------------
-        # 1) Assemble configuration (defaults ← CLI ← YAML)
+        # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
         # --------------------------
-        yaml_cfg = load_yaml_dict(args_yaml)
+        config_layer_cfg = load_yaml_dict(config_yaml)
+        override_layer_cfg = load_yaml_dict(override_yaml)
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
-        opt_cfg  = dict(OPT_BASE_KW_LOCAL)
+        opt_cfg = dict(OPT_BASE_KW_LOCAL)
         simple_cfg = dict(hessian_dimer_KW)
         rsirfo_cfg = dict(RSIRFO_KW)
 
-        # CLI overrides
-        calc_cfg["charge"] = int(resolved_charge)
-        calc_cfg["spin"]   = int(resolved_spin)
-        calc_cfg["workers"] = int(workers)
-        calc_cfg["workers_per_node"] = int(workers_per_node)
-        opt_cfg["max_cycles"] = int(max_cycles)
-        opt_cfg["dump"]       = bool(dump)
-        opt_cfg["out_dir"]    = out_dir
-        if thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
-            simple_cfg["thresh"] = str(thresh)
-            rsirfo_cfg["thresh"] = str(thresh)
-
-        # Hessian mode override from CLI
-        if hessian_calc_mode is not None:
-            calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
-
-        # YAML overrides (highest precedence)
         apply_yaml_overrides(
-            yaml_cfg,
+            config_layer_cfg,
             [
                 (geom_cfg, (("geom",),)),
                 (calc_cfg, (("calc",),)),
-                (opt_cfg,  (("opt",),)),
+                (opt_cfg, (("opt",),)),
                 (simple_cfg, (("hessian_dimer",),)),
                 (rsirfo_cfg, (("rsirfo",),)),
             ],
         )
 
-        # If opt.print_every is set in YAML, propagate to light/heavy optimizers
-        opt_yaml = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
-        opt_print_every = None
-        if isinstance(opt_yaml, dict) and "print_every" in opt_yaml:
-            try:
-                opt_print_every = int(opt_yaml["print_every"])
-            except (TypeError, ValueError):
-                opt_print_every = None
-        if opt_print_every is not None:
-            rsirfo_yaml = yaml_cfg.get("rsirfo") if isinstance(yaml_cfg, dict) else None
-            rsirfo_has_print = isinstance(rsirfo_yaml, dict) and "print_every" in rsirfo_yaml
-            if not rsirfo_has_print:
-                rsirfo_cfg["print_every"] = opt_print_every
+        charge_value = calc_cfg.get("charge", resolved_charge)
+        if charge_value is None:
+            charge_value = resolved_charge
+        calc_cfg["charge"] = int(charge_value)
+        if _is_param_explicit("charge"):
+            calc_cfg["charge"] = int(resolved_charge)
 
-            hd_yaml = yaml_cfg.get("hessian_dimer") if isinstance(yaml_cfg, dict) else None
-            lbfgs_yaml = None
-            if isinstance(hd_yaml, dict):
-                lbfgs_yaml = hd_yaml.get("lbfgs")
-            lbfgs_has_print = isinstance(lbfgs_yaml, dict) and "print_every" in lbfgs_yaml
-            if not lbfgs_has_print and isinstance(simple_cfg.get("lbfgs"), dict):
-                simple_cfg["lbfgs"]["print_every"] = opt_print_every
+        spin_value = calc_cfg.get("spin", resolved_spin)
+        if spin_value is None:
+            spin_value = resolved_spin
+        calc_cfg["spin"] = int(spin_value)
+        if _is_param_explicit("spin"):
+            calc_cfg["spin"] = int(resolved_spin)
 
-        if not flatten_imag_mode:
+        if _is_param_explicit("workers"):
+            calc_cfg["workers"] = int(workers)
+        if _is_param_explicit("workers_per_node"):
+            calc_cfg["workers_per_node"] = int(workers_per_node)
+        if _is_param_explicit("max_cycles"):
+            opt_cfg["max_cycles"] = int(max_cycles)
+        if _is_param_explicit("dump"):
+            opt_cfg["dump"] = bool(dump)
+        if _is_param_explicit("out_dir"):
+            opt_cfg["out_dir"] = out_dir
+        if _is_param_explicit("thresh") and thresh is not None:
+            opt_cfg["thresh"] = str(thresh)
+            simple_cfg["thresh"] = str(thresh)
+            rsirfo_cfg["thresh"] = str(thresh)
+        if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
+            calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+        if _is_param_explicit("flatten_imag_mode") and not flatten_imag_mode:
             simple_cfg["flatten_max_iter"] = 0
+
+        apply_yaml_overrides(
+            override_layer_cfg,
+            [
+                (geom_cfg, (("geom",),)),
+                (calc_cfg, (("calc",),)),
+                (opt_cfg, (("opt",),)),
+                (simple_cfg, (("hessian_dimer",),)),
+                (rsirfo_cfg, (("rsirfo",),)),
+            ],
+        )
+
+        if "print_every" in opt_cfg:
+            try:
+                opt_print_every = int(opt_cfg["print_every"])
+                if opt_print_every >= 1:
+                    rsirfo_cfg.setdefault("print_every", opt_print_every)
+                    simple_cfg.setdefault("lbfgs", {})
+                    if isinstance(simple_cfg["lbfgs"], dict):
+                        simple_cfg["lbfgs"].setdefault("print_every", opt_print_every)
+            except (TypeError, ValueError):
+                pass
 
         # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
         resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
@@ -1472,6 +1702,36 @@ def cli(
                 mode="same",
             )
             click.echo(pretty_block("rsirfo", rsirfo_kwargs_for_echo))
+
+        if show_config:
+            click.echo(
+                pretty_block(
+                    "yaml_layers",
+                    {
+                        "config": None if config_yaml is None else str(config_yaml),
+                        "override_yaml": None if override_yaml is None else str(override_yaml),
+                        "merged_keys": sorted(merged_yaml_cfg.keys()),
+                    },
+                )
+            )
+        if dry_run:
+            click.echo(
+                pretty_block(
+                    "dry_run_plan",
+                    {
+                        "input_geometry": str(geom_input_path),
+                        "output_dir": str(out_dir_path),
+                        "optimizer_mode": str(kind),
+                        "convert_files": bool(convert_files),
+                        "freeze_links": bool(freeze_links),
+                        "flatten_imag_mode": int(simple_cfg.get("flatten_max_iter", 0)) > 0,
+                        "will_run_tsopt": True,
+                        "will_write_summary": True,
+                    },
+                )
+            )
+            click.echo("[dry-run] Validation complete. TS optimization execution was skipped.")
+            return
 
         # --------------------------
         # 2) Prepare geometry dir
@@ -1698,6 +1958,7 @@ def cli(
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
+            _write_output_summary_md(out_dir_path)
             click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
 
         except ZeroStepLength:

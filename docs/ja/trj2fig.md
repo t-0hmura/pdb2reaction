@@ -17,7 +17,7 @@ pdb2reaction trj2fig -i traj.xyz
 pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
 # 複数形式 + x軸を反転（基準は最後のフレーム）
-pdb2reaction trj2fig -i traj.xyz --reverse-x True -o energy.png energy.html energy.pdf
+pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pdf
 
 # UMAで全フレームのエネルギーを再計算
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
@@ -43,7 +43,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-r, --reference TEXT` | 参照指定（`init`、`None`、または0始まり整数） | `init` |
 | `-q, --charge INT` | 総電荷。指定時は `uma_pysis` で再計算 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は `uma_pysis` で再計算 | _None_ |
-| `--reverse-x {True\|False}` | x軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
+| `--reverse-x/--no-reverse-x` | x軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
 
 ## 出力
 ```
@@ -59,3 +59,12 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - 未対応拡張子がある場合は実行が中断されます。`.png` は Plotly の `scale=2` で高解像度出力されます。
 - `--reverse-x` は軸の向きと `-r init` の解釈の両方に影響します。
 - 旧 `--output-peak` オプションは削除されています。
+---
+
+## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
+- [path_search](path_search.md) -- MEP 軌跡のプロファイリング
+- [irc](irc.md) -- IRC 軌跡のプロファイリング
+- [all](all.md) -- エンドツーエンドワークフロー

@@ -9,28 +9,70 @@
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep.trj`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **既定値:** `--mep-mode gsm`、`--opt-mode light`（LBFGS）、`--preopt True`、`--align True`、`--thresh gau`。
+- **既定値:** `--mep-mode gsm`、`--opt-mode light`（LBFGS）、`--preopt`、`--align`、`--thresh gau`。
 - **次にやること:** HEI は **TS 候補**です。単独では TS 検証になりません。続けて [tsopt](tsopt.md) → [freq](freq.md) → [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は、反応順に並んだ 2 構造以上を入力として連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
 
+設定の優先順位は **defaults < config < 明示指定 CLI < override** です（`--config` → `--override-yaml`、`--args-yaml` は legacy alias）。
+
 `--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し（XYZ 座標は保持）、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では PDB コンパニオンは生成されません）。
 
 **2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path_opt.md) の方がシンプルです。
+
+## 最小例
+
+```bash
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+  --out-dir ./result_path_search
+```
+
+## 出力の見方
+
+- `result_path_search/mep.trj`
+- `result_path_search/summary.yaml`
+- `result_path_search/summary.log`
+- `result_path_search/summary.md`
+- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz`（利用可能時）
+- `result_path_search/mep_plot.png`（プロット生成時）
+
+## よくある例
+
+1. 中間体を明示して多段の経路を与える。
+
+```bash
+pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+  --out-dir ./result_path_search_multi
+```
+
+2. テンプレート参照を使って全系マージ出力を有効化する。
+
+```bash
+pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+```
+
+3. DMF + minima リファインで探索する。
+
+```bash
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
+```
 
 ## 使用法
 
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
                          [--workers N] [--workers-per-node N]
-                         [--mep-mode {gsm|dmf}] [--freeze-links {True\|False}] [--thresh PRESET]
+                         [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
                          [--refine-mode {peak|minima}]
-                         [--max-nodes N] [--max-cycles N] [--climb {True\|False}]
-                         [--opt-mode light|heavy] [--dump {True\|False}]
-                         [--out-dir DIR] [--preopt {True\|False}]
-                         [--align {True\|False}] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
-                         [--convert-files {True\|False}]
-                         [--args-yaml FILE]
+                         [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
+                         [--opt-mode light|heavy] [--dump/--no-dump]
+                         [--out-dir DIR] [--preopt/--no-preopt]
+                         [--align/--no-align] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
+                         [--convert-files/--no-convert-files]
+                         [--config FILE] [--override-yaml FILE] [--args-yaml FILE]
+                         [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
 ### 例
@@ -42,7 +84,8 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
   ```bash
   pdb2reaction path-search \
       -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-      --args-yaml params.yaml --ref-full-pdb holo_template.pdb --out-dir ./run_ps
+      --config base.yaml --override-yaml override.yaml \
+      --ref-full-pdb holo_template.pdb --out-dir ./run_ps
   ```
 
 
@@ -54,20 +97,24 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--ligand-charge TEXT` | `-q` が省略された場合に使用する総電荷または残基名マッピング。PDB 入力ではextract方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links {True\|False}` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
+| `--freeze-links/--no-freeze-links` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
 | `--max-nodes INT` | MEPセグメントごとの内部ノード | `10` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
-| `--climb {True\|False}` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
+| `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | `--opt-mode TEXT` | HEI±1/kinkノード用の単一構造オプティマイザー（`light`=LBFGS、`heavy`=RFO） | `light` |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）またはDMF（direct flux） | `gsm` |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
-| `--dump {True\|False}` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |
-| `--convert-files {True\|False}` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
+| `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | GSMおよびイメージごとの最適化の収束プリセットを上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--args-yaml FILE` | YAML 上書き（下記参照） | _None_ |
-| `--preopt {True\|False}` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
-| `--align {True\|False}` | 探索前にすべての入力を最初の構造にアライメント | `True` |
+| `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
+| `--override-yaml FILE` | 最後に適用される上書き YAML（YAML 最優先レイヤ） | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の legacy alias | _None_ |
+| `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
+| `--preopt/--no-preopt` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
+| `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力がXYZ/GJFの場合のポケット参照 PDB（XYZ 座標は保持） | _None_ |
 
@@ -90,6 +137,13 @@ out_dir/ (デフォルト: ./result_path_search/)
 ├─ mep_w_ref.pdb            # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb     # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml             # すべての再帰セグメントの障壁と分類サマリー
+├─ summary.log              # 人間が読めるサマリー
+├─ summary.md               # 主要成果物へ移動しやすいナビゲーションページ
+├─ key_mep.trj              # 主要 MEP 軌跡へのショートカット（symlink/copy）
+├─ key_mep.pdb              # 主要 MEP PDB へのショートカット（symlink/copy）
+├─ key_ts.xyz / key_ts.pdb  # TS 候補スナップショットへのショートカット（利用可能時）
+├─ key_mep_plot.png         # MEP プロファイルへのショートカット（利用可能時）
+├─ key_energy_diagram_MEP.png # 状態エネルギーダイアグラムへのショートカット（利用可能時）
 ├─ mep_plot.png             # ΔEプロファイル（kcal/mol、反応物基準）
 ├─ energy_diagram_MEP.png   # MEP状態エネルギーダイアグラムの静的エクスポート
 └─ seg_000_*/               # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
@@ -99,14 +153,18 @@ out_dir/ (デフォルト: ./result_path_search/)
 - コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`）が出力されます。
 
 ## 注意事項
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - `--ref-full-pdb` は1回の指定で複数ファイルを続けて渡せます。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - UMA 計算機は全構造で共有され、効率化されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
-- 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`-q` が省略され `--ligand-charge` が与えられている場合、入力は酵素–基質複合体として扱われ、PDB 入力では `extract.py` の電荷サマリーで総電荷が導出されます。明示的な `-q` は常に優先されます。`.gjf` 以外で `--ligand-charge` が使えない場合は実行が中断され、多重度は省略時に `1` がデフォルトです。
+- 実行後に `summary.md` が生成され、主要成果物と `key_*` 直下ショートカットを一覧できます。
 
-## YAML 設定（`--args-yaml`）
-YAML ルートはマッピングでなければなりません。YAML 値はCLIを上書きします。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
+## YAML 設定（`--config`, `--override-yaml`, `--args-yaml`）
+マージ順は **defaults < config < 明示指定 CLI < override** です。
+`--args-yaml` は `--override-yaml` の legacy alias として維持されています。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
@@ -278,6 +336,8 @@ search:
 ---
 
 ## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [path-opt](path_opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化

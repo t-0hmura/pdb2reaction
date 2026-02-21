@@ -8,24 +8,63 @@
 - **想定場面:** 反応物と生成物の **2 端点**が揃っていて、まず MEP の初期推定を得たい場合に使います。
 - **手法:** 既定は GSM。`--mep-mode dmf` で DMF に切り替え可能。
 - **主な出力:** `final_geometries.trj`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
-- **既定値:** `--opt-mode light`（LBFGS）、`--climb True`、`--max-nodes 10`、`--thresh gau`。
+- **既定値:** `--opt-mode light`（LBFGS）、`--climb`、`--max-nodes 10`、`--thresh gau`。
 - **次にやること:** HEI は **TS 候補**です。`tsopt` → `freq`（虚数振動数は **1 つ**） → `irc` で検証します。
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[freq](freq.md) と [irc](irc.md) によるモード/接続性の確認が必須です。**2 構造以上**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path_search.md) を使用してください。
 
 UMA 計算機で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングが不安定になりにくいようにします。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用します（変換自体は全原子へ適用されます）。
 
-設定の優先順位は **デフォルト → CLI → `--args-yaml`** です（`geom`, `calc`, `gs`, `opt`, `dmf`, `sopt.*`）。`--convert-files` が有効（デフォルト）な場合、参照 PDB があるときは `.pdb`、Gaussian テンプレートがあるときは `.gjf` のコンパニオンが生成されます。
+設定の優先順位は **defaults < config < 明示指定 CLI < override** です（`geom`, `calc`, `gs`, `opt`, `dmf`, `sopt.*`）。`--config` を先に適用し、`--override-yaml` を最後に適用します。`--args-yaml` は `--override-yaml` の legacy alias です。`--convert-files` が有効（デフォルト）な場合、参照 PDB があるときは `.pdb`、Gaussian テンプレートがあるときは `.gjf` のコンパニオンが生成されます。
+
+## 最小例
+
+```bash
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+  --out-dir ./result_path_opt
+```
+
+## 出力の見方
+
+- `result_path_opt/final_geometries.trj`
+- `result_path_opt/hei.xyz`
+- `result_path_opt/hei.pdb`（PDB 変換が有効な場合）
+- `result_path_opt/summary.md`
+- `result_path_opt/key_mep.trj` / `result_path_opt/key_ts.xyz`
+
+## よくある例
+
+1. MEP 探索前に端点を事前最適化する。
+
+```bash
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+  --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
+```
+
+2. GSM ではなく DMF モードで実行する。
+
+```bash
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+  --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
+```
+
+3. リンク親原子を凍結し、climb を切って短時間で確認する。
+
+```bash
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+  --freeze-links --no-climb --out-dir ./result_path_opt_fast
+```
 
 ## 使用法
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
                       [--workers N] [--workers-per-node N] \
-                      [--mep-mode {gsm|dmf}] [--freeze-links {True\|False}] [--max-nodes N] [--max-cycles N] \
-                      [--climb {True\|False}] [--dump {True\|False}] [--thresh PRESET] \
-                      [--preopt {True\|False}] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends {True\|False}] \
-                      [--out-dir DIR] [--args-yaml FILE] \
-                      [--convert-files {True\|False}] [--ref-pdb FILE]
+                      [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
+                      [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] \
+                      [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends/--no-fix-ends] \
+                      [--out-dir DIR] [--config FILE] [--override-yaml FILE] [--args-yaml FILE] \
+                      [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
+                      [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## ワークフロー
@@ -42,7 +81,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 - **電荷/スピン**: CLI は `.gjf` テンプレートのメタデータより優先されます。`-q` 省略時に `--ligand-charge` がある場合、エンドポイントは酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先されます。`.gjf` 以外の入力で `-q` を省略すると、導出が成功しない限り中断します。`.gjf` 入力で電荷メタデータが無く `-q` も無い場合は中断します。多重度は省略時 `1` がデフォルトです。正しい状態を得るため、常に明示的に指定してください。
 - **MEPセグメント**: `--max-nodes` はGSM/DMFの内部ノード数を制御（GSMの総画像数は `max_nodes + 2`）。`--thresh` またはYAMLで収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）を指定。
 - **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
-- **ダンプ**: `--dump True` で StringOptimizer の `opt.dump=True` に対応し、`out_dir` 内に軌跡ダンプを出力します。リスタート YAML は YAML で有効化した場合のみ書き出されます。
+- **ダンプ**: `--dump` で StringOptimizer の `opt.dump=True` に対応し、`out_dir` 内に軌跡ダンプを出力します。リスタート YAML は YAML で有効化した場合のみ書き出されます。
 - **終了コード**: `0` 成功、`3` 最適化失敗、`4` 軌跡書き込みエラー、`5` HEI 出力エラー、`130` キーボード割り込み、`1` 予期せぬエラー。
 
 ## CLI オプション
@@ -54,25 +93,35 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--ligand-charge TEXT` | `-q` 省略時に使用する総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 | テンプレート/`1` |
-| `--freeze-links {True\|False}` | PDBのみ: リンクH親を凍結（YAMLとマージ） | `True` |
+| `--freeze-links/--no-freeze-links` | PDBのみ: リンクH親を凍結（YAMLとマージ） | `True` |
 | `--max-nodes INT` | 内部ノード数（ストリングイメージ = `max_nodes + 2`） | `10` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）またはDMF（ダイレクトフラックス）経路生成器を選択 | `gsm` |
 | `--max-cycles INT` | オプティマイザーマクロイテレーション上限 | `300` |
-| `--climb {True\|False}` | クライミングイメージ精密化を有効化 | `True` |
-| `--dump {True\|False}` | MEP軌跡/リスタートをダンプ | `False` |
+| `--climb/--no-climb` | クライミングイメージ精密化を有効化 | `True` |
+| `--dump/--no-dump` | MEP軌跡/リスタートをダンプ | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`light` = LBFGS、`heavy` = RFO） | `light` |
-| `--convert-files {True\|False}` | PDB/Gaussian入力用のXYZ/TRJ → PDB/GJFコンパニオンをトグル | `True` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian入力用のXYZ/TRJ → PDB/GJFコンパニオンをトグル | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | GSM/ストリングオプティマイザーの収束プリセットを上書き | `gau` |
-| `--args-yaml FILE` | YAML 上書き（セクション `geom`、`calc`、`gs`、`opt`、`dmf`、`sopt.lbfgs`、`sopt.rfo`） | _None_ |
-| `--preopt {True\|False}` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
+| `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
+| `--override-yaml FILE` | 最後に適用される上書き YAML（YAML 最優先レイヤ） | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の legacy alias | _None_ |
+| `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
+| `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
-| `--fix-ends {True\|False}` | GSM成長/精密化中にエンドポイント構造を固定 | `False` |
+| `--fix-ends/--no-fix-ends` | GSM成長/精密化中にエンドポイント構造を固定 | `False` |
 
 ## 出力
 ```
 out_dir/
+├─ summary.md                  # 主要成果物へ移動しやすいナビゲーションページ
+├─ key_mep.trj                 # 主要 MEP 軌跡へのショートカット（symlink/copy）
+├─ key_mep.pdb                 # 主要 MEP PDB へのショートカット（symlink/copy）
+├─ key_mep.gjf                 # 主要 MEP GJF へのショートカット（利用可能時）
+├─ key_ts.xyz / key_ts.pdb     # TS 候補スナップショットへのショートカット（symlink/copy）
+├─ key_ts.gjf                  # TS 候補 GJF へのショートカット（利用可能時）
 ├─ final_geometries.trj        # XYZ経路（コメント行にエネルギーを保持）
 ├─ final_geometries.pdb        # PDB 参照が利用可能で変換が有効な場合
 ├─ hei.xyz                     # 最高エネルギーイメージ
@@ -84,8 +133,9 @@ out_dir/
 コンソールには解決済みYAMLブロックが出力され、GSM/DMFのMEP進行状況とタイミングが報告されます。
 
 
-## YAML 設定（`--args-yaml`）
-YAML 値はCLIを上書きし、CLIはデフォルトを上書きします。
+## YAML 設定（`--config`, `--override-yaml`, `--args-yaml`）
+マージ順は **defaults < config < 明示指定 CLI < override** です。
+`--args-yaml` は `--override-yaml` の legacy alias として維持されています。
 
 ### `geom`
 - [`opt`](opt.md) と同じキー（`coord_type`, `freeze_atoms` など）。`--freeze-links` がPDB 入力で `freeze_atoms` にマージされます。
@@ -185,6 +235,9 @@ dmf:
 ---
 
 ## 関連項目
+
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 
 - [path-search](path_search.md) — 自動精密化を伴う再帰的MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEIをTS 候補として最適化（freq/IRCで検証）

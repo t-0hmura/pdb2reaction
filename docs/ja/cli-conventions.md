@@ -6,19 +6,21 @@
 
 ## ブール値オプション
 
-すべてのブール値 CLI オプションには明示的な値が必要です。フラグ形式の `--tsopt` 単独では動作しません：
+ブール値オプションは root CLI で正規化されます。
+基本は toggle 形式（`--flag/--no-flag`）を使ってください。
 
 ```bash
-# 正しい（以下はすべて有効）
---tsopt True --thermo True --dft False
---tsopt true --thermo TRUE --dft false   # 大文字小文字は区別しない
---tsopt 1 --thermo yes --dft 0           # 1/0, yes/no も可
+# 推奨
+--tsopt --thermo --no-dft
+--dump                 # 旧記法の --dump True と同義
+--no-dump              # 旧記法の --dump False と同義
 
-# 間違い（動作しない）
---tsopt         # フラグ形式（値なし）は非対応
+# 後方互換として受理（非推奨）
+--tsopt True --thermo yes --dft 0
 ```
 
-CLI は真値として `True`, `true`, `TRUE`, `1`, `yes`, `Yes`, `y`, `t` を、偽値として `False`, `false`, `FALSE`, `0`, `no`, `No`, `n`, `f` を受け入れます。
+旧来の値指定形式（`--flag True/False`）は当面受理されますが、deprecation warning が出ます。
+旧記法の値としては `True/False`, `1/0`, `yes/no`, `y/n`, `t/f`, `on/off`（大文字小文字非区別）を受け入れます。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -27,6 +29,30 @@ CLI は真値として `True`, `true`, `TRUE`, `1`, `yes`, `Yes`, `y`, `t` を�
 - `--preopt`, `--endopt` — 前処理/後処理最適化の切り替え
 - `--climb` — MEP 探索でクライミングイメージを有効化
 - `--convert-files` — PDB/GJF コンパニオンファイルの生成
+
+---
+
+## Progressive Help (`all`)
+
+`pdb2reaction all` は 2 段階ヘルプです:
+
+```bash
+pdb2reaction all --help            # 主要オプションのみ
+pdb2reaction all --help-advanced   # 全オプション
+```
+
+`scan` / `scan2d` / `scan3d` と計算系サブコマンド（`opt` / `path-opt` / `path-search` / `tsopt` / `freq` / `irc` / `dft`）に加え、`add-elem-info` / `trj2fig` / `energy-diagram` も同様に `--help` は主要オプションのみ、`--help-advanced` で全オプションを表示します。`extract` と `fix-altloc` も段階的 help に対応し、`--help-advanced` で parser の全オプションを表示します。
+
+---
+
+## init テンプレート
+
+`all` 用の YAML テンプレートを生成して検証できます:
+
+```bash
+pdb2reaction init --out pdb2reaction_all.config.yaml
+pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
+```
 
 ---
 
@@ -144,15 +170,15 @@ CLI は真値として `True`, `true`, `TRUE`, `1`, `yes`, `Yes`, `y`, `t` を�
 
 ## YAML 設定
 
-詳細設定は `--args-yaml` で渡せます：
+詳細設定は多層 YAML で渡せます：
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --args-yaml config.yaml
+pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config config.yaml --override-yaml override.yaml
 ```
 
-YAML 値が**最優先**されます：
+適用順序：
 ```
-デフォルト → CLI オプション → YAML（最優先）
+デフォルト < config < CLI オプション < override-yaml
 ```
 
 利用可能なすべてのオプションは [YAML リファレンス](yaml-reference.md) を参照してください。
@@ -184,5 +210,6 @@ YAML 値が**最優先**されます：
 ## 関連項目
 
 - [はじめに](getting-started.md) — インストールと初回実行
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 - [YAML リファレンス](yaml-reference.md) — 全設定オプション

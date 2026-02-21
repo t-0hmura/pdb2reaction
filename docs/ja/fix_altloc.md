@@ -36,13 +36,13 @@ pdb2reaction fix-altloc -i 1abc.pdb
 pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb
 
 # ディレクトリを再帰的に処理
-pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive True
+pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
 
 # 入力ファイルをその場で上書き（.bakバックアップを作成）
-pdb2reaction fix-altloc -i ./structures --inplace True --recursive True
+pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 # altLocが検出されなくても強制的に処理
-pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
+pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 ```
 
 ## ワークフロー
@@ -63,10 +63,10 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force True
 | --- | --- | --- |
 | `-i, --input PATH` | 入力 PDB ファイルまたはディレクトリ | 必須 |
 | `-o, --out PATH` | 出力ファイル（入力がファイルの場合）またはディレクトリ（入力がディレクトリの場合） | 入力がファイル: `<input>_clean.pdb`、入力がディレクトリ: `<input>_clean/` |
-| `--recursive {True\|False}` | 入力がディレクトリの場合、`*.pdb` ファイルを再帰的に処理 | `False` |
-| `--inplace {True\|False}` | 入力ファイルをその場で上書き（`.bak` バックアップを作成） | `False` |
-| `--overwrite {True\|False}` | 既存の出力ファイルの上書きを許可 | `False` |
-| `--force {True\|False}` | altLocが検出されなくてもファイルを処理 | `False` |
+| `--recursive/--no-recursive` | 入力がディレクトリの場合、`*.pdb` ファイルを再帰的に処理 | `False` |
+| `--inplace/--no-inplace` | 入力ファイルをその場で上書き（`.bak` バックアップを作成） | `False` |
+| `--overwrite/--no-overwrite` | 既存の出力ファイルの上書きを許可 | `False` |
+| `--force/--no-force` | altLocが検出されなくてもファイルを処理 | `False` |
 
 ## 出力
 - 代替位置が削除されたPDB ファイル:
@@ -117,6 +117,8 @@ altLoc Bには N, CA, CB, CD がある場合）、`fix-altloc` は以下のよ�
 ```
 
 ## 注意事項
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
 - 原子シリアル番号は**再番号付けされません**（重複削除後にギャップが残る場合があります）。
 - `CONECT` およびその他の接続/注釈レコードは**更新されません**。
 - 変更されるのは列17（altLoc）のみ。座標、占有率、B因子、電荷、挿入コード、
