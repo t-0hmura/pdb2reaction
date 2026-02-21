@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     # pdb2reaction core dependencies
-    "fairchem-core[extras]",
+    "fairchem-core",
     "pydmf",
     "torch>=2.6.0",
     "torch_geometric>=2.7.0",
