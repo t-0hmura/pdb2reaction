@@ -3,15 +3,19 @@
 
 from __future__ import annotations
 
-import shutil
+import os
 import subprocess
+import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TOOL_NAME = "pdb2reaction"
+CLI_MODULE = "pdb2reaction"
+TIMEOUT_ENV = "PDB2REACTION_DUMP_CASE_TIMEOUT_SEC"
+DEFAULT_CASE_TIMEOUT_SEC = 120.0
 
 
 @dataclass(frozen=True)
@@ -52,26 +56,28 @@ def _frame_count(xyz_path: Path) -> int:
     return n
 
 
-def _run_cli(args: list[str]) -> None:
-    cmd = [TOOL_NAME, *args]
-    proc = subprocess.run(
-        cmd,
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-    )
+def _run_cli(args: list[str], timeout_sec: float | None = None) -> None:
+    cmd = [sys.executable, "-m", CLI_MODULE, *args]
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            timeout=timeout_sec,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"Command timed out after {timeout_sec} sec: {' '.join(cmd)}"
+        ) from exc
     if proc.returncode != 0:
         tail = (proc.stdout + "\n" + proc.stderr)[-3000:]
         raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{tail}")
 
 
 def _check_runnable() -> tuple[bool, str]:
-    exe = shutil.which(TOOL_NAME)
-    if exe is None:
-        return False, f"'{TOOL_NAME}' is not in PATH."
-
     probe = subprocess.run(
-        [TOOL_NAME, "opt", "--help"],
+        [sys.executable, "-m", CLI_MODULE, "opt", "--help"],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
@@ -84,8 +90,8 @@ def _check_runnable() -> tuple[bool, str]:
     return True, "ok"
 
 
-def _validate_case(case: Case) -> None:
-    _run_cli(case.args)
+def _validate_case(case: Case, timeout_sec: float | None = None) -> None:
+    _run_cli(case.args, timeout_sec=timeout_sec)
     out_dir = Path(case.args[case.args.index("--out-dir") + 1]).resolve()
     for rel in case.expect_present:
         p = out_dir / rel
@@ -106,6 +112,16 @@ def main() -> int:
     if not runnable:
         print(f"[dump-smoke] skipped: {reason}")
         return 0
+
+    timeout_raw = os.environ.get(TIMEOUT_ENV, "").strip()
+    timeout_sec = float(timeout_raw) if timeout_raw else DEFAULT_CASE_TIMEOUT_SEC
+    if timeout_sec <= 0:
+        timeout_sec = None
+
+    if timeout_sec is None:
+        print("[dump-smoke] per-case timeout: disabled")
+    else:
+        print(f"[dump-smoke] per-case timeout: {timeout_sec:.1f}s (env: {TIMEOUT_ENV})")
 
     with tempfile.TemporaryDirectory(prefix="pdb2_dump_smoke_") as td:
         base = Path(td)
@@ -238,8 +254,12 @@ def main() -> int:
             ),
         ]
 
-        for case in cases:
-            _validate_case(case)
+        for idx, case in enumerate(cases, start=1):
+            print(f"[dump-smoke] case {idx}/{len(cases)}: {case.name}")
+            started = time.perf_counter()
+            _validate_case(case, timeout_sec=timeout_sec)
+            elapsed = time.perf_counter() - started
+            print(f"[dump-smoke] case ok: {case.name} ({elapsed:.1f}s)")
 
     print(f"[dump-smoke] validated {len(cases)} cases.")
     return 0

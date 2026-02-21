@@ -15,7 +15,7 @@ from click.testing import CliRunner
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_ROOT = REPO_ROOT / "docs"
 TOOL_NAME = "pdb2reaction"
-CLI_MODULE = "pdb2reaction.cli"
+CLI_MODULE = "pdb2reaction"
 
 sys.path.insert(0, str(REPO_ROOT))
 

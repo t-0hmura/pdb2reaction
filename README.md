@@ -199,6 +199,8 @@ pdb2reaction --help
 pdb2reaction <subcommand> --help
 pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
+# Equivalent module invocation
+python -m pdb2reaction --help
 ```
 
 `pdb2reaction all --help` shows core options. Use `pdb2reaction all --help-advanced` for the full option list.
@@ -206,6 +208,26 @@ pdb2reaction all --help-advanced
 For advanced configuration, use `--args-yaml` on individual subcommands, or `--config`/`--override-yaml` on `pdb2reaction all`. For UMA calculator options, see [docs/uma_pysis.md](docs/uma_pysis.md).
 
 > If you encounter any issues, please open an issue at <https://github.com/t-0hmura/pdb2reaction/issues>.
+
+---
+
+## Docs / Smoke Checks
+
+To keep docs and CLI behavior in sync:
+
+```bash
+python scripts/check_intro_template.py
+python scripts/check_markdown_links.py
+python scripts/smoke_docs_commands.py
+```
+
+To verify trajectory dump behavior across `opt` / `tsopt` routes:
+
+```bash
+# Optional: override per-case timeout in seconds (default: 120)
+export PDB2REACTION_DUMP_CASE_TIMEOUT_SEC=180
+python scripts/smoke_dump_trajectories.py
+```
 
 ---
 
