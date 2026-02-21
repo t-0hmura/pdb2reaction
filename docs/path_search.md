@@ -28,11 +28,11 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## Output checklist
 
+- `result_path_search/summary.md`
+- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz` (when available)
 - `result_path_search/mep.trj`
 - `result_path_search/summary.yaml`
 - `result_path_search/summary.log`
-- `result_path_search/summary.md`
-- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz` (when available)
 - `result_path_search/mep_plot.png` (when plotting succeeds)
 
 ## Common examples

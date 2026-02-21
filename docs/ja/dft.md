@@ -21,10 +21,10 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
 
 ## 出力の見方
 
-- `result_dft/input_geometry.xyz`
-- `result_dft/result.yaml`
 - `result_dft/summary.md`
 - `result_dft/key_input_geometry.xyz`, `result_dft/key_result.yaml`（symlink/copy ショートカット）
+- `result_dft/input_geometry.xyz`
+- `result_dft/result.yaml`
 - `result.yaml` 内のエンジン情報（`gpu4pyscf` / `pyscf(cpu)`）
 
 ## よくある例

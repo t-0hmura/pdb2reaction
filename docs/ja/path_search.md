@@ -29,11 +29,11 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## 出力の見方
 
+- `result_path_search/summary.md`
+- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz`（利用可能時）
 - `result_path_search/mep.trj`
 - `result_path_search/summary.yaml`
 - `result_path_search/summary.log`
-- `result_path_search/summary.md`
-- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz`（利用可能時）
 - `result_path_search/mep_plot.png`（プロット生成時）
 
 ## よくある例

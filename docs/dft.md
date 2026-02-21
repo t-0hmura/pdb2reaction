@@ -21,10 +21,10 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
 
 ## Output checklist
 
-- `result_dft/input_geometry.xyz`
-- `result_dft/result.yaml`
 - `result_dft/summary.md`
 - `result_dft/key_input_geometry.xyz`, `result_dft/key_result.yaml` (symlink/copy shortcuts)
+- `result_dft/input_geometry.xyz`
+- `result_dft/result.yaml`
 - Engine metadata (`gpu4pyscf` / `pyscf(cpu)`) in `result.yaml`
 
 ## Common examples
