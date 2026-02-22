@@ -2,18 +2,17 @@
 
 ## 概要
 
-> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`--spec`（YAML/JSON、推奨）でターゲット距離を指定し、`--scan-lists` は legacy 入力として残します。
+> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`--spec`（YAML/JSON、推奨）でターゲット距離を指定し、`--scan-lists` は 入力として利用できます。
 
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。
-- **入力:** 1 つの構造 + `--spec scan.yaml`（推奨）または `--scan-lists` の 1 個以上の legacy リテラル（**1 リテラル = 1 ステージ**）。
+- **入力:** 1 つの構造 + `--spec scan.yaml`（推奨）または `--scan-lists` の 1 個以上の リテラル（**1 リテラル = 1 ステージ**）。
 - **既定値:** `--opt-mode light`（LBFGS）、`--preopt`、`--endopt`、`--max-step-size 0.20 Å`。
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）。`--dump` なら結合した軌跡も保存。
 - **注意:** 可能な限り `--spec` を使ってください。`--scan-lists` は **Python リテラル**のためクォート/エスケープが必要です。
 
 `pdb2reaction scan` は、UMA 計算機と調和拘束を使った段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで、構造全体を LBFGS（`--opt-mode light`）または RFOptimizer（`--opt-mode heavy`）で緩和します。
 
-`--scan-lists` に複数リテラルを与えると、ステージは順次実行され、各ステージは直前の緩和構造から開始します。バイアス付き走査の前後には、無バイアス最適化（`--preopt`, `--endopt`）を実行して構造を整えたうえで `result.*` をディスクに書き出すことができます。YAML は `--config`（ベース）と `--override-yaml`（最終上書き）の 2 層で指定でき、`--args-yaml` は `--override-yaml` の legacy エイリアスです。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -37,7 +36,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
 ```
 
-2. 互換性のため legacy リテラル入力を使う。
+2. リテラル入力を使う。
 
 ```bash
 pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
@@ -52,9 +51,8 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./res
 ## 使用法
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ), ...]'] [options] \
-                  [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
-                  [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--spec scan.yaml | --scan-lists '[(i,j,targetÅ),...]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### 例
@@ -64,15 +62,15 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1
 
 # 2ステージ、LBFGS緩和、軌跡ダンプ
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
-    '[("TYR,285,CA","MMT,309,C10",1.35)]' \
-    '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
-    --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode light \
-    --preopt --endopt
+ '[("TYR,285,CA","MMT,309,C10",1.35)]' \
+ '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
+ --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode light \
+ --preopt --endopt
 
 # 単一の --scan-lists の後に複数リテラルを渡す
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
-    '[("TYR,285,CA","MMT,309,C10",1.35)]' \
-    '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+ '[("TYR,285,CA","MMT,309,C10",1.35)]' \
+ '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
 ## `--scan-lists` の書式
@@ -84,7 +82,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 各リテラルは、三つ組 `(原子1, 原子2, ターゲット距離Å)` の Python リストです。
 
 ```
---scan-lists '[(原子1, 原子2, ターゲット距離Å), ...]'
+--scan-lists '[(原子1, 原子2, ターゲット距離Å),...]'
 ```
 
 - リスト全体を **シングルクォート** `'...'` で囲みます（シェルがカッコや空白を解釈しないようにするため）。
@@ -107,7 +105,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 "TYR,285,CA"
 "TYR 285 CA"
 "TYR/285/CA"
-"285,TYR,CA"   # 順序は自由
+"285,TYR,CA" # 順序は自由
 ```
 
 ### クォートの規則
@@ -131,8 +129,8 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 # ステージ 1: 1 つの結合を 1.35 Å に駆動
 # ステージ 2: 2 つの結合を同時に駆動
 --scan-lists \
-    '[("TYR,285,CA","MMT,309,C10",1.35)]' \
-    '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+ '[("TYR,285,CA","MMT,309,C10",1.35)]' \
+ '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
 
 ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。**`--scan-lists` フラグは繰り返さず**、すべてのリテラルを 1 つのフラグの後に記述してください。
@@ -141,7 +139,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 1. `geom_loader` で構造を読み込み、CLI の上書き値・埋め込み Gaussian テンプレート（存在する場合）・デフォルト値から電荷とスピンを解決します。`-q` が省略され `--ligand-charge` が与えられている場合は、入力を酵素--基質複合体として扱います。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `--scan-lists` で与えられた各ステージリテラルについて `(i, j)` を解析・正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
-   各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
+ 各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最小化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
 6. すべてのステージについて繰り返します。軌跡は `--dump` の場合のみ保存されます。
@@ -155,7 +153,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `stages` を持つ YAML/JSON スキャン仕様。`one_based` を任意指定可能。 | 推奨 |
-| `--scan-lists, --scan-list TEXT` | legacy: `(i,j,targetÅ)` タプルを含む Python リテラル。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
+| `--scan-lists TEXT` | : `(i,j,targetÅ)` タプルを含む Python リテラル。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のステージ情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
@@ -169,8 +167,6 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `--override-yaml FILE` | 最終 YAML 上書きファイル（YAML レイヤーの最優先） | _None_ |
-| `--args-yaml FILE` | `--override-yaml` の legacy エイリアス（後方互換） | _None_ |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `True` |
 
@@ -191,17 +187,17 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ## 出力
 ```
-out_dir/ (デフォルト: ./result_scan/)
-├─ preopt/                   # --preopt が True の場合
-│  ├─ result.xyz
-│  ├─ result.pdb             # PDB 入力かつ変換有効時
-│  └─ result.gjf             # Gaussian テンプレートがあり変換有効時
-└─ stage_XX/                 # ステージごとのフォルダ
-    ├─ result.xyz
-    ├─ result.pdb             # 最終構造の PDB ミラー（変換有効時）
-    ├─ result.gjf             # テンプレートがある場合の Gaussian ミラー（変換有効時）
-    ├─ scan.trj               # --dump の場合
-    └─ scan.pdb               # PDB 入力で変換有効時の軌跡コンパニオン（scan.gjf は生成されない）
+out_dir/ (デフォルト:./result_scan/)
+├─ preopt/ # --preopt が True の場合
+│ ├─ result.xyz
+│ ├─ result.pdb # PDB 入力かつ変換有効時
+│ └─ result.gjf # Gaussian テンプレートがあり変換有効時
+└─ stage_XX/ # ステージごとのフォルダ
+ ├─ result.xyz
+ ├─ result.pdb # 最終構造の PDB ミラー（変換有効時）
+ ├─ result.gjf # テンプレートがある場合の Gaussian ミラー（変換有効時）
+ ├─ scan.trj # --dump の場合
+ └─ scan.pdb # PDB 入力で変換有効時の軌跡コンパニオン（scan.gjf は生成されない）
 ```
 - `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果と、各ステージの結合変化レポートがコンソールに出力されます。
 
@@ -212,114 +208,112 @@ out_dir/ (デフォルト: ./result_scan/)
 - `--freeze-links` は、ユーザー指定の `freeze_atoms` に PDB のリンク水素親原子を追加し、ポケット構造を固定します。
 - ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は `--dump` の設定にかかわらず常に書き出されます。軌跡は `--dump` の場合のみ保存され、PDB 入力かつ変換が有効な場合は `scan.pdb` も生成されます。
 
-## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
-YAML のルートはマッピングでなければなりません。YAML レイヤーは **`--config` < `--override-yaml`** の順にマージされます（`--args-yaml` は `--override-yaml` の legacy エイリアス）。YAML の値は CLI を上書きします。共有セクションは [YAML リファレンス](yaml_reference.md) の定義を再利用します。
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ task_name: omol # UMA task name
+ device: auto # UMA device selection
+ max_neigh: null # maximum neighbors for graph construction
+ radius: null # cutoff radius for neighbor search
+ r_edges: false # store radial edges
+ out_hess_torch: true # request torch-form Hessian
+ freeze_atoms: null # calculator-level frozen atoms
+ hessian_calc_mode: FiniteDifference # Hessian mode selection
+ return_partial_hessian: false # full Hessian (avoids shape mismatches)
 opt:
-  thresh: gau                # convergence preset (Gaussian/Baker-style)
-  max_cycles: 10000          # optimizer cycle cap
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum norm for step acceptance
-  assert_min_step: true      # stop if steps fall below threshold
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # geom RMS threshold when converging to ref
-  overachieve_factor: 0.0    # factor to tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_scan/    # output directory
+ thresh: gau # convergence preset (Gaussian/Baker-style)
+ max_cycles: 10000 # optimizer cycle cap
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum norm for step acceptance
+ assert_min_step: true # stop if steps fall below threshold
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
+ overachieve_factor: 0.0 # factor to tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_scan/ # output directory
 lbfgs:
-  thresh: gau                # LBFGS convergence preset
-  max_cycles: 10000          # iteration limit
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum accepted step norm
-  assert_min_step: true      # assert when steps stagnate
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-  overachieve_factor: 0.0    # tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_scan/    # output directory
-  keep_last: 7               # history size for LBFGS buffers
-  beta: 1.0                  # initial damping beta
-  gamma_mult: false          # multiplicative gamma update toggle
-  max_step: 0.3              # maximum step length
-  control_step: true         # control step length adaptively
-  double_damp: true          # double damping safeguard
-  mu_reg: null               # regularization strength
-  max_mu_reg_adaptions: 10   # cap on mu adaptations
+ thresh: gau # LBFGS convergence preset
+ max_cycles: 10000 # iteration limit
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_scan/ # output directory
+ keep_last: 7 # history size for LBFGS buffers
+ beta: 1.0 # initial damping beta
+ gamma_mult: false # multiplicative gamma update toggle
+ max_step: 0.3 # maximum step length
+ control_step: true # control step length adaptively
+ double_damp: true # double damping safeguard
+ mu_reg: null # regularization strength
+ max_mu_reg_adaptions: 10 # cap on mu adaptations
 rfo:
-  thresh: gau                # RFOptimizer convergence preset
-  max_cycles: 10000          # iteration cap
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum accepted step norm
-  assert_min_step: true      # assert when steps stagnate
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-  overachieve_factor: 0.0    # tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_scan/    # output directory
-  trust_radius: 0.1          # trust-region radius
-  trust_update: true         # enable trust-region updates
-  trust_min: 0.0             # minimum trust radius
-  trust_max: 0.1             # maximum trust radius
-  max_energy_incr: null      # allowed energy increase per step
-  hessian_update: bfgs       # Hessian update scheme
-  hessian_init: calc         # Hessian initialization source
-  hessian_recalc: 200        # rebuild Hessian every N steps
-  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
-  small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
-  alpha0: 1.0                # initial micro step
-  max_micro_cycles: 50       # micro-iteration limit
-  rfo_overlaps: false        # enable RFO overlaps
-  gediis: false              # enable GEDIIS
-  gdiis: true                # enable GDIIS
-  gdiis_thresh: 0.0025       # GDIIS acceptance threshold
-  gediis_thresh: 0.01        # GEDIIS acceptance threshold
-  gdiis_test_direction: true # test descent direction before DIIS
-  adapt_step_func: true      # adaptive step scaling toggle
+ thresh: gau # RFOptimizer convergence preset
+ max_cycles: 10000 # iteration cap
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_scan/ # output directory
+ trust_radius: 0.1 # trust-region radius
+ trust_update: true # enable trust-region updates
+ trust_min: 0.0 # minimum trust radius
+ trust_max: 0.1 # maximum trust radius
+ max_energy_incr: null # allowed energy increase per step
+ hessian_update: bfgs # Hessian update scheme
+ hessian_init: calc # Hessian initialization source
+ hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc_adapt: null # adaptive Hessian rebuild factor
+ small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
+ alpha0: 1.0 # initial micro step
+ max_micro_cycles: 50 # micro-iteration limit
+ rfo_overlaps: false # enable RFO overlaps
+ gediis: false # enable GEDIIS
+ gdiis: true # enable GDIIS
+ gdiis_thresh: 0.0025 # GDIIS acceptance threshold
+ gediis_thresh: 0.01 # GEDIIS acceptance threshold
+ gdiis_test_direction: true # test descent direction before DIIS
+ adapt_step_func: true # adaptive step scaling toggle
 bias:
-  k: 300                    # harmonic bias strength (eV·Å⁻²)
+ k: 300 # harmonic bias strength (eV·Å⁻²)
 bond:
-  device: cuda               # UMA device for bond analysis
-  bond_factor: 1.2           # covalent-radius scaling
-  margin_fraction: 0.05      # tolerance margin for comparisons
-  delta_fraction: 0.05       # minimum relative change to flag bonds
+ device: cuda # UMA device for bond analysis
+ bond_factor: 1.2 # covalent-radius scaling
+ margin_fraction: 0.05 # tolerance margin for comparisons
+ delta_fraction: 0.05 # minimum relative change to flag bonds
 ```
 
 ---

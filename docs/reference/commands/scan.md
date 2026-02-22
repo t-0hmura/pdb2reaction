@@ -12,13 +12,13 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, .trj, ...).
                                   [required]
-  --scan-lists, --scan-list TEXT  Python-like list of (i,j,target) per stage.
-                                  Pass a single --scan-list(s) followed by
+  --scan-lists TEXT               Python-like list of (i,j,target) per stage.
+                                  Pass a single --scan-lists followed by
                                   multiple literals to run sequential stages,
                                   e.g. --scan-lists '[(0,1,1.50)]'
                                   '[(5,7,1.20)]'.
   --spec FILE                     YAML/JSON scan spec file (recommended). Use
-                                  this instead of --scan-list(s).
+                                  this instead of --scan-lists.
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
@@ -31,7 +31,7 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
-  --one-based / --zero-based      Interpret (i,j) indices in --scan-list as
+  --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
                                   1-based (default) or 0-based.  [default: one-
                                   based]
   --max-step-size FLOAT           Maximum change in any scanned bond length per
@@ -60,15 +60,11 @@ Options:
                                   u_vtight|baker|never).
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
-  --override-yaml FILE            Final YAML override file (highest-priority
-                                  YAML layer).
-  --args-yaml FILE                [legacy] Alias of --override-yaml; sections:
-                                  geom, calc, opt, lbfgs, rfo, bias, bond.
   --preopt / --no-preopt          Pre-optimize the initial structure without
                                   bias before the scan.  [default: preopt]
   --print-parsed / --no-print-parsed
                                   Print parsed scan targets after resolving
-                                  --spec/--scan-list(s).  [default: no-print-
+                                  --spec/--scan-lists.  [default: no-print-
                                   parsed]
   --endopt / --no-endopt          After each stage, run an additional unbiased
                                   optimization of the stage result.  [default:

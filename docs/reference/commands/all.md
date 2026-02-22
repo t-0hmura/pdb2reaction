@@ -106,10 +106,6 @@ Options:
                                   ght|baker|never).  [default: baker]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
-  --override-yaml FILE            Final YAML override file (highest priority
-                                  YAML layer).
-  --args-yaml FILE                [legacy] Alias of --override-yaml; kept for
-                                  backward compatibility.
   --show-config / --no-show-config
                                   Print resolved configuration and continue
                                   execution.  [default: no-show-config]
@@ -167,14 +163,14 @@ Options:
                                   3.
   --dft-engine [gpu|cpu|auto]     Preferred DFT backend: GPU (default), CPU, or
                                   auto (try GPU then CPU).  [default: gpu]
-  --scan-lists, --scan-list TEXT  Python-like list of (i,j,target_Å) per stage
+  --scan-lists TEXT               Python-like list of (i,j,target_Å) per stage
                                   for **single-structure** scan. A single
                                   literal runs one stage; multiple literals run
                                   **sequentially**, each starting from the prior
                                   stage's relaxed structure. Example: --scan-
                                   lists '[(12,45,1.35)]'
                                   '[(10,55,2.20),(23,34,1.80)]'. Pass a single
-                                  --scan-list(s) followed by multiple values to
+                                  --scan-lists followed by multiple values to
                                   define multiple stages (repeated flags are not
                                   accepted). Indices refer to the original full
                                   input PDB (1-based). When extraction is used,

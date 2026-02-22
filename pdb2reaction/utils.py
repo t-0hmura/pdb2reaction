@@ -1364,12 +1364,6 @@ def resolve_charge_spin(
         resolved_spin = spin_default
     return int(resolved_charge), int(resolved_spin)
 
-
-# Backwards compatibility aliases
-resolve_charge_spin_or_raise = resolve_charge_spin
-resolve_charge_spin_multi = resolve_charge_spin
-
-
 @contextmanager
 def prepared_cli_input(
     input_path: Path,
@@ -1790,7 +1784,7 @@ def parse_scan_list_triples(
     option_name: str,
     return_one_based: bool = False,
 ) -> Tuple[List[Tuple[int, int, float]], List[Tuple[Any, Any, float]]]:
-    """Parse --scan-list style triples into indices (0-based by default)."""
+    """Parse --scan-lists triples into indices (0-based by default)."""
     try:
         obj = ast.literal_eval(raw)
     except Exception as e:
@@ -1892,7 +1886,7 @@ def parse_scan_list_quads(
     atom_meta: Optional[Sequence[Dict[str, Any]]],
     option_name: str,
 ) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]]]:
-    """Parse --scan-list style quadruples into 0-based indices."""
+    """Parse --scan-lists quadruples into 0-based indices."""
     try:
         obj = ast.literal_eval(raw)
     except Exception as e:
@@ -1995,13 +1989,9 @@ def parse_scan_spec_stages(
 ) -> Tuple[List[List[Tuple[int, int, float]]], bool]:
     """Parse staged 1D scan spec into 0-based stage triples."""
     spec_cfg = _load_scan_spec_root(spec_path, option_name=option_name)
-    stages_key, stages_raw = _first_spec_field(
-        spec_cfg, ("stages", "scan_lists", "scan-lists")
-    )
+    stages_key, stages_raw = _first_spec_field(spec_cfg, ("stages",))
     if stages_key is None:
-        raise click.BadParameter(
-            f"{option_name} must define 'stages' (or legacy 'scan_lists')."
-        )
+        raise click.BadParameter(f"{option_name} must define 'stages'.")
     if not isinstance(stages_raw, (list, tuple)) or len(stages_raw) == 0:
         raise click.BadParameter(f"{option_name} field '{stages_key}' must be a non-empty list.")
 
@@ -2043,13 +2033,9 @@ def parse_scan_spec_quads(
 ) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]], bool]:
     """Parse 2D/3D scan spec into 0-based quad tuples."""
     spec_cfg = _load_scan_spec_root(spec_path, option_name=option_name)
-    pairs_key, pairs_raw = _first_spec_field(
-        spec_cfg, ("pairs", "scan_list", "scan-list", "scan_lists", "scan-lists")
-    )
+    pairs_key, pairs_raw = _first_spec_field(spec_cfg, ("pairs",))
     if pairs_key is None:
-        raise click.BadParameter(
-            f"{option_name} must define 'pairs' (or legacy 'scan_list')."
-        )
+        raise click.BadParameter(f"{option_name} must define 'pairs'.")
     if not isinstance(pairs_raw, (list, tuple)):
         raise click.BadParameter(f"{option_name} field '{pairs_key}' must be a list.")
 

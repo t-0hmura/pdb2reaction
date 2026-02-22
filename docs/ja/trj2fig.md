@@ -26,9 +26,9 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ## ワークフロー
 1. XYZ軌跡を解析し、各フレームのコメント行から最初の浮動小数点数を読み取ります（`1.5e-3` などの科学表記に対応）。`-q/-m` がある場合は `uma_pysis` で再計算した Hartree エネルギーを使用します。エネルギーが取得できない場合は実行を中断します。
 2. 参照指定を正規化:
-   - `init` → フレーム `0`（`--reverse-x` が有効な場合は最後のフレーム）
-   - `None`/`none`/`null` → 絶対エネルギー（参照なし）
-   - 整数リテラル → 0始まりのフレーム番号
+ - `init` → フレーム `0`（`--reverse-x` が有効な場合は最後のフレーム）
+ - `None`/`none`/`null` → 絶対エネルギー（参照なし）
+ - 整数リテラル → 0始まりのフレーム番号
 3. エネルギーを kcal/mol または Hartree に変換し、参照指定がある場合は参照値を差し引いて ΔE を作成します。
 4. Plotly 図を作成（強調ティック、スプライン補間、マーカー、タイトルなし）し、指定された拡張子へ書き出します。
 5. 必要に応じて `frame`, `energy_hartree` と、指定単位での ΔE/E 列を含むCSVを出力します。
@@ -47,8 +47,8 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 
 ## 出力
 ```
-<output>.[png|jpg|jpeg|html|svg|pdf]  # 指定された拡張子すべてを出力（デフォルト: energy.png）
-<output>.csv                          # CSV指定時のみ
+<output>.[png|jpg|jpeg|html|svg|pdf] # 指定された拡張子すべてを出力（デフォルト: energy.png）
+<output>.csv # CSV指定時のみ
 ```
 - `-o` や位置引数が無い場合は `energy.png` をカレントディレクトリに書き出します。
 - CSV には `frame`, `energy_hartree` と、参照がある場合は `delta_kcal`/`delta_hartree`、参照がない場合は `energy_kcal`/`energy_hartree` が含まれます。
@@ -58,7 +58,6 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - エネルギーはコメント行内の最初の小数点数から取得されます。不正なコメント行はエラーになります。
 - 未対応拡張子がある場合は実行が中断されます。`.png` は Plotly の `scale=2` で高解像度出力されます。
 - `--reverse-x` は軸の向きと `-r init` の解釈の両方に影響します。
-- 旧 `--output-peak` オプションは削除されています。
 ---
 
 ## 関連項目

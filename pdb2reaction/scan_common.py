@@ -84,7 +84,7 @@ def add_scan_common_options(
             "one_based",
             default=one_based_default,
             show_default=True,
-            help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
+            help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.",
         ),
         click.option(
             "--max-step-size",
@@ -170,21 +170,6 @@ def add_scan_common_options(
             help="Base YAML configuration file applied before explicit CLI options.",
         ),
         click.option(
-            "--override-yaml",
-            "override_yaml",
-            type=click.Path(path_type=Path, exists=True, dir_okay=False),
-            default=None,
-            show_default=False,
-            help="Final YAML override file (highest-priority YAML layer).",
-        ),
-        click.option(
-            "--args-yaml",
-            "args_yaml_legacy",
-            type=click.Path(path_type=Path, exists=True, dir_okay=False),
-            default=None,
-            help=f"[legacy] Alias of --override-yaml; sections: {args_yaml_sections}.",
-        ),
-        click.option(
             "--preopt/--no-preopt",
             "preopt",
             default=preopt_default,
@@ -267,7 +252,7 @@ def resolve_yaml_sources(
     """Resolve YAML layers and legacy alias usage for scan-family commands."""
     if override_yaml is not None and args_yaml_legacy is not None:
         raise click.BadParameter(
-            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+            "Use a single YAML source option."
         )
     if args_yaml_legacy is not None:
         return config_yaml, args_yaml_legacy, True

@@ -208,7 +208,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ### Full workflow with TS optimization
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft
+ --tsopt --thermo --dft
 ```
 
 ### Single-structure scan mode
@@ -219,7 +219,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
 ### TS-only optimization
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt
+ --tsopt
 ```
 
 ---
@@ -238,10 +238,8 @@ Boolean CLI options use toggle form (`--flag` / `--no-flag`):
 ```
 
 ### YAML configuration
-Layered settings are recommended via `--config` and `--override-yaml`.
-(`--args-yaml` remains as a legacy alias of `--override-yaml`.)
+()
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml override.yaml
 ```
 See the [YAML Reference](yaml_reference.md) for all options.
 
@@ -252,21 +250,21 @@ See the [YAML Reference](yaml_reference.md) for all options.
 Typical `pdb2reaction all` output:
 ```
 result_all/
-├── summary.log              # Human-readable summary
-├── summary.yaml             # Machine-readable summary
-├── pockets/                 # Extracted cluster models
-├── scan/                    # (Optional) scan results
-├── path_search/             # MEP trajectories and diagrams
-│   ├── mep.trj              # MEP trajectory
-│   ├── mep.pdb              # MEP in PDB format
-│   ├── mep_w_ref.pdb        # MEP merged with full system
-│   ├── mep_plot.png         # Energy profile plot
-│   └── seg_*/               # Per-segment details
-└── path_search/post_seg_*/  # Post-processing outputs
-    ├── tsopt/               # TS optimization results
-    ├── irc/                 # IRC trajectories
-    ├── freq/                # Vibrational modes
-    └── dft/                 # DFT results
+├── summary.log # Human-readable summary
+├── summary.yaml # Machine-readable summary
+├── pockets/ # Extracted cluster models
+├── scan/ # (Optional) scan results
+├── path_search/ # MEP trajectories and diagrams
+│ ├── mep.trj # MEP trajectory
+│ ├── mep.pdb # MEP in PDB format
+│ ├── mep_w_ref.pdb # MEP merged with full system
+│ ├── mep_plot.png # Energy profile plot
+│ └── seg_*/ # Per-segment details
+└── path_search/post_seg_*/ # Post-processing outputs
+ ├── tsopt/ # TS optimization results
+ ├── irc/ # IRC trajectories
+ ├── freq/ # Vibrational modes
+ └── dft/ # DFT results
 ```
 
 ---

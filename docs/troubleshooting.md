@@ -23,15 +23,15 @@ Typical message:
 
 ```text
 Element symbols are missing in '...'.
-Please run `pdb2reaction add-elem-info -i ...` to populate element columns before running extract.
+Please run `pdb2reaction add-elem-info -i...` to populate element columns before running extract.
 ```
 
 Fix:
 - Run:
 
-  ```bash
-  pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
-  ```
+ ```bash
+ pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
+ ```
 
 - Then re-run `extract` / `all` using the updated PDB.
 
@@ -44,7 +44,7 @@ Why it happens:
 Typical messages:
 
 ```text
-[multi] Atom count mismatch between input #1 and input #2: ...
+[multi] Atom count mismatch between input #1 and input #2:...
 [multi] Atom order mismatch between input #1 and input #2.
 ```
 
@@ -77,15 +77,15 @@ Many stages need a total charge when the input is not `.gjf`. If you omit `-q/--
 Fix:
 - Provide charge and multiplicity explicitly:
 
-  ```bash
-  pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
-  ```
+ ```bash
+ pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
+ ```
 
 - Or (when using extraction) provide a residue-name mapping:
 
-  ```bash
-  pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
-  ```
+ ```bash
+ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+ ```
 
 ---
 
@@ -98,9 +98,9 @@ Symptoms:
 Fix:
 - Log in once per environment/machine:
 
-  ```bash
-  huggingface-cli login
-  ```
+ ```bash
+ huggingface-cli login
+ ```
 
 - On HPC, ensure your home directory (or HF cache directory) is writable from compute nodes.
 
@@ -115,10 +115,10 @@ Fixes:
 - Install a PyTorch build matching your cluster CUDA runtime.
 - Confirm GPU visibility:
 
-  ```bash
-  nvidia-smi
-  python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
-  ```
+ ```bash
+ nvidia-smi
+ python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
+ ```
 
 ---
 
@@ -128,9 +128,9 @@ If you use DMF (`--mep-mode dmf`) and see errors importing IPOPT/cyipopt:
 Fix:
 - Install `cyipopt` from conda-forge (recommended) before installing `pdb2reaction`:
 
-  ```bash
-  conda install -c conda-forge cyipopt
-  ```
+ ```bash
+ conda install -c conda-forge cyipopt
+ ```
 
 ---
 
@@ -140,9 +140,9 @@ If figure export fails and you see Plotly/Chrome-related errors:
 Fix:
 - Install a headless Chrome once:
 
-  ```bash
-  plotly_get_chrome -y
-  ```
+ ```bash
+ plotly_get_chrome -y
+ ```
 
 ---
 

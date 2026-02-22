@@ -62,7 +62,7 @@ from .utils import (
     prepare_input_structure,
     normalize_freeze_atoms,
     set_convert_file_enabled,
-    resolve_charge_spin_or_raise,
+    resolve_charge_spin,
     load_yaml_dict,
     apply_yaml_overrides,
     load_pdb_atom_metadata,
@@ -344,21 +344,9 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
 
 def _resolve_yaml_sources(
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
 ) -> Tuple[Optional[Path], Optional[Path], bool]:
-    """Resolve config/override YAML inputs and legacy alias usage."""
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use either --override-yaml or --args-yaml (legacy alias), not both."
-        )
-
-    used_legacy_alias = False
-    if args_yaml_legacy is not None:
-        used_legacy_alias = True
-        override_yaml = args_yaml_legacy
-
-    return config_yaml, override_yaml, used_legacy_alias
+    """Resolve YAML inputs for the all pipeline."""
+    return config_yaml, None, False
 
 
 def _build_effective_args_yaml(
@@ -1157,7 +1145,7 @@ def _run_freq_for_state(
         args.extend(["--hessian-calc-mode", str(hess_mode)])
 
     if args_yaml is not None:
-        args.extend(["--args-yaml", str(args_yaml)])
+        args.extend(["--config", str(args_yaml)])
     _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
     y = fdir / "thermoanalysis.yaml"
     if y.exists():
@@ -1244,7 +1232,7 @@ def _run_dft_for_state(
     _append_cli_arg(args, "--grid-level", overrides.get("grid_level"))
 
     if args_yaml is not None:
-        args.extend(["--args-yaml", str(args_yaml)])
+        args.extend(["--config", str(args_yaml)])
     _run_cli_main("dft", _dft_cli.cli, args, on_nonzero="warn", prefix="dft")
     y = out_dir / "result.yaml"
     if y.exists():
@@ -1347,7 +1335,7 @@ def _run_tsopt_on_hei(
         ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
 
     if args_yaml is not None:
-        ts_args.extend(["--args-yaml", str(args_yaml)])
+        ts_args.extend(["--config", str(args_yaml)])
     if ref_pdb is not None:
         ts_args.extend(["--ref-pdb", str(ref_pdb)])
 
@@ -1461,7 +1449,7 @@ def _irc_and_match(
         irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
 
     if args_yaml is not None:
-        irc_args.extend(["--args-yaml", str(args_yaml)])
+        irc_args.extend(["--config", str(args_yaml)])
     _echo()
     _echo(f"[irc] Running EulerPC IRC → out={irc_dir}")
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
@@ -1916,21 +1904,6 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Base YAML configuration file applied before explicit CLI options.",
 )
 @click.option(
-    "--override-yaml",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="Final YAML override file (highest priority YAML layer).",
-)
-@click.option(
-    "--args-yaml",
-    "args_yaml_legacy",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help=(
-        "[legacy] Alias of --override-yaml; kept for backward compatibility."
-    ),
-)
-@click.option(
     "--show-config/--no-show-config",
     "show_config",
     default=False,
@@ -2097,7 +2070,6 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 )
 @click.option(
     "--scan-lists",
-    "--scan-list",
     "scan_lists_raw",
     type=str,
     multiple=True,
@@ -2107,7 +2079,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "literal runs one stage; multiple literals run **sequentially**, each starting from the "
         "prior stage's relaxed structure. "
         "Example: --scan-lists '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
-        "Pass a single --scan-list(s) followed by multiple values to define multiple stages "
+        "Pass a single --scan-lists followed by multiple values to define multiple stages "
         "(repeated flags are not accepted). "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. For non-PDB single-structure scans, only integer "
@@ -2195,8 +2167,6 @@ def cli(
     thresh: Optional[str],
     thresh_post: str,
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
     show_config: bool,
     dry_run: bool,
     preopt: bool,
@@ -2255,19 +2225,10 @@ def cli(
     except Exception:
         dump_override_requested = False
 
-    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=override_yaml,
-        args_yaml_legacy=args_yaml_legacy,
-    )
-    if used_legacy_yaml:
-        click.echo(
-            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
-            err=True,
-        )
+    config_yaml, override_yaml, _ = _resolve_yaml_sources(config_yaml=config_yaml)
     args_yaml, merged_yaml_cfg = _build_effective_args_yaml(
         config_yaml=config_yaml,
-        override_yaml=override_yaml,
+        override_yaml=None,
         tmp_prefix="pdb2reaction_all_merged_",
     )
 
@@ -2296,7 +2257,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = collect_single_option_values(argv_all, ("--scan-lists", "--scan-list"), "--scan-list(s)")
+    scan_vals = collect_single_option_values(argv_all, ("--scan-lists",), "--scan-lists")
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
@@ -2538,7 +2499,7 @@ def cli(
         if first_input.suffix.lower() == ".gjf":
             try:
                 with prepare_input_structure(first_input) as prepared:
-                    gjf_charge, gjf_spin = resolve_charge_spin_or_raise(
+                    gjf_charge, gjf_spin = resolve_charge_spin(
                         prepared, charge=None, spin=None
                     )
                 _echo(
@@ -3202,7 +3163,7 @@ def cli(
         _append_cli_arg(scan_args, "--bias-k", scan_bias_k)
         _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
         if args_yaml is not None:
-            scan_args.extend(["--args-yaml", str(args_yaml)])
+            scan_args.extend(["--config", str(args_yaml)])
         if scan_stage_literals:
             scan_args.append("--scan-lists")
             scan_args.extend(scan_stage_literals)
@@ -3342,7 +3303,7 @@ def cli(
             if thresh is not None:
                 po_args.extend(["--thresh", str(thresh)])
             if args_yaml is not None:
-                po_args.extend(["--args-yaml", str(args_yaml)])
+                po_args.extend(["--config", str(args_yaml)])
 
             _echo()
             _echo(f"[all] Invoking path-opt for segment {idx}:")
@@ -3648,7 +3609,7 @@ def cli(
         ps_args.extend(["--preopt", "True" if preopt else "False"])
         ps_args.extend(["--convert-files", "True" if convert_files else "False"])
         if args_yaml is not None:
-            ps_args.extend(["--args-yaml", str(args_yaml)])
+            ps_args.extend(["--config", str(args_yaml)])
 
         if gave_ref_pdb:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):

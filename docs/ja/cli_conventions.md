@@ -12,15 +12,10 @@
 ```bash
 # 推奨
 --tsopt --thermo --no-dft
---dump                 # 旧記法の --dump True と同義
---no-dump              # 旧記法の --dump False と同義
 
-# 後方互換として受理（非推奨）
 --tsopt True --thermo yes --dft 0
 ```
 
-旧来の値指定形式（`--flag True/False`）は当面受理されますが、deprecation warning が出ます。
-旧記法の値としては `True/False`, `1/0`, `yes/no`, `y/n`, `t/f`, `on/off`（大文字小文字非区別）を受け入れます。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -37,8 +32,8 @@
 `pdb2reaction all` は 2 段階ヘルプです:
 
 ```bash
-pdb2reaction all --help            # 主要オプションのみ
-pdb2reaction all --help-advanced   # 全オプション
+pdb2reaction all --help # 主要オプションのみ
+pdb2reaction all --help-advanced # 全オプション
 ```
 
 `scan` / `scan2d` / `scan3d` と計算系サブコマンド（`opt` / `path-opt` / `path-search` / `tsopt` / `freq` / `irc` / `dft`）に加え、`add-elem-info` / `trj2fig` / `energy-diagram` も同様に `--help` は主要オプションのみ、`--help-advanced` で全オプションを表示します。`extract` と `fix-altloc` も段階的 help に対応し、`--help-advanced` で parser の全オプションを表示します。
@@ -62,21 +57,21 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 
 ### 残基名による指定
 ```bash
--c 'SAM,GPP'          # SAM または GPP という名前の残基をすべて選択
--c 'LIG'              # LIG という名前の残基をすべて選択
+-c 'SAM,GPP' # SAM または GPP という名前の残基をすべて選択
+-c 'LIG' # LIG という名前の残基をすべて選択
 ```
 
 ### 残基IDによる指定
 ```bash
--c '123,456'          # 残基 123 と 456
--c 'A:123,B:456'      # チェーン A の残基 123、チェーン B の残基 456
--c '123A'             # 挿入コード A を持つ残基 123
--c 'A:123A'           # チェーン A、残基 123、挿入コード A
+-c '123,456' # 残基 123 と 456
+-c 'A:123,B:456' # チェーン A の残基 123、チェーン B の残基 456
+-c '123A' # 挿入コード A を持つ残基 123
+-c 'A:123A' # チェーン A、残基 123、挿入コード A
 ```
 
 ### PDB ファイルによる指定
 ```bash
--c substrate.pdb      # 別の PDB から座標を使用して基質を特定
+-c substrate.pdb # 別の PDB から座標を使用して基質を特定
 ```
 
 ```{note}
@@ -89,14 +84,14 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 
 ### 残基別マッピング（推奨）
 ```bash
---ligand-charge 'SAM:1,GPP:-3'    # SAM は +1、GPP は -3
---ligand-charge 'LIG:-2'          # LIG は -2
+--ligand-charge 'SAM:1,GPP:-3' # SAM は +1、GPP は -3
+--ligand-charge 'LIG:-2' # LIG は -2
 ```
 
 ### 総電荷の明示的上書き
 ```bash
--q 0                              # 総電荷を 0 に強制
--q -1                             # 総電荷を -1 に強制
+-q 0 # 総電荷を 0 に強制
+-q -1 # 総電荷を -1 に強制
 ```
 
 ### 電荷の解決順序
@@ -119,9 +114,9 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 ## スピン多重度
 
 ```bash
--m 1      # 一重項（デフォルト）
--m 2      # 二重項
--m 3      # 三重項
+-m 1 # 一重項（デフォルト）
+-m 2 # 二重項
+-m 3 # 三重項
 ```
 
 ```{note}
@@ -136,7 +131,7 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 
 ### 整数インデックス（デフォルトは1始まり）
 ```bash
---scan-lists '[(1, 5, 2.0)]'      # 原子 1 と 5、ターゲット距離 2.0 Å
+--scan-lists '[(1, 5, 2.0)]' # 原子 1 と 5、ターゲット距離 2.0 Å
 ```
 
 ### PDB形式のセレクタ文字列
@@ -173,7 +168,6 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 詳細設定は多層 YAML で渡せます：
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config config.yaml --override-yaml override.yaml
 ```
 
 適用順序：
@@ -190,7 +184,7 @@ pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config config.yaml --override-yaml ov
 `--out-dir` で結果の保存先を指定します：
 
 ```bash
---out-dir ./my_results/    # カスタム出力ディレクトリ
+--out-dir ./my_results/ # カスタム出力ディレクトリ
 ```
 
 デフォルトの出力ディレクトリ：

@@ -13,16 +13,16 @@ calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
 # uma_pysis には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
 coords_bohr = np.array([
-    [0.0, 0.0, 0.0],
-    [2.2, 0.0, 0.0],  # 約 1.16 Å
+ [0.0, 0.0, 0.0],
+ [2.2, 0.0, 0.0], # 約 1.16 Å
 ])
 
 symbols = ["C", "O"]
 
 # 注: これらのメソッドは dict を返すため、適切なキーで値を取り出します
-energy_h = calc.get_energy(symbols, coords_bohr)["energy"]              # float (Hartree)
-forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"]         # ndarray (Hartree/Bohr)
-hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"]     # ndarray (Hartree/Bohr²)
+energy_h = calc.get_energy(symbols, coords_bohr)["energy"] # float (Hartree)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (Hartree/Bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (Hartree/Bohr²)
 ```
 
 - 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
@@ -52,8 +52,7 @@ cd "$PBS_O_WORKDIR"
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-module load gcc ompi cuda/12.9 
-source ~/apps/miniconda3/etc/profile.d/conda.sh
+module load gcc ompi cuda/12.9 source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate pdb2reaction
 # -------------------
 
@@ -65,7 +64,7 @@ export NCCL_SOCKET_FAMILY=AF_INET
 
 # CUDA_VISIBLE_DEVICES fallback (if scheduler doesn't set)
 if [[ -z "${CUDA_VISIBLE_DEVICES:-}" || "${CUDA_VISIBLE_DEVICES}" == "NoDevFiles" ]]; then
-  export CUDA_VISIBLE_DEVICES=0
+ export CUDA_VISIBLE_DEVICES=0
 fi
 export GPUS_PER_NODE="$(awk -F',' '{print NF}' <<< "${CUDA_VISIBLE_DEVICES}")"
 
@@ -106,9 +105,9 @@ MPI=(mpirun --bind-to none -np "${NNODES}" --map-by ppr:1:node)
 BASH=(bash --noprofile --norc -c)
 
 cleanup() {
-  echo "Stopping Ray..."
-  [[ -n "${RAY_LAUNCH_PID:-}" ]] && kill "${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
-  "${MPI[@]}" "${BASH[@]}" "ray stop -f >/dev/null 2>&1 || true" || true
+ echo "Stopping Ray..."
+ [[ -n "${RAY_LAUNCH_PID:-}" ]] && kill "${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
+ "${MPI[@]}" "${BASH[@]}" "ray stop -f >/dev/null 2>&1 || true" || true
 }
 trap cleanup EXIT
 
@@ -129,7 +128,7 @@ export NCCL_HOSTID=$(hostname -s)
 
 # Per-node GPU count
 if [[ -z \"${CUDA_VISIBLE_DEVICES:-}\" || \"${CUDA_VISIBLE_DEVICES}\" == \"NoDevFiles\" ]]; then
-  export CUDA_VISIBLE_DEVICES=0
+ export CUDA_VISIBLE_DEVICES=0
 fi
 GPUS=$(awk -F',' '{print NF}' <<<"${CUDA_VISIBLE_DEVICES}")
 
@@ -139,26 +138,26 @@ IP=$(getent ahostsv4 "${HOST}" | awk 'NR==1{print $1}')
 echo "[${HOST}] IP=${IP} CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (GPUS=${GPUS}) NCCL_HOSTID=${NCCL_HOSTID}"
 
 if [[ \"${OMPI_COMM_WORLD_RANK:-0}\" == \"0\" ]]; then
-  echo "[${HOST}] ray HEAD on ${HEAD_IP}:${RAY_PORT}"
-  ray start --head --node-ip-address='${HEAD_IP}' --port='${RAY_PORT}' \
-    --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
-    --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
-    --metrics-export-port='${RAY_METRICS_EXPORT_PORT}' \
-    --min-worker-port='${RAY_MIN_WORKER_PORT}' --max-worker-port='${RAY_MAX_WORKER_PORT}' \
-    --num-gpus="${GPUS}" \
-    --temp-dir='${RAY_TEMP_DIR}' \
-    --disable-usage-stats --include-dashboard=false --block
+ echo "[${HOST}] ray HEAD on ${HEAD_IP}:${RAY_PORT}"
+ ray start --head --node-ip-address='${HEAD_IP}' --port='${RAY_PORT}' \
+ --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
+ --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
+ --metrics-export-port='${RAY_METRICS_EXPORT_PORT}' \
+ --min-worker-port='${RAY_MIN_WORKER_PORT}' --max-worker-port='${RAY_MAX_WORKER_PORT}' \
+ --num-gpus="${GPUS}" \
+ --temp-dir='${RAY_TEMP_DIR}' \
+ --disable-usage-stats --include-dashboard=false --block
 else
-  until (echo > /dev/tcp/${HEAD_IP}/${RAY_PORT}) >/dev/null 2>&1; do sleep 1; done
-  echo "[${HOST}] ray WORKER -> ${RAY_HEAD_ADDR}"
-  ray start --address='${RAY_HEAD_ADDR}' --node-ip-address="${IP}" \
-    --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
-    --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
-    --metrics-export-port='${RAY_METRICS_EXPORT_PORT}' \
-    --min-worker-port='${RAY_MIN_WORKER_PORT}' --max-worker-port='${RAY_MAX_WORKER_PORT}' \
-    --num-gpus="${GPUS}" \
-    --temp-dir='${RAY_TEMP_DIR}' \
-    --disable-usage-stats --block
+ until (echo > /dev/tcp/${HEAD_IP}/${RAY_PORT}) >/dev/null 2>&1; do sleep 1; done
+ echo "[${HOST}] ray WORKER -> ${RAY_HEAD_ADDR}"
+ ray start --address='${RAY_HEAD_ADDR}' --node-ip-address="${IP}" \
+ --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
+ --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
+ --metrics-export-port='${RAY_METRICS_EXPORT_PORT}' \
+ --min-worker-port='${RAY_MIN_WORKER_PORT}' --max-worker-port='${RAY_MAX_WORKER_PORT}' \
+ --num-gpus="${GPUS}" \
+ --temp-dir='${RAY_TEMP_DIR}' \
+ --disable-usage-stats --block
 fi
 " &
 
@@ -189,7 +188,6 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `hessian_double` | ヘシアンをfloat64で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 
-`pdb2reaction` の各コマンド（`all`, `opt`, `path-opt` など）では、`--args-yaml` の `calc` キー配下に同等の設定を渡すことで、同一のUMA設定を再利用できます。
 
 ---
 

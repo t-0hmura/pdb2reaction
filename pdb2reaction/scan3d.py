@@ -104,7 +104,6 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     help="Input structure file (.pdb, .xyz, .trj, ...). Required unless --csv is provided.",
 )
 @click.option(
-    "--scan-list",
     "--scan-lists",
     "scan_list_raw",
     type=str,
@@ -119,7 +118,7 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     "spec_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-list.",
+    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-lists.",
 )
 @click.option(
     "--csv",
@@ -128,7 +127,7 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     default=None,
     help=(
         "If provided, skip the 3D scan and read a precomputed surface.csv from this path. "
-        "When used, -i/--input and --scan-list(s) are optional."
+        "When used, -i/--input and --scan-lists are optional."
     ),
 )
 @add_scan_common_options(
@@ -144,7 +143,7 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     "print_parsed",
     default=False,
     show_default=True,
-    help="Print parsed scan targets after resolving --spec/--scan-list.",
+    help="Print parsed scan targets after resolving --spec/--scan-lists.",
 )
 @click.pass_context
 def cli(
@@ -170,8 +169,6 @@ def cli(
     csv_path: Optional[Path],
     thresh: Optional[str],
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
     preopt: bool,
     print_parsed: bool,
     baseline: str,
@@ -181,14 +178,9 @@ def cli(
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
-        override_yaml=override_yaml,
-        args_yaml_legacy=args_yaml_legacy,
+        override_yaml=None,
+        args_yaml_legacy=None,
     )
-    if used_legacy_yaml:
-        click.echo(
-            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
-            err=True,
-        )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
@@ -203,7 +195,7 @@ def cli(
 
         yaml_cfg = load_merged_yaml_cfg(
             config_yaml=config_yaml,
-            override_yaml=override_yaml,
+            override_yaml=None,
         )
         yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
         relax_override_requested = cycles_overridden and not (
@@ -253,9 +245,9 @@ def cli(
                 pdb_atom_meta = load_pdb_atom_metadata(source)
 
             if spec_path is not None and scan_list_raw is not None:
-                raise click.BadParameter("Use either --spec or --scan-list, not both.")
+                raise click.BadParameter("Use either --spec or --scan-lists, not both.")
             scan_one_based = bool(one_based)
-            scan_source = "--scan-list"
+            scan_source = "--scan-lists"
             if spec_path is not None:
                 parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
                     spec_path,
@@ -267,13 +259,12 @@ def cli(
                 scan_source = f"--spec ({spec_path})"
             else:
                 if scan_list_raw is None:
-                    raise click.BadParameter("Provide either --spec or --scan-list.")
+                    raise click.BadParameter("Provide either --spec or --scan-lists.")
                 parsed, raw_pairs = parse_scan_list_quads_checked(
                     scan_list_raw,
                     expected_len=3,
                     one_based=scan_one_based,
                     atom_meta=pdb_atom_meta,
-                    option_name="--scan-list",
                 )
             (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = parsed
             d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
@@ -921,9 +912,9 @@ def cli(
             if input_path is None:
                 raise click.ClickException("-i/--input is required unless --csv is provided.")
             if scan_list_raw is not None and spec_path is not None:
-                raise click.ClickException("Use either --spec or --scan-list, not both.")
+                raise click.ClickException("Use either --spec or --scan-lists, not both.")
             if scan_list_raw is None and spec_path is None:
-                raise click.ClickException("--spec or --scan-list is required unless --csv is provided.")
+                raise click.ClickException("--spec or --scan-lists is required unless --csv is provided.")
             with prepared_cli_input(
                 input_path,
                 ref_pdb=ref_pdb,

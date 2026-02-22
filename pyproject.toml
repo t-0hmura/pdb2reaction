@@ -85,7 +85,7 @@ Documentation = "https://t-0hmura.github.io/pdb2reaction/"
 pdb2reaction = "pdb2reaction.cli:cli"
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "test"]
+testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 where = ["."]

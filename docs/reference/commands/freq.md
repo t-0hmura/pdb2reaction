@@ -45,10 +45,6 @@ Options:
   --out-dir TEXT                  Output directory  [default: ./result_freq/]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
-  --override-yaml FILE            Final YAML override file (highest priority
-                                  YAML layer).
-  --args-yaml FILE                [legacy] Alias of --override-yaml; kept for
-                                  backward compatibility.
   --temperature FLOAT             Temperature (K) for thermochemistry summary.
                                   [default: 298.15]
   --pressure FLOAT                Pressure (atm) for thermochemistry summary.

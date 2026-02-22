@@ -14,8 +14,8 @@
 
 - **エンドツーエンド（複数構造）** — 反応順に並べた 2 構造以上（PDB/GJF/XYZ）と基質定義を与えます。`all` がポケット抽出→GSM/DMF による MEP 探索→全系テンプレートへのマージまで行い、必要に応じてセグメントごとに TSOPT / freq / DFT を実行します。
 - **単一構造 + 段階的スキャン** — 1 つの構造に対して `--scan-lists` を 1 つ以上与えます。スキャンで得られた中間体列を MEP の端点として用います。
-  - `--scan-lists` を 1 つだけ渡すと 1 ステージです。
-  - 複数ステージは、`--scan-lists` を 1 回指定した後に複数値として渡します（フラグの繰り返し指定はできません）。
+ - `--scan-lists` を 1 つだけ渡すと 1 ステージです。
+ - 複数ステージは、`--scan-lists` を 1 回指定した後に複数値として渡します（フラグの繰り返し指定はできません）。
 - **TSOPT のみ（ポケット TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合はポケットを抽出し、その系で TS 最適化 + IRC（必要に応じて freq / DFT）だけを実行します。
 
 ## 最小例
@@ -38,14 +38,14 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --ou
 
 ```bash
 pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
-  --tsopt --thermo --dft --out-dir ./result_all
+ --tsopt --thermo --dft --out-dir ./result_all
 ```
 
 2. 単一構造 + 段階的スキャンを実行する。
 
 ```bash
 pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.20)]" \
-  --mult 1 --out-dir ./result_scan_all
+ --mult 1 --out-dir ./result_scan_all
 ```
 
 3. 重い処理を流す前に計画だけ確認する。
@@ -59,58 +59,57 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --dr
 
 ## 使用法
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [options]
+pdb2reaction all -i INPUT1 [INPUT2...] -c SUBSTRATE [options]
 ```
 
 ### 例
 ```bash
 # 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
-    --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links \
-    --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
-    --out-dir ./result_all --tsopt --thermo --dft
+ --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links \
+ --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
+ --out-dir ./result_all --tsopt --thermo --dft
 
 # 単一構造段階的スキャン + GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
-    --opt-mode heavy --tsopt --thermo --dft
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
+ --opt-mode heavy --tsopt --thermo --dft
 
 # TSOPT のみワークフロー（経路探索なし）
 pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
-    --ligand-charge 'GPP:-3,MMT:-1' --tsopt --thermo --dft
+ --ligand-charge 'GPP:-3,MMT:-1' --tsopt --thermo --dft
 ```
 
 ## ワークフロー
 1. **活性部位ポケット抽出**（`-c/--center` が指定された場合）
-   - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
-   - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
-   - 入力ごとのポケット PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
-   - **最初のポケットの総電荷**がスキャン/MEP/TSOPT に伝播
+ - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
+ - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
+ - 入力ごとのポケット PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
+ - **最初のポケットの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
-   - 各 `--scan-lists` 引数は UMA スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト
-   - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行
-   - スキャンは電荷/スピン、`--freeze-links`、UMA 最適化プリセット（`--opt-mode`）、実効 YAML（`--config`/`--override-yaml`）、`--preopt` を継承。`--dump` はこのコマンドで明示指定された場合のみスキャンへ転送され、それ以外は `scan` 側のデフォルト（`False`）を使用
-   - `--scan-out-dir`、`--scan-one-based`、`--scan-max-step-size`、`--scan-bias-k`、`--scan-relax-max-cycles`、`--scan-preopt`、`--scan-endopt` などの上書きフラグが利用可能
-   - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
+ - 各 `--scan-lists` 引数は UMA スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト
+ - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行
+ - `--scan-out-dir`、`--scan-one-based`、`--scan-max-step-size`、`--scan-bias-k`、`--scan-relax-max-cycles`、`--scan-preopt`、`--scan-endopt` などの上書きフラグが利用可能
+ - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
 3. **ポケットでの MEP 探索（再帰的 GSM/DMF）**
-   - 抽出されたポケット（または抽出がスキップされた場合は元の全構造）を使用してデフォルトで `path-search` を実行（出力は `<out-dir>/path_search/`）
-   - `--no-refine-path` で再帰的精密化なしのシングルパス `path-opt` GSM/DMFチェーンに切り替え
+ - 抽出されたポケット（または抽出がスキップされた場合は元の全構造）を使用してデフォルトで `path-search` を実行（出力は `<out-dir>/path_search/`）
+ - `--no-refine-path` で再帰的精密化なしのシングルパス `path-opt` GSM/DMFチェーンに切り替え
 
 4. **ポケットを全系にマージ**
-   - 参照 PDB テンプレートが存在する場合、マージされた `mep_w_ref*.pdb` およびセグメントごとの `mep_w_ref_seg_XX.pdb` ファイルが `<out-dir>/path_search/` に出力
+ - 参照 PDB テンプレートが存在する場合、マージされた `mep_w_ref*.pdb` およびセグメントごとの `mep_w_ref_seg_XX.pdb` ファイルが `<out-dir>/path_search/` に出力
 
 5. **オプションのセグメントごとの後処理**
-   - `--tsopt`: 各HEIポケットでTS 最適化を実行、EulerPC IRCで追跡し、セグメントエネルギーダイアグラムを出力
-   - `--thermo`: (R, TS, P) で `freq` を呼び出し振動/熱化学データとUMA Gibbsダイアグラムを取得
-   - `--dft`: (R, TS, P) でDFT 一点計算を起動しDFTダイアグラムを構築。`--thermo` と組み合わせるとDFT//UMA Gibbsダイアグラムも生成
-   - 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten-imag-mode`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
-   - VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨
+ - `--tsopt`: 各HEIポケットでTS 最適化を実行、EulerPC IRCで追跡し、セグメントエネルギーダイアグラムを出力
+ - `--thermo`: (R, TS, P) で `freq` を呼び出し振動/熱化学データとUMA Gibbsダイアグラムを取得
+ - `--dft`: (R, TS, P) でDFT 一点計算を起動しDFTダイアグラムを構築。`--thermo` と組み合わせるとDFT//UMA Gibbsダイアグラムも生成
+ - 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten-imag-mode`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
+ - VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
-   - MEP/マージステージをスキップ。ポケット（または抽出がスキップされた場合は完全入力）で `tsopt` を実行し、EulerPC IRCを実行
-   - 高エネルギー側の IRC 終端を反応物 (R) として識別し、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成
+ - MEP/マージステージをスキップ。ポケット（または抽出がスキップされた場合は完全入力）で `tsopt` を実行し、EulerPC IRCを実行
+ - 高エネルギー側の IRC 終端を反応物 (R) として識別し、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成
 
 
 ### 電荷とスピンの優先順位
@@ -148,8 +147,6 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
 | `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化。 | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
-| `--override-yaml FILE` | 最後に適用する上書き YAML（YAML 内で最優先） | _None_ |
-| `--args-yaml FILE` | `--override-yaml` の legacy alias | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
 | `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う | `False` |
 
@@ -242,7 +239,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--scan-lists, --scan-list TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
+| `--scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
 | `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
 | `--scan-one-based/--no-scan-one-based` | 1始まり/0始まりインデックス | `True` |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
@@ -253,21 +250,21 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 ## 出力
 ```text
-out_dir/ (デフォルト: ./result_all/)
-├─ summary.md               # 主要成果物へ移動しやすいナビゲーションページ
-├─ summary.log               # テキスト形式の結果要約
-├─ summary.yaml              # YAML 形式の結果要約
-├─ key_mep.trj               # 主要 MEP 軌跡へのショートカット（symlink/copy）
-├─ key_mep.pdb               # 主要 MEP PDB へのショートカット（symlink/copy）
-├─ key_ts.pdb / key_ts.xyz   # TS 構造へのショートカット（利用可能時）
-├─ key_freq_TS.csv           # TS 振動数へのショートカット（利用可能時）
-├─ key_dft_TS.yaml           # TS DFT 結果へのショートカット（利用可能時）
-├─ key_irc_plot.png          # IRC プロットへのショートカット（利用可能時）
-├─ pockets/                  # 抽出実行時の入力ごとのポケット PDB
-├─ scan/                     # 段階的ポケットスキャン結果（--scan-lists提供時）
-├─ path_search/              # MEP結果: 軌跡、マージPDB、ダイアグラム
-├─ path_search/post_seg_XX/  # 後処理出力（TS最適化、IRC、freq、DFT）
-└─ tsopt_single/             # TSOPT のみ出力とIRCエンドポイント
+out_dir/ (デフォルト:./result_all/)
+├─ summary.md # 主要成果物へ移動しやすいナビゲーションページ
+├─ summary.log # テキスト形式の結果要約
+├─ summary.yaml # YAML 形式の結果要約
+├─ key_mep.trj # 主要 MEP 軌跡へのショートカット（symlink/copy）
+├─ key_mep.pdb # 主要 MEP PDB へのショートカット（symlink/copy）
+├─ key_ts.pdb / key_ts.xyz # TS 構造へのショートカット（利用可能時）
+├─ key_freq_TS.csv # TS 振動数へのショートカット（利用可能時）
+├─ key_dft_TS.yaml # TS DFT 結果へのショートカット（利用可能時）
+├─ key_irc_plot.png # IRC プロットへのショートカット（利用可能時）
+├─ pockets/ # 抽出実行時の入力ごとのポケット PDB
+├─ scan/ # 段階的ポケットスキャン結果（--scan-lists提供時）
+├─ path_search/ # MEP結果: 軌跡、マージPDB、ダイアグラム
+├─ path_search/post_seg_XX/ # 後処理出力（TS最適化、IRC、freq、DFT）
+└─ tsopt_single/ # TSOPT のみ出力とIRCエンドポイント
 ```
 
 
@@ -298,15 +295,11 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - ダイアグラムのエネルギーは反応物（最初の状態）基準の kcal/mol で報告されます。
 - `-c/--center` を省略すると抽出をスキップして全構造を MEP/tsopt/freq/DFT に渡しますが、単一構造実行には `--scan-lists` か `--tsopt` が引き続き必要です。
-- 共有設定は `--config`、最終上書きは `--override-yaml` を使って分離できます。
 
-## YAML 設定（`--config` / `--override-yaml`）
 
 `all` は YAML の多層指定をサポートします:
 
 - `--config FILE`: ベース設定。
-- `--override-yaml FILE`: 最終上書き層。
-- `--args-yaml FILE`: `--override-yaml` の legacy alias。
 
 適用順序:
 
@@ -322,18 +315,17 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
 | [`dft`](dft.md) | `dft` |
 
-> **注記:** `--override-yaml` は CLI 指定より後に適用されます。
 
 **最小例:**
 ```yaml
 calc:
-  model: uma-s-1p1
-  hessian_calc_mode: Analytical  # VRAM に余裕がある場合推奨
+ model: uma-s-1p1
+ hessian_calc_mode: Analytical # VRAM に余裕がある場合推奨
 gs:
-  max_nodes: 12
-  climb: true
+ max_nodes: 12
+ climb: true
 dft:
-  grid_level: 6
+ grid_level: 6
 ```
 
 すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml_reference.md)** を参照してください。

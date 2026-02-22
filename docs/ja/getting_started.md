@@ -47,7 +47,6 @@ UMA レベルの計算には Meta の UMA（MLIP）を用います。
 
 | 規約 | 例 | 備考 |
 |-----|-----|------|
-| **真偽値オプション** | `--tsopt`, `--no-dft` | 推奨は toggle 形式。旧記法（`--tsopt True`, `--dft 0`）も当面は受理されるが deprecation warning が出る |
 | **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
 | **電荷マッピング** | `--ligand-charge 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
 | **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
@@ -113,19 +112,19 @@ huggingface-cli login
 これはマシン/環境ごとに1回だけ行う必要があります。
 
 - MEP 探索で Direct Max Flux 法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください:
-  ```bash
-  # 専用のconda環境を作成してアクティブ化
-  conda create -n pdb2reaction python=3.11 -y
-  conda activate pdb2reaction
+ ```bash
+ # 専用のconda環境を作成してアクティブ化
+ conda create -n pdb2reaction python=3.11 -y
+ conda activate pdb2reaction
 
-  # cyipoptをインストール（MEP 探索のDMF法に必要）
-  conda install -c conda-forge cyipopt -y
-  ```
+ # cyipoptをインストール（MEP 探索のDMF法に必要）
+ conda install -c conda-forge cyipopt -y
+ ```
 
 - *環境モジュール*を使用するHPC クラスターでは、PyTorchをインストールする**前に**CUDAをロードしてください:
-  ```bash
-  module load cuda/12.9
-  ```
+ ```bash
+ module load cuda/12.9
+ ```
 
 
 ### 詳細なインストール手順
@@ -134,60 +133,60 @@ huggingface-cli login
 
 1. **CUDAをロード（HPCで環境モジュールを使用する場合）**
 
-   ```bash
-   module load cuda/12.9
-   ```
+ ```bash
+ module load cuda/12.9
+ ```
 
 2. **conda環境を作成してアクティブ化**
 
-   ```bash
-   conda create -n pdb2reaction python=3.11 -y
-   conda activate pdb2reaction
-   ```
+ ```bash
+ conda create -n pdb2reaction python=3.11 -y
+ conda activate pdb2reaction
+ ```
 
 3. **cyipoptをインストール**
-   MEP 探索でDMF法を使用する場合に必要です。
+ MEP 探索でDMF法を使用する場合に必要です。
 
-   ```bash
-   conda install -c conda-forge cyipopt -y
-   ```
+ ```bash
+ conda install -c conda-forge cyipopt -y
+ ```
 
 4. **適切なCUDAビルドのPyTorchをインストール**
 
-   CUDA 12.9の場合:
+ CUDA 12.9の場合:
 
-   ```bash
-   pip install torch --index-url https://download.pytorch.org/whl/cu129
-   ```
+ ```bash
+ pip install torch --index-url https://download.pytorch.org/whl/cu129
+ ```
 
-   （クラスターが推奨する場合は別の互換バージョンを使用できます。）
+ （クラスターが推奨する場合は別の互換バージョンを使用できます。）
 
 5. **`pdb2reaction` 本体と可視化用Chromeをインストール**
 
-   ```bash
-   pip install git+https://github.com/t-0hmura/pdb2reaction.git
-   plotly_get_chrome -y
-   ```
+ ```bash
+ pip install git+https://github.com/t-0hmura/pdb2reaction.git
+ plotly_get_chrome -y
+ ```
 
 6. **Hugging Face Hub (UMAモデル) にログイン**
 
-   ```bash
-   huggingface-cli login
-   ```
+ ```bash
+ huggingface-cli login
+ ```
 
-   参照:
+ 参照:
 
-   - <https://github.com/facebookresearch/fairchem>
-   - <https://huggingface.co/facebook/UMA>
-   - <https://huggingface.co/docs/hub/security-tokens>
+ - <https://github.com/facebookresearch/fairchem>
+ - <https://huggingface.co/facebook/UMA>
+ - <https://huggingface.co/docs/hub/security-tokens>
 
 7. **インストールの確認**
 
-   ```bash
-   pdb2reaction --version
-   ```
+ ```bash
+ pdb2reaction --version
+ ```
 
-   インストールされたバージョンが表示されます（例: `{{ version }}`）。
+ インストールされたバージョンが表示されます（例: `{{ version }}`）。
 
 ---
 
@@ -206,9 +205,9 @@ huggingface-cli login
 つまり:
 
 ```bash
-pdb2reaction [OPTIONS] ...
+pdb2reaction [OPTIONS]...
 # は以下と同等
-pdb2reaction all [OPTIONS] ...
+pdb2reaction all [OPTIONS]...
 ```
 
 `all` は、クラスター抽出から MEP 探索、TS 最適化、振動解析、DFT 一点計算までを 1 コマンドで一括実行するサブコマンドです。
@@ -279,8 +278,8 @@ pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C1
 
 - `--scan-lists` は抽出されたクラスターモデルでの**段階的距離スキャン**を記述
 - 各タプル `(i, j, target_Å)` は:
-  - `'TYR,285,CA'` のようなPDB原子セレクター文字列（**区切り文字**: スペース/カンマ/スラッシュ/バッククォート/バックスラッシュ ` ` `,` `/` `` ` `` `\`）**または**1始まりの原子インデックス
-  - クラスターモデルのインデックスに自動的に再マッピング
+ - `'TYR,285,CA'` のようなPDB原子セレクター文字列（**区切り文字**: スペース/カンマ/スラッシュ/バッククォート/バックスラッシュ ` ` `,` `/` `` ` `` `\`）**または**1始まりの原子インデックス
+ - クラスターモデルのインデックスに自動的に再マッピング
 - 1 つの `--scan-lists` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます。`--scan-lists` フラグは 1 回だけ指定し、その後に複数リテラルを並べてください（フラグの繰り返しは不可）
 - 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
 - デフォルトの `all` ワークフローは連結されたステージを再帰的 `path-search` で精密化
@@ -393,7 +392,6 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{important}
-サブコマンド（`all` を除く）は、`extract` で生成された**クラスターモデル**を入力として想定しています。クラスターモデルでは、Link-H キャップに最も近い原子が自動的に**凍結**されます。独自にクラスターモデルを構築する場合は、Link-H の残基名を `LKH`、原子名を `HL` に設定するか、`--args-yaml` → `geom.freeze_atoms` で凍結する原子を指定してください。
 ```
 
 ```{tip}
@@ -412,7 +410,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
 
 # 後処理付きフルワークフロー
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft
+ --tsopt --thermo --dft
 
 # 単一構造 + 段階的スキャン
 pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'

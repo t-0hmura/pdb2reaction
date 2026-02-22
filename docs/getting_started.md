@@ -47,7 +47,6 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 
 | Convention | Example |
 |------------|---------|
-| **Boolean options** | `--tsopt`, `--no-dft` (recommended). Legacy value-style (`--tsopt True`, `--dft 0`) is still accepted with a deprecation warning. |
 | **Residue selectors** | `'SAM,GPP'` or `'A:123,B:456'` |
 | **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` |
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` |
@@ -115,19 +114,19 @@ huggingface-cli login
 You only need to do this once per machine / environment.
 
 - If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
-  ```bash
-  # Create and activate a dedicated conda environment
-  conda create -n pdb2reaction python=3.11 -y
-  conda activate pdb2reaction
+ ```bash
+ # Create and activate a dedicated conda environment
+ conda create -n pdb2reaction python=3.11 -y
+ conda activate pdb2reaction
 
-  # Install cyipopt (required for the DMF method in MEP search)
-  conda install -c conda-forge cyipopt -y
-  ```
+ # Install cyipopt (required for the DMF method in MEP search)
+ conda install -c conda-forge cyipopt -y
+ ```
 
 - If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch, like this:
-  ```bash
-  module load cuda/12.9
-  ```
+ ```bash
+ module load cuda/12.9
+ ```
 
 
 ### Step-by-step installation
@@ -136,60 +135,60 @@ If you prefer to build the environment piece by piece:
 
 1. **Load CUDA (if you use environment modules on an HPC cluster)**
 
-   ```bash
-   module load cuda/12.9
-   ```
+ ```bash
+ module load cuda/12.9
+ ```
 
 2. **Create and activate a conda environment**
 
-   ```bash
-   conda create -n pdb2reaction python=3.11 -y
-   conda activate pdb2reaction
-   ```
+ ```bash
+ conda create -n pdb2reaction python=3.11 -y
+ conda activate pdb2reaction
+ ```
 
 3. **Install cyipopt**
-   Required if you want to use the DMF method in MEP search.
+ Required if you want to use the DMF method in MEP search.
 
-   ```bash
-   conda install -c conda-forge cyipopt -y
-   ```
+ ```bash
+ conda install -c conda-forge cyipopt -y
+ ```
 
 4. **Install PyTorch with the right CUDA build**
 
-   For CUDA 12.9:
+ For CUDA 12.9:
 
-   ```bash
-   pip install torch --index-url https://download.pytorch.org/whl/cu129
-   ```
+ ```bash
+ pip install torch --index-url https://download.pytorch.org/whl/cu129
+ ```
 
-   (You may use another compatible version if your cluster recommends it.)
+ (You may use another compatible version if your cluster recommends it.)
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
-   ```bash
-   pip install git+https://github.com/t-0hmura/pdb2reaction.git
-   plotly_get_chrome -y
-   ```
+ ```bash
+ pip install git+https://github.com/t-0hmura/pdb2reaction.git
+ plotly_get_chrome -y
+ ```
 
 6. **Log in to Hugging Face Hub (UMA model)**
 
-   ```bash
-   huggingface-cli login
-   ```
+ ```bash
+ huggingface-cli login
+ ```
 
-   See also:
+ See also:
 
-   - <https://github.com/facebookresearch/fairchem>
-   - <https://huggingface.co/facebook/UMA>
-   - <https://huggingface.co/docs/hub/security-tokens>
+ - <https://github.com/facebookresearch/fairchem>
+ - <https://huggingface.co/facebook/UMA>
+ - <https://huggingface.co/docs/hub/security-tokens>
 
 7. **Verify installation**
 
-   ```bash
-   pdb2reaction --version
-   ```
+ ```bash
+ pdb2reaction --version
+ ```
 
-   This should display the installed version (e.g., `{{ version }}`).
+ This should display the installed version (e.g., `{{ version }}`).
 
 ---
 
@@ -208,9 +207,9 @@ The main entry point is the `pdb2reaction` command, installed via `pip`. Interna
 That means:
 
 ```bash
-pdb2reaction [OPTIONS] ...
+pdb2reaction [OPTIONS]...
 # is equivalent to
-pdb2reaction all [OPTIONS] ...
+pdb2reaction all [OPTIONS]...
 ```
 
 The `all` command runs the full pipeline—cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT—in a single invocation.
@@ -281,8 +280,8 @@ Key points:
 
 - `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
-  - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,
-  - automatically remapped to the cluster-model indices.
+ - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,
+ - automatically remapped to the cluster-model indices.
 - Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals after a single flag (repeated flags are not accepted).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path-search`.
@@ -395,7 +394,6 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
 ```{important}
-Subcommands (except `all`) assume **cluster models** generated by `extract`. In these models, the atom closest to the Link‑H cap is automatically **frozen**. If you build a cluster model yourself, set the Link‑H residue name to `LKH` and atom name to `HL`, or specify atoms to freeze via `--args-yaml` → `geom.freeze_atoms`.
 ```
 
 ```{tip}
@@ -414,7 +412,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
 
 # Full workflow with post-processing
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft
+ --tsopt --thermo --dft
 
 # Single structure with staged scan
 pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'

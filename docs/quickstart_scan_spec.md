@@ -14,8 +14,8 @@ Drive one or more bond distances from a single structure using a YAML scan speci
 ```yaml
 one_based: true
 stages:
-  - [["TYR,285,CA", "MMT,309,C10", 1.35]]
-  - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+ - [["TYR,285,CA", "MMT,309,C10", 1.35]]
+ - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
 ```
 
 ## 2. Run scan
@@ -32,7 +32,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 ## Notes
 
-- `--spec` is the recommended format; legacy `--scan-lists` remains available for advanced/compatibility use.
+- `--spec` is the recommended format; `--scan-lists` remains available for advanced/compatibility use.
 - Use `pdb2reaction scan --help-advanced` to inspect all scan controls.
 
 ## Next step

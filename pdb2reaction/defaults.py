@@ -258,7 +258,6 @@ SEARCH_KW: Dict[str, Any] = {
     "max_depth": 10,
     "stitch_rmsd_thresh": 1.0e-4,
     "bridge_rmsd_thresh": 1.0e-4,
-    "rmsd_align": True,
     "max_nodes_segment": 10,
     "max_nodes_bridge": 5,
     "kink_max_nodes": 3,

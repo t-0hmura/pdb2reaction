@@ -2,10 +2,10 @@
 
 ## 概要
 
-> **要約:** 調和拘束と UMA 緩和により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行います。`--spec`（YAML/JSON、推奨）または legacy の `--scan-lists` を使用できます。`--csv` では既存 `surface.csv` の可視化のみ実行します。
+> **要約:** 調和拘束と UMA 緩和により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行います。`--spec`（YAML/JSON、推奨）または `--scan-lists` を使用できます。`--csv` では既存 `surface.csv` の可視化のみ実行します。
 
 ### 要点
-- **入力:** 1 つの構造 + `--spec scan3d.yaml`（推奨）または `--scan-lists` の **単一** legacy リテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能。
+- **入力:** 1 つの構造 + `--spec scan3d.yaml`（推奨）または `--scan-lists` の **単一** リテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能。
 - **訪問順:** 事前最適化構造に近い値が先に走査されるよう、各軸が並べ替えられます。
 - **エネルギー:** 記録されるエネルギーは **バイアスを除去して**評価されるため、格子点間で直接比較できます。
 - **主な出力:** `surface.csv`、`grid/` 配下の各点の構造、HTML の等値面図（`scan3d_density.html`）。
@@ -14,7 +14,6 @@
 `scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは LBFGS（`--opt-mode light`）で、RFOptimizer が必要な場合は `--opt-mode heavy` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
-YAML は `--config`（ベース）と `--override-yaml`（最終上書き）の 2 層で指定でき、`--args-yaml` は `--override-yaml` の legacy エイリアスです。
 
 ## 最小例
 ```bash
@@ -28,15 +27,14 @@ pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --print-parsed --out-di
 
 ## よくある例
 1. YAML spec の解釈結果を先に確認する。
-2. 後方互換のため legacy `--scan-lists` を使う。
+2. `--scan-lists` を使う。
 3. `--dump` を有効にして `(d1,d2)` ごとの d3 軌跡を保存する。
 
 ## 使用法
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    [--spec scan3d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
-                    [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
-                    [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
+ [--spec scan3d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
 注: `-i/--input` と `--spec`/`--scan-lists` のいずれかは `--csv` が指定されていない限り必須です。
 
@@ -44,13 +42,13 @@ pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [--ligand-charge <n
 ```bash
 # 3距離の最小スキャン
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
 
 # LBFGS、内側軌跡ダンプ、HTML等値面
 pdb2reaction scan3d -i input.pdb -q 0 \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
-    --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode light \
-    --preopt --baseline min
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
+ --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode light \
+ --preopt --baseline min
 
 # 既存surface.csvからのプロットのみ（スキャンしない）
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
@@ -88,7 +86,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 "TYR,285,CA"
 "TYR 285 CA"
 "TYR/285/CA"
-"285,TYR,CA"   # 順序は自由
+"285,TYR,CA" # 順序は自由
 ```
 
 ### クォートの規則
@@ -101,7 +99,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 --scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20), (3, 12, 1.10, 3.00)]'
 
 # 非推奨: ダブルクォートで外側を囲むとエスケープが必要
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10), ...]"
+--scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10),...]"
 ```
 
 ## ワークフロー
@@ -121,7 +119,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `pairs`（3 四つ組）を持つ YAML/JSON 仕様。`one_based` を任意指定可能。 | `--csv` 未指定時に推奨 |
-| `--scan-lists, --scan-list TEXT` | **単一 legacy** の Python リテラルで 3 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--spec` の代替（`--csv` 未指定時） |
+| `--scan-lists TEXT` | **単一 ** の Python リテラルで 3 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--spec` の代替（`--csv` 未指定時） |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のペア情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
@@ -136,8 +134,6 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--csv PATH` | 既存の `surface.csv` を読み込みプロットのみ実行（新規スキャンなし） | _None_ |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `--override-yaml FILE` | 最終 YAML 上書きファイル（YAML レイヤーの最優先） | _None_ |
-| `--args-yaml FILE` | `--override-yaml` の legacy エイリアス（後方互換） | _None_ |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または `(i,j,k)=(0,0,0)` に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | 等値面の色範囲（kcal/mol） | 自動 |
@@ -147,31 +143,29 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 `opt` の詳細は [docs/opt.md](opt.md) を参照してください。
 
-## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
-YAML レイヤーは **`--config` < `--override-yaml`** の順にマージされます（`--args-yaml` は `--override-yaml` の legacy エイリアス）。最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  device: auto               # UMA device selection
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ device: auto # UMA device selection
 opt:
-  thresh: baker              # convergence preset (default: baker)
-  max_cycles: 10000          # optimizer cycle cap
-  dump: false                # optimizer dumps (scan trajectories are controlled by --dump)
-  out_dir: ./result_scan3d/  # output directory
+ thresh: baker # convergence preset (default: baker)
+ max_cycles: 10000 # optimizer cycle cap
+ dump: false # optimizer dumps (scan trajectories are controlled by --dump)
+ out_dir:./result_scan3d/ # output directory
 lbfgs:
-  max_step: 0.3              # maximum step length
-  out_dir: ./result_scan3d/  # LBFGS-specific output directory
+ max_step: 0.3 # maximum step length
+ out_dir:./result_scan3d/ # LBFGS-specific output directory
 rfo:
-  trust_radius: 0.1          # trust-region radius
-  out_dir: ./result_scan3d/  # RFO-specific output directory
+ trust_radius: 0.1 # trust-region radius
+ out_dir:./result_scan3d/ # RFO-specific output directory
 bias:
-  k: 300.0                  # harmonic bias strength (eV·Å⁻²)
+ k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
 `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
@@ -181,14 +175,14 @@ bias:
 
 ## 出力
 ```
-out_dir/ (デフォルト: ./result_scan3d/)
-├─ surface.csv                     # グリッドメタデータ（i=j=k=-1 の参照行を含む場合あり）
-├─ scan3d_density.html             # 3D エネルギー等値面の可視化
-├─ grid/point_i###_j###_k###.xyz   # 各グリッド点の緩和構造（Å×100 タグ）
-├─ grid/point_i###_j###_k###.pdb   # 変換有効時の PDB コンパニオン
-├─ grid/point_i###_j###_k###.gjf   # テンプレートがある場合の Gaussian コンパニオン
-├─ grid/preopt_i###_j###_k###.xyz  # スキャン開始前の構造（--preopt の場合は最適化済み）
-└─ grid/inner_path_d1_###_d2_###.trj # --dump の場合のみ（変換有効時は .pdb/.gjf も生成）
+out_dir/ (デフォルト:./result_scan3d/)
+├─ surface.csv # グリッドメタデータ（i=j=k=-1 の参照行を含む場合あり）
+├─ scan3d_density.html # 3D エネルギー等値面の可視化
+├─ grid/point_i###_j###_k###.xyz # 各グリッド点の緩和構造（Å×100 タグ）
+├─ grid/point_i###_j###_k###.pdb # 変換有効時の PDB コンパニオン
+├─ grid/point_i###_j###_k###.gjf # テンプレートがある場合の Gaussian コンパニオン
+├─ grid/preopt_i###_j###_k###.xyz # スキャン開始前の構造（--preopt の場合は最適化済み）
+└─ grid/inner_path_d1_###_d2_###.trj # --dump の場合のみ（変換有効時は.pdb/.gjf も生成）
 ```
 
 ## 注意事項

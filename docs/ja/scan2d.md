@@ -2,10 +2,10 @@
 
 ## 概要
 
-> **要約:** 調和拘束と UMA 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`--spec`（YAML/JSON、推奨）または legacy の `--scan-lists` を使用します。
+> **要約:** 調和拘束と UMA 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`--spec`（YAML/JSON、推奨）または `--scan-lists` を使用します。
 
 ### 要点
-- **入力:** 1 つの構造 + `--spec scan2d.yaml`（推奨）または `--scan-lists` の **単一** legacy リテラル（四つ組はちょうど 2 つ）。
+- **入力:** 1 つの構造 + `--spec scan2d.yaml`（推奨）または `--scan-lists` の **単一** リテラル（四つ組はちょうど 2 つ）。
 - **訪問順:** 各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。
 - **エネルギー:** `surface.csv` の値は常に **バイアスなし**で評価されるため、格子点間で直接比較できます。
 - **主な出力:** `surface.csv`、`scan2d_map.png`、`scan2d_landscape.html`、および `grid/` 配下の各点の構造。
@@ -14,7 +14,6 @@
 `scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、バイアスなしの UMA エネルギーを記録し可視化用の出力を生成します。LBFGS の代わりに RFOptimizer を使用する場合は `--opt-mode heavy` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
-YAML は `--config`（ベース）と `--override-yaml`（最終上書き）の 2 層で指定でき、`--args-yaml` は `--override-yaml` の legacy エイリアスです。
 
 ## 最小例
 ```bash
@@ -28,28 +27,27 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed --out-di
 
 ## よくある例
 1. YAML spec の解釈結果を先に確認する。
-2. 後方互換のため legacy `--scan-lists` を使う。
+2. `--scan-lists` を使う。
 3. `--dump` を有効にして d1 ごとの内側軌跡を保存する。
 
 ## 使用法
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
-                    [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
-                    [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### 例
 ```bash
 # 2距離の最小スキャン
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
 
 # LBFGS + 内側軌跡ダンプ + Plotly出力
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
-    --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode light \
-    --preopt --baseline min
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
+ --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode light \
+ --preopt --baseline min
 ```
 
 ## `--scan-lists` の書式
@@ -84,7 +82,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 "TYR,285,CA"
 "TYR 285 CA"
 "TYR/285/CA"
-"285,TYR,CA"   # 順序は自由
+"285,TYR,CA" # 順序は自由
 ```
 
 ### クォートの規則
@@ -97,7 +95,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 --scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
 
 # 非推奨: ダブルクォートで外側を囲むとエスケープが必要
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10), ...]"
+--scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10),...]"
 ```
 
 ## ワークフロー
@@ -116,7 +114,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `pairs`（2 四つ組）を持つ YAML/JSON 仕様。`one_based` を任意指定可能。 | 推奨 |
-| `--scan-lists, --scan-list TEXT` | **単一 legacy** の Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
+| `--scan-lists TEXT` | **単一 ** の Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のペア情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
@@ -130,8 +128,6 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan2d/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `--override-yaml FILE` | 最終 YAML 上書きファイル（YAML レイヤーの最優先） | _None_ |
-| `--args-yaml FILE` | `--override-yaml` の legacy エイリアス（後方互換） | _None_ |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または最初の格子点に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
@@ -144,14 +140,14 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ## 出力
 ```
-out_dir/ (デフォルト: ./result_scan2d/)
-├─ surface.csv                # 構造化グリッド表
-├─ scan2d_map.png             # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
-├─ scan2d_landscape.html      # 3D サーフェス可視化
-├─ grid/point_i###_j###.xyz   # 各 (i, j) の緩和構造
-├─ grid/point_i###_j###.pdb   # 変換有効時の PDB コンパニオン
-├─ grid/point_i###_j###.gjf   # テンプレートがある場合の Gaussian コンパニオン
-└─ grid/inner_path_d1_###.trj # --dump の場合のみ（PDB 入力時は .pdb にも変換）
+out_dir/ (デフォルト:./result_scan2d/)
+├─ surface.csv # 構造化グリッド表
+├─ scan2d_map.png # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
+├─ scan2d_landscape.html # 3D サーフェス可視化
+├─ grid/point_i###_j###.xyz # 各 (i, j) の緩和構造
+├─ grid/point_i###_j###.pdb # 変換有効時の PDB コンパニオン
+├─ grid/point_i###_j###.gjf # テンプレートがある場合の Gaussian コンパニオン
+└─ grid/inner_path_d1_###.trj # --dump の場合のみ（PDB 入力時は.pdb にも変換）
 ```
 
 ## 注意事項
@@ -162,31 +158,29 @@ out_dir/ (デフォルト: ./result_scan2d/)
 - バイアスは最終エネルギー記録前に必ず除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま再利用できます。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットを固定します。
 
-## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
-YAML レイヤーは **`--config` < `--override-yaml`** の順にマージされます（`--args-yaml` は `--override-yaml` の legacy エイリアス）。最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  device: auto               # UMA device selection
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ device: auto # UMA device selection
 opt:
-  thresh: baker              # convergence preset (default: baker)
-  max_cycles: 10000          # optimizer cycle cap
-  dump: false                # optimizer dumps (scan trajectories are controlled by --dump)
-  out_dir: ./result_scan2d/  # output directory
+ thresh: baker # convergence preset (default: baker)
+ max_cycles: 10000 # optimizer cycle cap
+ dump: false # optimizer dumps (scan trajectories are controlled by --dump)
+ out_dir:./result_scan2d/ # output directory
 lbfgs:
-  max_step: 0.3              # maximum step length
-  out_dir: ./result_scan2d/  # LBFGS-specific output directory
+ max_step: 0.3 # maximum step length
+ out_dir:./result_scan2d/ # LBFGS-specific output directory
 rfo:
-  trust_radius: 0.1          # trust-region radius
-  out_dir: ./result_scan2d/  # RFO-specific output directory
+ trust_radius: 0.1 # trust-region radius
+ out_dir:./result_scan2d/ # RFO-specific output directory
 bias:
-  k: 300.0                  # harmonic bias strength (eV·Å⁻²)
+ k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
 `opt` の詳細は [docs/opt.md](opt.md) を参照してください。

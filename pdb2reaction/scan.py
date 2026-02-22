@@ -169,12 +169,11 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 )
 @click.option(
     "--scan-lists",
-    "--scan-list",
     "scan_lists_raw",
     type=str,
     multiple=True,
     required=False,
-    help="Python-like list of (i,j,target) per stage. Pass a single --scan-list(s) followed by "
+    help="Python-like list of (i,j,target) per stage. Pass a single --scan-lists followed by "
          "multiple literals to run sequential stages, e.g. --scan-lists '[(0,1,1.50)]' '[(5,7,1.20)]'.",
 )
 @click.option(
@@ -182,7 +181,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     "spec_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=False,
-    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-list(s).",
+    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-lists.",
 )
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
@@ -201,7 +200,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     "print_parsed",
     default=False,
     show_default=True,
-    help="Print parsed scan targets after resolving --spec/--scan-list(s).",
+    help="Print parsed scan targets after resolving --spec/--scan-lists.",
 )
 @click.option(
     "--endopt/--no-endopt",
@@ -233,8 +232,6 @@ def cli(
     out_dir: str,
     thresh: Optional[str],
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
     preopt: bool,
     print_parsed: bool,
     endopt: bool,
@@ -242,14 +239,9 @@ def cli(
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
-        override_yaml=override_yaml,
-        args_yaml_legacy=args_yaml_legacy,
+        override_yaml=None,
+        args_yaml_legacy=None,
     )
-    if used_legacy_yaml:
-        click.echo(
-            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
-            err=True,
-        )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
@@ -274,7 +266,7 @@ def cli(
             # ------------------------------------------------------------------
             yaml_cfg = load_merged_yaml_cfg(
                 config_yaml=config_yaml,
-                override_yaml=override_yaml,
+                override_yaml=None,
             )
             yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
             relax_override_requested = cycles_overridden and not (
@@ -356,14 +348,14 @@ def cli(
             # 2) Parse scan lists
             # ------------------------------------------------------------------
             cli_scan_values = collect_single_option_values(
-                sys.argv[1:], ("--scan-lists", "--scan-list"), "--scan-list/--scan-lists"
+                sys.argv[1:], ("--scan-lists",), "--scan-lists"
             )
             if spec_path is not None and cli_scan_values:
-                raise click.BadParameter("Use either --spec or --scan-list(s), not both.")
+                raise click.BadParameter("Use either --spec or --scan-lists, not both.")
 
             stages: List[List[Tuple[int, int, float]]]
             scan_one_based = bool(one_based)
-            scan_source = "--scan-list(s)"
+            scan_source = "--scan-lists"
             if spec_path is not None:
                 stages, scan_one_based = parse_scan_spec_stages(
                     spec_path,
@@ -374,7 +366,7 @@ def cli(
                 scan_source = f"--spec ({spec_path})"
             else:
                 if not cli_scan_values:
-                    raise click.BadParameter("Provide either --spec or --scan-list(s).")
+                    raise click.BadParameter("Provide either --spec or --scan-lists.")
                 stages = []
                 for idx, raw in enumerate(cli_scan_values, start=1):
                     parsed, _ = parse_scan_list_triples(

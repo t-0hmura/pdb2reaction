@@ -10,22 +10,22 @@
 
 ```text
 全系入力 (PDB/XYZ/GJF)
-   │
-   ├─ (任意) ポケット抽出        [extract]     ← --center/-c を使う場合は PDB が必要
-   │        ↓
-   │   ポケット/クラスターモデル (PDB)
-   │        │
-   │        ├─ (任意) 段階的スキャン [scan]     ← 単一構造ワークフロー
-   │        │        ↓
-   │        │   順序付けられた中間体
-   │        │        ↓
-   │        └─ MEP 探索           [path-search] または [path-opt]
-   │                 ↓
-   │            MEP 経路 (mep.trj) + エネルギーダイアグラム
-   │                 ↓
-   └─ (任意) TS 最適化 + IRC      [tsopt] → [irc]
-             └─ (任意) 熱化学     [freq]
-             └─ (任意) DFT 一点計算    [dft]
+ │
+ ├─ (任意) ポケット抽出 [extract] ← --center/-c を使う場合は PDB が必要
+ │ ↓
+ │ ポケット/クラスターモデル (PDB)
+ │ │
+ │ ├─ (任意) 段階的スキャン [scan] ← 単一構造ワークフロー
+ │ │ ↓
+ │ │ 順序付けられた中間体
+ │ │ ↓
+ │ └─ MEP 探索 [path-search] または [path-opt]
+ │ ↓
+ │ MEP 経路 (mep.trj) + エネルギーダイアグラム
+ │ ↓
+ └─ (任意) TS 最適化 + IRC [tsopt] → [irc]
+ └─ (任意) 熱化学 [freq]
+ └─ (任意) DFT 一点計算 [dft]
 ```
 
 各ステージはサブコマンドとして単独実行できます。また `pdb2reaction all` を使うと、複数ステージをまとめて実行できます。
@@ -51,8 +51,7 @@
 - **セグメント**: 隣接する 2 つの端点を結ぶ MEP 区間。多構造入力はセグメントに分解されます（例: R → I1, I1 → I2, …）。
 
 ### テンプレートとファイル変換（`--convert-files`）
-`pdb2reaction` は軌跡（例: `mep.trj`, `irc.trj`）を出力します。  
-PDB テンプレートや Gaussian 入力がある場合、対応する付随ファイルも出力できます。
+`pdb2reaction` は軌跡（例: `mep.trj`, `irc.trj`）を出力します。 PDB テンプレートや Gaussian 入力がある場合、対応する付随ファイルも出力できます。
 
 - PDB テンプレートがあるとき → `.pdb` 付随ファイル
 - Gaussian テンプレートがあるとき → `.gjf` 付随ファイル
@@ -79,7 +78,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 
 ```bash
 pdb2reaction -i holo.pdb -c '308,309' \
-  --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
 ```
 
 ### 3) TSOPT のみ（ポケット TS 最適化）

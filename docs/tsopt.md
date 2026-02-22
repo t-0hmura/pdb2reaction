@@ -38,7 +38,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
-  --opt-mode light --hessian-calc-mode Analytical --out-dir ./result_tsopt_light
+ --opt-mode light --hessian-calc-mode Analytical --out-dir ./result_tsopt_light
 ```
 
 2. Keep the optimization trajectory for inspection.
@@ -51,18 +51,16 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --dump --out-dir ./result_tsopt_dump
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
-  --opt-mode heavy --config tsopt.yaml --out-dir ./result_tsopt_heavy
+ --opt-mode heavy --config tsopt.yaml --out-dir ./result_tsopt_heavy
 ```
 
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                    [--opt-mode light|heavy] [--flatten-imag-mode/--no-flatten-imag-mode] \
-                    [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
-                    [--dump/--no-dump] [--out-dir DIR] [--config FILE] [--override-yaml FILE] \
-                    [--show-config] [--dry-run] [--args-yaml FILE] \
-                    [--hessian-calc-mode Analytical|FiniteDifference] \
-                    [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--opt-mode light|heavy] [--flatten-imag-mode/--no-flatten-imag-mode] \
+ [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
+ [--hessian-calc-mode Analytical|FiniteDifference] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -72,51 +70,51 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --out-dir ./result_
 
 # Light mode with YAML overrides, finite-difference Hessian, and freeze-links handling
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --freeze-links \
-    --opt-mode light --max-cycles 10000 --no-dump \
-    --out-dir ./result_tsopt/ --config ./args.yaml \
-    --hessian-calc-mode FiniteDifference
+ --opt-mode light --max-cycles 10000 --no-dump \
+ --out-dir ./result_tsopt/ --config ./args.yaml \
+ --hessian-calc-mode FiniteDifference
 
 # Heavy mode (RS-I-RFO) driven entirely by YAML
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
-    --config ./args.yaml --out-dir ./result_tsopt/
+ --config ./args.yaml --out-dir ./result_tsopt/
 ```
 
 ## Workflow
 - **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
-  template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
-  treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
-  charge for PDB inputs (or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Otherwise
-  `-q/--charge` is required and multiplicity defaults to `1`. Override them explicitly to ensure
-  UMA runs on the intended state.
+ template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
+ treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
+ charge for PDB inputs (or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Otherwise
+ `-q/--charge` is required and multiplicity defaults to `1`. Override them explicitly to ensure
+ UMA runs on the intended state.
 - **Geometry loading & freeze-links**: structures are read via
-  `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links` finds link hydrogens
-  and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
-  forwarded to UMA's `calc.freeze_atoms`.
+ `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links` finds link hydrogens
+ and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
+ forwarded to UMA's `calc.freeze_atoms`.
 - **UMA Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
-  evaluations; both honor active (PHVA) subspaces. UMA may return only the active block when
-  frozen atoms are present.
-  When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
+ evaluations; both honor active (PHVA) subspaces. UMA may return only the active block when
+ frozen atoms are present.
+ When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 - **Light mode details**:
-  - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
-    Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
-    eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
-  - When enabled (`--flatten-imag-mode`), the flatten loop updates the stored active Hessian via
-    Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
-    displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
-    once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
-    performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
-    computed for frequency analysis.
-  - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
-    follow the most negative mode (`root = 0`).
+ - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
+ Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
+ eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
+ - When enabled (`--flatten-imag-mode`), the flatten loop updates the stored active Hessian via
+ Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
+ displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
+ once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
+ performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
+ computed for frequency analysis.
+ - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
+ follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
-  R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
-  When `--flatten-imag-mode` is enabled and more than one imaginary mode remains after
-  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
-  imaginary mode remains or the flatten iteration cap is reached.
+ R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
+ When `--flatten-imag-mode` is enabled and more than one imaginary mode remains after
+ convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
+ imaginary mode remains or the flatten iteration cap is reached.
 - **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
-  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
-  trajectory and final geometry are also converted to PDB via the input template when `--dump`;
-  Gaussian templates receive a `.gjf` companion for the final geometry only.
+ and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
+ trajectory and final geometry are also converted to PDB via the input template when `--dump`;
+ Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## CLI options
 | Option | Description | Default |
@@ -128,7 +126,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Light/Heavy aliases listed above. | `heavy` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
@@ -137,46 +134,39 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
-| `--override-yaml FILE` | Final YAML override file (highest-priority YAML layer). | _None_ |
-| `--args-yaml FILE` | Legacy alias of `--override-yaml`. | _None_ |
 | `--show-config/--no-show-config` | Print resolved config layers and continue execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. | `False` |
 
 ## Outputs
 ```
-out_dir/ (default: ./result_tsopt/)
-├─ summary.md                   # Quick index of key outputs
-├─ key_ts.xyz                   # Shortcut to final TS geometry (or key_ts.pdb/key_ts.gjf)
-├─ key_imag_mode.trj            # Shortcut to a representative imaginary mode
-├─ key_opt.trj                  # Shortcut to optimization trajectory (when available)
-├─ final_geometry.xyz            # Always written
-├─ final_geometry.pdb            # When the input was PDB (conversion enabled)
-├─ final_geometry.gjf            # When the input was Gaussian (conversion enabled)
-├─ optimization_all.trj          # Light-mode dump when --dump is True
-├─ optimization_all.pdb          # Light-mode companion for PDB inputs (conversion enabled, --dump)
-├─ optimization.trj              # Heavy-mode trajectory when --dump is True
-├─ optimization.pdb              # Heavy-mode PDB companion when conversion is enabled and --dump is True
+out_dir/ (default:./result_tsopt/)
+├─ summary.md # Quick index of key outputs
+├─ key_ts.xyz # Shortcut to final TS geometry (or key_ts.pdb/key_ts.gjf)
+├─ key_imag_mode.trj # Shortcut to a representative imaginary mode
+├─ key_opt.trj # Shortcut to optimization trajectory (when available)
+├─ final_geometry.xyz # Always written
+├─ final_geometry.pdb # When the input was PDB (conversion enabled)
+├─ final_geometry.gjf # When the input was Gaussian (conversion enabled)
+├─ optimization_all.trj # Light-mode dump when --dump is True
+├─ optimization_all.pdb # Light-mode companion for PDB inputs (conversion enabled, --dump)
+├─ optimization.trj # Heavy-mode trajectory when --dump is True
+├─ optimization.pdb # Heavy-mode PDB companion when conversion is enabled and --dump is True
 ├─ vib/
-│  ├─ final_imag_mode_±XXXX.Xcm-1.trj
-│  └─ final_imag_mode_±XXXX.Xcm-1.pdb
-└─ .dimer_mode.dat               # Light-mode orientation seed
+│ ├─ final_imag_mode_±XXXX.Xcm-1.trj
+│ └─ final_imag_mode_±XXXX.Xcm-1.pdb
+└─.dimer_mode.dat # Light-mode orientation seed
 ```
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
-  algorithm rather than adjusting YAML keys manually (default: `heavy`).
+ algorithm rather than adjusting YAML keys manually (default: `heavy`).
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
-  `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
-  exported when multiple remain.
+ `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
+ exported when multiple remain.
 - Config merge precedence is `defaults < config < explicit CLI < override`.
-- `--args-yaml` remains supported as a legacy alias of `--override-yaml`.
-- PHVA translation/rotation projection mirrors the implementation in `freq`, reducing GPU
-  memory consumption while preserving correct eigenvectors in the active space.
+ memory consumption while preserving correct eigenvectors in the active space.
 
-## YAML configuration (`--config` / `--override-yaml` / `--args-yaml`)
-Use `--config` for the base mapping and `--override-yaml` for the final YAML override (`--args-yaml` is a legacy alias of `--override-yaml`). Merge precedence is:
 
 `defaults < config < explicit CLI < override`.
 
@@ -186,128 +176,128 @@ matches your workflow—adjust only the values you need to change.
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ task_name: omol # UMA task name
+ device: auto # UMA device selection
+ max_neigh: null # maximum neighbors for graph construction
+ radius: null # cutoff radius for neighbor search
+ r_edges: false # store radial edges
+ out_hess_torch: true # request torch-form Hessian
+ freeze_atoms: null # calculator-level frozen atoms
+ hessian_calc_mode: FiniteDifference # Hessian mode selection
+ return_partial_hessian: false # full Hessian (avoids shape mismatches)
 opt:
-  thresh: baker              # convergence preset (Gaussian/Baker-style)
-  max_cycles: 10000          # optimizer cycle cap
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum norm for step acceptance
-  assert_min_step: true      # stop if steps fall below threshold
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # geom RMS threshold when converging to ref
-  overachieve_factor: 0.0    # factor to tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_tsopt/   # output directory
+ thresh: baker # convergence preset (Gaussian/Baker-style)
+ max_cycles: 10000 # optimizer cycle cap
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum norm for step acceptance
+ assert_min_step: true # stop if steps fall below threshold
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
+ overachieve_factor: 0.0 # factor to tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_tsopt/ # output directory
 hessian_dimer:
-  thresh_loose: gau_loose    # loose convergence preset
-  thresh: baker              # main convergence preset
-  update_interval_hessian: 500   # Hessian rebuild cadence
-  neg_freq_thresh_cm: 5.0    # negative frequency threshold (cm^-1)
-  flatten_amp_ang: 0.1       # flattening amplitude (Å)
-  flatten_max_iter: 50       # flattening iteration cap (disabled when --no-flatten-imag-mode)
-  flatten_sep_cutoff: 0.0    # minimum distance between representative atoms (Å)
-  flatten_k: 10              # representative atoms sampled per mode
-  flatten_loop_bofill: false # Bofill update for flatten displacements
-  mem: 100000                # memory limit for solver
-  device: auto               # device selection for eigensolver
-  root: 0                    # targeted TS root index
-  dimer:
-    length: 0.0189           # dimer separation (Bohr)
-    rotation_max_cycles: 15  # max rotation iterations
-    rotation_method: fourier # rotation optimizer method
-    rotation_thresh: 0.0001  # rotation convergence threshold
-    rotation_tol: 1          # rotation tolerance factor
-    rotation_max_element: 0.001   # max rotation matrix element
-    rotation_interpolate: true    # interpolate rotation steps
-    rotation_disable: false   # disable rotations entirely
-    rotation_disable_pos_curv: true   # disable when positive curvature detected
-    rotation_remove_trans: true   # remove translational components
-    trans_force_f_perp: true  # project forces perpendicular to translation
-    bonds: null               # bond list for constraints
-    N_hessian: null           # Hessian size override
-    bias_rotation: false      # bias rotational search
-    bias_translation: false   # bias translational search
-    bias_gaussian_dot: 0.1    # Gaussian bias dot product
-    seed: null                # RNG seed for rotations
-    write_orientations: true  # write rotation orientations
-    forward_hessian: true     # propagate Hessian forward
-  lbfgs:
-    thresh: baker              # LBFGS convergence preset
-    max_cycles: 10000          # iteration limit
-    print_every: 100           # logging stride
-    min_step_norm: 1.0e-08     # minimum accepted step norm
-    assert_min_step: true      # assert when steps stagnate
-    rms_force: null            # explicit RMS force target
-    rms_force_only: false      # rely only on RMS force convergence
-    max_force_only: false      # rely only on max force convergence
-    force_only: false          # skip displacement checks
-    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-    overachieve_factor: 0.0    # tighten thresholds
-    check_eigval_structure: false   # validate Hessian eigenstructure
-    line_search: true          # enable line search
-    dump: false                # dump trajectory/restart data
-    dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
-    out_dir: ./result_tsopt/   # output directory
-    keep_last: 7               # history size for LBFGS buffers
-    beta: 1.0                  # initial damping beta
-    gamma_mult: false          # multiplicative gamma update toggle
-    max_step: 0.3              # maximum step length
-    control_step: true         # control step length adaptively
-    double_damp: true          # double damping safeguard
-    mu_reg: null               # regularization strength
-    max_mu_reg_adaptions: 10   # cap on mu adaptations
+ thresh_loose: gau_loose # loose convergence preset
+ thresh: baker # main convergence preset
+ update_interval_hessian: 500 # Hessian rebuild cadence
+ neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm^-1)
+ flatten_amp_ang: 0.1 # flattening amplitude (Å)
+ flatten_max_iter: 50 # flattening iteration cap (disabled when --no-flatten-imag-mode)
+ flatten_sep_cutoff: 0.0 # minimum distance between representative atoms (Å)
+ flatten_k: 10 # representative atoms sampled per mode
+ flatten_loop_bofill: false # Bofill update for flatten displacements
+ mem: 100000 # memory limit for solver
+ device: auto # device selection for eigensolver
+ root: 0 # targeted TS root index
+ dimer:
+ length: 0.0189 # dimer separation (Bohr)
+ rotation_max_cycles: 15 # max rotation iterations
+ rotation_method: fourier # rotation optimizer method
+ rotation_thresh: 0.0001 # rotation convergence threshold
+ rotation_tol: 1 # rotation tolerance factor
+ rotation_max_element: 0.001 # max rotation matrix element
+ rotation_interpolate: true # interpolate rotation steps
+ rotation_disable: false # disable rotations entirely
+ rotation_disable_pos_curv: true # disable when positive curvature detected
+ rotation_remove_trans: true # remove translational components
+ trans_force_f_perp: true # project forces perpendicular to translation
+ bonds: null # bond list for constraints
+ N_hessian: null # Hessian size override
+ bias_rotation: false # bias rotational search
+ bias_translation: false # bias translational search
+ bias_gaussian_dot: 0.1 # Gaussian bias dot product
+ seed: null # RNG seed for rotations
+ write_orientations: true # write rotation orientations
+ forward_hessian: true # propagate Hessian forward
+ lbfgs:
+ thresh: baker # LBFGS convergence preset
+ max_cycles: 10000 # iteration limit
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_tsopt/ # output directory
+ keep_last: 7 # history size for LBFGS buffers
+ beta: 1.0 # initial damping beta
+ gamma_mult: false # multiplicative gamma update toggle
+ max_step: 0.3 # maximum step length
+ control_step: true # control step length adaptively
+ double_damp: true # double damping safeguard
+ mu_reg: null # regularization strength
+ max_mu_reg_adaptions: 10 # cap on mu adaptations
 rsirfo:
-  thresh: baker              # RS-IRFO convergence preset
-  max_cycles: 10000          # iteration cap
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum accepted step norm
-  assert_min_step: true      # assert when steps stagnate
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-  overachieve_factor: 0.0    # tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_tsopt/   # output directory
-  roots: [0]                 # target root indices
-  hessian_ref: null          # reference Hessian
-  rx_modes: null             # reaction-mode definitions for projection
-  prim_coord: null           # primary coordinates to monitor
-  rx_coords: null            # reaction coordinates to monitor
-  hessian_update: bofill     # Hessian update scheme override
-  hessian_recalc_reset: true # reset recalc counter after exact Hessian
-  max_micro_cycles: 50       # micro-iterations per macro cycle
-  augment_bonds: false       # augment reaction path based on bond analysis
-  min_line_search: true      # enforce minimum line-search step
-  max_line_search: true      # enforce maximum line-search step
-  assert_neg_eigval: false   # require a negative eigenvalue at convergence
+ thresh: baker # RS-IRFO convergence preset
+ max_cycles: 10000 # iteration cap
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_tsopt/ # output directory
+ roots: [0] # target root indices
+ hessian_ref: null # reference Hessian
+ rx_modes: null # reaction-mode definitions for projection
+ prim_coord: null # primary coordinates to monitor
+ rx_coords: null # reaction coordinates to monitor
+ hessian_update: bofill # Hessian update scheme override
+ hessian_recalc_reset: true # reset recalc counter after exact Hessian
+ max_micro_cycles: 50 # micro-iterations per macro cycle
+ augment_bonds: false # augment reaction path based on bond analysis
+ min_line_search: true # enforce minimum line-search step
+ max_line_search: true # enforce maximum line-search step
+ assert_neg_eigval: false # require a negative eigenvalue at convergence
 ```
 
 ---

@@ -12,15 +12,10 @@ Use toggle style by default:
 ```bash
 # Recommended
 --tsopt --thermo --no-dft
---dump                 # same as legacy: --dump True
---no-dump              # same as legacy: --dump False
 
-# Also supported for backward compatibility (deprecated)
 --tsopt True --thermo yes --dft 0
 ```
 
-Legacy value-style boolean syntax (`--flag True/False`) is still accepted but emits a deprecation warning.
-The legacy parser accepts `True/False`, `1/0`, `yes/no`, `y/n`, `t/f`, and `on/off` (case-insensitive).
 
 Common boolean options:
 - `--tsopt`, `--thermo`, `--dft` — enable post-processing stages
@@ -37,8 +32,8 @@ Common boolean options:
 `pdb2reaction all` uses two help levels:
 
 ```bash
-pdb2reaction all --help            # core options only
-pdb2reaction all --help-advanced   # full option list
+pdb2reaction all --help # core options only
+pdb2reaction all --help-advanced # full option list
 ```
 
 `scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
@@ -62,21 +57,21 @@ Residue selectors identify which residues to use as substrates or extraction cen
 
 ### By residue name
 ```bash
--c 'SAM,GPP'          # Select all residues named SAM or GPP
--c 'LIG'              # Select all residues named LIG
+-c 'SAM,GPP' # Select all residues named SAM or GPP
+-c 'LIG' # Select all residues named LIG
 ```
 
 ### By residue ID
 ```bash
--c '123,456'          # Residues 123 and 456
--c 'A:123,B:456'      # Chain A residue 123, Chain B residue 456
--c '123A'             # Residue 123 with insertion code A
--c 'A:123A'           # Chain A, residue 123, insertion code A
+-c '123,456' # Residues 123 and 456
+-c 'A:123,B:456' # Chain A residue 123, Chain B residue 456
+-c '123A' # Residue 123 with insertion code A
+-c 'A:123A' # Chain A, residue 123, insertion code A
 ```
 
 ### By PDB file
 ```bash
--c substrate.pdb      # Use coordinates from a separate PDB to locate substrates
+-c substrate.pdb # Use coordinates from a separate PDB to locate substrates
 ```
 
 ```{note}
@@ -89,14 +84,14 @@ When selecting by residue name, if multiple residues share the same name, **all*
 
 ### Per-residue mapping (recommended)
 ```bash
---ligand-charge 'SAM:1,GPP:-3'    # SAM has charge +1, GPP has charge -3
---ligand-charge 'LIG:-2'          # LIG has charge -2
+--ligand-charge 'SAM:1,GPP:-3' # SAM has charge +1, GPP has charge -3
+--ligand-charge 'LIG:-2' # LIG has charge -2
 ```
 
 ### Total charge override
 ```bash
--q 0                              # Force total system charge to 0
--q -1                             # Force total system charge to -1
+-q 0 # Force total system charge to 0
+-q -1 # Force total system charge to -1
 ```
 
 ### Charge resolution order
@@ -119,9 +114,9 @@ Always provide `--ligand-charge` for non-standard residues (substrates, cofactor
 ## Spin Multiplicity
 
 ```bash
--m 1      # Singlet (default)
--m 2      # Doublet
--m 3      # Triplet
+-m 1 # Singlet (default)
+-m 2 # Doublet
+-m 3 # Triplet
 ```
 
 ```{note}
@@ -136,7 +131,7 @@ Atom selectors identify specific atoms for scans and restraints. They can be:
 
 ### Integer index (1-based by default)
 ```bash
---scan-lists '[(1, 5, 2.0)]'      # Atoms 1 and 5, target distance 2.0 Å
+--scan-lists '[(1, 5, 2.0)]' # Atoms 1 and 5, target distance 2.0 Å
 ```
 
 ### PDB-style selector string
@@ -173,7 +168,6 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 Advanced settings can be passed via layered YAML inputs:
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config config.yaml --override-yaml override.yaml
 ```
 
 Precedence:
@@ -190,7 +184,7 @@ See [YAML Reference](yaml_reference.md) for all available options.
 Use `--out-dir` to specify where results are saved:
 
 ```bash
---out-dir ./my_results/    # Custom output directory
+--out-dir ./my_results/ # Custom output directory
 ```
 
 Default output directories:

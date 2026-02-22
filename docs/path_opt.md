@@ -15,13 +15,12 @@
 
 UMA provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
 
-Configuration is merged in the order **defaults < config < explicit CLI < override** for `geom`, `calc`, `gs`, `opt`, `dmf`, and `sopt.*` (`--config`, then `--override-yaml`; `--args-yaml` is a legacy alias of `--override-yaml`). When `--convert-files` is enabled (default), trajectories and snapshots are mirrored into `.pdb` companions when a PDB reference exists and into `.gjf` companions when a Gaussian template exists.
 
 ## Minimal example
 
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
-  --out-dir ./result_path_opt
+ --out-dir ./result_path_opt
 ```
 
 ## Output checklist
@@ -38,42 +37,41 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
-  --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
+ --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
 ```
 
 2. Use DMF mode instead of GSM.
 
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
-  --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
+ --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
 ```
 
 3. Freeze link parents and disable climb for a quick pass.
 
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
-  --freeze-links --no-climb --out-dir ./result_path_opt_fast
+ --freeze-links --no-climb --out-dir ./result_path_opt_fast
 ```
 
 ## Usage
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                      [--workers N] [--workers-per-node N] \
-                      [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
-                      [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] \
-                      [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends/--no-fix-ends] \
-                      [--out-dir DIR] [--config FILE] [--override-yaml FILE] [--args-yaml FILE] \
-                      [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
-                      [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--workers N] [--workers-per-node N] \
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
+ [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] \
+ [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode light|heavy] [--fix-ends/--no-fix-ends] \
+ [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## Workflow
 1. **Pre-alignment & freeze resolution**
-   - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
-   - For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
+ - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
+ - For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
 2. **String growth and HEI export**
-   - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
-   - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
+ - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
+ - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
@@ -103,8 +101,6 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for GSM/string optimizer. | `gau` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
-| `--override-yaml FILE` | Final YAML override layer (highest-priority YAML). | _None_ |
-| `--args-yaml FILE` | Legacy alias of `--override-yaml`. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layers) and continue. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
@@ -114,26 +110,23 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 ## Outputs
 ```
 out_dir/
-├─ summary.md                  # Quick navigation page with key artifact links
-├─ key_mep.trj                 # Root shortcut to primary MEP trajectory (symlink/copy)
-├─ key_mep.pdb                 # Root shortcut to primary MEP PDB (symlink/copy)
-├─ key_mep.gjf                 # Root shortcut to primary MEP GJF (when available)
-├─ key_ts.xyz / key_ts.pdb     # Root shortcuts to TS candidate snapshots (symlink/copy)
-├─ key_ts.gjf                  # Root shortcut to TS candidate GJF (when available)
-├─ final_geometries.trj        # XYZ path; comment line holds energies when provided
-├─ final_geometries.pdb        # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
-├─ hei.xyz                     # Highest-energy image with its energy on the comment line
-├─ hei.pdb                     # HEI converted to PDB when a PDB reference is available (conversion enabled)
-├─ hei.gjf                     # HEI written using a detected Gaussian template (conversion enabled)
-├─ align_refine/               # Intermediate files from the rigid alignment/refinement stage (created when alignment runs)
-└─ <optimizer dumps>           # Trajectory dumps when --dump (restart YAML only via YAML dump_restart)
+├─ summary.md # Quick navigation page with key artifact links
+├─ key_mep.trj # Root shortcut to primary MEP trajectory (symlink/copy)
+├─ key_mep.pdb # Root shortcut to primary MEP PDB (symlink/copy)
+├─ key_mep.gjf # Root shortcut to primary MEP GJF (when available)
+├─ key_ts.xyz / key_ts.pdb # Root shortcuts to TS candidate snapshots (symlink/copy)
+├─ key_ts.gjf # Root shortcut to TS candidate GJF (when available)
+├─ final_geometries.trj # XYZ path; comment line holds energies when provided
+├─ final_geometries.pdb # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
+├─ hei.xyz # Highest-energy image with its energy on the comment line
+├─ hei.pdb # HEI converted to PDB when a PDB reference is available (conversion enabled)
+├─ hei.gjf # HEI written using a detected Gaussian template (conversion enabled)
+├─ align_refine/ # Intermediate files from the rigid alignment/refinement stage (created when alignment runs)
+└─ <optimizer dumps> # Trajectory dumps when --dump (restart YAML only via YAML dump_restart)
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
 
-## YAML configuration (`--config`, `--override-yaml`, `--args-yaml`)
 Merge order is **defaults < config < explicit CLI < override**.
-`--args-yaml` is kept as a legacy alias of `--override-yaml`.
-
 ### `geom`
 - Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
 
@@ -155,78 +148,78 @@ Merge order is **defaults < config < explicit CLI < override**.
 ### Example YAML (default value)
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ task_name: omol # UMA task name
+ device: auto # UMA device selection
+ max_neigh: null # maximum neighbors for graph construction
+ radius: null # cutoff radius for neighbor search
+ r_edges: false # store radial edges
+ out_hess_torch: true # request torch-form Hessian
+ freeze_atoms: null # calculator-level frozen atoms
+ hessian_calc_mode: FiniteDifference # Hessian mode selection
+ return_partial_hessian: false # full Hessian (avoids shape mismatches)
 gs:
-  fix_first: true            # keep the first endpoint fixed during optimization
-  fix_last: true             # keep the last endpoint fixed during optimization
-  max_nodes: 10              # maximum string nodes
-  perp_thresh: 0.005         # perpendicular displacement threshold
-  reparam_check: rms         # reparametrization check metric
-  reparam_every: 1           # reparametrization stride
-  reparam_every_full: 1      # full reparametrization stride
-  param: equi                # parametrization scheme
-  max_micro_cycles: 10       # micro-iteration limit
-  reset_dlc: true            # rebuild delocalized coordinates each step
-  climb: true                # enable climbing image
-  climb_rms: 0.0005          # climbing RMS threshold
-  climb_lanczos: true        # Lanczos refinement for climbing
-  climb_lanczos_rms: 0.0005  # Lanczos RMS threshold
-  climb_fixed: false         # keep climbing image fixed
-  scheduler: null            # optional scheduler backend
+ fix_first: true # keep the first endpoint fixed during optimization
+ fix_last: true # keep the last endpoint fixed during optimization
+ max_nodes: 10 # maximum string nodes
+ perp_thresh: 0.005 # perpendicular displacement threshold
+ reparam_check: rms # reparametrization check metric
+ reparam_every: 1 # reparametrization stride
+ reparam_every_full: 1 # full reparametrization stride
+ param: equi # parametrization scheme
+ max_micro_cycles: 10 # micro-iteration limit
+ reset_dlc: true # rebuild delocalized coordinates each step
+ climb: true # enable climbing image
+ climb_rms: 0.0005 # climbing RMS threshold
+ climb_lanczos: true # Lanczos refinement for climbing
+ climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
+ climb_fixed: false # keep climbing image fixed
+ scheduler: null # optional scheduler backend
 opt:
-  type: string               # optimizer type label
-  stop_in_when_full: 300     # early stop threshold when string is full
-  scale_step: global         # step scaling mode
-  max_cycles: 300            # maximum optimization cycles
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  reparam_thresh: 0.0        # reparametrization threshold
-  coord_diff_thresh: 0.0     # coordinate difference threshold
-  out_dir: ./result_path_opt/   # output directory
-  print_every: 10            # logging stride
+ type: string # optimizer type label
+ stop_in_when_full: 300 # early stop threshold when string is full
+ scale_step: global # step scaling mode
+ max_cycles: 300 # maximum optimization cycles
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ reparam_thresh: 0.0 # reparametrization threshold
+ coord_diff_thresh: 0.0 # coordinate difference threshold
+ out_dir:./result_path_opt/ # output directory
+ print_every: 10 # logging stride
 dmf:
-  max_cycles: 300            # maximum DMF/IPOPT iterations
-  correlated: true           # correlated DMF propagation
-  sequential: true           # sequential DMF execution
-  fbenm_only_endpoints: false   # run FB-ENM beyond endpoints
-  fbenm_options:
-    delta_scale: 0.2         # FB-ENM displacement scaling
-    bond_scale: 1.25         # bond cutoff scaling
-    fix_planes: true         # enforce planar constraints
-    two_hop_mode: sparse     # neighbor traversal strategy
-  cfbenm_options:
-    bond_scale: 1.25         # CFB-ENM bond cutoff scaling
-    corr0_scale: 1.1         # correlation scale for corr0
-    corr1_scale: 1.5         # correlation scale for corr1
-    corr2_scale: 1.6         # correlation scale for corr2
-    eps: 0.05                # correlation epsilon
-    pivotal: true            # pivotal residue handling
-    single: true             # single-atom pivots
-    remove_fourmembered: true   # prune four-membered rings
-    two_hop_mode: sparse     # neighbor traversal strategy
-  dmf_options:
-    remove_rotation_and_translation: false  # keep rigid-body motions
-    mass_weighted: false     # toggle mass weighting
-    parallel: false          # enable parallel DMF
-    eps_vel: 0.01            # velocity tolerance
-    eps_rot: 0.01            # rotational tolerance
-    beta: 10.0               # beta parameter for DMF
-    update_teval: false      # update transition evaluation
-  k_fix: 300.0               # harmonic constant for restraints
+ max_cycles: 300 # maximum DMF/IPOPT iterations
+ correlated: true # correlated DMF propagation
+ sequential: true # sequential DMF execution
+ fbenm_only_endpoints: false # run FB-ENM beyond endpoints
+ fbenm_options:
+ delta_scale: 0.2 # FB-ENM displacement scaling
+ bond_scale: 1.25 # bond cutoff scaling
+ fix_planes: true # enforce planar constraints
+ two_hop_mode: sparse # neighbor traversal strategy
+ cfbenm_options:
+ bond_scale: 1.25 # CFB-ENM bond cutoff scaling
+ corr0_scale: 1.1 # correlation scale for corr0
+ corr1_scale: 1.5 # correlation scale for corr1
+ corr2_scale: 1.6 # correlation scale for corr2
+ eps: 0.05 # correlation epsilon
+ pivotal: true # pivotal residue handling
+ single: true # single-atom pivots
+ remove_fourmembered: true # prune four-membered rings
+ two_hop_mode: sparse # neighbor traversal strategy
+ dmf_options:
+ remove_rotation_and_translation: false # keep rigid-body motions
+ mass_weighted: false # toggle mass weighting
+ parallel: false # enable parallel DMF
+ eps_vel: 0.01 # velocity tolerance
+ eps_rot: 0.01 # rotational tolerance
+ beta: 10.0 # beta parameter for DMF
+ update_teval: false # update transition evaluation
+ k_fix: 300.0 # harmonic constant for restraints
 ```
 
 ---

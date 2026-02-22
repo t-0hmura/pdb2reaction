@@ -2,10 +2,10 @@
 
 ## Overview
 
-> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and UMA relaxations. Use `--spec` (YAML/JSON, recommended) or legacy `--scan-lists`.
+> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and UMA relaxations. Use `--spec` (YAML/JSON, recommended) or `--scan-lists`.
 
 ### At a glance
-- **Input:** One structure + `--spec scan2d.yaml` (recommended), or one legacy `--scan-lists` literal containing exactly two quadruples.
+- **Input:** One structure + `--spec scan2d.yaml` (recommended), or one `--scan-lists` literal containing exactly two quadruples.
 - **Grid ordering:** Each axis is reordered so the point closest to the (pre)optimized structure is visited first.
 - **Energies:** Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv` plus `scan2d_map.png` and `scan2d_landscape.html`, and per-point structures under `grid/`.
@@ -14,7 +14,6 @@
 `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased UMA energies for visualization. Use `--opt-mode heavy` when you need RFOptimizer instead of LBFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
-YAML can be layered via `--config` (base) and `--override-yaml` (final overlay); `--args-yaml` remains as a legacy alias of `--override-yaml`.
 
 ## Minimal example
 ```bash
@@ -28,15 +27,14 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed --out-di
 
 ## Common examples
 1. Validate parsed scan targets from a YAML spec.
-2. Run with a legacy `--scan-lists` literal for compatibility.
+2. Run with a `--scan-lists` literal.
 3. Enable `--dump` to store inner trajectories by d1 step.
 
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
-                    [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
-                    [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### Examples
@@ -45,29 +43,29 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <num
 cat > scan2d.yaml << 'YAML'
 one_based: true
 pairs:
-  - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
-  - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
+ - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
+ - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
 YAML
 pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed
 
-# Legacy: Python literal
+# : Python literal
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
 
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
-    --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode light \
-    --preopt --baseline min
+ --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
+ --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode light \
+ --preopt --baseline min
 ```
 
 ## `--spec` format (recommended)
 
 ```yaml
-one_based: true   # optional; defaults to CLI --one-based
+one_based: true # optional; defaults to CLI --one-based
 pairs:
-  - [1, 5, 1.30, 3.10]
-  - [2, 8, 1.20, 3.20]
+ - [1, 5, 1.30, 3.10]
+ - [2, 8, 1.20, 3.20]
 ```
 
 - `pairs` is required and must contain exactly 2 quadruples.
@@ -76,7 +74,7 @@ pairs:
 
 ## `--scan-lists` format
 
-`--scan-lists` is the legacy advanced input mode. It accepts a **single Python literal** string. Shell quoting matters.
+`--scan-lists` is the advanced input mode. It accepts a **single Python literal** string. Shell quoting matters.
 
 ### Basic structure
 
@@ -106,7 +104,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 "TYR,285,CA"
 "TYR 285 CA"
 "TYR/285/CA"
-"285,TYR,CA"   # order is flexible
+"285,TYR,CA" # order is flexible
 ```
 
 ### Quoting rules
@@ -119,41 +117,41 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 --scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
 
 # Avoid: double-quoting the outer literal requires escaping inner quotes
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10), ...]"
+--scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10),...]"
 ```
 
 ## Workflow
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
-   run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
-   `--ligand-charge` is provided, the structure is treated as an enzyme–substrate
-   complex and `extract.py`’s charge summary derives the total charge before the
-   scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
-   structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
-   stored in `surface.csv` with indices `i = j = -1`.
-2. Parse targets from `--spec` (recommended) or legacy `--scan-lists` into two quadruples, normalize indices
-   (1-based by default). For PDB inputs, each atom entry can be an integer index
-   or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
-   slashes, backticks, or backslashes, and token order is flexible (fallback
-   assumes resname, resseq, atom). Construct linear grids with
-   `ceil(|high − low| / h) + 1` points (both endpoints included), where
-   `h = --max-step-size`. Zero-length spans collapse to a single point.
-   Each axis is then reordered so that the distance closest to the preoptimized
-   geometry is indexed as `i = 0` / `j = 0`.
+ run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
+ `--ligand-charge` is provided, the structure is treated as an enzyme–substrate
+ complex and `extract.py`’s charge summary derives the total charge before the
+ scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
+ structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
+ stored in `surface.csv` with indices `i = j = -1`.
+2. Parse targets from `--spec` (recommended) or `--scan-lists` into two quadruples, normalize indices
+ (1-based by default). For PDB inputs, each atom entry can be an integer index
+ or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
+ slashes, backticks, or backslashes, and token order is flexible (fallback
+ assumes resname, resseq, atom). Construct linear grids with
+ `ceil(|high − low| / h) + 1` points (both endpoints included), where
+ `h = --max-step-size`. Zero-length spans collapse to a single point.
+ Each axis is then reordered so that the distance closest to the preoptimized
+ geometry is indexed as `i = 0` / `j = 0`.
 3. Iterate over every `d1[i]` (nearest-first ordering). For each value, relax
-   the system with **only the d₁ restraint** active, snapshot that geometry, then
-   run the inner loop over `d2[j]` with **both restraints** applied starting from
-   the nearest previously converged structure.
+ the system with **only the d₁ restraint** active, snapshot that geometry, then
+ run the inner loop over `d2[j]` with **both restraints** applied starting from
+ the nearest previously converged structure.
 4. At each `(i, j)` pair, store the biased-optimization result under
-   `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
-   evaluate the UMA energy without bias. Optional per-outer-step inner
-   trajectories are saved as `inner_path_d1_###.trj` when `--dump`.
+ `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
+ evaluate the UMA energy without bias. Optional per-outer-step inner
+ trajectories are saved as `inner_path_d1_###.trj` when `--dump`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
-   `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
-   reference via `--baseline {min|first}`. With `--baseline first`, the reference
-   is the first grid entry (`i = j = 0` after reordering), not necessarily
-   `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
-   `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
-   clamp the color scale.
+ `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
+ reference via `--baseline {min|first}`. With `--baseline first`, the reference
+ is the first grid entry (`i = j = 0` after reordering), not necessarily
+ `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
+ `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
+ clamp the color scale.
 
 ## CLI options
 | Option | Description | Default |
@@ -164,7 +162,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `--spec FILE` | YAML/JSON spec with `pairs` (2 quadruples); optional `one_based`. | Recommended |
-| `--scan-lists, --scan-list TEXT` | **Single legacy** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
+| `--scan-lists TEXT` | **Single ** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--spec`/`--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
@@ -178,69 +176,65 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `--override-yaml FILE` | Final YAML override file (highest-priority YAML layer). | _None_ |
-| `--args-yaml FILE` | Legacy alias of `--override-yaml` for backward compatibility. | _None_ |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
-  scan trajectory output is controlled by `--dump`.
+ [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+ scan trajectory output is controlled by `--dump`.
 
 ### Section `bias`
 - `k` (`300`): Harmonic strength in eV·Å⁻².
 
 ## Outputs
 ```
-out_dir/ (default: ./result_scan2d/)
-├─ surface.csv                # Structured grid table
-├─ scan2d_map.png             # 2D contour (requires Kaleido; the run stops if PNG export fails)
-├─ scan2d_landscape.html      # 3D surface visualization
-├─ grid/point_i###_j###.xyz   # Relaxed geometries for every (i, j) pair
-├─ grid/point_i###_j###.pdb   # PDB companions when conversion is enabled and templates exist
-├─ grid/point_i###_j###.gjf   # Gaussian companions when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###.trj # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
+out_dir/ (default:./result_scan2d/)
+├─ surface.csv # Structured grid table
+├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
+├─ scan2d_landscape.html # 3D surface visualization
+├─ grid/point_i###_j###.xyz # Relaxed geometries for every (i, j) pair
+├─ grid/point_i###_j###.pdb # PDB companions when conversion is enabled and templates exist
+├─ grid/point_i###_j###.gjf # Gaussian companions when templates exist and conversion is enabled
+└─ grid/inner_path_d1_###.trj # Present only when --dump is True (mirrored to.pdb for PDB inputs with conversion)
 ```
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - UMA via `uma_pysis` is the only calculator backend and reuses the same
-  `HarmonicBiasCalculator` as the 1D scan.
+ `HarmonicBiasCalculator` as the 1D scan.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
-  trust radii; Optimizer scratch files live under temporary directories.
+ trust radii; Optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
-  `surface.csv` in downstream fitting or visualization scripts.
+ `surface.csv` in downstream fitting or visualization scripts.
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
-  PDB inputs, keeping extracted pockets rigid.
+ PDB inputs, keeping extracted pockets rigid.
 
-## YAML configuration (`--config` / `--override-yaml` / `--args-yaml`)
-YAML layers merge as **`--config` < `--override-yaml`** (`--args-yaml` is a legacy alias of `--override-yaml`). A minimal example (extend with the same keys documented in {ref}`opt <yaml-configuration-args-yaml>`):
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  device: auto               # UMA device selection
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ device: auto # UMA device selection
 opt:
-  thresh: baker              # convergence preset (default: baker)
-  max_cycles: 10000          # optimizer cycle cap
-  dump: false                # optimizer dumps (scan trajectories are controlled by --dump)
-  out_dir: ./result_scan2d/  # output directory
+ thresh: baker # convergence preset (default: baker)
+ max_cycles: 10000 # optimizer cycle cap
+ dump: false # optimizer dumps (scan trajectories are controlled by --dump)
+ out_dir:./result_scan2d/ # output directory
 lbfgs:
-  max_step: 0.3              # maximum step length
-  out_dir: ./result_scan2d/  # LBFGS-specific output directory
+ max_step: 0.3 # maximum step length
+ out_dir:./result_scan2d/ # LBFGS-specific output directory
 rfo:
-  trust_radius: 0.1          # trust-region radius
-  out_dir: ./result_scan2d/  # RFO-specific output directory
+ trust_radius: 0.1 # trust-region radius
+ out_dir:./result_scan2d/ # RFO-specific output directory
 bias:
-  k: 300.0                  # harmonic bias strength (eV·Å⁻²)
+ k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
 More YAML options about `opt` are available in [docs/opt.md](opt.md).

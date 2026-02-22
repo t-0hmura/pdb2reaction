@@ -7,11 +7,11 @@
 
 ### 機能
 1. PDBのaltLocカラム（列17、1-based）を空白（スペース1文字）に置換。
-   - 1文字の置換のみで、フォーマットのシフトや再構成は行いません。
+ - 1文字の置換のみで、フォーマットのシフトや再構成は行いません。
 2. 代替位置（A/B/... やカスタムラベル H/L など）により同じ原子が複数回
-   出現する場合、「最良」のものを保持:
-   - 占有率（occupancy）が最も高いものを優先
-   - 同点の場合（または占有率が欠損している場合）、ファイル内で最初に出現したものを保持
+ 出現する場合、「最良」のものを保持:
+ - 占有率（occupancy）が最も高いものを優先
+ - 同点の場合（または占有率が欠損している場合）、ファイル内で最初に出現したものを保持
 
 ### 処理対象レコード
 - `ATOM` / `HETATM`: altLocの選択とブランク化
@@ -47,16 +47,16 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 
 ## ワークフロー
 1. 入力ファイルに非空白のaltLoc文字（列17）が含まれているかチェック。
-   - altLocが見つからず `--force` が設定されていない場合、ファイルをスキップ。
+ - altLocが見つからず `--force` が設定されていない場合、ファイルをスキップ。
 2. 各ATOM/HETATMレコードについて、altLocフィールドを無視した同一性キーを構築:
-   - レコード名、原子名、残基名、チェーンID、残基番号、挿入コード、segID
+ - レコード名、原子名、残基名、チェーンID、残基番号、挿入コード、segID
 3. 同じ同一性キーを持つ原子の中から、以下の基準で選択:
-   - 最高の占有率（列55–60）
-   - 同点の場合、ファイル内で最初に出現したもの
+ - 最高の占有率（列55–60）
+ - 同点の場合、ファイル内で最初に出現したもの
 4. 出力を書き込み:
-   - 選択された原子のみを保持
-   - altLocカラム（17）を空白（スペース1文字）に置換
-   - ANISOUレコードは保持された原子に一致するもののみフィルタリング
+ - 選択された原子のみを保持
+ - altLocカラム（17）を空白（スペース1文字）に置換
+ - ANISOUレコードは保持された原子に一致するもののみフィルタリング
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -70,10 +70,10 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 
 ## 出力
 - 代替位置が削除されたPDB ファイル:
-  - 入力がファイル: デフォルトは `<input>_clean.pdb`（`-o/--out` が省略された場合）
-  - 入力がディレクトリ: デフォルトは `<input>_clean/`（サブパスを保持）
-  - `-o/--out` 指定時: `OUTPUT.pdb`
-  - `--inplace` 設定時: 元のファイルを上書き（バックアップは `<input>.pdb.bak` として保存）
+ - 入力がファイル: デフォルトは `<input>_clean.pdb`（`-o/--out` が省略された場合）
+ - 入力がディレクトリ: デフォルトは `<input>_clean/`（サブパスを保持）
+ - `-o/--out` 指定時: `OUTPUT.pdb`
+ - `--inplace` 設定時: 元のファイルを上書き（バックアップは `<input>.pdb.bak` として保存）
 
 ## `all` ワークフローとの統合
 `pdb2reaction all` ワークフローを実行する際、`fix-altloc` は **`add-elem-info`の後**
@@ -92,9 +92,9 @@ altLoc文字が検出された場合のみファイルが処理され、そう�
 altLoc Bには N, CA, CB, CD がある場合）、`fix-altloc` は以下のように正しく処理します：
 
 - **重複原子**（複数のaltLocで同じ残基＋原子名、例：N, CA, CB）：
-  占有率に基づいて最良のものを選択（最高値を優先、同点の場合はファイル内で最初のもの）
+ 占有率に基づいて最良のものを選択（最高値を優先、同点の場合はファイル内で最初のもの）
 - **ユニーク原子**（1つのaltLocにのみ存在、例：AのCG、BのCD）：
-  **すべてのユニーク原子が出力に保持されます**
+ **すべてのユニーク原子が出力に保持されます**
 
 これにより、出力構造にはすべてのaltLoc状態の原子が含まれ、
 真の重複のみが単一のコンフォーマーに解決されます。
@@ -102,18 +102,18 @@ altLoc Bには N, CA, CB, CD がある場合）、`fix-altloc` は以下のよ�
 **例:**
 ```
 入力:
-  ATOM   1  N  AALA A 1 ...  0.50  # altLoc A
-  ATOM   2  CA AALA A 1 ...  0.50  # altLoc A
-  ATOM   3  CG AALA A 1 ...  0.50  # altLoc A のみ
-  ATOM   4  N  BALA A 1 ...  0.40  # altLoc B
-  ATOM   5  CA BALA A 1 ...  0.40  # altLoc B
-  ATOM   6  CD BALA A 1 ...  0.40  # altLoc B のみ
+ ATOM 1 N AALA A 1... 0.50 # altLoc A
+ ATOM 2 CA AALA A 1... 0.50 # altLoc A
+ ATOM 3 CG AALA A 1... 0.50 # altLoc A のみ
+ ATOM 4 N BALA A 1... 0.40 # altLoc B
+ ATOM 5 CA BALA A 1... 0.40 # altLoc B
+ ATOM 6 CD BALA A 1... 0.40 # altLoc B のみ
 
 出力:
-  ATOM   1  N   ALA A 1 ...  0.50  # A から（占有率が高い）
-  ATOM   2  CA  ALA A 1 ...  0.50  # A から（占有率が高い）
-  ATOM   3  CG  ALA A 1 ...  0.50  # 保持（Aのみ）
-  ATOM   6  CD  ALA A 1 ...  0.40  # 保持（Bのみ）
+ ATOM 1 N ALA A 1... 0.50 # A から（占有率が高い）
+ ATOM 2 CA ALA A 1... 0.50 # A から（占有率が高い）
+ ATOM 3 CG ALA A 1... 0.50 # 保持（Aのみ）
+ ATOM 6 CD ALA A 1... 0.40 # 保持（Bのみ）
 ```
 
 ## 注意事項
@@ -122,7 +122,7 @@ altLoc Bには N, CA, CB, CD がある場合）、`fix-altloc` は以下のよ�
 - 原子シリアル番号は**再番号付けされません**（重複削除後にギャップが残る場合があります）。
 - `CONECT` およびその他の接続/注釈レコードは**更新されません**。
 - 変更されるのは列17（altLoc）のみ。座標、占有率、B因子、電荷、挿入コード、
-  レコード順序は保持されます（重複削除を除く）。
+ レコード順序は保持されます（重複削除を除く）。
 - MODEL/ENDMDLブロックは独立して処理されます。
 
 ## API使用法
@@ -132,6 +132,6 @@ from pdb2reaction.fix_altloc import has_altloc, fix_altloc_file
 
 # ファイルにaltLocがあるかチェック
 if has_altloc(Path("input.pdb")):
-    # altLocを修正
-    was_processed = fix_altloc_file("input.pdb", "output.pdb", overwrite=True)
+ # altLocを修正
+ was_processed = fix_altloc_file("input.pdb", "output.pdb", overwrite=True)
 ```

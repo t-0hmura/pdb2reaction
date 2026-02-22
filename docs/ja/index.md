@@ -143,8 +143,7 @@ glossary
 
 ### ハードウェア
 - **OS**: Linux（Ubuntu 20.04+、CentOS 8+で動作確認）
-- **GPU**: CUDA 12.x 互換  
-- **VRAM**: 最小8 GB（1000原子以上には16 GB以上推奨）
+- **GPU**: CUDA 12.x 互換 - **VRAM**: 最小8 GB（1000原子以上には16 GB以上推奨）
 - **RAM**: 16 GB以上推奨
 
 ### ソフトウェア
@@ -164,7 +163,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ### TS 最適化を含む完全ワークフロー
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft
+ --tsopt --thermo --dft
 ```
 
 ### 単一構造スキャンモード
@@ -175,7 +174,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
 ### TS 最適化のみ
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --tsopt
+ --tsopt
 ```
 
 ---
@@ -194,10 +193,8 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ```
 
 ### YAML 設定
-設定の多層適用には `--config` と `--override-yaml` を推奨します。
-（`--args-yaml` は `--override-yaml` の legacy alias として残っています。）
+
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml override.yaml
 ```
 すべてのオプションについては [YAML リファレンス](yaml_reference.md) を参照してください。
 
@@ -208,21 +205,21 @@ pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml over
 典型的な `pdb2reaction all` の出力:
 ```
 result_all/
-├── summary.log              # テキスト形式の結果要約
-├── summary.yaml             # YAML 形式の結果要約
-├── pockets/                 # 抽出されたクラスターモデル
-├── scan/                    # （オプション）スキャン結果
-├── path_search/             # MEP軌跡とダイアグラム
-│   ├── mep.trj              # MEP軌跡
-│   ├── mep.pdb              # PDB形式のMEP
-│   ├── mep_w_ref.pdb        # 全系とマージされたMEP
-│   ├── mep_plot.png         # エネルギープロファイルプロット
-│   └── seg_*/               # セグメントごとの詳細
-└── path_search/post_seg_*/  # 後処理出力
-    ├── tsopt/               # TS最適化結果
-    ├── irc/                 # IRC軌跡
-    ├── freq/                # 振動モード
-    └── dft/                 # DFT結果
+├── summary.log # テキスト形式の結果要約
+├── summary.yaml # YAML 形式の結果要約
+├── pockets/ # 抽出されたクラスターモデル
+├── scan/ # （オプション）スキャン結果
+├── path_search/ # MEP軌跡とダイアグラム
+│ ├── mep.trj # MEP軌跡
+│ ├── mep.pdb # PDB形式のMEP
+│ ├── mep_w_ref.pdb # 全系とマージされたMEP
+│ ├── mep_plot.png # エネルギープロファイルプロット
+│ └── seg_*/ # セグメントごとの詳細
+└── path_search/post_seg_*/ # 後処理出力
+ ├── tsopt/ # TS最適化結果
+ ├── irc/ # IRC軌跡
+ ├── freq/ # 振動モード
+ └── dft/ # DFT結果
 ```
 
 ---

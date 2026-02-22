@@ -14,7 +14,6 @@
 
 `pdb2reaction path-search` は、反応順に並んだ 2 構造以上を入力として連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
 
-設定の優先順位は **defaults < config < 明示指定 CLI < override** です（`--config` → `--override-yaml`、`--args-yaml` は legacy alias）。
 
 `--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し（XYZ 座標は保持）、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では PDB コンパニオンは生成されません）。
 
@@ -24,7 +23,7 @@
 
 ```bash
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
-  --out-dir ./result_path_search
+ --out-dir ./result_path_search
 ```
 
 ## 出力の見方
@@ -42,51 +41,49 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ```bash
 pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
-  --out-dir ./result_path_search_multi
+ --out-dir ./result_path_search_multi
 ```
 
 2. テンプレート参照を使って全系マージ出力を有効化する。
 
 ```bash
 pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
-  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+ --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
 3. DMF + minima リファインで探索する。
 
 ```bash
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
-  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
+ --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
 ## 使用法
 
 ```bash
-pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
-                         [--workers N] [--workers-per-node N]
-                         [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
-                         [--refine-mode {peak|minima}]
-                         [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
-                         [--opt-mode light|heavy] [--dump/--no-dump]
-                         [--out-dir DIR] [--preopt/--no-preopt]
-                         [--align/--no-align] [--ref-full-pdb FILE ...] [--ref-pdb FILE ...]
-                         [--convert-files/--no-convert-files]
-                         [--config FILE] [--override-yaml FILE] [--args-yaml FILE]
-                         [--show-config/--no-show-config] [--dry-run/--no-dry-run]
+pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+ [--workers N] [--workers-per-node N]
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
+ [--refine-mode {peak|minima}]
+ [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
+ [--opt-mode light|heavy] [--dump/--no-dump]
+ [--out-dir DIR] [--preopt/--no-preopt]
+ [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...]
+ [--convert-files/--no-convert-files]
+ [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
 ### 例
 - **ポケットのみ**の2つのエンドポイント間のMEP:
-  ```bash
-  pdb2reaction path-search -i reactant.pdb product.pdb -q 0
-  ```
+ ```bash
+ pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+ ```
 - YAML 上書きとマージされた全系出力を使用した**マルチステップ**探索:
-  ```bash
-  pdb2reaction path-search \
-      -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-      --config base.yaml --override-yaml override.yaml \
-      --ref-full-pdb holo_template.pdb --out-dir ./run_ps
-  ```
+ ```bash
+ pdb2reaction path-search \
+ -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+ --ref-full-pdb holo_template.pdb --out-dir ./run_ps
+ ```
 
 
 ## CLI オプション
@@ -109,8 +106,6 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | GSMおよびイメージごとの最適化の収束プリセットを上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
-| `--override-yaml FILE` | 最後に適用される上書き YAML（YAML 最優先レイヤ） | _None_ |
-| `--args-yaml FILE` | `--override-yaml` の legacy alias | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 | `--preopt/--no-preopt` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
@@ -131,22 +126,22 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [--ligand-charge
 
 ## 出力
 ```
-out_dir/ (デフォルト: ./result_path_search/)
-├─ mep.trj                  # 主要 MEP 軌跡
-├─ mep.pdb                  # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
-├─ mep_w_ref.pdb            # マージされた全系MEP（参照 PDB/テンプレートが必要）
-├─ mep_w_ref_seg_XX.pdb     # 共有結合変化がある場合のマージされたセグメントごとのパス
-├─ summary.yaml             # すべての再帰セグメントの障壁と分類サマリー
-├─ summary.log              # 人間が読めるサマリー
-├─ summary.md               # 主要成果物へ移動しやすいナビゲーションページ
-├─ key_mep.trj              # 主要 MEP 軌跡へのショートカット（symlink/copy）
-├─ key_mep.pdb              # 主要 MEP PDB へのショートカット（symlink/copy）
-├─ key_ts.xyz / key_ts.pdb  # TS 候補スナップショットへのショートカット（利用可能時）
-├─ key_mep_plot.png         # MEP プロファイルへのショートカット（利用可能時）
+out_dir/ (デフォルト:./result_path_search/)
+├─ mep.trj # 主要 MEP 軌跡
+├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
+├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
+├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
+├─ summary.yaml # すべての再帰セグメントの障壁と分類サマリー
+├─ summary.log # 人間が読めるサマリー
+├─ summary.md # 主要成果物へ移動しやすいナビゲーションページ
+├─ key_mep.trj # 主要 MEP 軌跡へのショートカット（symlink/copy）
+├─ key_mep.pdb # 主要 MEP PDB へのショートカット（symlink/copy）
+├─ key_ts.xyz / key_ts.pdb # TS 候補スナップショットへのショートカット（利用可能時）
+├─ key_mep_plot.png # MEP プロファイルへのショートカット（利用可能時）
 ├─ key_energy_diagram_MEP.png # 状態エネルギーダイアグラムへのショートカット（利用可能時）
-├─ mep_plot.png             # ΔEプロファイル（kcal/mol、反応物基準）
-├─ energy_diagram_MEP.png   # MEP状態エネルギーダイアグラムの静的エクスポート
-└─ seg_000_*/               # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
+├─ mep_plot.png # ΔEプロファイル（kcal/mol、反応物基準）
+├─ energy_diagram_MEP.png # MEP状態エネルギーダイアグラムの静的エクスポート
+└─ seg_000_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
 ```
 
 
@@ -161,176 +156,173 @@ out_dir/ (デフォルト: ./result_path_search/)
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 - 実行後に `summary.md` が生成され、主要成果物と `key_*` 直下ショートカットを一覧できます。
 
-## YAML 設定（`--config`, `--override-yaml`, `--args-yaml`）
 マージ順は **defaults < config < 明示指定 CLI < override** です。
-`--args-yaml` は `--override-yaml` の legacy alias として維持されています。
+
 YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
-`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
+`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir:./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出パラメータで、{ref}`scan の bond セクション <section-bond>` と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
-`search` は再帰ロジックを制御します: `max_depth`, `stitch_rmsd_thresh`, `bridge_rmsd_thresh`, `max_nodes_segment`, `max_nodes_bridge`, `kink_max_nodes`, `max_seq_kink`, `refine_mode`（`null` の場合は GSM→`peak`、DMF→`minima` を自動選択）。旧 `rmsd_align` フラグは互換性のため保持されますが無視されます。
 
 `dmf` は `--mep-mode dmf` 選択時に適用される Direct Max Flux + (C)FB-ENM の設定です。既定値は `DMF_KW` を踏襲し、実行ごとに上書きできます。
 
 ### YAML例（デフォルト値）
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ task_name: omol # UMA task name
+ device: auto # UMA device selection
+ max_neigh: null # maximum neighbors for graph construction
+ radius: null # cutoff radius for neighbor search
+ r_edges: false # store radial edges
+ out_hess_torch: true # request torch-form Hessian
+ freeze_atoms: null # calculator-level frozen atoms
+ hessian_calc_mode: FiniteDifference # Hessian mode selection
+ return_partial_hessian: false # full Hessian (avoids shape mismatches)
 gs:
-  fix_first: true            # keep the first endpoint fixed during optimization
-  fix_last: true             # keep the last endpoint fixed during optimization
-  max_nodes: 10              # maximum string nodes
-  perp_thresh: 0.005         # perpendicular displacement threshold
-  reparam_check: rms         # reparametrization check metric
-  reparam_every: 1           # reparametrization stride
-  reparam_every_full: 1      # full reparametrization stride
-  param: equi                # parametrization scheme
-  max_micro_cycles: 10       # micro-iteration limit
-  reset_dlc: true            # rebuild delocalized coordinates each step
-  climb: true                # enable climbing image
-  climb_rms: 0.0005          # climbing RMS threshold
-  climb_lanczos: true        # Lanczos refinement for climbing
-  climb_lanczos_rms: 0.0005  # Lanczos RMS threshold
-  climb_fixed: false         # keep climbing image fixed
-  scheduler: null            # optional scheduler backend
+ fix_first: true # keep the first endpoint fixed during optimization
+ fix_last: true # keep the last endpoint fixed during optimization
+ max_nodes: 10 # maximum string nodes
+ perp_thresh: 0.005 # perpendicular displacement threshold
+ reparam_check: rms # reparametrization check metric
+ reparam_every: 1 # reparametrization stride
+ reparam_every_full: 1 # full reparametrization stride
+ param: equi # parametrization scheme
+ max_micro_cycles: 10 # micro-iteration limit
+ reset_dlc: true # rebuild delocalized coordinates each step
+ climb: true # enable climbing image
+ climb_rms: 0.0005 # climbing RMS threshold
+ climb_lanczos: true # Lanczos refinement for climbing
+ climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
+ climb_fixed: false # keep climbing image fixed
+ scheduler: null # optional scheduler backend
 opt:
-  type: string               # optimizer type label
-  stop_in_when_full: 300     # early stop threshold when string is full
-  align: false               # alignment toggle (kept off)
-  scale_step: global         # step scaling mode
-  max_cycles: 300            # maximum optimization cycles
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  reparam_thresh: 0.0        # reparametrization threshold
-  coord_diff_thresh: 0.0     # coordinate difference threshold
-  out_dir: ./result_path_search/   # output directory
-  print_every: 10            # logging stride
+ type: string # optimizer type label
+ stop_in_when_full: 300 # early stop threshold when string is full
+ align: false # alignment toggle (kept off)
+ scale_step: global # step scaling mode
+ max_cycles: 300 # maximum optimization cycles
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ reparam_thresh: 0.0 # reparametrization threshold
+ coord_diff_thresh: 0.0 # coordinate difference threshold
+ out_dir:./result_path_search/ # output directory
+ print_every: 10 # logging stride
 dmf:
-  max_cycles: 300            # DMF/IPOPT の最大反復数
-  correlated: true           # correlated DMF propagation
-  sequential: true           # sequential DMF execution
-  fbenm_only_endpoints: false   # run FB-ENM beyond endpoints
-  fbenm_options:
-    delta_scale: 0.2         # FB-ENM displacement scaling
-    bond_scale: 1.25         # bond cutoff scaling
-    fix_planes: true         # enforce planar constraints
-    two_hop_mode: sparse     # neighbor traversal strategy
-  cfbenm_options:
-    bond_scale: 1.25         # CFB-ENM bond cutoff scaling
-    corr0_scale: 1.1         # Correlation scale for corr0
-    corr1_scale: 1.5         # Correlation scale for corr1
-    corr2_scale: 1.6         # Correlation scale for corr2
-    eps: 0.05                # Correlation epsilon
-    pivotal: true            # Pivotal residue handling
-    single: true             # Single-atom pivots
-    remove_fourmembered: true  # Prune four-membered rings
-    two_hop_mode: sparse     # Neighbor traversal strategy
-  dmf_options:
-    remove_rotation_and_translation: false  # Keep rigid-body motions
-    mass_weighted: false               # Toggle mass weighting
-    parallel: false                    # Enable parallel DMF
-    eps_vel: 0.01                      # Velocity tolerance
-    eps_rot: 0.01                      # Rotational tolerance
-    beta: 10.0                         # Beta parameter for DMF
-    update_teval: false                # Update transition evaluation
-  k_fix: 300.0                         # Harmonic constant for restraints
+ max_cycles: 300 # DMF/IPOPT の最大反復数
+ correlated: true # correlated DMF propagation
+ sequential: true # sequential DMF execution
+ fbenm_only_endpoints: false # run FB-ENM beyond endpoints
+ fbenm_options:
+ delta_scale: 0.2 # FB-ENM displacement scaling
+ bond_scale: 1.25 # bond cutoff scaling
+ fix_planes: true # enforce planar constraints
+ two_hop_mode: sparse # neighbor traversal strategy
+ cfbenm_options:
+ bond_scale: 1.25 # CFB-ENM bond cutoff scaling
+ corr0_scale: 1.1 # Correlation scale for corr0
+ corr1_scale: 1.5 # Correlation scale for corr1
+ corr2_scale: 1.6 # Correlation scale for corr2
+ eps: 0.05 # Correlation epsilon
+ pivotal: true # Pivotal residue handling
+ single: true # Single-atom pivots
+ remove_fourmembered: true # Prune four-membered rings
+ two_hop_mode: sparse # Neighbor traversal strategy
+ dmf_options:
+ remove_rotation_and_translation: false # Keep rigid-body motions
+ mass_weighted: false # Toggle mass weighting
+ parallel: false # Enable parallel DMF
+ eps_vel: 0.01 # Velocity tolerance
+ eps_rot: 0.01 # Rotational tolerance
+ beta: 10.0 # Beta parameter for DMF
+ update_teval: false # Update transition evaluation
+ k_fix: 300.0 # Harmonic constant for restraints
 sopt:
-  lbfgs:
-    thresh: gau                # LBFGS convergence preset
-    max_cycles: 10000          # iteration limit
-    print_every: 100           # logging stride
-    min_step_norm: 1.0e-08     # minimum accepted step norm
-    assert_min_step: true      # assert when steps stagnate
-    rms_force: null            # explicit RMS force target
-    rms_force_only: false      # rely only on RMS force convergence
-    max_force_only: false      # rely only on max force convergence
-    force_only: false          # skip displacement checks
-    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-    overachieve_factor: 0.0    # tighten thresholds
-    check_eigval_structure: false   # validate Hessian eigenstructure
-    line_search: true          # enable line search
-    dump: false                # dump trajectory/restart data
-    dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
-    out_dir: ./result_path_search/   # output directory
-    keep_last: 7               # history size for LBFGS buffers
-    beta: 1.0                  # initial damping beta
-    gamma_mult: false          # multiplicative gamma update toggle
-    max_step: 0.3              # maximum step length
-    control_step: true         # control step length adaptively
-    double_damp: true          # double damping safeguard
-    mu_reg: null               # regularization strength
-    max_mu_reg_adaptions: 10   # cap on mu adaptations
-  rfo:
-    thresh: gau                # RFOptimizer convergence preset
-    max_cycles: 10000          # iteration cap
-    print_every: 100           # logging stride
-    min_step_norm: 1.0e-08     # minimum accepted step norm
-    assert_min_step: true      # assert when steps stagnate
-    rms_force: null            # explicit RMS force target
-    rms_force_only: false      # rely only on RMS force convergence
-    max_force_only: false      # rely only on max force convergence
-    force_only: false          # skip displacement checks
-    converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-    overachieve_factor: 0.0    # tighten thresholds
-    check_eigval_structure: false   # validate Hessian eigenstructure
-    line_search: true          # enable line search
-    dump: false                # dump trajectory/restart data
-    dump_restart: false        # dump restart checkpoints
-    prefix: ""                 # filename prefix
-    out_dir: ./result_path_search/   # output directory
-    trust_radius: 0.1          # trust-region radius
-    trust_update: true         # enable trust-region updates
-    trust_min: 0.0             # minimum trust radius
-    trust_max: 0.1             # maximum trust radius
-    max_energy_incr: null      # allowed energy increase per step
-    hessian_update: bfgs       # Hessian update scheme
-    hessian_init: calc         # Hessian initialization source
-    hessian_recalc: 200        # rebuild Hessian every N steps
-    hessian_recalc_adapt: null # adaptive Hessian rebuild factor
-    small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
-    alpha0: 1.0                # initial micro step
-    max_micro_cycles: 50       # micro-iteration limit
-    rfo_overlaps: false        # enable RFO overlaps
-    gediis: false              # enable GEDIIS
-    gdiis: true                # enable GDIIS
-    gdiis_thresh: 0.0025       # GDIIS acceptance threshold
-    gediis_thresh: 0.01        # GEDIIS acceptance threshold
-    gdiis_test_direction: true # test descent direction before DIIS
-    adapt_step_func: true      # adaptive step scaling toggle
+ lbfgs:
+ thresh: gau # LBFGS convergence preset
+ max_cycles: 10000 # iteration limit
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_path_search/ # output directory
+ keep_last: 7 # history size for LBFGS buffers
+ beta: 1.0 # initial damping beta
+ gamma_mult: false # multiplicative gamma update toggle
+ max_step: 0.3 # maximum step length
+ control_step: true # control step length adaptively
+ double_damp: true # double damping safeguard
+ mu_reg: null # regularization strength
+ max_mu_reg_adaptions: 10 # cap on mu adaptations
+ rfo:
+ thresh: gau # RFOptimizer convergence preset
+ max_cycles: 10000 # iteration cap
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_path_search/ # output directory
+ trust_radius: 0.1 # trust-region radius
+ trust_update: true # enable trust-region updates
+ trust_min: 0.0 # minimum trust radius
+ trust_max: 0.1 # maximum trust radius
+ max_energy_incr: null # allowed energy increase per step
+ hessian_update: bfgs # Hessian update scheme
+ hessian_init: calc # Hessian initialization source
+ hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc_adapt: null # adaptive Hessian rebuild factor
+ small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
+ alpha0: 1.0 # initial micro step
+ max_micro_cycles: 50 # micro-iteration limit
+ rfo_overlaps: false # enable RFO overlaps
+ gediis: false # enable GEDIIS
+ gdiis: true # enable GDIIS
+ gdiis_thresh: 0.0025 # GDIIS acceptance threshold
+ gediis_thresh: 0.01 # GEDIIS acceptance threshold
+ gdiis_test_direction: true # test descent direction before DIIS
+ adapt_step_func: true # adaptive step scaling toggle
 bond:
-  device: cuda                # UMA device for bond analysis
-  bond_factor: 1.2            # covalent-radius scaling
-  margin_fraction: 0.05       # tolerance margin for comparisons
-  delta_fraction: 0.05        # minimum relative change to flag bonds
+ device: cuda # UMA device for bond analysis
+ bond_factor: 1.2 # covalent-radius scaling
+ margin_fraction: 0.05 # tolerance margin for comparisons
+ delta_fraction: 0.05 # minimum relative change to flag bonds
 search:
-  max_depth: 10               # recursion depth limit
-  stitch_rmsd_thresh: 0.0001  # RMSD threshold for stitching segments
-  bridge_rmsd_thresh: 0.0001  # RMSD threshold for bridging nodes
-  rmsd_align: true            # legacy alignment flag (ignored)
-  max_nodes_segment: 10       # max nodes per segment
-  max_nodes_bridge: 5         # max nodes per bridge
-  kink_max_nodes: 3           # max nodes for kink optimizations
-  max_seq_kink: 2             # max sequential kinks
-  refine_mode: null           # optional refinement strategy (auto-chooses when null)
+ max_depth: 10 # recursion depth limit
+ stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
+ bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
+ max_nodes_segment: 10 # max nodes per segment
+ max_nodes_bridge: 5 # max nodes per bridge
+ kink_max_nodes: 3 # max nodes for kink optimizations
+ max_seq_kink: 2 # max sequential kinks
+ refine_mode: null # optional refinement strategy (auto-chooses when null)
 ```
 
 ---

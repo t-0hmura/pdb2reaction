@@ -37,32 +37,30 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
-  --out-dir ./result_opt_tight
+ --out-dir ./result_opt_tight
 ```
 
 2. Add a harmonic distance restraint.
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 \
-  --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
+ --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
 ```
 
 3. Switch to heavy mode (RFO).
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode heavy \
-  --out-dir ./result_opt_rfo
+ --out-dir ./result_opt_rfo
 ```
 
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                 [--opt-mode light|heavy] [--freeze-links/--no-freeze-links] \
-                 [--dist-freeze '[(i,j,target_A), ...]'] [--one-based|--zero-based] \
-                 [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
-                 [--max-cycles N] [--thresh PRESET] [--config FILE] [--override-yaml FILE] \
-                 [--show-config] [--dry-run] [--args-yaml FILE] \
-                 [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--opt-mode light|heavy] [--freeze-links/--no-freeze-links] \
+ [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
+ [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## Workflow
@@ -96,32 +94,29 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file. | _None_ |
-| `--override-yaml FILE` | Final YAML override file (highest-priority YAML layer). | _None_ |
-| `--args-yaml FILE` | Legacy alias of `--override-yaml`. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layer information before execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print execution plan without running optimization. | `False` |
 
 ## Outputs
 ```
 out_dir/
-├─ summary.md                # Quick index of key outputs
-├─ key_opt.xyz               # Shortcut to final_geometry.xyz
-├─ key_opt.pdb               # Shortcut to final_geometry.pdb (when available)
-├─ key_opt.gjf               # Shortcut to final_geometry.gjf (when available)
-├─ key_opt.trj               # Shortcut to optimization.trj
-├─ key_opt_traj.pdb          # Shortcut to optimization.pdb (when available)
-├─ key_restart.yml           # Shortcut to a restart snapshot (when available)
-├─ final_geometry.xyz          # Always written
-├─ final_geometry.pdb          # Only when the input was a PDB and conversion is enabled
-├─ final_geometry.gjf          # When a Gaussian template was detected and conversion is enabled
-├─ optimization.trj            # Only if dumping is enabled
-├─ optimization.pdb            # PDB conversion of the trajectory (PDB inputs, conversion enabled)
-└─ restart*.yml                # Optional restarts when opt.dump_restart is set
+├─ summary.md # Quick index of key outputs
+├─ key_opt.xyz # Shortcut to final_geometry.xyz
+├─ key_opt.pdb # Shortcut to final_geometry.pdb (when available)
+├─ key_opt.gjf # Shortcut to final_geometry.gjf (when available)
+├─ key_opt.trj # Shortcut to optimization.trj
+├─ key_opt_traj.pdb # Shortcut to optimization.pdb (when available)
+├─ key_restart.yml # Shortcut to a restart snapshot (when available)
+├─ final_geometry.xyz # Always written
+├─ final_geometry.pdb # Only when the input was a PDB and conversion is enabled
+├─ final_geometry.gjf # When a Gaussian template was detected and conversion is enabled
+├─ optimization.trj # Only if dumping is enabled
+├─ optimization.pdb # PDB conversion of the trajectory (PDB inputs, conversion enabled)
+└─ restart*.yml # Optional restarts when opt.dump_restart is set
 ```
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
-(yaml-configuration-args-yaml)=
-## YAML configuration (`--config`, `--override-yaml`)
+(yaml-configuration-override-yaml)=
 Settings are applied with **defaults < config < explicit CLI < override**.
 
 ### `geom`
@@ -147,102 +142,102 @@ Extends `opt` with RFOptimizer fields: trust-region sizing (`trust_radius`, `tru
 ### Example YAML
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: false         # full Hessian (avoids shape mismatches)
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ task_name: omol # UMA task name
+ device: auto # UMA device selection
+ max_neigh: null # maximum neighbors for graph construction
+ radius: null # cutoff radius for neighbor search
+ r_edges: false # store radial edges
+ out_hess_torch: true # request torch-form Hessian
+ freeze_atoms: null # calculator-level frozen atoms
+ hessian_calc_mode: FiniteDifference # Hessian mode selection
+ return_partial_hessian: false # full Hessian (avoids shape mismatches)
 opt:
-  thresh: gau                # convergence preset (Gaussian/Baker-style)
-  max_cycles: 10000          # optimizer cycle cap
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum norm for step acceptance
-  assert_min_step: true      # stop if steps fall below threshold
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # geom RMS threshold when converging to ref
-  overachieve_factor: 0.0    # factor to tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_opt/     # output directory
+ thresh: gau # convergence preset (Gaussian/Baker-style)
+ max_cycles: 10000 # optimizer cycle cap
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum norm for step acceptance
+ assert_min_step: true # stop if steps fall below threshold
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
+ overachieve_factor: 0.0 # factor to tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_opt/ # output directory
 lbfgs:
-  thresh: gau                # LBFGS convergence preset
-  max_cycles: 10000          # iteration limit
-  print_every: 100           # logging stride
-  min_step_norm: 1.0e-08     # minimum accepted step norm
-  assert_min_step: true      # assert when steps stagnate
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-  overachieve_factor: 0.0    # tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_opt/     # output directory
-  keep_last: 7               # history size for LBFGS buffers
-  beta: 1.0                  # initial damping beta
-  gamma_mult: false          # multiplicative gamma update toggle
-  max_step: 0.3              # maximum step length
-  control_step: true         # control step length adaptively
-  double_damp: true          # double damping safeguard
-  mu_reg: null               # regularization strength
-  max_mu_reg_adaptions: 10   # cap on mu adaptations
+ thresh: gau # LBFGS convergence preset
+ max_cycles: 10000 # iteration limit
+ print_every: 100 # logging stride
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_opt/ # output directory
+ keep_last: 7 # history size for LBFGS buffers
+ beta: 1.0 # initial damping beta
+ gamma_mult: false # multiplicative gamma update toggle
+ max_step: 0.3 # maximum step length
+ control_step: true # control step length adaptively
+ double_damp: true # double damping safeguard
+ mu_reg: null # regularization strength
+ max_mu_reg_adaptions: 10 # cap on mu adaptations
 rfo:
-  thresh: gau                # RFOptimizer convergence preset
-  max_cycles: 10000          # iteration cap
-  print_every: 100           # logging stride (matches shared opt defaults)
-  min_step_norm: 1.0e-08     # minimum accepted step norm
-  assert_min_step: true      # assert when steps stagnate
-  rms_force: null            # explicit RMS force target
-  rms_force_only: false      # rely only on RMS force convergence
-  max_force_only: false      # rely only on max force convergence
-  force_only: false          # skip displacement checks
-  converge_to_geom_rms_thresh: 0.05   # RMS threshold when targeting geometry
-  overachieve_factor: 0.0    # tighten thresholds
-  check_eigval_structure: false   # validate Hessian eigenstructure
-  line_search: true          # enable line search
-  dump: false                # dump trajectory/restart data
-  dump_restart: false        # dump restart checkpoints
-  prefix: ""                 # filename prefix
-  out_dir: ./result_opt/     # output directory
-  trust_radius: 0.1          # trust-region radius
-  trust_update: true         # enable trust-region updates
-  trust_min: 0.0             # minimum trust radius
-  trust_max: 0.1             # maximum trust radius
-  max_energy_incr: null      # allowed energy increase per step
-  hessian_update: bfgs       # Hessian update scheme
-  hessian_init: calc         # Hessian initialization source
-  hessian_recalc: 200        # rebuild Hessian every N steps
-  hessian_recalc_adapt: null # adaptive Hessian rebuild limit
-  small_eigval_thresh: 1.0e-08   # eigenvalue threshold for stability
-  alpha0: 1.0                # initial micro step
-  max_micro_cycles: 50       # micro-iteration limit
-  rfo_overlaps: false        # enable RFO overlaps
-  gediis: false              # enable GEDIIS
-  gdiis: true                # enable GDIIS
-  gdiis_thresh: 0.0025       # GDIIS acceptance threshold
-  gediis_thresh: 0.01        # GEDIIS acceptance threshold
-  gdiis_test_direction: true # test descent direction before DIIS
-  adapt_step_func: true      # adaptive step scaling
+ thresh: gau # RFOptimizer convergence preset
+ max_cycles: 10000 # iteration cap
+ print_every: 100 # logging stride (matches shared opt defaults)
+ min_step_norm: 1.0e-08 # minimum accepted step norm
+ assert_min_step: true # assert when steps stagnate
+ rms_force: null # explicit RMS force target
+ rms_force_only: false # rely only on RMS force convergence
+ max_force_only: false # rely only on max force convergence
+ force_only: false # skip displacement checks
+ converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+ overachieve_factor: 0.0 # tighten thresholds
+ check_eigval_structure: false # validate Hessian eigenstructure
+ line_search: true # enable line search
+ dump: false # dump trajectory/restart data
+ dump_restart: false # dump restart checkpoints
+ prefix: "" # filename prefix
+ out_dir:./result_opt/ # output directory
+ trust_radius: 0.1 # trust-region radius
+ trust_update: true # enable trust-region updates
+ trust_min: 0.0 # minimum trust radius
+ trust_max: 0.1 # maximum trust radius
+ max_energy_incr: null # allowed energy increase per step
+ hessian_update: bfgs # Hessian update scheme
+ hessian_init: calc # Hessian initialization source
+ hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc_adapt: null # adaptive Hessian rebuild limit
+ small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
+ alpha0: 1.0 # initial micro step
+ max_micro_cycles: 50 # micro-iteration limit
+ rfo_overlaps: false # enable RFO overlaps
+ gediis: false # enable GEDIIS
+ gdiis: true # enable GDIIS
+ gdiis_thresh: 0.0025 # GDIIS acceptance threshold
+ gediis_thresh: 0.01 # GEDIIS acceptance threshold
+ gdiis_test_direction: true # test descent direction before DIIS
+ adapt_step_func: true # adaptive step scaling
 ```
 
 ---

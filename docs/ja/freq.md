@@ -13,7 +13,6 @@
 
 `pdb2reaction freq` は UMA 計算機で振動解析を行い、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `.trj` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力されます。
 
-設定は **デフォルト < `--config` < 明示CLI < `--override-yaml`**（`geom`, `calc`, `freq`, `thermo`）の優先順位で解決されます。`--args-yaml` は `--override-yaml` の legacy alias として引き続き利用できます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したまま PDB 出力変換が可能になります。
 
 ## 最小例
 
@@ -48,19 +47,18 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./r
 
 ```bash
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
-  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
+ --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
 ```
 
 ## 使用法
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
-                  [--freeze-links/--no-freeze-links] \
-                  [--max-write N] [--amplitude-ang Å] [--n-frames N] \
-                  [--sort value|abs] [--out-dir DIR] [--config FILE] [--override-yaml FILE|--args-yaml FILE] \
-                  [--show-config] [--dry-run] \
-                  [--temperature K] [--pressure atm] [--dump/--no-dump] \
-                  [--hessian-calc-mode Analytical|FiniteDifference] \
-                  [--convert-files/--no-convert-files] [--ref-pdb FILE]
+ [--freeze-links/--no-freeze-links] \
+ [--max-write N] [--amplitude-ang Å] [--n-frames N] \
+ [--show-config] [--dry-run] \
+ [--temperature K] [--pressure atm] [--dump/--no-dump] \
+ [--hessian-calc-mode Analytical|FiniteDifference] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### 例
@@ -101,23 +99,21 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--convert-files/--no-convert-files` | PDB テンプレートが利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか（GJF は出力しない） | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--config FILE` | 明示CLI適用前に読み込むベース YAML。 | _None_ |
-| `--override-yaml FILE` | 最終 YAML 上書き（YAML レイヤー最優先）。 | _None_ |
-| `--args-yaml FILE` | `--override-yaml` の legacy alias。 | _None_ |
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行。 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
 
 ## 出力
 ```
-out_dir/ (デフォルト: ./result_freq/)
-├─ summary.md                # 主要成果物のインデックス
-├─ key_frequencies.txt       # frequencies_cm-1.txt へのショートカット
-├─ key_mode_1.trj            # 代表モード軌跡へのショートカット
-├─ key_mode_1.pdb            # 代表モードPDBへのショートカット（存在時）
-├─ key_thermo.yaml           # thermoanalysis.yaml へのショートカット（存在時）
-├─ mode_XXXX_±freqcm-1.trj  # モードごとのアニメーション
-├─ mode_XXXX_±freqcm-1.pdb  # PDB テンプレートが存在し変換が有効な場合のみ
-├─ frequencies_cm-1.txt     # 選択したソート順での全振動数リスト
-└─ thermoanalysis.yaml      # thermoanalysisがインポート可能で--dumpがTrueの場合
+out_dir/ (デフォルト:./result_freq/)
+├─ summary.md # 主要成果物のインデックス
+├─ key_frequencies.txt # frequencies_cm-1.txt へのショートカット
+├─ key_mode_1.trj # 代表モード軌跡へのショートカット
+├─ key_mode_1.pdb # 代表モードPDBへのショートカット（存在時）
+├─ key_thermo.yaml # thermoanalysis.yaml へのショートカット（存在時）
+├─ mode_XXXX_±freqcm-1.trj # モードごとのアニメーション
+├─ mode_XXXX_±freqcm-1.pdb # PDB テンプレートが存在し変換が有効な場合のみ
+├─ frequencies_cm-1.txt # 選択したソート順での全振動数リスト
+└─ thermoanalysis.yaml # thermoanalysisがインポート可能で--dumpがTrueの場合
 ```
 コンソールには確定済みの `geom`/`calc`/`freq` 設定と熱化学設定の要約が出力されます。
 
@@ -128,35 +124,34 @@ out_dir/ (デフォルト: ./result_freq/)
 - `--hessian-calc-mode` は **デフォルト < config < 明示CLI < override** の優先順位で解決されます。YAML で `calc.hessian_calc_mode` が指定されている場合、最終 override レイヤーが優先されます。
 
 
-## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
 
 ```yaml
 geom:
-  coord_type: cart           # coordinate type: cartesian vs dlc internals
-  freeze_atoms: []           # 0-based frozen atoms merged with CLI/link detection
+ coord_type: cart # coordinate type: cartesian vs dlc internals
+ freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
 calc:
-  charge: 0                  # total charge (CLI/template override)
-  spin: 1                    # spin multiplicity 2S+1
-  model: uma-s-1p1           # UMA model tag
-  task_name: omol            # UMA task name
-  device: auto               # UMA device selection
-  max_neigh: null            # maximum neighbors for graph construction
-  radius: null               # cutoff radius for neighbor search
-  r_edges: false             # store radial edges
-  out_hess_torch: true       # request torch-form Hessian
-  freeze_atoms: null         # calculator-level frozen atoms
-  hessian_calc_mode: FiniteDifference   # Hessian mode selection
-  return_partial_hessian: true          # allow partial Hessians
+ charge: 0 # total charge (CLI/template override)
+ spin: 1 # spin multiplicity 2S+1
+ model: uma-s-1p1 # UMA model tag
+ task_name: omol # UMA task name
+ device: auto # UMA device selection
+ max_neigh: null # maximum neighbors for graph construction
+ radius: null # cutoff radius for neighbor search
+ r_edges: false # store radial edges
+ out_hess_torch: true # request torch-form Hessian
+ freeze_atoms: null # calculator-level frozen atoms
+ hessian_calc_mode: FiniteDifference # Hessian mode selection
+ return_partial_hessian: true # allow partial Hessians
 freq:
-  amplitude_ang: 0.8         # displacement amplitude for modes (Å)
-  n_frames: 20               # number of frames per mode
-  max_write: 10              # maximum number of modes to write
-  sort: value                # sort order: value vs abs
+ amplitude_ang: 0.8 # displacement amplitude for modes (Å)
+ n_frames: 20 # number of frames per mode
+ max_write: 10 # maximum number of modes to write
+ sort: value # sort order: value vs abs
 thermo:
-  temperature: 298.15        # thermochemistry temperature (K)
-  pressure_atm: 1.0          # thermochemistry pressure (atm)
-  dump: false                # write thermoanalysis.yaml when true
+ temperature: 298.15 # thermochemistry temperature (K)
+ pressure_atm: 1.0 # thermochemistry pressure (atm)
+ dump: false # write thermoanalysis.yaml when true
 ```
 
 ---

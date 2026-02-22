@@ -1,7 +1,6 @@
 # トラブルシューティング
 
-このページでは、`pdb2reaction` でよく遭遇するエラーと対処法をまとめます。  
-コンソールに出てきたメッセージをそのまま検索（ページ内検索）すると見つけやすいように書いています。
+このページでは、`pdb2reaction` でよく遭遇するエラーと対処法をまとめます。 コンソールに出てきたメッセージをそのまま検索（ページ内検索）すると見つけやすいように書いています。
 症状から先に当たりを付けたい場合は、先に [典型エラー別レシピ](recipes_common_errors.md) を見てからこのページに戻ってください。
 
 ---
@@ -24,15 +23,15 @@
 
 ```text
 Element symbols are missing in '...'.
-Please run `pdb2reaction add-elem-info -i ...` to populate element columns before running extract.
+Please run `pdb2reaction add-elem-info -i...` to populate element columns before running extract.
 ```
 
 対処:
 - 次を実行して element 列（元素記号列）を補完します。
 
-  ```bash
-  pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
-  ```
+ ```bash
+ pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
+ ```
 
 - その後、`extract` / `all` を補完後の PDB で再実行します。
 
@@ -45,7 +44,7 @@ Please run `pdb2reaction add-elem-info -i ...` to populate element columns befor
 典型的なメッセージ:
 
 ```text
-[multi] Atom count mismatch between input #1 and input #2: ...
+[multi] Atom count mismatch between input #1 and input #2:...
 [multi] Atom order mismatch between input #1 and input #2.
 ```
 
@@ -78,15 +77,15 @@ Please run `pdb2reaction add-elem-info -i ...` to populate element columns befor
 対処:
 - 電荷と多重度を明示する:
 
-  ```bash
-  pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
-  ```
+ ```bash
+ pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
+ ```
 
 - あるいは（抽出ありの場合）残基名ごとの電荷マッピングを与える:
 
-  ```bash
-  pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
-  ```
+ ```bash
+ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+ ```
 
 ---
 
@@ -99,9 +98,9 @@ Please run `pdb2reaction add-elem-info -i ...` to populate element columns befor
 対処:
 - 環境/マシンごとに一度ログインします。
 
-  ```bash
-  huggingface-cli login
-  ```
+ ```bash
+ huggingface-cli login
+ ```
 
 - HPC では、計算ノードから HF キャッシュ（ホームディレクトリ等）に書き込み可能か確認してください。
 
@@ -116,10 +115,10 @@ Please run `pdb2reaction add-elem-info -i ...` to populate element columns befor
 - クラスタの CUDA と整合する PyTorch を入れます。
 - GPU が見えているか確認します:
 
-  ```bash
-  nvidia-smi
-  python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
-  ```
+ ```bash
+ nvidia-smi
+ python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
+ ```
 
 ---
 
@@ -129,9 +128,9 @@ DMF（`--mep-mode dmf`）を使うときに IPOPT/cyipopt の import エラー�
 対処:
 - `pdb2reaction` を入れる前に conda-forge から `cyipopt` を入れるのが簡単です。
 
-  ```bash
-  conda install -c conda-forge cyipopt
-  ```
+ ```bash
+ conda install -c conda-forge cyipopt
+ ```
 
 ---
 
@@ -141,9 +140,9 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処:
 - headless Chrome を一度入れます。
 
-  ```bash
-  plotly_get_chrome -y
-  ```
+ ```bash
+ plotly_get_chrome -y
+ ```
 
 ---
 

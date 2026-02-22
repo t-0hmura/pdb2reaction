@@ -14,8 +14,8 @@
 ```yaml
 one_based: true
 stages:
-  - [["TYR,285,CA", "MMT,309,C10", 1.35]]
-  - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+ - [["TYR,285,CA", "MMT,309,C10", 1.35]]
+ - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
 ```
 
 ## 2. 実行
@@ -32,7 +32,6 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 ## 補足
 
-- 推奨は `--spec` です。legacy 互換として `--scan-lists` も残っています。
 - 詳細オプションは `pdb2reaction scan --help-advanced` で確認できます。
 
 ## 次の導線

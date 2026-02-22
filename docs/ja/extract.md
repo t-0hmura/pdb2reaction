@@ -17,16 +17,16 @@
 
 ## 使用法
 ```bash
-pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
-                     -c SUBSTRATE_SPEC
-                     [-o POCKET.pdb [POCKET2.pdb ...]]
-                     [--radius Å] [--radius-het2het Å]
-                     [--include-H2O/--no-include-H2O]
-                     [--exclude-backbone/--no-exclude-backbone]
-                     [--add-linkH/--no-add-linkH]
-                     [--selected-resn LIST]
-                     [--ligand-charge MAP_OR_NUMBER]
-                     [--verbose/--no-verbose]
+pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
+ -c SUBSTRATE_SPEC
+ [-o POCKET.pdb [POCKET2.pdb...]]
+ [--radius Å] [--radius-het2het Å]
+ [--include-H2O/--no-include-H2O]
+ [--exclude-backbone/--no-exclude-backbone]
+ [--add-linkH/--no-add-linkH]
+ [--selected-resn LIST]
+ [--ligand-charge MAP_OR_NUMBER]
+ [--verbose/--no-verbose]
 ```
 
 ### 例
@@ -51,15 +51,15 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 ### 残基包含
 - `-c/--center` からの基質残基を常に含める
 - **標準カットオフ（`--radius`、デフォルト2.6 Å）:**
-  - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
-  - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O以外）で基質に接触する必要がある
+ - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
+ - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O以外）で基質に接触する必要がある
 - **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非C/H）がタンパク質ヘテロ原子の指定Å以内にある場合に残基を追加
 - **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOLはデフォルトで含まれる（`--include-H2O`）
 - **強制包含:** `--selected-resn` はチェーン/挿入コード付きIDを受け入れる（例: `A:123A`）
 - **近傍セーフガード:**
-  - `--no-exclude-backbone` で主鎖原子が基質に接触した場合、ペプチド隣接のN/C側残基（C–N ≤ 1.9 Å）を自動的に含める。末端はN/H*またはC/O/OXTのキャップを保持。
-  - ジスルフィド結合（SG–SG ≤ 2.5 Å）は両方のCysを包含。
-  - 非末端PRO残基は常にN側隣接残基を含め、主鎖除去後もCAを保持します。`--exclude-backbone` の場合は隣接残基のC/O/OXTを残し、ペプチド結合を維持。
+ - `--no-exclude-backbone` で主鎖原子が基質に接触した場合、ペプチド隣接のN/C側残基（C–N ≤ 1.9 Å）を自動的に含める。末端はN/H*またはC/O/OXTのキャップを保持。
+ - ジスルフィド結合（SG–SG ≤ 2.5 Å）は両方のCysを包含。
+ - 非末端PRO残基は常にN側隣接残基を含め、主鎖除去後もCAを保持します。`--exclude-backbone` の場合は隣接残基のC/O/OXTを残し、ペプチド結合を維持。
 
 ### 切断/キャッピング
 - 孤立残基は側鎖原子のみを保持; アミノ酸主鎖原子（N, CA, C, O, OXT + N/CA水素）はPRO/HYP保護を除いて除去
@@ -82,9 +82,9 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 ### マルチ構造アンサンブル
 - 複数の入力 PDBを受け付けます（先頭/末尾で原子順序が一致することを検証）。各構造は独立に処理され、選択残基の**和集合**が全モデルに適用されるため、出力の一貫性が保たれます。
 - 出力ポリシー:
-  - `-o` なし & 複数入力 → 構造ごとに `pocket_<original_basename>.pdb`。
-  - `-o` を1つだけ指定 → 単一のマルチMODEL PDB。
-  - 入力数と同数の `-o` を指定 → 入力ごとに個別PDB。
+ - `-o` なし & 複数入力 → 構造ごとに `pocket_<original_basename>.pdb`。
+ - `-o` を1つだけ指定 → 単一のマルチMODEL PDB。
+ - 入力数と同数の `-o` を指定 → 入力ごとに個別PDB。
 - 診断ログにモデルごとの生/保持原子数と残基IDを出力します。
 
 ### 基質指定（`-c/--center`）
@@ -112,10 +112,10 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 
 ## 出力
 ```text
-<output>.pdb  # TERレコード後にオプションのリンク水素を含むポケット PDB
-               # 単一入力 → デフォルトでpocket.pdb
-               # -oなしの複数入力 → 構造ごとにpocket_<original_basename>.pdb
-               # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
+<output>.pdb # TERレコード後にオプションのリンク水素を含むポケット PDB
+ # 単一入力 → デフォルトでpocket.pdb
+ # -oなしの複数入力 → 構造ごとにpocket_<original_basename>.pdb
+ # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
 ```
 - verboseモードが有効な場合、モデル#1の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録
 - 出力ディレクトリは自動作成されません。必要に応じて事前に作成してください。

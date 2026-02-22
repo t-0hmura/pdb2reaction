@@ -44,7 +44,7 @@ from .utils import (
     format_elapsed,
     prepare_input_structure,
     apply_ref_pdb_override,
-    resolve_charge_spin_or_raise,
+    resolve_charge_spin,
     set_convert_file_enabled,
     resolve_freeze_atoms,
 )
@@ -57,7 +57,7 @@ def _resolve_yaml_sources(
 ) -> Tuple[Optional[Path], Optional[Path], bool]:
     if override_yaml is not None and args_yaml_legacy is not None:
         raise click.BadParameter(
-            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+            "Use a single YAML source option."
         )
     if args_yaml_legacy is not None:
         return config_yaml, args_yaml_legacy, True
@@ -648,19 +648,6 @@ CALC_KW["return_partial_hessian"] = True
     default=None,
     help="Base YAML configuration file applied before explicit CLI options.",
 )
-@click.option(
-    "--override-yaml",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="Final YAML override file (highest priority YAML layer).",
-)
-@click.option(
-    "--args-yaml",
-    "args_yaml_legacy",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    default=None,
-    help="[legacy] Alias of --override-yaml; kept for backward compatibility.",
-)
 # Thermochemistry options
 @click.option("--temperature", type=float, default=THERMO_KW["temperature"], show_default=True,
               help="Temperature (K) for thermochemistry summary.")
@@ -711,8 +698,6 @@ def cli(
     sort: str,
     out_dir: str,
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
     # thermo
     temperature: float,
     pressure_atm: float,
@@ -731,17 +716,12 @@ def cli(
 
     config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
         config_yaml=config_yaml,
-        override_yaml=override_yaml,
-        args_yaml_legacy=args_yaml_legacy,
+        override_yaml=None,
+        args_yaml_legacy=None,
     )
-    if used_legacy_yaml:
-        click.echo(
-            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
-            err=True,
-        )
     merged_yaml_cfg = _load_merged_yaml_cfg(
         config_yaml=config_yaml,
-        override_yaml=override_yaml,
+        override_yaml=None,
     )
 
     time_start = time.perf_counter()
@@ -750,7 +730,7 @@ def cli(
     apply_ref_pdb_override(prepared_input, ref_pdb)
     geom_input_path = prepared_input.geom_path
     source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin_or_raise(
+    charge, spin = resolve_charge_spin(
         prepared_input,
         charge,
         spin,

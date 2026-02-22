@@ -213,7 +213,6 @@ def _build_scan_context(
     help="Input structure file (.pdb, .xyz, .trj, ...).",
 )
 @click.option(
-    "--scan-list",
     "--scan-lists",
     "scan_list_raw",
     type=str,
@@ -225,7 +224,7 @@ def _build_scan_context(
     "spec_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=False,
-    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-list.",
+    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-lists.",
 )
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
@@ -239,7 +238,7 @@ def _build_scan_context(
     "print_parsed",
     default=False,
     show_default=True,
-    help="Print parsed scan targets after resolving --spec/--scan-list.",
+    help="Print parsed scan targets after resolving --spec/--scan-lists.",
 )
 @click.pass_context
 def cli(
@@ -264,8 +263,6 @@ def cli(
     out_dir: str,
     thresh: Optional[str],
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
     preopt: bool,
     print_parsed: bool,
     baseline: str,
@@ -276,14 +273,9 @@ def cli(
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
-        override_yaml=override_yaml,
-        args_yaml_legacy=args_yaml_legacy,
+        override_yaml=None,
+        args_yaml_legacy=None,
     )
-    if used_legacy_yaml:
-        click.echo(
-            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
-            err=True,
-        )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
@@ -303,7 +295,7 @@ def cli(
 
             yaml_cfg = load_merged_yaml_cfg(
                 config_yaml=config_yaml,
-                override_yaml=override_yaml,
+                override_yaml=None,
             )
             yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
             relax_override_requested = cycles_overridden and not (
@@ -348,9 +340,9 @@ def cli(
                 pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
             if spec_path is not None and scan_list_raw is not None:
-                raise click.BadParameter("Use either --spec or --scan-list, not both.")
+                raise click.BadParameter("Use either --spec or --scan-lists, not both.")
             scan_one_based = bool(one_based)
-            scan_source = "--scan-list"
+            scan_source = "--scan-lists"
             if spec_path is not None:
                 parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
                     spec_path,
@@ -362,13 +354,12 @@ def cli(
                 scan_source = f"--spec ({spec_path})"
             else:
                 if scan_list_raw is None:
-                    raise click.BadParameter("Provide either --spec or --scan-list.")
+                    raise click.BadParameter("Provide either --spec or --scan-lists.")
                 parsed, raw_pairs = parse_scan_list_quads_checked(
                     scan_list_raw,
                     expected_len=2,
                     one_based=scan_one_based,
                     atom_meta=pdb_atom_meta,
-                    option_name="--scan-list",
                 )
             (i1, j1, low1, high1), (i2, j2, low2, high2) = parsed
             d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])

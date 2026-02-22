@@ -27,13 +27,13 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ## ワークフロー
 1. `Bio.PDB.PDBParser` で入力を解析し、`extract.py` で使用される残基定義（`AMINO_ACIDS`、`WATER_RES`、`ION`）と照合する。
 2. 各原子について、原子名・残基名・HETATMフラグを組み合わせて元素を推定:
-   - `ION` 辞書に登録された単原子イオン残基は対応する元素を使用
-   - タンパク質/核酸/水はH/DやSeの特例を扱い、C/N/O/P/Sは先頭文字で判定（炭素側鎖ラベルはC）
-   - その他のリガンドは原子名の接頭辞で判定し、ハロゲン認識や重水素→水素の正規化にフォールバック
+ - `ION` 辞書に登録された単原子イオン残基は対応する元素を使用
+ - タンパク質/核酸/水はH/DやSeの特例を扱い、C/N/O/P/Sは先頭文字で判定（炭素側鎖ラベルはC）
+ - その他のリガンドは原子名の接頭辞で判定し、ハロゲン認識や重水素→水素の正規化にフォールバック
 3. `PDBIO` で書き出し:
-   - デフォルト出力: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
-   - `-o/--out`: 指定パスへ書き込み（この場合 `--overwrite` は無視）
-   - `--overwrite`（`-o/--out` なし）: 入力パスを上書き
+ - デフォルト出力: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
+ - `-o/--out`: 指定パスへ書き込み（この場合 `--overwrite` は無視）
+ - `--overwrite`（`-o/--out` なし）: 入力パスを上書き
 4. 割り当て/再割り当て数、元素別合計、未解決原子のリスト（最大50件）を要約表示。
 
 ## CLI オプション
@@ -45,9 +45,9 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
 ## 出力
 - 元素記号が補完/修正されたPDB ファイル:
-  - デフォルト: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
-  - `-o/--out` 指定時: `OUTPUT.pdb`（`--overwrite` の値に関わらず）
-  - `--overwrite` を `-o/--out` なしで指定: `INPUT.pdb` をその場で上書き
+ - デフォルト: `<input>_add_elem.pdb`（`-o/--out` 省略かつ `--overwrite` が `True` でない場合）
+ - `-o/--out` 指定時: `OUTPUT.pdb`（`--overwrite` の値に関わらず）
+ - `--overwrite` を `-o/--out` なしで指定: `INPUT.pdb` をその場で上書き
 - コンソールに、処理/割り当て原子数、元素別カウント、未解決原子（最大50件）を出力
 
 ## 注意事項
