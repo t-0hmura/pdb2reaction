@@ -124,7 +124,7 @@ out_dir/ (デフォルト: ./result_irc/)
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - CLI のブール値（`--forward`, `--backward`）は toggle 形式（`--forward/--no-forward`, `--backward/--no-backward`）で指定します。
 - UMAはIRC全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
@@ -133,7 +133,7 @@ out_dir/ (デフォルト: ./result_irc/)
 
 
 ## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -192,11 +192,11 @@ irc:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
 - [freq](freq.md) — TS 候補の虚数振動数を確認し、IRC端点を解析
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行するエンドツーエンドワークフロー
-- [YAML リファレンス](yaml-reference.md) — `irc` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `irc` の完全な設定オプション
 - [用語集](glossary.md) — IRC（固有反応座標）の定義

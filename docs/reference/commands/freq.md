@@ -61,7 +61,7 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running frequency analysis.  [default:
                                   no-dry-run]
-  --hessian-calc-mode [FiniteDifference|Analytical]
+  --hessian-calc-mode [finitedifference|analytical]
                                   How UMA computes Hessian. Defaults to
                                   'FiniteDifference' (can also be set via YAML).
   -h, --help                      Show this message and exit.

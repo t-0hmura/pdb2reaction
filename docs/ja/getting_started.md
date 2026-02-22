@@ -39,7 +39,7 @@ UMA レベルの計算には Meta の UMA（MLIP）を用います。
 
 ```{tip}
 初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。
-症状から切り分ける場合は、まず [典型エラー別レシピ](recipes-common-errors.md) を参照してください。
+症状から切り分ける場合は、まず [典型エラー別レシピ](recipes_common_errors.md) を参照してください。
 セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
 ```
 
@@ -193,9 +193,9 @@ huggingface-cli login
 
 ## 推奨クイックスタート導線
 
-- [クイックスタート: `pdb2reaction all`](quickstart-all.md)
-- [クイックスタート: `pdb2reaction scan` + `--spec`](quickstart-scan-spec.md)
-- [クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart-tsopt-freq.md)
+- [クイックスタート: `pdb2reaction all`](quickstart_all.md)
+- [クイックスタート: `pdb2reaction scan` + `--spec`](quickstart_scan_spec.md)
+- [クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
 
 ---
 
@@ -345,7 +345,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `--mep-mode gsm\|dmf` | MEP 手法: Growing String Method または Direct Max Flux |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン計算モード。**VRAMが十分な場合はAnalytical推奨** |
 
-すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml-reference.md) を参照してください。
+すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml_reference.md) を参照してください。
 
 ---
 
@@ -389,7 +389,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `freq` | 振動解析 | [freq](freq.md) |
 | `dft` | DFT 一点計算 | [dft](dft.md) |
 | `trj2fig` | エネルギープロファイルプロット | [trj2fig](trj2fig.md) |
-| `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy-diagram.md) |
+| `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy_diagram.md) |
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{important}

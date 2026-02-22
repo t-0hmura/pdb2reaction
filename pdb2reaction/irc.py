@@ -202,7 +202,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 # --------------------------

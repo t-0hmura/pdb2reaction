@@ -961,7 +961,7 @@ def set_freeze_atoms_or_warn(
     try:
         geom.freeze_atoms = np.array(sorted({int(i) for i in freeze_atoms}), dtype=int)
     except Exception:
-        click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.")
+        click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.", err=True)
 
 
 def read_xyz_energies(path: Path | str) -> List[float]:
@@ -1485,7 +1485,7 @@ def convert_xyz_like_outputs(
             convert_xyz_to_gjf(xyz_path, prepared_input.gjf_template, out_gjf_path)
     except Exception as e:
         if on_error == "warn":
-            click.echo(f"[convert] WARNING: Failed to convert {context}: {e}")
+            click.echo(f"[convert] WARNING: Failed to convert {context}: {e}", err=True)
             return False
         raise click.ClickException(f"[convert] Failed to convert {context}: {e}") from e
     return True
@@ -2158,7 +2158,7 @@ def resolve_freeze_atoms(
         return merge_detected_freeze_links(geom_cfg, source_path, prefix=prefix)
     except Exception as e:
         if on_error == "warn":
-            click.echo(f"{prefix} WARNING: Could not detect link parents: {e}")
+            click.echo(f"{prefix} WARNING: Could not detect link parents: {e}", err=True)
             return list(geom_cfg.get("freeze_atoms", []))
         raise
 

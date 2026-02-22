@@ -4,7 +4,7 @@
 Energy-profile plotting utility for XYZ trajectories.
 
 Example:
-    pdb2reaction trj2fig -i traj.xyz --reverse-x True
+    pdb2reaction trj2fig -i traj.xyz --reverse-x
 
 For detailed documentation, see: docs/trj2fig.md
 """
@@ -269,7 +269,8 @@ def parse_cli() -> argparse.Namespace:
     )
     p.add_argument(
         "--reverse-x",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Reverse the x-axis (last frame on the left).",
     )
     return p.parse_args()
@@ -372,8 +373,7 @@ def main() -> None:
     help="Spin multiplicity (2S+1). Triggers energy recomputation when supplied.",
 )
 @click.option(
-    "--reverse-x",
-    type=click.BOOL,
+    "--reverse-x/--no-reverse-x",
     default=False,
     show_default=True,
     help="Reverse the x-axis (last frame on the left).",

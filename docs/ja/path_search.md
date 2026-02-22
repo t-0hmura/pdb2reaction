@@ -153,7 +153,7 @@ out_dir/ (デフォルト: ./result_path_search/)
 - コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`）が出力されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - `--ref-full-pdb` は1回の指定で複数ファイルを続けて渡せます。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
@@ -164,11 +164,11 @@ out_dir/ (デフォルト: ./result_path_search/)
 ## YAML 設定（`--config`, `--override-yaml`, `--args-yaml`）
 マージ順は **defaults < config < 明示指定 CLI < override** です。
 `--args-yaml` は `--override-yaml` の legacy alias として維持されています。
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
-`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
+`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出パラメータで、{ref}`scan の bond セクション <section-bond>` と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
@@ -337,11 +337,11 @@ search:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [path-opt](path_opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化
 - [extract](extract.md) — path-search入力用のポケットPDBを生成
 - [all](all.md) — 内部でpath-searchを呼び出すエンドツーエンドワークフロー
-- [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

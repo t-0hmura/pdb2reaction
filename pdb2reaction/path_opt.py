@@ -176,7 +176,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 def _resolve_yaml_sources(
@@ -980,7 +980,7 @@ def cli(
             )
             click.echo("[align] Completed input alignment.")
         except Exception as e:
-            click.echo(f"[align] WARNING: alignment skipped: {e}")
+            click.echo(f"[align] WARNING: alignment skipped: {e}", err=True)
 
         fix_atoms: List[int] = []
         try:
@@ -1002,7 +1002,7 @@ def cli(
                     dmf_cfg=dmf_cfg,
                 )
             except Exception as e:
-                click.echo(f"[dmf] ERROR: DMF optimization failed: {e}")
+                click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
                 sys.exit(3)
 
             try:
@@ -1037,7 +1037,7 @@ def cli(
                                 err=True,
                             )
             except Exception as e:
-                click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}")
+                click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
                 sys.exit(5)
 
             click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
@@ -1121,7 +1121,7 @@ def cli(
                     )
 
         except Exception as e:
-            click.echo(f"[write] ERROR: Failed to write final trajectory: {e}")
+            click.echo(f"[write] ERROR: Failed to write final trajectory: {e}", err=True)
             sys.exit(4)
 
         # --------------------------
@@ -1167,7 +1167,7 @@ def cli(
                 click.echo("[convert] Skipped HEI conversion (no PDB/GJF template).")
 
         except Exception as e:
-            click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}")
+            click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
             sys.exit(5)
 
         _write_output_summary_md(out_dir_path)
@@ -1175,7 +1175,7 @@ def cli(
         click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
 
     except OptimizationError as e:
-        click.echo(f"ERROR: Path optimization failed — {e}")
+        click.echo(f"ERROR: Path optimization failed — {e}", err=True)
         sys.exit(3)
     except KeyboardInterrupt:
         click.echo("Interrupted by user.")

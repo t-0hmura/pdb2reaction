@@ -62,12 +62,16 @@ from .utils import (
     ensure_dir,
     make_snapshot_geometry,
     cli_param_overridden,
-    load_yaml_dict,
     distance_A_from_coords,
     distance_tag,
     set_freeze_atoms_or_warn,
 )
-from .scan_common import add_scan_common_options, build_scan_defaults
+from .scan_common import (
+    add_scan_common_options,
+    build_scan_defaults,
+    load_merged_yaml_cfg,
+    resolve_yaml_sources,
+)
 from .scan2d import _build_scan_context
 
 # Defaults imported from defaults.py
@@ -165,7 +169,9 @@ def cli(
     out_dir: str,
     csv_path: Optional[Path],
     thresh: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
     preopt: bool,
     print_parsed: bool,
     baseline: str,
@@ -173,6 +179,16 @@ def cli(
     zmax: Optional[float],
 ) -> None:
     set_convert_file_enabled(convert_files)
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
@@ -185,7 +201,10 @@ def cli(
     ) -> None:
         time_start = time.perf_counter()
 
-        yaml_cfg = load_yaml_dict(args_yaml)
+        yaml_cfg = load_merged_yaml_cfg(
+            config_yaml=config_yaml,
+            override_yaml=override_yaml,
+        )
         yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
         relax_override_requested = cycles_overridden and not (
             isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
@@ -374,7 +393,7 @@ def cli(
                     f.write(s_pre)
                 click.echo(f"[preopt] Wrote '{preopt_xyz_path}'.")
             except Exception as e:
-                click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}")
+                click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
 
             convert_xyz_like_outputs(
                 preopt_xyz_path,
@@ -599,7 +618,7 @@ def cli(
                             with open(xyz_path, "w") as f:
                                 f.write(s)
                         except Exception as e:
-                            click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}")
+                            click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
                         else:
                             convert_xyz_like_outputs(
                                 xyz_path,
@@ -636,7 +655,7 @@ def cli(
                                 f.write("".join(trj_blocks))
                             click.echo(f"[write] Wrote '{trj_path}'.")
                         except Exception as e:
-                            click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}")
+                            click.echo(f"[write] WARNING: failed to write '{trj_path}': {e}", err=True)
                         else:
                             convert_xyz_like_outputs(
                                 trj_path,

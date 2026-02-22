@@ -1795,6 +1795,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @click.option(
     "-m",
     "--mult",
+    "--multiplicity",
     "spin",
     type=int,
     default=1,
@@ -3181,14 +3182,10 @@ def cli(
             str(int(spin)),
             "--out-dir",
             str(scan_dir),
-            "--freeze-links",
-            "True" if freeze_links_flag else "False",
-            "--convert-files",
-            "True" if convert_files else "False",
-            "--preopt",
-            "True" if scan_preopt_use else "False",
-            "--endopt",
-            "True" if scan_endopt_use else "False",
+            "--freeze-links" if freeze_links_flag else "--no-freeze-links",
+            "--convert-files" if convert_files else "--no-convert-files",
+            "--preopt" if scan_preopt_use else "--no-preopt",
+            "--endopt" if scan_endopt_use else "--no-endopt",
             "--opt-mode",
             str(scan_opt_mode_use),
         ]
@@ -3196,12 +3193,10 @@ def cli(
             scan_args.extend(["--ref-pdb", str(scan_input_pdb)])
 
         if dump_override_requested:
-            scan_args.extend(
-                ["--dump", "True" if dump else "False"]
-            )
+            scan_args.append("--dump" if dump else "--no-dump")
 
         if scan_one_based is not None:
-            scan_args.extend(["--one-based", "True" if scan_one_based else "False"])
+            scan_args.append("--one-based" if scan_one_based else "--zero-based")
 
         _append_cli_arg(scan_args, "--max-step-size", scan_max_step_size)
         _append_cli_arg(scan_args, "--bias-k", scan_bias_k)

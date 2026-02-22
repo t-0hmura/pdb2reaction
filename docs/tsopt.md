@@ -163,7 +163,7 @@ out_dir/ (default: ./result_tsopt/)
 ```
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--opt-mode` aliases map exactly to the workflows described above; pick one for the intended
   algorithm rather than adjusting YAML keys manually (default: `heavy`).
@@ -181,7 +181,7 @@ Use `--config` for the base mapping and `--override-yaml` for the final YAML ove
 `defaults < config < explicit CLI < override`.
 
 Shared sections reuse
-[YAML Reference](yaml-reference.md). Keep the full block below intact if it already
+[YAML Reference](yaml_reference.md). Keep the full block below intact if it already
 matches your workflow—adjust only the values you need to change.
 
 ```yaml
@@ -314,11 +314,11 @@ rsirfo:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
 - [irc](irc.md) — Trace the reaction path from an optimized TS
 - [freq](freq.md) — Confirm a single imaginary frequency (expected for a validated TS)
 - [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
-- [YAML Reference](yaml-reference.md) — Full `hessian_dimer` and `rsirfo` configuration options
+- [YAML Reference](yaml_reference.md) — Full `hessian_dimer` and `rsirfo` configuration options
 - [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

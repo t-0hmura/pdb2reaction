@@ -39,7 +39,7 @@ On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to lar
 
 ```{tip}
 If you are new to the project, read [Concepts & Workflow](concepts.md) first.
-For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md).
+For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md).
 If you encounter an error during setup or runtime, refer to [Troubleshooting](troubleshooting.md).
 ```
 
@@ -52,7 +52,7 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 | **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` |
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` |
 
-For full details, see [CLI Conventions](cli-conventions.md).
+For full details, see [CLI Conventions](cli_conventions.md).
 
 `path-search` naming note: the CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
 
@@ -195,9 +195,9 @@ If you prefer to build the environment piece by piece:
 
 ## Quickstart routes (recommended)
 
-- [Quickstart: run `pdb2reaction all`](quickstart-all.md)
-- [Quickstart: run `pdb2reaction scan` with `--spec`](quickstart-scan-spec.md)
-- [Quickstart: validate TS with `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart-tsopt-freq.md)
+- [Quickstart: run `pdb2reaction all`](quickstart_all.md)
+- [Quickstart: run `pdb2reaction scan` with `--spec`](quickstart_scan_spec.md)
+- [Quickstart: validate TS with `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
 
 ---
 
@@ -347,7 +347,7 @@ Below are the most commonly used options across workflows.
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian calculation mode. **Analytical recommended when VRAM available.** |
 
-For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml-reference.md).
+For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml_reference.md).
 
 ---
 
@@ -391,7 +391,7 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `freq` | Vibrational analysis | [freq](freq.md) |
 | `dft` | Single-point DFT | [dft](dft.md) |
 | `trj2fig` | Plot energy profiles | [trj2fig](trj2fig.md) |
-| `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy-diagram.md) |
+| `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy_diagram.md) |
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
 ```{important}

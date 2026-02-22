@@ -63,7 +63,8 @@ Options:
                                   predictor (workers>1).  [default: 1]
   --verbose BOOLEAN               Enable INFO-level logging inside extractor.
                                   [default: True]
-  -m, --mult INTEGER              Multiplicity (2S+1).  [default: 1]
+  -m, --mult, --multiplicity INTEGER
+                                  Multiplicity (2S+1).  [default: 1]
   --freeze-links BOOLEAN          For pocket PDB input, freeze parent atoms of
                                   link hydrogens.  [default: True]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or

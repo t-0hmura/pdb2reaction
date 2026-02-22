@@ -7,14 +7,14 @@
 :caption: Guides
 :hidden:
 
-getting-started
-quickstart-all
-quickstart-scan-spec
-quickstart-tsopt-freq
+getting_started
+quickstart_all
+quickstart_scan_spec
+quickstart_tsopt_freq
 concepts
-recipes-common-errors
+recipes_common_errors
 troubleshooting
-cli-conventions
+cli_conventions
 ```
 
 ```{toctree}
@@ -46,7 +46,7 @@ energy-diagram
 :caption: Reference
 :hidden:
 
-yaml-reference
+yaml_reference
 uma_pysis
 glossary
 ```
@@ -58,9 +58,9 @@ glossary
 
 | 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
-| 最初の 1 回を実行（エンドツーエンド） | `pdb2reaction all` | [クイックスタート: all](quickstart-all.md) |
-| 単一構造スキャン（`--spec`） | `pdb2reaction scan` | [クイックスタート: scan + spec](quickstart-scan-spec.md) |
-| TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart-tsopt-freq.md) |
+| 最初の 1 回を実行（エンドツーエンド） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
+| 単一構造スキャン（`--spec`） | `pdb2reaction scan` | [クイックスタート: scan + spec](quickstart_scan_spec.md) |
+| TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart_tsopt_freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
 | `all` 用 YAML テンプレートを生成 | `pdb2reaction init` | [init.md](init.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
@@ -69,8 +69,8 @@ glossary
 | 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
-| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
-| 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes-common-errors.md) |
+| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy_diagram.md](energy_diagram.md) |
+| 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes_common_errors.md) |
 | 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
@@ -81,10 +81,10 @@ glossary
 
 ### はじめに
 
-- [**はじめに**](getting-started.md) - インストール、クイックスタート、概要
+- [**はじめに**](getting_started.md) - インストール、クイックスタート、概要
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
-- [**典型エラー別レシピ**](recipes-common-errors.md) - 症状別の最短対処ルート
-- [**CLI 規約**](cli-conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
+- [**典型エラー別レシピ**](recipes_common_errors.md) - 症状別の最短対処ルート
+- [**CLI 規約**](cli_conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
 - [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
 - [**システム要件**](#システム要件) - 必要なハードウェア・ソフトウェア
 
@@ -127,13 +127,13 @@ glossary
 | [`freq`](freq.md) | 振動数解析と熱化学 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
-| [`energy-diagram`](energy-diagram.md) | 数値入力から状態エネルギーダイアグラムを作成 |
+| [`energy-diagram`](energy_diagram.md) | 数値入力から状態エネルギーダイアグラムを作成 |
 
 ### 設定・リファレンス
 
 - [**CLI コマンドリファレンス（自動生成）**](../reference/commands/index.md)
 - [**YAML スキーマ（自動生成）**](../reference/yaml.md)
-- [**YAML リファレンス**](yaml-reference.md) - 全サブコマンドの YAML 設定オプション
+- [**YAML リファレンス**](yaml_reference.md) - 全サブコマンドの YAML 設定オプション
 - [**UMA 計算機**](uma_pysis.md) - UMA 機械学習ポテンシャル設定
 - [**用語集**](glossary.md) - 略語と技術用語の定義
 
@@ -199,7 +199,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ```bash
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml override.yaml
 ```
-すべてのオプションについては [YAML リファレンス](yaml-reference.md) を参照してください。
+すべてのオプションについては [YAML リファレンス](yaml_reference.md) を参照してください。
 
 ---
 

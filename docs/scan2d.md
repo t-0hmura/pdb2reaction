@@ -14,11 +14,28 @@
 `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased UMA energies for visualization. Use `--opt-mode heavy` when you need RFOptimizer instead of LBFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+YAML can be layered via `--config` (base) and `--override-yaml` (final overlay); `--args-yaml` remains as a legacy alias of `--override-yaml`.
+
+## Minimal example
+```bash
+pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed --out-dir ./result_scan2d/
+```
+
+## Output checklist
+- `result_scan2d/surface.csv`
+- `result_scan2d/grid/point_i000_j000.xyz`
+- `result_scan2d/scan2d_map.png` and `result_scan2d/scan2d_landscape.html`
+
+## Common examples
+1. Validate parsed scan targets from a YAML spec.
+2. Run with a legacy `--scan-lists` literal for compatibility.
+3. Enable `--dump` to store inner trajectories by d1 step.
 
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options]
+                    [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+                    [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
                     [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -148,7 +165,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `--spec FILE` | YAML/JSON spec with `pairs` (2 quadruples); optional `one_based`. | Recommended |
 | `--scan-lists, --scan-list TEXT` | **Single legacy** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
-| `--one-based/--no-one-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
+| `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--spec`/`--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
@@ -160,14 +177,16 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`. | _None_ |
+| `--config FILE` | Base YAML configuration file (applied first). | _None_ |
+| `--override-yaml FILE` | Final YAML override file (highest-priority YAML layer). | _None_ |
+| `--args-yaml FILE` | Legacy alias of `--override-yaml` for backward compatibility. | _None_ |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
   scan trajectory output is controlled by `--dump`.
 
 ### Section `bias`
@@ -186,7 +205,7 @@ out_dir/ (default: ./result_scan2d/)
 ```
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - UMA via `uma_pysis` is the only calculator backend and reuses the same
   `HarmonicBiasCalculator` as the 1D scan.
@@ -197,8 +216,8 @@ out_dir/ (default: ./result_scan2d/)
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
   PDB inputs, keeping extracted pockets rigid.
 
-## YAML configuration (`--args-yaml`)
-A minimal example (extend with the same keys documented in {ref}`opt <yaml-configuration-args-yaml>`):
+## YAML configuration (`--config` / `--override-yaml` / `--args-yaml`)
+YAML layers merge as **`--config` < `--override-yaml`** (`--args-yaml` is a legacy alias of `--override-yaml`). A minimal example (extend with the same keys documented in {ref}`opt <yaml-configuration-args-yaml>`):
 
 ```yaml
 geom:
@@ -232,5 +251,5 @@ More YAML options about `opt` are available in [docs/opt.md](opt.md).
 - [scan3d](scan3d.md) -- 3D distance-grid scan
 - [opt](opt.md) -- single-structure optimization before/after scans
 - [all](all.md) -- end-to-end workflow wrapper
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide

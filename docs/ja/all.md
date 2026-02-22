@@ -290,7 +290,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 `summary.yaml` には `summary.log` にある整形テーブルやファイルツリーは含まれません。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 形式電荷が推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFTへ正しい総電荷を伝播させてください。
 - マージ用の参照 PDB テンプレートは元の入力から自動導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に隠されています。
@@ -336,20 +336,20 @@ dft:
   grid_level: 6
 ```
 
-すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml-reference.md)** を参照してください。
+すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml_reference.md)** を参照してください。
 
 ---
 
 ## 関連項目
 
-- [はじめに](getting-started.md) — インストールと初回実行
+- [はじめに](getting_started.md) — インストールと初回実行
 - [概念とワークフロー](concepts.md) — ポケット、セグメント、ステージの全体像
 - [extract](extract.md) — 単独のポケット抽出（`all` が内部で呼び出し）
 - [path-search](path_search.md) — 単独のMEP 探索（`all` が内部で呼び出し）
 - [tsopt](tsopt.md) — 単独のTS最適化
 - [freq](freq.md) — 単独の振動解析
 - [dft](dft.md) — 単独のDFT計算
-- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
-- [YAML リファレンス](yaml-reference.md) — 全YAML設定オプション
+- [YAML リファレンス](yaml_reference.md) — 全YAML設定オプション
 - [用語集](glossary.md) — MEP、TS、IRC、GSM、DMFの定義

@@ -196,7 +196,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 def _resolve_yaml_sources(
@@ -1152,7 +1152,7 @@ class HessianDimer:
 
         # (2) Loose loop (or initial pass)
         if self.root != 0:
-            click.echo("[WARNING] root != 0. Using this root only for the initial dimer loop.")
+            click.echo("[WARNING] root != 0. Using this root only for the initial dimer loop.", err=True)
             click.echo(f"Dimer loop with initial direction from mode {self.root}...")
             self.root = 0
             self.thresh_loose = self.thresh
@@ -1800,7 +1800,7 @@ def cli(
                         ):
                             click.echo("[convert] Wrote 'optimization_all' outputs.")
                     else:
-                        click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.")
+                        click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
 
             else:
                 # RS-I-RFO (heavy)
@@ -1918,7 +1918,7 @@ def cli(
                         ):
                             click.echo("[convert] Wrote 'optimization' outputs.")
                     else:
-                        click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.")
+                        click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
 
                 # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
                 neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
@@ -1962,10 +1962,10 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
 
         except ZeroStepLength:
-            click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).")
+            click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
             sys.exit(2)
         except OptimizationError as e:
-            click.echo(f"ERROR: Optimization failed — {e}")
+            click.echo(f"ERROR: Optimization failed — {e}", err=True)
             sys.exit(3)
         except KeyboardInterrupt:
             click.echo("Interrupted by user.")

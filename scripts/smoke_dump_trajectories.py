@@ -15,6 +15,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_MODULE = "pdb2reaction"
 TIMEOUT_ENV = "PDB2REACTION_DUMP_CASE_TIMEOUT_SEC"
+GENERIC_TIMEOUT_ENV = "DOCS_DUMP_CASE_TIMEOUT_SEC"
 DEFAULT_CASE_TIMEOUT_SEC = 120.0
 
 
@@ -113,7 +114,14 @@ def main() -> int:
         print(f"[dump-smoke] skipped: {reason}")
         return 0
 
-    timeout_raw = os.environ.get(TIMEOUT_ENV, "").strip()
+    timeout_raw = ""
+    timeout_env = TIMEOUT_ENV
+    for env_name in (GENERIC_TIMEOUT_ENV, TIMEOUT_ENV):
+        raw = os.environ.get(env_name, "").strip()
+        if raw:
+            timeout_raw = raw
+            timeout_env = env_name
+            break
     timeout_sec = float(timeout_raw) if timeout_raw else DEFAULT_CASE_TIMEOUT_SEC
     if timeout_sec <= 0:
         timeout_sec = None
@@ -121,7 +129,7 @@ def main() -> int:
     if timeout_sec is None:
         print("[dump-smoke] per-case timeout: disabled")
     else:
-        print(f"[dump-smoke] per-case timeout: {timeout_sec:.1f}s (env: {TIMEOUT_ENV})")
+        print(f"[dump-smoke] per-case timeout: {timeout_sec:.1f}s (env: {timeout_env})")
 
     with tempfile.TemporaryDirectory(prefix="pdb2_dump_smoke_") as td:
         base = Path(td)

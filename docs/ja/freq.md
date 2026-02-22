@@ -122,14 +122,14 @@ out_dir/ (デフォルト: ./result_freq/)
 コンソールには確定済みの `geom`/`calc`/`freq` 設定と熱化学設定の要約が出力されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 虚振動モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - `--hessian-calc-mode` は **デフォルト < config < 明示CLI < override** の優先順位で解決されます。YAML で `calc.hessian_calc_mode` が指定されている場合、最終 override レイヤーが優先されます。
 
 
 ## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。`--args-yaml` は `--override-yaml` の legacy alias です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
 
 ```yaml
 geom:
@@ -163,11 +163,11 @@ thermo:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — 遷移状態の最適化（妥当な TS であれば虚振動数は 1 つのみ）
 - [irc](irc.md) — TS からの IRC（端点での freq と組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
 - [all](all.md) — `--thermo` を含むエンドツーエンドワークフロー
-- [YAML リファレンス](yaml-reference.md) — `freq` と `thermo` の設定オプション一覧
+- [YAML リファレンス](yaml_reference.md) — `freq` と `thermo` の設定オプション一覧
 - [用語集](glossary.md) — ZPE、ギブズエネルギー、エンタルピー、エントロピーの定義

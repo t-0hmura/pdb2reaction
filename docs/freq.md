@@ -139,7 +139,7 @@ out_dir/ (default: ./result_freq/)
 - Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
   and dumps details when `--dump`.
@@ -148,7 +148,7 @@ out_dir/ (default: ./result_freq/)
 
 ## YAML configuration (`--config`, `--override-yaml`, `--args-yaml`)
 Provide mappings with merge order **defaults < config < explicit CLI < override**.
-`--args-yaml` is a legacy alias of `--override-yaml`. Shared sections reuse [YAML Reference](yaml-reference.md).
+`--args-yaml` is a legacy alias of `--override-yaml`. Shared sections reuse [YAML Reference](yaml_reference.md).
 An additional `thermo` section is supported for thermochemistry controls.
 
 ```yaml
@@ -183,11 +183,11 @@ thermo:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize TS candidates (validate with freq/IRC; expected: one imaginary frequency)
 - [irc](irc.md) — IRC from TS (often paired with freq on endpoints)
 - [dft](dft.md) — Single-point DFT for higher-level energy refinement
 - [all](all.md) — End-to-end workflow with `--thermo`
-- [YAML Reference](yaml-reference.md) — Full `freq` and `thermo` configuration options
+- [YAML Reference](yaml_reference.md) — Full `freq` and `thermo` configuration options
 - [Glossary](glossary.md) — Definitions of ZPE, Gibbs Energy, Enthalpy, Entropy

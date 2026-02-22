@@ -116,8 +116,8 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ## Next steps
 
 ### Getting started
-- [Getting Started](getting-started.md) — installation and first run
-- [Common Error Recipes](recipes-common-errors.md) — symptom-first failure routing
+- [Getting Started](getting_started.md) — installation and first run
+- [Common Error Recipes](recipes_common_errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
 
 ### Core subcommands
@@ -131,5 +131,5 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 | `dft` | Single-point DFT | [dft.md](dft.md) |
 
 ### Reference
-- [YAML Reference](yaml-reference.md) — complete YAML configuration options
+- [YAML Reference](yaml_reference.md) — complete YAML configuration options
 - [Glossary](glossary.md) — terminology reference

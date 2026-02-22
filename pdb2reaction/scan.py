@@ -4,7 +4,7 @@
 Staged bond-length scan with harmonic restraints and full relaxation using UMA calculator.
 
 Example:
-    pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]' --preopt True --endopt True
+    pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]' --preopt --endopt
 
 For detailed documentation, see: docs/scan.md
 """
@@ -43,7 +43,6 @@ from .opt import HarmonicBiasCalculator
 from .utils import (
     build_sopt_kwargs,
     make_sopt_optimizer,
-    load_yaml_dict,
     build_scan_configs,
     collect_single_option_values,
     cli_param_overridden,
@@ -66,7 +65,11 @@ from .utils import (
 )
 from .cli_utils import run_cli
 from .bond_changes import has_bond_change
-from .scan_common import add_scan_common_options
+from .scan_common import (
+    add_scan_common_options,
+    load_merged_yaml_cfg,
+    resolve_yaml_sources,
+)
 
 
 # All defaults imported from defaults.py
@@ -200,8 +203,13 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     show_default=True,
     help="Print parsed scan targets after resolving --spec/--scan-list(s).",
 )
-@click.option("--endopt", type=click.BOOL, default=True, show_default=True,
-              help="After each stage, run an additional unbiased optimization of the stage result.")
+@click.option(
+    "--endopt/--no-endopt",
+    "endopt",
+    default=True,
+    show_default=True,
+    help="After each stage, run an additional unbiased optimization of the stage result.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -224,12 +232,24 @@ def cli(
     ref_pdb: Optional[Path],
     out_dir: str,
     thresh: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
     preopt: bool,
     print_parsed: bool,
     endopt: bool,
 ) -> None:
     set_convert_file_enabled(convert_files)
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
@@ -252,7 +272,10 @@ def cli(
             # ------------------------------------------------------------------
             # 1) Assemble configuration (defaults ← CLI ← YAML) - create fresh copies for merging
             # ------------------------------------------------------------------
-            yaml_cfg = load_yaml_dict(args_yaml)
+            yaml_cfg = load_merged_yaml_cfg(
+                config_yaml=config_yaml,
+                override_yaml=override_yaml,
+            )
             yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
             relax_override_requested = cycles_overridden and not (
                 isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
@@ -545,7 +568,7 @@ def cli(
                         srec["bond_change"]["changed"] = bool(changed)
                         srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
                     except Exception as e:
-                        click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}")
+                        click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
 
                     # Write current (possibly endopted) geometry as the stage result
                     final_xyz = stage_dir / "result.xyz"
@@ -639,7 +662,7 @@ def cli(
                     srec["bond_change"]["changed"] = bool(changed)
                     srec["bond_change"]["summary"] = (summary.strip() if (summary and summary.strip()) else "")
                 except Exception as e:
-                    click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}")
+                    click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
 
                 # Stage outputs
                 if dump and trj_blocks:

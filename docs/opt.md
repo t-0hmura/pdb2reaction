@@ -249,12 +249,12 @@ rfo:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 
 - [tsopt](tsopt.md) — Optimize transition states (saddle points) instead of minima
 - [freq](freq.md) — Vibrational analysis to confirm optimization reached a minimum
 - [extract](extract.md) — Generate pocket PDBs before optimization
 - [all](all.md) — End-to-end workflow that pre-optimizes endpoints
-- [YAML Reference](yaml-reference.md) — Full `opt`, `lbfgs`, `rfo` configuration options
+- [YAML Reference](yaml_reference.md) — Full `opt`, `lbfgs`, `rfo` configuration options
 - [Glossary](glossary.md) — Definitions of L-BFGS, RFO

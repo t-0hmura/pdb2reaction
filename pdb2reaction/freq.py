@@ -185,7 +185,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 def _torch_device(auto: str = "auto") -> torch.device:
@@ -690,7 +690,7 @@ CALC_KW["return_partial_hessian"] = True
 )
 # Hessian calculation mode
 @click.option("--hessian-calc-mode",
-              type=click.Choice(["FiniteDifference", "Analytical"]),
+              type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None,
               help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 @click.pass_context
@@ -1041,7 +1041,7 @@ def cli(
                 click.echo(f"[dump] Wrote thermoanalysis summary → {out_yaml}")
 
         except ImportError:
-            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.")
+            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.", err=True)
         except Exception as e:
             import traceback
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

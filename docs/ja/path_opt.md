@@ -153,7 +153,7 @@ out_dir/
 - StringOptimizer設定: type, `stop_in_when_full`, `scale_step`, `max_cycles`, dump系、`reparam_thresh`, `coord_diff_thresh`, `out_dir`, `print_every`。
 
 ### `sopt.lbfgs` / `sopt.rfo`
-- エンドポイント事前最適化の単一構造オプティマイザー設定。キーは [YAML リファレンス](yaml-reference.md) の `lbfgs` / `rfo` と同等で、YAML が CLI の `--preopt-max-cycles` を上書きします。
+- エンドポイント事前最適化の単一構造オプティマイザー設定。キーは [YAML リファレンス](yaml_reference.md) の `lbfgs` / `rfo` と同等で、YAML が CLI の `--preopt-max-cycles` を上書きします。
 
 ### YAML例（デフォルト値）
 ```yaml
@@ -236,12 +236,12 @@ dmf:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 
 - [path-search](path_search.md) — 自動精密化を伴う再帰的MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEIをTS 候補として最適化（freq/IRCで検証）
 - [extract](extract.md) — path-opt入力用のポケットPDBを生成
 - [all](all.md) — エンドツーエンドワークフロー（デフォルトでpath-searchを使用）
-- [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`opt` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

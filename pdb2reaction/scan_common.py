@@ -7,6 +7,8 @@ from typing import Callable, Dict, Tuple, Any
 
 import click
 
+from .utils import deep_update, load_yaml_dict
+
 
 def add_scan_common_options(
     *,
@@ -78,9 +80,8 @@ def add_scan_common_options(
             help="Spin multiplicity (2S+1) for the ML region.",
         ),
         click.option(
-            "--one-based",
+            "--one-based/--zero-based",
             "one_based",
-            type=click.BOOL,
             default=one_based_default,
             show_default=True,
             help="Interpret (i,j) indices in --scan-list as 1-based (default) or 0-based.",
@@ -117,23 +118,22 @@ def add_scan_common_options(
             help="Relaxation mode: light (=LBFGS) or heavy (=RFO).",
         ),
         click.option(
-            "--freeze-links",
-            type=click.BOOL,
+            "--freeze-links/--no-freeze-links",
+            "freeze_links",
             default=freeze_links_default,
             show_default=True,
             help="If input is PDB, freeze parent atoms of link hydrogens.",
         ),
         click.option(
-            "--dump",
-            type=click.BOOL,
+            "--dump/--no-dump",
+            "dump",
             default=dump_default,
             show_default=True,
             help=dump_help,
         ),
         click.option(
-            "--convert-files",
+            "--convert-files/--no-convert-files",
             "convert_files",
-            type=click.BOOL,
             default=convert_files_default,
             show_default=True,
             help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
@@ -162,14 +162,31 @@ def add_scan_common_options(
             ),
         ),
         click.option(
-            "--args-yaml",
+            "--config",
+            "config_yaml",
             type=click.Path(path_type=Path, exists=True, dir_okay=False),
             default=None,
-            help=f"YAML file with extra args (sections: {args_yaml_sections}).",
+            show_default=False,
+            help="Base YAML configuration file applied before explicit CLI options.",
         ),
         click.option(
-            "--preopt",
-            type=click.BOOL,
+            "--override-yaml",
+            "override_yaml",
+            type=click.Path(path_type=Path, exists=True, dir_okay=False),
+            default=None,
+            show_default=False,
+            help="Final YAML override file (highest-priority YAML layer).",
+        ),
+        click.option(
+            "--args-yaml",
+            "args_yaml_legacy",
+            type=click.Path(path_type=Path, exists=True, dir_okay=False),
+            default=None,
+            help=f"[legacy] Alias of --override-yaml; sections: {args_yaml_sections}.",
+        ),
+        click.option(
+            "--preopt/--no-preopt",
+            "preopt",
             default=preopt_default,
             show_default=True,
             help="Pre-optimize the initial structure without bias before the scan.",
@@ -240,3 +257,29 @@ def build_scan_defaults(
     rfo_cfg = dict(rfo_kw)
     rfo_cfg.update({"out_dir": out_dir})
     return geom_kw, calc_kw, opt_cfg, lbfgs_cfg, rfo_cfg
+
+
+def resolve_yaml_sources(
+    config_yaml: Path | None,
+    override_yaml: Path | None,
+    args_yaml_legacy: Path | None,
+) -> tuple[Path | None, Path | None, bool]:
+    """Resolve YAML layers and legacy alias usage for scan-family commands."""
+    if override_yaml is not None and args_yaml_legacy is not None:
+        raise click.BadParameter(
+            "Use either --override-yaml or --args-yaml (legacy alias), not both."
+        )
+    if args_yaml_legacy is not None:
+        return config_yaml, args_yaml_legacy, True
+    return config_yaml, override_yaml, False
+
+
+def load_merged_yaml_cfg(
+    config_yaml: Path | None,
+    override_yaml: Path | None,
+) -> Dict[str, Any]:
+    """Load and deep-merge scan YAML layers as config < override."""
+    merged: Dict[str, Any] = {}
+    deep_update(merged, load_yaml_dict(config_yaml))
+    deep_update(merged, load_yaml_dict(override_yaml))
+    return merged

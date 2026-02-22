@@ -118,8 +118,8 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ## 次に読むページ
 
 ### 入門
-- [はじめに](getting-started.md) — インストールと初回実行
-- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
+- [はじめに](getting_started.md) — インストールと初回実行
+- [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 
 ### 主要サブコマンド
@@ -133,5 +133,5 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 | `dft` | DFT 一点計算 | [dft.md](dft.md) |
 
 ### リファレンス
-- [YAML リファレンス](yaml-reference.md) — 全オプションの YAML 設定
+- [YAML リファレンス](yaml_reference.md) — 全オプションの YAML 設定
 - [用語集](glossary.md) — 用語リファレンス

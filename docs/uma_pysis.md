@@ -195,7 +195,7 @@ Within `pdb2reaction` commands (e.g., `all`, `opt`, `path-opt`), calculator sett
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 - [opt](opt.md) -- Single-structure optimization using UMA
 - [path_opt](path_opt.md) -- MEP optimization with UMA calculator

@@ -226,7 +226,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 def _resolve_yaml_sources(
@@ -323,7 +323,7 @@ def _safe_array(label: str, what: str, func):
         vals = func()
         return np.asarray(vals, dtype=float).tolist()
     except Exception as e:
-        click.echo(f"{label} WARNING: Failed to compute {what}: {e}")
+        click.echo(f"{label} WARNING: Failed to compute {what}: {e}", err=True)
         return None
 
 
@@ -684,7 +684,7 @@ def cli(
             try:
                 from pyscf import gto
             except Exception as e:
-                click.echo(f"ERROR: PySCF import failed: {e}")
+                click.echo(f"ERROR: PySCF import failed: {e}", err=True)
                 sys.exit(2)
 
             mol = gto.Mole()
@@ -721,7 +721,7 @@ def cli(
                 is_blackwell_gpu = False
 
             if is_blackwell_gpu:
-                click.echo("[gpu] WARNING: Detected a Blackwell GPU; GPU4PySCF may be unsupported.")
+                click.echo("[gpu] WARNING: Detected a Blackwell GPU; GPU4PySCF may be unsupported.", err=True)
             # --------------------------------------------------
 
 
@@ -841,7 +841,7 @@ def cli(
 
             # Exit codes: 0 if converged, 3 otherwise
             if not converged:
-                click.echo("WARNING: SCF did not converge to the requested tolerance.")
+                click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
                 sys.exit(3)
 
             click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))

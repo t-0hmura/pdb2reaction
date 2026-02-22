@@ -203,7 +203,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ---
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--radius` のデフォルトは 2.6 Å。`0` を指定すると空選択を避けるため内部で 0.001 Å に調整されます。`--radius-het2het` もデフォルトは無効で、`0` 指定時は 0.001 Å に調整されます。
 - `--no-include-H2O` で水を除外できます。
@@ -215,7 +215,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [all](all.md) — `-c/--center` で内部的にextractを呼び出すエンドツーエンドワークフロー
 - [path-search](path_search.md) — 抽出されたポケットでのMEP 探索

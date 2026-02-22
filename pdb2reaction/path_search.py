@@ -279,7 +279,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 # Local configs with path_search-specific out_dir
@@ -547,9 +547,9 @@ def _run_mep_between(
             close_matplotlib_figures()
             click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
         else:
-            click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.")
+            click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}")
+        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
 
     # Convert trajectory and HEI outputs based on the input template
     prepared_for_outputs = prepared_input
@@ -617,7 +617,7 @@ def _run_mep_between(
                     err=True,
                 )
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}")
+        click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
     return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
 
@@ -702,7 +702,7 @@ def _run_dmf_between(
         close_matplotlib_figures()
         click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'")
     except Exception as e:
-        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}")
+        click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
 
     imgs: List[Any] = []
     for atoms in dmf_res.images:
@@ -1035,7 +1035,7 @@ def _build_multistep_path(
         try:
             changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
-            click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}")
+            click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
             changed, step_summary = True, ""
 
         try:
@@ -1100,7 +1100,7 @@ def _build_multistep_path(
 
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
-        click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.")
+        click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.", err=True)
         _tag_images(gsm0.images, pair_index=pair_index)
         return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
 
@@ -1147,7 +1147,7 @@ def _build_multistep_path(
     try:
         lr_changed, lr_summary = has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
-        click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}")
+        click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
         lr_changed, lr_summary = True, ""
     use_kink = (not lr_changed)
 
@@ -1710,7 +1710,7 @@ def _merge_final_and_write(final_images: List[Any],
                     f.write("END\n")
                 click.echo(f"[merge] Wrote merged HEI for segment → '{out_hei}'")
             except Exception as e:
-                click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}")
+                click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}", err=True)
 
 
 # -----------------------------------------------
@@ -2317,7 +2317,7 @@ def cli(
                 )
                 click.echo("[align] Completed input alignment.")
             except Exception as e:
-                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}")
+                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
         else:
             click.echo("[align] Skipping input alignment as requested by --align False.")
 
@@ -2433,7 +2433,7 @@ def cli(
             close_matplotlib_figures()
             click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'")
         except Exception as e:
-            click.echo(f"[plot] WARNING: Failed to plot final energy: {e}")
+            click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
         if needs_pdb or needs_gjf:
             try:
@@ -2446,7 +2446,7 @@ def cli(
                 )
                 click.echo("[convert] Wrote final MEP outputs.")
             except Exception as e:
-                click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}")
+                click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
 
         # Pocket‑only per‑segment trajectories & HEIs (bond‑change segments only)
         try:
@@ -2508,7 +2508,7 @@ def cli(
                                 err=True,
                             )
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}")
+            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
 
         if do_merge:
             click.echo("\n====== Full-system merge (pocket → templates) started ======\n")
@@ -2746,7 +2746,7 @@ def cli(
             click.echo(f"[diagram] State label sequence: {chain_text}")
 
         except Exception as e:
-            click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}")
+            click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
 
         # --------------------------
         # 7) Summary (YAML)
@@ -2826,7 +2826,7 @@ def cli(
             write_summary_log(out_dir_path / "summary.log", summary_payload)
             click.echo(f"[write] Wrote '{out_dir_path / 'summary.log'}'.")
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to write summary.log: {e}")
+            click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
 
         _write_output_summary_md(out_dir_path)
 

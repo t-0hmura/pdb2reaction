@@ -1,17 +1,75 @@
-# pdb2reaction/bond_changes.py
+# bond_changes.py
 
 """
-Bond-change detection using covalent radii and distance matrices.
+bond_changes — Bond-change detection and reporting utilities
+====================================================================
+
+Usage (API)
+-----
+    from <package>.bond_changes import compare_structures, summarize_changes
+
+Examples::
+    >>> result = compare_structures(geom_reactant, geom_product, device="cpu")
+    >>> print(summarize_changes(geom_product, result))
+    Bond formed (1)
+      C1-O2 1.50 Å --> 1.36 Å
+
+Description
+-----
+This module compares two molecular geometries with identical atom types and ordering and reports covalent bonds that are formed
+or broken between the structures. Bond perception uses element-specific covalent radii and configurable tolerances; distances are computed with PyTorch on CPU or CUDA.
+
+Algorithm (core logic):
+- Inputs: `geom1`, `geom2` with attributes `atoms: Iterable[str]` and `coords3d: (N, 3) float` (in Bohr in pysisyphus). Atoms must match exactly (`assert geom1.atoms == geom2.atoms`).
+- Per-element radii: from `pysisyphus.elem_data.COVALENT_RADII`.
+- Threshold per pair (i, j): `T_cov = bond_factor * (r_i + r_j)`; conservative margin `eps = margin_fraction * T_cov`.
+- Bond adjacency in a geometry: `A = (D <= T_cov - eps)` evaluated only for `i < j` (upper triangle).
+- Change gating: only pairs with `|D2 - D1| >= delta_fraction * T_cov` are considered.
+- Classification:
+    - Formed: `(~A1) & A2 & need_change`
+    - Broken:  `A1 & (~A2) & need_change`
+- Distances: pairwise matrices `D1`, `D2` via `torch.cdist`.
 
 Public API:
-- compare_structures(geom1, geom2, **params) -> BondChangeResult
-- summarize_changes(geom, result, one_based=True) -> str
-- has_bond_change(geom_start, geom_end, bond_cfg, one_based=True) -> (bool, str)
+- `compare_structures(geom1, geom2, device='cuda', bond_factor=1.20, margin_fraction=0.05, delta_fraction=0.05) -> BondChangeResult`
+  Detects formed and broken covalent bonds. Returns sets of zero-based index pairs and (by default) the full distance matrices (`numpy.ndarray`) in the same units as the inputs (Bohr in pysisyphus).
+- `summarize_changes(geom, result, one_based: bool = True) -> str`
+  Builds a human-readable report:
+  - Sections: “Bond formed” and “Bond broken” (with counts).
+  - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).
+  - If `result.distances_1/2` are present, prints bond lengths as `D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.
+- Helper utilities (internal):
+  - `_resolve_device(device: str) -> torch.device`: chooses the requested device; falls back to CPU with a warning if unavailable.
+  - `_element_arrays(atoms) -> (elems, cov_radii)`: normalizes element symbols and looks up covalent radii.
+  - `_upper_pairs_from_mask(mask) -> Set[Tuple[int, int]]`: returns index pairs where `mask` is True (assumes an upper-triangular mask).
+  - `_bond_str(i, j, elems, one_based=True) -> str`: formats `ElemI-ElemJ` labels.
+- Data container:
+  - `BondChangeResult`:
+    - `formed_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds formed.
+    - `broken_covalent: Set[Tuple[int, int]]` — zero-based pairs for bonds broken.
+    - `distances_1: Optional[np.ndarray]`, `distances_2: Optional[np.ndarray]` — square distance matrices (shape N×N).
+
+Outputs (& Directory Layout)
+-----
+- No files or directories are created.
+- `compare_structures` returns a `BondChangeResult` as described above.
+- `summarize_changes` returns a multi-line string; typical headings:
+  - `Bond formed (k):` followed by `ElemI-ElemJ : D1 Å --> D2 Å` (if distances available).
+  - `Bond broken (m):` followed by lines in the same format.
+  - If a set is empty, the section reads `None`.
 
 Notes:
-- Coordinates in Bohr (pysisyphus convention), reported in Å
-- Bond detection uses covalent radii with configurable tolerances
-- Returns zero-based indices; summary can display as 1-based
+-----
+- Units: In pysisyphus, `coords3d` are Bohr; the summary converts to Å with `BOHR2ANG`. If your inputs use different units, adjust accordingly.
+- Atom identity & ordering must be identical between structures; otherwise the comparison is invalid.
+- Only unique pairs with `i < j` are considered (upper triangle); indices in results are zero-based.
+- The three tolerances control sensitivity:
+  - `bond_factor` (default 1.20): global scaling of the covalent radii sum.
+  - `margin_fraction` (default 0.05): conservative shrinkage of the bond cutoff to avoid borderline matches.
+  - `delta_fraction` (default 0.05): minimum relative distance change required to count a bond event.
+- Device selection: pass `'cpu'`, `'cuda'`, or `'cuda:0'` etc. If the requested device is not available or invalid, the code falls back to CPU and issues a `RuntimeWarning`. Computations use `float64` for stability and run under `torch.no_grad()`.
+- The method detects binary bond formation/breakage; it does not estimate bond orders, angles, or multi-center bonding, and it ignores periodic boundary conditions.
+- Numerical caveats: near-threshold pairs may toggle with small geometry noise; tune tolerances to your system size and sampling noise.
 """
 
 from __future__ import annotations
@@ -51,13 +109,26 @@ def _element_arrays(atoms: Iterable[str]) -> Tuple[List[str], np.ndarray]:
 
 def _resolve_device(device: str) -> torch.device:
     dev_str = (device or "cpu").lower()
-    if dev_str.startswith("cuda") and not torch.cuda.is_available():
-        warnings.warn("CUDA is not available. Falling back to CPU.", RuntimeWarning)
-        return torch.device("cpu")
-
+    if dev_str.startswith("cuda"):
+        if torch.cuda.is_available():
+            try:
+                _ = torch.device(dev_str)
+                return torch.device(dev_str)
+            except Exception:
+                warnings.warn(
+                    f"Requested device '{device}' is not available. Falling back to CPU.",
+                    RuntimeWarning,
+                )
+                return torch.device("cpu")
+        else:
+            warnings.warn(
+                "CUDA is not available. Falling back to CPU.",
+                RuntimeWarning,
+            )
+            return torch.device("cpu")
     try:
         return torch.device(dev_str)
-    except (RuntimeError, ValueError):
+    except Exception:
         warnings.warn(
             f"Requested device '{device}' is not recognized. Falling back to CPU.",
             RuntimeWarning,
@@ -74,10 +145,11 @@ def compare_structures(
     margin_fraction: float = 0.05,
     delta_fraction: float = 0.05,
 ) -> BondChangeResult:
+
     assert geom1.atoms == geom2.atoms, "Atom types and ordering must be identical."
     N = len(geom1.atoms)
 
-    _, cov_np = _element_arrays(geom1.atoms)
+    elems, cov_np = _element_arrays(geom1.atoms)
     dev = _resolve_device(device)
 
     dtype = torch.float64
@@ -165,17 +237,39 @@ def has_bond_change(
     one_based: bool = True,
 ) -> Tuple[bool, str]:
     """
-    Return (changed?, summary_text) for covalent bond changes between two geometries.
+    Convenience wrapper to check if bond changes occur between two geometries.
+
+    Parameters
+    ----------
+    geom_start : Geometry
+        Starting geometry.
+    geom_end : Geometry
+        Ending geometry.
+    bond_cfg : Dict[str, Any]
+        Configuration dict with keys: 'device', 'bond_factor', 'margin_fraction', 'delta_fraction'.
+    one_based : bool
+        Use 1-based atom indices in summary (default True).
+
+    Returns
+    -------
+    Tuple[bool, str]
+        (has_changes, summary) where has_changes is True if any bonds formed or broken.
     """
-    res = compare_structures(
+    device = bond_cfg.get("device", "cuda")
+    bond_factor = bond_cfg.get("bond_factor", 1.20)
+    margin_fraction = bond_cfg.get("margin_fraction", 0.05)
+    delta_fraction = bond_cfg.get("delta_fraction", 0.05)
+
+    result = compare_structures(
         geom_start,
         geom_end,
-        device=bond_cfg.get("device", "cuda"),
-        bond_factor=float(bond_cfg.get("bond_factor", 1.20)),
-        margin_fraction=float(bond_cfg.get("margin_fraction", 0.05)),
-        delta_fraction=float(bond_cfg.get("delta_fraction", 0.05)),
+        device=device,
+        bond_factor=bond_factor,
+        margin_fraction=margin_fraction,
+        delta_fraction=delta_fraction,
     )
-    formed = len(getattr(res, "formed_covalent", [])) > 0
-    broken = len(getattr(res, "broken_covalent", [])) > 0
-    summary = summarize_changes(geom_start, res, one_based=one_based)
-    return (formed or broken), summary
+
+    has_changes = bool(result.formed_covalent) or bool(result.broken_covalent)
+    summary = summarize_changes(geom_start, result, one_based=one_based)
+
+    return has_changes, summary

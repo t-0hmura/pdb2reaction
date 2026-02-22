@@ -58,7 +58,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 - [extract](extract.md) -- 元素カラム修正後のポケット抽出
 - [all](all.md) -- エンドツーエンドワークフローの入口

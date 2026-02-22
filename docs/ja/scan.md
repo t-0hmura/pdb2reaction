@@ -13,7 +13,7 @@
 
 `pdb2reaction scan` は、UMA 計算機と調和拘束を使った段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで、構造全体を LBFGS（`--opt-mode light`）または RFOptimizer（`--opt-mode heavy`）で緩和します。
 
-`--scan-lists` に複数リテラルを与えると、ステージは順次実行され、各ステージは直前の緩和構造から開始します。バイアス付き走査の前後には、無バイアス最適化（`--preopt`, `--endopt`）を実行して構造を整えたうえで `result.*` をディスクに書き出すことができます。
+`--scan-lists` に複数リテラルを与えると、ステージは順次実行され、各ステージは直前の緩和構造から開始します。バイアス付き走査の前後には、無バイアス最適化（`--preopt`, `--endopt`）を実行して構造を整えたうえで `result.*` をディスクに書き出すことができます。YAML は `--config`（ベース）と `--override-yaml`（最終上書き）の 2 層で指定でき、`--args-yaml` は `--override-yaml` の legacy エイリアスです。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -52,7 +52,8 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./res
 ## 使用法
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ), ...]'] [options]
+                  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ), ...]'] [options] \
+                  [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
                   [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -155,7 +156,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `stages` を持つ YAML/JSON スキャン仕様。`one_based` を任意指定可能。 | 推奨 |
 | `--scan-lists, --scan-list TEXT` | legacy: `(i,j,targetÅ)` タプルを含む Python リテラル。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
-| `--one-based/--no-one-based` | 原子インデックスを 1 始まり/0 始まりとして解釈 | `True` |
+| `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のステージ情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
@@ -167,12 +168,14 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--args-yaml FILE` | YAML による上書き（`geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`） | _None_ |
+| `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
+| `--override-yaml FILE` | 最終 YAML 上書きファイル（YAML レイヤーの最優先） | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の legacy エイリアス（後方互換） | _None_ |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `True` |
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、ステージ軌跡の出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml_reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、ステージ軌跡の出力は `--dump` で制御します。
 - `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
 
 ### セクション `bias`
@@ -203,14 +206,14 @@ out_dir/ (デフォルト: ./result_scan/)
 - `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果と、各ステージの結合変化レポートがコンソールに出力されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--scan-lists` には単一フラグの後に複数リテラルを並べてください。フラグの繰り返しには対応していません。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
 - `--freeze-links` は、ユーザー指定の `freeze_atoms` に PDB のリンク水素親原子を追加し、ポケット構造を固定します。
 - ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は `--dump` の設定にかかわらず常に書き出されます。軌跡は `--dump` の場合のみ保存され、PDB 入力かつ変換が有効な場合は `scan.pdb` も生成されます。
 
-## YAML 設定（`--args-yaml`）
-YAML のルートはマッピングでなければなりません。YAML の値は CLI を上書きします。共有セクションは [YAML リファレンス](yaml-reference.md) の定義を再利用します。
+## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
+YAML のルートはマッピングでなければなりません。YAML レイヤーは **`--config` < `--override-yaml`** の順にマージされます（`--args-yaml` は `--override-yaml` の legacy エイリアス）。YAML の値は CLI を上書きします。共有セクションは [YAML リファレンス](yaml_reference.md) の定義を再利用します。
 
 ```yaml
 geom:
@@ -323,10 +326,10 @@ bond:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [all](all.md) — 単一構造入力に `--scan-lists` を使用したエンドツーエンドワークフロー
 - [path-search](path_search.md) — スキャン端点を中間体として MEP を探索
 - [extract](extract.md) — スキャン前にポケット PDB を生成
-- [YAML リファレンス](yaml-reference.md) — `bias` と `bond` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `bias` と `bond` の完全な設定オプション
 - [用語集](glossary.md) — MEP、セグメントの定義

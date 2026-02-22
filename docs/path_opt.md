@@ -150,7 +150,7 @@ Merge order is **defaults < config < explicit CLI < override**.
 - StringOptimizer settings: type labels, `stop_in_when_full`, `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
 
 ### `sopt.lbfgs` / `sopt.rfo`
-- Single-structure preoptimization settings for endpoints. Keys mirror the `lbfgs`/`rfo` sections in [YAML Reference](yaml-reference.md). YAML overrides CLI `--preopt-max-cycles`.
+- Single-structure preoptimization settings for endpoints. Keys mirror the `lbfgs`/`rfo` sections in [YAML Reference](yaml_reference.md). YAML overrides CLI `--preopt-max-cycles`.
 
 ### Example YAML (default value)
 ```yaml
@@ -233,12 +233,12 @@ dmf:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 
 - [path-search](path_search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
 - [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (validate with freq/IRC)
 - [extract](extract.md) — Generate pocket PDBs for path-opt inputs
 - [all](all.md) — End-to-end workflow (uses path-search by default)
-- [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `opt` configuration options
+- [YAML Reference](yaml_reference.md) — Full `gs`, `dmf`, `opt` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

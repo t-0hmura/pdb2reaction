@@ -14,11 +14,28 @@
 `scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、バイアスなしの UMA エネルギーを記録し可視化用の出力を生成します。LBFGS の代わりに RFOptimizer を使用する場合は `--opt-mode heavy` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
+YAML は `--config`（ベース）と `--override-yaml`（最終上書き）の 2 層で指定でき、`--args-yaml` は `--override-yaml` の legacy エイリアスです。
+
+## 最小例
+```bash
+pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed --out-dir ./result_scan2d/
+```
+
+## 出力の見方
+- `result_scan2d/surface.csv`
+- `result_scan2d/grid/point_i000_j000.xyz`
+- `result_scan2d/scan2d_map.png` と `result_scan2d/scan2d_landscape.html`
+
+## よくある例
+1. YAML spec の解釈結果を先に確認する。
+2. 後方互換のため legacy `--scan-lists` を使う。
+3. `--dump` を有効にして d1 ごとの内側軌跡を保存する。
 
 ## 使用法
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                    [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options]
+                    [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+                    [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
                     [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -100,7 +117,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `pairs`（2 四つ組）を持つ YAML/JSON 仕様。`one_based` を任意指定可能。 | 推奨 |
 | `--scan-lists, --scan-list TEXT` | **単一 legacy** の Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
-| `--one-based/--no-one-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
+| `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のペア情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
@@ -112,13 +129,15 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan2d/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
-| `--args-yaml FILE` | YAML による上書き（`geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`） | _None_ |
+| `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
+| `--override-yaml FILE` | 最終 YAML 上書きファイル（YAML レイヤーの最優先） | _None_ |
+| `--args-yaml FILE` | `--override-yaml` の legacy エイリアス（後方互換） | _None_ |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または最初の格子点に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml_reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
 
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
@@ -136,15 +155,15 @@ out_dir/ (デフォルト: ./result_scan2d/)
 ```
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `uma_pysis` 経由の UMA が唯一の計算バックエンドであり、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - バイアスは最終エネルギー記録前に必ず除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま再利用できます。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットを固定します。
 
-## YAML 設定（`--args-yaml`）
-最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
+## YAML 設定（`--config` / `--override-yaml` / `--args-yaml`）
+YAML レイヤーは **`--config` < `--override-yaml`** の順にマージされます（`--args-yaml` は `--override-yaml` の legacy エイリアス）。最小例（詳細は {ref}`opt <ja-yaml-configuration-args-yaml>` を参照）:
 
 ```yaml
 geom:
@@ -178,5 +197,5 @@ bias:
 - [scan3d](scan3d.md) -- 3D 距離グリッドスキャン
 - [opt](opt.md) -- スキャン前後の単一構造最適化
 - [all](all.md) -- エンドツーエンドワークフロー
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド

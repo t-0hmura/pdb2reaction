@@ -149,7 +149,7 @@ out_dir/ (default: ./result_path_search/)
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
 - `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
@@ -160,11 +160,11 @@ out_dir/ (default: ./result_path_search/)
 ## YAML configuration (`--config`, `--override-yaml`, `--args-yaml`)
 Merge order is **defaults < config < explicit CLI < override**.
 `--args-yaml` is kept as a legacy alias of `--override-yaml`.
-The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
+The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml_reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
-`sopt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml-reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
+`sopt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml_reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
@@ -333,11 +333,11 @@ search:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [path-opt](path_opt.md) — Single-pass MEP optimization (no recursive refinement)
 - [tsopt](tsopt.md) — Optimize the HEI as a transition state
 - [extract](extract.md) — Generate pocket PDBs for path-search inputs
 - [all](all.md) — End-to-end workflow that calls path-search internally
-- [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `bond`, `search` configuration options
+- [YAML Reference](yaml_reference.md) — Full `gs`, `dmf`, `bond`, `search` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

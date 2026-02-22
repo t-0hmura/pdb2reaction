@@ -114,7 +114,7 @@ out_dir/ (default: ./result_dft/)
   convergence knobs, and resolved output directory.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--engine gpu` (default) requires GPU4PySCF and **raises an error** if a GPU is unavailable. Use `--engine auto` for automatic fallback to CPU PySCF when GPU resources are not detected, or `--engine cpu` to force CPU-only execution.
 - If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
@@ -159,9 +159,9 @@ dft:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [freq](freq.md) — UMA-based vibrational analysis (often precedes DFT refinement)
 - [all](all.md) — End-to-end workflow with `--dft`
-- [YAML Reference](yaml-reference.md) — Full `dft` configuration options
+- [YAML Reference](yaml_reference.md) — Full `dft` configuration options
 - [Glossary](glossary.md) — Definitions of DFT, SP (Single Point)

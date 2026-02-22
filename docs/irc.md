@@ -124,7 +124,7 @@ out_dir/ (default: ./result_irc/)
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - CLI booleans (`--forward`, `--backward`) are toggle-style (`--forward/--no-forward`, `--backward/--no-backward`).
 - UMA is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
@@ -133,7 +133,7 @@ out_dir/ (default: ./result_irc/)
 
 ## YAML configuration (`--config`, `--override-yaml`, `--args-yaml`)
 Provide mappings with merge order **defaults < config < explicit CLI < override**.
-`--args-yaml` is a legacy alias of `--override-yaml`. Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
+`--args-yaml` is a legacy alias of `--override-yaml`. Shared sections reuse [YAML Reference](yaml_reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
@@ -190,11 +190,11 @@ irc:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
 - [freq](freq.md) — Verify the TS candidate has one imaginary frequency; analyze IRC endpoints
 - [opt](opt.md) — Optimize IRC endpoints to true minima
 - [all](all.md) — End-to-end workflow that runs IRC after tsopt
-- [YAML Reference](yaml-reference.md) — Full `irc` configuration options
+- [YAML Reference](yaml_reference.md) — Full `irc` configuration options
 - [Glossary](glossary.md) — Definition of IRC (Intrinsic Reaction Coordinate)

@@ -137,7 +137,7 @@ out_dir/ (デフォルト: ./result_tsopt/)
 ```
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--opt-mode` のエイリアスは上記のワークフローに対応します。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください（デフォルト: `heavy`）。
 - 虚数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で設定可能）。複数残る場合は `root` がどの虚数モードを出力するかに影響します。
@@ -151,7 +151,7 @@ out_dir/ (デフォルト: ./result_tsopt/)
 
 `defaults < config < 明示 CLI < override`。
 
-共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
+共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
 
 ```yaml
 geom:
@@ -283,11 +283,11 @@ rsirfo:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [path-search](path_search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 虚振動数が 1 つのみであることを確認（妥当な TS の条件）
 - [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するエンドツーエンドワークフロー
-- [YAML リファレンス](yaml-reference.md) — `hessian_dimer` と `rsirfo` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `hessian_dimer` と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

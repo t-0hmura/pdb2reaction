@@ -256,12 +256,6 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
         click.echo("    ... (truncated) ...")
 
 
-def _parse_bool(value: str) -> bool:
-    from .cli_utils import argparse_bool
-
-    return argparse_bool(value)
-
-
 def main():
     ap = argparse.ArgumentParser(
         description="Add/repair element columns (77–78) in a PDB using Biopython."
@@ -280,20 +274,20 @@ def main():
     )
     ap.add_argument(
         "--overwrite",
-        type=_parse_bool,
+        action=argparse.BooleanOptionalAction,
         default=False,
-        help="Overwrite the input file in-place when -o/--out is omitted. Use True/False.",
+        help="Overwrite the input file in-place when -o/--out is omitted.",
     )
     args = ap.parse_args()
 
     if not os.path.isfile(args.in_pdb):
-        click.echo(f"[ERR] Input not found: {args.in_pdb}")
+        click.echo(f"[ERR] Input not found: {args.in_pdb}", err=True)
         sys.exit(1)
 
     try:
         assign_elements(args.in_pdb, args.out, overwrite=args.overwrite)
     except Exception as e:
-        click.echo(f"[ERR] Failed: {e}")
+        click.echo(f"[ERR] Failed: {e}", err=True)
         sys.exit(2)
 
 # -----------------------------
@@ -318,8 +312,7 @@ def main():
     help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored)',
 )
 @click.option(
-    "--overwrite",
-    type=click.BOOL,
+    "--overwrite/--no-overwrite",
     default=False,
     show_default=True,
     help="Overwrite the input file in-place when -o/--out is omitted.",
@@ -331,5 +324,5 @@ def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     except SystemExit as e:
         raise e
     except Exception as e:
-        click.echo(f"[ERR] Failed: {e}")
+        click.echo(f"[ERR] Failed: {e}", err=True)
         sys.exit(2)

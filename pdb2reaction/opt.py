@@ -177,7 +177,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         click.echo(f"[write] Wrote '{summary_md}'.")
     except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}")
+        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
 
 
 def _resolve_yaml_sources(
@@ -370,7 +370,7 @@ def _convert_outputs(
             ):
                 click.echo("[convert] Wrote 'optimization' outputs.")
         else:
-            click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.")
+            click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
 
 
 # -----------------------------------------------
@@ -748,7 +748,7 @@ def cli(
                 try:
                     resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
                 except click.BadParameter as e:
-                    click.echo(f"ERROR: {e}")
+                    click.echo(f"ERROR: {e}", err=True)
                     sys.exit(1)
                 click.echo(
                     pretty_block(

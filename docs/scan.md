@@ -13,7 +13,7 @@
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode light`) or RFOptimizer (`--opt-mode heavy`).
 
-When you provide multiple `--scan-lists` literals after a single flag, stages run sequentially and each stage starts from the previous stage’s relaxed structure. After the biased walk, optional unbiased pre-/post-optimizations (`--preopt`, `--endopt`) can clean up geometries before writing `result.*` to disk.
+When you provide multiple `--scan-lists` literals after a single flag, stages run sequentially and each stage starts from the previous stage’s relaxed structure. After the biased walk, optional unbiased pre-/post-optimizations (`--preopt`, `--endopt`) can clean up geometries before writing `result.*` to disk. YAML can be layered via `--config` (base) and `--override-yaml` (final overlay); `--args-yaml` remains as a legacy alias of `--override-yaml` and shares the same semantics.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -52,7 +52,8 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./res
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
-                  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ), ...]'] [options]
+                  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ), ...]'] [options] \
+                  [--config FILE] [--override-yaml FILE | --args-yaml FILE] \
                   [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -195,7 +196,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `--spec FILE` | YAML/JSON scan spec with `stages`; optional `one_based`. | Recommended |
 | `--scan-lists, --scan-list TEXT` | Legacy Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
-| `--one-based/--no-one-based` | Interpret atom indices as 1- or 0-based. | `True` |
+| `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--spec`/`--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
@@ -207,13 +208,15 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--args-yaml FILE` | YAML overrides for `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond`. | _None_ |
+| `--config FILE` | Base YAML configuration file (applied first). | _None_ |
+| `--override-yaml FILE` | Final YAML override file (highest-priority YAML layer). | _None_ |
+| `--args-yaml FILE` | Legacy alias of `--override-yaml` for backward compatibility. | _None_ |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
 | `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `True` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
-  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
   use `--dump` to control scan-stage trajectories.
 - `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
@@ -244,7 +247,7 @@ out_dir/ (default: ./result_scan/)
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Provide multiple literals after a single `--scan-lists` flag; repeated flags are not accepted.
   Tuples must have positive targets. Atom indices are normalized to 0-based internally. For
@@ -256,9 +259,8 @@ out_dir/ (default: ./result_scan/)
   regardless of `--dump`; trajectories are written only when `--dump` is `True`
   and converted to `scan.pdb` (PDB inputs only) when conversion is enabled.
 
-## YAML configuration (`--args-yaml`)
-The YAML root must be a mapping. YAML parameters override CLI. Shared sections
-reuse the definitions documented for [YAML Reference](yaml-reference.md).
+## YAML configuration (`--config` / `--override-yaml` / `--args-yaml`)
+The YAML root must be a mapping. YAML layers merge as **`--config` < `--override-yaml`** (`--args-yaml` is a legacy alias of `--override-yaml`). YAML parameters override CLI. Shared sections reuse the definitions documented for [YAML Reference](yaml_reference.md).
 
 ```yaml
 geom:
@@ -371,10 +373,10 @@ bond:
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [all](all.md) — End-to-end workflow with `--scan-lists` for single-structure inputs
 - [path-search](path_search.md) — MEP search using scan endpoints as intermediates
 - [extract](extract.md) — Generate pocket PDBs before scanning
-- [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options
+- [YAML Reference](yaml_reference.md) — Full `bias` and `bond` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, Segment

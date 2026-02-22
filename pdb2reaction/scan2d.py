@@ -67,13 +67,17 @@ from .utils import (
     convert_xyz_like_outputs,
     build_scan_configs,
     cli_param_overridden,
-    load_yaml_dict,
     resolve_freeze_atoms,
     distance_A_from_coords,
     distance_tag,
     set_freeze_atoms_or_warn,
 )
-from .scan_common import add_scan_common_options, build_scan_defaults
+from .scan_common import (
+    add_scan_common_options,
+    build_scan_defaults,
+    load_merged_yaml_cfg,
+    resolve_yaml_sources,
+)
 
 # Defaults imported from defaults.py
 DEFAULT_THRESH_2D = "baker"
@@ -259,7 +263,9 @@ def cli(
     ref_pdb: Optional[Path],
     out_dir: str,
     thresh: Optional[str],
-    args_yaml: Optional[Path],
+    config_yaml: Optional[Path],
+    override_yaml: Optional[Path],
+    args_yaml_legacy: Optional[Path],
     preopt: bool,
     print_parsed: bool,
     baseline: str,
@@ -268,6 +274,16 @@ def cli(
 ) -> None:
 
     set_convert_file_enabled(convert_files)
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
+        config_yaml=config_yaml,
+        override_yaml=override_yaml,
+        args_yaml_legacy=args_yaml_legacy,
+    )
+    if used_legacy_yaml:
+        click.echo(
+            "[deprecation] --args-yaml is deprecated; use --override-yaml.",
+            err=True,
+        )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
 
@@ -285,7 +301,10 @@ def cli(
         try:
             time_start = time.perf_counter()
 
-            yaml_cfg = load_yaml_dict(args_yaml)
+            yaml_cfg = load_merged_yaml_cfg(
+                config_yaml=config_yaml,
+                override_yaml=override_yaml,
+            )
             yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
             relax_override_requested = cycles_overridden and not (
                 isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt

@@ -155,12 +155,6 @@ ResidueKey = Tuple[str, str, int, str, str]
 #   Helpers
 # ---------------------------------------------------------------------
 
-def str2bool(v: str) -> bool:
-    """Return a boolean for common truthy strings."""
-    from .cli_utils import argparse_bool
-
-    return argparse_bool(v)
-
 
 def _extract_short_help() -> str:
     return "\n".join(
@@ -204,6 +198,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
                 argv_list.append("--help")
 
     p = argparse.ArgumentParser(
+        prog="pdb2reaction extract",
         description=(
             "Extract a binding pocket around substrate residues (from a PDB or residue IDs/names), "
             "with biochemically aware truncation and optional link‑H; supports multi‑structure input "
@@ -245,15 +240,24 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
               "but is internally treated as 0.001 Å. (default: 0)")
     )
     p.add_argument(
-        "--include-H2O", type=str2bool, default=True,
+        "--include-H2O", "--include-h2o",
+        dest="include_H2O",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Include waters (HOH/WAT/TIP3/SOL). (default: true)"
     )
     p.add_argument(
-        "--exclude-backbone", type=str2bool, default=True,
+        "--exclude-backbone",
+        dest="exclude_backbone",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Delete main‑chain atoms (N, H*, CA, HA*, C, O) from non‑substrate amino acids; PRO/HYP keep N, CA, HA, H*. (default: true)"
     )
     p.add_argument(
-        "--add-linkH", type=str2bool, default=True,
+        "--add-linkH",
+        dest="add_linkH",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Add carbon‑only link‑H at 1.09 Å along cut‑bond directions; appended after a TER as HL/LKH HETATM records. (default: true)"
     )
     p.add_argument(
@@ -268,7 +272,10 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
               "'GPP:-3,SAM:1'. In mapping mode, any other unknown residues remain 0.")
     )
     p.add_argument(
-        "-v", "--verbose", type=str2bool, default=True,
+        "-v", "--verbose",
+        dest="verbose",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help=("Enable INFO-level logging."
               " Default: True.")
     )

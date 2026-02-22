@@ -104,9 +104,9 @@
 
 ## 関連ページ
 
-- [はじめに](getting-started.md) — インストールと初回実行
+- [はじめに](getting_started.md) — インストールと初回実行
 - [概念とワークフロー](concepts.md) — ポケット抽出、MEP 探索、後処理の全体像
-- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
+- [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
-- [YAML リファレンス](yaml-reference.md) — 設定ファイルの仕様
+- [YAML リファレンス](yaml_reference.md) — 設定ファイルの仕様
 - [UMA 計算機](uma_pysis.md) — UMA ポテンシャルの詳細

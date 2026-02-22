@@ -287,7 +287,7 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 `summary.yaml` intentionally omits the formatted tables and filesystem tree that appear in `summary.log`.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/MEP/TSOPT/DFT.
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
@@ -333,20 +333,20 @@ dft:
   grid_level: 6
 ```
 
-For a complete reference of all YAML options, see **[YAML Configuration Reference](yaml-reference.md)**.
+For a complete reference of all YAML options, see **[YAML Configuration Reference](yaml_reference.md)**.
 
 ---
 
 ## See Also
 
-- [Getting Started](getting-started.md) — Installation and first run guide
+- [Getting Started](getting_started.md) — Installation and first run guide
 - [Concepts & Workflow](concepts.md) — Mental model of pockets, segments, and stages
 - [extract](extract.md) — Standalone pocket extraction (called internally by `all`)
 - [path-search](path_search.md) — Standalone MEP search (called internally by `all`)
 - [tsopt](tsopt.md) — Standalone TS optimization
 - [freq](freq.md) — Standalone vibrational analysis
 - [dft](dft.md) — Standalone DFT calculations
-- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
+- [Common Error Recipes](recipes_common_errors.md) — Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Common errors and fixes
-- [YAML Reference](yaml-reference.md) — Complete YAML configuration options
+- [YAML Reference](yaml_reference.md) — Complete YAML configuration options
 - [Glossary](glossary.md) — Definitions of MEP, TS, IRC, GSM, DMF

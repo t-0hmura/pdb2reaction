@@ -7,22 +7,22 @@
 :caption: Guides
 :hidden:
 
-getting-started
-quickstart-all
-quickstart-scan-spec
-quickstart-tsopt-freq
+getting_started
+quickstart_all
+quickstart_scan_spec
+quickstart_tsopt_freq
 concepts
-recipes-common-errors
+recipes_common_errors
 troubleshooting
-cli-conventions
-ja/getting-started
-ja/quickstart-all
-ja/quickstart-scan-spec
-ja/quickstart-tsopt-freq
+cli_conventions
+ja/getting_started
+ja/quickstart_all
+ja/quickstart_scan_spec
+ja/quickstart_tsopt_freq
 ja/concepts
-ja/recipes-common-errors
+ja/recipes_common_errors
 ja/troubleshooting
-ja/cli-conventions
+ja/cli_conventions
 ```
 
 ```{toctree}
@@ -73,10 +73,10 @@ ja/energy-diagram
 
 reference/commands/index
 reference/yaml
-yaml-reference
+yaml_reference
 uma_pysis
 glossary
-ja/yaml-reference
+ja/yaml_reference
 ja/uma_pysis
 ja/glossary
 ```
@@ -96,9 +96,9 @@ ja/index
 
 | Objectives | Command | Guide |
 |-------------------------|---------|-------|
-| First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart-all.md) |
-| Single-structure staged scan (`--spec`) | `pdb2reaction scan` | [Quickstart: scan with spec](quickstart-scan-spec.md) |
-| TS validation (`tsopt` -> `freq`) | `pdb2reaction tsopt`, `pdb2reaction freq` | [Quickstart: tsopt -> freq](quickstart-tsopt-freq.md) |
+| First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart_all.md) |
+| Single-structure staged scan (`--spec`) | `pdb2reaction scan` | [Quickstart: scan with spec](quickstart_scan_spec.md) |
+| TS validation (`tsopt` -> `freq`) | `pdb2reaction tsopt`, `pdb2reaction freq` | [Quickstart: tsopt -> freq](quickstart_tsopt_freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
 | Generate a starter YAML config for `all` | `pdb2reaction init` | [init.md](init.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
@@ -107,8 +107,8 @@ ja/index
 | Search for minimum energy path | `pdb2reaction path-search` | [path_search.md](path_search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
-| Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy-diagram.md](energy-diagram.md) |
-| Diagnose failures by symptom | — | [Common Error Recipes](recipes-common-errors.md) |
+| Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy_diagram.md](energy_diagram.md) |
+| Diagnose failures by symptom | — | [Common Error Recipes](recipes_common_errors.md) |
 | Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
@@ -119,11 +119,11 @@ ja/index
 
 | Topic | Page |
 |-------|------|
-| **Installation & first run** | [Getting Started](getting-started.md) |
+| **Installation & first run** | [Getting Started](getting_started.md) |
 | **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
-| **Symptom-first failure routing** | [Common Error Recipes](recipes-common-errors.md) |
+| **Symptom-first failure routing** | [Common Error Recipes](recipes_common_errors.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
-| **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
+| **CLI conventions & input requirements** | [CLI Conventions](cli_conventions.md) |
 
 ---
 
@@ -167,7 +167,7 @@ ja/index
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
-| [`energy-diagram`](energy-diagram.md) | Build an energy diagram from numeric input values |
+| [`energy-diagram`](energy_diagram.md) | Build an energy diagram from numeric input values |
 
 ---
 
@@ -177,7 +177,7 @@ ja/index
 |-------|------|
 | **CLI command reference (generated)** | [Command Reference](reference/commands/index.md) |
 | **YAML schema (generated)** | [YAML Schema (Generated)](reference/yaml.md) |
-| **YAML configuration options** | [YAML Reference](yaml-reference.md) |
+| **YAML configuration options** | [YAML Reference](yaml_reference.md) |
 | **UMA calculator settings** | [UMA Calculator](uma_pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
 
@@ -243,7 +243,7 @@ Layered settings are recommended via `--config` and `--override-yaml`.
 ```bash
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' --config base.yaml --override-yaml override.yaml
 ```
-See the [YAML Reference](yaml-reference.md) for all options.
+See the [YAML Reference](yaml_reference.md) for all options.
 
 ---
 
