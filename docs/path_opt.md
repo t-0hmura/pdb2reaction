@@ -7,7 +7,7 @@
 ### At a glance
 - **Use when:** You have reactant and product endpoints (R → P) and want a first-pass MEP.
 - **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
-- **Outputs:** `final_geometries.trj` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
+- **Outputs:** `final_geometries_trj.xyz` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
 - **Defaults:** `--opt-mode light` (LBFGS), `--climb`, `--max-nodes 10`, `--thresh gau`.
 - **Next step:** Validate the HEI with `tsopt` → `freq` (expect **one** imaginary mode) → `irc`.
 
@@ -26,8 +26,8 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 ## Output checklist
 
 - `result_path_opt/summary.md`
-- `result_path_opt/key_mep.trj` / `result_path_opt/key_ts.xyz`
-- `result_path_opt/final_geometries.trj`
+- `result_path_opt/key_mep_trj.xyz` / `result_path_opt/key_ts.xyz`
+- `result_path_opt/final_geometries_trj.xyz`
 - `result_path_opt/hei.xyz`
 - `result_path_opt/hei.pdb` (when PDB conversion is available)
 
@@ -111,12 +111,12 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 ```
 out_dir/
 ├─ summary.md # Quick navigation page with key artifact links
-├─ key_mep.trj # Root shortcut to primary MEP trajectory (symlink/copy)
+├─ key_mep_trj.xyz # Root shortcut to primary MEP trajectory (symlink/copy)
 ├─ key_mep.pdb # Root shortcut to primary MEP PDB (symlink/copy)
 ├─ key_mep.gjf # Root shortcut to primary MEP GJF (when available)
 ├─ key_ts.xyz / key_ts.pdb # Root shortcuts to TS candidate snapshots (symlink/copy)
 ├─ key_ts.gjf # Root shortcut to TS candidate GJF (when available)
-├─ final_geometries.trj # XYZ path; comment line holds energies when provided
+├─ final_geometries_trj.xyz # XYZ path; comment line holds energies when provided
 ├─ final_geometries.pdb # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
 ├─ hei.xyz # Highest-energy image with its energy on the comment line
 ├─ hei.pdb # HEI converted to PDB when a PDB reference is available (conversion enabled)

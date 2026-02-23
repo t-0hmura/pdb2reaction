@@ -208,7 +208,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         root_specs: List[Tuple[str, str]] = [
             ("summary.yaml", "YAML summary"),
             ("summary.log", "Text summary"),
-            ("mep.trj", "MEP trajectory"),
+            ("mep_trj.xyz", "MEP trajectory"),
             ("mep.pdb", "MEP trajectory (PDB)"),
             ("mep_w_ref.pdb", "MEP merged with reference"),
             ("mep_plot.png", "MEP profile plot"),
@@ -220,7 +220,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
                 root_lines.append(f"- {label}: [`{rel}`]({rel})")
 
         shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
-            ("key_mep.trj", "Primary MEP trajectory", ["mep.trj"]),
+            ("key_mep_trj.xyz", "Primary MEP trajectory", ["mep_trj.xyz"]),
             ("key_mep.pdb", "Primary MEP PDB", ["mep.pdb", "mep_w_ref.pdb"]),
             ("key_ts.xyz", "TS candidate (XYZ)", ["hei_seg_*.xyz"]),
             ("key_ts.pdb", "TS candidate (PDB)", ["hei_seg_*.pdb", "hei_w_ref_seg_*.pdb"]),
@@ -529,7 +529,7 @@ def _run_mep_between(
         hei_idx = int(np.argmax(E[1:-1])) + 1 if nE >= 3 else int(np.argmax(E))
 
     # Write trajectory
-    final_trj = seg_dir / "final_geometries.trj"
+    final_trj = seg_dir / "final_geometries_trj.xyz"
     wrote_with_energy = True
     try:
         write_xyz_trj_with_energy(images, energies, final_trj)
@@ -693,7 +693,7 @@ def _run_dmf_between(
 
     energies = list(map(float, dmf_res.energies))
 
-    final_trj = seg_dir / "final_geometries.trj"
+    final_trj = seg_dir / "final_geometries_trj.xyz"
     write_xyz_trj_with_energy(dmf_res.images, energies, final_trj)
     _convert_to_pdb_logged(final_trj, ref_pdb_path)
 
@@ -2399,13 +2399,13 @@ def cli(
                     pass
 
         # Final MEP output rule:
-        # - Always write 'mep.trj' (XYZ) for intermediate handoff.
+        # - Always write 'mep_trj.xyz' (XYZ) for intermediate handoff.
         # - If reference PDBs are available, also emit 'mep.pdb' (and GJF when applicable).
         main_prepared = prepared_inputs[0]
         needs_pdb = ref_pdb_for_segments is not None
         needs_gjf = main_prepared.is_gjf
 
-        final_trj = out_dir_path / "mep.trj"
+        final_trj = out_dir_path / "mep_trj.xyz"
         write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
         click.echo(f"[write] Wrote '{final_trj}'.")
         try:
@@ -2446,7 +2446,7 @@ def cli(
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     seg_imgs = [combined_all.images[j] for j in idxs]
                     seg_Es = [combined_all.energies[j] for j in idxs]
-                    seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}.trj"
+                    seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}_trj.xyz"
                     write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
                     click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
                     if needs_pdb or needs_gjf:

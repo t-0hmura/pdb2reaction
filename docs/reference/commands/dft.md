@@ -10,7 +10,7 @@ Usage: pdb2reaction dft [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, .trj, etc.;
+  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz, etc.;
                                   loaded via pysisyphus.helpers.geom_loader).
                                   [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs

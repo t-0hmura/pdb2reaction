@@ -101,7 +101,7 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=False,
-    help="Input structure file (.pdb, .xyz, .trj, ...). Required unless --csv is provided.",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, ...). Required unless --csv is provided.",
 )
 @click.option(
     "--scan-lists",
@@ -641,7 +641,7 @@ def cli(
                         )
 
                     if dump and trj_blocks:
-                        trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}.trj"
+                        trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}_trj.xyz"
                         try:
                             with open(trj_path, "w") as f:
                                 f.write("".join(trj_blocks))

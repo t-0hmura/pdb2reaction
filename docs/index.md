@@ -255,7 +255,7 @@ result_all/
 ├── pockets/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
 ├── path_search/ # MEP trajectories and diagrams
-│ ├── mep.trj # MEP trajectory
+│ ├── mep_trj.xyz # MEP trajectory
 │ ├── mep.pdb # MEP in PDB format
 │ ├── mep_w_ref.pdb # MEP merged with full system
 │ ├── mep_plot.png # Energy profile plot

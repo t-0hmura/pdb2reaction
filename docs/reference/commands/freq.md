@@ -11,7 +11,7 @@ Usage: pdb2reaction freq [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure (.pdb, .xyz, .trj, ...)
+  -i, --input FILE                Input structure (.pdb, .xyz, _trj.xyz, ...)
                                   [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
@@ -36,7 +36,7 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --max-write INTEGER             How many modes to export (after sorting per
                                   --sort).  [default: 10]
-  --amplitude-ang FLOAT           Animation amplitude (Å) used for both .trj and
+  --amplitude-ang FLOAT           Animation amplitude (Å) used for both _trj.xyz and
                                   .pdb.  [default: 0.8]
   --n-frames INTEGER              Number of frames per mode animation.
                                   [default: 20]

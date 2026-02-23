@@ -21,7 +21,7 @@ Full system(s) (PDB/XYZ/GJF)
  │ │ ↓
  │ └─ MEP search [path-search] or [path-opt]
  │ ↓
- │ MEP trajectory (mep.trj) + energy diagrams
+ │ MEP trajectory (mep_trj.xyz) + energy diagrams
  │ ↓
  └─ (optional) TS optimization + IRC [tsopt] → [irc]
  └─ (optional) thermo [freq]
@@ -51,7 +51,7 @@ Pocket extraction is controlled by:
 - **Segment**: an MEP between two adjacent endpoints (e.g., R → I1, I1 → I2, …). A multi-structure run is decomposed into segments.
 
 ### Templates and file conversion (`--convert-files`)
-`pdb2reaction` often writes a **trajectory** (e.g., `mep.trj`, `irc.trj`). When you supply topology-aware inputs (PDB templates or Gaussian inputs), it can optionally write companion files:
+`pdb2reaction` often writes a **trajectory** (e.g., `mep_trj.xyz`, `irc_trj.xyz`). When you supply topology-aware inputs (PDB templates or Gaussian inputs), it can optionally write companion files:
 - `.pdb` companions when a PDB template exists
 - `.gjf` companions when a Gaussian template exists
 

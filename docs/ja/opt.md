@@ -4,7 +4,7 @@
 
 > **要約:** L-BFGS（`--opt-mode light`、デフォルト）または RFO（`--opt-mode heavy`）を使用して単一構造を局所極小に最適化します。PDB 入力の場合、リンク水素の親原子は自動的に凍結されます。
 
-`pdb2reaction opt` は、pysisyphus LBFGS（"light"）または RFOptimizer（"heavy"）エンジンを用い、UMA がエネルギー・勾配・ヘシアンを提供して単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`.trj`、または `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
+`pdb2reaction opt` は、pysisyphus LBFGS（"light"）または RFOptimizer（"heavy"）エンジンを用い、UMA がエネルギー・勾配・ヘシアンを提供して単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、または `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化された構造を `.pdb`（PDB 入力）および `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
@@ -24,10 +24,10 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
 
 - `result_opt/summary.md`
 - `result_opt/key_opt.xyz`（または `key_opt.pdb`）
-- `result_opt/key_opt.trj`（軌跡がある場合）
+- `result_opt/key_opt_trj.xyz`（軌跡がある場合）
 - `result_opt/final_geometry.xyz`
 - `result_opt/final_geometry.pdb`（PDB 入力かつ変換有効時）
-- `result_opt/optimization.trj`（`--dump` 有効時）
+- `result_opt/optimization_trj.xyz`（`--dump` 有効時）
 
 ## よくある例
 
@@ -66,7 +66,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 - **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈し、3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
 - **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルトより優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱い、`extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が無い場合は中断します。多重度は省略時 `1` がデフォルトです。
 - **凍結原子**: CLIのリンク検出はYAMLの `geom.freeze_atoms` とマージされ、UMA 計算機の `calc.freeze_atoms` に反映されます。
-- **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization.trj` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
+- **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
 - **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
 
 ## CLI オプション
@@ -86,7 +86,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--freeze-links/--no-freeze-links` | リンク水素の親原子の凍結を切り替え（PDB 入力のみ） | `True` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | オプティマイザー選択: `light`（LBFGS）または `heavy`（RFO） | `light` |
-| `--dump/--no-dump` | 軌跡ダンプ（`optimization.trj`）を出力 | `False` |
+| `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | すべてのファイルの出力ディレクトリ | `./result_opt/` |
@@ -102,13 +102,13 @@ out_dir/
 ├─ key_opt.xyz # final_geometry.xyz へのショートカット
 ├─ key_opt.pdb # final_geometry.pdb へのショートカット（存在時）
 ├─ key_opt.gjf # final_geometry.gjf へのショートカット（存在時）
-├─ key_opt.trj # optimization.trj へのショートカット
+├─ key_opt_trj.xyz # optimization_trj.xyz へのショートカット
 ├─ key_opt_traj.pdb # optimization.pdb へのショートカット（存在時）
 ├─ key_restart.yml # リスタートスナップショットへのショートカット（存在時）
 ├─ final_geometry.xyz # 常に出力
 ├─ final_geometry.pdb # 入力がPDBで変換が有効な場合のみ
 ├─ final_geometry.gjf # Gaussian テンプレートが検出され変換が有効な場合
-├─ optimization.trj # ダンプが有効な場合のみ
+├─ optimization_trj.xyz # ダンプが有効な場合のみ
 ├─ optimization.pdb # 軌跡のPDB変換（PDB 入力、変換有効時）
 └─ restart*.yml # opt.dump_restart 設定時のリスタートファイル（任意）
 ```

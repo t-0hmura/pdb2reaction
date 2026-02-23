@@ -10,7 +10,7 @@ Usage: pdb2reaction scan2d [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, .trj, ...).
+  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz, ...).
                                   [required]
   --scan-lists TEXT               Python-like list with two quadruples:
                                   '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.

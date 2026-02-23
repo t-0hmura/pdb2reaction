@@ -165,7 +165,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, .trj, ...).",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "--scan-lists",
@@ -188,7 +188,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default="./result_scan/",
     baseline_help="(unused)",
-    dump_help="Write stage trajectory as scan.trj (and scan.pdb for PDB input).",
+    dump_help="Write stage trajectory as scan_trj.xyz (and scan.pdb for PDB input).",
     max_step_help="Maximum change in any scanned bond length per step [Å].",
     thresh_default=None,
     include_baseline=False,
@@ -658,7 +658,7 @@ def cli(
 
                 # Stage outputs
                 if dump and trj_blocks:
-                    trj_path = stage_dir / "scan.trj"
+                    trj_path = stage_dir / "scan_trj.xyz"
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
                     click.echo(f"[write] Wrote '{trj_path}'.")

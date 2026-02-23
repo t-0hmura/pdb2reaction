@@ -127,7 +127,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
-| `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###.trj` を保存 | `False` |
+| `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan3d/` |
@@ -182,7 +182,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 ├─ grid/point_i###_j###_k###.pdb # 変換有効時の PDB コンパニオン
 ├─ grid/point_i###_j###_k###.gjf # テンプレートがある場合の Gaussian コンパニオン
 ├─ grid/preopt_i###_j###_k###.xyz # スキャン開始前の構造（--preopt の場合は最適化済み）
-└─ grid/inner_path_d1_###_d2_###.trj # --dump の場合のみ（変換有効時は.pdb/.gjf も生成）
+└─ grid/inner_path_d1_###_d2_###_trj.xyz # --dump の場合のみ（変換有効時は.pdb/.gjf も生成）
 ```
 
 ## 注意事項

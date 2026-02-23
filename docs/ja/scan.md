@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 - `result_scan/stage_01/result.pdb`（または `result.xyz`）
 - `result_scan/stage_02/result.pdb`（または `result.xyz`）
-- `--dump` 指定時は `result_scan/stage_*/scan.trj` と `scan.pdb`
+- `--dump` 指定時は `result_scan/stage_*/scan_trj.xyz` と `scan.pdb`
 
 ## よくある例
 
@@ -161,7 +161,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
-| `--dump/--no-dump` | バイアス付き軌跡（`scan.trj`/`scan.pdb`）を出力 | `False` |
+| `--dump/--no-dump` | バイアス付き軌跡（`scan_trj.xyz`/`scan.pdb`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換は PDB のみ） | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
@@ -196,7 +196,7 @@ out_dir/ (デフォルト:./result_scan/)
  ├─ result.xyz
  ├─ result.pdb # 最終構造の PDB ミラー（変換有効時）
  ├─ result.gjf # テンプレートがある場合の Gaussian ミラー（変換有効時）
- ├─ scan.trj # --dump の場合
+ ├─ scan_trj.xyz # --dump の場合
  └─ scan.pdb # PDB 入力で変換有効時の軌跡コンパニオン（scan.gjf は生成されない）
 ```
 - `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果と、各ステージの結合変化レポートがコンソールに出力されます。

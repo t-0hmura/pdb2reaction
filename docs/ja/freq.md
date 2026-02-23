@@ -7,11 +7,11 @@
 ### 要点
 - **想定場面:** 構造が極小点か TS かを検証する場合や、UMA による熱化学補正を求める場合に使用します。
 - **凍結原子:** PHVA（部分ヘシアン振動解析）として扱われます。
-- **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`.trj`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
+- **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`_trj.xyz`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
 - **TS のチェック:** 適切に収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であることが期待されます。
 - **性能:** VRAM が十分なら `--hessian-calc-mode Analytical` を推奨します。
 
-`pdb2reaction freq` は UMA 計算機で振動解析を行い、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `.trj` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力されます。
+`pdb2reaction freq` は UMA 計算機で振動解析を行い、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力されます。
 
 
 ## 最小例
@@ -24,9 +24,9 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 
 - `result_freq/summary.md`
 - `result_freq/key_frequencies.txt`
-- `result_freq/key_mode_1.trj`
+- `result_freq/key_mode_1_trj.xyz`
 - `result_freq/frequencies_cm-1.txt`
-- `result_freq/mode_*.trj`
+- `result_freq/mode_*_trj.xyz`
 - `result_freq/mode_*.pdb`（PDB 入力かつ変換有効時）
 
 ## よくある例
@@ -74,7 +74,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 - **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` によりリンク水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、UMA と PHVA に伝播されます。
 - **UMA 計算機**: `--hessian-calc-mode` で解析的または有限差分ヘシアンを選択します。凍結原子がある場合、UMAは活性ブロックのみのヘシアンを返すことがあります。VRAMが十分な場合は `Analytical` を強く推奨します。
 - **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N ヘシアンと活性ブロックヘシアンの両方に対応し、振動数は cm⁻¹ で報告されます（負の値は虚振動数）。
-- **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。`--sort abs` を指定すると絶対値順にソートされます。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `.trj` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
+- **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。`--sort abs` を指定すると絶対値順にソートされます。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `_trj.xyz` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
 - **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。
 - **性能と終了挙動**: GPU メモリ使用量を最小化するため、ヘシアンは 1 つだけ保持し、上三角固有値分解（`UPLO="U"`）を優先します。キーボード割り込みは終了コード 130、その他のエラーはトレースバックを出力して終了コード 1 で終了します。
 
@@ -107,10 +107,10 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 out_dir/ (デフォルト:./result_freq/)
 ├─ summary.md # 主要成果物のインデックス
 ├─ key_frequencies.txt # frequencies_cm-1.txt へのショートカット
-├─ key_mode_1.trj # 代表モード軌跡へのショートカット
+├─ key_mode_1_trj.xyz # 代表モード軌跡へのショートカット
 ├─ key_mode_1.pdb # 代表モードPDBへのショートカット（存在時）
 ├─ key_thermo.yaml # thermoanalysis.yaml へのショートカット（存在時）
-├─ mode_XXXX_±freqcm-1.trj # モードごとのアニメーション
+├─ mode_XXXX_±freqcm-1_trj.xyz # モードごとのアニメーション
 ├─ mode_XXXX_±freqcm-1.pdb # PDB テンプレートが存在し変換が有効な場合のみ
 ├─ frequencies_cm-1.txt # 選択したソート順での全振動数リスト
 └─ thermoanalysis.yaml # thermoanalysisがインポート可能で--dumpがTrueの場合

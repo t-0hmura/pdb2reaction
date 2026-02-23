@@ -7,7 +7,7 @@
 ### At a glance
 - **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
-- **Outputs:** `mep.trj` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
+- **Outputs:** `mep_trj.xyz` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
 - **Defaults:** `--mep-mode gsm`, `--opt-mode light` (LBFGS), `--preopt`, `--align`, `--thresh gau`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md), [freq](freq.md), and [irc](irc.md).
 
@@ -28,8 +28,8 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 ## Output checklist
 
 - `result_path_search/summary.md`
-- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz` (when available)
-- `result_path_search/mep.trj`
+- `result_path_search/key_mep_trj.xyz` / `result_path_search/key_ts.xyz` (when available)
+- `result_path_search/mep_trj.xyz`
 - `result_path_search/summary.yaml`
 - `result_path_search/summary.log`
 - `result_path_search/mep_plot.png` (when plotting succeeds)
@@ -125,14 +125,14 @@ Bond-change detection relies on `bond_changes.compare_structures` with threshold
 ## Outputs
 ```
 out_dir/ (default:./result_path_search/)
-├─ mep.trj # Primary MEP trajectory
+├─ mep_trj.xyz # Primary MEP trajectory
 ├─ mep.pdb # PDB companion when inputs were PDB templates and conversion is enabled
 ├─ mep_w_ref.pdb # Merged full-system MEP (requires ref PDB/template)
 ├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist (requires ref PDB)
 ├─ summary.yaml # Barrier and classification summary for every recursive segment
 ├─ summary.log # Human-readable summary
 ├─ summary.md # Quick navigation page with key artifact links
-├─ key_mep.trj # Root shortcut to primary MEP trajectory (symlink/copy)
+├─ key_mep_trj.xyz # Root shortcut to primary MEP trajectory (symlink/copy)
 ├─ key_mep.pdb # Root shortcut to primary MEP PDB (symlink/copy)
 ├─ key_ts.xyz / key_ts.pdb # Root shortcuts to TS candidate snapshots (when available)
 ├─ key_mep_plot.png # Root shortcut to MEP profile plot (when available)

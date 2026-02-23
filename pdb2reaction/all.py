@@ -164,7 +164,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
         root_specs: List[Tuple[str, str]] = [
             ("summary.yaml", "YAML summary"),
             ("summary.log", "Text summary"),
-            ("mep.trj", "MEP trajectory"),
+            ("mep_trj.xyz", "MEP trajectory"),
             ("mep.pdb", "MEP trajectory (PDB)"),
             ("mep_w_ref.pdb", "MEP merged with reference"),
             ("mep_plot.png", "MEP profile plot"),
@@ -179,9 +179,9 @@ def _write_output_summary_md(out_dir: Path) -> None:
 
         shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
             (
-                "key_mep.trj",
+                "key_mep_trj.xyz",
                 "Primary MEP trajectory",
-                ["mep.trj", "path_search/mep.trj", "path_opt/final_geometries.trj"],
+                ["mep_trj.xyz", "path_search/mep_trj.xyz", "path_opt/final_geometries_trj.xyz"],
             ),
             (
                 "key_mep.pdb",
@@ -795,15 +795,15 @@ def _load_segment_endpoints(
 ) -> Optional[Tuple[Any, Any]]:
     """
     Load left/right endpoints for a segment from
-    ``<path_dir>/<seg_tag>_refine_mep/final_geometries.trj``.
+    ``<path_dir>/<seg_tag>_refine_mep/final_geometries_trj.xyz``.
     If it does not exist, load structures from
-    ``<path_dir>/<seg_tag>_mep/final_geometries.trj``.
+    ``<path_dir>/<seg_tag>_mep/final_geometries_trj.xyz``.
 
     Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref).
     """
     base_tag = _path_search._segment_base_id(seg_tag)
-    refine_trj = path_dir / f"{base_tag}_refine_mep" / "final_geometries.trj"
-    gsm_trj = path_dir / f"{base_tag}_mep" / "final_geometries.trj"
+    refine_trj = path_dir / f"{base_tag}_refine_mep" / "final_geometries_trj.xyz"
+    gsm_trj = path_dir / f"{base_tag}_mep" / "final_geometries_trj.xyz"
 
     if refine_trj.exists():
         trj_path = refine_trj
@@ -979,7 +979,7 @@ def _merge_irc_trajectories_to_single_plot(
     Parameters
     ----------
     trj_and_flags : Sequence[Tuple[Path, bool]]
-        For each segment: (finished_irc.trj path, reverse_flag). When reverse_flag is True,
+        For each segment: (finished_irc_trj.xyz path, reverse_flag). When reverse_flag is True,
         the frame order of that segment is reversed before concatenation.
     out_png : Path
         Output PNG path for the aggregated plot.
@@ -1003,7 +1003,7 @@ def _merge_irc_trajectories_to_single_plot(
     if not all_blocks:
         return
 
-    tmp_trj = out_png.with_suffix(".trj")
+    tmp_trj = out_png.with_name(f"{out_png.stem}_trj.xyz")
     ensure_dir(tmp_trj.parent)
     try:
         tmp_trj.write_text("\n".join(all_blocks) + "\n", encoding="utf-8")
@@ -1417,17 +1417,17 @@ def _irc_and_match(
     Run IRC via the irc CLI (EulerPC), then map the IRC endpoints to (left, right).
 
     - Run irc on the TS structure into ``seg_dir/irc``.
-    - Read endpoints from ``finished_irc.trj``.
+    - Read endpoints from ``finished_irc_trj.xyz``.
     - When ``seg_tag`` is provided, map the two IRC endpoints to the corresponding
       GSM segment endpoints loaded from
-      ``<path_dir>/<seg_tag>_refine_mep/final_geometries.trj`` (or
-      ``<path_dir>/<seg_tag>_mep/final_geometries.trj`` as a fallback). Bond-state
+      ``<path_dir>/<seg_tag>_refine_mep/final_geometries_trj.xyz`` (or
+      ``<path_dir>/<seg_tag>_mep/final_geometries_trj.xyz`` as a fallback). Bond-state
       matching is attempted first; if that fails, the assignment that minimizes the
       sum of RMSDs to the GSM endpoints is used.
     - For TSOPT-only mode (``seg_tag`` is ``None``), the original (first, last)
       IRC endpoints are kept as (left, right).
     - Returns the endpoint geometries, tags, and paths to the per-segment IRC plot
-      and ``finished_irc.trj``, together with a flag indicating whether the IRC
+      and ``finished_irc_trj.xyz``, together with a flag indicating whether the IRC
       trajectory should be reversed when constructing the global IRC plot.
     """
     freeze_atoms: List[int] = _get_freeze_atoms(seg_pocket_pdb, freeze_links_flag)
@@ -1467,7 +1467,7 @@ def _irc_and_match(
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
 
     finished_pdb = irc_dir / "finished_irc.pdb"
-    finished_trj = irc_dir / "finished_irc.trj"
+    finished_trj = irc_dir / "finished_irc_trj.xyz"
     irc_plot = irc_dir / "irc_plot.png"
 
     # Ensure we have a PDB for visualization if possible
@@ -1481,7 +1481,7 @@ def _irc_and_match(
             if ref_for_conv is not None:
                 _path_search._convert_to_pdb_logged(finished_trj, ref_pdb_path=ref_for_conv, out_path=finished_pdb)
     except Exception as e:
-        _echo(f"[irc] WARNING: failed to convert finished_irc.trj to PDB: {e}")
+        _echo(f"[irc] WARNING: failed to convert finished_irc_trj.xyz to PDB: {e}")
 
     elems, c_first, c_last = read_xyz_first_last(finished_trj)
 
@@ -3324,15 +3324,15 @@ def cli(
                 prefix=f"all seg {idx:02d}",
             )
 
-            seg_trj = seg_dir / "final_geometries.trj"
+            seg_trj = seg_dir / "final_geometries_trj.xyz"
             if not seg_trj.exists():
                 raise click.ClickException(
-                    f"[all] path-opt segment {idx} did not produce final_geometries.trj"
+                    f"[all] path-opt segment {idx} did not produce final_geometries_trj.xyz"
                 )
 
             try:
                 mirror_dir = path_dir / f"{seg_tag}_mep"
-                mirror_trj = mirror_dir / "final_geometries.trj"
+                mirror_trj = mirror_dir / "final_geometries_trj.xyz"
 
                 ensure_dir(mirror_dir)
                 if seg_trj.resolve() != mirror_trj.resolve():
@@ -3344,7 +3344,7 @@ def cli(
                 )
 
             try:
-                seg_mep_trj = path_dir / f"mep_seg_{idx:02d}.trj"
+                seg_mep_trj = path_dir / f"mep_seg_{idx:02d}_trj.xyz"
                 shutil.copy2(seg_trj, seg_mep_trj)
                 if pockets_for_path[0].suffix.lower() == ".pdb":
                     _path_search._convert_to_pdb_logged(
@@ -3413,7 +3413,7 @@ def cli(
                 }
             )
 
-        final_trj = path_dir / "mep.trj"
+        final_trj = path_dir / "mep_trj.xyz"
         try:
             final_trj.write_text("".join(combined_blocks), encoding="utf-8")
             _echo(f"[all] Wrote concatenated MEP trajectory: {final_trj}")
@@ -3534,7 +3534,7 @@ def cli(
                     _copy_logged(src, dst, label=name)
 
             for stem in ("mep", "mep_w_ref"):
-                for ext in (".trj", ".xyz"):
+                for ext in ("_trj.xyz", ".xyz"):
                     src = path_dir / f"{stem}{ext}"
                     if src.exists():
                         dst = out_dir / src.name
@@ -3652,7 +3652,7 @@ def cli(
                     _copy_logged(src, dst, label=name)
 
             for stem in ("mep", "mep_w_ref"):
-                for ext in (".trj", ".xyz"):
+                for ext in ("_trj.xyz", ".xyz"):
                     src = path_dir / f"{stem}{ext}"
                     if src.exists():
                         dst = out_dir / src.name
@@ -3999,14 +3999,14 @@ def cli(
                 endpoints = _load_segment_endpoints(seg_root, str(seg_tag), freeze_atoms)
                 if endpoints is None:
                     _echo(
-                        f"[post] WARNING: final_geometries.trj not found for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
+                        f"[post] WARNING: final_geometries_trj.xyz not found for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
                         err=True,
                     )
                     continue
                 gL, gR = endpoints
             except Exception as e:
                 _echo(
-                    f"[post] WARNING: failed to load segment endpoints from final_geometries.trj for segment {seg_idx:02d}: {e}. Skipping segment.",
+                    f"[post] WARNING: failed to load segment endpoints from final_geometries_trj.xyz for segment {seg_idx:02d}: {e}. Skipping segment.",
                     err=True,
                 )
                 continue

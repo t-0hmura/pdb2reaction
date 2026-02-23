@@ -210,7 +210,7 @@ def _build_scan_context(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, .trj, ...).",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "--scan-lists",
@@ -684,7 +684,7 @@ def cli(
                     )
 
                 if dump and trj_blocks:
-                    trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}.trj"
+                    trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_trj.xyz"
                     try:
                         with open(trj_path, "w") as f:
                             f.write("".join(trj_blocks))

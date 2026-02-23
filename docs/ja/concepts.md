@@ -21,7 +21,7 @@
  │ │ ↓
  │ └─ MEP 探索 [path-search] または [path-opt]
  │ ↓
- │ MEP 経路 (mep.trj) + エネルギーダイアグラム
+ │ MEP 経路 (mep_trj.xyz) + エネルギーダイアグラム
  │ ↓
  └─ (任意) TS 最適化 + IRC [tsopt] → [irc]
  └─ (任意) 熱化学 [freq]
@@ -51,7 +51,7 @@
 - **セグメント**: 隣接する 2 つの端点を結ぶ MEP 区間。多構造入力はセグメントに分解されます（例: R → I1, I1 → I2, …）。
 
 ### テンプレートとファイル変換（`--convert-files`）
-`pdb2reaction` は軌跡（例: `mep.trj`, `irc.trj`）を出力します。 PDB テンプレートや Gaussian 入力がある場合、対応する付随ファイルも出力できます。
+`pdb2reaction` は軌跡（例: `mep_trj.xyz`, `irc_trj.xyz`）を出力します。 PDB テンプレートや Gaussian 入力がある場合、対応する付随ファイルも出力できます。
 
 - PDB テンプレートがあるとき → `.pdb` 付随ファイル
 - Gaussian テンプレートがあるとき → `.gjf` 付随ファイル

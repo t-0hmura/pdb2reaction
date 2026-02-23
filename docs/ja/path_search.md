@@ -8,7 +8,7 @@
 ### 要点
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
-- **主な出力:** `mep.trj`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
+- **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
 - **既定値:** `--mep-mode gsm`、`--opt-mode light`（LBFGS）、`--preopt`、`--align`、`--thresh gau`。
 - **次にやること:** HEI は **TS 候補**です。単独では TS 検証になりません。続けて [tsopt](tsopt.md) → [freq](freq.md) → [irc](irc.md) を実行してください。
 
@@ -29,8 +29,8 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 ## 出力の見方
 
 - `result_path_search/summary.md`
-- `result_path_search/key_mep.trj` / `result_path_search/key_ts.xyz`（利用可能時）
-- `result_path_search/mep.trj`
+- `result_path_search/key_mep_trj.xyz` / `result_path_search/key_ts.xyz`（利用可能時）
+- `result_path_search/mep_trj.xyz`
 - `result_path_search/summary.yaml`
 - `result_path_search/summary.log`
 - `result_path_search/mep_plot.png`（プロット生成時）
@@ -127,14 +127,14 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 ## 出力
 ```
 out_dir/ (デフォルト:./result_path_search/)
-├─ mep.trj # 主要 MEP 軌跡
+├─ mep_trj.xyz # 主要 MEP 軌跡
 ├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
 ├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 人間が読めるサマリー
 ├─ summary.md # 主要成果物へ移動しやすいナビゲーションページ
-├─ key_mep.trj # 主要 MEP 軌跡へのショートカット（symlink/copy）
+├─ key_mep_trj.xyz # 主要 MEP 軌跡へのショートカット（symlink/copy）
 ├─ key_mep.pdb # 主要 MEP PDB へのショートカット（symlink/copy）
 ├─ key_ts.xyz / key_ts.pdb # TS 候補スナップショットへのショートカット（利用可能時）
 ├─ key_mep_plot.png # MEP プロファイルへのショートカット（利用可能時）

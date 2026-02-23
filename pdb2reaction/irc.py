@@ -127,9 +127,9 @@ def _write_output_summary_md(out_dir: Path) -> None:
             return
 
         root_specs: List[Tuple[str, Sequence[str]]] = [
-            ("Complete IRC trajectory", ["*finished_irc.trj"]),
-            ("Forward IRC trajectory", ["*forward_irc.trj"]),
-            ("Backward IRC trajectory", ["*backward_irc.trj"]),
+            ("Complete IRC trajectory", ["*finished_irc_trj.xyz"]),
+            ("Forward IRC trajectory", ["*forward_irc_trj.xyz"]),
+            ("Backward IRC trajectory", ["*backward_irc_trj.xyz"]),
             ("Complete IRC trajectory (PDB)", ["*finished_irc.pdb"]),
             ("Forward IRC trajectory (PDB)", ["*forward_irc.pdb"]),
             ("Backward IRC trajectory (PDB)", ["*backward_irc.pdb"]),
@@ -144,9 +144,9 @@ def _write_output_summary_md(out_dir: Path) -> None:
             root_lines.append(f"- {label}: [`{rel}`]({rel})")
 
         shortcut_specs: List[Tuple[str, str, Sequence[str]]] = [
-            ("key_irc.trj", "Complete IRC trajectory", ["*finished_irc.trj"]),
-            ("key_irc_forward.trj", "Forward IRC trajectory", ["*forward_irc.trj"]),
-            ("key_irc_backward.trj", "Backward IRC trajectory", ["*backward_irc.trj"]),
+            ("key_irc_trj.xyz", "Complete IRC trajectory", ["*finished_irc_trj.xyz"]),
+            ("key_irc_forward_trj.xyz", "Forward IRC trajectory", ["*forward_irc_trj.xyz"]),
+            ("key_irc_backward_trj.xyz", "Backward IRC trajectory", ["*backward_irc_trj.xyz"]),
             ("key_irc.pdb", "Complete IRC trajectory (PDB)", ["*finished_irc.pdb"]),
             ("key_irc_data.h5", "IRC HDF5 dump", ["*irc_data.h5"]),
         ]
@@ -194,7 +194,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
             [
                 "",
                 "## Notes",
-                "- Start from `key_irc.trj` and compare `key_irc_forward.trj` / `key_irc_backward.trj` branches.",
+                "- Start from `key_irc_trj.xyz` and compare `key_irc_forward_trj.xyz` / `key_irc_backward_trj.xyz` branches.",
             ]
         )
 
@@ -218,7 +218,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, .trj, etc.).",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, etc.).",
 )
 @click.option(
     "-q",
@@ -544,17 +544,17 @@ def cli(
             # --------------------------
             suffix_prefix = irc_cfg.get("prefix", "")
             _echo_convert_trj_if_exists(
-                out_dir_path / f"{suffix_prefix}{'finished_irc.trj'}",
+                out_dir_path / f"{suffix_prefix}{'finished_irc_trj.xyz'}",
                 prepared_input,
                 out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
             )
             _echo_convert_trj_if_exists(
-                out_dir_path / f"{suffix_prefix}{'forward_irc.trj'}",
+                out_dir_path / f"{suffix_prefix}{'forward_irc_trj.xyz'}",
                 prepared_input,
                 out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
             )
             _echo_convert_trj_if_exists(
-                out_dir_path / f"{suffix_prefix}{'backward_irc.trj'}",
+                out_dir_path / f"{suffix_prefix}{'backward_irc_trj.xyz'}",
                 prepared_input,
                 out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
             )

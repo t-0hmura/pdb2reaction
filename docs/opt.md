@@ -6,7 +6,7 @@
 
 `pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode light`, default) or RFO (`--opt-mode heavy`). For PDB inputs, link-hydrogen parents are automatically frozen.
 
-The command uses pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `.trj`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
+The command uses pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
@@ -26,10 +26,10 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
 
 - `result_opt/summary.md`
 - `result_opt/key_opt.xyz` (or `key_opt.pdb`)
-- `result_opt/key_opt.trj` (when trajectory is available)
+- `result_opt/key_opt_trj.xyz` (when trajectory is available)
 - `result_opt/final_geometry.xyz`
 - `result_opt/final_geometry.pdb` (for PDB input with conversion enabled)
-- `result_opt/optimization.trj` (when `--dump` is enabled)
+- `result_opt/optimization_trj.xyz` (when `--dump` is enabled)
 
 ## Common examples
 
@@ -68,7 +68,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted. Always pass the physically correct values explicitly.
 - **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
-- **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization.trj`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
+- **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
 
 ## CLI options
@@ -88,7 +88,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--freeze-links/--no-freeze-links` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
-| `--dump/--no-dump` | Emit trajectory dumps (`optimization.trj`). | `False` |
+| `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory for all files. | `./result_opt/` |
@@ -104,13 +104,13 @@ out_dir/
 ├─ key_opt.xyz # Shortcut to final_geometry.xyz
 ├─ key_opt.pdb # Shortcut to final_geometry.pdb (when available)
 ├─ key_opt.gjf # Shortcut to final_geometry.gjf (when available)
-├─ key_opt.trj # Shortcut to optimization.trj
+├─ key_opt_trj.xyz # Shortcut to optimization_trj.xyz
 ├─ key_opt_traj.pdb # Shortcut to optimization.pdb (when available)
 ├─ key_restart.yml # Shortcut to a restart snapshot (when available)
 ├─ final_geometry.xyz # Always written
 ├─ final_geometry.pdb # Only when the input was a PDB and conversion is enabled
 ├─ final_geometry.gjf # When a Gaussian template was detected and conversion is enabled
-├─ optimization.trj # Only if dumping is enabled
+├─ optimization_trj.xyz # Only if dumping is enabled
 ├─ optimization.pdb # PDB conversion of the trajectory (PDB inputs, conversion enabled)
 └─ restart*.yml # Optional restarts when opt.dump_restart is set
 ```

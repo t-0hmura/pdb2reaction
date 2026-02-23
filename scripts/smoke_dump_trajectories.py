@@ -98,7 +98,7 @@ def _validate_case(case: Case, timeout_sec: float | None = None) -> None:
         p = out_dir / rel
         if not p.exists():
             raise RuntimeError(f"[{case.name}] expected '{rel}' to exist.")
-        if p.suffix in {".trj", ".xyz"}:
+        if p.suffix == ".xyz":
             n_frames = _frame_count(p)
             if n_frames <= 0:
                 raise RuntimeError(f"[{case.name}] '{rel}' has no frames.")
@@ -155,7 +155,7 @@ def main() -> int:
                     "--out-dir",
                     str(base / "opt_light_dump"),
                 ],
-                expect_present=("optimization.trj",),
+                expect_present=("optimization_trj.xyz",),
             ),
             Case(
                 name="opt_heavy_dump",
@@ -175,7 +175,7 @@ def main() -> int:
                     "--out-dir",
                     str(base / "opt_heavy_dump"),
                 ],
-                expect_present=("optimization.trj",),
+                expect_present=("optimization_trj.xyz",),
             ),
             Case(
                 name="tsopt_light_dump",
@@ -195,7 +195,7 @@ def main() -> int:
                     "--out-dir",
                     str(base / "tsopt_light_dump"),
                 ],
-                expect_present=("optimization.trj", "optimization_all.trj"),
+                expect_present=("optimization_trj.xyz", "optimization_all_trj.xyz"),
             ),
             Case(
                 name="tsopt_heavy_dump",
@@ -215,8 +215,8 @@ def main() -> int:
                     "--out-dir",
                     str(base / "tsopt_heavy_dump"),
                 ],
-                expect_present=("optimization.trj",),
-                expect_absent=("optimization_all.trj",),
+                expect_present=("optimization_trj.xyz",),
+                expect_absent=("optimization_all_trj.xyz",),
             ),
             Case(
                 name="tsopt_heavy_nodump",
@@ -237,7 +237,7 @@ def main() -> int:
                     str(base / "tsopt_heavy_nodump"),
                 ],
                 expect_present=(),
-                expect_absent=("optimization.trj", "optimization_all.trj"),
+                expect_absent=("optimization_trj.xyz", "optimization_all_trj.xyz"),
             ),
             Case(
                 name="tsopt_heavy_dump_legacy_bool",
@@ -258,7 +258,7 @@ def main() -> int:
                     "--out-dir",
                     str(base / "tsopt_heavy_dump_legacy_bool"),
                 ],
-                expect_present=("optimization.trj",),
+                expect_present=("optimization_trj.xyz",),
             ),
         ]
 

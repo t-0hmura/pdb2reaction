@@ -10,7 +10,7 @@ Usage: pdb2reaction scan [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, .trj, ...).
+  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz, ...).
                                   [required]
   --scan-lists TEXT               Python-like list of (i,j,target) per stage.
                                   Pass a single --scan-lists followed by
@@ -46,7 +46,7 @@ Options:
   --freeze-links / --no-freeze-links
                                   If input is PDB, freeze parent atoms of link
                                   hydrogens.  [default: freeze-links]
-  --dump / --no-dump              Write stage trajectory as scan.trj (and
+  --dump / --no-dump              Write stage trajectory as scan_trj.xyz (and
                                   scan.pdb for PDB input).  [default: no-dump]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/GJF

@@ -22,10 +22,10 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 ## 出力の見方
 
 - `result_irc/summary.md`
-- `result_irc/key_irc.trj`
-- `result_irc/key_irc_forward.trj`
-- `result_irc/finished_irc.trj`
-- `result_irc/forward_irc.trj`
+- `result_irc/key_irc_trj.xyz`
+- `result_irc/key_irc_forward_trj.xyz`
+- `result_irc/finished_irc_trj.xyz`
+- `result_irc/forward_irc_trj.xyz`
 
 ## よくある例
 
@@ -98,12 +98,12 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 out_dir/ (デフォルト:./result_irc/)
 ├─ summary.md # 主要成果物のインデックス
-├─ key_irc.trj # finished_irc.trj へのショートカット
-├─ key_irc_forward.trj # forward_irc.trj へのショートカット
+├─ key_irc_trj.xyz # finished_irc_trj.xyz へのショートカット
+├─ key_irc_forward_trj.xyz # forward_irc_trj.xyz へのショートカット
 ├─ key_irc.pdb # finished_irc.pdb へのショートカット（存在時）
 ├─ key_irc_data.h5 # irc_data.h5 へのショートカット（存在時）
-├─ <prefix>finished_irc.trj # 完全な IRC 軌跡
-├─ <prefix>forward_irc.trj # 順方向分岐が実行された場合
+├─ <prefix>finished_irc_trj.xyz # 完全な IRC 軌跡
+├─ <prefix>forward_irc_trj.xyz # 順方向分岐が実行された場合
 └─ *.pdb # PDB 入力用の軌跡コンパニオン（変換有効時）
 ```
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。

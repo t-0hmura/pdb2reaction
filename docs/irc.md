@@ -21,10 +21,10 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 ## Output checklist
 
 - `result_irc/summary.md`
-- `result_irc/key_irc.trj`
-- `result_irc/key_irc_forward.trj`
-- `result_irc/finished_irc.trj`
-- `result_irc/forward_irc.trj`
+- `result_irc/key_irc_trj.xyz`
+- `result_irc/key_irc_forward_trj.xyz`
+- `result_irc/finished_irc_trj.xyz`
+- `result_irc/forward_irc_trj.xyz`
 
 ## Common examples
 
@@ -97,12 +97,12 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 out_dir/ (default:./result_irc/)
 ├─ summary.md # Quick index of key outputs
-├─ key_irc.trj # Shortcut to finished_irc.trj
-├─ key_irc_forward.trj # Shortcut to forward_irc.trj
+├─ key_irc_trj.xyz # Shortcut to finished_irc_trj.xyz
+├─ key_irc_forward_trj.xyz # Shortcut to forward_irc_trj.xyz
 ├─ key_irc.pdb # Shortcut to finished_irc.pdb (when available)
 ├─ key_irc_data.h5 # Shortcut to irc_data.h5 (when available)
-├─ <prefix>finished_irc.trj # Complete IRC trajectory
-├─ <prefix>forward_irc.trj # Present when the forward branch runs
+├─ <prefix>finished_irc_trj.xyz # Complete IRC trajectory
+├─ <prefix>forward_irc_trj.xyz # Present when the forward branch runs
 └─ *.pdb # Trajectory companions when a reference PDB is available (conversion enabled)
 ```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.

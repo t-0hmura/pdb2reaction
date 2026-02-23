@@ -122,9 +122,9 @@ def _write_output_summary_md(out_dir: Path) -> None:
             ("Final TS geometry (XYZ)", ["final_geometry.xyz"]),
             ("Final TS geometry (PDB)", ["final_geometry.pdb"]),
             ("Final TS geometry (GJF)", ["final_geometry.gjf"]),
-            ("Optimization trajectory", ["optimization_all.trj", "optimization.trj"]),
+            ("Optimization trajectory", ["optimization_all_trj.xyz", "optimization_trj.xyz"]),
             ("Optimization trajectory (PDB)", ["optimization_all.pdb", "optimization.pdb"]),
-            ("Imaginary mode trajectory", ["vib/final_imag_mode_*.trj"]),
+            ("Imaginary mode trajectory", ["vib/final_imag_mode_*_trj.xyz"]),
             ("Imaginary mode (PDB)", ["vib/final_imag_mode_*.pdb"]),
         ]
         root_lines: List[str] = []
@@ -139,9 +139,9 @@ def _write_output_summary_md(out_dir: Path) -> None:
             ("key_ts.xyz", "TS geometry (XYZ)", ["final_geometry.xyz"]),
             ("key_ts.pdb", "TS geometry (PDB)", ["final_geometry.pdb"]),
             ("key_ts.gjf", "TS geometry (GJF)", ["final_geometry.gjf"]),
-            ("key_opt.trj", "Optimization trajectory", ["optimization_all.trj", "optimization.trj"]),
+            ("key_opt_trj.xyz", "Optimization trajectory", ["optimization_all_trj.xyz", "optimization_trj.xyz"]),
             ("key_opt.pdb", "Optimization trajectory (PDB)", ["optimization_all.pdb", "optimization.pdb"]),
-            ("key_imag_mode.trj", "Imaginary mode trajectory", ["vib/final_imag_mode_*.trj"]),
+            ("key_imag_mode_trj.xyz", "Imaginary mode trajectory", ["vib/final_imag_mode_*_trj.xyz"]),
             ("key_imag_mode.pdb", "Imaginary mode (PDB)", ["vib/final_imag_mode_*.pdb"]),
         ]
         shortcut_lines: List[str] = []
@@ -188,7 +188,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
             [
                 "",
                 "## Notes",
-                "- Start from `key_ts.xyz` (or `key_ts.pdb`) and `key_imag_mode.trj` for TS validation.",
+                "- Start from `key_ts.xyz` (or `key_ts.pdb`) and `key_imag_mode_trj.xyz` for TS validation.",
             ]
         )
 
@@ -841,7 +841,7 @@ class HessianDimer:
         self.mode_path = self.out_dir / ".dimer_mode.dat"
 
         self.dump = bool(dump)
-        self.optim_all_path = self.out_dir / "optimization_all.trj"
+        self.optim_all_path = self.out_dir / "optimization_all_trj.xyz"
 
         self._raw_hessian_cache_cpu: Optional[torch.Tensor] = None
         self._raw_hessian_coords_cpu: Optional[np.ndarray] = None
@@ -923,7 +923,7 @@ class HessianDimer:
 
         # Append to concatenated trajectory if dump enabled
         if self.dump:
-            part_path = self.out_dir / "optimization.trj"
+            part_path = self.out_dir / "optimization_trj.xyz"
             if part_path.exists():
                 with self.optim_all_path.open("a", encoding="utf-8") as f_all, \
                      part_path.open("r", encoding="utf-8") as f_part:
@@ -1287,7 +1287,7 @@ class HessianDimer:
             v_cart = (mode_mw / torch.sqrt(m3)).detach().cpu().numpy()
             v_cart = v_cart / np.linalg.norm(v_cart)
             del modes, masses_amu_t, m3
-            out_trj = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.trj"
+            out_trj = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1_trj.xyz"
             out_pdb = self.vib_dir / f"final_imag_mode_{freqs_cm[primary_idx]:+.2f}cm-1.pdb"
             _write_mode_trj_and_pdb(
                 self.geom,
@@ -1396,7 +1396,7 @@ def _build_rsirfo_kwargs(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure (.pdb, .xyz, .trj, ...)",
+    help="Input structure (.pdb, .xyz, _trj.xyz, ...)",
 )
 @click.option(
     "-q",
@@ -1769,7 +1769,7 @@ def cli(
                     click.echo("[convert] Wrote 'final_geometry' outputs.")
 
                 if bool(opt_cfg.get("dump", False)) and needs_pdb:
-                    all_trj = out_dir_path / "optimization_all.trj"
+                    all_trj = out_dir_path / "optimization_all_trj.xyz"
                     if all_trj.exists():
                         if convert_xyz_like_outputs(
                             all_trj,
@@ -1780,7 +1780,7 @@ def cli(
                         ):
                             click.echo("[convert] Wrote 'optimization_all' outputs.")
                     else:
-                        click.echo("[convert] WARNING: 'optimization_all.trj' not found; skipping conversion.", err=True)
+                        click.echo("[convert] WARNING: 'optimization_all_trj.xyz' not found; skipping conversion.", err=True)
 
             else:
                 # RS-I-RFO (heavy)
@@ -1887,7 +1887,7 @@ def cli(
                     click.echo("[convert] Wrote 'final_geometry' outputs.")
 
                 if bool(opt_cfg.get("dump", False)) and needs_pdb:
-                    trj_path = out_dir_path / "optimization.trj"
+                    trj_path = out_dir_path / "optimization_trj.xyz"
                     if trj_path.exists():
                         if convert_xyz_like_outputs(
                             trj_path,
@@ -1898,7 +1898,7 @@ def cli(
                         ):
                             click.echo("[convert] Wrote 'optimization' outputs.")
                     else:
-                        click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+                        click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
                 # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
                 neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
@@ -1918,7 +1918,7 @@ def cli(
 
                     vib_dir = out_dir_path / "vib"
                     vib_dir.mkdir(parents=True, exist_ok=True)
-                    out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.trj"
+                    out_trj = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1_trj.xyz"
                     out_pdb = vib_dir / f"final_imag_mode_{freqs_cm[pick_idx]:+.2f}cm-1.pdb"
 
                     ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None

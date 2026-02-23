@@ -254,7 +254,7 @@ out_dir/ (デフォルト:./result_all/)
 ├─ summary.md # 主要成果物へ移動しやすいナビゲーションページ
 ├─ summary.log # テキスト形式の結果要約
 ├─ summary.yaml # YAML 形式の結果要約
-├─ key_mep.trj # 主要 MEP 軌跡へのショートカット（symlink/copy）
+├─ key_mep_trj.xyz # 主要 MEP 軌跡へのショートカット（symlink/copy）
 ├─ key_mep.pdb # 主要 MEP PDB へのショートカット（symlink/copy）
 ├─ key_ts.pdb / key_ts.xyz # TS 構造へのショートカット（利用可能時）
 ├─ key_freq_TS.csv # TS 振動数へのショートカット（利用可能時）

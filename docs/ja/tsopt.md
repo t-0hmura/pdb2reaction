@@ -27,9 +27,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 - `result_tsopt/summary.md`
 - `result_tsopt/key_ts.xyz`（または `key_ts.pdb`）
-- `result_tsopt/key_imag_mode.trj`
+- `result_tsopt/key_imag_mode_trj.xyz`
 - `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
-- `result_tsopt/vib/final_imag_mode_*.trj`
+- `result_tsopt/vib/final_imag_mode_*_trj.xyz`
 - `result_tsopt/vib/final_imag_mode_*.pdb`（PDB 入力の場合）
 
 ## よくある例
@@ -88,7 +88,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  - `--flatten-imag-mode` が有効な場合、フラットンループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラットン → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten-imag-mode` が有効で収束後も虚数モードが複数残る場合、追加モードをフラットンしてRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
-- **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*.trj` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は、`--dump` のとき入力テンプレート経由で PDB に変換されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされ、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
+- **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*_trj.xyz` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は、`--dump` のとき入力テンプレート経由で PDB に変換されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされ、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -117,17 +117,17 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 out_dir/ (デフォルト:./result_tsopt/)
 ├─ summary.md # 主要成果物のインデックス
 ├─ key_ts.xyz # 最終TS構造へのショートカット（または key_ts.pdb/key_ts.gjf）
-├─ key_imag_mode.trj # 代表的な虚数モードへのショートカット
-├─ key_opt.trj # 最適化軌跡へのショートカット（存在する場合）
+├─ key_imag_mode_trj.xyz # 代表的な虚数モードへのショートカット
+├─ key_opt_trj.xyz # 最適化軌跡へのショートカット（存在する場合）
 ├─ final_geometry.xyz # 常に書き込み
 ├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
 ├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）
-├─ optimization_all.trj # --dumpがTrueのときのLightモードダンプ
+├─ optimization_all_trj.xyz # --dumpがTrueのときのLightモードダンプ
 ├─ optimization_all.pdb # PDB 入力のLightモードPDB コンパニオン（変換有効時、--dump）
-├─ optimization.trj # --dumpがTrueのときのHeavyモード軌跡
+├─ optimization_trj.xyz # --dumpがTrueのときのHeavyモード軌跡
 ├─ optimization.pdb # HeavyモードPDB コンパニオン（変換有効時、--dump）
 ├─ vib/
-│ ├─ final_imag_mode_±XXXX.Xcm-1.trj
+│ ├─ final_imag_mode_±XXXX.Xcm-1_trj.xyz
 │ └─ final_imag_mode_±XXXX.Xcm-1.pdb
 └─.dimer_mode.dat # Lightモード方向シード
 ```

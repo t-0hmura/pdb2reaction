@@ -25,7 +25,7 @@ pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./res
 
 - `result_tsopt/final_geometry.pdb`
 - `result_freq/frequencies_cm-1.txt`
-- `result_freq/mode_*.trj` と `result_freq/mode_*.pdb`
+- `result_freq/mode_*_trj.xyz` と `result_freq/mode_*.pdb`
 
 一次鞍点として妥当な TS では、虚振動（負の cm^-1）は 1 本になることが期待されます。
 

@@ -102,7 +102,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_i###_j###.*` に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
 2. 単一の `--scan-lists` リテラルを 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
-4. 各 `(i, j)` について、`<out-dir>/grid/point_i###_j###.xyz` に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した UMA エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###.trj` として保存されます。
+4. 各 `(i, j)` について、`<out-dir>/grid/point_i###_j###.xyz` に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した UMA エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz` として保存されます。
 5. すべての点を走査したら、`<out-dir>/surface.csv` を作成します。`--baseline {min|first}` で kcal/mol の基準を設定します。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
 
 ## CLI オプション
@@ -122,7 +122,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
-| `--dump/--no-dump` | 外側ループごとの `inner_path_d1_###.trj` を保存 | `False` |
+| `--dump/--no-dump` | 外側ループごとの `inner_path_d1_###_trj.xyz` を保存 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan2d/` |
@@ -147,7 +147,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 ├─ grid/point_i###_j###.xyz # 各 (i, j) の緩和構造
 ├─ grid/point_i###_j###.pdb # 変換有効時の PDB コンパニオン
 ├─ grid/point_i###_j###.gjf # テンプレートがある場合の Gaussian コンパニオン
-└─ grid/inner_path_d1_###.trj # --dump の場合のみ（PDB 入力時は.pdb にも変換）
+└─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（PDB 入力時は.pdb にも変換）
 ```
 
 ## 注意事項

@@ -10,7 +10,7 @@ Usage: pdb2reaction opt [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, .trj, ...).
+  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz, ...).
                                   [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
@@ -44,7 +44,7 @@ Options:
   --opt-mode [light|heavy]        Optimization mode: 'light' (=LBFGS) or 'heavy'
                                   (=RFO).  [default: light]
   --dump / --no-dump              Write optimization trajectory to
-                                  'optimization.trj'.  [default: no-dump]
+                                  'optimization_trj.xyz'.  [default: no-dump]
   --out-dir TEXT                  Output directory.  [default: ./result_opt/]
   --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when

@@ -27,9 +27,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 - `result_tsopt/summary.md`
 - `result_tsopt/key_ts.xyz` (or `key_ts.pdb`)
-- `result_tsopt/key_imag_mode.trj`
+- `result_tsopt/key_imag_mode_trj.xyz`
 - `result_tsopt/final_geometry.pdb` (or `final_geometry.xyz`)
-- `result_tsopt/vib/final_imag_mode_*.trj`
+- `result_tsopt/vib/final_imag_mode_*_trj.xyz`
 - `result_tsopt/vib/final_imag_mode_*.pdb` (for PDB inputs)
 
 ## Common examples
@@ -111,7 +111,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  When `--flatten-imag-mode` is enabled and more than one imaginary mode remains after
  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
  imaginary mode remains or the flatten iteration cap is reached.
-- **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*.trj`
+- **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*_trj.xyz`
  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
  trajectory and final geometry are also converted to PDB via the input template when `--dump`;
  Gaussian templates receive a `.gjf` companion for the final geometry only.
@@ -142,17 +142,17 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 out_dir/ (default:./result_tsopt/)
 ├─ summary.md # Quick index of key outputs
 ├─ key_ts.xyz # Shortcut to final TS geometry (or key_ts.pdb/key_ts.gjf)
-├─ key_imag_mode.trj # Shortcut to a representative imaginary mode
-├─ key_opt.trj # Shortcut to optimization trajectory (when available)
+├─ key_imag_mode_trj.xyz # Shortcut to a representative imaginary mode
+├─ key_opt_trj.xyz # Shortcut to optimization trajectory (when available)
 ├─ final_geometry.xyz # Always written
 ├─ final_geometry.pdb # When the input was PDB (conversion enabled)
 ├─ final_geometry.gjf # When the input was Gaussian (conversion enabled)
-├─ optimization_all.trj # Light-mode dump when --dump is True
+├─ optimization_all_trj.xyz # Light-mode dump when --dump is True
 ├─ optimization_all.pdb # Light-mode companion for PDB inputs (conversion enabled, --dump)
-├─ optimization.trj # Heavy-mode trajectory when --dump is True
+├─ optimization_trj.xyz # Heavy-mode trajectory when --dump is True
 ├─ optimization.pdb # Heavy-mode PDB companion when conversion is enabled and --dump is True
 ├─ vib/
-│ ├─ final_imag_mode_±XXXX.Xcm-1.trj
+│ ├─ final_imag_mode_±XXXX.Xcm-1_trj.xyz
 │ └─ final_imag_mode_±XXXX.Xcm-1.pdb
 └─.dimer_mode.dat # Light-mode orientation seed
 ```

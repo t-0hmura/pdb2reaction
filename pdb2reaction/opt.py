@@ -105,7 +105,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
             ("Optimized geometry (XYZ)", ["final_geometry.xyz"]),
             ("Optimized geometry (PDB)", ["final_geometry.pdb"]),
             ("Optimized geometry (GJF)", ["final_geometry.gjf"]),
-            ("Optimization trajectory", ["optimization.trj"]),
+            ("Optimization trajectory", ["optimization_trj.xyz"]),
             ("Optimization trajectory (PDB)", ["optimization.pdb"]),
             ("Restart snapshot", ["restart*.yml"]),
         ]
@@ -121,7 +121,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
             ("key_opt.xyz", "Optimized geometry (XYZ)", ["final_geometry.xyz"]),
             ("key_opt.pdb", "Optimized geometry (PDB)", ["final_geometry.pdb"]),
             ("key_opt.gjf", "Optimized geometry (GJF)", ["final_geometry.gjf"]),
-            ("key_opt.trj", "Optimization trajectory", ["optimization.trj"]),
+            ("key_opt_trj.xyz", "Optimization trajectory", ["optimization_trj.xyz"]),
             ("key_opt_traj.pdb", "Optimization trajectory (PDB)", ["optimization.pdb"]),
             ("key_restart.yml", "Restart snapshot", ["restart*.yml"]),
         ]
@@ -169,7 +169,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
             [
                 "",
                 "## Notes",
-                "- Start from `key_opt.xyz` (or `key_opt.pdb`) and inspect `key_opt.trj` when available.",
+                "- Start from `key_opt.xyz` (or `key_opt.pdb`) and inspect `key_opt_trj.xyz` when available.",
             ]
         )
 
@@ -357,9 +357,9 @@ def _convert_outputs(
     ):
         click.echo("[convert] Wrote 'final_geometry' outputs.")
 
-    # optimization.trj → optimization.pdb (if dump)
+    # optimization_trj.xyz → optimization.pdb (if dump)
     if dump and needs_pdb:
-        trj_path = get_trj_fn("optimization.trj")
+        trj_path = get_trj_fn("optimization_trj.xyz")
         if trj_path.exists():
             if convert_xyz_like_outputs(
                 trj_path,
@@ -370,7 +370,7 @@ def _convert_outputs(
             ):
                 click.echo("[convert] Wrote 'optimization' outputs.")
         else:
-            click.echo("[convert] WARNING: 'optimization.trj' not found; skipping conversion.", err=True)
+            click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
 
 # -----------------------------------------------
@@ -386,7 +386,7 @@ def _convert_outputs(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, .trj, ...).",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "-q",
@@ -492,7 +492,7 @@ def _convert_outputs(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Write optimization trajectory to 'optimization.trj'.",
+    help="Write optimization trajectory to 'optimization_trj.xyz'.",
 )
 @click.option(
     "--out-dir",

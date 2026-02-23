@@ -170,7 +170,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
-| `--dump/--no-dump` | Write `inner_path_d1_###_d2_###.trj` for each (d₁, d₂). | `False` |
+| `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
@@ -228,7 +228,7 @@ out_dir/ (default:./result_scan3d/)
 ├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###_k###.gjf # Gaussian companions when templates exist and conversion is enabled
 ├─ grid/preopt_i###_j###_k###.xyz # Starting structure saved before scanning (preoptimized when --preopt is True)
-└─ grid/inner_path_d1_###_d2_###.trj # Present only when --dump is True (mirrored to.pdb/.gjf with conversion)
+└─ grid/inner_path_d1_###_d2_###_trj.xyz # Present only when --dump is True (mirrored to.pdb/.gjf with conversion)
 ```
 
 ## Notes

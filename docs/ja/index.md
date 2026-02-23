@@ -210,7 +210,7 @@ result_all/
 ├── pockets/ # 抽出されたクラスターモデル
 ├── scan/ # （オプション）スキャン結果
 ├── path_search/ # MEP軌跡とダイアグラム
-│ ├── mep.trj # MEP軌跡
+│ ├── mep_trj.xyz # MEP軌跡
 │ ├── mep.pdb # PDB形式のMEP
 │ ├── mep_w_ref.pdb # 全系とマージされたMEP
 │ ├── mep_plot.png # エネルギープロファイルプロット

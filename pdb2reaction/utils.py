@@ -943,7 +943,7 @@ class GjfTemplate:
 
 
 def write_xyz_trj_with_energy(images: Sequence[Any], energies: Sequence[float], path: Path) -> None:
-    """Write an XYZ `.trj` with the energy on line 2 of each block."""
+    """Write an XYZ `_trj.xyz` with the energy on line 2 of each block."""
     blocks: List[str] = []
     E = np.array(energies, dtype=float)
     for geom, e in zip(images, E):
@@ -1516,7 +1516,7 @@ def _convert_to_pdb_logged(
         if ref_pdb_path is None or not _CONVERT_FILES_ENABLED:
             return None
         src_path = Path(src_path)
-        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", ".trj"):
+        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", "_trj.xyz"):
             return None
         out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
         convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)

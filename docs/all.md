@@ -252,7 +252,7 @@ out_dir/ (default:./result_all/)
 ├─ summary.md # quick navigation page with key artifact links
 ├─ summary.log # formatted summary for quick inspection
 ├─ summary.yaml # YAML version summary
-├─ key_mep.trj # root shortcut (symlink/copy) to primary MEP trajectory
+├─ key_mep_trj.xyz # root shortcut (symlink/copy) to primary MEP trajectory
 ├─ key_mep.pdb # root shortcut (symlink/copy) to primary MEP PDB
 ├─ key_ts.pdb / key_ts.xyz # root shortcut to TS structure (when available)
 ├─ key_freq_TS.csv # root shortcut to TS frequencies (when available)

@@ -144,7 +144,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 4. At each `(i, j)` pair, store the biased-optimization result under
  `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
  evaluate the UMA energy without bias. Optional per-outer-step inner
- trajectories are saved as `inner_path_d1_###.trj` when `--dump`.
+ trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
  `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
  reference via `--baseline {min|first}`. With `--baseline first`, the reference
@@ -170,7 +170,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
-| `--dump/--no-dump` | Write `inner_path_d1_###.trj` for each outer step. | `False` |
+| `--dump/--no-dump` | Write `inner_path_d1_###_trj.xyz` for each outer step. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
@@ -197,7 +197,7 @@ out_dir/ (default:./result_scan2d/)
 ├─ grid/point_i###_j###.xyz # Relaxed geometries for every (i, j) pair
 ├─ grid/point_i###_j###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###.gjf # Gaussian companions when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###.trj # Present only when --dump is True (mirrored to.pdb for PDB inputs with conversion)
+└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (mirrored to.pdb for PDB inputs with conversion)
 ```
 
 ## Notes

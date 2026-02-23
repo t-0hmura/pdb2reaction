@@ -7,11 +7,11 @@
 ### At a glance
 - **Use when:** You want to validate a minimum/TS candidate and/or compute thermo corrections from UMA.
 - **Frozen atoms:** Supported via PHVA (partial Hessian vibrational analysis).
-- **Outputs:** `frequencies_cm-1.txt`, per-mode `.trj` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
+- **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
 - **TS check:** A properly converged TS is expected to have **exactly one** imaginary frequency (negative cm⁻¹).
 - **Performance:** If you have ample VRAM, `--hessian-calc-mode Analytical` is usually recommended.
 
-`pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring frozen atoms via PHVA. It exports normal-mode animations as `.trj` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
+`pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
 
 
 ## Minimal example
@@ -24,9 +24,9 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 
 - `result_freq/summary.md`
 - `result_freq/key_frequencies.txt`
-- `result_freq/key_mode_1.trj`
+- `result_freq/key_mode_1_trj.xyz`
 - `result_freq/frequencies_cm-1.txt`
-- `result_freq/mode_*.trj`
+- `result_freq/mode_*_trj.xyz`
 - `result_freq/mode_*.pdb` (for PDB inputs with conversion enabled)
 
 ## Common examples
@@ -83,7 +83,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
  Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
 - **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
  value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
- (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `.trj`
+ (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `_trj.xyz`
  animations are produced for every input; `.pdb` animations are written only when a PDB
  template exists **and** `--convert-files` remains enabled (ASE conversion is used as a
  fallback).
@@ -124,10 +124,10 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 out_dir/ (default:./result_freq/)
 ├─ summary.md # Quick index of key outputs
 ├─ key_frequencies.txt # Shortcut to frequencies_cm-1.txt
-├─ key_mode_1.trj # Shortcut to a representative mode trajectory
+├─ key_mode_1_trj.xyz # Shortcut to a representative mode trajectory
 ├─ key_mode_1.pdb # Shortcut to representative mode PDB (when available)
 ├─ key_thermo.yaml # Shortcut to thermoanalysis.yaml (when available)
-├─ mode_XXXX_±freqcm-1.trj # Per-mode animations
+├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode animations
 ├─ mode_XXXX_±freqcm-1.pdb # Only when a PDB template exists and conversion is enabled
 ├─ frequencies_cm-1.txt # Full frequency list using the selected sort order
 └─ thermoanalysis.yaml # Present when `thermoanalysis` is importable and --dump is True

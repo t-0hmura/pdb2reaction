@@ -28,7 +28,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 - `result_scan/stage_01/result.pdb`
 - `result_scan/stage_02/result.pdb`
-- Optional trajectories when `--dump` is enabled (`scan.trj`, `scan.pdb`)
+- Optional trajectories when `--dump` is enabled (`scan_trj.xyz`, `scan.pdb`)
 
 ## Notes
 

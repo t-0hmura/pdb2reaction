@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 - `result_scan/stage_01/result.pdb` (or `result.xyz`)
 - `result_scan/stage_02/result.pdb` (or `result.xyz`)
-- `result_scan/stage_*/scan.trj` and `scan.pdb` when `--dump` is enabled
+- `result_scan/stage_*/scan_trj.xyz` and `scan.pdb` when `--dump` is enabled
 
 ## Common examples
 
@@ -201,7 +201,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
-| `--dump/--no-dump` | Dump concatenated biased trajectories (`scan.trj`/`scan.pdb`). | `False` |
+| `--dump/--no-dump` | Dump concatenated biased trajectories (`scan_trj.xyz`/`scan.pdb`). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
@@ -237,7 +237,7 @@ out_dir/ (default:./result_scan/)
  ├─ result.xyz
  ├─ result.pdb # PDB mirror of the final structure (conversion enabled)
  ├─ result.gjf # Gaussian mirror when templates exist and conversion is enabled
- ├─ scan.trj # Written when --dump is True
+ ├─ scan_trj.xyz # Written when --dump is True
  └─ scan.pdb # Trajectory companion for PDB inputs when conversion is enabled (no scan.gjf is produced)
 ```
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.

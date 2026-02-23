@@ -10,7 +10,7 @@ Usage: pdb2reaction tsopt [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure (.pdb, .xyz, .trj, ...)
+  -i, --input FILE                Input structure (.pdb, .xyz, _trj.xyz, ...)
                                   [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
