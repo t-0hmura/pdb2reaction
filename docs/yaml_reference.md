@@ -1,8 +1,6 @@
 # YAML Reference
 
 
----
-
 ## Overview
 
 

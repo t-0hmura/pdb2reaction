@@ -393,9 +393,6 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy_diagram.md) |
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
-```{important}
-```
-
 ```{tip}
 In `all`, `tsopt`, `freq` and `irc`, setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
 ```

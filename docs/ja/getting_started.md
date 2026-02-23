@@ -391,9 +391,6 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy_diagram.md) |
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
-```{important}
-```
-
 ```{tip}
 `all`、`tsopt`、`freq`、`irc` では、VRAMが十分にある場合は **`--hessian-calc-mode Analytical`** を設定することを強く推奨します。
 ```
