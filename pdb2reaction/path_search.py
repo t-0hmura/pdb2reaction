@@ -1956,8 +1956,8 @@ def cli(
         dmf_cfg  = dict(DMF_KW)
         gs_cfg   = dict(GS_KW)
         opt_cfg  = dict(STOPT_KW)
-        lbfgs_cfg = dict(LBFGS_KW_LOCAL)
-        rfo_cfg   = dict(RFO_KW_LOCAL)
+        lbfgs_cfg = dict(LBFGS_KW)
+        rfo_cfg   = dict(RFO_KW)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
         search_cfg["refine_mode"] = refine_mode_kind

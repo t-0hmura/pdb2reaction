@@ -678,13 +678,10 @@ def _load_segment_endpoints(
     else:
         return None
 
-    base = str(trj_path)
-    gL_ref = geom_loader(
-        base + "[0]", coord_type=DEFAULT_COORD_TYPE, freeze_atoms=freeze_atoms
-    )
-    gR_ref = geom_loader(
-        base + "[-1]", coord_type=DEFAULT_COORD_TYPE, freeze_atoms=freeze_atoms
-    )
+    # Read first/last frames explicitly to support `_trj.xyz` trajectories.
+    elems, c_first, c_last = read_xyz_first_last(trj_path)
+    gL_ref = _geom_from_angstrom(elems, c_first, freeze_atoms)
+    gR_ref = _geom_from_angstrom(elems, c_last, freeze_atoms)
 
     set_freeze_atoms_or_warn(gL_ref, freeze_atoms, context="all")
     set_freeze_atoms_or_warn(gR_ref, freeze_atoms, context="all")

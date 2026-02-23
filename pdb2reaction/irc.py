@@ -123,6 +123,157 @@ def _write_output_summary_md(out_dir: Path) -> None:
     """summary.md and key_* outputs are disabled."""
     return None
 
+# --------------------------
+# CLI
+# --------------------------
+
+@click.command(
+    help="Run an IRC calculation with EulerPC. Only the documented CLI options are accepted; all other settings come from YAML.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+@click.option(
+    "-i", "--input",
+    "input_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+    help="Input structure file (.pdb, .xyz, _trj.xyz, etc.).",
+)
+@click.option(
+    "-q",
+    "--charge",
+    type=int,
+    required=False,
+    help=(
+        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
+        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+    ),
+)
+@click.option(
+    "--workers",
+    type=int,
+    default=UMA_CALC_KW["workers"],
+    show_default=True,
+    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+)
+@click.option(
+    "--workers-per-node",
+    "workers_per_node",
+    type=int,
+    default=UMA_CALC_KW["workers_per_node"],
+    show_default=True,
+    help="Workers per node when using a parallel UMA predictor (workers>1).",
+)
+@click.option(
+    "--ligand-charge",
+    type=str,
+    default=None,
+    show_default=False,
+    help=(
+        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "when -q is omitted (requires PDB input or --ref-pdb)."
+    ),
+)
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option(
+    "--max-cycles",
+    type=int,
+    default=None,
+    help=(
+        "Maximum number of IRC steps; used unless YAML sets irc.max_cycles. "
+        "Defaults to 125 when not provided."
+    ),
+)
+@click.option(
+    "--step-size",
+    type=float,
+    default=None,
+    help=(
+        "Step length in mass-weighted coordinates; used unless YAML sets irc.step_length. "
+        "Defaults to 0.10."
+    ),
+)
+@click.option(
+    "--root",
+    type=int,
+    default=None,
+    help=(
+        "Imaginary mode index used for the initial displacement; used unless YAML sets irc.root. "
+        "Defaults to 0."
+    ),
+)
+@click.option(
+    "--forward/--no-forward",
+    "forward",
+    default=None,
+    help=(
+        "Run the forward IRC; used unless YAML sets irc.forward. "
+        "Defaults to True."
+    ),
+)
+@click.option(
+    "--backward/--no-backward",
+    "backward",
+    default=None,
+    help=(
+        "Run the backward IRC; used unless YAML sets irc.backward. "
+        "Defaults to True."
+    ),
+)
+@click.option(
+    "--freeze-links/--no-freeze-links",
+    "freeze_links_flag",
+    default=True,
+    show_default=True,
+    help="Freeze parent atoms of link hydrogens when the input is PDB.",
+)
+@click.option(
+    "--convert-files/--no-convert-files",
+    "convert_files",
+    default=True,
+    show_default=True,
+    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+)
+@click.option(
+    "--ref-pdb",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+)
+@click.option(
+    "--out-dir",
+    type=str,
+    default="./result_irc/",
+    show_default=True,
+    help="Output directory (used unless YAML sets irc.out_dir).",
+)
+@click.option(
+    "--hessian-calc-mode",
+    type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
+    default=None,
+    help="How UMA builds the Hessian (Analytical or FiniteDifference); used unless YAML sets calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
+)
+@click.option(
+    "--config",
+    "config_yaml",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Base YAML configuration file applied before explicit CLI options.",
+)
+@click.option(
+    "--show-config/--no-show-config",
+    "show_config",
+    default=False,
+    show_default=True,
+    help="Print resolved configuration and continue execution.",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    "dry_run",
+    default=False,
+    show_default=True,
+    help="Validate options and print the execution plan without running IRC.",
+)
+@click.pass_context
 def cli(
     ctx: click.Context,
     input_path: Path,

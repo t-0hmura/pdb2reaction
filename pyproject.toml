@@ -36,7 +36,7 @@ dependencies = [
     "ase>=3.25.0",
     "pyyaml",
     "click",
-    "plotly",
+    "plotly>=6.1.1",
     "kaleido",
     "pyscf>=2.8.0",
     "gpu4pyscf-cuda12x>=1.5.2; platform_machine == 'x86_64'",
