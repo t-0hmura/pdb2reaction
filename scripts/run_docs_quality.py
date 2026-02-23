@@ -56,6 +56,7 @@ def main() -> int:
         ("Check markdown local links", [sys.executable, "scripts/check_markdown_links.py"]),
         ("Check all->scan option contract", [sys.executable, "scripts/check_all_scan_contract.py"]),
         ("Smoke docs commands", [sys.executable, "scripts/smoke_docs_commands.py"]),
+        ("Smoke core CLI commands", [sys.executable, "scripts/smoke_core_cli_commands.py"]),
     ]
     if not args.skip_dump:
         steps.append(

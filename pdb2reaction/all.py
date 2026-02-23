@@ -468,7 +468,7 @@ def _convert_scan_lists_to_pocket_indices(
         raise click.BadParameter(
             f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) references atom index {idx_one_based} "
             f"(key {msg_key}) which is not present in the pocket after extraction. "
-            "Increase extraction coverage (e.g., --radius/--radius-het2het, --selected_resn, or set --exclude-backbone False), "
+            "Increase extraction coverage (e.g., --radius/--radius-het2het, --selected-resn, or set --exclude-backbone False), "
             "or choose atoms that survive in the pocket."
         )
 

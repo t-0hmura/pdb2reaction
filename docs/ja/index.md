@@ -38,7 +38,7 @@ freq
 irc
 dft
 trj2fig
-energy-diagram
+energy_diagram
 ```
 
 ```{toctree}

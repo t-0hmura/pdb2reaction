@@ -11,8 +11,8 @@ Usage: pdb2reaction irc [OPTIONS]
 Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz, etc.).
-                                  [required]
+  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
+                                  etc.).  [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).

@@ -46,7 +46,7 @@ freq
 irc
 dft
 trj2fig
-energy-diagram
+energy_diagram
 ja/all
 ja/init
 ja/extract
@@ -63,7 +63,7 @@ ja/freq
 ja/irc
 ja/dft
 ja/trj2fig
-ja/energy-diagram
+ja/energy_diagram
 ```
 
 ```{toctree}

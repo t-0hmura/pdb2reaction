@@ -36,8 +36,8 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --max-write INTEGER             How many modes to export (after sorting per
                                   --sort).  [default: 10]
-  --amplitude-ang FLOAT           Animation amplitude (Å) used for both _trj.xyz and
-                                  .pdb.  [default: 0.8]
+  --amplitude-ang FLOAT           Animation amplitude (Å) used for both _trj.xyz
+                                  and .pdb.  [default: 0.8]
   --n-frames INTEGER              Number of frames per mode animation.
                                   [default: 20]
   --sort [value|abs]              Sort modes by 'value' (cm^-1) or by absolute

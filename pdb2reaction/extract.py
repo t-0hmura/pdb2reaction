@@ -27,6 +27,37 @@ from Bio.PDB import NeighborSearch
 # Public API
 __all__ = ["extract", "extract_api"]
 
+
+LOGGER = logging.getLogger(__name__)
+
+
+class _ClickEchoHandler(logging.Handler):
+    """Route logger records to click.echo with stderr for warnings/errors."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            click.echo(self.format(record), err=record.levelno >= logging.WARNING)
+        except Exception:
+            self.handleError(record)
+
+
+def _configure_extract_logger(verbose: bool) -> None:
+    """Configure module-local logger for CLI output without touching global logging."""
+    level = logging.INFO if verbose else logging.WARNING
+    LOGGER.setLevel(level)
+    LOGGER.propagate = False
+
+    for handler in list(LOGGER.handlers):
+        LOGGER.removeHandler(handler)
+
+    handler = _ClickEchoHandler()
+    handler.setLevel(level)
+    handler.setFormatter(
+        logging.Formatter("%(message)s" if verbose else "%(levelname)s: %(message)s")
+    )
+    LOGGER.addHandler(handler)
+
+
 # ---------------------------------------------------------------------
 #   Constants
 # ---------------------------------------------------------------------
@@ -290,7 +321,7 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     structure = parser.get_structure(name, path)
     models = list(structure.get_models())
     if len(models) > 1:
-        logging.warning(
+        LOGGER.warning(
             "Input '%s' contains %d MODELs; extract supports single-model PDBs only. "
             "Using first model (%s) and ignoring the rest.",
             path,
@@ -471,7 +502,7 @@ def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Res
                 sample = ", ".join(_fmt_res_id(r) for r in matches[:5])
             except Exception:
                 sample = "(list omitted)"
-            logging.warning("[extract] Multiple residues with resname '%s' found (%d). Using all: %s",
+            LOGGER.warning("[extract] Multiple residues with resname '%s' found (%d). Using all: %s",
                             rn, len(matches), sample)
         for r in matches:
             fid = r.get_full_id()
@@ -682,7 +713,7 @@ def augment_proline_prev_neighbor(structure, selected_ids: Set[Tuple]):
             selected_ids.add(prev_fid)
             added += 1
     if added:
-        logging.info("[extract] Added %d N-side neighbor residues for PRO (TER-aware).", added)
+        LOGGER.info("[extract] Added %d N-side neighbor residues for PRO (TER-aware).", added)
 
 
 # ---------------------------------------------------------------------
@@ -756,7 +787,7 @@ def augment_backbone_contact_neighbors(structure,
             termini_kept_c += 1
 
     if added or termini_kept_n or termini_kept_c:
-        logging.info("[extract] Backbone-contact context (TER-aware): added %d neighbors; kept N-cap on %d, C-cap on %d residues.",
+        LOGGER.info("[extract] Backbone-contact context (TER-aware): added %d neighbors; kept N-cap on %d, C-cap on %d residues.",
                      added, termini_kept_n, termini_kept_c)
     return keep_ncap_ids, keep_ccap_ids
 
@@ -1234,20 +1265,20 @@ def log_charge_summary(prefix: str,
 
     if unk_map:
         items = ", ".join(f"{res}: {q:g}" for res, q in sorted(unk_map.items()))
-        logging.info("%s Per-resname ligand charges: %s", prefix, items)
+        LOGGER.info("%s Per-resname ligand charges: %s", prefix, items)
     else:
-        logging.info("%s Per-resname ligand charges: (none)", prefix)
+        LOGGER.info("%s Per-resname ligand charges: (none)", prefix)
 
-    logging.info("%s Net protein charge: %+g", prefix, protein)
-    logging.info("%s Net ligand charge: %+g", prefix, ligand)
+    LOGGER.info("%s Net protein charge: %+g", prefix, protein)
+    LOGGER.info("%s Net ligand charge: %+g", prefix, ligand)
     if ion_list:
-        logging.info("%s Ion charges (each):", prefix)
+        LOGGER.info("%s Ion charges (each):", prefix)
         for tag, q in ion_list:
-            logging.info("  %s  ->  %+g", tag, q)
-        logging.info("%s Net ion charge: %+g", prefix, ion_total)
+            LOGGER.info("  %s  ->  %+g", tag, q)
+        LOGGER.info("%s Net ion charge: %+g", prefix, ion_total)
     else:
-        logging.info("%s Ion charges: (none)", prefix)
-    logging.info("%s Total pocket charge: %+g", prefix, total)
+        LOGGER.info("%s Ion charges: (none)", prefix)
+    LOGGER.info("%s Total pocket charge: %+g", prefix, total)
 
 
 # =========================== Cross-structure helpers ===========================
@@ -1471,7 +1502,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     names = [f"complex{i+1}" for i in range(len(paths))]
     structs: List[PDB.Structure.Structure] = [load_structure(p, n) for p, n in zip(paths, names)]
 
-    logging.info("[extract:multi] Loaded %d structures.", len(structs))
+    LOGGER.info("[extract:multi] Loaded %d structures.", len(structs))
     _assert_atom_ordering_identical(structs)
 
     # Substrates per structure (PDB-path -> first only, then propagate by IDs)
@@ -1486,7 +1517,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         union_sel_keys |= _fids_to_keys(st, selected_ids)
         union_bb_contact_keys |= _fids_to_keys(st, bb_contact_ids)
 
-    logging.info("[extract:multi] Initial union selection: %d residues; backbone-contact: %d residues.",
+    LOGGER.info("[extract:multi] Initial union selection: %d residues; backbone-contact: %d residues.",
                  len(union_sel_keys), len(union_bb_contact_keys))
 
     # 1a) Force-include residues via --selected-resn (OR across structures)
@@ -1496,7 +1527,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             forced_res = find_substrate_by_idspec(st, args.selected_resn)
             forced_union |= {_residue_key_from_res(r) for r in forced_res}
         if forced_union:
-            logging.info("[extract:multi] Force-include (--selected-resn): +%d residues.", len(forced_union))
+            LOGGER.info("[extract:multi] Force-include (--selected-resn): +%d residues.", len(forced_union))
             union_sel_keys |= forced_union
 
     # 2) Disulfide partners (OR across structures)
@@ -1504,7 +1535,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     for st in structs:
         dis_keys_union |= _disulfide_partner_keys(st, union_sel_keys, DISULFIDE_CUTOFF)
     if dis_keys_union:
-        logging.info("[extract:multi] Disulfide partner addition (union): +%d residues.", len(dis_keys_union))
+        LOGGER.info("[extract:multi] Disulfide partner addition (union): +%d residues.", len(dis_keys_union))
     union_sel_keys |= dis_keys_union
 
     # 3) Backbone-contact neighbor augmentation (if exclude_backbone == False)
@@ -1523,7 +1554,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             keep_ncap_union |= _fids_to_keys(st, kn_fids)
             keep_ccap_union |= _fids_to_keys(st, kc_fids)
         if added_neighbor_union:
-            logging.info("[extract:multi] Backbone-contact neighbor addition (union): +%d residues.",
+            LOGGER.info("[extract:multi] Backbone-contact neighbor addition (union): +%d residues.",
                          len(added_neighbor_union))
         union_sel_keys |= added_neighbor_union
 
@@ -1535,7 +1566,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         added = _fids_to_keys(st, sel_ids) - union_sel_keys
         pro_prev_add_union |= added
     if pro_prev_add_union:
-        logging.info("[extract:multi] PRO N-side neighbor addition (union): +%d residues.",
+        LOGGER.info("[extract:multi] PRO N-side neighbor addition (union): +%d residues.",
                      len(pro_prev_add_union))
     union_sel_keys |= pro_prev_add_union
 
@@ -1567,7 +1598,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
                 f"[multi] link-H targets/order differ between model #1 and model #{i+1}. "
                 f"Ensure inputs and options produce identical truncation across models."
             )
-    logging.info("[extract:multi] link-H targets common across models: %d.", len(ref_targets))
+    LOGGER.info("[extract:multi] link-H targets common across models: %d.", len(ref_targets))
 
     # ==== Write outputs ====
     per_file_outputs = (len(args.output_pdb) == len(paths))
@@ -1592,8 +1623,8 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             for a in st[fid[1]][fid[2]].child_dict[fid[3]]
             if a.get_name() not in skip_map.get(fid, set())
         )
-        logging.info("[extract:multi] Raw atoms (model %d): %d", m, raw_atoms)
-        logging.info("[extract:multi] Atoms after truncation (model %d): %d", m, kept_atoms)
+        LOGGER.info("[extract:multi] Raw atoms (model %d): %d", m, raw_atoms)
+        LOGGER.info("[extract:multi] Atoms after truncation (model %d): %d", m, kept_atoms)
         model_counts.append({"raw_atoms": raw_atoms, "kept_atoms": kept_atoms})
 
         # Append TER + link‑H block (honor --add-linkH)
@@ -1622,7 +1653,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             with open(out_path, "w") as fh:
                 fh.write(content)
             outputs.append(out_path)
-            logging.info("[extract:multi] Single‑model pocket saved to %s", out_path)
+            LOGGER.info("[extract:multi] Single‑model pocket saved to %s", out_path)
     else:
         buf_models: List[str] = []
         for m, text in enumerate(model_texts, start=1):
@@ -1637,7 +1668,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
                 fh.write(blk)
             fh.write("END\n")
         outputs.append(out_path)
-        logging.info("[extract:multi] Multi‑MODEL pocket saved to %s", out_path)
+        LOGGER.info("[extract:multi] Multi‑MODEL pocket saved to %s", out_path)
 
     # ==== Charge summary (first model only) ====
     charge_summary = compute_charge_summary(
@@ -1700,18 +1731,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
     if args is None:
         args = parse_args()
 
-    logging.basicConfig(
-        level=logging.INFO if args.verbose else logging.WARNING,
-        format="%(levelname)s: %(message)s"
-    )
-
-    # Route INFO-level messages through click.echo when verbose is enabled
-    if args.verbose:
-        def _click_info(msg, *fmt_args, **kwargs):
-            if fmt_args:
-                msg = msg % fmt_args
-            click.echo(msg)
-        logging.info = _click_info  # type: ignore[assignment]
+    _configure_extract_logger(bool(args.verbose))
 
     if args.radius == 0.0:
         args.radius = 0.001
@@ -1736,7 +1756,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         # Resolve substrate residues from PDB path or residue-ID/name list
         substrate_residues = resolve_substrate_residues(complex_struct, args.substrate_pdb)
         substrate_ids = {r.get_full_id() for r in substrate_residues}
-        logging.info("[extract] Substrate residues matched: resseq %s",
+        LOGGER.info("[extract] Substrate residues matched: resseq %s",
                      [r.id[1] for r in substrate_residues])
 
         selected_ids, backbone_contact_ids = select_residues(
@@ -1756,7 +1776,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
                     selected_ids.add(fid)
                     add_n += 1
             if add_n:
-                logging.info("[extract] Force-include (--selected-resn): +%d residues.", add_n)
+                LOGGER.info("[extract] Force-include (--selected-resn): +%d residues.", add_n)
 
         augment_disulfides(complex_struct, selected_ids)
 
@@ -1775,7 +1795,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
         # Atom counts
         raw = sum(len(complex_struct[f[1]][f[2]].child_dict[f[3]]) for f in selected_ids)
-        logging.info("[extract] Raw atoms: %d", raw)
+        LOGGER.info("[extract] Raw atoms: %d", raw)
 
         skip_map = mark_atoms_to_skip(
             complex_struct, selected_ids, substrate_ids,
@@ -1789,7 +1809,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
             for a in complex_struct[fid[1]][fid[2]].child_dict[fid[3]]
             if a.get_name() not in skip_map.get(fid, set())
         )
-        logging.info("[extract] Atoms after truncation: %d", kept_atoms)
+        LOGGER.info("[extract] Atoms after truncation: %d", kept_atoms)
 
         # Save structure (and optionally append link‑H block)
         io = PDB.PDBIO()
@@ -1804,7 +1824,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
         if args.add_linkH:
             link_coords = compute_linkH_atoms(complex_struct, selected_ids, skip_map)
-            logging.info("[extract] Link-H to add: %d", len(link_coords))
+            LOGGER.info("[extract] Link-H to add: %d", len(link_coords))
 
             lines = [ln for ln in main_pdb_text.splitlines() if ln.strip() != "END"]
             if lines and lines[-1].strip() == "TER":
@@ -1822,12 +1842,12 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
             with open(output_path, "w") as fh:
                 fh.write("".join(final_parts))
-            logging.info("[extract] Binding-Pocket (Active Site) + link-H saved to %s", output_path)
+            LOGGER.info("[extract] Binding-Pocket (Active Site) + link-H saved to %s", output_path)
             outputs.append(output_path)
         else:
             with open(output_path, "w") as fh:
                 fh.write(main_pdb_text)
-            logging.info("[extract] Binding-Pocket (Active Site) saved to %s", output_path)
+            LOGGER.info("[extract] Binding-Pocket (Active Site) saved to %s", output_path)
             outputs.append(output_path)
 
         # Charge summary (single model)

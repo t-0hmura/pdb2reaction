@@ -9,7 +9,7 @@
 - **Input:** One structure + `--spec scan.yaml` (recommended), or one or more `--scan-lists` literals (each literal = one stage).
 - **Defaults:** `--opt-mode light` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump`.
-- **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported as.
+- **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode light`) or RFOptimizer (`--opt-mode heavy`).
 
@@ -66,7 +66,7 @@ stages:
 YAML
 pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml --print-parsed
 
-# : Python literal
+# Alternative: Python literal
 pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
 
 # Two stages, LBFGS relaxations, and trajectory dumping
