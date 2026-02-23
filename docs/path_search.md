@@ -27,8 +27,6 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## Output checklist
 
-- `result_path_search/summary.md`
-- `result_path_search/key_mep_trj.xyz` / `result_path_search/key_ts.xyz` (when available)
 - `result_path_search/mep_trj.xyz`
 - `result_path_search/summary.yaml`
 - `result_path_search/summary.log`
@@ -131,12 +129,6 @@ out_dir/ (default:./result_path_search/)
 ├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist (requires ref PDB)
 ├─ summary.yaml # Barrier and classification summary for every recursive segment
 ├─ summary.log # Human-readable summary
-├─ summary.md # Quick navigation page with key artifact links
-├─ key_mep_trj.xyz # Root shortcut to primary MEP trajectory (symlink/copy)
-├─ key_mep.pdb # Root shortcut to primary MEP PDB (symlink/copy)
-├─ key_ts.xyz / key_ts.pdb # Root shortcuts to TS candidate snapshots (when available)
-├─ key_mep_plot.png # Root shortcut to MEP profile plot (when available)
-├─ key_energy_diagram_MEP.png # Root shortcut to state energy diagram (when available)
 ├─ mep_plot.png # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
 ├─ energy_diagram_MEP.png # Static export of the MEP state-energy diagram (relative to reactant)
 └─ seg_000_*/ # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
@@ -150,7 +142,6 @@ out_dir/ (default:./result_path_search/)
 - `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
-- `summary.md` is generated after the run and points to the main artifacts plus `key_*` root shortcuts.
 
 Merge order is **defaults < config < explicit CLI < override**.
 The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml_reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).

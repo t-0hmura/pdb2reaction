@@ -26,11 +26,9 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --ou
 
 ## Output checklist
 
-- `result_all/summary.md`
 - `result_all/summary.log`
 - `result_all/summary.yaml`
 - `result_all/path_search/mep.pdb` (or `result_all/path_search/seg_*/`)
-- `result_all/key_ts.pdb` / `result_all/key_freq_TS.csv` (when post-processing outputs exist)
 
 ## Common examples
 
@@ -249,15 +247,8 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 ## Outputs
 ```text
 out_dir/ (default:./result_all/)
-├─ summary.md # quick navigation page with key artifact links
 ├─ summary.log # formatted summary for quick inspection
 ├─ summary.yaml # YAML version summary
-├─ key_mep_trj.xyz # root shortcut (symlink/copy) to primary MEP trajectory
-├─ key_mep.pdb # root shortcut (symlink/copy) to primary MEP PDB
-├─ key_ts.pdb / key_ts.xyz # root shortcut to TS structure (when available)
-├─ key_freq_TS.csv # root shortcut to TS frequencies (when available)
-├─ key_dft_TS.yaml # root shortcut to TS DFT output (when available)
-├─ key_irc_plot.png # root shortcut to IRC plot (when available)
 ├─ pockets/ # Per-input pocket PDBs when extraction runs
 ├─ scan/ # Staged pocket scan results (present when --scan-lists is provided)
 ├─ path_search/ # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders

@@ -25,9 +25,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ## 出力の見方
 
-- `result_tsopt/summary.md`
-- `result_tsopt/key_ts.xyz`（または `key_ts.pdb`）
-- `result_tsopt/key_imag_mode_trj.xyz`
 - `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
 - `result_tsopt/vib/final_imag_mode_*_trj.xyz`
 - `result_tsopt/vib/final_imag_mode_*.pdb`（PDB 入力の場合）
@@ -115,10 +112,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 ## 出力
 ```
 out_dir/ (デフォルト:./result_tsopt/)
-├─ summary.md # 主要成果物のインデックス
-├─ key_ts.xyz # 最終TS構造へのショートカット（または key_ts.pdb/key_ts.gjf）
-├─ key_imag_mode_trj.xyz # 代表的な虚数モードへのショートカット
-├─ key_opt_trj.xyz # 最適化軌跡へのショートカット（存在する場合）
 ├─ final_geometry.xyz # 常に書き込み
 ├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
 ├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）

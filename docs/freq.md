@@ -22,9 +22,6 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 
 ## Output checklist
 
-- `result_freq/summary.md`
-- `result_freq/key_frequencies.txt`
-- `result_freq/key_mode_1_trj.xyz`
 - `result_freq/frequencies_cm-1.txt`
 - `result_freq/mode_*_trj.xyz`
 - `result_freq/mode_*.pdb` (for PDB inputs with conversion enabled)
@@ -122,11 +119,6 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 ## Outputs
 ```
 out_dir/ (default:./result_freq/)
-├─ summary.md # Quick index of key outputs
-├─ key_frequencies.txt # Shortcut to frequencies_cm-1.txt
-├─ key_mode_1_trj.xyz # Shortcut to a representative mode trajectory
-├─ key_mode_1.pdb # Shortcut to representative mode PDB (when available)
-├─ key_thermo.yaml # Shortcut to thermoanalysis.yaml (when available)
 ├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode animations
 ├─ mode_XXXX_±freqcm-1.pdb # Only when a PDB template exists and conversion is enabled
 ├─ frequencies_cm-1.txt # Full frequency list using the selected sort order

@@ -25,9 +25,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ## Output checklist
 
-- `result_tsopt/summary.md`
-- `result_tsopt/key_ts.xyz` (or `key_ts.pdb`)
-- `result_tsopt/key_imag_mode_trj.xyz`
 - `result_tsopt/final_geometry.pdb` (or `final_geometry.xyz`)
 - `result_tsopt/vib/final_imag_mode_*_trj.xyz`
 - `result_tsopt/vib/final_imag_mode_*.pdb` (for PDB inputs)
@@ -140,10 +137,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 ## Outputs
 ```
 out_dir/ (default:./result_tsopt/)
-├─ summary.md # Quick index of key outputs
-├─ key_ts.xyz # Shortcut to final TS geometry (or key_ts.pdb/key_ts.gjf)
-├─ key_imag_mode_trj.xyz # Shortcut to a representative imaginary mode
-├─ key_opt_trj.xyz # Shortcut to optimization trajectory (when available)
 ├─ final_geometry.xyz # Always written
 ├─ final_geometry.pdb # When the input was PDB (conversion enabled)
 ├─ final_geometry.gjf # When the input was Gaussian (conversion enabled)

@@ -21,8 +21,6 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
 
 ## 出力の見方
 
-- `result_dft/summary.md`
-- `result_dft/key_input_geometry.xyz`, `result_dft/key_result.yaml`（symlink/copy ショートカット）
 - `result_dft/input_geometry.xyz`
 - `result_dft/result.yaml`
 - `result.yaml` 内のエンジン情報（`gpu4pyscf` / `pyscf(cpu)`）
@@ -96,9 +94,6 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 out_dir/ (デフォルト:./result_dft/)
 ├─ input_geometry.xyz # PySCFに送信された構造スナップショット
 ├─ result.yaml # 収束/エンジンメタデータを含むエネルギー/電荷/スピンサマリー
-├─ summary.md # 主要出力を追うためのクイックガイド
-├─ key_input_geometry.xyz # 構造スナップショットへのショートカット（symlink/copy）
-└─ key_result.yaml # 結果サマリーへのショートカット（symlink/copy）
 ```
 - `result.yaml` には以下が含まれます:
  - `energy`: Hartree/kcal·mol⁻¹、収束フラグ、実行時間、エンジン情報（`gpu4pyscf`/`pyscf(cpu)`、`used_gpu`）

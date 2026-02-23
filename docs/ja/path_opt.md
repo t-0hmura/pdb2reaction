@@ -25,8 +25,6 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## 出力の見方
 
-- `result_path_opt/summary.md`
-- `result_path_opt/key_mep_trj.xyz` / `result_path_opt/key_ts.xyz`
 - `result_path_opt/final_geometries_trj.xyz`
 - `result_path_opt/hei.xyz`
 - `result_path_opt/hei.pdb`（PDB 変換が有効な場合）
@@ -112,12 +110,6 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 ## 出力
 ```
 out_dir/
-├─ summary.md # 主要成果物へ移動しやすいナビゲーションページ
-├─ key_mep_trj.xyz # 主要 MEP 軌跡へのショートカット（symlink/copy）
-├─ key_mep.pdb # 主要 MEP PDB へのショートカット（symlink/copy）
-├─ key_mep.gjf # 主要 MEP GJF へのショートカット（利用可能時）
-├─ key_ts.xyz / key_ts.pdb # TS 候補スナップショットへのショートカット（symlink/copy）
-├─ key_ts.gjf # TS 候補 GJF へのショートカット（利用可能時）
 ├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
 ├─ final_geometries.pdb # PDB 参照が利用可能で変換が有効な場合
 ├─ hei.xyz # 最高エネルギーイメージ

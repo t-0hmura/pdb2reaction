@@ -22,9 +22,6 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 
 ## 出力の見方
 
-- `result_freq/summary.md`
-- `result_freq/key_frequencies.txt`
-- `result_freq/key_mode_1_trj.xyz`
 - `result_freq/frequencies_cm-1.txt`
 - `result_freq/mode_*_trj.xyz`
 - `result_freq/mode_*.pdb`（PDB 入力かつ変換有効時）
@@ -105,11 +102,6 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 ## 出力
 ```
 out_dir/ (デフォルト:./result_freq/)
-├─ summary.md # 主要成果物のインデックス
-├─ key_frequencies.txt # frequencies_cm-1.txt へのショートカット
-├─ key_mode_1_trj.xyz # 代表モード軌跡へのショートカット
-├─ key_mode_1.pdb # 代表モードPDBへのショートカット（存在時）
-├─ key_thermo.yaml # thermoanalysis.yaml へのショートカット（存在時）
 ├─ mode_XXXX_±freqcm-1_trj.xyz # モードごとのアニメーション
 ├─ mode_XXXX_±freqcm-1.pdb # PDB テンプレートが存在し変換が有効な場合のみ
 ├─ frequencies_cm-1.txt # 選択したソート順での全振動数リスト

@@ -154,80 +154,8 @@ def _link_or_copy_file(src: Path, dst: Path) -> bool:
 
 
 def _write_output_summary_md(out_dir: Path) -> None:
-    """Write summary.md and expose key outputs at out_dir root."""
-    try:
-        out_dir = out_dir.resolve()
-        artifact_specs = [
-            ("key_input_geometry.xyz", "Input geometry snapshot (XYZ)", ["input_geometry.xyz"]),
-            ("key_result.yaml", "DFT result summary", ["result.yaml"]),
-        ]
-
-        found: List[Tuple[str, str, Path]] = []
-        missing: List[Tuple[str, str]] = []
-        for key_name, label, patterns in artifact_specs:
-            src = _first_existing_artifact(out_dir, patterns)
-            if src is None:
-                missing.append((key_name, label))
-                continue
-            dst = out_dir / key_name
-            try:
-                same = dst.exists() and src.resolve() == dst.resolve()
-            except Exception:
-                same = False
-            if not same and not _link_or_copy_file(src, dst):
-                missing.append((key_name, label))
-                continue
-            found.append((key_name, label, src))
-
-        lines: List[str] = [
-            "# DFT Output Summary",
-            "",
-            "## Location",
-            f"- Output directory: `{out_dir}`",
-            "",
-            "## Main Artifacts",
-        ]
-        if found:
-            for key_name, label, src in found:
-                rel = src.relative_to(out_dir)
-                lines.append(f"- {label}: `{rel}` (shortcut: `{key_name}`)")
-        else:
-            lines.append("- No expected DFT artifacts were found in this output directory.")
-
-        lines.extend(
-            [
-                "",
-                "## Root Shortcuts",
-                "- `key_*` files are symlinks when possible, otherwise copied files.",
-            ]
-        )
-        if found:
-            for key_name, label, _ in found:
-                lines.append(f"- `{key_name}` -> {label}")
-        if missing:
-            lines.append("- Missing shortcuts (source file not found or linking failed):")
-            for key_name, label in missing:
-                lines.append(f"  - `{key_name}` ({label})")
-
-        lines.extend(
-            [
-                "",
-                "## Quick Next Checks",
-            ]
-        )
-        if any(k == "key_result.yaml" for k, _, _ in found):
-            lines.append("- Start from `key_result.yaml` to review energies and charge/spin tables.")
-        if any(k == "key_input_geometry.xyz" for k, _, _ in found):
-            lines.append("- Compare `key_input_geometry.xyz` with the intended input geometry.")
-        if not found:
-            lines.append("- Re-run DFT and check warnings in stdout/stderr to regenerate outputs.")
-
-        summary_md = out_dir / "summary.md"
-        summary_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-        click.echo(f"[write] Wrote '{summary_md}'.")
-    except Exception as e:
-        click.echo(f"[write] WARNING: Failed to write summary.md: {e}", err=True)
-
+    """summary.md and key_* outputs are disabled."""
+    return None
 
 def _resolve_yaml_sources(
     config_yaml: Optional[Path],
@@ -810,8 +738,7 @@ def cli(
                 yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True)
             )
             click.echo(f"[write] Wrote '{out_dir_path / 'result.yaml'}'.")
-            _write_output_summary_md(out_dir_path)
-
+            # summary.md and key_* outputs are disabled.
             # --------------------------
             # 8) Final print: energies
             # --------------------------

@@ -28,8 +28,6 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## 出力の見方
 
-- `result_path_search/summary.md`
-- `result_path_search/key_mep_trj.xyz` / `result_path_search/key_ts.xyz`（利用可能時）
 - `result_path_search/mep_trj.xyz`
 - `result_path_search/summary.yaml`
 - `result_path_search/summary.log`
@@ -133,12 +131,6 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 人間が読めるサマリー
-├─ summary.md # 主要成果物へ移動しやすいナビゲーションページ
-├─ key_mep_trj.xyz # 主要 MEP 軌跡へのショートカット（symlink/copy）
-├─ key_mep.pdb # 主要 MEP PDB へのショートカット（symlink/copy）
-├─ key_ts.xyz / key_ts.pdb # TS 候補スナップショットへのショートカット（利用可能時）
-├─ key_mep_plot.png # MEP プロファイルへのショートカット（利用可能時）
-├─ key_energy_diagram_MEP.png # 状態エネルギーダイアグラムへのショートカット（利用可能時）
 ├─ mep_plot.png # ΔEプロファイル（kcal/mol、反応物基準）
 ├─ energy_diagram_MEP.png # MEP状態エネルギーダイアグラムの静的エクスポート
 └─ seg_000_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
@@ -154,7 +146,6 @@ out_dir/ (デフォルト:./result_path_search/)
 - `--ref-full-pdb` は1回の指定で複数ファイルを続けて渡せます。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - UMA 計算機は全構造で共有され、効率化されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
-- 実行後に `summary.md` が生成され、主要成果物と `key_*` 直下ショートカットを一覧できます。
 
 マージ順は **defaults < config < 明示指定 CLI < override** です。
 

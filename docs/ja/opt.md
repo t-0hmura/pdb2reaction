@@ -22,9 +22,6 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
 
 ## 出力の見方
 
-- `result_opt/summary.md`
-- `result_opt/key_opt.xyz`（または `key_opt.pdb`）
-- `result_opt/key_opt_trj.xyz`（軌跡がある場合）
 - `result_opt/final_geometry.xyz`
 - `result_opt/final_geometry.pdb`（PDB 入力かつ変換有効時）
 - `result_opt/optimization_trj.xyz`（`--dump` 有効時）
@@ -98,13 +95,6 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ## 出力
 ```
 out_dir/
-├─ summary.md # 主要成果物のインデックス
-├─ key_opt.xyz # final_geometry.xyz へのショートカット
-├─ key_opt.pdb # final_geometry.pdb へのショートカット（存在時）
-├─ key_opt.gjf # final_geometry.gjf へのショートカット（存在時）
-├─ key_opt_trj.xyz # optimization_trj.xyz へのショートカット
-├─ key_opt_traj.pdb # optimization.pdb へのショートカット（存在時）
-├─ key_restart.yml # リスタートスナップショットへのショートカット（存在時）
 ├─ final_geometry.xyz # 常に出力
 ├─ final_geometry.pdb # 入力がPDBで変換が有効な場合のみ
 ├─ final_geometry.gjf # Gaussian テンプレートが検出され変換が有効な場合

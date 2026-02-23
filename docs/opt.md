@@ -24,9 +24,6 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
 
 ## Output checklist
 
-- `result_opt/summary.md`
-- `result_opt/key_opt.xyz` (or `key_opt.pdb`)
-- `result_opt/key_opt_trj.xyz` (when trajectory is available)
 - `result_opt/final_geometry.xyz`
 - `result_opt/final_geometry.pdb` (for PDB input with conversion enabled)
 - `result_opt/optimization_trj.xyz` (when `--dump` is enabled)
@@ -100,13 +97,6 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ## Outputs
 ```
 out_dir/
-├─ summary.md # Quick index of key outputs
-├─ key_opt.xyz # Shortcut to final_geometry.xyz
-├─ key_opt.pdb # Shortcut to final_geometry.pdb (when available)
-├─ key_opt.gjf # Shortcut to final_geometry.gjf (when available)
-├─ key_opt_trj.xyz # Shortcut to optimization_trj.xyz
-├─ key_opt_traj.pdb # Shortcut to optimization.pdb (when available)
-├─ key_restart.yml # Shortcut to a restart snapshot (when available)
 ├─ final_geometry.xyz # Always written
 ├─ final_geometry.pdb # Only when the input was a PDB and conversion is enabled
 ├─ final_geometry.gjf # When a Gaussian template was detected and conversion is enabled
