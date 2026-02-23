@@ -82,8 +82,31 @@ def pretty_block(title: str, content: Dict[str, Any]) -> str:
 
     Empty mappings render as "{}".
     """
-    body = yaml.safe_dump(content, sort_keys=False, allow_unicode=True).strip()
+    body = yaml.safe_dump(_to_yaml_safe(content), sort_keys=False, allow_unicode=True).strip()
     return f"{title}\n" + "-" * len(title) + "\n" + body + "\n"
+
+
+def _to_yaml_safe(value: Any) -> Any:
+    """Recursively convert NumPy values/containers into YAML-safe builtins."""
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return [_to_yaml_safe(v) for v in value.tolist()]
+    if isinstance(value, Mapping):
+        out: Dict[Any, Any] = {}
+        for k, v in value.items():
+            nk = _to_yaml_safe(k)
+            if isinstance(nk, (list, tuple, set, dict)):
+                nk = str(nk)
+            out[nk] = _to_yaml_safe(v)
+        return out
+    if isinstance(value, tuple):
+        return [_to_yaml_safe(v) for v in value]
+    if isinstance(value, list):
+        return [_to_yaml_safe(v) for v in value]
+    if isinstance(value, set):
+        return [_to_yaml_safe(v) for v in sorted(value, key=lambda x: str(x))]
+    return value
 
 
 def strip_inherited_keys(

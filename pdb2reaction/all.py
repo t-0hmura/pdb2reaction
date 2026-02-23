@@ -333,6 +333,17 @@ def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
         args.extend([flag, str(value)])
 
 
+def _append_toggle_arg(args: List[str], flag: str, value: bool | None) -> None:
+    """Append Click bool-toggle option as ``--flag`` / ``--no-flag`` when value is not ``None``."""
+    if value is None:
+        return
+    if not flag.startswith("--"):
+        raise ValueError(f"Toggle flag must start with '--': {flag}")
+    base = flag if not flag.startswith("--no-") else f"--{flag[5:]}"
+    neg = f"--no-{base[2:]}"
+    args.append(base if bool(value) else neg)
+
+
 def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     """Return ``override`` when provided (respecting absolute paths); otherwise ``default``."""
     if override is None:
@@ -1115,19 +1126,21 @@ def _run_freq_for_state(
         str(int(q_int)),
         "-m",
         str(int(spin)),
-        "--freeze-links",
-        "True"
-        if freeze_use
-        and (
-            pdb_path.suffix.lower() == ".pdb"
-            or (ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb")
-        )
-        else "False",
-        "--convert-files",
-        "True" if convert_files else "False",
         "--out-dir",
         str(fdir),
     ]
+    _append_toggle_arg(
+        args,
+        "--freeze-links",
+        bool(
+            freeze_use
+            and (
+                pdb_path.suffix.lower() == ".pdb"
+                or (ref_pdb is not None and ref_pdb.suffix.lower() == ".pdb")
+            )
+        ),
+    )
+    _append_toggle_arg(args, "--convert-files", bool(convert_files))
     if ref_pdb is not None:
         args.extend(["--ref-pdb", str(ref_pdb)])
 
@@ -1138,7 +1151,7 @@ def _run_freq_for_state(
         args.extend(["--sort", str(overrides.get("sort"))])
     _append_cli_arg(args, "--temperature", overrides.get("temperature"))
     _append_cli_arg(args, "--pressure", overrides.get("pressure"))
-    _append_cli_arg(args, "--dump", dump_use)
+    _append_toggle_arg(args, "--dump", bool(dump_use))
 
     hess_mode = overrides.get("hessian_calc_mode")
     if hess_mode:
@@ -1217,11 +1230,10 @@ def _run_dft_for_state(
         str(int(spin)),
         "--func-basis",
         str(func_basis_use),
-        "--convert-files",
-        "True" if convert_files else "False",
         "--out-dir",
         str(ddir),
     ]
+    _append_toggle_arg(args, "--convert-files", bool(convert_files))
     if ref_pdb is not None:
         args.extend(["--ref-pdb", str(ref_pdb)])
     if engine:
@@ -1314,21 +1326,19 @@ def _run_tsopt_on_hei(
         str(int(charge)),
         "-m",
         str(int(spin)),
-        "--freeze-links",
-        "True" if freeze_use else "False",
-        "--convert-files",
-        "True" if convert_files else "False",
         "--out-dir",
         str(ts_dir),
     ]
+    _append_toggle_arg(ts_args, "--freeze-links", bool(freeze_use))
+    _append_toggle_arg(ts_args, "--convert-files", bool(convert_files))
 
     if opt_mode is not None:
         ts_args.extend(["--opt-mode", str(opt_mode)])
 
     _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
-    _append_cli_arg(ts_args, "--dump", overrides.get("dump"))
+    _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
     _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
-    _append_cli_arg(ts_args, "--flatten-imag-mode", overrides.get("flatten_imag_mode"))
+    _append_toggle_arg(ts_args, "--flatten-imag-mode", overrides.get("flatten_imag_mode"))
 
     hess_mode = overrides.get("hessian_calc_mode")
     if hess_mode:
@@ -1434,17 +1444,19 @@ def _irc_and_match(
         str(int(spin)),
         "--out-dir",
         str(irc_dir),
-        "--freeze-links",
-        "True"
-        if freeze_links_flag
-        and (
-            ref_pdb_for_seg.suffix.lower() == ".pdb"
-            or (ref_pdb_template is not None and ref_pdb_template.suffix.lower() == ".pdb")
-        )
-        else "False",
-        "--convert-files",
-        "True" if convert_files else "False",
     ]
+    _append_toggle_arg(
+        irc_args,
+        "--freeze-links",
+        bool(
+            freeze_links_flag
+            and (
+                ref_pdb_for_seg.suffix.lower() == ".pdb"
+                or (ref_pdb_template is not None and ref_pdb_template.suffix.lower() == ".pdb")
+            )
+        ),
+    )
+    _append_toggle_arg(irc_args, "--convert-files", bool(convert_files))
     if ref_pdb_template is not None:
         irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
 
@@ -3268,27 +3280,22 @@ def cli(
                 str(q_int),
                 "-m",
                 str(int(spin)),
-                "--freeze-links",
-                "True" if freeze_links_flag else "False",
                 "--mep-mode",
                 mep_mode_kind,
                 "--max-nodes",
                 str(int(max_nodes)),
                 "--max-cycles",
                 str(int(max_cycles)),
-                "--climb",
-                "True" if climb else "False",
                 "--opt-mode",
                 str(opt_mode),
-                "--dump",
-                "True" if dump else "False",
-                "--convert-files",
-                "True" if convert_files else "False",
                 "--out-dir",
                 str(seg_dir),
-                "--preopt",
-                "True" if preopt else "False",
             ]
+            _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag))
+            _append_toggle_arg(po_args, "--climb", bool(climb))
+            _append_toggle_arg(po_args, "--dump", bool(dump))
+            _append_toggle_arg(po_args, "--convert-files", bool(convert_files))
+            _append_toggle_arg(po_args, "--preopt", bool(preopt))
             ref_pdb_for_seg: Optional[Path] = None
             if pocket_ref_pdbs and len(pocket_ref_pdbs) >= idx:
                 ref_pdb_for_seg = pocket_ref_pdbs[idx - 1]
@@ -3596,18 +3603,18 @@ def cli(
         ps_args.extend(["-q", str(q_int)])
         ps_args.extend(["-m", str(int(spin))])
 
-        ps_args.extend(["--freeze-links", "True" if freeze_links_flag else "False"])
+        _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag))
         ps_args.extend(["--mep-mode", mep_mode_kind])
         ps_args.extend(["--max-nodes", str(int(max_nodes))])
         ps_args.extend(["--max-cycles", str(int(max_cycles))])
-        ps_args.extend(["--climb", "True" if climb else "False"])
+        _append_toggle_arg(ps_args, "--climb", bool(climb))
         ps_args.extend(["--opt-mode", str(opt_mode.lower())])
-        ps_args.extend(["--dump", "True" if dump else "False"])
+        _append_toggle_arg(ps_args, "--dump", bool(dump))
         if thresh is not None:
             ps_args.extend(["--thresh", str(thresh)])
         ps_args.extend(["--out-dir", str(path_dir)])
-        ps_args.extend(["--preopt", "True" if preopt else "False"])
-        ps_args.extend(["--convert-files", "True" if convert_files else "False"])
+        _append_toggle_arg(ps_args, "--preopt", bool(preopt))
+        _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
         if args_yaml is not None:
             ps_args.extend(["--config", str(args_yaml)])
 

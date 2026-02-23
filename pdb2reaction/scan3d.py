@@ -265,6 +265,7 @@ def cli(
                     expected_len=3,
                     one_based=scan_one_based,
                     atom_meta=pdb_atom_meta,
+                    option_name="--scan-lists",
                 )
             (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = parsed
             d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
