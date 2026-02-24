@@ -184,7 +184,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ### 電荷とスピン
 - 未知残基の電荷を指定するには `--ligand-charge` を使用: `'SAM:1,GPP:-3'`
 - 総電荷を上書きするには `-q/--charge` を使用
-- スピン多重度は `-m/--mult`（`all` コマンド）または `-m/--multiplicity`（他のサブコマンド）で設定（デフォルト: 1）
+- スピン多重度は `-m/--multiplicity`（デフォルト: 1）で設定
 
 ### ブール値オプション
 ブール値 CLI オプションは `--flag` / `--no-flag` と `--flag True/False` の両方を受理します（新規スクリプトでは toggle 形式を推奨）:

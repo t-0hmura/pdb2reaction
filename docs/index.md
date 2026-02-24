@@ -229,7 +229,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ### Charge and spin
 - Use `--ligand-charge` to specify unknown residue charges: `'SAM:1,GPP:-3'`
 - Use `-q/--charge` to override the total charge
-- Spin multiplicity is set with `-m/--mult` (the `all` command) or `-m/--multiplicity` (other subcommands); default is `1`
+- Spin multiplicity is set with `-m/--multiplicity` (default `1`)
 
 ### Boolean options
 Boolean CLI options use toggle form (`--flag` / `--no-flag`):

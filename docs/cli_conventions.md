@@ -123,7 +123,7 @@ Always provide `--ligand-charge` for non-standard residues (substrates, cofactor
 ```
 
 ```{note}
-In the `all` command, use `-m/--mult`. In other subcommands, use `-m/--multiplicity`.
+Use `-m/--multiplicity` consistently in `all` and other subcommands.
 ```
 
 ---

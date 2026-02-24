@@ -123,7 +123,7 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 ```
 
 ```{note}
-`all` コマンドでは `-m/--mult` を使用します。他のサブコマンドでは `-m/--multiplicity` を使用します。
+`all` を含む全サブコマンドで `-m/--multiplicity` を統一して使用します。
 ```
 
 ---

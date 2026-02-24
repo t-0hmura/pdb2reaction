@@ -273,7 +273,7 @@ pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]' --mult 1 --out-dir ./result_scan_all --tsopt --thermo --dft
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","MMT 309 C10",2.20),("TYR 285 CB","MMT 309 C11",1.80)]' '[("TYR 285 CB","MMT 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
 ```
 
 Key points:
@@ -335,7 +335,7 @@ Below are the most commonly used options across workflows.
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
 | `--ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of total system charge. |
-| `-m, --mult INT` | Spin multiplicity (e.g., `1` for singlet). Note: Use `--multiplicity` in subcommands other than `all`. |
+| `-m, --multiplicity INT` | Spin multiplicity (e.g., `1` for singlet). |
 | `--scan-lists TEXT...` | Staged distance scans for single‑input runs. |
 | `--out-dir PATH` | Top‑level output directory. |
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |

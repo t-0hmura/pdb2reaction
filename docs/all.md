@@ -43,7 +43,7 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
 
 ```bash
 pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.20)]" \
- --mult 1 --out-dir ./result_scan_all
+ --multiplicity 1 --out-dir ./result_scan_all
 ```
 
 3. Validate parsing and plan only.
@@ -66,7 +66,7 @@ For help output, `pdb2reaction all --help` shows core options and `pdb2reaction 
 ```bash
 # Multi-structure ensemble with explicit ligand charges and post-processing
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
- --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links \
+ --ligand-charge 'GPP:-3,MMT:-1' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
  --out-dir ./result_all --tsopt --thermo --dft
 
@@ -121,7 +121,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | 4 | `.gjf` template | Embedded charge/spin metadata |
 | 5 | Default | None (unresolved charge is an error) |
 
-**Spin resolution:** `--mult` (CLI) → `.gjf` template → default (1)
+**Spin resolution:** `--multiplicity` (CLI) → `.gjf` template → default (1)
 
 > **Tip:** Always provide `--ligand-charge` for non-standard substrates to ensure correct charge propagation.
 
@@ -152,7 +152,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | --- | --- | --- |
 | `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). | _None_ |
 | `-q, --charge INT` | Force the total system charge (overrides `--ligand-charge`). | _None_ |
-| `-m, --mult INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
+| `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 
 ### Extraction Options
 

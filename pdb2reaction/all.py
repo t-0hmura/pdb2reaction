@@ -1657,7 +1657,6 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 # ===== Path search knobs =====
 @click.option(
     "-m",
-    "--mult",
     "--multiplicity",
     "spin",
     type=int,
@@ -2087,6 +2086,8 @@ def cli(
     concatenated into the final MEP without invoking ``path_search``.
     """
     global _log_started
+    argv_all = sys.argv[1:]
+
     _log_started = False
     set_convert_file_enabled(convert_files)
     command_str = " ".join(sys.argv)
@@ -2118,7 +2119,6 @@ def cli(
         opt_mode_set = False
         opt_mode_post_set = False
 
-    argv_all = sys.argv[1:]
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
         i_parsed: List[Path] = []

@@ -1,0 +1,133 @@
+"""Smoke regressions for previously low-coverage utility subcommands."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from click.testing import CliRunner
+
+import pdb2reaction.energy_diagram as energy_diagram
+from pdb2reaction.cli import cli as root_cli
+
+
+def _write_text(path: Path, text: str) -> Path:
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_add_elem_info_smoke(tmp_path: Path) -> None:
+    in_pdb = _write_text(
+        tmp_path / "input_no_elem.pdb",
+        (
+            "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 10.00\n"
+            "END\n"
+        ),
+    )
+    out_pdb = tmp_path / "output_add_elem.pdb"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        root_cli,
+        ["add-elem-info", "-i", str(in_pdb), "-o", str(out_pdb)],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert out_pdb.exists()
+
+    atom_line = next(line for line in out_pdb.read_text(encoding="utf-8").splitlines() if line.startswith("ATOM"))
+    assert len(atom_line) >= 78
+    assert atom_line[76:78].strip() == "C"
+
+
+def test_fix_altloc_smoke(tmp_path: Path) -> None:
+    in_pdb = _write_text(
+        tmp_path / "altloc_input.pdb",
+        (
+            "ATOM      1  CA AALA A   1       0.000   0.000   0.000  0.60 10.00           C\n"
+            "ATOM      2  CA BALA A   1       0.100   0.000   0.000  0.40 10.00           C\n"
+            "END\n"
+        ),
+    )
+    out_pdb = tmp_path / "altloc_clean.pdb"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        root_cli,
+        ["fix-altloc", "-i", str(in_pdb), "-o", str(out_pdb)],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert out_pdb.exists()
+
+    atom_lines = [line for line in out_pdb.read_text(encoding="utf-8").splitlines() if line.startswith("ATOM")]
+    assert len(atom_lines) == 1
+    assert atom_lines[0][16] == " "
+
+
+def test_trj2fig_csv_smoke(tmp_path: Path) -> None:
+    trj = _write_text(
+        tmp_path / "traj.xyz",
+        (
+            "1\n"
+            "0.000000\n"
+            "H 0.0 0.0 0.0\n"
+            "1\n"
+            "0.500000\n"
+            "H 0.0 0.0 0.1\n"
+        ),
+    )
+    out_csv = tmp_path / "energy.csv"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        root_cli,
+        ["trj2fig", "-i", str(trj), "-o", str(out_csv), "--unit", "kcal", "-r", "init"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert out_csv.exists()
+
+    lines = out_csv.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "frame,energy_hartree,delta_kcal"
+    assert len(lines) == 3
+
+
+def test_energy_diagram_smoke(tmp_path: Path, monkeypatch) -> None:
+    out_png = tmp_path / "energy_diagram.png"
+
+    class _DummyFigure:
+        def write_image(self, out_path: str, scale: int = 2) -> None:
+            _ = scale
+            Path(out_path).write_text("dummy-image", encoding="utf-8")
+
+    monkeypatch.setattr(
+        energy_diagram,
+        "build_energy_diagram",
+        lambda **_kwargs: _DummyFigure(),
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        root_cli,
+        [
+            "energy-diagram",
+            "-i",
+            "0",
+            "-i",
+            "1.2",
+            "-o",
+            str(out_png),
+            "--label-x",
+            "R",
+            "--label-x",
+            "TS",
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert out_png.exists()
+    assert out_png.read_text(encoding="utf-8") == "dummy-image"

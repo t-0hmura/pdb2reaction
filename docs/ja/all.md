@@ -43,7 +43,7 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
 
 ```bash
 pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.20)]" \
- --mult 1 --out-dir ./result_scan_all
+ --multiplicity 1 --out-dir ./result_scan_all
 ```
 
 3. 重い処理を流す前に計画だけ確認する。
@@ -64,7 +64,7 @@ pdb2reaction all -i INPUT1 [INPUT2...] -c SUBSTRATE [options]
 ```bash
 # 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
- --ligand-charge 'GPP:-3,MMT:-1' --mult 1 --freeze-links \
+ --ligand-charge 'GPP:-3,MMT:-1' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
  --out-dir ./result_all --tsopt --thermo --dft
 
@@ -122,7 +122,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | 4 | `.gjf` テンプレート | 埋め込み電荷/スピン情報 |
 | 5 | デフォルト | なし（未解決ならエラー） |
 
-**スピンの解決:** `--mult`（CLI） → `.gjf` テンプレート → デフォルト (1)
+**スピンの解決:** `--multiplicity`（CLI） → `.gjf` テンプレート → デフォルト (1)
 
 > **ヒント:** 非標準の基質には `--ligand-charge` を必ず指定し、正しい電荷伝播を確保してください。
 
@@ -154,7 +154,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | --- | --- | --- |
 | `--ligand-charge TEXT` | 未知残基の残基別マッピングまたは総電荷（推奨） | _None_ |
 | `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
-| `-m, --mult INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
+| `-m, --multiplicity INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
 
 ### ポケット抽出オプション
 

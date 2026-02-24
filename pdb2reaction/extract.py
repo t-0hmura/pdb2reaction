@@ -207,29 +207,9 @@ def _extract_short_help() -> str:
     )
 
 
-def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    """
-    Parse CLI arguments.
-
-    Returns
-    -------
-    argparse.Namespace
-        Parameters for running the pocket extraction.
-    """
-    argv_list = list(argv) if argv is not None else None
-    if argv_list is not None:
-        wants_adv = "--help-advanced" in argv_list
-        wants_help = ("--help" in argv_list) or ("-h" in argv_list)
-        if wants_help and not wants_adv:
-            click.echo(_extract_short_help())
-            raise SystemExit(0)
-        if wants_adv:
-            argv_list = [a for a in argv_list if a != "--help-advanced"]
-            if ("--help" not in argv_list) and ("-h" not in argv_list):
-                argv_list.append("--help")
-
+def _build_arg_parser(*, prog: str) -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="pdb2reaction extract",
+        prog=prog,
         description=(
             "Extract a binding pocket around substrate residues (from a PDB or residue IDs/names), "
             "with biochemically aware truncation and optional link‑H; supports multi‑structure input "
@@ -310,6 +290,44 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help=("Enable INFO-level logging."
               " Default: True.")
     )
+    return p
+
+
+def parser_wrapper_bool_options() -> frozenset[str]:
+    """Return argparse-backed boolean long options for root-level bool normalization."""
+    parser = _build_arg_parser(prog="pdb2reaction extract")
+    options: set[str] = set()
+    for action in parser._actions:
+        if isinstance(action, argparse.BooleanOptionalAction):
+            options.update(
+                opt for opt in action.option_strings
+                if opt.startswith("--") and not opt.startswith("--no-")
+            )
+    return frozenset(options)
+
+
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
+    """
+    Parse CLI arguments.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parameters for running the pocket extraction.
+    """
+    argv_list = list(argv) if argv is not None else None
+    if argv_list is not None:
+        wants_adv = "--help-advanced" in argv_list
+        wants_help = ("--help" in argv_list) or ("-h" in argv_list)
+        if wants_help and not wants_adv:
+            click.echo(_extract_short_help())
+            raise SystemExit(0)
+        if wants_adv:
+            argv_list = [a for a in argv_list if a != "--help-advanced"]
+            if ("--help" not in argv_list) and ("-h" not in argv_list):
+                argv_list.append("--help")
+
+    p = _build_arg_parser(prog="pdb2reaction extract")
     return p.parse_args(args=argv_list)
 
 
