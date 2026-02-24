@@ -1338,7 +1338,7 @@ def resolve_charge_spin(
     prefix: str = "[charge]",
     cleanup_on_error: Optional[Callable[[], None]] = None,
 ) -> Tuple[int, int]:
-    """Resolve charge/spin from CLI args, GJF templates, and ligand metadata.
+    """Resolve charge/spin from CLI args, ligand metadata, and GJF templates.
 
     Accepts either a single PreparedInputStructure or a sequence of them.
     """
@@ -1351,12 +1351,8 @@ def resolve_charge_spin(
 
     resolved_charge = charge
     resolved_spin = spin
-    for prepared in inputs:
-        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
-            resolved_charge, resolved_spin, prepared.gjf_template
-        )
 
-    if ligand_charge is not None:
+    if ligand_charge is not None and resolved_charge is None:
         for prepared in inputs:
             if prepared.source_path.suffix.lower() in {".xyz", ".gjf"}:
                 if cleanup_on_error:
@@ -1364,10 +1360,14 @@ def resolve_charge_spin(
                 raise click.ClickException(
                     "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
                 )
-        if resolved_charge is None:
-            resolved_charge = _derive_charge_from_ligand_charge(
-                inputs[0], ligand_charge, prefix=prefix
-            )
+        resolved_charge = _derive_charge_from_ligand_charge(
+            inputs[0], ligand_charge, prefix=prefix
+        )
+
+    for prepared in inputs:
+        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
+            resolved_charge, resolved_spin, prepared.gjf_template
+        )
 
     if resolved_charge is None:
         if any(not p.is_gjf for p in inputs):

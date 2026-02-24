@@ -7,15 +7,18 @@ This page documents the conventions used across all `pdb2reaction` commands. Und
 ## Boolean Options
 
 Boolean options are normalized at the root CLI.
-Use toggle style by default:
+Both notations are accepted:
 
 ```bash
 # Recommended
 --tsopt --thermo --no-dft
 
+# Also accepted
 --tsopt True --thermo yes --dft 0
 ```
 
+For options that are defined only as `--flag`, the root CLI also accepts `--no-flag` and `--flag False` as compatibility aliases.
+`extract` and `fix-altloc` are parser-wrapper subcommands (argparse backend), but the same bool normalization still applies at the root CLI.
 
 Common boolean options:
 - `--tsopt`, `--thermo`, `--dft` — enable post-processing stages
@@ -102,7 +105,7 @@ When selecting by residue name, if multiple residues share the same name, **all*
 5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge`)
 
 ```{note}
-`--ligand-charge` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. If a `.gjf` template already provides a charge value before `--ligand-charge` is evaluated, the template charge takes precedence and `--ligand-charge` will not override it.
+`--ligand-charge` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. In that unresolved case, ligand-derived charge is attempted before `.gjf` metadata fallback.
 ```
 
 ```{tip}

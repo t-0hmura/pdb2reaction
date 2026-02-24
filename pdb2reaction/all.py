@@ -2371,20 +2371,6 @@ def cli(
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
         gjf_spin: Optional[int] = None
-        if first_input.suffix.lower() == ".gjf":
-            try:
-                with prepare_input_structure(first_input) as prepared:
-                    gjf_charge, gjf_spin = resolve_charge_spin(
-                        prepared, charge=None, spin=None
-                    )
-                _echo(
-                    f"[all] Detected from GJF (first input): charge={gjf_charge:+d}, spin={gjf_spin}"
-                )
-            except Exception as e:
-                _echo(
-                    f"[all] NOTE: failed to parse charge/spin from GJF '{first_input.name}': {e}",
-                    err=True,
-                )
 
         user_provided_spin = True
         try:
@@ -2393,7 +2379,6 @@ def cli(
         except Exception:
             user_provided_spin = True
 
-        charge_total: float
         ligand_charge_numeric: Optional[float] = None
         if ligand_charge is not None:
             try:
@@ -2421,21 +2406,35 @@ def cli(
 
         if resolved_charge is None:
             if ligand_charge_numeric is not None:
-                charge_total = ligand_charge_numeric
                 _echo(
-                    f"[all] Using --ligand-charge as TOTAL system charge: {charge_total:+g}"
+                    f"[all] Using --ligand-charge as TOTAL system charge: {ligand_charge_numeric:+g}"
                 )
-                resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
-            elif gjf_charge is not None:
-                charge_total = float(gjf_charge)
-                _echo(f"[all] Using total charge from first GJF: {charge_total:+g}")
-                resolved_charge = _round_charge_with_note(charge_total, prefix="[all]")
-            else:
-                if charge_override is None:
-                    raise click.ClickException(
-                        "[all] Total charge could not be resolved. Provide -q/--charge, "
-                        "--ligand-charge, or a .gjf input with charge metadata."
+                resolved_charge = _round_charge_with_note(ligand_charge_numeric, prefix="[all]")
+
+        if first_input.suffix.lower() == ".gjf" and (resolved_charge is None or not user_provided_spin):
+            try:
+                with prepare_input_structure(first_input) as prepared:
+                    gjf_charge, gjf_spin = resolve_charge_spin(
+                        prepared, charge=None, spin=None
                     )
+                _echo(
+                    f"[all] Parsed GJF metadata (first input): charge={gjf_charge:+d}, spin={gjf_spin}"
+                )
+            except Exception as e:
+                _echo(
+                    f"[all] NOTE: failed to parse charge/spin from GJF '{first_input.name}': {e}",
+                    err=True,
+                )
+
+        if resolved_charge is None and gjf_charge is not None:
+            _echo(f"[all] Using total charge from first GJF: {float(gjf_charge):+g}")
+            resolved_charge = _round_charge_with_note(float(gjf_charge), prefix="[all]")
+
+        if resolved_charge is None and charge_override is None:
+            raise click.ClickException(
+                "[all] Total charge could not be resolved. Provide -q/--charge, "
+                "--ligand-charge, or a .gjf input with charge metadata."
+            )
 
         if (not user_provided_spin) and (gjf_spin is not None):
             spin = int(gjf_spin)

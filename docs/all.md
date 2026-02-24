@@ -117,7 +117,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 |----------|--------|-----------|
 | 1 | `-q/--charge` | Explicit CLI override |
 | 2 | Pocket extraction | When `-c` is provided (sums amino acids, ions, `--ligand-charge`) |
-| 3 | `--ligand-charge` (numeric) | Fallback when extraction fails or is skipped |
+| 3 | `--ligand-charge` | Fallback when extraction is skipped |
 | 4 | `.gjf` template | Embedded charge/spin metadata |
 | 5 | Default | None (unresolved charge is an error) |
 

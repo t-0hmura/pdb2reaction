@@ -7,15 +7,18 @@
 ## ブール値オプション
 
 ブール値オプションは root CLI で正規化されます。
-基本は toggle 形式（`--flag/--no-flag`）を使ってください。
+次の2記法を受け付けます。
 
 ```bash
 # 推奨
 --tsopt --thermo --no-dft
 
+# 互換記法として受理
 --tsopt True --thermo yes --dft 0
 ```
 
+`--flag` 単独で定義されているオプションでも、互換のため `--no-flag` と `--flag False` を受理します。
+`extract` と `fix-altloc` は parser wrapper（argparse バックエンド）ですが、root CLI で同じ bool 正規化が適用されます。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -102,7 +105,7 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 5. デフォルト: なし（未解決なら中断。`-q`/`.gjf` 電荷メタデータ、または PDB の `--ligand-charge` で解決）
 
 ```{note}
-`--ligand-charge` による導出は、PDB 入力のみ（`--ref-pdb` を付けた XYZ/GJF 入力を含む）で電荷が**まだ解決されていない**場合に適用されます。`.gjf` テンプレートが `--ligand-charge` の評価前に電荷値を提供している場合、テンプレートの電荷が優先され、`--ligand-charge` は上書きしません。
+`--ligand-charge` による導出は、PDB 入力のみ（`--ref-pdb` を付けた XYZ/GJF 入力を含む）で電荷が**まだ解決されていない**場合に適用されます。未解決の場合は、`.gjf` メタデータへフォールバックする前に `--ligand-charge` 導出を先に試行します。
 ```
 
 ```{tip}
