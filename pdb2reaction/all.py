@@ -1712,12 +1712,12 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 )
 @click.option(
     "--opt-mode-post",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default=None,
-    show_default=False,
+    type=click.Choice(["light", "heavy", "hybrid"], case_sensitive=False),
+    default="hybrid",
+    show_default=True,
     help=(
         "Optimizer mode override for TSOPT/post-IRC endpoint optimizations. "
-        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to tsopt defaults."
+        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hybrid')."
     ),
 )
 @click.option(
@@ -1854,7 +1854,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @click.option(
     "--flatten/--no-flatten",
     "flatten",
-    default=False,
+    default=True,
     show_default=True,
     help="Enable the extra-imaginary-mode flattening loop in tsopt (light: dimer loop, heavy/hybrid: post-RSIRFO); --no-flatten forces flatten_max_iter=0.",
 )
@@ -2151,7 +2151,7 @@ def cli(
     elif opt_mode_set:
         tsopt_opt_mode_default = opt_mode.lower()
     else:
-        tsopt_opt_mode_default = "heavy"
+        tsopt_opt_mode_default = "hybrid"
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)

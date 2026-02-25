@@ -80,10 +80,12 @@ Options:
                                   used for single optimizations: light
                                   (=LBFGS/Dimer) or heavy (=RFO/RSIRFO).
                                   [default: light]
-  --opt-mode-post [light|heavy]   Optimizer mode override for TSOPT/post-IRC
+  --opt-mode-post [light|heavy|hybrid]
+                                  Optimizer mode override for TSOPT/post-IRC
                                   endpoint optimizations. If unset, uses --opt-
                                   mode when explicitly provided; otherwise falls
-                                  back to tsopt defaults.
+                                  back to the default ('hybrid').  [default:
+                                  hybrid]
   --dump BOOLEAN                  Dump GSM/MEP trajectories. Always forwarded to
                                   path_search/path-opt; scan/tsopt receive it
                                   only when explicitly set here. The freq stage
@@ -135,8 +137,7 @@ Options:
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop in tsopt (light: dimer loop,
                                   heavy/hybrid: post-RSIRFO); --no-flatten
-                                  forces flatten_max_iter=0.  [default: no-
-                                  flatten]
+                                  forces flatten_max_iter=0.  [default: flatten]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to

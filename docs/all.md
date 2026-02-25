@@ -195,11 +195,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--tsopt/--no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
 | `--thermo/--no-thermo` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
 | `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
-| `--opt-mode-post [light\|heavy]` | Optimizer preset for TSOPT and post-IRC optimization. | _None_ |
+| `--opt-mode-post [light\|heavy\|hybrid]` | Optimizer preset for TSOPT and post-IRC optimization. | `hybrid` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
+| `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `True` |
 
-TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`heavy`).
+TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hybrid`).
 
 ### TSOPT Overrides
 

@@ -197,11 +197,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--tsopt/--no-tsopt` | セグメントごとのTS最適化 + IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/Pで振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
-| `--opt-mode-post [light\|heavy]` | TSOPT/IRC後最適化のプリセット | _None_ |
+| `--opt-mode-post [light\|heavy\|hybrid]` | TSOPT/IRC後最適化のプリセット | `hybrid` |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `False` |
+| `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `True` |
 
-TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`heavy`）の順で決まります。
+TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`hybrid`）の順で決まります。
 
 ### TSOPT 上書き
 
