@@ -122,7 +122,7 @@ def add_scan_common_options(
             "freeze_links",
             default=freeze_links_default,
             show_default=True,
-            help="If input is PDB, freeze parent atoms of link hydrogens.",
+            help="Freeze parent atoms of link hydrogens (PDB only).",
         ),
         click.option(
             "--dump/--no-dump",

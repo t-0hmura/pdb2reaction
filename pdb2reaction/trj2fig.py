@@ -244,7 +244,7 @@ def parse_cli() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Plot ΔE or E from an XYZ trajectory and export a figure and/or CSV (no title).",
     )
-    p.add_argument("-i", "--input", required=True, help="XYZ trajectory file")
+    p.add_argument("-i", "--input", required=True, help="XYZ trajectory file.")
     p.add_argument(
         "-o",
         "--out",
@@ -252,14 +252,14 @@ def parse_cli() -> argparse.Namespace:
         default=["energy.png"],
         help="Output file(s) [.png/.jpg/.jpeg/.html/.svg/.pdf/.csv]. Multiple names allowed.",
     )
-    p.add_argument("--unit", choices=["kcal", "hartree"], default="kcal", help="Energy unit")
+    p.add_argument("--unit", choices=["kcal", "hartree"], default="kcal", help="Energy unit.")
     p.add_argument(
         "-r",
         "--reference",
         default="init",
         help="Reference: 'init' (initial frame; last frame if --reverse-x), 'None' (absolute E), or an integer index.",
     )
-    p.add_argument("-q", "--charge", type=int, required=False, help="Total charge (recompute energies when provided)")
+    p.add_argument("-q", "--charge", type=int, required=False, help="Total charge. Triggers energy recomputation when supplied.")
     p.add_argument(
         "-m",
         "--multiplicity",
@@ -329,7 +329,7 @@ def main() -> None:
     "input_path",
     required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    help="XYZ trajectory file",
+    help="XYZ trajectory file.",
 )
 @click.option(
     "-o",

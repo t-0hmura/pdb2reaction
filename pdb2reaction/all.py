@@ -1662,7 +1662,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=1,
     show_default=True,
-    help="Multiplicity (2S+1).",
+    help="Spin multiplicity (2S+1) for the ML region.",
 )
 @click.option(
     "--freeze-links",
@@ -1670,7 +1670,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="For pocket PDB input, freeze parent atoms of link hydrogens.",
+    help="Freeze parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
     "--mep-mode",

@@ -157,7 +157,7 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 
 ### PDB ファイル
 - **水素原子**を含む必要があります（`reduce`、`pdb2pqr`、または Open Babel で追加）
-- 列 77-78 に**元素記号**が必要（欠けている場合は `pdb2reaction add-elem-info` を使用）
+- 列 77–78 に**元素記号**が必要（欠けている場合は `pdb2reaction add-elem-info` を使用）
 - 複数の PDB は**同じ原子を同じ順序**で持つ必要があります（座標のみ異なる）
 
 ### XYZ および GJF ファイル

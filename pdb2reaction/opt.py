@@ -442,7 +442,7 @@ def _flatten_all_imag_modes_for_geom(
     "--freeze-links/--no-freeze-links",
     default=True,
     show_default=True,
-    help="Freeze the parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
     "--convert-files/--no-convert-files",

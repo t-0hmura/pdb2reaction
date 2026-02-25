@@ -224,7 +224,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens when the input is PDB.",
+    help="Freeze parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
     "--convert-files/--no-convert-files",

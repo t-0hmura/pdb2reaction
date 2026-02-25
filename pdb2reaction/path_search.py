@@ -1719,7 +1719,7 @@ def _merge_final_and_write(final_images: List[Any],
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="For PDB input, freeze parent atoms of link hydrogens.",
+    help="Freeze parent atoms of link hydrogens (PDB only).",
 )
 @click.option("--max-nodes", type=int, default=10, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "

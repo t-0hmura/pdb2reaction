@@ -152,7 +152,7 @@ pdb2reaction dft -i optimized.pdb
 |---|---|---|
 | `extract` | Extract active-site pocket (cluster model) | [docs/extract.md](docs/extract.md) |
 | `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix_altloc.md](docs/fix_altloc.md) |
-| `add-elem-info` | Add/repair PDB element columns (77-78) | [docs/add_elem_info.md](docs/add_elem_info.md) |
+| `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add_elem_info.md](docs/add_elem_info.md) |
 
 ### Optimization & Path Search
 

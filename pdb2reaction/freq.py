@@ -496,7 +496,7 @@ CALC_KW["return_partial_hessian"] = True
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure (.pdb, .xyz, _trj.xyz, ...)",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "-q",

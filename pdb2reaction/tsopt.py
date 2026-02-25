@@ -1313,7 +1313,7 @@ def _build_rsirfo_kwargs(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure (.pdb, .xyz, _trj.xyz, ...)",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "-q",
@@ -1371,7 +1371,7 @@ def _build_rsirfo_kwargs(
     default=None,
     help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
-@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap")
+@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap.")
 @click.option(
     "--flatten/--no-flatten",
     "flatten",

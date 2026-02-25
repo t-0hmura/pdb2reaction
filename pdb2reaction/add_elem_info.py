@@ -265,12 +265,12 @@ def main():
         "--input",
         dest="in_pdb",
         required=True,
-        help="Input PDB filepath",
+        help="Input PDB filepath.",
     )
     ap.add_argument(
         "-o",
         "--out",
-        help='output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored)',
+        help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored).',
     )
     ap.add_argument(
         "--overwrite",
@@ -302,14 +302,14 @@ def main():
     "in_pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input PDB filepath",
+    help="Input PDB filepath.",
 )
 @click.option(
     "-o", "--out",
     "out_pdb",
     type=click.Path(path_type=Path, dir_okay=False),
     default=None,
-    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored)',
+    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored).',
 )
 @click.option(
     "--overwrite/--no-overwrite",

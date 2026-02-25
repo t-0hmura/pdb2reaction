@@ -157,7 +157,7 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 
 ### PDB files
 - Must contain **hydrogen atoms** (use `reduce`, `pdb2pqr`, or Open Babel to add them)
-- Must have **element symbols** in columns 77-78 (use `pdb2reaction add-elem-info` if missing)
+- Must have **element symbols** in columns 77–78 (use `pdb2reaction add-elem-info` if missing)
 - Multiple PDBs must have **identical atoms in the same order** (only coordinates may differ)
 
 ### XYZ and GJF files

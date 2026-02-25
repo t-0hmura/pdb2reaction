@@ -345,6 +345,7 @@ def _fix_altloc_short_help() -> str:
 
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
+        prog="pdb2reaction fix-altloc",
         description=(
             "Blank PDB altLoc column (col 17) without shifting, and keep one altLoc per atom "
             "by default rule: highest occupancy, then earliest appearance."
@@ -352,7 +353,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-i", "--input", dest="input", type=Path, required=True,
-        help="Input PDB file or directory"
+        help="Input PDB file or directory."
     )
     parser.add_argument(
         "-o", "--out", type=Path, default=None,

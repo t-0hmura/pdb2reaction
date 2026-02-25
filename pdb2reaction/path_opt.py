@@ -453,7 +453,7 @@ def _optimize_single(
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="If a PDB is provided, freeze the parent atoms of link hydrogens.",
+    help="Freeze parent atoms of link hydrogens (PDB only).",
 )
 @click.option(
     "--max-nodes",

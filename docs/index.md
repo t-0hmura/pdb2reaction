@@ -139,7 +139,7 @@ ja/index
 | Subcommand | Description |
 |------------|-------------|
 | [`extract`](extract.md) | Extract active-site pocket (cluster model) from protein–ligand complex |
-| [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77-78) |
+| [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77–78) |
 
 ### Geometry Optimization
 | Subcommand | Description |

@@ -99,7 +99,7 @@ glossary
 | サブコマンド | 説明 |
 |---------|------|
 | [`extract`](extract.md) | タンパク質-リガンド複合体から活性部位ポケット（クラスターモデル）を抽出 |
-| [`add-elem-info`](add_elem_info.md) | PDB の元素カラム（77-78）を修復 |
+| [`add-elem-info`](add_elem_info.md) | PDB の元素カラム（77–78）を修復 |
 
 #### 構造最適化
 | サブコマンド | 説明 |
