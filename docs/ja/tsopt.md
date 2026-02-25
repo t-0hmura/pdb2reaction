@@ -2,18 +2,19 @@
 
 ## 概要
 
-> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode light`）または RS‑I‑RFO（`--opt-mode heavy`、デフォルト）で最適化します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` により高速化できることが多いです。妥当な TS では虚振動数が **ちょうど 1 つ**であるべきです。必ず freq/IRC でモードと接続性を確認してください。
+> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode light`）、RS‑I‑RFO（`--opt-mode heavy`、デフォルト）、または hybrid（`--opt-mode hybrid`: Dimer後にRS-I-RFO flatten段）で最適化します。妥当な TS では虚振動数が **ちょうど 1 つ**であるべきです。必ず freq/IRC でモードと接続性を確認してください。
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
-- **モード:** `heavy` = RS‑I‑RFO（既定、一般的により堅牢）。`light` = Hessian Dimer（1ステップあたりのコストが低いことが多い）。
+- **モード:** `heavy` = RS‑I‑RFO（既定、一般的により堅牢）。`light` = Hessian Dimer（1ステップあたりのコストが低いことが多い）。`hybrid` = Dimer収束後にRS-I-RFO flattenループのみ実行。
 - **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
-- **任意の後処理:** `--flatten-imag-mode` は、収束後に余分な虚数モードが残っている場合にその除去を試みます。
+- **任意の後処理:** `--flatten`（デフォルト有効）で余分な虚数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
 
 ### `--opt-mode` の選び方
 - **`--opt-mode heavy`（RS‑I‑RFO）**: デフォルト。ヘシアン計算のコストを許容でき、堅牢性を重視する場合に推奨。
 - **`--opt-mode light`（Dimer）**: 軽量な探索を行いたい場合や、複数の TS 初期構造から素早く反復したい場合に有効。
+- **`--opt-mode hybrid`**: Dimer探索を使いつつ、flatten段はheavy同様にRS-I-RFOで回したい場合に有効。
 
 XYZ/GJF 入力では `--ref-pdb` により参照 PDB トポロジーを与え、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換ができます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を得てから `tsopt` → `freq` → `irc` の順で検証してください。
 
@@ -51,10 +52,17 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode heavy --config tsopt.yaml --out-dir ./result_tsopt_heavy
 ```
 
+4. hybrid モード（Dimer + RS-I-RFO flatten 段）で実行する。
+
+```bash
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
+ --opt-mode hybrid --flatten --out-dir ./result_tsopt_hybrid
+```
+
 ## 使用法
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--opt-mode light|heavy] [--flatten-imag-mode/--no-flatten-imag-mode] \
+ [--opt-mode light|heavy|hybrid] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -82,9 +90,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 - **UMAヘシアン**: `--hessian-calc-mode` は解析的評価と有限差分評価を切り替えます。凍結原子がある場合、UMA は活性ブロックのみを返すことがあります。VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨します。
 - **Lightモード詳細**:
  - Hessian Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
- - `--flatten-imag-mode` が有効な場合、フラットンループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラットン → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
+ - `--flatten` が有効な場合、フラットンループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラットン → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
-- **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten-imag-mode` が有効で収束後も虚数モードが複数残る場合、追加モードをフラットンしてRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
+- **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚数モードが複数残る場合、追加モードをフラットンしてRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
+- **Hybridモード**: 先にDimerで収束させ、その後はheavy同様にRS-I-RFO flatten段のみを実行します。
 - **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*_trj.xyz` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は、`--dump` のとき入力テンプレート経由で PDB に変換されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされ、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
 ## CLI オプション
@@ -97,11 +106,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
 | `--max-cycles INT` | `opt.max_cycles` に転送されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | 上記のLight/Heavyエイリアス | `heavy` |
+| `--opt-mode TEXT` | `light`（Dimer）、`heavy`（RSIRFO）、`hybrid`（Dimer後にRSIRFO flatten段） | `heavy` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--flatten-imag-mode/--no-flatten-imag-mode` | 余分な虚数モードフラットンループを有効化（`False` は `flatten_max_iter=0` を強制）。lightモード（dimerループ）とheavyモード（RS-IRFO後）の両方に適用 | `False` |
+| `--flatten/--no-flatten` | 余分な虚数モードフラットンループを有効化（`False` は `flatten_max_iter=0` を強制）。light（dimerループ）/heavy（RS-IRFO後）/hybrid（dimer後RS-IRFO段）に適用 | `True` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -127,15 +136,10 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-
 - `--opt-mode` のエイリアスは上記のワークフローに対応します。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください（デフォルト: `heavy`）。
 - 虚数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で設定可能）。複数残る場合は `root` がどの虚数モードを出力するかに影響します。
 - 設定マージ優先順位は `defaults < config < 明示 CLI < override` です。
-- - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
-
-
-
-`defaults < config < 明示 CLI < override`。
+- PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 
 共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
 
@@ -180,7 +184,7 @@ hessian_dimer:
  update_interval_hessian: 500 # Hessian rebuild cadence
  neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm^-1)
  flatten_amp_ang: 0.1 # flattening amplitude (Å)
- flatten_max_iter: 50 # flattening iteration cap (disabled when --no-flatten-imag-mode)
+ flatten_max_iter: 50 # flattening iteration cap (disabled when --no-flatten)
  flatten_sep_cutoff: 0.0 # minimum distance between representative atoms (Å)
  flatten_k: 10 # representative atoms sampled per mode
  flatten_loop_bofill: false # Bofill update for flatten displacements

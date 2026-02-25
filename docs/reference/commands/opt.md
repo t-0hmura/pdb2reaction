@@ -5,7 +5,8 @@
 ```text
 Usage: pdb2reaction opt [OPTIONS]
 
-  Single-structure geometry optimization using LBFGS or RFO.
+  Single-structure geometry optimization using LBFGS, RFO, or hybrid
+  LBFGS+RFO(flatten).
 
 Options:
   --help-advanced                 Show all options (including advanced settings)
@@ -41,8 +42,12 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --max-cycles INTEGER            Maximum number of optimization cycles.
                                   [default: 10000]
-  --opt-mode [light|heavy]        Optimization mode: 'light' (=LBFGS) or 'heavy'
-                                  (=RFO).  [default: light]
+  --opt-mode [light|heavy|hybrid]
+                                  Optimization mode: 'light' (=LBFGS), 'heavy'
+                                  (=RFO), or 'hybrid' (=LBFGS then RFO flatten
+                                  loop).  [default: light]
+  --flatten / --no-flatten        Enable/disable imaginary-mode flatten loop
+                                  after optimization.  [default: no-flatten]
   --dump / --no-dump              Write optimization trajectory to
                                   'optimization_trj.xyz'.  [default: no-dump]
   --out-dir TEXT                  Output directory.  [default: ./result_opt/]

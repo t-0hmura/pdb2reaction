@@ -155,8 +155,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 最適化後も複数の虚振動数が残る
 
 対処の例:
-- オプティマイザモードを切り替える: `--opt-mode light` (Dimer) または `--opt-mode heavy` (RS-I-RFO)
-- 余分な虚モードのフラット化を有効にする: `--flatten-imag-mode`
+- オプティマイザモードを切り替える: `--opt-mode light` (Dimer)、`--opt-mode heavy` (RS-I-RFO)、または `--opt-mode hybrid` (Dimer + RS-I-RFO flatten段)
+- 余分な虚モードのフラット化を有効にする: `--flatten`
 - 最大サイクル数を増やす: `--tsopt-max-cycles 20000`
 - より厳しい収束条件を使う: `--thresh baker` または `--thresh gau_tight`
 

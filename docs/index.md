@@ -144,8 +144,8 @@ ja/index
 ### Geometry Optimization
 | Subcommand | Description |
 |------------|-------------|
-| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS / RFO) |
-| [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO) |
+| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS / RFO / hybrid + optional flatten) |
+| [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO / hybrid, flatten enabled by default) |
 
 ### Path Search & Optimization
 | Subcommand | Description |

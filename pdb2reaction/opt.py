@@ -20,9 +20,11 @@ import sys
 
 import click
 import numpy as np
+import torch
 import yaml
 import time
 from click.core import ParameterSource
+from ase.data import atomic_masses
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
@@ -55,9 +57,18 @@ from .utils import (
     convert_xyz_like_outputs,
 )
 from .cli_utils import run_cli
+from .freq import (
+    _torch_device,
+    _calc_full_hessian_torch,
+    _frequencies_cm_and_modes,
+    _calc_energy,
+)
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
 H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
+OPT_FLATTEN_NEG_FREQ_THRESH_CM = 5.0
+OPT_FLATTEN_AMP_ANG = 0.10
+OPT_FLATTEN_MAX_ITER = 50
 
 # Note: All defaults imported from defaults.py - no local copies needed
 
@@ -291,12 +302,66 @@ def _convert_outputs(
             click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
 
+def _flatten_all_imag_modes_for_geom(
+    geom,
+    masses_amu: np.ndarray,
+    uma_kwargs: dict,
+    freqs_cm: np.ndarray,
+    modes: torch.Tensor,
+    neg_freq_thresh_cm: float,
+    flatten_amp_ang: float,
+) -> bool:
+    """
+    Flatten all imaginary modes for a geometry in a single pass.
+    """
+    neg_idx_all = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
+    if len(neg_idx_all) == 0:
+        return False
+
+    order = np.argsort(freqs_cm[neg_idx_all])  # most negative first
+    targets = [int(x) for x in neg_idx_all[order]]
+    mass_scale = np.sqrt(12.011 / masses_amu)[:, None]
+    amp_bohr = float(flatten_amp_ang) / BOHR2ANG
+    E_ref = _calc_energy(geom, uma_kwargs)
+
+    for idx in targets:
+        v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)
+        m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
+        v_cart = v_mw / np.sqrt(m3)
+        v_cart /= np.linalg.norm(v_cart)
+
+        disp = amp_bohr * mass_scale * v_cart
+        ref = geom.cart_coords.reshape(-1, 3)
+
+        plus = ref + disp
+        minus = ref - disp
+
+        geom.coords = plus.reshape(-1)
+        E_plus = _calc_energy(geom, uma_kwargs)
+
+        geom.coords = minus.reshape(-1)
+        E_minus = _calc_energy(geom, uma_kwargs)
+
+        use_plus = E_plus <= E_minus
+        geom.coords = (plus if use_plus else minus).reshape(-1)
+        E_keep = E_plus if use_plus else E_minus
+        delta_e = E_keep - E_ref
+        click.echo(
+            f"[Flatten] mode={idx} freq={freqs_cm[idx]:+.2f} cm^-1 "
+            f"E_disp={E_keep:.8f} Ha ΔE={delta_e:+.8f} Ha"
+        )
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return True
+
+
 # -----------------------------------------------
 # CLI
 # -----------------------------------------------
 
 @click.command(
-    help="Single-structure geometry optimization using LBFGS or RFO.",
+    help="Single-structure geometry optimization using LBFGS, RFO, or hybrid LBFGS+RFO(flatten).",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -401,10 +466,17 @@ def _convert_outputs(
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
+    type=click.Choice(["light", "heavy", "hybrid"], case_sensitive=False),
     default="light",
     show_default=True,
-    help="Optimization mode: 'light' (=LBFGS) or 'heavy' (=RFO).",
+    help="Optimization mode: 'light' (=LBFGS), 'heavy' (=RFO), or 'hybrid' (=LBFGS then RFO flatten loop).",
+)
+@click.option(
+    "--flatten/--no-flatten",
+    "flatten",
+    default=False,
+    show_default=True,
+    help="Enable/disable imaginary-mode flatten loop after optimization.",
 )
 @click.option(
     "--dump/--no-dump",
@@ -467,6 +539,7 @@ def cli(
     ref_pdb: Optional[Path],
     max_cycles: int,
     opt_mode: str,
+    flatten: bool,
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
@@ -563,21 +636,30 @@ def cli(
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
             # Normalize and select optimizer kind
+            opt_mode_aliases = tuple(OPT_MODE_ALIASES) + ((("hybrid",), "hybrid"),)
             kind = normalize_choice(
                 opt_mode,
                 param="--opt-mode",
-                alias_groups=OPT_MODE_ALIASES,
-                allowed_hint="light|heavy",
+                alias_groups=opt_mode_aliases,
+                allowed_hint="light|heavy|hybrid",
             )
+            main_kind = "lbfgs" if kind == "hybrid" else kind
+            flatten_kind = "rfo" if kind == "hybrid" else kind
 
             # Pretty-print the resolved configuration
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
             click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
             click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
-            echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
-            echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
-            click.echo(pretty_block(kind, echo_sopt))
+            if kind == "hybrid":
+                echo_lbfgs = strip_inherited_keys(dict(lbfgs_cfg), opt_cfg)
+                echo_rfo = strip_inherited_keys(dict(rfo_cfg), opt_cfg)
+                click.echo(pretty_block("lbfgs_hybrid_stage", echo_lbfgs))
+                click.echo(pretty_block("rfo_hybrid_flatten_stage", echo_rfo))
+            else:
+                echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
+                echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
+                click.echo(pretty_block(kind, echo_sopt))
             if show_config:
                 click.echo(
                     pretty_block(
@@ -612,6 +694,8 @@ def cli(
                             "input_geometry": str(geom_input_path),
                             "output_dir": str(out_dir_path),
                             "optimizer_mode": str(kind),
+                            "flatten_optimizer_mode": str(flatten_kind) if bool(flatten) else None,
+                            "flatten": bool(flatten),
                             "convert_files": bool(convert_files),
                             "freeze_links": bool(freeze_links),
                             "will_run_optimization": True,
@@ -667,34 +751,127 @@ def cli(
             # --------------------------
             # 3) Build optimizer
             # --------------------------
+            opt_calc = geometry.calculator
             common_kwargs = dict(opt_cfg)
             # Ensure paths (strings) are OK; Optimizer expects str, not Path
             common_kwargs["out_dir"] = str(out_dir_path)
 
-            if kind == "lbfgs":
-                lbfgs_args = {**lbfgs_cfg, **common_kwargs}
-                optimizer = LBFGS(geometry, **lbfgs_args)
-            else:
-                rfo_args = {**rfo_cfg, **common_kwargs}
-                optimizer = RFOptimizer(geometry, **rfo_args)
+            def _build_optimizer(run_kind: str):
+                if run_kind == "lbfgs":
+                    lbfgs_args = {**lbfgs_cfg, **common_kwargs}
+                    return LBFGS(geometry, **lbfgs_args)
+                if run_kind == "rfo":
+                    rfo_args = {**rfo_cfg, **common_kwargs}
+                    return RFOptimizer(geometry, **rfo_args)
+                raise click.BadParameter(f"Unknown optimizer kind '{run_kind}'.")
 
             # --------------------------
             # 4) Run optimization
             # --------------------------
-            click.echo("\n====== Optimization started ======\n")
+            main_label = "LBFGS" if main_kind == "lbfgs" else "RFO"
+            if kind == "hybrid":
+                main_label = "Hybrid stage-1: LBFGS"
+            optimizer = _build_optimizer(main_kind)
+            click.echo(f"\n====== Optimization ({main_label}) started ======\n")
             optimizer.run()
-            click.echo("\n====== Optimization finished ======\n")
+            click.echo(f"\n====== Optimization ({main_label}) finished ======\n")
+            last_optimizer = optimizer
 
             # --------------------------
-            # 5) Post-processing: PDB conversions (if input is PDB)
+            # 5) Flatten loop (all imaginary modes)
+            # --------------------------
+            if flatten:
+                if kind == "hybrid":
+                    click.echo("\n====== Optimization (Hybrid stage-2: flatten loop with RFO) started ======\n")
+                else:
+                    click.echo("\n====== Optimization (Flatten loop) started ======\n")
+
+                geometry.set_calculator(None)
+                uma_kwargs_for_flatten = dict(calc_cfg)
+                uma_kwargs_for_flatten["out_hess_torch"] = True
+                device = _torch_device(calc_cfg.get("device", "auto"))
+                freeze_idx = list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
+                masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
+
+                def _attach_opt_calc() -> None:
+                    geometry.set_calculator(opt_calc)
+
+                def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
+                    H = _calc_full_hessian_torch(geometry, uma_kwargs_for_flatten, device)
+                    freqs_local, modes_local = _frequencies_cm_and_modes(
+                        H,
+                        geometry.atomic_numbers,
+                        geometry.cart_coords.reshape(-1, 3),
+                        device,
+                        freeze_idx=freeze_idx,
+                    )
+                    del H
+                    return freqs_local, modes_local
+
+                freqs_cm, modes = _calc_freqs_and_modes()
+                neg_mask = freqs_cm < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)
+                n_imag = int(np.sum(neg_mask))
+                ims = [float(x) for x in freqs_cm if x < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)]
+                click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
+
+                for it in range(OPT_FLATTEN_MAX_ITER):
+                    if n_imag == 0:
+                        break
+                    click.echo(f"[flatten] iteration {it + 1}/{OPT_FLATTEN_MAX_ITER}")
+                    did_flatten = _flatten_all_imag_modes_for_geom(
+                        geometry,
+                        masses_amu,
+                        uma_kwargs_for_flatten,
+                        freqs_cm,
+                        modes,
+                        OPT_FLATTEN_NEG_FREQ_THRESH_CM,
+                        OPT_FLATTEN_AMP_ANG,
+                    )
+                    if not did_flatten:
+                        click.echo("[flatten] No eligible imaginary modes to flatten; stopping.")
+                        break
+
+                    _attach_opt_calc()
+                    optimizer = _build_optimizer(flatten_kind)
+                    restart_label = "LBFGS" if flatten_kind == "lbfgs" else "RFO"
+                    click.echo(f"\n====== Optimization ({restart_label}) restarted ======\n")
+                    optimizer.run()
+                    click.echo(f"\n====== Optimization ({restart_label}) finished ======\n")
+                    last_optimizer = optimizer
+
+                    geometry.set_calculator(None)
+                    freqs_cm, modes = _calc_freqs_and_modes()
+                    neg_mask = freqs_cm < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)
+                    n_imag = int(np.sum(neg_mask))
+                    ims = [float(x) for x in freqs_cm if x < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)]
+                    click.echo(f"[Imaginary modes] n={n_imag}  ({ims})")
+
+                if n_imag > 0:
+                    click.echo(
+                        f"[flatten] WARNING: Remaining imaginary modes after {OPT_FLATTEN_MAX_ITER} iterations: {n_imag}",
+                        err=True,
+                    )
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                if kind == "hybrid":
+                    click.echo("\n====== Optimization (Hybrid stage-2: flatten loop with RFO) finished ======\n")
+                else:
+                    click.echo("\n====== Optimization (Flatten loop) finished ======\n")
+
+            # --------------------------
+            # 6) Post-processing: PDB conversions (if input is PDB)
             # --------------------------
             # Final geometry location (Optimizer sets final_fn during run)
-            final_xyz_path = optimizer.final_fn if isinstance(optimizer.final_fn, Path) else Path(optimizer.final_fn)
+            final_xyz_path = (
+                last_optimizer.final_fn
+                if isinstance(last_optimizer.final_fn, Path)
+                else Path(last_optimizer.final_fn)
+            )
             _convert_outputs(
                 prepared_input=prepared_input,
                 out_dir=out_dir_path,
                 dump=bool(opt_cfg["dump"]),
-                get_trj_fn=optimizer.get_path_for_fn,
+                get_trj_fn=last_optimizer.get_path_for_fn,
                 final_xyz_path=final_xyz_path,
             )
 

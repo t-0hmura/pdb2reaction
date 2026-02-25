@@ -5,7 +5,8 @@
 ```text
 Usage: pdb2reaction tsopt [OPTIONS]
 
-  Transition state optimization (Dimer or RS-I-RFO).
+  Transition state optimization (Dimer, RS-I-RFO, or hybrid Dimer+RS-I-RFO
+  flatten).
 
 Options:
   --help-advanced                 Show all options (including advanced settings)
@@ -34,12 +35,12 @@ Options:
   --ref-pdb FILE                  Reference PDB topology to use when the input
                                   is XYZ/GJF (keeps XYZ coordinates).
   --max-cycles INTEGER            Max cycles / steps cap  [default: 10000]
-  --flatten-imag-mode / --no-flatten-imag-mode
-                                  Enable the extra-imaginary-mode flattening
-                                  loop (light: dimer loop, heavy: post-RSIRFO;
-                                  False forces flatten_max_iter=0).  [default:
-                                  no-flatten-imag-mode]
-  --opt-mode [light|heavy]        light (=Dimer) or heavy (=RSIRFO)  [default:
+  --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
+                                  loop (light: dimer loop, heavy/hybrid: post-
+                                  RSIRFO).  [default: flatten]
+  --opt-mode [light|heavy|hybrid]
+                                  light (=Dimer), heavy (=RSIRFO), or hybrid
+                                  (=Dimer then RSIRFO flatten loop).  [default:
                                   heavy]
   --dump / --no-dump              Dump optimization trajectory  [default: no-
                                   dump]

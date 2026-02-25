@@ -104,8 +104,8 @@ glossary
 #### 構造最適化
 | サブコマンド | 説明 |
 |---------|------|
-| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS / RFO） |
-| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer / RS-I-RFO） |
+| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS / RFO / hybrid + 任意flatten） |
+| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer / RS-I-RFO / hybrid、flatten既定有効） |
 
 #### 経路探索・最適化
 | サブコマンド | 説明 |

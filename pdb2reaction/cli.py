@@ -49,7 +49,6 @@ _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
             "--tsopt",
             "--thermo",
             "--dft",
-            "--flatten-imag-mode",
             "--scan-one-based",
             "--scan-preopt",
             "--scan-endopt",
@@ -58,6 +57,7 @@ _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
 }
 
 _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
+    "all": frozenset({"--flatten"}),
     "trj2fig": frozenset({"--reverse-x"}),
     "add-elem-info": frozenset({"--overwrite"}),
     "scan": frozenset(
@@ -87,7 +87,7 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
         {
             "--freeze-links",
             "--convert-files",
-            "--flatten-imag-mode",
+            "--flatten",
             "--dump",
             "--show-config",
             "--dry-run",

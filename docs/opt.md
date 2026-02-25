@@ -2,11 +2,11 @@
 
 ## Overview
 
-> **Summary:** Optimizes a single structure to a local minimum using L-BFGS (`--opt-mode light`, default) or RFO (`--opt-mode heavy`). For PDB inputs, link-hydrogen parents are automatically frozen.
+> **Summary:** Optimizes a single structure to a local minimum using L-BFGS (`--opt-mode light`, default), RFO (`--opt-mode heavy`), or a hybrid workflow (`--opt-mode hybrid`). Optional imaginary-mode flattening can be enabled with `--flatten`.
 
-`pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode light`, default) or RFO (`--opt-mode heavy`). For PDB inputs, link-hydrogen parents are automatically frozen.
+`pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode light`, default), RFO (`--opt-mode heavy`), or a hybrid workflow (`--opt-mode hybrid`: LBFGS first, then flatten-loop restarts with RFO). For PDB inputs, link-hydrogen parents are automatically frozen.
 
-The command uses pysisyphus LBFGS ("light") or RFOptimizer ("heavy") engines while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
+The command uses pysisyphus LBFGS ("light"), RFOptimizer ("heavy"), or both in sequence ("hybrid") while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
@@ -51,17 +51,25 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode heavy \
  --out-dir ./result_opt_rfo
 ```
 
+4. Run hybrid mode and flatten imaginary modes after the initial minimization.
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hybrid --flatten \
+ --out-dir ./result_opt_hybrid_flat
+```
+
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--opt-mode light|heavy] [--freeze-links/--no-freeze-links] \
+ [--opt-mode light|heavy|hybrid] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## Workflow
-- **Optimizers**: `--opt-mode light` (default) → L-BFGS; `--opt-mode heavy` → rational-function optimizer with trust-region control.
+- **Optimizers**: `--opt-mode light` (default) → L-BFGS; `--opt-mode heavy` → RFOptimizer; `--opt-mode hybrid` → LBFGS first, then flatten-loop restarts use RFOptimizer.
+- **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)`; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted. Always pass the physically correct values explicitly.
 - **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
@@ -84,7 +92,8 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
 | `--freeze-links/--no-freeze-links` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS) or `heavy` (RFO). | `light` |
+| `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS), `heavy` (RFO), or `hybrid` (LBFGS then flatten-loop RFO restarts). | `light` |
+| `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flatten loop. | `False` |
 | `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
