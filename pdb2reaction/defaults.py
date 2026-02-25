@@ -50,6 +50,8 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "hessian_calc_mode": "FiniteDifference",
     "out_hess_torch": True,
     "hessian_double": True,
+    "print_timing": True,
+    "print_vram": True,
     "return_partial_hessian": False,
 }
 

@@ -14,6 +14,8 @@ For detailed documentation, see: docs/uma_pysis.md
 from __future__ import annotations
 from typing import Sequence, Optional, Dict, Any, List
 
+import time
+import click
 import numpy as np
 import torch
 import torch.nn as nn
@@ -322,6 +324,8 @@ class uma_pysis(Calculator):
         hessian_calc_mode: str = CALC_KW["hessian_calc_mode"],
         return_partial_hessian: bool = CALC_KW["return_partial_hessian"],
         hessian_double: bool = CALC_KW["hessian_double"],
+        print_timing: bool = CALC_KW["print_timing"],
+        print_vram: bool = CALC_KW["print_vram"],
         # -------------------------------------------------------------------
         **kwargs,
     ):
@@ -379,11 +383,38 @@ class uma_pysis(Calculator):
         self.freeze_atoms = sorted(set(freeze_iter))
         self.return_partial_hessian = bool(return_partial_hessian)
         self.hessian_double = bool(hessian_double)
+        self.print_timing = bool(print_timing)
+        self.print_vram = bool(print_vram)
 
     # ---------- helpers ---------------------------------------------
     def _ensure_core(self, elem: Sequence[str]):
         if self._core is None:
             self._core = UMAcore(elem, **self._core_kw)
+
+    def _emit_hessian_logs(
+        self,
+        *,
+        core: UMAcore,
+        mode_label: str,
+        mode_elapsed_s: float,
+        total_elapsed_s: float,
+    ) -> None:
+        if self.print_timing:
+            click.echo(f"[HessianTiming] ML Hessian ({mode_label}): {mode_elapsed_s:.2f} s")
+            click.echo(f"[HessianTiming] Hessian total (incl. assembly): {total_elapsed_s:.2f} s")
+
+        if self.print_vram and core.device.type == "cuda":
+            dev = core.device
+            alloc = torch.cuda.memory_allocated(device=dev) / 1e9
+            max_alloc = torch.cuda.max_memory_allocated(device=dev) / 1e9
+            reserved = torch.cuda.memory_reserved(device=dev) / 1e9
+            max_reserved = torch.cuda.max_memory_reserved(device=dev) / 1e9
+            click.echo(
+                f"[VRAM] allocated={alloc:.3f} GB | "
+                f"max_allocated={max_alloc:.3f} GB | "
+                f"reserved={reserved:.3f} GB | "
+                f"max_reserved={max_reserved:.3f} GB"
+            )
 
     def _au_hessian(self, H: torch.Tensor):
         """
@@ -609,8 +640,17 @@ class uma_pysis(Calculator):
         # Force FD Hessian when predictor.model is not accessible (e.g. workers>1)
         force_fd = (core.parallel_predict or (not core.has_torch_model))
 
+        if self.print_vram and core.device.type == "cuda":
+            torch.cuda.reset_peak_memory_stats(device=core.device)
+
+        hess_total_start = time.perf_counter()
+        mode_elapsed_s = 0.0
+        mode_label = "FiniteDifference"
+
         mode = (self.hessian_calc_mode or "FiniteDifference").strip().lower()
         if (not force_fd) and (mode in ("analytical", "analytic")):
+            mode_label = "Analytical"
+            t0 = time.perf_counter()
             try:
                 res = self._core.compute(
                     coord_ang,
@@ -627,6 +667,7 @@ class uma_pysis(Calculator):
                         "in the external CLI, or `hessian_calc_mode=\"FiniteDifference\"` in this calculator."
                     ) from e
                 raise
+            mode_elapsed_s = time.perf_counter() - t0
 
             # Zero forces for frozen atoms (eV/Å)
             res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
@@ -634,23 +675,34 @@ class uma_pysis(Calculator):
             # Apply Active‑DOF trimming/column-zeroing for Analytical
             H = self._apply_analytical_active_trim(res["hessian"])
 
-            return {
+            out = {
                 "energy": res["energy"] * EV2AU,
                 "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
                 "hessian": self._au_hessian(H),
             }
+        else:
+            # FiniteDifference (default/fallback, also forced for workers>1 predictors)
+            t0 = time.perf_counter()
+            res = self._build_fd_hessian_gpu(elem, coord_ang)
+            mode_elapsed_s = time.perf_counter() - t0
 
-        # FiniteDifference (default/fallback, also forced for workers>1 predictors)
-        res = self._build_fd_hessian_gpu(elem, coord_ang)
+            # Zero forces for frozen atoms (eV/Å)
+            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
 
-        # Zero forces for frozen atoms (eV/Å)
-        res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+            out = {
+                "energy": res["energy"] * EV2AU,
+                "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
+                "hessian": self._au_hessian(res["hessian"]),
+            }
 
-        return {
-            "energy": res["energy"] * EV2AU,
-            "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
-            "hessian": self._au_hessian(res["hessian"]),
-        }
+        total_elapsed_s = time.perf_counter() - hess_total_start
+        self._emit_hessian_logs(
+            core=core,
+            mode_label=mode_label,
+            mode_elapsed_s=mode_elapsed_s,
+            total_elapsed_s=total_elapsed_s,
+        )
+        return out
 
 
 class uma_ase(FAIRChemCalculator):
