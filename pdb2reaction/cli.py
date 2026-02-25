@@ -389,7 +389,7 @@ _DEFAULT_GROUP_KWARGS = {
 )
 @click.version_option(version=__version__, prog_name="pdb2reaction")
 def cli() -> None:
-    pass
+    click.echo(f"pdb2reaction ver. {__version__}")
 
 
 @click.command(
