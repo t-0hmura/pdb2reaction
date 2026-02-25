@@ -20,7 +20,7 @@
 | [`bias`](#bias) | 調和バイアス設定 | scan, scan2d, scan3d |
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
-| [`hessian_dimer`](#hessian_dimer) | ヘシアン・ダイマーTS 最適化 | tsopt |
+| [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
 | [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt |
 | [`sopt`](#sopt) | path-search用単一構造最適化 | path-search |
 
@@ -282,7 +282,7 @@ sopt:
 
 ### `hessian_dimer`
 
-ヘシアン・ダイマーTS 最適化（tsopt --opt-mode light）。
+Hessian Guided Dimer TS 最適化（tsopt --opt-mode light）。
 
 ```yaml
 hessian_dimer:

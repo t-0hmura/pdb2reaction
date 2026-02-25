@@ -1,7 +1,7 @@
 # pdb2reaction/tsopt.py
 
 """
-Transition-state optimization using Hessian Dimer (light), RS-I-RFO (heavy),
+Transition-state optimization using Hessian Guided Dimer (light), RS-I-RFO (heavy),
 or a hybrid workflow (dimer + RS-I-RFO flatten) with UMA.
 
 Example:
@@ -655,12 +655,12 @@ def _bofill_update_active(H: torch.Tensor,
 
 
 # ===================================================================
-#                        HessianDimer (extended)
+#                   HessianDimer (Hessian Guided Dimer)
 # ===================================================================
 
 class HessianDimer:
     """
-    Dimer-based TS search with periodic Hessian updates.
+    Hessian Guided Dimer TS search with periodic Hessian updates.
 
     Extensions in this implementation:
       - `root` parameter: choose which imaginary mode to follow (0 = most negative).
@@ -1234,13 +1234,13 @@ GEOM_KW = dict(GEOM_KW_DEFAULT)
 
 CALC_KW = dict(UMA_CALC_KW)
 
-# Optimizer base (common) — used by both RSIRFO and the inner LBFGS of HessianDimer
+# Optimizer base (common) — used by both RSIRFO and the inner LBFGS of Hessian Guided Dimer
 OPT_BASE_KW_LOCAL = {**OPT_BASE_KW, "out_dir": OUT_DIR_TSOPT, "thresh": "baker"}
 
 # Reference: internal L-BFGS defaults for TS optimization
 LBFGS_TS_KW: Dict[str, Any] = {**LBFGS_KW, "thresh": "baker"}
 
-# HessianDimer defaults (CLI-level) - extend HESSIAN_DIMER_KW with nested dimer/lbfgs configs
+# Hessian Guided Dimer defaults (CLI-level) - extend HESSIAN_DIMER_KW with nested dimer/lbfgs configs
 hessian_dimer_KW = {
     **HESSIAN_DIMER_KW,
     "dimer": {**DIMER_KW},
@@ -1645,7 +1645,7 @@ def cli(
         # --------------------------
         try:
             if kind in ("light", "hybrid"):
-                # HessianDimer runner construction
+                # Hessian Guided Dimer runner construction
                 uma_kwargs_for_sd = dict(calc_cfg)
                 dimer_flatten_max_iter = int(simple_cfg.get("flatten_max_iter", 0))
                 if kind == "hybrid":
@@ -1676,7 +1676,7 @@ def cli(
                     prepared_input=prepared_input,
                 )
 
-                dimer_label = "Hessian Dimer" if kind == "light" else "Hybrid stage-1: Hessian Dimer"
+                dimer_label = "Hessian Guided Dimer" if kind == "light" else "Hybrid stage-1: Hessian Guided Dimer"
                 click.echo(f"\n====== TS optimization ({dimer_label}) started ======\n")
                 runner.run()
                 click.echo(f"\n====== TS optimization ({dimer_label}) finished ======\n")
@@ -1985,7 +1985,7 @@ def cli(
                     else:
                         click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
-                # --- RSIRFO: write final imaginary mode like HessianDimer (PHVA/in-place or active) ---
+                # --- RSIRFO: write final imaginary mode like Hessian Guided Dimer (PHVA/in-place or active) ---
                 neg_idx = np.where(freqs_cm < -abs(neg_freq_thresh_cm))[0]
                 if len(neg_idx) == 0:
                     click.echo("[INFO] No imaginary mode found at the end for RSIRFO.")

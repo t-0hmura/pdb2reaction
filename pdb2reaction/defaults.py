@@ -353,7 +353,7 @@ DIMER_KW: Dict[str, Any] = {
 }
 
 # -----------------------------------------------
-# Hessian-dimer defaults for TS optimization
+# Hessian Guided Dimer defaults for TS optimization
 # -----------------------------------------------
 
 HESSIAN_DIMER_KW: Dict[str, Any] = {

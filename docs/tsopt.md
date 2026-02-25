@@ -6,7 +6,7 @@
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
-- **Modes:** `heavy` = RS‑I‑RFO (default, generally more robust). `light` = Hessian Dimer (often cheaper per step). `hybrid` = Dimer to convergence, then RS‑I‑RFO flatten loop only.
+- **Modes:** `heavy` = RS‑I‑RFO (default, generally more robust). `light` = Hessian Guided Dimer (often cheaper per step). `hybrid` = Dimer to convergence, then RS‑I‑RFO flatten loop only.
 - **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
 - **Optional cleanup:** `--flatten` (default enabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
@@ -100,7 +100,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  frozen atoms are present.
  When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 - **Light mode details**:
- - The Hessian Dimer stage periodically refreshes the dimer direction by evaluating an exact
+ - The Hessian Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact
  Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
  eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
  - When enabled (`--flatten`), the flatten loop updates the stored active Hessian via
@@ -311,5 +311,5 @@ rsirfo:
 - [irc](irc.md) — Trace the reaction path from an optimized TS
 - [freq](freq.md) — Confirm a single imaginary frequency (expected for a validated TS)
 - [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
-- [YAML Reference](yaml_reference.md) — Full `hessian_dimer` and `rsirfo` configuration options
+- [YAML Reference](yaml_reference.md) — Full `hessian_dimer` (Hessian Guided Dimer) and `rsirfo` configuration options
 - [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

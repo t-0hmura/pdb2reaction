@@ -6,7 +6,7 @@
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
-- **モード:** `heavy` = RS‑I‑RFO（既定、一般的により堅牢）。`light` = Hessian Dimer（1ステップあたりのコストが低いことが多い）。`hybrid` = Dimer収束後にRS-I-RFO flattenループのみ実行。
+- **モード:** `heavy` = RS‑I‑RFO（既定、一般的により堅牢）。`light` = Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。`hybrid` = Dimer収束後にRS-I-RFO flattenループのみ実行。
 - **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
 - **任意の後処理:** `--flatten`（デフォルト有効）で余分な虚数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
@@ -89,7 +89,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 - **構造ロード & freeze-links**: 構造は `pysisyphus.helpers.geom_loader` を介して読み込まれます。PDB 入力では `--freeze-links` がリンク水素を検出して親原子を凍結し、`geom.freeze_atoms` にマージしてログに表示します。凍結原子はUMAの `calc.freeze_atoms` にも伝播します。
 - **UMAヘシアン**: `--hessian-calc-mode` は解析的評価と有限差分評価を切り替えます。凍結原子がある場合、UMA は活性ブロックのみを返すことがあります。VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨します。
 - **Lightモード詳細**:
- - Hessian Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
+ - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
@@ -279,5 +279,5 @@ rsirfo:
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 虚振動数が 1 つのみであることを確認（妥当な TS の条件）
 - [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するエンドツーエンドワークフロー
-- [YAML リファレンス](yaml_reference.md) — `hessian_dimer` と `rsirfo` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

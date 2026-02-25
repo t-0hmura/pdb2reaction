@@ -20,7 +20,7 @@
 | [`bias`](#bias) | Harmonic bias settings | scan, scan2d, scan3d |
 | [`bond`](#bond) | Bond-change detection settings | scan, path-search |
 | [`search`](#search) | Recursive path search settings | path-search |
-| [`hessian_dimer`](#hessian_dimer) | Hessian Dimer TS optimization | tsopt |
+| [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
 | [`rsirfo`](#rsirfo) | RS-I-RFO TS optimization | tsopt |
 | [`sopt`](#sopt) | Single-structure optimizer for path-search | path-search |
 
@@ -282,7 +282,7 @@ sopt:
 
 ### `hessian_dimer`
 
-Hessian Dimer TS optimization settings (tsopt --opt-mode light).
+Hessian Guided Dimer TS optimization settings (tsopt --opt-mode light).
 
 ```yaml
 hessian_dimer:
