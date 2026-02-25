@@ -217,7 +217,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
-- [all](all.md) — `-c/--center` で内部的にextractを呼び出すエンドツーエンドワークフロー
+- [all](all.md) — `-c/--center` で内部的にextractを呼び出すend-to-endワークフロー
 - [path-search](path_search.md) — 抽出されたポケットでのMEP 探索
 - [scan](scan.md) — 抽出されたポケットでの段階的スキャン
 - [add-elem-info](add_elem_info.md) — 抽出前に欠落したPDB元素カラムを修正

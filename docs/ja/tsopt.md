@@ -101,7 +101,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `--ligand-charge TEXT` | `-q` 省略時に使用する総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
@@ -278,6 +278,6 @@ rsirfo:
 - [path-search](path_search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 虚振動数が 1 つのみであることを確認（妥当な TS の条件）
-- [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するエンドツーエンドワークフロー
+- [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

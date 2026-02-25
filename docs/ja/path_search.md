@@ -89,7 +89,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。`-i` を繰り返すか1つのフラグに複数パスを渡す | 必須 |
 | `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `--ligand-charge TEXT` | `-q` 省略時に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract 方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
@@ -325,6 +325,6 @@ search:
 - [path-opt](path_opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化
 - [extract](extract.md) — path-search入力用のポケットPDBを生成
-- [all](all.md) — 内部でpath-searchを呼び出すエンドツーエンドワークフロー
+- [all](all.md) — 内部でpath-searchを呼び出すend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

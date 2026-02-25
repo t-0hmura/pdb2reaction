@@ -85,6 +85,8 @@ When selecting by residue name, if multiple residues share the same name, **all*
 
 ## Charge Specification
 
+For PDB inputs, `--ligand-charge` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ion charges, and your ligand charges — no need to manually count atoms across the entire complex. This is especially useful for large enzyme–substrate systems where the total charge is not obvious.
+
 ### Per-residue mapping (recommended)
 ```bash
 --ligand-charge 'SAM:1,GPP:-3' # SAM has charge +1, GPP has charge -3

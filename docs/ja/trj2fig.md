@@ -66,4 +66,4 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 - [path_search](path_search.md) -- MEP 軌跡のプロファイリング
 - [irc](irc.md) -- IRC 軌跡のプロファイリング
-- [all](all.md) -- エンドツーエンドワークフロー
+- [all](all.md) -- end-to-endワークフロー

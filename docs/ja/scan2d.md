@@ -110,7 +110,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
-| `--ligand-charge TEXT` | `-q` 省略時に使う総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `pairs`（2 四つ組）を持つ YAML/JSON 仕様。`one_based` を任意指定可能。 | 推奨 |
@@ -190,6 +190,6 @@ bias:
 - [scan](scan.md) -- 1D 結合距離スキャン
 - [scan3d](scan3d.md) -- 3D 距離グリッドスキャン
 - [opt](opt.md) -- スキャン前後の単一構造最適化
-- [all](all.md) -- エンドツーエンドワークフロー
+- [all](all.md) -- end-to-endワークフロー
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド

@@ -530,7 +530,7 @@ dft:
 
 ## 参照
 
-- [all](all.md) - エンドツーエンドワークフロー
+- [all](all.md) - end-to-endワークフロー
 - [opt](opt.md) - 単一構造最適化
 - [tsopt](tsopt.md) - 遷移状態最適化
 - [path-search](path_search.md) - 再帰的 MEP 探索

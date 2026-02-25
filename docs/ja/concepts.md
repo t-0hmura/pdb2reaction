@@ -124,7 +124,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ### 主要サブコマンド
 | サブコマンド | 用途 | ドキュメント |
 |------------|------|-------------|
-| `all` | エンドツーエンドワークフロー | [all.md](all.md) |
+| `all` | end-to-endワークフロー | [all.md](all.md) |
 | `extract` | ポケット抽出 | [extract.md](extract.md) |
 | `path-search` | 再帰的 MEP 探索 | [path_search.md](path_search.md) |
 | `tsopt` | TS 最適化 | [tsopt.md](tsopt.md) |

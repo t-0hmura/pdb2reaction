@@ -197,4 +197,4 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 - [opt](opt.md) -- UMA を使う単一構造最適化
 - [path_opt](path_opt.md) -- UMA 計算機を使う MEP 最適化
-- [all](all.md) -- UMA を複数段で使うエンドツーエンドワークフロー
+- [all](all.md) -- UMA を複数段で使うend-to-endワークフロー

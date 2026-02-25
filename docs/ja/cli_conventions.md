@@ -85,6 +85,8 @@ pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 
 ## 電荷の指定
 
+PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・補因子・金属イオンなど）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。大きな酵素–基質系で総電荷を手動で数える必要がなくなります。
+
 ### 残基別マッピング（推奨）
 ```bash
 --ligand-charge 'SAM:1,GPP:-3' # SAM は +1、GPP は -3

@@ -75,7 +75,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | PySCFに提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF用に `2S` に変換 | `.gjf` テンプレート値または `1` |
 | `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | 最大SCF反復 | `100` |
@@ -149,6 +149,6 @@ dft:
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [freq](freq.md) — UMAベースの振動解析（DFT精密化の前に行うことが多い）
-- [all](all.md) — `--dft` を使用したエンドツーエンドワークフロー
+- [all](all.md) — `--dft` を使用したend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

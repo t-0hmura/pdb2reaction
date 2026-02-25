@@ -58,7 +58,7 @@ glossary
 
 | 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
-| 最初の 1 回を実行（エンドツーエンド） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
+| 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
 | 単一構造スキャン（`--spec`） | `pdb2reaction scan` | [クイックスタート: scan + spec](quickstart_scan_spec.md) |
 | TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart_tsopt_freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
@@ -90,7 +90,7 @@ glossary
 
 ### メインワークフロー
 
-- [`all`](all.md) - **エンドツーエンドワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
+- [`all`](all.md) - **end-to-endワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
 - [`init`](init.md) - `pdb2reaction all` 用 YAML テンプレートを生成
 
 ### CLI サブコマンド

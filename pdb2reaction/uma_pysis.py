@@ -410,7 +410,7 @@ class uma_pysis(Calculator):
             reserved = torch.cuda.memory_reserved(device=dev) / 1e9
             max_reserved = torch.cuda.max_memory_reserved(device=dev) / 1e9
             click.echo(
-                f"[VRAM] allocated={alloc:.3f} GB | "
+                f"[HessianVRAM] allocated={alloc:.3f} GB | "
                 f"max_allocated={max_alloc:.3f} GB | "
                 f"reserved={reserved:.3f} GB | "
                 f"max_reserved={max_reserved:.3f} GB"

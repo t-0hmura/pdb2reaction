@@ -7,7 +7,7 @@
 pocket extraction → (optional) staged UMA scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
 
 ```{important}
-`--tsopt` produces **TS candidates**. Always validate them (imaginary mode + connectivity) with `freq` and `irc` before mechanistic interpretation.
+`--tsopt` produces **TS candidates**. `all` automatically runs IRC and freq for validation, but always inspect the results (imaginary mode + endpoint connectivity) before mechanistic interpretation.
 ```
 
 It supports three common modes:

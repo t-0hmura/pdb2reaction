@@ -82,7 +82,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる入力構造 | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック | テンプレート/`1` |
 | `--dist-freeze TEXT` | 調和拘束用の `(i,j,target_A)` タプルを記述する Python リテラル文字列（繰り返し指定可） | _None_ |
@@ -247,6 +247,6 @@ rfo:
 - [tsopt](tsopt.md) — 極小ではなく遷移状態（鞍点）を最適化
 - [freq](freq.md) — 最適化が極小に達したことを確認する振動解析
 - [extract](extract.md) — 最適化前にポケット PDB を生成
-- [all](all.md) — 端点を事前最適化するエンドツーエンドワークフロー
+- [all](all.md) — 端点を事前最適化するend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `opt`、`lbfgs`、`rfo` の完全な設定オプション
 - [用語集](glossary.md) — L-BFGS、RFOの定義

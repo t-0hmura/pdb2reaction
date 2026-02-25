@@ -374,7 +374,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
-| `all` | エンドツーエンドワークフロー | [all](all.md) |
+| `all` | end-to-endワークフロー | [all](all.md) |
 | `init` | `pdb2reaction all` 用 YAML テンプレート生成 | [init](init.md) |
 | `extract` | 活性部位ポケット（クラスターモデル）抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |

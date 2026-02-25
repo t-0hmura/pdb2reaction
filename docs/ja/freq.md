@@ -80,7 +80,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷。省略時は `--ligand-charge` から導出可能。明示的な `-q` は導出値より優先される | `.gjf` テンプレートまたは `--ligand-charge` が提供しない限り必須 |
-| `--ligand-charge TEXT` | `-q` が省略された場合に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）でextract方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結し `geom.freeze_atoms` にマージ | `True` |
@@ -155,6 +155,6 @@ thermo:
 - [tsopt](tsopt.md) — 遷移状態の最適化（妥当な TS であれば虚振動数は 1 つのみ）
 - [irc](irc.md) — TS からの IRC（端点での freq と組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
-- [all](all.md) — `--thermo` を含むエンドツーエンドワークフロー
+- [all](all.md) — `--thermo` を含むend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `freq` と `thermo` の設定オプション一覧
 - [用語集](glossary.md) — ZPE、ギブズエネルギー、エンタルピー、エントロピーの定義

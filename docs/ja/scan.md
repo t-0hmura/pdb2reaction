@@ -149,7 +149,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート）。`-q` を省略して `--ligand-charge` がある場合は電荷が導出され、明示的な `-q` が最優先 | `.gjf` テンプレートまたは `--ligand-charge` がない場合は必須 |
-| `--ligand-charge TEXT` | `-q` 省略時に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract 方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `stages` を持つ YAML/JSON スキャン仕様。`one_based` を任意指定可能。 | 推奨 |
@@ -322,7 +322,7 @@ bond:
 
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
-- [all](all.md) — 単一構造入力に `--scan-lists` を使用したエンドツーエンドワークフロー
+- [all](all.md) — 単一構造入力に `--scan-lists` を使用したend-to-endワークフロー
 - [path-search](path_search.md) — スキャン端点を中間体として MEP を探索
 - [extract](extract.md) — スキャン前にポケット PDB を生成
 - [YAML リファレンス](yaml_reference.md) — `bias` と `bond` の完全な設定オプション
