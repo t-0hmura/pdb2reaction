@@ -53,7 +53,7 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 
 For full details, see [CLI Conventions](cli_conventions.md).
 
-`path-search` naming note: the CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
+`path-search` naming note: The CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
 
 
 ### Recommended tools for hydrogen addition

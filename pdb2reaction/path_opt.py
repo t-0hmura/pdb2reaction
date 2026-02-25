@@ -486,7 +486,7 @@ def _optimize_single(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Dump optimizer trajectory/restarts during the run.",
+    help="Write optimizer trajectory and restarts during the run.",
 )
 @click.option(
     "--convert-files/--no-convert-files",

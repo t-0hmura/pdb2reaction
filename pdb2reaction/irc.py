@@ -244,7 +244,7 @@ def _write_output_summary_md(out_dir: Path) -> None:
     type=str,
     default="./result_irc/",
     show_default=True,
-    help="Output directory (used unless YAML sets irc.out_dir).",
+    help="Output directory.",
 )
 @click.option(
     "--hessian-calc-mode",

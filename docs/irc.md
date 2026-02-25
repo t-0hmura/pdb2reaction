@@ -2,6 +2,7 @@
 
 ## Overview
 
+> **Summary:** Runs EulerPC-based IRC (Intrinsic Reaction Coordinate) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
 
 ### At a glance
 - **Input:** A TS structure (ideally already optimized and validated).
@@ -28,6 +29,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 1. Run only the forward branch.
 
 ```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
  --out-dir ./result_irc_forward
 ```
 
@@ -60,6 +62,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ### Examples
 ```bash
 # Forward-only branch, finite-difference Hessian, larger step size
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
  --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
 # PDB input so finished and directional trajectories are also exported as PDB

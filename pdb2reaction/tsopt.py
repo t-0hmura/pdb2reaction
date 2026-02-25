@@ -1390,9 +1390,9 @@ def _build_rsirfo_kwargs(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Dump optimization trajectory",
+    help="Write optimization trajectory to the output directory.",
 )
-@click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory")
+@click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,

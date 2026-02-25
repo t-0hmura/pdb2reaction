@@ -186,7 +186,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
  [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
  scan trajectory output is controlled by `--dump`.
 
-More YAML options about `opt` are available in {ref}`opt <yaml-configuration-override-yaml>`.
+More YAML options for `opt` are available in [YAML Reference](yaml_reference.md).
 
 
 ```yaml

@@ -1742,7 +1742,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Dump GSM/single-optimization trajectories during the run.",
+    help="Write GSM/single-optimization trajectories during the run.",
 )
 @click.option(
     "--convert-files/--no-convert-files",

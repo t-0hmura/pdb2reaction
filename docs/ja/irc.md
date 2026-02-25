@@ -29,6 +29,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 1. 正方向のみを実行する。
 
 ```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
  --out-dir ./result_irc_forward
 ```
 
@@ -61,6 +62,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ### 例
 ```bash
 # 順方向のみ、有限差分ヘシアン、大きいステップサイズ
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
  --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 
 # PDB 入力: 完成軌跡と方向別軌跡もPDBとしてエクスポート

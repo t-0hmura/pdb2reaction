@@ -68,7 +68,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 ## ワークフロー
 - **オプティマイザー**: `--opt-mode light`（デフォルト）→ L-BFGS; `--opt-mode heavy` → RFOptimizer; `--opt-mode hybrid` → 初段LBFGS + flatten再最適化をRFOで実行
 - **Flatten loop**: `--flatten` を有効にすると最適化後に虚モードフラット化を行います。`opt` では各反復で検出された虚モードをすべて潰してから再最適化します。
-- **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈し、3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
+- **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈します（`target_A` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
 - **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルトより優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱い、`extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が無い場合は中断します。多重度は省略時 `1` がデフォルトです。
 - **凍結原子**: CLIのリンク検出はYAMLの `geom.freeze_atoms` とマージされ、UMA 計算機の `calc.freeze_atoms` に反映されます。
 - **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。

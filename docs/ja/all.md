@@ -152,7 +152,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--ligand-charge TEXT` | 未知残基の残基別マッピングまたは総電荷（推奨） | _None_ |
+| `--ligand-charge TEXT` | `-q` 省略時に使用される総電荷または残基名ごとのマッピング（推奨）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract 方式の電荷導出を有効化 | _None_ |
 | `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
 | `-m, --multiplicity INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
 

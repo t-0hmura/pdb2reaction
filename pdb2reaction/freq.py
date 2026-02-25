@@ -562,7 +562,7 @@ CALC_KW["return_partial_hessian"] = True
               help="Number of frames per mode animation.")
 @click.option("--sort", type=click.Choice(["value", "abs"]), default="value", show_default=True,
               help="Sort modes by 'value' (cm^-1) or by absolute value.")
-@click.option("--out-dir", type=str, default="./result_freq/", show_default=True, help="Output directory")
+@click.option("--out-dir", type=str, default="./result_freq/", show_default=True, help="Output directory.")
 @click.option(
     "--config",
     "config_yaml",

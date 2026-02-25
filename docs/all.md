@@ -150,7 +150,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--ligand-charge TEXT` | Total charge or residue-specific mapping for unknown residues (recommended). | _None_ |
+| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted (recommended). Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `-q, --charge INT` | Force the total system charge (overrides `--ligand-charge`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 
@@ -300,7 +300,7 @@ The effective YAML is forwarded to **every** invoked subcommand. Each tool reads
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
 | [`dft`](dft.md) | `dft` |
 
-> **Note:** pplied after CLI values.
+> **Note:** Applied after CLI values.
 
 **Minimal example:**
 ```yaml

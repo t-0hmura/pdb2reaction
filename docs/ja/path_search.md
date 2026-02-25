@@ -89,7 +89,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。`-i` を繰り返すか1つのフラグに複数パスを渡す | 必須 |
 | `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `--ligand-charge TEXT` | `-q` が省略された場合に使用する総電荷または残基名マッピング。PDB 入力ではextract方式の電荷導出を有効化 | _None_ |
+| `--ligand-charge TEXT` | `-q` 省略時に使用される総電荷または残基名ごとのマッピング。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract 方式の電荷導出を有効化 | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
@@ -155,7 +155,7 @@ YAML ルートはマッピングでなければなりません。共通セクシ
 
 `sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir:./result_path_search/`、`dump: False` です。
 
-`bond` は UMA ベースの結合変化検出パラメータで、{ref}`scan の bond セクション <section-bond>` と共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
+`bond` は UMA ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
 
 `dmf` は `--mep-mode dmf` 選択時に適用される Direct Max Flux + (C)FB-ENM の設定です。既定値は `DMF_KW` を踏襲し、実行ごとに上書きできます。
