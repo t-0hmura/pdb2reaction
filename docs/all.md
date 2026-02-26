@@ -97,7 +97,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
  - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
- - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
+- Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--micro-step/--no-micro-step`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
  - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 
 6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
@@ -192,6 +192,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode-post [light\|heavy\|hybrid]` | Optimizer preset for TSOPT and post-IRC optimization. | `hybrid` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
+| `--micro-step/--no-micro-step` | Forward to `tsopt`; when TSOPT runs in heavy mode, `--no-micro-step` forces `rsirfo.max_micro_cycles=0`. | `True` |
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hybrid`).
 

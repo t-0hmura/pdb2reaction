@@ -96,7 +96,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
  - `--tsopt`: 各HEIポケットでTS 最適化を実行、EulerPC IRCで追跡し、セグメントエネルギーダイアグラムを出力
  - `--thermo`: (R, TS, P) で `freq` を呼び出し振動/熱化学データとUMA Gibbsダイアグラムを取得
  - `--dft`: (R, TS, P) でDFT 一点計算を起動しDFTダイアグラムを構築。`--thermo` と組み合わせるとDFT//UMA Gibbsダイアグラムも生成
- - 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
+- 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--micro-step/--no-micro-step`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
  - VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
@@ -194,6 +194,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode-post [light\|heavy\|hybrid]` | TSOPT/IRC後最適化のプリセット | `hybrid` |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `False` |
+| `--micro-step/--no-micro-step` | `tsopt` に転送。TSOPT が heavy モードで動くとき `--no-micro-step` で `rsirfo.max_micro_cycles=0` を強制 | `True` |
 
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`hybrid`）の順で決まります。
 

@@ -1202,6 +1202,7 @@ def _run_tsopt_on_hei(
     _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
     _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
     _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
+    _append_toggle_arg(ts_args, "--micro-step", overrides.get("micro_step"))
 
     hess_mode = overrides.get("hessian_calc_mode")
     if hess_mode:
@@ -1859,6 +1860,13 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Enable the extra-imaginary-mode flattening loop in tsopt (light: dimer loop, heavy/hybrid: post-RSIRFO); --no-flatten forces flatten_max_iter=0.",
 )
 @click.option(
+    "--micro-step/--no-micro-step",
+    "micro_step",
+    default=True,
+    show_default=True,
+    help="Forward to tsopt: in heavy mode, --no-micro-step forces RSIRFO max_micro_cycles=0.",
+)
+@click.option(
     "--freq-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
@@ -2058,6 +2066,7 @@ def cli(
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
     flatten: bool,
+    micro_step: bool,
     freq_out_dir: Optional[Path],
     freq_max_write: Optional[int],
     freq_amplitude_ang: Optional[float],
@@ -2094,11 +2103,15 @@ def cli(
     energy_diagrams: List[Dict[str, Any]] = []
 
     dump_override_requested = False
+    micro_step_override_requested = False
     try:
         dump_source = ctx.get_parameter_source("dump")
         dump_override_requested = dump_source not in (None, ParameterSource.DEFAULT)
+        micro_step_source = ctx.get_parameter_source("micro_step")
+        micro_step_override_requested = micro_step_source not in (None, ParameterSource.DEFAULT)
     except Exception:
         dump_override_requested = False
+        micro_step_override_requested = False
 
     config_yaml, override_yaml, _ = _resolve_yaml_sources(config_yaml=config_yaml)
     args_yaml, merged_yaml_cfg = _build_effective_args_yaml(
@@ -2164,6 +2177,8 @@ def cli(
     if thresh_post is not None:
         tsopt_overrides["thresh"] = str(thresh_post)
     tsopt_overrides["flatten"] = bool(flatten)
+    if micro_step_override_requested:
+        tsopt_overrides["micro_step"] = bool(micro_step)
 
     freq_overrides: Dict[str, Any] = {}
     if freq_max_write is not None:
@@ -2213,6 +2228,7 @@ def cli(
                 "opt_mode": str(opt_mode),
                 "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
                 "dump": bool(dump),
+                "micro_step": bool(micro_step),
                 "convert_files": bool(convert_files),
                 "refine_path": bool(refine_path),
                 "preopt": bool(preopt),

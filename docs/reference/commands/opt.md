@@ -49,6 +49,9 @@ Options:
                                   loop).  [default: light]
   --flatten / --no-flatten        Enable/disable imaginary-mode flatten loop
                                   after optimization.  [default: no-flatten]
+  --micro-step / --no-micro-step  When --opt-mode heavy, --no-micro-step
+                                  forces RFO max_micro_cycles=0.  [default:
+                                  micro-step]
   --dump / --no-dump              Write optimization trajectory to
                                   'optimization_trj.xyz'.  [default: no-dump]
   --out-dir TEXT                  Output directory.  [default: ./result_opt/]

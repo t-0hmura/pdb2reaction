@@ -1354,6 +1354,13 @@ def _build_rsirfo_kwargs(
     help="Enable the extra-imaginary-mode flattening loop (light: dimer loop, heavy/hybrid: post-RSIRFO).",
 )
 @click.option(
+    "--micro-step/--no-micro-step",
+    "micro_step",
+    default=True,
+    show_default=True,
+    help="When --opt-mode heavy, --no-micro-step forces RSIRFO max_micro_cycles=0.",
+)
+@click.option(
     "--opt-mode",
     type=click.Choice(["light", "heavy", "hybrid"], case_sensitive=False),
     default="heavy",
@@ -1419,6 +1426,7 @@ def cli(
     ref_pdb: Optional[Path],
     max_cycles: int,
     flatten: bool,
+    micro_step: bool,
     opt_mode: str,
     dump: bool,
     out_dir: str,
@@ -1554,6 +1562,8 @@ def cli(
             alias_groups=TSOPT_MODE_ALIASES,
             allowed_hint="light|heavy|hybrid",
         )
+        if (not bool(micro_step)) and kind == "heavy":
+            rsirfo_cfg["max_micro_cycles"] = 0
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
         # Pretty-print config summary

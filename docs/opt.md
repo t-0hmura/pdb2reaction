@@ -61,7 +61,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hybrid --flatten \
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--opt-mode light|heavy|hybrid] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
+ [--opt-mode light|heavy|hybrid] [--flatten/--no-flatten] [--micro-step/--no-micro-step] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -94,6 +94,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS), `heavy` (RFO), or `hybrid` (LBFGS then flatten-loop RFO restarts). | `light` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flatten loop. | `False` |
+| `--micro-step/--no-micro-step` | In `--opt-mode heavy`, `--no-micro-step` forces `rfo.max_micro_cycles=0`. | `True` |
 | `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

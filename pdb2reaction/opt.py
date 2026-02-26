@@ -423,6 +423,13 @@ def _flatten_all_imag_modes_for_geom(
     help="Enable/disable imaginary-mode flatten loop after optimization.",
 )
 @click.option(
+    "--micro-step/--no-micro-step",
+    "micro_step",
+    default=True,
+    show_default=True,
+    help="When --opt-mode heavy, --no-micro-step forces RFO max_micro_cycles=0.",
+)
+@click.option(
     "--dump/--no-dump",
     default=False,
     show_default=True,
@@ -484,6 +491,7 @@ def cli(
     max_cycles: int,
     opt_mode: str,
     flatten: bool,
+    micro_step: bool,
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
@@ -585,6 +593,8 @@ def cli(
                 alias_groups=opt_mode_aliases,
                 allowed_hint="light|heavy|hybrid",
             )
+            if (not bool(micro_step)) and kind == "rfo":
+                rfo_cfg["max_micro_cycles"] = 0
             main_kind = "lbfgs" if kind == "hybrid" else kind
             flatten_kind = "rfo" if kind == "hybrid" else kind
 

@@ -39,6 +39,9 @@ Options:
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop (light: dimer loop, heavy/hybrid: post-
                                   RSIRFO).  [default: no-flatten]
+  --micro-step / --no-micro-step  When --opt-mode heavy, --no-micro-step
+                                  forces RSIRFO max_micro_cycles=0.  [default:
+                                  micro-step]
   --opt-mode [light|heavy|hybrid]
                                   light (=Dimer), heavy (=RSIRFO), or hybrid
                                   (=Dimer then RSIRFO flatten loop).  [default:
