@@ -69,6 +69,7 @@ from .utils import (
     convert_xyz_like_outputs,
     strip_inherited_keys,
 )
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 from .freq import (
     _torch_device,
     _tr_orthonormal_basis,
@@ -79,65 +80,7 @@ from .freq import (
     _frequencies_cm_and_modes,
 )
 
-
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    """Resolve the first existing artifact for a list of relative patterns."""
-    for pattern in patterns:
-        if any(ch in pattern for ch in "*?[]"):
-            for candidate in sorted(out_dir.glob(pattern)):
-                if candidate.is_file():
-                    return candidate.resolve()
-            continue
-        candidate = out_dir / pattern
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
-
-
-def _link_or_copy_file(src: Path, dst: Path) -> bool:
-    """Create a symlink when possible; fall back to copy."""
-    try:
-        if dst.exists() or dst.is_symlink():
-            if dst.is_dir():
-                return False
-            dst.unlink()
-        rel = os.path.relpath(src, start=dst.parent)
-        dst.symlink_to(rel)
-        return True
-    except Exception:
-        try:
-            shutil.copy2(src, dst)
-            return True
-        except Exception:
-            return False
-
-
-def _write_output_summary_md(out_dir: Path) -> None:
-    """summary.md and key_* outputs are disabled."""
-    return None
-
-def _resolve_yaml_sources(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
-
-
-def _load_merged_yaml_cfg(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-) -> Dict[str, Any]:
-    merged: Dict[str, Any] = {}
-    deep_update(merged, load_yaml_dict(config_yaml))
-    deep_update(merged, load_yaml_dict(override_yaml))
-    return merged
+_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
 # ===================================================================
@@ -179,7 +122,9 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             H.addmm_((QtH.T), Qt, beta=1.0, alpha=-1.0)
             QtHQ = QtH @ Q
             H.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
-            H = 0.5 * (H + H.T)
+            _t = H.T.clone()
+            H.add_(_t).mul_(0.5)
+            del _t
             del Q, Qt, QtH, QtHQ, mask_dof, coords_act, masses_act, active_idx, frozen
         else:
             # Full DOF: mass-weight + TR projection in-place
@@ -193,7 +138,9 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             H.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
             QtHQ = QtH @ Q
             H.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
-            H = 0.5 * (H + H.T)
+            _t = H.T.clone()
+            H.add_(_t).mul_(0.5)
+            del _t
             del Q, Qt, QtH, QtHQ
         if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
@@ -462,9 +409,9 @@ def _flatten_once_with_modes_for_geom(
     amp_bohr = float(flatten_amp_ang) / BOHR2ANG
     E_ref = _calc_energy(geom, uma_kwargs)
 
+    m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
     for idx in targets:
         v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)
-        m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
         v_cart = v_mw / np.sqrt(m3)
         v_cart /= np.linalg.norm(v_cart)
 
@@ -773,6 +720,29 @@ class HessianDimer:
         self._raw_hessian_cache_cpu = H.detach().cpu().clone()
         self._raw_hessian_coords_cpu = self.geom.cart_coords.copy()
 
+    def _sync_geom_hessian_cache(self, H: torch.Tensor) -> None:
+        """
+        Share a full-space raw Hessian with Geometry-level cache so RS-I-RFO/RFO
+        can reuse the same Hessian on unchanged coordinates.
+
+        Uses the CPU cache if available to avoid an extra GPU clone.
+        """
+        try:
+            n_dof = int(self.geom.cart_coords.size)
+            if tuple(H.shape) != (n_dof, n_dof):
+                return
+            # Prefer the CPU cache to avoid duplicating GPU memory
+            if self._raw_hessian_cache_cpu is not None:
+                H_cache = self._raw_hessian_cache_cpu
+            else:
+                H_cache = H.detach().cpu().clone()
+            if hasattr(self.geom, "within_partial_hessian"):
+                self.geom.within_partial_hessian = None
+            self.geom.cart_hessian = H_cache
+        except Exception:
+            # Cache hand-off is best-effort; optimization must continue even if it fails.
+            pass
+
     def _reuse_cached_hessian(self) -> Optional[torch.Tensor]:
         """
         If the cached geometry matches the current geometry, return the cached *raw*
@@ -801,9 +771,11 @@ class HessianDimer:
             cached = self._reuse_cached_hessian()
             if cached is not None:
                 click.echo("[Hessian] Reusing cached raw Hessian (0-step convergence).")
+                self._sync_geom_hessian_cache(cached)
                 return cached
         H = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)
         self._cache_raw_hessian_cpu(H)
+        self._sync_geom_hessian_cache(H)
         return H
 
     # ----- One dimer segment for up to n_steps; returns (steps_done, converged) -----
@@ -1137,15 +1109,17 @@ class HessianDimer:
                     break
 
                 # (b) Flatten other imaginary modes
-                x_before_flat = self.geom.cart_coords.copy().reshape(-1)
-                g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
+                if self.flatten_loop_bofill:
+                    x_before_flat = self.geom.cart_coords.copy().reshape(-1)
+                    g_before_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
                 did_flatten = self._flatten_once_with_modes(freqs_cm, modes_embedded)
                 if not did_flatten:
                     break
 
-                x_after_flat = self.geom.cart_coords.copy().reshape(-1)
-                g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
+                if self.flatten_loop_bofill:
+                    x_after_flat = self.geom.cart_coords.copy().reshape(-1)
+                    g_after_flat = _calc_gradient(self.geom, self.uma_kwargs).reshape(-1)
 
                 # (c) Bofill update using UMA gradients across the flatten displacement
                 if self.flatten_loop_bofill:
@@ -1375,7 +1349,7 @@ def _build_rsirfo_kwargs(
 @click.option(
     "--flatten/--no-flatten",
     "flatten",
-    default=True,
+    default=False,
     show_default=True,
     help="Enable the extra-imaginary-mode flattening loop (light: dimer loop, heavy/hybrid: post-RSIRFO).",
 )
@@ -1461,12 +1435,12 @@ def cli(
         except Exception:
             return False
 
-    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = _load_merged_yaml_cfg(
+    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -1487,12 +1461,12 @@ def cli(
         # --------------------------
         # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
         # --------------------------
-        config_layer_cfg = load_yaml_dict(config_yaml)
-        override_layer_cfg = load_yaml_dict(override_yaml)
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
         opt_cfg = dict(OPT_BASE_KW_LOCAL)
         simple_cfg = dict(hessian_dimer_KW)
+        # tsopt default: keep flatten loop off unless enabled via config or explicit --flatten.
+        simple_cfg["flatten_max_iter"] = 0
         rsirfo_cfg = dict(RSIRFO_KW)
 
         apply_yaml_overrides(
@@ -1536,8 +1510,14 @@ def cli(
             rsirfo_cfg["thresh"] = str(thresh)
         if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
             calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
-        if _is_param_explicit("flatten") and not flatten:
-            simple_cfg["flatten_max_iter"] = 0
+        if _is_param_explicit("flatten"):
+            if flatten:
+                # --flatten explicitly enables flattening even when defaults/config disable it.
+                default_flatten_iter = int(hessian_dimer_KW.get("flatten_max_iter", 0))
+                if int(simple_cfg.get("flatten_max_iter", 0)) <= 0 and default_flatten_iter > 0:
+                    simple_cfg["flatten_max_iter"] = default_flatten_iter
+            else:
+                simple_cfg["flatten_max_iter"] = 0
 
         apply_yaml_overrides(
             override_layer_cfg,
@@ -1686,7 +1666,7 @@ def cli(
                 ref_pdb = source_path.resolve() if needs_pdb else None
 
                 if kind == "hybrid":
-                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO flatten loop) started ======\n")
+                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO refinement + flatten loop) started ======\n")
                     geometry = runner.geom
                     geometry.set_calculator(None)
                     calc = uma_pysis(**calc_cfg)
@@ -1709,6 +1689,14 @@ def cli(
                         )
                         del H
                         return freqs_local, modes_local
+
+                    # Always run one RS-I-RFO refinement pass before entering the flatten loop.
+                    _attach_rsirfo_calc()
+                    optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
+                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO refinement) started ======\n")
+                    optimizer.run()
+                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO refinement) finished ======\n")
+                    geometry.set_calculator(None)
 
                     freqs_cm, modes = _calc_freqs_and_modes()
                     neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
@@ -1743,9 +1731,9 @@ def cli(
 
                             _attach_rsirfo_calc()
                             optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
-                            click.echo("\n====== TS optimization (RS-I-RFO) restarted ======\n")
+                            click.echo("\n====== TS optimization (RS-I-RFO, flatten restart) started ======\n")
                             optimizer.run()
-                            click.echo("\n====== TS optimization (RS-I-RFO) finished ======\n")
+                            click.echo("\n====== TS optimization (RS-I-RFO, flatten restart) finished ======\n")
                             geometry.set_calculator(None)
 
                             freqs_cm, modes = _calc_freqs_and_modes()
@@ -1805,7 +1793,7 @@ def cli(
 
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
-                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO flatten loop) finished ======\n")
+                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO refinement + flatten loop) finished ======\n")
 
                     if convert_xyz_like_outputs(
                         final_xyz,

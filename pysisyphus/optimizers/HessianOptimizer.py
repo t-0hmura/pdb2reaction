@@ -198,26 +198,116 @@ class HessianOptimizer(Optimizer):
 
     def _set_active_dofs(self, use_active):
         self._using_active_dofs = use_active
-        self._active_dof_indices = (
-            self.geometry.active_dof_indices if use_active else None
-        )
+        if not use_active:
+            self._active_dof_indices = None
+            return
+        if getattr(self.geometry, "within_partial_hessian", None) is not None:
+            self._active_dof_indices = self.geometry.hess_active_dof_indices
+            return
+        # Fallback: infer active DOFs from calculator's Hessian-active atoms
+        calc = getattr(self.geometry, "calculator", None)
+        core = getattr(calc, "core", calc)
+        hess_atoms = getattr(core, "hess_active_atoms", None)
+        if hess_atoms is not None and len(hess_atoms) > 0:
+            act = []
+            for a in hess_atoms:
+                base = 3 * int(a)
+                act.extend([base, base + 1, base + 2])
+            self._active_dof_indices = np.asarray(act, dtype=int)
+            return
+        self._active_dof_indices = self.geometry.active_dof_indices
 
     def active_from_full(self, vec):
         if not self.using_active_dofs:
             return vec
-        return self.geometry.active_from_full(vec)
+        inds = self._active_dof_indices
+        if inds is None:
+            return vec
+        # Sanitize indices (drop negatives / out-of-bounds)
+        try:
+            inds = np.asarray(inds, dtype=int)
+            if len(inds) > 0:
+                if np.any(inds < 0):
+                    inds = inds[inds >= 0]
+                if len(inds) > 0:
+                    max_valid = vec.shape[0] - 1
+                    if np.any(inds > max_valid):
+                        inds = inds[inds <= max_valid]
+                if len(inds) > 0:
+                    if np.min(inds) < 0 or np.max(inds) >= vec.shape[0]:
+                        return vec
+        except (ValueError, IndexError, TypeError):
+            pass
+        # Avoid double-slicing if vector is already in active space
+        try:
+            if vec.shape[0] == len(inds):
+                return vec
+        except (ValueError, IndexError, TypeError):
+            pass
+        try:
+            if len(inds) > 0 and vec.shape[0] <= int(np.max(inds)):
+                # Indices exceed vector length → already active (compact) vector.
+                return vec
+        except (ValueError, IndexError, TypeError):
+            pass
+        if isinstance(vec, torch.Tensor):
+            if vec.device.type == "cuda":
+                try:
+                    vec_cpu = vec.detach().cpu().numpy()
+                    return torch.as_tensor(vec_cpu[inds], dtype=vec.dtype, device=vec.device)
+                except (ValueError, IndexError, TypeError):
+                    return vec
+            idx = torch.as_tensor(inds, dtype=torch.long, device=vec.device)
+            return vec.index_select(0, idx)
+        return vec[inds]
 
     def full_from_active(self, vec):
         if not self.using_active_dofs:
             return vec
-        return self.geometry.full_from_active(vec)
+        inds = self._active_dof_indices
+        if inds is None:
+            return vec
+        if isinstance(vec, torch.Tensor):
+            idx = torch.as_tensor(inds, dtype=torch.long, device=vec.device)
+            full = torch.zeros(self.geometry.cart_coords.size, dtype=vec.dtype, device=vec.device)
+            full.index_copy_(0, idx, vec)
+            return full
+        full = np.zeros(self.geometry.cart_coords.size, dtype=vec.dtype if hasattr(vec, "dtype") else float)
+        full[inds] = vec
+        return full
 
     def active_hessian(self, hessian):
         if not self.using_active_dofs:
             return hessian
 
+        if getattr(self.geometry, "within_partial_hessian", None) is not None:
+            act_n_dof = int(self.geometry.within_partial_hessian.get("active_n_dof", 0))
+            if hessian.shape == (act_n_dof, act_n_dof):
+                return hessian
+
         inds = self.active_dof_indices
+        try:
+            inds_arr = np.asarray(inds, dtype=int)
+            if hessian.shape[0] == len(inds_arr) and len(inds_arr) > 0:
+                if np.max(inds_arr) >= hessian.shape[0]:
+                    # Likely already in active order; avoid double-slicing.
+                    return hessian
+        except (ValueError, IndexError, TypeError):
+            pass
+        try:
+            inds = np.asarray(inds, dtype=int)
+            if len(inds) > 0:
+                max_valid = hessian.shape[0] - 1
+                inds = inds[(inds >= 0) & (inds <= max_valid)]
+        except (ValueError, IndexError, TypeError):
+            pass
         if isinstance(hessian, torch.Tensor):
+            if hessian.device.type == "cuda":
+                try:
+                    hess_cpu = hessian.detach().cpu().numpy()
+                    return torch.as_tensor(hess_cpu[np.ix_(inds, inds)], dtype=hessian.dtype, device=hessian.device)
+                except (ValueError, IndexError, TypeError):
+                    return hessian
             idx = torch.as_tensor(inds, device=hessian.device, dtype=torch.int64)
             return hessian.index_select(0, idx).index_select(1, idx)
         return hessian[np.ix_(inds, inds)]
@@ -416,6 +506,10 @@ class HessianOptimizer(Optimizer):
                 self.H = self.geometry.hessian
                 key = "exact"
                 # self.save_hessian()
+            if self.using_active_dofs:
+                # Keep the optimizer Hessian in active-DOF space to avoid
+                # shape mismatches during quasi-Newton updates.
+                self.H = self.active_hessian(self.H)
             if not (self.cur_cycle == 0):
                 self.log(f"Recalculated {key} Hessian in cycle {self.cur_cycle}.")
             # Reset counter. It is also reset when the recalculation was initiated
@@ -425,13 +519,18 @@ class HessianOptimizer(Optimizer):
         else:
             dx = self.steps[-1]
             dg = -(self.forces[-1] - self.forces[-2])
+            H_work = self.H
+            if self.using_active_dofs:
+                H_work = self.active_hessian(self.H)
+                dx = self.active_from_full(dx)
+                dg = self.active_from_full(dg)
             curv_cond = dx.dot(dg)
             if curv_cond < 0.0:
                 self.log(
                     f"Curvature condition (s·y = {curv_cond:.4f} < 0) not satisfied!"
                 )
-            dH, key = self.hessian_update_func(self.H, dx, dg)
-            self.H = self.H + dH
+            dH, key = self.hessian_update_func(H_work, dx, dg)
+            self.H = H_work + dH
             self.log(f"Did {key} Hessian update.")
 
     def solve_rfo(self, rfo_mat, kind="min", prev_eigvec=None):
@@ -458,25 +557,11 @@ class HessianOptimizer(Optimizer):
         if is_sym:
             try:
                 eigenvalues, eigenvectors = (torch.linalg.eigh(rfo_mat) if is_torch else np.linalg.eigh(rfo_mat))
-            except (torch._C._LinAlgError, np.linalg.LinAlgError) as e:
-                try:
-                    eps = 1e-8
-                    if is_torch:
-                        I = torch.eye(rfo_mat.size(-1), device=rfo_mat.device, dtype=rfo_mat.dtype)
-                        rfo_mat = rfo_mat + eps * I
-                    else:
-                        I = np.eye(rfo_mat.shape[0])
-                        rfo_mat = rfo_mat + eps * I
-                    eigenvalues, eigenvectors = (torch.linalg.eigh(rfo_mat) if is_torch else np.linalg.eigh(rfo_mat))
-                except (torch._C._LinAlgError, np.linalg.LinAlgError) as e:
-                    self.log(f"Failed to diagonalize RFO matrix: {e}")
-                    self.log("Trying to use eig instead.")
-                    if is_torch:
-                        eigenvalues, eigenvectors = (torch.linalg.eig(rfo_mat) if is_torch else np.linalg.eig(rfo_mat))
-                    else:
-                        eigenvalues, eigenvectors = np.linalg.eig(rfo_mat)
-                    eigenvalues = eigenvalues.real
-                    eigenvectors = eigenvectors.real
+            except (torch._C._LinAlgError, np.linalg.LinAlgError):
+                self.log("eigh failed; falling back to eig.")
+                eigenvalues, eigenvectors = (torch.linalg.eig(rfo_mat) if is_torch else np.linalg.eig(rfo_mat))
+                eigenvalues = eigenvalues.real
+                eigenvectors = eigenvectors.real
         else:
             eigenvalues, eigenvectors = (torch.linalg.eig(rfo_mat) if is_torch else np.linalg.eig(rfo_mat))
             eigenvalues = eigenvalues.real
@@ -590,15 +675,24 @@ class HessianOptimizer(Optimizer):
             # Symmetrize hessian, as the projection may break it?!
             H = (H_proj + H_proj.T) / 2
 
-        use_active = (
-            len(self.geometry.freeze_atoms) > 0
-            and self.geometry.coord_type in ("cart", "cartesian", "mwcartesian")
-            and H.shape[0] == self.geometry.cart_coords.size
-        )
+        if getattr(self.geometry, "within_partial_hessian", None) is not None:
+            use_active = True
+        elif H.shape[0] != self.geometry.cart_coords.size:
+            # Partial Hessian without explicit metadata: still use active slicing.
+            use_active = True
+        else:
+            use_active = (
+                len(self.geometry.freeze_atoms) > 0
+                and self.geometry.coord_type in ("cart", "cartesian", "mwcartesian")
+                and H.shape[0] == self.geometry.cart_coords.size
+            )
         self._set_active_dofs(use_active)
 
         H = self.active_hessian(H)
-        gradient = self.active_from_full(gradient_full)
+        if gradient_full.shape[0] == H.shape[0]:
+            gradient = gradient_full
+        else:
+            gradient = self.active_from_full(gradient_full)
 
         if isinstance(H, torch.Tensor):
             eigvals, eigvecs = torch.linalg.eigh(H)

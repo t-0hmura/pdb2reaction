@@ -17,6 +17,13 @@ class RSIRFOptimizer(TSHessianOptimizer):
             "Using projection to construct image potential gradient "
             f"and hessian for root(s) {self.roots}."
         )
+        # Ensure gradient is in the same subspace as eigvecs (active DOFs)
+        if isinstance(H, torch.Tensor):
+            if gradient.size(0) != eigvecs.size(0):
+                gradient = self.active_from_full(gradient)
+        else:
+            if gradient.size != eigvecs.shape[0]:
+                gradient = self.active_from_full(gradient)
         # Projection matrix to construct g* and H*
         if isinstance(H, torch.Tensor):
             P = torch.eye(gradient.size(0), device=H.device, dtype=H.dtype)

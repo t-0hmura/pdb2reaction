@@ -515,7 +515,21 @@ def cli(
             )
             click.echo(f"[grid] total grid points = {N1*N2}")
 
+            # Track the start index of the previous row's entries in visited_geoms
+            # so we can prune old rows and bound memory usage.
+            _prev_row_start: int = 0
+
             for i_idx, d1_target in enumerate(d1_values):
+                # Prune visited_geoms: keep only the previous row's entries
+                # (current row hasn't started yet).  Entries before _prev_row_start
+                # belong to even older rows and are unlikely nearest neighbors.
+                if _prev_row_start > 0:
+                    visited_geoms = visited_geoms[_prev_row_start:]
+                    _prev_row_start = 0
+                # Mark where the current row starts; this becomes _prev_row_start
+                # at the beginning of the *next* outer iteration.
+                _cur_row_start = len(visited_geoms)
+
                 click.echo(
                     f"[stage] d1 step {i_idx+1}/{N1}: target = {d1_target:.3f} Å"
                 )
@@ -682,6 +696,9 @@ def cli(
                             "bias_converged": bool(converged),
                         }
                     )
+
+                # Update row tracking: current row entries start at _cur_row_start
+                _prev_row_start = _cur_row_start
 
                 if dump and trj_blocks:
                     trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_trj.xyz"

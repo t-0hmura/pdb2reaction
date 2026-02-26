@@ -441,10 +441,12 @@ class uma_pysis(Calculator):
         """
         n = H.size(0)
         H = H.view(n * 3, n * 3)
-        H = 0.5 * (H + H.T)
+        _t = H.T.clone()
+        H.add_(_t).mul_(0.5)
+        del _t
 
-        # Unit conversion
-        H = H * H_EVAA_2_AU
+        # Unit conversion (in-place)
+        H.mul_(H_EVAA_2_AU)
 
         if self.hessian_double:
             H = H.to(dtype=torch.float64)

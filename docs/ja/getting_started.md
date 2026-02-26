@@ -193,7 +193,7 @@ huggingface-cli login
 ## 推奨クイックスタート導線
 
 - [クイックスタート: `pdb2reaction all`](quickstart_all.md)
-- [クイックスタート: `pdb2reaction scan` + `--spec`](quickstart_scan_spec.md)
+- [クイックスタート: `pdb2reaction scan` で単一構造の段階的スキャン](quickstart_scan.md)
 - [クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
 
 ---
@@ -375,7 +375,6 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
 | `all` | end-to-endワークフロー | [all](all.md) |
-| `init` | `pdb2reaction all` 用 YAML テンプレート生成 | [init](init.md) |
 | `extract` | 活性部位ポケット（クラスターモデル）抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |

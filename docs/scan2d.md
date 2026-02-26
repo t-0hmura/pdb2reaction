@@ -17,7 +17,7 @@ For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping 
 
 ## Minimal example
 ```bash
-pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed --out-dir ./result_scan2d/
+pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan2d/
 ```
 
 ## Output checklist
@@ -26,9 +26,11 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed --out-di
 - `result_scan2d/scan2d_map.png` and `result_scan2d/scan2d_landscape.html`
 
 ## Common examples
-1. Validate parsed scan targets from a YAML spec.
+1. Run from a YAML spec.
 2. Run with a `--scan-lists` literal.
 3. Enable `--dump` to store inner trajectories by d1 step.
+
+> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--spec` / `--scan-lists`.
 
 ## Usage
 ```bash
@@ -46,7 +48,7 @@ pairs:
  - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
  - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
 YAML
-pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --print-parsed
+pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml
 
 # Alternative: Python literal
 pdb2reaction scan2d -i input.pdb -q 0 \

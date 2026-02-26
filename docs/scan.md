@@ -19,7 +19,7 @@ For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping 
 ## Minimal example
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-dir ./result_scan
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_scan
 ```
 
 ## Output checklist
@@ -30,10 +30,10 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 ## Common examples
 
-1. First validate parsed scan targets from YAML spec.
+1. Run from a YAML spec.
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 ```
 
 2. Use literal input.
@@ -47,6 +47,8 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","MMT,309,C
 ```bash
 pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./result_scan_dump
 ```
+
+> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `--spec` / `--scan-lists`.
 
 ## Usage
 ```bash
@@ -64,7 +66,7 @@ stages:
  - [["TYR,285,CA", "MMT,309,C10", 1.35]]
  - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
 YAML
-pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml --print-parsed
+pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml
 
 # Alternative: Python literal
 pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'

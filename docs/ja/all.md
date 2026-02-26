@@ -46,12 +46,6 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.
  --multiplicity 1 --out-dir ./result_scan_all
 ```
 
-3. 重い処理を流す前に計画だけ確認する。
-
-```bash
-pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --dry-run
-```
-
 テンプレートがある場合の XYZ/TRJ → PDB/GJF 変換（付随ファイルの生成）は、全ステージ共通の `--convert-files/--no-convert-files`（既定: `True`）で制御します。
 
 
@@ -199,7 +193,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
 | `--opt-mode-post [light\|heavy\|hybrid]` | TSOPT/IRC後最適化のプリセット | `hybrid` |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `True` |
+| `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `False` |
 
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`hybrid`）の順で決まります。
 

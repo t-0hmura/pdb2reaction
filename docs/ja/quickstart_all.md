@@ -25,11 +25,10 @@ pdb2reaction all -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 
 ## 補足
 
-- 重い処理の前に `--dry-run` で引数と実行計画を確認できます。
 - `pdb2reaction all --help` は主要オプション、`pdb2reaction all --help-advanced` は全オプションを表示します。
 
 ## 次の導線
 
-- 単一構造スキャン: [クイックスタート: `pdb2reaction scan` + `--spec`](quickstart_scan_spec.md)
+- 単一構造の段階的スキャン: [クイックスタート: `pdb2reaction scan`](quickstart_scan.md)
 - TS 検証: [クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
 - 全オプション: [all](all.md)

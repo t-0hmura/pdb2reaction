@@ -17,7 +17,7 @@ XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定する�
 
 ## 最小例
 ```bash
-pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --print-parsed --out-dir ./result_scan3d/
+pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --out-dir ./result_scan3d/
 ```
 
 ## 出力の見方
@@ -26,9 +26,11 @@ pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --print-parsed --out-di
 - `result_scan3d/scan3d_density.html`
 
 ## よくある例
-1. YAML spec の解釈結果を先に確認する。
+1. YAML spec から実行する。
 2. `--scan-lists` を使う。
 3. `--dump` を有効にして `(d1,d2)` ごとの d3 軌跡を保存する。
+
+> **Note:** `--spec` / `--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
 ## 使用法
 ```bash

@@ -244,6 +244,7 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+        self.within_partial_hessian = None
         self._all_energies = None
         self.calculator = None
 
@@ -888,16 +889,14 @@ class Geometry:
                 break
 
     def reparametrize(self):
-        # Currently, self.calculator.get_coords is only implemented by the
-        # IPIPServer, but it is deactivated there.
+        if not hasattr(self.calculator, 'get_coords'):
+            return False
         try:
-            # TODO: allow skipping the update
             results = self.calculator.get_coords(self.atoms, self.cart_coords)
             self.set_coords(results["coords"], cartesian=True)
-            reparametrized = True
-        except AttributeError:
-            reparametrized = False
-        return reparametrized
+            return True
+        except Exception:
+            return False
 
     @property
     def energy(self):
@@ -1031,7 +1030,15 @@ class Geometry:
     def cart_hessian(self, cart_hessian):
         if cart_hessian is not None:
             # cart_hessian = np.array(cart_hessian)
-            assert cart_hessian.shape == (self.cart_coords.size, self.cart_coords.size)
+            if self.within_partial_hessian is not None:
+                active_n_dof = int(self.within_partial_hessian.get("active_n_dof", 0))
+                full_n_dof = int(
+                    self.within_partial_hessian.get("full_n_dof", self.cart_coords.size)
+                )
+                if cart_hessian.shape != (full_n_dof, full_n_dof):
+                    assert cart_hessian.shape == (active_n_dof, active_n_dof)
+            else:
+                assert cart_hessian.shape == (self.cart_coords.size, self.cart_coords.size)
         self._hessian = cart_hessian
 
     @property
@@ -1059,11 +1066,31 @@ class Geometry:
     # self._hessian = hessian
 
     def mass_weigh_hessian(self, hessian):
+        if (
+            self.within_partial_hessian is not None
+            and hessian is not None
+            and hessian.shape == (int(self.within_partial_hessian.get("active_n_dof", 0)),
+                                  int(self.within_partial_hessian.get("active_n_dof", 0)))
+        ):
+            act_atoms = self.hess_active_atom_indices
+            masses_act = self.masses[act_atoms]
+            m3 = np.repeat(masses_act, 3)
+            inv_sqrt_m = 1.0 / np.sqrt(m3)
+            if isinstance(hessian, torch.Tensor):
+                inv = torch.as_tensor(inv_sqrt_m, dtype=hessian.dtype, device=hessian.device)
+                hessian.mul_(inv.view(-1, 1))
+                hessian.mul_(inv.view(1, -1))
+                return hessian
+            hessian *= inv_sqrt_m[:, None]
+            hessian *= inv_sqrt_m[None, :]
+            return hessian
+
+        inv_sqrt_m = 1.0 / (self.masses_rep ** 0.5)
         if isinstance(hessian, torch.Tensor):
-            mm_sqrt_inv = torch.tensor(self.mm_sqrt_inv, dtype=hessian.dtype, device=hessian.device)
-            return mm_sqrt_inv @ hessian @ mm_sqrt_inv
+            s = torch.tensor(inv_sqrt_m, dtype=hessian.dtype, device=hessian.device)
+            return hessian * s[:, None] * s[None, :]
         else:
-            return self.mm_sqrt_inv.dot(hessian).dot(self.mm_sqrt_inv)
+            return hessian * inv_sqrt_m[:, None] * inv_sqrt_m[None, :]
 
     @property
     def mw_hessian(self):
@@ -1094,12 +1121,12 @@ class Geometry:
         hessian : np.array
             2d array containing the hessian.
         """
-        mm_sqrt = np.diag(self.masses_rep**0.5)
+        sqrt_m = self.masses_rep ** 0.5
         if isinstance(mw_hessian, torch.Tensor):
-            mm_sqrt = torch.tensor(mm_sqrt, dtype=mw_hessian.dtype, device=mw_hessian.device)
-            return mm_sqrt @ mw_hessian @ mm_sqrt
+            s = torch.tensor(sqrt_m, dtype=mw_hessian.dtype, device=mw_hessian.device)
+            return mw_hessian * s[:, None] * s[None, :]
         else:
-            return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
+            return mw_hessian * sqrt_m[:, None] * sqrt_m[None, :]
 
     # indices (0 … N‑1) of atoms that are *not* frozen
     @property
@@ -1121,6 +1148,18 @@ class Geometry:
             self._active_dof_indices = np.asarray(act, dtype=int)
         return self._active_dof_indices
 
+    @property
+    def hess_active_atom_indices(self):
+        if self.within_partial_hessian is None:
+            return self.active_atom_indices
+        return self.within_partial_hessian["active_atoms"]
+
+    @property
+    def hess_active_dof_indices(self):
+        if self.within_partial_hessian is None:
+            return self.active_dof_indices
+        return self.within_partial_hessian["active_dofs"]
+
     # Convenience: extract / insert an active slice
     def full_from_active(self, active_vec):
         """Expand a vector defined on active DOFs to 3N, keeping frozen data."""
@@ -1135,6 +1174,26 @@ class Geometry:
     def active_from_full(self, full_vec):
         """Return the part of a 3N vector that belongs to active DOFs."""
         return full_vec[self.active_dof_indices]
+
+    def full_from_hess_active(self, active_vec):
+        """Expand a vector defined on Hessian-active DOFs to full 3N."""
+        inds = self.hess_active_dof_indices
+        if isinstance(active_vec, torch.Tensor):
+            idx = torch.as_tensor(inds, dtype=torch.long, device=active_vec.device)
+            full = torch.zeros(self.cart_coords.size, dtype=active_vec.dtype, device=active_vec.device)
+            full.index_copy_(0, idx, active_vec)
+            return full
+        full = np.zeros_like(self.cart_coords)
+        full[inds] = active_vec
+        return full
+
+    def hess_active_from_full(self, full_vec):
+        """Return the part of a 3N vector that belongs to Hessian-active DOFs."""
+        inds = self.hess_active_dof_indices
+        if isinstance(full_vec, torch.Tensor):
+            idx = torch.as_tensor(inds, dtype=torch.long, device=full_vec.device)
+            return full_vec.index_select(0, idx)
+        return full_vec[inds]
 
     def set_h5_hessian(self, fn):
         with h5py.File(fn, "r") as handle:
@@ -1157,18 +1216,49 @@ class Geometry:
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
         proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True, full=full)
 
+        is_partial = (
+            self.within_partial_hessian is not None
+            and proj_hessian is not None
+            and proj_hessian.shape == (int(self.within_partial_hessian.get("active_n_dof", 0)),
+                                       int(self.within_partial_hessian.get("active_n_dof", 0)))
+        )
+
         if isinstance(proj_hessian, torch.Tensor):
             eigvals, eigvecs = torch.linalg.eigh(proj_hessian)
             mw_cart_displs = P.T @ eigvecs
-            mm_sqrt_inv = torch.tensor(self.mm_sqrt_inv, dtype=proj_hessian.dtype, device=proj_hessian.device)
-            cart_displs = mm_sqrt_inv @ mw_cart_displs
-            cart_displs /= torch.linalg.norm(cart_displs, dim=0)
+            if is_partial:
+                masses_act = self.masses[self.hess_active_atom_indices]
+                m3 = torch.repeat_interleave(
+                    torch.as_tensor(masses_act, dtype=proj_hessian.dtype, device=proj_hessian.device), 3
+                )
+                cart_displs_act = mw_cart_displs / torch.sqrt(m3.view(-1, 1))
+                cart_displs_act /= torch.linalg.norm(cart_displs_act, dim=0)
+                cart_displs = torch.zeros(
+                    (self.cart_coords.size, cart_displs_act.shape[1]),
+                    dtype=cart_displs_act.dtype,
+                    device=cart_displs_act.device,
+                )
+                idx = torch.as_tensor(self.hess_active_dof_indices, dtype=torch.long, device=cart_displs.device)
+                cart_displs.index_copy_(0, idx, cart_displs_act)
+            else:
+                inv_sqrt_m = torch.tensor(1.0 / (self.masses_rep ** 0.5), dtype=proj_hessian.dtype, device=proj_hessian.device)
+                cart_displs = mw_cart_displs * inv_sqrt_m[:, None]
+                cart_displs /= torch.linalg.norm(cart_displs, dim=0)
             eigvals = eigvals.cpu().numpy()
         else:
             eigvals, eigvecs = np.linalg.eigh(proj_hessian)
             mw_cart_displs = P.T.dot(eigvecs)
-            cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
-            cart_displs /= np.linalg.norm(cart_displs, axis=0)
+            if is_partial:
+                masses_act = self.masses[self.hess_active_atom_indices]
+                m3 = np.repeat(masses_act, 3)
+                cart_displs_act = mw_cart_displs / np.sqrt(m3)[:, None]
+                cart_displs_act /= np.linalg.norm(cart_displs_act, axis=0)
+                cart_displs = np.zeros((self.cart_coords.size, cart_displs_act.shape[1]))
+                cart_displs[self.hess_active_dof_indices, :] = cart_displs_act
+            else:
+                inv_sqrt_m = 1.0 / (self.masses_rep ** 0.5)
+                cart_displs = mw_cart_displs * inv_sqrt_m[:, None]
+                cart_displs /= np.linalg.norm(cart_displs, axis=0)
 
         nus = eigval_to_wavenumber(eigvals)
         return nus, eigvals, mw_cart_displs, cart_displs
@@ -1221,7 +1311,17 @@ class Geometry:
         if self.is_analytical_2d:
             return mw_hessian
 
-        P = self.get_trans_rot_projector(full=full)
+        if (
+            self.within_partial_hessian is not None
+            and mw_hessian is not None
+            and mw_hessian.shape == (int(self.within_partial_hessian.get("active_n_dof", 0)),
+                                     int(self.within_partial_hessian.get("active_n_dof", 0)))
+        ):
+            coords_act = self.coords3d[self.hess_active_atom_indices].flatten()
+            masses_act = self.masses[self.hess_active_atom_indices]
+            P = get_trans_rot_projector(coords_act, masses=masses_act, full=full)
+        else:
+            P = self.get_trans_rot_projector(full=full)
         if isinstance(mw_hessian, torch.Tensor):
             P = torch.tensor(P, device=mw_hessian.device, dtype=mw_hessian.dtype)
             proj_hessian = P @ mw_hessian @ P.T
@@ -1301,10 +1401,12 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+        self.within_partial_hessian = None
         self.true_energy = None
         self.true_forces = None
         self.true_hessian = None
         self._all_energies = None
+        self.results = {}
 
     def set_results(self, results):
         """Save the results from a dictionary.
@@ -1316,10 +1418,16 @@ class Geometry:
             object, with the corresponding item as value.
         """
 
+        if "within_partial_hessian" in results:
+            self.within_partial_hessian = results["within_partial_hessian"]
+        elif "hessian" in results:
+            self.within_partial_hessian = None
+
         trans = {
             "energy": "energy",
             "forces": "cart_forces",
             "hessian": "cart_hessian",
+            "within_partial_hessian": "within_partial_hessian",
             # True properties in AFIR calculations
             "true_energy": "true_energy",
             "true_forces": "true_forces",
@@ -1329,6 +1437,8 @@ class Geometry:
         }
 
         for key in results:
+            if key == "within_partial_hessian":
+                continue
             # Zero forces of frozen atoms
             if key == "forces":
                 self.zero_frozen_forces(results[key])

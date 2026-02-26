@@ -40,30 +40,7 @@ from pdb2reaction.utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
 )
-
-
-def _resolve_yaml_sources(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
-
-
-def _load_merged_yaml_cfg(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-) -> Dict[str, Any]:
-    merged: Dict[str, Any] = {}
-    deep_update(merged, load_yaml_dict(config_yaml))
-    deep_update(merged, load_yaml_dict(override_yaml))
-    return merged
+from pdb2reaction.cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 
 
 def _echo_convert_trj_if_exists(
@@ -87,41 +64,9 @@ def _echo_convert_trj_if_exists(
                 click.echo(f"[convert] Wrote {written}.")
 
 
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    """Resolve the first existing artifact for a list of relative patterns."""
-    for pattern in patterns:
-        if any(ch in pattern for ch in "*?[]"):
-            for candidate in sorted(out_dir.glob(pattern)):
-                if candidate.is_file():
-                    return candidate.resolve()
-            continue
-        candidate = out_dir / pattern
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
 
+_link_or_copy_file = link_or_copy_file  # backward compat alias
 
-def _link_or_copy_file(src: Path, dst: Path) -> bool:
-    """Create a symlink when possible; fall back to copy."""
-    try:
-        if dst.exists() or dst.is_symlink():
-            if dst.is_dir():
-                return False
-            dst.unlink()
-        rel = os.path.relpath(src, start=dst.parent)
-        dst.symlink_to(rel)
-        return True
-    except Exception:
-        try:
-            shutil.copy2(src, dst)
-            return True
-        except Exception:
-            return False
-
-
-def _write_output_summary_md(out_dir: Path) -> None:
-    """summary.md and key_* outputs are disabled."""
-    return None
 
 # --------------------------
 # CLI
@@ -303,12 +248,12 @@ def cli(
         except Exception:
             return False
 
-    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = _load_merged_yaml_cfg(
+    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -330,9 +275,6 @@ def cli(
             # --------------------------
             # 1) Assemble configuration: defaults < config < CLI(explicit) < override
             # --------------------------
-            config_layer_cfg = load_yaml_dict(config_yaml)
-            override_layer_cfg = load_yaml_dict(override_yaml)
-
             geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
             calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
             irc_cfg: Dict[str, Any] = dict(IRC_KW)

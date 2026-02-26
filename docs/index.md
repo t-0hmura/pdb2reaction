@@ -9,7 +9,7 @@
 
 getting_started
 quickstart_all
-quickstart_scan_spec
+quickstart_scan
 quickstart_tsopt_freq
 concepts
 recipes_common_errors
@@ -17,7 +17,7 @@ troubleshooting
 cli_conventions
 ja/getting_started
 ja/quickstart_all
-ja/quickstart_scan_spec
+ja/quickstart_scan
 ja/quickstart_tsopt_freq
 ja/concepts
 ja/recipes_common_errors
@@ -97,10 +97,9 @@ ja/index
 | Objectives | Command | Guide |
 |-------------------------|---------|-------|
 | First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart_all.md) |
-| Single-structure staged scan (`--spec`) | `pdb2reaction scan` | [Quickstart: scan with spec](quickstart_scan_spec.md) |
+| Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart_scan.md) |
 | TS validation (`tsopt` -> `freq`) | `pdb2reaction tsopt`, `pdb2reaction freq` | [Quickstart: tsopt -> freq](quickstart_tsopt_freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
-| Generate a starter YAML config for `all` | `pdb2reaction init` | [init.md](init.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt.md](opt.md) |
 | Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
@@ -133,7 +132,6 @@ ja/index
 | Subcommand | Description |
 |------------|-------------|
 | [`all`](all.md) | End-to-end workflow: extraction → MEP → TS optimization → IRC → freq → DFT |
-| [`init`](init.md) | Generate a starter YAML template for `pdb2reaction all` |
 
 ### Structure Preparation
 | Subcommand | Description |
@@ -145,13 +143,13 @@ ja/index
 | Subcommand | Description |
 |------------|-------------|
 | [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS / RFO / hybrid + optional flatten) |
-| [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO / hybrid, flatten enabled by default) |
+| [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO / hybrid, optional flatten) |
 
 ### Path Search & Optimization
 | Subcommand | Description |
 |------------|-------------|
-| [`path-opt`](path_opt.md) | MEP optimization via GSM or DMF (two structures) |
-| [`path-search`](path_search.md) | Recursive MEP search with automatic refinement (2+ structures) |
+| [`path-opt`](path_opt.md) | Single-step MEP optimization via GSM or DMF (two structures) |
+| [`path-search`](path_search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
 
 ### Scans
 | Subcommand | Description |
@@ -213,7 +211,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 
 ### Single-structure scan mode
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 ```
 
 ### TS-only optimization
@@ -227,7 +225,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ## Key Concepts
 
 ### Charge and spin
-- Use `--ligand-charge` to specify unknown residue charges: `'SAM:1,GPP:-3'`
+- Use `--ligand-charge` to specify ligand charges: `'SAM:1,GPP:-3'`
 - Use `-q/--charge` to override the total charge
 - Spin multiplicity is set with `-m/--multiplicity` (default `1`)
 
@@ -238,9 +236,6 @@ Boolean CLI options use toggle form (`--flag` / `--no-flag`):
 ```
 
 ### YAML configuration
-()
-```bash
-```
 See the [YAML Reference](yaml_reference.md) for all options.
 
 ---

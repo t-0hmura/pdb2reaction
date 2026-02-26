@@ -8,7 +8,7 @@
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
 - **Modes:** `heavy` = RS‑I‑RFO (default, generally more robust). `light` = Hessian Guided Dimer (often cheaper per step). `hybrid` = Dimer to convergence, then RS‑I‑RFO flatten loop only.
 - **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
-- **Optional cleanup:** `--flatten` (default enabled) controls surplus-imaginary-mode cleanup.
+- **Optional cleanup:** `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
 
 ### Choosing `--opt-mode`
@@ -136,7 +136,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to light (dimer loop), heavy (post-RSIRFO), and hybrid (post-dimer RSIRFO stage). | `True` |
+| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to light (dimer loop), heavy (post-RSIRFO), and hybrid (post-dimer RSIRFO stage). | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

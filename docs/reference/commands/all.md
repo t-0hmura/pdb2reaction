@@ -139,7 +139,8 @@ Options:
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop in tsopt (light: dimer loop,
                                   heavy/hybrid: post-RSIRFO); --no-flatten
-                                  forces flatten_max_iter=0.  [default: flatten]
+                                  forces flatten_max_iter=0.  [default: no-
+                                  flatten]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to

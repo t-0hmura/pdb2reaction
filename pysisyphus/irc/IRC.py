@@ -160,8 +160,12 @@ class IRC:
         self._m_sqrt = np.sqrt(self.geometry.masses_rep)
 
         # cache frequently‑used active indices
-        self._act_atoms = self.geometry.active_atom_indices
-        self._act_dofs  = self.geometry.active_dof_indices
+        if getattr(self.geometry, "within_partial_hessian", None) is not None:
+            self._act_atoms = self.geometry.hess_active_atom_indices
+            self._act_dofs = self.geometry.hess_active_dof_indices
+        else:
+            self._act_atoms = self.geometry.active_atom_indices
+            self._act_dofs  = self.geometry.active_dof_indices
 
         self.all_energies = list()
         self.all_coords = list()
@@ -259,7 +263,15 @@ class IRC:
 
     # Expand an active‑vector (or ‑step) to 3N
     def _full(self, vec_act):
-        return self.geometry.full_from_active(vec_act)
+        inds = self._act_dofs
+        if isinstance(vec_act, torch.Tensor):
+            idx = torch.as_tensor(inds, dtype=torch.long, device=vec_act.device)
+            full = torch.zeros(self.coords.size, dtype=vec_act.dtype, device=vec_act.device)
+            full.index_copy_(0, idx, vec_act)
+            return full
+        full = np.zeros(self.coords.size, dtype=vec_act.dtype if hasattr(vec_act, "dtype") else float)
+        full[inds] = vec_act
+        return full
 
     def prepare(self, direction):
         self.direction = direction
@@ -403,8 +415,8 @@ class IRC:
         if isinstance(trans_vec, torch.Tensor):
             trans_vec = trans_vec.cpu().numpy()
 
-        mw_trans_vec = self.geometry.full_from_active(mw_trans_vec)
-        trans_vec = self.geometry.full_from_active(trans_vec)
+        mw_trans_vec = self._full(mw_trans_vec)
+        trans_vec = self._full(trans_vec)
 
         self.mw_transition_vector = mw_trans_vec        
         self.transition_vector = trans_vec / np.linalg.norm(trans_vec)
@@ -471,9 +483,24 @@ class IRC:
         # the mass-weighted and un-mass-weighted gradients. This takes into account
         # which atoms are actually moving, so it should be a good guess.
         norm_mw_grad = np.linalg.norm(mw_grad)
-        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
-        conv_fact = norm_grad / norm_mw_grad
-        conv_fact = max(min_fact, conv_fact)
+        if mw_grad.shape[0] == self._m_sqrt.shape[0]:
+            norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
+        else:
+            m_sqrt_vec = self._m_sqrt[self._act_dofs]
+            norm_grad = np.linalg.norm(mw_grad * m_sqrt_vec)
+
+        if not np.isfinite(norm_mw_grad) or norm_mw_grad == 0.0:
+            conv_fact = min_fact
+            self.log("mw_grad norm is zero/NaN; using minimum conversion factor.")
+        else:
+            conv_fact = norm_grad / norm_mw_grad
+            # Cap conversion factor when using an active subspace to avoid huge steps.
+            if mw_grad.shape[0] != self._m_sqrt.shape[0]:
+                max_fact = 50.0
+                if conv_fact > max_fact:
+                    self.log(f"Clamping conversion factor {conv_fact:.4f} -> {max_fact:.1f}.")
+                    conv_fact = max_fact
+            conv_fact = max(min_fact, conv_fact)
         self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
         return conv_fact
 
@@ -636,6 +663,13 @@ class IRC:
         self.all_mw_coords.extend(getattr(self, mw_coords_name))
         self.all_mw_gradients.extend(getattr(self, mw_grad_name))
 
+        # Free per-direction lists to reduce memory usage
+        del self.irc_coords
+        del self.irc_gradients
+        del self.irc_mw_coords
+        del self.irc_mw_gradients
+        del self.irc_energies
+
         setattr(self, f"{prefix}_is_converged", self.converged)
         setattr(self, f"{prefix}_energy_increased", self.energy_increased)
         setattr(self, f"{prefix}_energy_converged", self.energy_converged)
@@ -682,9 +716,22 @@ class IRC:
         )
 
         self.init_hessian = self.geometry.hessian
+        has_partial = getattr(self.geometry, "within_partial_hessian", None) is not None
+        act_n_dof = (
+            int(self.geometry.within_partial_hessian.get("active_n_dof", 0))
+            if has_partial else 0
+        )
+        if has_partial:
+            self._act_atoms = self.geometry.hess_active_atom_indices
+            self._act_dofs = self.geometry.hess_active_dof_indices
+            self.mm_inv2 = self.geometry.mm_sqrt_inv[np.ix_(self._act_dofs, self._act_dofs)]
         self.geometry.clear()
-        # convert to active doFs
-        self.init_hessian = self.init_hessian[self._act_dofs][:, self._act_dofs]
+        # convert to active doFs (skip if already partial)
+        if has_partial:
+            if self.init_hessian.shape != (act_n_dof, act_n_dof):
+                self.init_hessian = self.init_hessian[self._act_dofs][:, self._act_dofs]
+        else:
+            self.init_hessian = self.init_hessian[self._act_dofs][:, self._act_dofs]
 
         # For forward/backward runs from a TS we need an intial displacement,
         # calculated from the transition vector (imaginary mode) of the TS
@@ -732,12 +779,9 @@ class IRC:
         #     dump_fn = self.get_path_for_fn("finished_" + self.dump_fn)
         #     self.dump_data(dump_fn, full=True)
 
-        # Convert to arrays
-        [
+        # Convert to arrays and free original Python lists
+        for name in "all_energies all_coords all_gradients all_mw_coords all_mw_gradients".split():
             setattr(self, name, np.array(getattr(self, name)))
-            for name in "all_energies all_coords all_gradients "
-            "all_mw_coords all_mw_gradients".split()
-        ]
 
         # Right now self.all_mw_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.

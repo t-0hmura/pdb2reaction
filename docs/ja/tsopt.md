@@ -8,7 +8,7 @@
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
 - **モード:** `heavy` = RS‑I‑RFO（既定、一般的により堅牢）。`light` = Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。`hybrid` = Dimer収束後にRS-I-RFO flattenループのみ実行。
 - **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
-- **任意の後処理:** `--flatten`（デフォルト有効）で余分な虚数モードの除去を制御します。
+- **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
 
 ### `--opt-mode` の選び方
@@ -110,7 +110,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚数モードフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。light（dimerループ）/heavy（RS-IRFO後）/hybrid（dimer後RS-IRFO段）に適用 | `True` |
+| `--flatten/--no-flatten` | 余分な虚数モードフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。light（dimerループ）/heavy（RS-IRFO後）/hybrid（dimer後RS-IRFO段）に適用 | `False` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |

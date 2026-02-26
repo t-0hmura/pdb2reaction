@@ -83,35 +83,11 @@ from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
 from .bond_changes import has_bond_change
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
-from .cli_utils import run_cli
+from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
-
-
-def _resolve_yaml_sources(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
-
-
-def _load_merged_yaml_cfg(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-) -> Dict[str, Any]:
-    merged: Dict[str, Any] = {}
-    deep_update(merged, load_yaml_dict(config_yaml))
-    deep_update(merged, load_yaml_dict(override_yaml))
-    return merged
 
 
 def _bond_changes_block(text: Optional[str]):
@@ -166,41 +142,9 @@ def _bond_changes_block(text: Optional[str]):
     return cleaned
 
 
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    """Resolve the first existing artifact for a list of relative patterns."""
-    for pattern in patterns:
-        if any(ch in pattern for ch in "*?[]"):
-            for candidate in sorted(out_dir.glob(pattern)):
-                if candidate.is_file():
-                    return candidate.resolve()
-            continue
-        candidate = out_dir / pattern
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
 
+_link_or_copy_file = link_or_copy_file  # backward compat alias
 
-def _link_or_copy_file(src: Path, dst: Path) -> bool:
-    """Create a symlink when possible; fall back to copy."""
-    try:
-        if dst.exists() or dst.is_symlink():
-            if dst.is_dir():
-                return False
-            dst.unlink()
-        rel = os.path.relpath(src, start=dst.parent)
-        dst.symlink_to(rel)
-        return True
-    except Exception:
-        try:
-            shutil.copy2(src, dst)
-            return True
-        except Exception:
-            return False
-
-
-def _write_output_summary_md(out_dir: Path) -> None:
-    """summary.md and key_* outputs are disabled."""
-    return None
 
 def _convert_to_gjf(
     xyz_path: Path,
@@ -1902,12 +1846,12 @@ def cli(
         except Exception:
             return False
 
-    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = _load_merged_yaml_cfg(
+    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -1948,9 +1892,6 @@ def cli(
         # --------------------------
         # 1) Resolve settings (defaults < config < CLI(explicit) < override)
         # --------------------------
-        config_layer_cfg = load_yaml_dict(config_yaml)
-        override_layer_cfg = load_yaml_dict(override_yaml)
-
         geom_cfg = dict(GEOM_KW_DEFAULT)
         calc_cfg = dict(UMA_CALC_KW)
         dmf_cfg  = dict(DMF_KW)

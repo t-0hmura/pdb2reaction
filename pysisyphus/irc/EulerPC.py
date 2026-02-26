@@ -16,6 +16,7 @@
 # 	Further improvements for DWI; not implemented
 
 import time
+from collections import deque
 
 import numpy as np
 
@@ -59,9 +60,9 @@ class EulerPC(IRC):
 
         def _to_full_vec(v_act, template):
             if isinstance(v_act, torch.Tensor):
-                full = torch.zeros_like(template)
+                full = template.clone()
             else:
-                full = np.zeros_like(template)
+                full = template.copy()
             full[self._act_dofs] = v_act
             return full
 
@@ -153,7 +154,7 @@ class EulerPC(IRC):
 
         # Calculate predictor Euler-integration step length. See get_conv_fact
         # method definition for a comment on this.
-        conv_fact = self.get_conv_fact(mw_grad_full)
+        conv_fact = self.get_conv_fact(mw_grad_act)
         euler_step_length = self.step_length / (self.max_pred_steps / conv_fact)
 
         def taylor_gradient(step_full):
@@ -193,7 +194,16 @@ class EulerPC(IRC):
                     f"after {i+1} steps!"
                 )
                 break
-            step_ = euler_step_length * -euler_mw_grad / np.linalg.norm(euler_mw_grad)
+            grad_norm = np.linalg.norm(euler_mw_grad)
+            if not np.isfinite(grad_norm) or grad_norm == 0.0:
+                self.log("Gradient norm is zero/NaN; using transition vector direction.")
+                direction = getattr(self, "mw_transition_vector", euler_mw_grad)
+                dir_norm = np.linalg.norm(direction)
+                if not np.isfinite(dir_norm) or dir_norm == 0.0:
+                    raise ValueError("Cannot determine IRC step direction (zero/NaN norms).")
+                step_ = euler_step_length * -direction / dir_norm
+            else:
+                step_ = euler_step_length * -euler_mw_grad / grad_norm
             euler_mw_coords += step_
             # Determine actual step by comparing the current and the initial coordinates
             euler_step = euler_mw_coords - init_mw_coords
@@ -274,7 +284,8 @@ class EulerPC(IRC):
             points = 20 * (2**k)
             corr_step_length = step_length / (points - 1)
             cur_coords = init_mw_coords.copy()
-            k_coords = list()
+            # Only keep the last 2 coords (needed for oscillation check)
+            k_coords = deque(maxlen=2)
             cur_length = 0
 
             # Integrate until the desired spacing is reached
@@ -293,7 +304,7 @@ class EulerPC(IRC):
                 cur_length = get_integration_length(cur_coords)
 
                 # Check for oscillation
-                try:
+                if len(k_coords) >= 2:
                     prev_coords = k_coords[-2]
                     osc_norm = np.linalg.norm(cur_coords - prev_coords)
                     # TODO: Handle this by restarting everything with a smaller stepsize?
@@ -305,8 +316,6 @@ class EulerPC(IRC):
                             "\tAborting corrector integration!"
                         )
                         return prev_coords
-                except IndexError:
-                    pass
             richardson[(k, 0)] = cur_coords
 
             # Refine using Richardson extrapolation
@@ -334,4 +343,3 @@ class EulerPC(IRC):
             f"Returning corrected mass-weighted coordinates from richardson[({k},{k})]"
         )
         return richardson[(k, k)]
-

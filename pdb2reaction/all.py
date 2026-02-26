@@ -1854,7 +1854,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @click.option(
     "--flatten/--no-flatten",
     "flatten",
-    default=True,
+    default=False,
     show_default=True,
     help="Enable the extra-imaginary-mode flattening loop in tsopt (light: dimer loop, heavy/hybrid: post-RSIRFO); --no-flatten forces flatten_max_iter=0.",
 )

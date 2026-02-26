@@ -195,7 +195,7 @@ If you prefer to build the environment piece by piece:
 ## Quickstart routes (recommended)
 
 - [Quickstart: run `pdb2reaction all`](quickstart_all.md)
-- [Quickstart: run `pdb2reaction scan` with `--spec`](quickstart_scan_spec.md)
+- [Quickstart: run a single-structure staged scan with `pdb2reaction scan`](quickstart_scan.md)
 - [Quickstart: validate TS with `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
 
 ---
@@ -377,7 +377,6 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | Subcommand | Role | Documentation |
 |------------|------|---------------|
 | `all` | End-to-end workflow | [all](all.md) |
-| `init` | Generate a starter YAML template for `pdb2reaction all` | [init](init.md) |
 | `extract` | Extract active-site pocket (cluster model) | [extract](extract.md) |
 | `opt` | Geometry optimization | [opt](opt.md) |
 | `tsopt` | Transition state optimization | [tsopt](tsopt.md) |

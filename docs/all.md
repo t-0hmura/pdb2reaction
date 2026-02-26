@@ -46,12 +46,6 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.
  --multiplicity 1 --out-dir ./result_scan_all
 ```
 
-3. Validate parsing and plan only.
-
-```bash
-pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --dry-run
-```
-
 PDB/GJF companion files are generated when templates are available, controlled by `--convert-files/--no-convert-files` (enabled by default).
 
 
@@ -197,7 +191,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
 | `--opt-mode-post [light\|heavy\|hybrid]` | Optimizer preset for TSOPT and post-IRC optimization. | `hybrid` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `True` |
+| `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hybrid`).
 

@@ -56,7 +56,7 @@ from .utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
 )
-from .cli_utils import run_cli
+from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 from .freq import (
     _torch_device,
     _calc_full_hessian_torch,
@@ -73,64 +73,8 @@ OPT_FLATTEN_MAX_ITER = 50
 # Note: All defaults imported from defaults.py - no local copies needed
 
 
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    """Resolve the first existing artifact for a list of relative patterns."""
-    for pattern in patterns:
-        if any(ch in pattern for ch in "*?[]"):
-            for candidate in sorted(out_dir.glob(pattern)):
-                if candidate.is_file():
-                    return candidate.resolve()
-            continue
-        candidate = out_dir / pattern
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
 
-
-def _link_or_copy_file(src: Path, dst: Path) -> bool:
-    """Create a symlink when possible; fall back to copy."""
-    try:
-        if dst.exists() or dst.is_symlink():
-            if dst.is_dir():
-                return False
-            dst.unlink()
-        rel = os.path.relpath(src, start=dst.parent)
-        dst.symlink_to(rel)
-        return True
-    except Exception:
-        try:
-            shutil.copy2(src, dst)
-            return True
-        except Exception:
-            return False
-
-
-def _write_output_summary_md(out_dir: Path) -> None:
-    """summary.md and key_* outputs are disabled."""
-    return None
-
-def _resolve_yaml_sources(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
-
-
-def _load_merged_yaml_cfg(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-) -> Dict[str, Any]:
-    merged: Dict[str, Any] = {}
-    deep_update(merged, load_yaml_dict(config_yaml))
-    deep_update(merged, load_yaml_dict(override_yaml))
-    return merged
+_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
 class HarmonicBiasCalculator:
@@ -324,9 +268,9 @@ def _flatten_all_imag_modes_for_geom(
     amp_bohr = float(flatten_amp_ang) / BOHR2ANG
     E_ref = _calc_energy(geom, uma_kwargs)
 
+    m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
     for idx in targets:
         v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)
-        m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
         v_cart = v_mw / np.sqrt(m3)
         v_cart /= np.linalg.norm(v_cart)
 
@@ -556,12 +500,12 @@ def cli(
         except Exception:
             return False
 
-    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = _load_merged_yaml_cfg(
+    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -585,8 +529,6 @@ def cli(
             # --------------------------
             # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
             # --------------------------
-            config_layer_cfg = load_yaml_dict(config_yaml)
-            override_layer_cfg = load_yaml_dict(override_yaml)
             geom_cfg = dict(GEOM_KW_DEFAULT)
             calc_cfg = dict(UMA_CALC_KW)
             opt_cfg = dict(OPT_BASE_KW)
@@ -777,12 +719,21 @@ def cli(
             click.echo(f"\n====== Optimization ({main_label}) finished ======\n")
             last_optimizer = optimizer
 
+            if kind == "hybrid":
+                # Before flattening, always run one dedicated RFO refinement stage.
+                geometry.set_calculator(opt_calc)
+                optimizer = _build_optimizer("rfo")
+                click.echo("\n====== Optimization (Hybrid stage-2: RFO refinement) started ======\n")
+                optimizer.run()
+                click.echo("\n====== Optimization (Hybrid stage-2: RFO refinement) finished ======\n")
+                last_optimizer = optimizer
+
             # --------------------------
             # 5) Flatten loop (all imaginary modes)
             # --------------------------
             if flatten:
                 if kind == "hybrid":
-                    click.echo("\n====== Optimization (Hybrid stage-2: flatten loop with RFO) started ======\n")
+                    click.echo("\n====== Optimization (Hybrid stage-3: flatten loop with RFO) started ======\n")
                 else:
                     click.echo("\n====== Optimization (Flatten loop) started ======\n")
 
@@ -854,7 +805,7 @@ def cli(
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 if kind == "hybrid":
-                    click.echo("\n====== Optimization (Hybrid stage-2: flatten loop with RFO) finished ======\n")
+                    click.echo("\n====== Optimization (Hybrid stage-3: flatten loop with RFO) finished ======\n")
                 else:
                     click.echo("\n====== Optimization (Flatten loop) finished ======\n")
 

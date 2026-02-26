@@ -640,6 +640,10 @@ def cli(
                             }
                         )
 
+                    # Free d3 geometry snapshots for this (d1,d2) pair; they are
+                    # only used within the d3 inner loop and won't be accessed again.
+                    d3_geoms.pop(key_ij, None)
+
                     if dump and trj_blocks:
                         trj_path = grid_dir / f"inner_path_d1_{i_idx:03d}_d2_{j_idx:03d}_trj.xyz"
                         try:

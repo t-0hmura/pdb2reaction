@@ -38,7 +38,7 @@ Options:
   --max-cycles INTEGER            Max cycles / steps cap.  [default: 10000]
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop (light: dimer loop, heavy/hybrid: post-
-                                  RSIRFO).  [default: flatten]
+                                  RSIRFO).  [default: no-flatten]
   --opt-mode [light|heavy|hybrid]
                                   light (=Dimer), heavy (=RSIRFO), or hybrid
                                   (=Dimer then RSIRFO flatten loop).  [default:

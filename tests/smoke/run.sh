@@ -47,3 +47,4 @@ pdb2reaction tsopt -i ts.pdb -q 0 --out-dir 'test22' > test22.out 2>&1
 pdb2reaction -i ts_complex.pdb -q -1 --out-dir 'test23' --tsopt True --opt-mode heavy > test23.out 2>&1
 pdb2reaction -i ts_complex.pdb -q -1 --out-dir 'test24' --tsopt True --opt-mode light > test24.out 2>&1
 pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test25' --opt-mode light > test25.out 2>&1
+pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test26' --opt-mode hybrid > test26.out 2>&1

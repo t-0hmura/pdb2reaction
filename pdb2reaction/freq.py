@@ -48,67 +48,11 @@ from .utils import (
     set_convert_file_enabled,
     resolve_freeze_atoms,
 )
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+
+_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
-def _resolve_yaml_sources(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
-
-
-def _load_merged_yaml_cfg(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-) -> Dict[str, Any]:
-    merged: Dict[str, Any] = {}
-    deep_update(merged, load_yaml_dict(config_yaml))
-    deep_update(merged, load_yaml_dict(override_yaml))
-    return merged
-
-
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    """Resolve the first existing artifact for a list of relative patterns."""
-    for pattern in patterns:
-        if any(ch in pattern for ch in "*?[]"):
-            for candidate in sorted(out_dir.glob(pattern)):
-                if candidate.is_file():
-                    return candidate.resolve()
-            continue
-        candidate = out_dir / pattern
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
-
-
-def _link_or_copy_file(src: Path, dst: Path) -> bool:
-    """Create a symlink when possible; fall back to copy."""
-    try:
-        if dst.exists() or dst.is_symlink():
-            if dst.is_dir():
-                return False
-            dst.unlink()
-        rel = os.path.relpath(src, start=dst.parent)
-        dst.symlink_to(rel)
-        return True
-    except Exception:
-        try:
-            shutil.copy2(src, dst)
-            return True
-        except Exception:
-            return False
-
-
-def _write_output_summary_md(out_dir: Path) -> None:
-    """summary.md and key_* outputs are disabled."""
-    return None
 
 def _torch_device(auto: str = "auto") -> torch.device:
     if auto == "auto":
@@ -193,7 +137,9 @@ def _mw_projected_hessian(H: torch.Tensor,
         tmp = Q @ QtHQ
         H.addmm_(tmp, Qt, beta=1.0, alpha=1.0)
 
-        H = 0.5 * (H + H.T)
+        H_t = H.T.clone()
+        H.add_(H_t).mul_(0.5)
+        del H_t
 
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
         del Q, Qt, QtH, HQ, QtHQ, tmp
@@ -284,7 +230,9 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
                 Hmw_act.addmm_(QtH.T, Qt, beta=1.0, alpha=-1.0)
                 QtHQ = QtH @ Q
                 Hmw_act.addmm_(Q @ QtHQ, Qt, beta=1.0, alpha=1.0)
-                Hmw_act = 0.5 * (Hmw_act + Hmw_act.T)
+                _t = Hmw_act.T.clone()
+                Hmw_act.add_(_t).mul_(0.5)
+                del _t
 
                 omega2, Vsub = torch.linalg.eigh(Hmw_act)
 
@@ -327,7 +275,9 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
 
                 QtH = QtH @ Q
                 H.addmm_(Q @ QtH, Qt, beta=1.0, alpha=1.0)
-                H = 0.5 * (H + H.T)
+                _t = H.T.clone()
+                H.add_(_t).mul_(0.5)
+                del _t
 
                 omega2, Vsub = torch.linalg.eigh(H)
 
@@ -384,20 +334,46 @@ def _mw_mode_to_cart(mode_mw_3N_t: torch.Tensor,
 
 def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> torch.Tensor:
     """
-    UMA calculator producing Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
+    Return Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
+
+    Reuses Geometry-level Hessian cache when available so repeated requests on the
+    same coordinates do not trigger extra calculator evaluations.
     """
+    def _to_torch(H_obj: Any, clone: bool = True) -> torch.Tensor:
+        if isinstance(H_obj, torch.Tensor):
+            t = H_obj.to(device=device)
+            return t.clone() if clone else t
+        return torch.as_tensor(H_obj, device=device)
+
+    cached = getattr(geom, "_hessian", None)
+    if cached is not None:
+        return _to_torch(cached, clone=True)
+
     kw = dict(uma_kwargs or {})
     kw["out_hess_torch"] = True
     calc = uma_pysis(**kw)
-    H = calc.get_hessian(geom.atoms, geom.cart_coords)["hessian"].to(device=device)
-    return H
+    results = calc.get_hessian(geom.atoms, geom.cart_coords)
+
+    # Keep Geometry cache in sync so optimizers/freq analysis can share one Hessian
+    # evaluation on unchanged coordinates.
+    try:
+        geom.set_results(results)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to set Hessian results on Geometry cache", exc_info=True
+        )
+
+    # Fresh result from calculator: no clone needed
+    return _to_torch(results["hessian"], clone=False)
 
 
-def _calc_energy(geom, uma_kwargs: dict) -> float:
+def _calc_energy(geom, uma_kwargs: dict, calc=None) -> float:
     """
     Compute electronic energy (Hartree) from UMA calculator.
     """
-    calc = uma_pysis(**uma_kwargs)
+    if calc is None:
+        calc = uma_pysis(**uma_kwargs)
     geom.set_calculator(calc)
     E = float(geom.energy)
     geom.set_calculator(None)
@@ -636,12 +612,12 @@ def cli(
         except Exception:
             return False
 
-    config_yaml, override_yaml, used_legacy_yaml = _resolve_yaml_sources(
+    config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = _load_merged_yaml_cfg(
+    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -663,8 +639,6 @@ def cli(
     # --------------------------
     # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
     # --------------------------
-    config_layer_cfg = load_yaml_dict(config_yaml)
-    override_layer_cfg = load_yaml_dict(override_yaml)
     geom_cfg = dict(GEOM_KW)
     calc_cfg = dict(CALC_KW)
     freq_cfg = dict(FREQ_KW)

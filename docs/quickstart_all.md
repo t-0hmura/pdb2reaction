@@ -25,11 +25,10 @@ pdb2reaction all -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 
 ## Tips
 
-- Use `--dry-run` first to validate parsing and execution plan without running heavy stages.
 - `pdb2reaction all --help` shows core options; `pdb2reaction all --help-advanced` shows the full list.
 
 ## Next step
 
-- Single-structure scan route: [Quickstart: `pdb2reaction scan` with `--spec`](quickstart_scan_spec.md)
+- Single-structure staged scan route: [Quickstart: `pdb2reaction scan`](quickstart_scan.md)
 - TS validation route: [Quickstart: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
 - Full option reference: [all](all.md)

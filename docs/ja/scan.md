@@ -19,7 +19,7 @@ XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定する�
 ## 最小例
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-dir ./result_scan
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_scan
 ```
 
 ## 出力の見方
@@ -30,10 +30,10 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed --out-d
 
 ## よくある例
 
-1. YAML の解釈結果を表示して入力を確認する。
+1. YAML spec から実行する。
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 ```
 
 2. リテラル入力を使う。
@@ -47,6 +47,8 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","MMT,309,C
 ```bash
 pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./result_scan_dump
 ```
+
+> **Note:** `--spec` / `--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
 ## 使用法
 ```bash

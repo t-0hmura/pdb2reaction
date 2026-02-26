@@ -9,7 +9,7 @@
 
 getting_started
 quickstart_all
-quickstart_scan_spec
+quickstart_scan
 quickstart_tsopt_freq
 concepts
 recipes_common_errors
@@ -59,10 +59,9 @@ glossary
 | 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
 | 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
-| 単一構造スキャン（`--spec`） | `pdb2reaction scan` | [クイックスタート: scan + spec](quickstart_scan_spec.md) |
+| 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart_scan.md) |
 | TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart_tsopt_freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
-| `all` 用 YAML テンプレートを生成 | `pdb2reaction init` | [init.md](init.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt.md](opt.md) |
 | 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
@@ -91,7 +90,6 @@ glossary
 ### メインワークフロー
 
 - [`all`](all.md) - **end-to-endワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
-- [`init`](init.md) - `pdb2reaction all` 用 YAML テンプレートを生成
 
 ### CLI サブコマンド
 
@@ -105,13 +103,13 @@ glossary
 | サブコマンド | 説明 |
 |---------|------|
 | [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS / RFO / hybrid + 任意flatten） |
-| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer / RS-I-RFO / hybrid、flatten既定有効） |
+| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer / RS-I-RFO / hybrid、flattenは任意） |
 
 #### 経路探索・最適化
 | サブコマンド | 説明 |
 |---------|------|
-| [`path-opt`](path_opt.md) | GSM または DMF による MEP 最適化 |
-| [`path-search`](path_search.md) | 自動精密化を伴う再帰的 MEP 探索 |
+| [`path-opt`](path_opt.md) | GSM または DMF による 1段階の MEP 最適化 |
+| [`path-search`](path_search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索 |
 
 #### スキャン
 | サブコマンド | 説明 |
@@ -168,7 +166,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 
 ### 単一構造スキャンモード
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --print-parsed
+pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 ```
 
 ### TS 最適化のみ
@@ -182,7 +180,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ## 重要な概念
 
 ### 電荷とスピン
-- 未知残基の電荷を指定するには `--ligand-charge` を使用: `'SAM:1,GPP:-3'`
+- 基質残基の電荷を指定するには `--ligand-charge` を使用: `'SAM:1,GPP:-3'`
 - 総電荷を上書きするには `-q/--charge` を使用
 - スピン多重度は `-m/--multiplicity`（デフォルト: 1）で設定
 
@@ -194,9 +192,6 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ```
 
 ### YAML 設定
-
-```bash
-```
 すべてのオプションについては [YAML リファレンス](yaml_reference.md) を参照してください。
 
 ---
