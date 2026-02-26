@@ -1676,7 +1676,6 @@ def cli(
                 ref_pdb = source_path.resolve() if needs_pdb else None
 
                 if kind == "hybrid":
-                    click.echo("\n====== TS optimization (Hybrid stage-2: RS-I-RFO refinement + flatten loop) started ======\n")
                     geometry = runner.geom
                     geometry.set_calculator(None)
                     calc = uma_pysis(**calc_cfg)
