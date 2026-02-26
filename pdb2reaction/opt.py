@@ -427,7 +427,7 @@ def _flatten_all_imag_modes_for_geom(
     "micro_step",
     default=True,
     show_default=True,
-    help="When --opt-mode heavy, --no-micro-step forces RFO max_micro_cycles=0.",
+    help="When --opt-mode heavy, --no-micro-step forces RFO max_micro_cycles=1.",
 )
 @click.option(
     "--dump/--no-dump",
@@ -594,7 +594,7 @@ def cli(
                 allowed_hint="light|heavy|hybrid",
             )
             if (not bool(micro_step)) and kind == "rfo":
-                rfo_cfg["max_micro_cycles"] = 0
+                rfo_cfg["max_micro_cycles"] = 1
             main_kind = "lbfgs" if kind == "hybrid" else kind
             flatten_kind = "rfo" if kind == "hybrid" else kind
 

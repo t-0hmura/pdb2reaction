@@ -40,7 +40,7 @@ Options:
                                   loop (light: dimer loop, heavy/hybrid: post-
                                   RSIRFO).  [default: no-flatten]
   --micro-step / --no-micro-step  When --opt-mode heavy, --no-micro-step
-                                  forces RSIRFO max_micro_cycles=0.  [default:
+                                  forces RSIRFO max_micro_cycles=1.  [default:
                                   micro-step]
   --opt-mode [light|heavy|hybrid]
                                   light (=Dimer), heavy (=RSIRFO), or hybrid

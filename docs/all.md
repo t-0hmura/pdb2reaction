@@ -192,7 +192,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode-post [light\|heavy\|hybrid]` | Optimizer preset for TSOPT and post-IRC optimization. | `hybrid` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
-| `--micro-step/--no-micro-step` | Forward to `tsopt`; when TSOPT runs in heavy mode, `--no-micro-step` forces `rsirfo.max_micro_cycles=0`. | `True` |
+| `--micro-step/--no-micro-step` | Forward to `tsopt`; when TSOPT runs in heavy mode, `--no-micro-step` forces `rsirfo.max_micro_cycles=1`. | `True` |
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hybrid`).
 

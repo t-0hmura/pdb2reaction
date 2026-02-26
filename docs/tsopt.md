@@ -113,7 +113,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  follow the most negative mode (`root = 0`).
 - **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
  R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
- `--no-micro-step` forces `rsirfo.max_micro_cycles=0` in heavy mode. When `--flatten` is enabled and more than one imaginary mode remains after
+ `--no-micro-step` forces `rsirfo.max_micro_cycles=1` in heavy mode. When `--flatten` is enabled and more than one imaginary mode remains after
  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
  imaginary mode remains or the flatten iteration cap is reached.
 - **Hybrid mode**: runs Dimer first (like light mode) and then runs only the heavy-style RS-I-RFO flatten stage.
@@ -137,7 +137,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to light (dimer loop), heavy (post-RSIRFO), and hybrid (post-dimer RSIRFO stage). | `False` |
-| `--micro-step/--no-micro-step` | In `--opt-mode heavy`, `--no-micro-step` forces `rsirfo.max_micro_cycles=0`. | `True` |
+| `--micro-step/--no-micro-step` | In `--opt-mode heavy`, `--no-micro-step` forces `rsirfo.max_micro_cycles=1`. | `True` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

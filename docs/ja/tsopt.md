@@ -92,7 +92,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
-- **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--no-micro-step` を指定すると heavy モードで `rsirfo.max_micro_cycles=0` を強制します。`--flatten` が有効で収束後も虚数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
+- **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--no-micro-step` を指定すると heavy モードで `rsirfo.max_micro_cycles=1` を強制します。`--flatten` が有効で収束後も虚数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
 - **Hybridモード**: 先にDimerで収束させ、その後はheavy同様にRS-I-RFO flatten段のみを実行します。
 - **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*_trj.xyz` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は、`--dump` のとき入力テンプレート経由で PDB に変換されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされ、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
@@ -111,7 +111,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚数モードフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。light（dimerループ）/heavy（RS-IRFO後）/hybrid（dimer後RS-IRFO段）に適用 | `False` |
-| `--micro-step/--no-micro-step` | `--opt-mode heavy` 時に `--no-micro-step` で `rsirfo.max_micro_cycles=0` を強制 | `True` |
+| `--micro-step/--no-micro-step` | `--opt-mode heavy` 時に `--no-micro-step` で `rsirfo.max_micro_cycles=1` を強制 | `True` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |

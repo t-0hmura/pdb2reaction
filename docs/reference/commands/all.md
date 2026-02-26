@@ -143,7 +143,7 @@ Options:
                                   flatten]
   --micro-step / --no-micro-step  Forward to tsopt: in heavy mode,
                                   --no-micro-step forces RSIRFO
-                                  max_micro_cycles=0.  [default: micro-step]
+                                  max_micro_cycles=1.  [default: micro-step]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to

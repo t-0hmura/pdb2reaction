@@ -94,7 +94,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `light` (LBFGS), `heavy` (RFO), or `hybrid` (LBFGS then flatten-loop RFO restarts). | `light` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flatten loop. | `False` |
-| `--micro-step/--no-micro-step` | In `--opt-mode heavy`, `--no-micro-step` forces `rfo.max_micro_cycles=0`. | `True` |
+| `--micro-step/--no-micro-step` | In `--opt-mode heavy`, `--no-micro-step` forces `rfo.max_micro_cycles=1`. | `True` |
 | `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

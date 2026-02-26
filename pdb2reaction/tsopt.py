@@ -1358,7 +1358,7 @@ def _build_rsirfo_kwargs(
     "micro_step",
     default=True,
     show_default=True,
-    help="When --opt-mode heavy, --no-micro-step forces RSIRFO max_micro_cycles=0.",
+    help="When --opt-mode heavy, --no-micro-step forces RSIRFO max_micro_cycles=1.",
 )
 @click.option(
     "--opt-mode",
@@ -1563,7 +1563,7 @@ def cli(
             allowed_hint="light|heavy|hybrid",
         )
         if (not bool(micro_step)) and kind == "heavy":
-            rsirfo_cfg["max_micro_cycles"] = 0
+            rsirfo_cfg["max_micro_cycles"] = 1
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
         # Pretty-print config summary

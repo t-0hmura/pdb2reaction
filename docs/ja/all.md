@@ -194,7 +194,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--opt-mode-post [light\|heavy\|hybrid]` | TSOPT/IRC後最適化のプリセット | `hybrid` |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `False` |
-| `--micro-step/--no-micro-step` | `tsopt` に転送。TSOPT が heavy モードで動くとき `--no-micro-step` で `rsirfo.max_micro_cycles=0` を強制 | `True` |
+| `--micro-step/--no-micro-step` | `tsopt` に転送。TSOPT が heavy モードで動くとき `--no-micro-step` で `rsirfo.max_micro_cycles=1` を強制 | `True` |
 
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`hybrid`）の順で決まります。
 

@@ -92,7 +92,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | オプティマイザー選択: `light`（LBFGS）、`heavy`（RFO）、`hybrid`（LBFGS後にflatten再最適化をRFO） | `light` |
 | `--flatten/--no-flatten` | 最適化後の虚モードフラット化ループを有効/無効化 | `False` |
-| `--micro-step/--no-micro-step` | `--opt-mode heavy` 時に `--no-micro-step` で `rfo.max_micro_cycles=0` を強制 | `True` |
+| `--micro-step/--no-micro-step` | `--opt-mode heavy` 時に `--no-micro-step` で `rfo.max_micro_cycles=1` を強制 | `True` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |

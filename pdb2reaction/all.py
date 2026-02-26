@@ -1864,7 +1864,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "micro_step",
     default=True,
     show_default=True,
-    help="Forward to tsopt: in heavy mode, --no-micro-step forces RSIRFO max_micro_cycles=0.",
+    help="Forward to tsopt: in heavy mode, --no-micro-step forces RSIRFO max_micro_cycles=1.",
 )
 @click.option(
     "--freq-out-dir",
