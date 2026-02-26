@@ -896,11 +896,11 @@ def _optimize_endpoint_geom(
     thresh: Optional[str],
 ) -> Tuple[Any, Path]:
     """
-    Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
+    Optimize an endpoint geometry using LBFGS/RFO/hybrid with settings mirroring path_search defaults.
 
     Args:
         geom: pysisyphus Geometry with calculator attached.
-        opt_mode_default: "lbfgs"/"light" or "rfo"/"heavy".
+        opt_mode_default: "lbfgs"/"light", "rfo"/"heavy", or "hybrid".
         out_dir: base directory for the optimization outputs.
         tag: tag prefix for the subdirectory.
         dump: whether to dump optimizer trajectory.
@@ -909,40 +909,56 @@ def _optimize_endpoint_geom(
     Returns:
         (optimized_geometry, final_xyz_path)
     """
-    mode = (opt_mode_default or "light").lower()
-    if mode == "light":
-        sopt_kind = "lbfgs"
-        base_cfg = dict(_path_search.LBFGS_KW)
-        OptClass = LBFGS
-    else:
-        sopt_kind = "rfo"
-        base_cfg = dict(_path_search.RFO_KW)
-        OptClass = RFOptimizer
-
-    cfg = dict(base_cfg)
-    opt_dir = out_dir / f"{tag}_{sopt_kind}_opt"
-    ensure_dir(opt_dir)
-    cfg["out_dir"] = str(opt_dir)
-    cfg["dump"] = bool(dump)
-    max_cycles = int(cfg.get("max_cycles", 300))
-    cfg["max_cycles"] = max_cycles
-
     geom.set_calculator(getattr(geom, "calculator", None))
+    mode = (opt_mode_default or "light").lower()
+    if mode in ("light", "lbfgs"):
+        run_sequence = ("lbfgs",)
+    elif mode in ("heavy", "rfo"):
+        run_sequence = ("rfo",)
+    elif mode == "hybrid":
+        run_sequence = ("lbfgs", "rfo")
+    else:
+        run_sequence = ("rfo",)
 
-    if thresh is not None:
-        cfg["thresh"] = str(thresh)
+    final_xyz: Optional[Path] = None
+    for step_idx, sopt_kind in enumerate(run_sequence, start=1):
+        if sopt_kind == "lbfgs":
+            base_cfg = dict(_path_search.LBFGS_KW)
+            OptClass = LBFGS
+        else:
+            base_cfg = dict(_path_search.RFO_KW)
+            OptClass = RFOptimizer
 
-    _echo(f"[endpoint-opt] Optimizing '{tag}' with {sopt_kind.upper()} → {opt_dir}")
-    opt = OptClass(geom, **cfg)
-    try:
-        opt.run()
-    except (OptimizationError, ZeroStepLength) as e:
-        _echo(
-            f"[endpoint-opt] WARNING: optimization for '{tag}' terminated early ({e}); using last geometry.",
-            err=True,
-        )
+        cfg = dict(base_cfg)
+        if len(run_sequence) == 1:
+            opt_dir = out_dir / f"{tag}_{sopt_kind}_opt"
+            label = sopt_kind.upper()
+        else:
+            opt_dir = out_dir / f"{tag}_hybrid_stage{step_idx}_{sopt_kind}_opt"
+            label = f"HYBRID stage-{step_idx} ({sopt_kind.upper()})"
 
-    final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
+        ensure_dir(opt_dir)
+        cfg["out_dir"] = str(opt_dir)
+        cfg["dump"] = bool(dump)
+        cfg["max_cycles"] = int(cfg.get("max_cycles", 300))
+        if thresh is not None:
+            cfg["thresh"] = str(thresh)
+
+        _echo(f"[endpoint-opt] Optimizing '{tag}' with {label} → {opt_dir}")
+        opt = OptClass(geom, **cfg)
+        try:
+            opt.run()
+        except (OptimizationError, ZeroStepLength) as e:
+            _echo(
+                f"[endpoint-opt] WARNING: optimization for '{tag}' terminated early ({e}); using last geometry.",
+                err=True,
+            )
+
+        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
+
+    if final_xyz is None:
+        raise click.ClickException(f"[endpoint-opt] No optimized geometry was produced for '{tag}'.")
+
     g_final = geom_loader(
         final_xyz,
         coord_type=DEFAULT_COORD_TYPE,
