@@ -778,8 +778,13 @@ class HessianOptimizer(Optimizer):
 
         if getattr(self.geometry, "within_partial_hessian", None) is not None:
             use_active = True
-        elif H.shape[0] != self.geometry.cart_coords.size:
+        elif (
+            H.shape[0] != self.geometry.cart_coords.size
+            and self.geometry.coord_type in ("cart", "cartesian", "mwcartesian")
+        ):
             # Partial Hessian without explicit metadata: still use active slicing.
+            # Only applies to Cartesian coordinate types; for internal coordinates
+            # (e.g. DLC), the Hessian is naturally smaller than cart_coords.size.
             use_active = True
         else:
             use_active = (
