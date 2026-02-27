@@ -1101,16 +1101,25 @@ class HessianOptimizer(Optimizer):
         mask[min_ind] = 0
         mask = mask.astype(bool)
         without_min = gradient_trans[mask] / (eigvals[mask] - min_eigval)
-        try:
-            tau = sqrt(self.trust_radius**2 - (without_min**2).sum())
+        tau_sq = self.trust_radius**2 - (without_min**2).sum()
+        if tau_sq >= 0.0:
+            tau = sqrt(tau_sq)
             step_trans = [tau] + (-without_min).tolist()
-        # Hard case. Search in open interval (endpoints not included)
-        # (-min_eigval, inf).
-        except ValueError:
+        else:
+            # Hard case. Search in open interval (endpoints not included)
+            # (-min_eigval, inf).
             bracket = (-min_eigval + 1e-6, BRACKET_END)
-            res = root_search(bracket)
-            if res.converged:
-                return finalize_step(res.root)
+            try:
+                res = root_search(bracket)
+                if res.converged:
+                    return finalize_step(res.root)
+            except ValueError:
+                pass
+            # Fallback: clamp tau to 0 so the step excludes the
+            # minimum-eigenvalue component but remains valid.
+            self.log("Hard case fallback: tau clamped to 0.")
+            tau = 0.0
+            step_trans = [tau] + (-without_min).tolist()
 
         if not transform:
             return step_trans
