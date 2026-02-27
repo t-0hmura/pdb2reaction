@@ -149,7 +149,7 @@ def _build_scan_context(
         opt_mode,
         param="--opt-mode",
         alias_groups=OPT_MODE_ALIASES,
-        allowed_hint="light|heavy",
+        allowed_hint="grad|hess",
     )
 
     freeze: List[int] = []

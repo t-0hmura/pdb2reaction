@@ -11,7 +11,7 @@
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
 - **Caution:** 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
 
-`scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is LBFGS (`--opt-mode light`); switch to `--opt-mode heavy` for RFOptimizer.
+`scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is LBFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -59,7 +59,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 # LBFGS relaxations, dumped inner trajectories, and an HTML isosurface plot
 pdb2reaction scan3d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode light \
+ --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode grad \
  --preopt --baseline min
 
 # Plot only from an existing surface.csv (skip new energy evaluation)
@@ -170,7 +170,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
+| `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |

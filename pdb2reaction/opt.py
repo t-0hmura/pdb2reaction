@@ -4,7 +4,7 @@
 Single-structure geometry optimization using LBFGS or RFO with UMA calculator.
 
 Example:
-    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode light
+    pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess
 
 For detailed documentation, see: docs/opt.md
 """
@@ -305,7 +305,7 @@ def _flatten_all_imag_modes_for_geom(
 # -----------------------------------------------
 
 @click.command(
-    help="Single-structure geometry optimization using LBFGS, RFO, or hybrid LBFGS+RFO(flatten).",
+    help="Single-structure geometry optimization using LBFGS or RFO.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -410,10 +410,10 @@ def _flatten_all_imag_modes_for_geom(
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["light", "heavy", "hybrid"], case_sensitive=False),
-    default="light",
+    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    default="hess",
     show_default=True,
-    help="Optimization mode: 'light' (=LBFGS), 'heavy' (=RFO), or 'hybrid' (=LBFGS then RFO flatten loop).",
+    help="Optimization mode: grad (=LBFGS) or hess (=RFO).",
 )
 @click.option(
     "--flatten/--no-flatten",
@@ -421,13 +421,6 @@ def _flatten_all_imag_modes_for_geom(
     default=False,
     show_default=True,
     help="Enable/disable imaginary-mode flatten loop after optimization.",
-)
-@click.option(
-    "--micro-step/--no-micro-step",
-    "micro_step",
-    default=True,
-    show_default=True,
-    help="When --opt-mode heavy, --no-micro-step forces RFO max_micro_cycles=1.",
 )
 @click.option(
     "--dump/--no-dump",
@@ -491,7 +484,6 @@ def cli(
     max_cycles: int,
     opt_mode: str,
     flatten: bool,
-    micro_step: bool,
     dump: bool,
     out_dir: str,
     thresh: Optional[str],
@@ -586,32 +578,23 @@ def cli(
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
 
             # Normalize and select optimizer kind
-            opt_mode_aliases = tuple(OPT_MODE_ALIASES) + ((("hybrid",), "hybrid"),)
             kind = normalize_choice(
                 opt_mode,
                 param="--opt-mode",
-                alias_groups=opt_mode_aliases,
-                allowed_hint="light|heavy|hybrid",
+                alias_groups=OPT_MODE_ALIASES,
+                allowed_hint="grad|hess",
             )
-            if (not bool(micro_step)) and kind == "rfo":
-                rfo_cfg["max_micro_cycles"] = 1
-            main_kind = "lbfgs" if kind == "hybrid" else kind
-            flatten_kind = "rfo" if kind == "hybrid" else kind
+            main_kind = kind
+            flatten_kind = kind
 
             # Pretty-print the resolved configuration
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
             click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
             click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
-            if kind == "hybrid":
-                echo_lbfgs = strip_inherited_keys(dict(lbfgs_cfg), opt_cfg)
-                echo_rfo = strip_inherited_keys(dict(rfo_cfg), opt_cfg)
-                click.echo(pretty_block("lbfgs_hybrid_stage", echo_lbfgs))
-                click.echo(pretty_block("rfo_hybrid_flatten_stage", echo_rfo))
-            else:
-                echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
-                echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
-                click.echo(pretty_block(kind, echo_sopt))
+            echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
+            echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
+            click.echo(pretty_block(kind, echo_sopt))
             if show_config:
                 click.echo(
                     pretty_block(
@@ -721,31 +704,17 @@ def cli(
             # 4) Run optimization
             # --------------------------
             main_label = "LBFGS" if main_kind == "lbfgs" else "RFO"
-            if kind == "hybrid":
-                main_label = "Hybrid stage-1: LBFGS"
             optimizer = _build_optimizer(main_kind)
             click.echo(f"\n====== Optimization ({main_label}) started ======\n")
             optimizer.run()
             click.echo(f"\n====== Optimization ({main_label}) finished ======\n")
             last_optimizer = optimizer
 
-            if kind == "hybrid":
-                # Before flattening, always run one dedicated RFO refinement stage.
-                geometry.set_calculator(opt_calc)
-                optimizer = _build_optimizer("rfo")
-                click.echo("\n====== Optimization (Hybrid stage-2: RFO refinement) started ======\n")
-                optimizer.run()
-                click.echo("\n====== Optimization (Hybrid stage-2: RFO refinement) finished ======\n")
-                last_optimizer = optimizer
-
             # --------------------------
             # 5) Flatten loop (all imaginary modes)
             # --------------------------
             if flatten:
-                if kind == "hybrid":
-                    click.echo("\n====== Optimization (Hybrid stage-3: flatten loop with RFO) started ======\n")
-                else:
-                    click.echo("\n====== Optimization (Flatten loop) started ======\n")
+                click.echo("\n====== Optimization (Flatten loop) started ======\n")
 
                 geometry.set_calculator(None)
                 uma_kwargs_for_flatten = dict(calc_cfg)
@@ -814,10 +783,7 @@ def cli(
                     )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                if kind == "hybrid":
-                    click.echo("\n====== Optimization (Hybrid stage-3: flatten loop with RFO) finished ======\n")
-                else:
-                    click.echo("\n====== Optimization (Flatten loop) finished ======\n")
+                click.echo("\n====== Optimization (Flatten loop) finished ======\n")
 
             # --------------------------
             # 6) Post-processing: PDB conversions (if input is PDB)

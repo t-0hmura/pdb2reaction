@@ -11,7 +11,7 @@
 - **主な出力:** `surface.csv`、`grid/` 配下の各点の構造、HTML の等値面図（`scan3d_density.html`）。
 - **注意:** 3D グリッドは点数が急激に増加します。まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 
-`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは LBFGS（`--opt-mode light`）で、RFOptimizer が必要な場合は `--opt-mode heavy` を指定してください。
+`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは LBFGS（`--opt-mode grad`）で、RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -49,7 +49,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 # LBFGS、内側軌跡ダンプ、HTML等値面
 pdb2reaction scan3d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode light \
+ --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode grad \
  --preopt --baseline min
 
 # 既存surface.csvからのプロットのみ（スキャンしない）
@@ -127,7 +127,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
+| `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |

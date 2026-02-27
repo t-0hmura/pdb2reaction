@@ -9,7 +9,7 @@
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **既定値:** `--mep-mode gsm`、`--opt-mode light`（LBFGS）、`--preopt`、`--align`、`--thresh gau`。
+- **既定値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`。
 - **次にやること:** HEI は **TS 候補**です。単独では TS 検証になりません。続けて [tsopt](tsopt.md) → [freq](freq.md) → [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は、反応順に並んだ 2 構造以上を入力として連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
@@ -64,7 +64,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
  [--refine-mode {peak|minima}]
  [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
- [--opt-mode light|heavy] [--dump/--no-dump]
+ [--opt-mode grad|hess] [--dump/--no-dump]
  [--out-dir DIR] [--preopt/--no-preopt]
  [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...]
  [--convert-files/--no-convert-files]
@@ -96,7 +96,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 | `--max-nodes INT` | MEPセグメントごとの内部ノード | `10` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
-| `--opt-mode TEXT` | HEI±1/kinkノード用の単一構造オプティマイザー（`light`=LBFGS、`heavy`=RFO） | `light` |
+| `--opt-mode TEXT` | HEI±1/kinkノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO） | `grad` |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）またはDMF（direct flux） | `gsm` |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |

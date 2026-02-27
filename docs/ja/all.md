@@ -59,13 +59,13 @@ pdb2reaction all -i INPUT1 [INPUT2...] -c SUBSTRATE [options]
 # 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
  --ligand-charge 'GPP:-3,MMT:-1' --multiplicity 1 --freeze-links \
- --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
+ --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
  --out-dir ./result_all --tsopt --thermo --dft
 
 # 単一構造段階的スキャン + GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
- --opt-mode heavy --tsopt --thermo --dft
+ --opt-mode hess --tsopt --thermo --dft
 
 # TSOPT のみワークフロー（経路探索なし）
 pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
@@ -96,7 +96,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
  - `--tsopt`: 各HEIポケットでTS 最適化を実行、EulerPC IRCで追跡し、セグメントエネルギーダイアグラムを出力
  - `--thermo`: (R, TS, P) で `freq` を呼び出し振動/熱化学データとUMA Gibbsダイアグラムを取得
  - `--dft`: (R, TS, P) でDFT 一点計算を起動しDFTダイアグラムを構築。`--thermo` と組み合わせるとDFT//UMA Gibbsダイアグラムも生成
-- 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--micro-step/--no-micro-step`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
+- 共有の上書きには `--opt-mode`、`--opt-mode-post`（TSOPT/IRC後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU優先）などが含まれる
  - VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
@@ -172,7 +172,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--max-nodes INT` | MEP内部ノード数 | `10` |
 | `--max-cycles INT` | MEP最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
-| `--opt-mode [light\|heavy]` | 最適化プリセット（light → LBFGS/Dimer、heavy → RFO/RSIRFO） | `light` |
+| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `hess` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `True` |
 | `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
@@ -191,12 +191,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--tsopt/--no-tsopt` | セグメントごとのTS最適化 + IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/Pで振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
-| `--opt-mode-post [light\|heavy\|hybrid]` | TSOPT/IRC後最適化のプリセット | `hybrid` |
+| `--opt-mode-post [grad\|hess]` | TSOPT/IRC後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚数モードのフラット化 | `False` |
-| `--micro-step/--no-micro-step` | `tsopt` に転送。TSOPT が heavy モードで動くとき `--no-micro-step` で `rsirfo.max_micro_cycles=1` を強制 | `True` |
-
-TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`hybrid`）の順で決まります。
+TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT の既定（`hess` → `rsirfo`）の順で決まります。
 
 ### TSOPT 上書き
 

@@ -398,6 +398,9 @@ class uma_pysis(Calculator):
         mode_label: str,
         mode_elapsed_s: float,
         total_elapsed_s: float,
+        vram_base_alloc: Optional[float] = None,
+        vram_base_reserved: Optional[float] = None,
+        vram_total: Optional[float] = None,
     ) -> None:
         if self.print_timing:
             click.echo(f"[HessianTiming] ML Hessian ({mode_label}): {mode_elapsed_s:.2f} s")
@@ -405,15 +408,19 @@ class uma_pysis(Calculator):
 
         if self.print_vram and core.device.type == "cuda":
             dev = core.device
-            alloc = torch.cuda.memory_allocated(device=dev) / 1e9
-            max_alloc = torch.cuda.max_memory_allocated(device=dev) / 1e9
-            reserved = torch.cuda.memory_reserved(device=dev) / 1e9
-            max_reserved = torch.cuda.max_memory_reserved(device=dev) / 1e9
+            torch.cuda.synchronize(device=dev)
+            base_alloc = float(vram_base_alloc or 0.0)
+            base_reserved = float(vram_base_reserved or 0.0)
+            peak_alloc = max(float(torch.cuda.max_memory_allocated(device=dev)) - base_alloc, 0.0) / 1e9
+            peak_reserved_abs = float(torch.cuda.max_memory_reserved(device=dev))
+            peak_reserved = max(peak_reserved_abs - base_reserved, 0.0) / 1e9
+            total_vram = float(vram_total or torch.cuda.get_device_properties(dev).total_memory) / 1e9
+            remaining_vram = max((total_vram * 1e9) - peak_reserved_abs, 0.0) / 1e9
             click.echo(
-                f"[HessianVRAM] allocated={alloc:.3f} GB | "
-                f"max_allocated={max_alloc:.3f} GB | "
-                f"reserved={reserved:.3f} GB | "
-                f"max_reserved={max_reserved:.3f} GB"
+                f"[HessianVRAM] total={total_vram:.3f} GB | "
+                f"peak_allocated={peak_alloc:.3f} GB | "
+                f"peak_reserved={peak_reserved:.3f} GB | "
+                f"remaining={remaining_vram:.3f} GB"
             )
 
     def _au_hessian(self, H: torch.Tensor):
@@ -642,7 +649,14 @@ class uma_pysis(Calculator):
         # Force FD Hessian when predictor.model is not accessible (e.g. workers>1)
         force_fd = (core.parallel_predict or (not core.has_torch_model))
 
+        vram_base_alloc: Optional[float] = None
+        vram_base_reserved: Optional[float] = None
+        vram_total: Optional[float] = None
         if self.print_vram and core.device.type == "cuda":
+            torch.cuda.synchronize(device=core.device)
+            vram_base_alloc = float(torch.cuda.memory_allocated(device=core.device))
+            vram_base_reserved = float(torch.cuda.memory_reserved(device=core.device))
+            vram_total = float(torch.cuda.get_device_properties(core.device).total_memory)
             torch.cuda.reset_peak_memory_stats(device=core.device)
 
         hess_total_start = time.perf_counter()
@@ -703,6 +717,9 @@ class uma_pysis(Calculator):
             mode_label=mode_label,
             mode_elapsed_s=mode_elapsed_s,
             total_elapsed_s=total_elapsed_s,
+            vram_base_alloc=vram_base_alloc,
+            vram_base_reserved=vram_base_reserved,
+            vram_total=vram_total,
         )
         return out
 

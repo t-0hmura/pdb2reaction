@@ -7,11 +7,11 @@
 ### At a glance
 - **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
 - **Input:** One structure + `--spec scan.yaml` (recommended), or one or more `--scan-lists` literals (each literal = one stage).
-- **Defaults:** `--opt-mode light` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump`.
 - **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported.
 
-`pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode light`) or RFOptimizer (`--opt-mode heavy`).
+`pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
@@ -75,7 +75,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
  '[("TYR,285,CA","MMT,309,C10",1.35)]' \
  '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode light \
+ --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
  --preopt --endopt
 
 # Supply multiple stage literals after a single --scan-lists
@@ -201,7 +201,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS, `heavy` → RFOptimizer. | `light` |
+| `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--dump/--no-dump` | Dump concatenated biased trajectories (`scan_trj.xyz`/`scan.pdb`). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |

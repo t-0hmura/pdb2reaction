@@ -155,7 +155,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 最適化後も複数の虚振動数が残る
 
 対処の例:
-- オプティマイザモードを切り替える: `--opt-mode light` (Dimer)、`--opt-mode heavy` (RS-I-RFO)、または `--opt-mode hybrid` (Dimer + RS-I-RFO flatten段)
+- オプティマイザモードを切り替える: `--opt-mode grad` (Dimer) または `--opt-mode hess` (RS-I-RFO)
 - 余分な虚モードのフラット化を有効にする: `--flatten`
 - 最大サイクル数を増やす: `--tsopt-max-cycles 20000`
 - より厳しい収束条件を使う: `--thresh baker` または `--thresh gau_tight`
@@ -191,7 +191,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 ## パフォーマンス / 安定性のヒント
 
-- **VRAM不足**: `--radius` を減らす、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode light`）
+- **VRAM不足**: `--radius` を減らす、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
 - **解析ヘシアンが遅いまたはOOM**: デフォルトの `FiniteDifference` を維持。`--hessian-calc-mode Analytical` は十分なVRAMがある場合のみ使用（500原子以上には16 GB以上推奨）
 - **workers > 1**: HPC で UMA スループットは改善しますが、解析ヘシアンは無効になります
 - **大規模系（1000原子以上）**: より小さなポケット（`--radius 2.5`）を抽出するか、マルチ GPUセットアップで実行を検討

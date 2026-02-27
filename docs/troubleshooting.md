@@ -155,7 +155,7 @@ Symptoms:
 - Multiple imaginary frequencies remain after optimization.
 
 Fixes to try:
-- Switch optimizer modes: `--opt-mode light` (Dimer), `--opt-mode heavy` (RS-I-RFO), or `--opt-mode hybrid` (Dimer + RS-I-RFO flatten stage).
+- Switch optimizer modes: `--opt-mode grad` (Dimer) or `--opt-mode hess` (RS-I-RFO).
 - Enable flattening of extra imaginary modes: `--flatten`.
 - Increase max cycles: `--tsopt-max-cycles 20000`.
 - Use tighter convergence: `--thresh baker` or `--thresh gau_tight`.
@@ -191,7 +191,7 @@ Fixes to try:
 
 ## Performance / stability tips
 
-- **Out of memory (VRAM)**: reduce pocket size (`--radius`), reduce nodes (`--max-nodes`), or use lighter optimizer settings (`--opt-mode light`).
+- **Out of memory (VRAM)**: reduce pocket size (`--radius`), reduce nodes (`--max-nodes`), or use lighter optimizer settings (`--opt-mode grad`).
 - **Analytical Hessian is slow or OOM**: keep the default `FiniteDifference` Hessian. Only use `--hessian-calc-mode Analytical` if you have ample VRAM (16 GB+ recommended for 500+ atoms).
 - **Workers > 1**: improves UMA throughput on HPC, but disables analytical Hessians.
 - **Large systems (1000+ atoms)**: consider extracting a smaller pocket (`--radius 2.5`) or running on multi-GPU setups.

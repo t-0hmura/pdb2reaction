@@ -2,19 +2,18 @@
 
 ## Overview
 
-> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode light`), RS‑I‑RFO (`--opt-mode heavy`, default), or hybrid (`--opt-mode hybrid`: Dimer then RS‑I‑RFO flatten stage). A validated TS should show **exactly one** imaginary frequency; always confirm the mode/connectivity with freq/IRC.
+> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (`--opt-mode hess`, default). A validated TS should show **exactly one** imaginary frequency; always confirm the mode/connectivity with freq/IRC.
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
-- **Modes:** `heavy` = RS‑I‑RFO (default, generally more robust). `light` = Hessian Guided Dimer (often cheaper per step). `hybrid` = Dimer to convergence, then RS‑I‑RFO flatten loop only.
+- **Modes:** `rsirfo` = RS‑I‑RFO (default, generally more robust). `dimer` = Hessian Guided Dimer (often cheaper per step).
 - **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
 - **Optional cleanup:** `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
 
 ### Choosing `--opt-mode`
-- Use **`--opt-mode heavy` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
-- Use **`--opt-mode light` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
-- Use **`--opt-mode hybrid`** when you want Dimer search behavior but heavy-style RS‑I‑RFO flattening.
+- Use **`--opt-mode hess` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
+- Use **`--opt-mode grad` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then validate/optimize the HEI with `tsopt` → `freq` → `irc`.
 
@@ -32,11 +31,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ## Common examples
 
-1. Use light mode with analytical Hessian when VRAM is sufficient.
+1. Use dimer mode with analytical Hessian when VRAM is sufficient.
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
- --opt-mode light --hessian-calc-mode Analytical --out-dir ./result_tsopt_light
+ --opt-mode grad --hessian-calc-mode Analytical --out-dir ./result_tsopt_grad
 ```
 
 2. Keep the optimization trajectory for inspection.
@@ -45,24 +44,24 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --dump --out-dir ./result_tsopt_dump
 ```
 
-3. Run heavy mode with YAML overrides.
+3. Run rsirfo mode with YAML overrides.
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
- --opt-mode heavy --config tsopt.yaml --out-dir ./result_tsopt_heavy
+ --opt-mode hess --config tsopt.yaml --out-dir ./result_tsopt_hess
 ```
 
-4. Run hybrid mode (Dimer + RS-I-RFO flatten stage).
+4. Run rsirfo mode with flattening enabled.
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
- --opt-mode hybrid --flatten --out-dir ./result_tsopt_hybrid
+ --opt-mode hess --flatten --out-dir ./result_tsopt_flatten
 ```
 
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--opt-mode light|heavy|hybrid] [--flatten/--no-flatten] [--micro-step/--no-micro-step] \
+ [--opt-mode grad|hess] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -70,17 +69,17 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numb
 
 ### Examples
 ```bash
-# Recommended baseline: specify charge/multiplicity and pick the light workflow
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --out-dir ./result_tsopt/
+# Recommended baseline: specify charge/multiplicity and use rsirfo
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_tsopt/
 
-# Light mode with YAML overrides, finite-difference Hessian, and freeze-links handling
+# Dimer mode with YAML overrides, finite-difference Hessian, and freeze-links handling
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --freeze-links \
- --opt-mode light --max-cycles 10000 --no-dump \
+ --opt-mode grad --max-cycles 10000 --no-dump \
  --out-dir ./result_tsopt/ --config ./args.yaml \
  --hessian-calc-mode FiniteDifference
 
-# Heavy mode (RS-I-RFO) driven entirely by YAML
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
+# RS-I-RFO mode driven entirely by YAML
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
  --config ./args.yaml --out-dir ./result_tsopt/
 ```
 
@@ -99,7 +98,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  evaluations; both honor active (PHVA) subspaces. UMA may return only the active block when
  frozen atoms are present.
  When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
-- **Light mode details**:
+- **Dimer mode details**:
  - The Hessian Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact
  Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
  eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
@@ -111,13 +110,12 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
  computed for frequency analysis.
  - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
  follow the most negative mode (`root = 0`).
-- **Heavy mode (RS-I-RFO)**: runs the RS-I-RFO optimizer with optional Hessian reference files,
+- **RS-I-RFO mode**: runs the RS-I-RFO optimizer with optional Hessian reference files,
  R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
- `--no-micro-step` forces `rsirfo.max_micro_cycles=1` in heavy mode. When `--flatten` is enabled and more than one imaginary mode remains after
+ When `--flatten` is enabled and more than one imaginary mode remains after
  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
  imaginary mode remains or the flatten iteration cap is reached.
-- **Hybrid mode**: runs Dimer first (like light mode) and then runs only the heavy-style RS-I-RFO flatten stage.
-- **Mode export & conversion**: the converged imaginary mode is always written to `vib/final_imag_mode_*_trj.xyz`
+- **Mode export & conversion**: all detected imaginary modes are written to `vib/final_imag_mode_*_trj.xyz`
  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
  trajectory and final geometry are also converted to PDB via the input template when `--dump`;
  Gaussian templates receive a `.gjf` companion for the final geometry only.
@@ -132,12 +130,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `light` (Dimer), `heavy` (RSIRFO), or `hybrid` (Dimer then RSIRFO flatten stage). | `heavy` |
+| `--opt-mode TEXT` | Choose optimizer: `dimer` (Dimer) or `rsirfo` (RSIRFO). | `rsirfo` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to light (dimer loop), heavy (post-RSIRFO), and hybrid (post-dimer RSIRFO stage). | `False` |
-| `--micro-step/--no-micro-step` | In `--opt-mode heavy`, `--no-micro-step` forces `rsirfo.max_micro_cycles=1`. | `True` |
+| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to dimer (dimer loop) and rsirfo (post-RSIRFO). | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
@@ -151,22 +148,21 @@ out_dir/ (default:./result_tsopt/)
 ├─ final_geometry.xyz # Always written
 ├─ final_geometry.pdb # When the input was PDB (conversion enabled)
 ├─ final_geometry.gjf # When the input was Gaussian (conversion enabled)
-├─ optimization_all_trj.xyz # Light-mode dump when --dump is True
-├─ optimization_all.pdb # Light-mode companion for PDB inputs (conversion enabled, --dump)
-├─ optimization_trj.xyz # Heavy-mode trajectory when --dump is True
-├─ optimization.pdb # Heavy-mode PDB companion when conversion is enabled and --dump is True
+├─ optimization_all_trj.xyz # Dimer-mode dump when --dump is True
+├─ optimization_all.pdb # Dimer-mode companion for PDB inputs (conversion enabled, --dump)
+├─ optimization_trj.xyz # RSIRFO-mode trajectory when --dump is True
+├─ optimization.pdb # RSIRFO-mode PDB companion when conversion is enabled and --dump is True
 ├─ vib/
 │ ├─ final_imag_mode_±XXXX.Xcm-1_trj.xyz
 │ └─ final_imag_mode_±XXXX.Xcm-1.pdb
-└─.dimer_mode.dat # Light-mode orientation seed
+└─.dimer_mode.dat # Dimer-mode orientation seed
 ```
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
- `hessian_dimer.neg_freq_thresh_cm`). The selected `root` determines which imaginary mode is
- exported when multiple remain.
-- Use `--opt-mode` to choose the algorithm workflow directly (`heavy` by default), instead of
+ `hessian_dimer.neg_freq_thresh_cm`). The selected `root` controls the followed TS mode during optimization.
+- Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
  manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
  memory usage and preserving correct active-space eigenvectors.

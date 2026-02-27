@@ -7,11 +7,11 @@
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。
 - **入力:** 1 つの構造 + `--spec scan.yaml`（推奨）または `--scan-lists` の 1 個以上の リテラル（**1 リテラル = 1 ステージ**）。
-- **既定値:** `--opt-mode light`（LBFGS）、`--preopt`、`--endopt`、`--max-step-size 0.20 Å`。
+- **既定値:** `--opt-mode grad`（LBFGS）、`--preopt`、`--endopt`、`--max-step-size 0.20 Å`。
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）。`--dump` なら結合した軌跡も保存。
 - **注意:** 可能な限り `--spec` を使ってください。`--scan-lists` は **Python リテラル**のためクォート/エスケープが必要です。
 
-`pdb2reaction scan` は、UMA 計算機と調和拘束を使った段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで、構造全体を LBFGS（`--opt-mode light`）または RFOptimizer（`--opt-mode heavy`）で緩和します。
+`pdb2reaction scan` は、UMA 計算機と調和拘束を使った段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで、構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
 
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
@@ -66,7 +66,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
  '[("TYR,285,CA","MMT,309,C10",1.35)]' \
  '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode light \
+ --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
  --preopt --endopt
 
 # 単一の --scan-lists の後に複数リテラルを渡す
@@ -161,7 +161,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
+| `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--dump/--no-dump` | バイアス付き軌跡（`scan_trj.xyz`/`scan.pdb`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換は PDB のみ） | `True` |

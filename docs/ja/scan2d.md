@@ -11,7 +11,7 @@
 - **主な出力:** `surface.csv`、`scan2d_map.png`、`scan2d_landscape.html`、および `grid/` 配下の各点の構造。
 - **注意:** `(high − low) / --max-step-size` が大きいと格子点数が急増します。
 
-`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、バイアスなしの UMA エネルギーを記録し可視化用の出力を生成します。LBFGS の代わりに RFOptimizer を使用する場合は `--opt-mode heavy` を指定してください。
+`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、バイアスなしの UMA エネルギーを記録し可視化用の出力を生成します。LBFGS の代わりに RFOptimizer を使用する場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -48,7 +48,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 # LBFGS + 内側軌跡ダンプ + Plotly出力
 pdb2reaction scan2d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode light \
+ --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```
 
@@ -122,7 +122,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `light` → LBFGS、`heavy` → RFOptimizer | `light` |
+| `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--dump/--no-dump` | 外側ループごとの `inner_path_d1_###_trj.xyz` を保存 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |

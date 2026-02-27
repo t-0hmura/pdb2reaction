@@ -2,19 +2,18 @@
 
 ## 概要
 
-> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode light`）、RS‑I‑RFO（`--opt-mode heavy`、デフォルト）、または hybrid（`--opt-mode hybrid`: Dimer後にRS-I-RFO flatten段）で最適化します。妥当な TS では虚振動数が **ちょうど 1 つ**であるべきです。必ず freq/IRC でモードと接続性を確認してください。
+> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS‑I‑RFO（`--opt-mode hess`、デフォルト）で最適化します。妥当な TS では虚振動数が **ちょうど 1 つ**であるべきです。必ず freq/IRC でモードと接続性を確認してください。
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
-- **モード:** `heavy` = RS‑I‑RFO（既定、一般的により堅牢）。`light` = Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。`hybrid` = Dimer収束後にRS-I-RFO flattenループのみ実行。
+- **モード:** `rsirfo` = RS‑I‑RFO（既定、一般的により堅牢）。`dimer` = Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。
 - **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
 - **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
 
 ### `--opt-mode` の選び方
-- **`--opt-mode heavy`（RS‑I‑RFO）**: デフォルト。ヘシアン計算のコストを許容でき、堅牢性を重視する場合に推奨。
-- **`--opt-mode light`（Dimer）**: 軽量な探索を行いたい場合や、複数の TS 初期構造から素早く反復したい場合に有効。
-- **`--opt-mode hybrid`**: Dimer探索を使いつつ、flatten段はheavy同様にRS-I-RFOで回したい場合に有効。
+- **`--opt-mode hess`（RS‑I‑RFO）**: デフォルト。ヘシアン計算のコストを許容でき、堅牢性を重視する場合に推奨。
+- **`--opt-mode grad`（Dimer）**: 軽量な探索を行いたい場合や、複数の TS 初期構造から素早く反復したい場合に有効。
 
 XYZ/GJF 入力では `--ref-pdb` により参照 PDB トポロジーを与え、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換ができます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を得てから `tsopt` → `freq` → `irc` の順で検証してください。
 
@@ -32,11 +31,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ## よくある例
 
-1. VRAM に余裕がある場合に light モード + 解析的ヘシアンで実行する。
+1. VRAM に余裕がある場合に dimer モード + 解析的ヘシアンで実行する。
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
- --opt-mode light --hessian-calc-mode Analytical --out-dir ./result_tsopt_light
+ --opt-mode grad --hessian-calc-mode Analytical --out-dir ./result_tsopt_grad
 ```
 
 2. 最適化軌跡を保存して確認する。
@@ -45,24 +44,24 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --dump --out-dir ./result_tsopt_dump
 ```
 
-3. heavy モードを YAML 上書きと併用する。
+3. rsirfo モードを YAML 上書きと併用する。
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
- --opt-mode heavy --config tsopt.yaml --out-dir ./result_tsopt_heavy
+ --opt-mode hess --config tsopt.yaml --out-dir ./result_tsopt_hess
 ```
 
-4. hybrid モード（Dimer + RS-I-RFO flatten 段）で実行する。
+4. rsirfo モードで flatten を有効化して実行する。
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
- --opt-mode hybrid --flatten --out-dir ./result_tsopt_hybrid
+ --opt-mode hess --flatten --out-dir ./result_tsopt_flatten
 ```
 
 ## 使用法
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--opt-mode light|heavy|hybrid] [--flatten/--no-flatten] [--micro-step/--no-micro-step] \
+ [--opt-mode grad|hess] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -70,17 +69,17 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numb
 
 ### 例
 ```bash
-# 推奨ベースライン: 電荷/多重度を指定しlightワークフローを選択
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode light --out-dir ./result_tsopt/
+# 推奨ベースライン: 電荷/多重度を指定し rsirfo を使う
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_tsopt/
 
-# YAML 上書き、有限差分ヘシアン、freeze-links処理を伴うlightモード
+# YAML 上書き、有限差分ヘシアン、freeze-links処理を伴う dimer モード
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --freeze-links \
- --opt-mode light --max-cycles 10000 --no-dump \
+ --opt-mode grad --max-cycles 10000 --no-dump \
  --out-dir ./result_tsopt/ --config ./args.yaml \
  --hessian-calc-mode FiniteDifference
 
-# YAMLのみで駆動されるheavyモード（RS-I-RFO）
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
+# YAMLのみで駆動される rsirfo モード（RS-I-RFO）
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
  --config ./args.yaml --out-dir ./result_tsopt/
 ```
 
@@ -88,13 +87,12 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 - **電荷/スピン解決**: 入力が `.gjf` の場合、電荷と多重度はテンプレート値を継承。`-q` が省略され `--ligand-charge` が与えられている場合、構造は酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で `extract.py` の電荷サマリーから総電荷を導出。明示的な `-q` は常に優先されます。テンプレートや導出が適用されない場合は `-q/--charge` が必須で、多重度は省略時 `1` です。
 - **構造ロード & freeze-links**: 構造は `pysisyphus.helpers.geom_loader` を介して読み込まれます。PDB 入力では `--freeze-links` がリンク水素を検出して親原子を凍結し、`geom.freeze_atoms` にマージしてログに表示します。凍結原子はUMAの `calc.freeze_atoms` にも伝播します。
 - **UMAヘシアン**: `--hessian-calc-mode` は解析的評価と有限差分評価を切り替えます。凍結原子がある場合、UMA は活性ブロックのみを返すことがあります。VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨します。
-- **Lightモード詳細**:
+- **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚数モードが1つになったら最終的な正確ヘシアンで周波数解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
-- **Heavyモード（RS-I-RFO）**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--no-micro-step` を指定すると heavy モードで `rsirfo.max_micro_cycles=1` を強制します。`--flatten` が有効で収束後も虚数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
-- **Hybridモード**: 先にDimerで収束させ、その後はheavy同様にRS-I-RFO flatten段のみを実行します。
-- **モード出力 & 変換**: 収束した虚数モードは常に `vib/final_imag_mode_*_trj.xyz` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は、`--dump` のとき入力テンプレート経由で PDB に変換されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされ、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
+- **RS-I-RFOモード**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚数モードが1つになるか上限に達するまで繰り返します。
+- **モード出力 & 変換**: 検出された虚数モードはすべて `vib/final_imag_mode_*_trj.xyz` に書き出され、PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は、`--dump` のとき入力テンプレート経由で PDB に変換されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされ、Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -106,12 +104,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode heavy \
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
 | `--max-cycles INT` | `opt.max_cycles` に転送されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | `light`（Dimer）、`heavy`（RSIRFO）、`hybrid`（Dimer後にRSIRFO flatten段） | `heavy` |
+| `--opt-mode TEXT` | `dimer`（Dimer）または `rsirfo`（RSIRFO） | `rsirfo` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚数モードフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。light（dimerループ）/heavy（RS-IRFO後）/hybrid（dimer後RS-IRFO段）に適用 | `False` |
-| `--micro-step/--no-micro-step` | `--opt-mode heavy` 時に `--no-micro-step` で `rsirfo.max_micro_cycles=1` を強制 | `True` |
+| `--flatten/--no-flatten` | 余分な虚数モードフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。dimer（dimerループ）/rsirfo（RS-IRFO後）に適用 | `False` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -125,19 +122,19 @@ out_dir/ (デフォルト:./result_tsopt/)
 ├─ final_geometry.xyz # 常に書き込み
 ├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
 ├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）
-├─ optimization_all_trj.xyz # --dumpがTrueのときのLightモードダンプ
-├─ optimization_all.pdb # PDB 入力のLightモードPDB コンパニオン（変換有効時、--dump）
-├─ optimization_trj.xyz # --dumpがTrueのときのHeavyモード軌跡
-├─ optimization.pdb # HeavyモードPDB コンパニオン（変換有効時、--dump）
+├─ optimization_all_trj.xyz # --dumpがTrueのときの dimer モードダンプ
+├─ optimization_all.pdb # PDB 入力の dimer モードPDB コンパニオン（変換有効時、--dump）
+├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
+├─ optimization.pdb # rsirfo モードPDB コンパニオン（変換有効時、--dump）
 ├─ vib/
 │ ├─ final_imag_mode_±XXXX.Xcm-1_trj.xyz
 │ └─ final_imag_mode_±XXXX.Xcm-1.pdb
-└─.dimer_mode.dat # Lightモード方向シード
+└─.dimer_mode.dat # dimer モード方向シード
 ```
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- `--opt-mode` のエイリアスは上記のワークフローに対応します。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください（デフォルト: `heavy`）。
+- `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - 虚数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で設定可能）。複数残る場合は `root` がどの虚数モードを出力するかに影響します。
 - 設定マージ優先順位は `defaults < config < 明示 CLI < override` です。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。

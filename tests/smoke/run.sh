@@ -35,7 +35,7 @@ pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r
 
 # TS input tests - test17 keeps --tsopt/--thermo for verification
 pdb2reaction -i ts.pdb -q 0 --out-dir 'test17' --tsopt True --thermo True > test17.out 2>&1
-pdb2reaction -i ts.pdb -q 0 --out-dir 'test18' --tsopt True --opt-mode light > test18.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --out-dir 'test18' --tsopt True --opt-mode grad > test18.out 2>&1
 pdb2reaction -i ts.gjf --out-dir 'test19' --tsopt True > test19.out 2>&1
 
 # Additional subcommand tests
@@ -44,8 +44,7 @@ pdb2reaction freq -i r.pdb -q -1 --out-dir 'test21' > test21.out 2>&1
 pdb2reaction tsopt -i ts.pdb -q 0 --out-dir 'test22' > test22.out 2>&1
 
 # TSOPT for complex systems
-pdb2reaction -i ts_complex.pdb -q -1 --out-dir 'test23' --tsopt True --opt-mode heavy > test23.out 2>&1
-pdb2reaction -i ts_complex.pdb -q -1 --out-dir 'test24' --tsopt True --opt-mode light > test24.out 2>&1
-pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test25' --opt-mode light > test25.out 2>&1
-pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test26' --opt-mode hybrid > test26.out 2>&1
-pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test27' --opt-mode hybrid --no-micro-step > test27.out 2>&1
+pdb2reaction -i ts_complex.pdb -q -1 --out-dir 'test23' --tsopt True --opt-mode hess > test23.out 2>&1
+pdb2reaction -i ts_complex.pdb -q -1 --out-dir 'test24' --tsopt True --opt-mode grad > test24.out 2>&1
+pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test25' --opt-mode grad > test25.out 2>&1
+pdb2reaction tsopt -i ts_complex.pdb -q -1 --out-dir 'test26' --opt-mode hess > test26.out 2>&1

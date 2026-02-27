@@ -40,6 +40,7 @@ from .defaults import (
     UMA_CALC_KW,
     LBFGS_KW,
     RFO_KW,
+    OPT_MODE_ALIASES,
     DMF_KW,
     GS_KW,
     STOPT_KW,
@@ -59,6 +60,7 @@ from .utils import (
     resolve_charge_spin,
     load_prepared_geometries,
     write_xyz_trj_with_energy,
+    normalize_choice,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
@@ -420,10 +422,10 @@ def _optimize_single(
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    default="grad",
     show_default=True,
-    help="Single-structure optimizer for endpoint preoptimization: light (=LBFGS) or heavy (=RFO).",
+    help="Single-structure optimizer for endpoint preoptimization: grad (=LBFGS) or hess (=RFO).",
 )
 @click.option(
     "--dump/--no-dump",
@@ -650,16 +652,19 @@ def cli(
         opt_cfg["align"] = False
         opt_cfg["stop_in_when_full"] = int(opt_cfg.get("max_cycles", STOPT_KW["max_cycles"]))
 
-        opt_kind = opt_mode.strip().lower()
+        opt_kind = normalize_choice(
+            opt_mode,
+            param="--opt-mode",
+            alias_groups=OPT_MODE_ALIASES,
+            allowed_hint="grad|hess",
+        )
         mep_mode_kind = mep_mode.strip().lower()
-        if opt_kind == "light":
+        if opt_kind == "lbfgs":
             sopt_kind = "lbfgs"
             sopt_cfg = lbfgs_cfg
-        elif opt_kind == "heavy":
+        else:
             sopt_kind = "rfo"
             sopt_cfg = rfo_cfg
-        else:
-            raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
 
         sopt_cfg = dict(sopt_cfg)
         preopt_max_cycles_effective = int(sopt_cfg.get("max_cycles", preopt_max_cycles))
@@ -712,7 +717,7 @@ def cli(
                         "input_endpoints": [str(p) for p in input_paths],
                         "output_dir": str(out_dir_path),
                         "mep_mode": mep_mode_kind,
-                        "opt_mode": opt_kind,
+                        "opt_mode": ("grad" if opt_kind == "lbfgs" else "hess"),
                         "preopt": bool(preopt),
                         "preopt_max_cycles": int(preopt_max_cycles_effective),
                         "freeze_links": bool(freeze_links_flag),

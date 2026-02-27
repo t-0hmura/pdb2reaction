@@ -896,11 +896,11 @@ def _optimize_endpoint_geom(
     thresh: Optional[str],
 ) -> Tuple[Any, Path]:
     """
-    Optimize an endpoint geometry using LBFGS/RFO/hybrid with settings mirroring path_search defaults.
+    Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
 
     Args:
         geom: pysisyphus Geometry with calculator attached.
-        opt_mode_default: "lbfgs"/"light", "rfo"/"heavy", or "hybrid".
+        opt_mode_default: "grad"/"lbfgs"/"dimer" or "hess"/"rfo"/"rsirfo".
         out_dir: base directory for the optimization outputs.
         tag: tag prefix for the subdirectory.
         dump: whether to dump optimizer trajectory.
@@ -910,18 +910,16 @@ def _optimize_endpoint_geom(
         (optimized_geometry, final_xyz_path)
     """
     geom.set_calculator(getattr(geom, "calculator", None))
-    mode = (opt_mode_default or "light").lower()
-    if mode in ("light", "lbfgs"):
+    mode = (opt_mode_default or "hess").lower()
+    if mode in ("grad", "lbfgs", "dimer"):
         run_sequence = ("lbfgs",)
-    elif mode in ("heavy", "rfo"):
+    elif mode in ("hess", "rfo", "rsirfo"):
         run_sequence = ("rfo",)
-    elif mode == "hybrid":
-        run_sequence = ("lbfgs", "rfo")
     else:
         run_sequence = ("rfo",)
 
     final_xyz: Optional[Path] = None
-    for step_idx, sopt_kind in enumerate(run_sequence, start=1):
+    for sopt_kind in run_sequence:
         if sopt_kind == "lbfgs":
             base_cfg = dict(_path_search.LBFGS_KW)
             OptClass = LBFGS
@@ -930,12 +928,8 @@ def _optimize_endpoint_geom(
             OptClass = RFOptimizer
 
         cfg = dict(base_cfg)
-        if len(run_sequence) == 1:
-            opt_dir = out_dir / f"{tag}_{sopt_kind}_opt"
-            label = sopt_kind.upper()
-        else:
-            opt_dir = out_dir / f"{tag}_hybrid_stage{step_idx}_{sopt_kind}_opt"
-            label = f"HYBRID stage-{step_idx} ({sopt_kind.upper()})"
+        opt_dir = out_dir / f"{tag}_{sopt_kind}_opt"
+        label = sopt_kind.upper()
 
         ensure_dir(opt_dir)
         cfg["out_dir"] = str(opt_dir)
@@ -1197,6 +1191,11 @@ def _run_tsopt_on_hei(
         freeze_use = freeze_links
 
     opt_mode = overrides.get("opt_mode", opt_mode_default)
+    tsopt_mode = None if opt_mode is None else str(opt_mode).strip().lower()
+    if tsopt_mode in ("grad", "lbfgs", "dimer"):
+        tsopt_mode = "grad"
+    elif tsopt_mode in ("hess", "rfo", "rsirfo"):
+        tsopt_mode = "hess"
 
     ts_args: List[str] = [
         "-i",
@@ -1211,14 +1210,13 @@ def _run_tsopt_on_hei(
     _append_toggle_arg(ts_args, "--freeze-links", bool(freeze_use))
     _append_toggle_arg(ts_args, "--convert-files", bool(convert_files))
 
-    if opt_mode is not None:
-        ts_args.extend(["--opt-mode", str(opt_mode)])
+    if tsopt_mode is not None:
+        ts_args.extend(["--opt-mode", tsopt_mode])
 
     _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
     _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
     _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
     _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
-    _append_toggle_arg(ts_args, "--micro-step", overrides.get("micro_step"))
 
     hess_mode = overrides.get("hessian_calc_mode")
     if hess_mode:
@@ -1719,22 +1717,22 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    default="hess",
     show_default=True,
     help=(
         "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "
-        "light (=LBFGS/Dimer) or heavy (=RFO/RSIRFO)."
+        "grad (=LBFGS/Dimer) or hess (=RFO/RSIRFO)."
     ),
 )
 @click.option(
     "--opt-mode-post",
-    type=click.Choice(["light", "heavy", "hybrid"], case_sensitive=False),
-    default="hybrid",
+    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    default="hess",
     show_default=True,
     help=(
         "Optimizer mode override for TSOPT/post-IRC endpoint optimizations. "
-        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hybrid')."
+        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hess')."
     ),
 )
 @click.option(
@@ -1873,14 +1871,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "flatten",
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in tsopt (light: dimer loop, heavy/hybrid: post-RSIRFO); --no-flatten forces flatten_max_iter=0.",
-)
-@click.option(
-    "--micro-step/--no-micro-step",
-    "micro_step",
-    default=True,
-    show_default=True,
-    help="Forward to tsopt: in heavy mode, --no-micro-step forces RSIRFO max_micro_cycles=1.",
+    help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RSIRFO); --no-flatten forces flatten_max_iter=0.",
 )
 @click.option(
     "--freq-out-dir",
@@ -2082,7 +2073,6 @@ def cli(
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
     flatten: bool,
-    micro_step: bool,
     freq_out_dir: Optional[Path],
     freq_max_write: Optional[int],
     freq_amplitude_ang: Optional[float],
@@ -2119,15 +2109,11 @@ def cli(
     energy_diagrams: List[Dict[str, Any]] = []
 
     dump_override_requested = False
-    micro_step_override_requested = False
     try:
         dump_source = ctx.get_parameter_source("dump")
         dump_override_requested = dump_source not in (None, ParameterSource.DEFAULT)
-        micro_step_source = ctx.get_parameter_source("micro_step")
-        micro_step_override_requested = micro_step_source not in (None, ParameterSource.DEFAULT)
     except Exception:
         dump_override_requested = False
-        micro_step_override_requested = False
 
     config_yaml, override_yaml, _ = _resolve_yaml_sources(config_yaml=config_yaml)
     args_yaml, merged_yaml_cfg = _build_effective_args_yaml(
@@ -2146,6 +2132,21 @@ def cli(
     except Exception:
         opt_mode_set = False
         opt_mode_post_set = False
+
+    _mode_alias = {
+        "grad": "grad",
+        "hess": "hess",
+        "lbfgs": "grad",
+        "rfo": "hess",
+        "dimer": "grad",
+        "rsirfo": "hess",
+    }
+    opt_mode_norm = _mode_alias.get(str(opt_mode).strip().lower(), "hess")
+    opt_mode_post_norm = (
+        None
+        if opt_mode_post is None
+        else _mode_alias.get(str(opt_mode_post).strip().lower(), "hess")
+    )
 
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
@@ -2175,12 +2176,12 @@ def cli(
         )
 
     tsopt_opt_mode_default: Optional[str] = None
-    if opt_mode_post_set and opt_mode_post is not None:
-        tsopt_opt_mode_default = opt_mode_post.lower()
+    if opt_mode_post_set and opt_mode_post_norm is not None:
+        tsopt_opt_mode_default = opt_mode_post_norm
     elif opt_mode_set:
-        tsopt_opt_mode_default = opt_mode.lower()
+        tsopt_opt_mode_default = opt_mode_norm
     else:
-        tsopt_opt_mode_default = "hybrid"
+        tsopt_opt_mode_default = "hess"
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)
@@ -2193,8 +2194,6 @@ def cli(
     if thresh_post is not None:
         tsopt_overrides["thresh"] = str(thresh_post)
     tsopt_overrides["flatten"] = bool(flatten)
-    if micro_step_override_requested:
-        tsopt_overrides["micro_step"] = bool(micro_step)
 
     freq_overrides: Dict[str, Any] = {}
     if freq_max_write is not None:
@@ -2244,7 +2243,6 @@ def cli(
                 "opt_mode": str(opt_mode),
                 "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
                 "dump": bool(dump),
-                "micro_step": bool(micro_step),
                 "convert_files": bool(convert_files),
                 "refine_path": bool(refine_path),
                 "preopt": bool(preopt),
@@ -3033,7 +3031,7 @@ def cli(
         scan_endopt_use = True if scan_endopt_override is None else bool(
             scan_endopt_override
         )
-        scan_opt_mode_use = opt_mode.lower()
+        scan_opt_mode_use = opt_mode_norm
 
         scan_args: List[str] = [
             "-i",
@@ -3176,7 +3174,7 @@ def cli(
                 "--max-cycles",
                 str(int(max_cycles)),
                 "--opt-mode",
-                str(opt_mode),
+                str(opt_mode_norm),
                 "--out-dir",
                 str(seg_dir),
             ]
@@ -3492,7 +3490,7 @@ def cli(
         ps_args.extend(["--max-nodes", str(int(max_nodes))])
         ps_args.extend(["--max-cycles", str(int(max_cycles))])
         _append_toggle_arg(ps_args, "--climb", bool(climb))
-        ps_args.extend(["--opt-mode", str(opt_mode.lower())])
+        ps_args.extend(["--opt-mode", str(opt_mode_norm)])
         _append_toggle_arg(ps_args, "--dump", bool(dump))
         if thresh is not None:
             ps_args.extend(["--thresh", str(thresh)])

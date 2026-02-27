@@ -303,7 +303,7 @@ def cli(
                 opt_mode,
                 param="--opt-mode",
                 alias_groups=OPT_MODE_ALIASES,
-                allowed_hint="light|heavy",
+                allowed_hint="grad|hess",
             )
 
             # Resolve freeze list before logging so printed config matches runtime.

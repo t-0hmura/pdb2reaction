@@ -45,6 +45,7 @@ from .defaults import (
     OPT_BASE_KW,
     LBFGS_KW,
     RFO_KW,
+    OPT_MODE_ALIASES,
     DMF_KW,
     GS_KW,
     STOPT_KW,
@@ -78,6 +79,7 @@ from .utils import (
     set_freeze_atoms_or_warn,
     YamlLiteralStr,
     load_prepared_geometries,
+    normalize_choice,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
@@ -1677,10 +1679,10 @@ def _merge_final_and_write(final_images: List[Any],
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["light", "heavy"], case_sensitive=False),
-    default="light",
+    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    default="grad",
     show_default=True,
-    help="Single-structure optimizer: light (=LBFGS) or heavy (=RFO).",
+    help="Single-structure optimizer: grad (=LBFGS) or hess (=RFO).",
 )
 @click.option(
     "--dump/--no-dump",
@@ -2005,15 +2007,18 @@ def cli(
                 raise click.BadParameter(f"Unknown --refine-mode '{refine_mode_kind}'.")
         search_cfg["refine_mode"] = refine_mode_kind
 
-        opt_kind = opt_mode.strip().lower()
-        if opt_kind == "light":
+        opt_kind = normalize_choice(
+            opt_mode,
+            param="--opt-mode",
+            alias_groups=OPT_MODE_ALIASES,
+            allowed_hint="grad|hess",
+        )
+        if opt_kind == "lbfgs":
             sopt_kind = "lbfgs"
             sopt_cfg = lbfgs_cfg
-        elif opt_kind == "heavy":
+        else:
             sopt_kind = "rfo"
             sopt_cfg = rfo_cfg
-        else:
-            raise click.BadParameter(f"Unknown --opt-mode '{opt_mode}'.")
 
         opt_cfg["stop_in_when_full"] = int(opt_cfg.get("max_cycles", STOPT_KW["max_cycles"]))
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
@@ -2065,7 +2070,7 @@ def cli(
                         "output_dir": str(out_dir_path),
                         "mep_mode": mep_mode_kind,
                         "refine_mode": refine_mode_kind,
-                        "opt_mode": opt_kind,
+                        "opt_mode": ("grad" if opt_kind == "lbfgs" else "hess"),
                         "preopt": bool(preopt),
                         "align": bool(align),
                         "freeze_links": bool(freeze_links_flag),

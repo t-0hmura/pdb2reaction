@@ -282,7 +282,7 @@ sopt:
 
 ### `hessian_dimer`
 
-Hessian Guided Dimer TS optimization settings (tsopt --opt-mode light).
+Hessian Guided Dimer TS optimization settings (tsopt --opt-mode grad).
 
 ```yaml
 hessian_dimer:
@@ -328,7 +328,7 @@ hessian_dimer:
 
 ### `rsirfo`
 
-RS-I-RFO TS optimization settings (tsopt --opt-mode heavy).
+RS-I-RFO TS optimization settings (tsopt --opt-mode hess).
 
 ```yaml
 rsirfo:

@@ -24,10 +24,10 @@
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
-| **L-BFGS** | Limited-memory BFGS | 勾配履歴からヘシアンを近似する準ニュートン法。`--opt-mode light` で使用。 |
-| **RFO** | Rational Function Optimization | 明示的なヘシアン情報を使用する信頼領域最適化法。`--opt-mode heavy` で使用。 |
+| **L-BFGS** | Limited-memory BFGS | 勾配履歴からヘシアンを近似する準ニュートン法。`opt --opt-mode grad` で使用。 |
+| **RFO** | Rational Function Optimization | 明示的なヘシアン情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用。 |
 | **RS-I-RFO** | Restricted-Step Image-RFO | 1つの負固有値方向に沿う、鞍点（TS）最適化用の RFO 変種。 |
-| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`--opt-mode light` の TSOPT で使用。 |
+| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。 |
 
 ---
 

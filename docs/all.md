@@ -61,13 +61,13 @@ For help output, `pdb2reaction all --help` shows core options and `pdb2reaction 
 # Multi-structure ensemble with explicit ligand charges and post-processing
 pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
  --ligand-charge 'GPP:-3,MMT:-1' --multiplicity 1 --freeze-links \
- --max-nodes 10 --max-cycles 100 --climb --opt-mode light \
+ --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
  --out-dir ./result_all --tsopt --thermo --dft
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
- --opt-mode heavy --tsopt --thermo --dft
+ --opt-mode hess --tsopt --thermo --dft
 
 # TSOPT-only workflow (no path search)
 pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
@@ -97,7 +97,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
  - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
-- Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--micro-step/--no-micro-step`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
+- Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
  - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
 
 6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
@@ -170,7 +170,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--max-nodes INT` | MEP internal nodes per segment. | `10` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
-| `--opt-mode [light\|heavy]` | Optimizer preset (light → LBFGS/Dimer, heavy → RFO/RSIRFO). | `light` |
+| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `hess` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `True` |
 | `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
@@ -189,12 +189,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 | `--tsopt/--no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
 | `--thermo/--no-thermo` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
 | `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
-| `--opt-mode-post [light\|heavy\|hybrid]` | Optimizer preset for TSOPT and post-IRC optimization. | `hybrid` |
+| `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
-| `--micro-step/--no-micro-step` | Forward to `tsopt`; when TSOPT runs in heavy mode, `--no-micro-step` forces `rsirfo.max_micro_cycles=1`. | `True` |
 
-TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hybrid`).
+TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`).
 
 ### TSOPT Overrides
 
