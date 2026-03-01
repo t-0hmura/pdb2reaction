@@ -278,7 +278,7 @@ def _gather_extract_variadic(
 )
 @click.option(
     "--exclude-backbone/--no-exclude-backbone",
-    default=True, show_default=True,
+    default=False, show_default=True,
     help="Delete main-chain atoms from non-substrate amino acids.",
 )
 @click.option(
