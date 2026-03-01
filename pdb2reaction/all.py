@@ -80,23 +80,41 @@ from .utils import (
     set_freeze_atoms_or_warn,
 )
 
-_log_started = False
+class _EchoState:
+    """Encapsulate CLI output state for section-spacing logic.
+
+    Replaces the previous module-level ``_log_started`` global so that state
+    is scoped to a single CLI invocation and is easier to test.
+    """
+
+    def __init__(self) -> None:
+        self._started = False
+
+    def reset(self) -> None:
+        self._started = False
+
+    def echo(self, *args, **kwargs) -> None:
+        click.echo(*args, **kwargs)
+        self._started = True
+
+    def section(self, message: str, **kwargs) -> None:
+        if self._started:
+            click.echo()
+        click.echo(message, **kwargs)
+        self._started = True
+
+
+_echo_state = _EchoState()
 
 
 def _echo(*args, **kwargs) -> None:
-    """Echo with local output tracking for section spacing."""
-    global _log_started
-    click.echo(*args, **kwargs)
-    _log_started = True
+    """Echo with output tracking for section spacing."""
+    _echo_state.echo(*args, **kwargs)
 
 
 def _echo_section(message: str, **kwargs) -> None:
     """Echo a section header with a leading blank line unless it's the first log."""
-    global _log_started
-    if _log_started:
-        click.echo()
-    click.echo(message, **kwargs)
-    _log_started = True
+    _echo_state.section(message, **kwargs)
 from . import scan as _scan_cli
 from .add_elem_info import assign_elements as _assign_elem_info
 from .fix_altloc import has_altloc as _has_altloc, fix_altloc_file as _fix_altloc
@@ -187,6 +205,43 @@ def _run_cli_main(
     finally:
         sys.argv = saved
         _echo("\n")
+
+
+class CliArgBuilder:
+    """Fluent builder for constructing CLI argument lists.
+
+    Consolidates the previous ``_append_cli_arg`` / ``_append_toggle_arg``
+    free functions into a single reusable utility.
+    """
+
+    def __init__(self, initial: Sequence[str] = ()) -> None:
+        self._args: List[str] = list(initial)
+
+    # -- mutating helpers --------------------------------------------------
+
+    def value(self, flag: str, val: Any | None) -> "CliArgBuilder":
+        """Append ``flag val`` when *val* is not ``None``."""
+        if val is None:
+            return self
+        if isinstance(val, bool):
+            self._args.extend([flag, "True" if val else "False"])
+        else:
+            self._args.extend([flag, str(val)])
+        return self
+
+    def toggle(self, flag: str, val: bool | None) -> "CliArgBuilder":
+        """Append ``--flag`` or ``--no-flag`` when *val* is not ``None``."""
+        if val is None:
+            return self
+        if not flag.startswith("--"):
+            raise ValueError(f"Toggle flag must start with '--': {flag}")
+        base = flag if not flag.startswith("--no-") else f"--{flag[5:]}"
+        neg = f"--no-{base[2:]}"
+        self._args.append(base if bool(val) else neg)
+        return self
+
+    def build(self) -> List[str]:
+        return list(self._args)
 
 
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
@@ -2099,10 +2154,9 @@ def cli(
     a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
-    global _log_started
     argv_all = sys.argv[1:]
 
-    _log_started = False
+    _echo_state.reset()
     set_convert_file_enabled(convert_files)
     command_str = " ".join(sys.argv)
     time_start = time.perf_counter()

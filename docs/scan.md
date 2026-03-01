@@ -10,6 +10,7 @@
 - **Defaults:** `--opt-mode grad` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump`.
 - **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported.
+- **`--spec` vs `--scan-lists`:** Use `--spec` (YAML/JSON file) for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Use `--scan-lists` (inline Python literal) when you have a simple single-stage scan and want a quick one-liner.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 
@@ -196,7 +197,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. *
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `--spec FILE` | YAML/JSON scan spec with `stages`; optional `one_based`. | Recommended |
 | `--scan-lists TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
-| `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. | `True` |
+| `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--spec`/`--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |

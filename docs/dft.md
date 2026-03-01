@@ -7,9 +7,11 @@
 `pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 The backend is controlled by `--engine`:
-- `gpu` (default): Uses GPU4PySCF. **Raises an error if GPU is unavailable.**
-- `cpu`: Forces CPU PySCF.
-- `auto` (recommended for portability): Attempts GPU4PySCF first, falls back to CPU PySCF if GPU is unavailable.
+- `gpu` (default): Uses GPU4PySCF. **Raises an error if GPU is unavailable.** Best for production runs on GPU-equipped nodes where you want to guarantee GPU acceleration.
+- `cpu`: Forces CPU PySCF. Use when no GPU is available or when you need deterministic CPU-only execution (e.g., portability or debugging).
+- `auto` (recommended for portability): Attempts GPU4PySCF first, falls back to CPU PySCF if GPU is unavailable. Ideal for scripts that may run on heterogeneous hardware.
+
+> **Note:** The default basis `def2-tzvpd` is a triple-zeta diffuse-augmented set and is computationally expensive for large systems. Consider a smaller basis (e.g., `6-31g**` or `def2-svp`) for exploratory calculations.
 
 In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 

@@ -195,6 +195,8 @@ pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`).
 
+Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization and RS-I-RFO for TS refinement.
+
 ### TSOPT Overrides
 
 | Option | Description | Default |

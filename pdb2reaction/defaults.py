@@ -7,7 +7,94 @@ All default dictionaries are defined here to avoid redundant definitions across 
 Modules should import defaults from here instead of defining local copies.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
+from typing_extensions import TypedDict
+
+
+# ---------------------------------------------------------------------------
+# TypedDict definitions for core configuration dictionaries.
+#
+# These serve as *documentation* and enable IDE autocompletion / mypy
+# checking.  The actual module-level constants remain ``Dict[str, Any]``
+# because they are merged with user YAML via ``deep_update`` at runtime,
+# which may introduce arbitrary extra keys.
+# ---------------------------------------------------------------------------
+
+class GeomKW(TypedDict, total=False):
+    coord_type: str
+    freeze_atoms: List[int]
+
+
+class CalcKW(TypedDict, total=False):
+    charge: int
+    spin: int
+    model: str
+    task_name: str
+    device: str
+    max_neigh: Optional[int]
+    radius: Optional[float]
+    r_edges: bool
+    workers: int
+    workers_per_node: int
+    hessian_calc_mode: str
+    out_hess_torch: bool
+    hessian_double: bool
+    print_timing: bool
+    print_vram: bool
+    return_partial_hessian: bool
+    freeze_atoms: Optional[List[int]]
+
+
+class OptBaseKW(TypedDict, total=False):
+    thresh: str
+    max_cycles: int
+    print_every: int
+    min_step_norm: float
+    assert_min_step: bool
+    rms_force: Optional[float]
+    rms_force_only: bool
+    max_force_only: bool
+    force_only: bool
+    converge_to_geom_rms_thresh: float
+    overachieve_factor: float
+    check_eigval_structure: bool
+    line_search: bool
+    dump: bool
+    dump_restart: bool
+    prefix: str
+    out_dir: str
+
+
+class IrcKW(TypedDict, total=False):
+    step_length: float
+    max_cycles: int
+    downhill: bool
+    forward: bool
+    backward: bool
+    root: int
+    hessian_init: str
+    displ: str
+    displ_energy: float
+    displ_length: float
+    rms_grad_thresh: float
+    hard_rms_grad_thresh: Optional[float]
+    energy_thresh: float
+    imag_below: float
+    force_inflection: bool
+    check_bonds: bool
+    out_dir: str
+    prefix: str
+    hessian_update: str
+    hessian_recalc: Optional[int]
+    max_pred_steps: int
+    loose_cycles: int
+    corr_func: str
+
+
+class ThermoKW(TypedDict, total=False):
+    temperature: float
+    pressure_atm: float
+    dump: bool
 
 # -----------------------------------------------
 # Output directory defaults

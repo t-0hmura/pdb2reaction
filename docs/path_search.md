@@ -89,7 +89,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 | `--ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links/--no-freeze-links` | When loading PDB pockets, freeze the parent atoms of link hydrogens. | `True` |
+| `--freeze-links/--no-freeze-links` | When loading PDB pockets, freeze the parent atoms of link hydrogens. See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
@@ -111,6 +111,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 ## Workflow
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
 2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
+   > **Default:** When `--refine-mode` is omitted, it defaults to `peak` for GSM and `minima` for DMF.
 3. **Decide between kink vs. refinement**:
  - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
  - Otherwise, launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.

@@ -549,7 +549,7 @@ def cli(
             # --------------------------
             try:
                 from pyscf import gto
-            except Exception as e:
+            except (ModuleNotFoundError, ImportError) as e:
                 click.echo(f"ERROR: PySCF import failed: {e}", err=True)
                 sys.exit(2)
 

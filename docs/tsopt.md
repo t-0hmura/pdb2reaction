@@ -15,6 +15,8 @@
 - Use **`--opt-mode hess` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
 - Use **`--opt-mode grad` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
 
+> **Naming note:** The CLI accepts `grad` (= Dimer) and `hess` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
+
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then validate/optimize the HEI with `tsopt` → `freq` → `irc`.
 
 ## Minimal example
@@ -128,13 +130,13 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
+| `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `dimer` (Dimer) or `rsirfo` (RSIRFO). | `rsirfo` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). Applies to dimer (dimer loop) and rsirfo (post-RSIRFO). | `False` |
+| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). After TS optimization converges, iteratively flattens negative-eigenvalue modes of the Hessian until only one imaginary mode remains (or the iteration cap is reached). Applies to dimer (dimer loop) and rsirfo (post-RSIRFO). | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

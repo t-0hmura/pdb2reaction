@@ -98,8 +98,8 @@ def run_cli(
             )
             sys.exit(2)
         if opt_exc is not None and isinstance(e, opt_exc):
-            msg = opt_msg or "ERROR: Optimization failed - {e}"
-            click.echo(msg.format(e=e), err=True)
+            msg = opt_msg or "ERROR: Optimization failed - {exc}"
+            click.echo(msg.format(exc=e), err=True)
             sys.exit(3)
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo(

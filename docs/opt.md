@@ -69,6 +69,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 
 ## Workflow
 - **Optimizers**: `--opt-mode grad` → L-BFGS; `--opt-mode hess` (default) → RFOptimizer.
+  > **Naming note:** The CLI accepts `grad` (= LBFGS) and `hess` (= RFO, default). In YAML, use `lbfgs` or `rfo` directly.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)` where `target_A` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted. Always pass the physically correct values explicitly.
@@ -90,7 +91,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_A)` tuples for harmonic restraints. | _None_ |
 | `--one-based/--zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `True` |
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
-| `--freeze-links/--no-freeze-links` | Toggle link-hydrogen parent freezing (PDB inputs only). | `True` |
+| `--freeze-links/--no-freeze-links` | Toggle link-hydrogen parent freezing (PDB inputs only). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Choose optimizer: `lbfgs` (LBFGS) or `rfo` (RFO). | `rfo` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flatten loop. | `False` |

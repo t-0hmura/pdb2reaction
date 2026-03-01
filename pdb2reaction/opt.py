@@ -24,8 +24,6 @@ import torch
 import yaml
 import time
 from click.core import ParameterSource
-from ase.data import atomic_masses
-
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -59,6 +57,7 @@ from .utils import (
 from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 from .freq import (
     _torch_device,
+    _safe_masses_amu,
     _calc_full_hessian_torch,
     _frequencies_cm_and_modes,
     _calc_energy,
@@ -721,7 +720,7 @@ def cli(
                 uma_kwargs_for_flatten["out_hess_torch"] = True
                 device = _torch_device(calc_cfg.get("device", "auto"))
                 freeze_idx = list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
-                masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
+                masses_amu = _safe_masses_amu(geometry.atomic_numbers)
 
                 def _attach_opt_calc() -> None:
                     geometry.set_calculator(opt_calc)

@@ -39,7 +39,11 @@ pdb2reaction all --help # core options only
 pdb2reaction all --help-advanced # full option list
 ```
 
-Multiple commands follow the same progressive-help pattern (`--help` for core options, `--help-advanced` for the full list): `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, and `fix-altloc`.
+The following subcommands support progressive help (`--help` for core options, `--help-advanced` for the full list):
+
+`all`, `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`.
+
+`init` has only a single help level (`--help`).
 
 ---
 
@@ -200,6 +204,8 @@ Default output directories:
 - `path-opt`: `./result_path_opt/`
 - `path-search`: `./result_path_search/`
 - `scan`: `./result_scan/`
+- `scan2d`: `./result_scan2d/`
+- `scan3d`: `./result_scan3d/`
 - `freq`: `./result_freq/`
 - `irc`: `./result_irc/`
 - `dft`: `./result_dft/`

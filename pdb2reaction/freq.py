@@ -53,6 +53,17 @@ from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_
 _link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
+def _safe_masses_amu(atomic_numbers: Sequence[int]) -> np.ndarray:
+    """Look up atomic masses with a clear error for unknown atomic numbers."""
+    max_z = len(atomic_masses) - 1
+    bad = [z for z in atomic_numbers if z < 0 or z > max_z or atomic_masses[z] == 0.0]
+    if bad:
+        raise ValueError(
+            f"Unknown or unsupported atomic number(s): {sorted(set(bad))}. "
+            "Check that all elements in the input structure are valid."
+        )
+    return np.array([atomic_masses[z] for z in atomic_numbers])
+
 
 def _torch_device(auto: str = "auto") -> torch.device:
     if auto == "auto":
@@ -201,7 +212,7 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
             H = H.to(dtype=torch.float64)
         Z = np.array(atomic_numbers, dtype=int)
         N = int(len(Z))
-        masses_amu = np.array([atomic_masses[z] for z in Z])
+        masses_amu = _safe_masses_amu(Z)
         masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=H.dtype, device=device)
         coords_bohr_t = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H.dtype, device=device)
 
@@ -762,7 +773,7 @@ def cli(
     geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
     # Masses (AU tensor for TR projection & MW->Cart conversion)
-    masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
+    masses_amu = _safe_masses_amu(geometry.atomic_numbers)
     masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=torch.float32)
     device = _torch_device(calc_cfg.get("device", "auto"))
     masses_au_t = masses_au_t.to(device=device)

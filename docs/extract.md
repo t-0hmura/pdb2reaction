@@ -98,7 +98,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | --- | --- | --- |
 | `-i, --input PATH...` | One or more protein–ligand PDB files (identical atom ordering required). | Required |
 | `-c, --center SPEC` | Substrate specification (PDB path, residue IDs, or residue names). | Required |
-| `-o, --output PATH...` | Pocket PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
+| `-o, --output PATH...` | Pocket PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. With 1 `-o` and multiple inputs, creates a single multi-MODEL PDB. With N `-o` values matching N inputs, creates N separate PDBs. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion. | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally 0.001 Å when zero) |
 | `--include-H2O/--no-include-H2O` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `True` |

@@ -27,7 +27,6 @@ import torch
 from click.core import ParameterSource
 from ase import Atoms
 from ase.io import write
-from ase.data import atomic_masses
 import ase.units as units
 import yaml
 import time
@@ -72,6 +71,7 @@ from .utils import (
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 from .freq import (
     _torch_device,
+    _safe_masses_amu,
     _tr_orthonormal_basis,
     _mass_weighted_hessian,
     _calc_full_hessian_torch,
@@ -785,7 +785,7 @@ class HessianDimer:
         gkw = dict(geom_kwargs or {})
         coord_type = gkw.pop("coord_type", GEOM_KW_DEFAULT["coord_type"])
         self.geom = geom_loader(fn, coord_type=coord_type, **gkw)
-        self.masses_amu = np.array([atomic_masses[z] for z in self.geom.atomic_numbers])
+        self.masses_amu = _safe_masses_amu(self.geom.atomic_numbers)
         self.masses_au_t = torch.as_tensor(self.masses_amu * AMU2AU, dtype=torch.float32)
 
         # Preserve freeze list (for PHVA)
@@ -1815,7 +1815,7 @@ def cli(
                 flatten_max_iter = int(simple_cfg.get("flatten_max_iter", 0))
                 if flatten_max_iter > 0 and n_imag > 1:
                     click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
-                    masses_amu = np.array([atomic_masses[z] for z in geometry.atomic_numbers])
+                    masses_amu = _safe_masses_amu(geometry.atomic_numbers)
                     roots = rsirfo_kwargs.get("roots", [0])
                     main_root = int(roots[0]) if roots else 0
                     for it in range(flatten_max_iter):
@@ -1892,7 +1892,7 @@ def cli(
                         freqs_cm,
                         modes,
                         neg_freq_thresh_cm,
-                        [atomic_masses[z] for z in geometry.atomic_numbers],
+                        _safe_masses_amu(geometry.atomic_numbers).tolist(),
                         vib_dir,
                         prepared_input=prepared_input,
                         ref_pdb=ref_pdb_mode,

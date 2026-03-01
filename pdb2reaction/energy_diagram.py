@@ -11,7 +11,6 @@ Examples:
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
 from typing import List, Sequence
 
@@ -33,64 +32,6 @@ def _normalize_image_path(path: Path) -> Path:
             )
         return p
     return p.with_suffix(".png")
-
-
-def _collect_flag_values(
-    argv: Sequence[str],
-    names: Sequence[str],
-    stop_flags: Sequence[str],
-) -> List[str]:
-    vals: List[str] = []
-    names_set = set(names)
-    stop_set = set(stop_flags)
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok in names_set:
-            j = i + 1
-            while j < len(argv) and argv[j] not in stop_set:
-                vals.append(argv[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return vals
-
-
-def _collect_inputs(default_values: Sequence[str]) -> List[str]:
-    argv = list(sys.argv[1:])
-    stop_flags = (
-        "-i",
-        "--input",
-        "-o",
-        "--output",
-        "--label-x",
-        "--label-y",
-        "-h",
-        "--help",
-    )
-    raw = _collect_flag_values(argv, ("-i", "--input"), stop_flags)
-    if raw:
-        return raw
-    return list(default_values)
-
-
-def _collect_label_x(default_values: Sequence[str]) -> List[str]:
-    argv = list(sys.argv[1:])
-    stop_flags = (
-        "-i",
-        "--input",
-        "-o",
-        "--output",
-        "--label-x",
-        "--label-y",
-        "-h",
-        "--help",
-    )
-    raw = _collect_flag_values(argv, ("--label-x",), stop_flags)
-    if raw:
-        return raw
-    return list(default_values)
 
 
 def _flatten_numeric_token(token: str) -> List[float]:
@@ -167,6 +108,40 @@ def _parse_label_x(tokens: Sequence[str]) -> List[str]:
     return [str(x) for x in labels if str(x).strip()]
 
 
+def _gather_variadic_values(
+    ctx_args: List[str],
+    flag_names: Sequence[str],
+    all_flags: Sequence[str],
+) -> List[str]:
+    """Collect variadic positional values after *flag_names* from Click extra args.
+
+    Stops at the next recognised flag or end-of-args.
+    """
+    names_set = set(flag_names)
+    stop_set = set(all_flags)
+    vals: List[str] = []
+    i = 0
+    while i < len(ctx_args):
+        tok = ctx_args[i]
+        if tok in names_set:
+            j = i + 1
+            while j < len(ctx_args) and ctx_args[j] not in stop_set:
+                vals.append(ctx_args[j])
+                j += 1
+            i = j
+        else:
+            i += 1
+    return vals
+
+
+_ALL_FLAGS = (
+    "-i", "--input",
+    "-o", "--output",
+    "--label-x", "--label-y",
+    "-h", "--help", "--help-advanced",
+)
+
+
 @click.command(
     name="energy-diagram",
     help=(
@@ -219,16 +194,29 @@ def _parse_label_x(tokens: Sequence[str]) -> List[str]:
     show_default=True,
     help="Y-axis label.",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_values: Sequence[str],
     output_path: Path,
     label_x: Sequence[str],
     label_y: str,
 ) -> None:
-    input_tokens = _collect_inputs(input_values)
+    # Click with ignore_unknown_options may not capture all variadic
+    # positional values after -i / --label-x.  Re-parse from ctx.args
+    # (the extra args Click could not match) to recover them.
+    extra_inputs = _gather_variadic_values(
+        ctx.args, ("-i", "--input"), _ALL_FLAGS,
+    )
+    input_tokens = list(input_values) + extra_inputs if extra_inputs else list(input_values)
+
+    extra_labels = _gather_variadic_values(
+        ctx.args, ("--label-x",), _ALL_FLAGS,
+    )
+    label_tokens = list(label_x) + extra_labels if extra_labels else list(label_x)
+
     energies = _parse_numeric_inputs(input_tokens)
 
-    label_tokens = _collect_label_x(label_x)
     labels = _parse_label_x(label_tokens)
     if labels:
         if len(labels) != len(energies):

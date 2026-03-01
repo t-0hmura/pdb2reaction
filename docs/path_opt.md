@@ -13,6 +13,8 @@
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [freq](freq.md) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
 
+> **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want a single-pass MEP without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
+
 UMA provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
 
 
@@ -87,7 +89,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs (or XYZ/GJF when `--ref-pdb` is supplied). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
-| `--freeze-links/--no-freeze-links` | PDB-only: freeze link-H parents (merged with YAML). | `True` |
+| `--freeze-links/--no-freeze-links` | PDB-only: freeze link-H parents (merged with YAML). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`opt.max_cycles`). | `300` |
