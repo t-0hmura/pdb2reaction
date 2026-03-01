@@ -1773,7 +1773,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @click.option(
     "--opt-mode",
     type=click.Choice(["grad", "hess"], case_sensitive=False),
-    default="hess",
+    default="grad",
     show_default=True,
     help=(
         "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "

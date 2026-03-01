@@ -410,7 +410,7 @@ def _flatten_all_imag_modes_for_geom(
 @click.option(
     "--opt-mode",
     type=click.Choice(["grad", "hess"], case_sensitive=False),
-    default="hess",
+    default="grad",
     show_default=True,
     help="Optimization mode: grad (=LBFGS) or hess (=RFO).",
 )
