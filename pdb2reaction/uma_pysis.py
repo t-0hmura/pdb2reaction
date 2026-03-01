@@ -420,7 +420,7 @@ class uma_pysis(Calculator):
                 f"[HessianVRAM] total={total_vram:.3f} GB | "
                 f"peak_allocated={peak_alloc:.3f} GB | "
                 f"peak_reserved={peak_reserved:.3f} GB | "
-                f"remaining={remaining_vram:.3f} GB"
+                f"remaining={remaining_vram:.3f} GB\n"
             )
 
     def _au_hessian(self, H: torch.Tensor):
