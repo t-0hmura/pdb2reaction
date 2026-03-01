@@ -59,10 +59,19 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numbe
 
 ### 例
 ```bash
-# 単一ステージの最小例
+# 推奨: YAML/JSON spec
+cat > scan.yaml << 'YAML'
+one_based: true
+stages:
+ - [["TYR,285,CA", "MMT,309,C10", 1.35]]
+ - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+YAML
+pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml
+
+# 代替: Python リテラル
 pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
 
-# 2ステージ、LBFGS緩和、軌跡ダンプ
+# 2 ステージ、LBFGS 緩和、軌跡ダンプ
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
  '[("TYR,285,CA","MMT,309,C10",1.35)]' \
  '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
@@ -74,6 +83,21 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
  '[("TYR,285,CA","MMT,309,C10",1.35)]' \
  '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
 ```
+
+## `--spec` の書式（推奨）
+
+`--spec` は、ルートがマッピングの YAML/JSON を受け付けます:
+
+```yaml
+one_based: true # 任意。未指定時は CLI の --one-based を使用
+stages:
+ - [[1, 5, 1.35]]
+ - [[1, 5, 2.20], [2, 8, 1.80]]
+```
+
+- `stages` は必須です。
+- 各ステージは `(i, j, target_Å)` 三つ組のリストです。
+- インデックスは整数または PDB セレクタのどちらでも指定できます（`--scan-lists` と同じ）。
 
 ## `--scan-lists` の書式
 
@@ -140,7 +164,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 ## ワークフロー
 1. `geom_loader` で構造を読み込み、CLI の上書き値・埋め込み Gaussian テンプレート（存在する場合）・デフォルト値から電荷とスピンを解決します。`-q` が省略され `--ligand-charge` が与えられている場合は、入力を酵素--基質複合体として扱います。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
-3. `--scan-lists` で与えられた各ステージリテラルについて `(i, j)` を解析・正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
+3. `--spec`（推奨）または `--scan-lists` からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
  各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最小化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。

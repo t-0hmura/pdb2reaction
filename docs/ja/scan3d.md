@@ -42,11 +42,21 @@ pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [--ligand-charge <n
 
 ### 例
 ```bash
-# 3距離の最小スキャン
+# 推奨: YAML/JSON spec
+cat > scan3d.yaml << 'YAML'
+one_based: true
+pairs:
+ - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
+ - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
+ - ["TYR,285,CG", "MMT,309,C12", 1.10, 3.00]
+YAML
+pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml
+
+# 代替: Python リテラル
 pdb2reaction scan3d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]'
 
-# LBFGS、内側軌跡ダンプ、HTML等値面
+# LBFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット
 pdb2reaction scan3d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20),("TYR,285,CG","MMT,309,C12",1.10,3.00)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode grad \
@@ -55,6 +65,20 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 # 既存surface.csvからのプロットのみ（スキャンしない）
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
+
+## `--spec` の書式（推奨）
+
+```yaml
+one_based: true # 任意。未指定時は CLI の --one-based を使用
+pairs:
+ - [1, 5, 1.30, 3.10]
+ - [2, 8, 1.20, 3.20]
+ - [3, 12, 1.10, 3.00]
+```
+
+- `pairs` は必須で、ちょうど 3 つの四つ組を含む必要があります。
+- 各四つ組は `(i, j, low_Å, high_Å)` です。
+- インデックスは整数または PDB セレクタのどちらでも指定できます（`--scan-lists` と同じ）。
 
 ## `--scan-lists` の書式
 
@@ -106,7 +130,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ## ワークフロー
 1. `geom_loader` で構造を読み込み、CLI または Gaussian テンプレートから電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` が与えられている場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で `extract.py` の電荷サマリーから総電荷を導出します。
-2. 単一の `--scan-lists` リテラル（デフォルト 1 始まり、`--zero-based` で 0 始まり）を 3 つの四つ組に解析します。PDB 入力では、各原子指定に整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です。`h = --max-step-size` で各距離の線形グリッドを生成し、開始距離に近い値が先に走査されるよう並べ替えます。
+2. `--spec`（推奨）または `--scan-lists`（デフォルト 1 始まり、`--zero-based` で 0 始まり）を 3 つの四つ組に解析します。PDB 入力では、各原子指定に整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です。`h = --max-step-size` で各距離の線形グリッドを生成し、開始距離に近い値が先に走査されるよう並べ替えます。
 3. 外側ループで `d1[i]` を走査し、**d₁ 拘束のみ**を適用して緩和します。近い d₁ 値の既存構造から開始します。
 4. 中間ループで `d2[j]` を走査し、**d₁ + d₂ 拘束**を適用して緩和します。近い (d₁, d₂) の構造から開始します。
 5. 内側ループで `d3[k]` を走査し、**3 つの拘束すべて**を適用して緩和します。バイアスを除去したエネルギーを測定し、構造と収束フラグを書き出します。

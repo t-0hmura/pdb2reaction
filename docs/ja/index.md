@@ -57,13 +57,14 @@ glossary
 
 ## ドキュメント案内
 
-- [**はじめに**](getting_started.md) - クイックスタートと概要
-- [**インストール**](installation.md) - セットアップと依存関係
-- [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
-- [**典型エラー別レシピ**](recipes_common_errors.md) - 症状別の最短対処ルート
-- [**CLI 規約**](cli_conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
-- [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
-- [**システム要件**](#システム要件) - 必要なハードウェア・ソフトウェア
+| トピック | ページ |
+|-------|------|
+| **はじめに** | [はじめに](getting_started.md) |
+| **インストール** | [インストール](installation.md) |
+| **主要概念とワークフロー概要** | [概念とワークフロー](concepts.md) |
+| **症状起点の切り分け導線** | [典型エラー別レシピ](recipes_common_errors.md) |
+| **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
+| **CLI 規約と入力要件** | [CLI 規約](cli_conventions.md) |
 
 ---
 
@@ -89,36 +90,39 @@ glossary
 
 ---
 
-### CLI サブコマンド
-### メインワークフロー
-- [`all`](all.md) - **end-to-endワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
+## CLI サブコマンド
 
-#### 構造準備
+### メインワークフロー
+| サブコマンド | 説明 |
+|---------|------|
+| [`all`](all.md) | end-to-end ワークフロー: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT |
+
+### 構造準備
 | サブコマンド | 説明 |
 |---------|------|
 | [`extract`](extract.md) | タンパク質-リガンド複合体から活性部位ポケット（クラスターモデル）を抽出 |
 | [`add-elem-info`](add_elem_info.md) | PDB の元素カラム（77–78）を修復 |
 
-#### 構造最適化
+### 構造最適化
 | サブコマンド | 説明 |
 |---------|------|
 | [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS / RFO + 任意flatten） |
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer / RS-I-RFO、flattenは任意） |
 
-#### 経路探索・最適化
+### 経路探索・最適化
 | サブコマンド | 説明 |
 |---------|------|
 | [`path-opt`](path_opt.md) | GSM または DMF による 1段階の MEP 最適化 |
 | [`path-search`](path_search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索 |
 
-#### スキャン
+### スキャン
 | サブコマンド | 説明 |
 |---------|------|
 | [`scan`](scan.md) | 拘束付き 1D 結合長スキャン |
 | [`scan2d`](scan2d.md) | 2D 距離グリッドスキャン |
 | [`scan3d`](scan3d.md) | 3D 距離グリッドスキャン |
 
-#### 解析・後処理
+### 解析・後処理
 | サブコマンド | 説明 |
 |---------|------|
 | [`irc`](irc.md) | 固有反応座標（IRC）計算 |
@@ -127,13 +131,17 @@ glossary
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
 | [`energy-diagram`](energy_diagram.md) | 数値入力から状態エネルギーダイアグラムを作成 |
 
-### 設定・リファレンス
+---
 
-- [**CLI コマンドリファレンス**](../reference/commands/index.md)
-- [**YAML スキーマ**](../reference/yaml.md)
-- [**YAML リファレンス**](yaml_reference.md) - 全サブコマンドの YAML 設定オプション
-- [**UMA 計算機**](uma_pysis.md) - UMA 機械学習ポテンシャル設定
-- [**用語集**](glossary.md) - 略語と技術用語の定義
+## 設定・リファレンス
+
+| トピック | ページ |
+|-------|------|
+| **CLI コマンドリファレンス** | [Command Reference](../reference/commands/index.md) |
+| **YAML スキーマ** | [YAML Schema](../reference/yaml.md) |
+| **YAML 設定オプション** | [YAML リファレンス](yaml_reference.md) |
+| **UMA 計算機設定** | [UMA 計算機](uma_pysis.md) |
+| **用語** | [用語集](glossary.md) |
 
 ---
 

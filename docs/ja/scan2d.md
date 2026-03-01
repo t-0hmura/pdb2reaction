@@ -41,16 +41,38 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <num
 
 ### 例
 ```bash
-# 2距離の最小スキャン
+# 推奨: YAML/JSON spec
+cat > scan2d.yaml << 'YAML'
+one_based: true
+pairs:
+ - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
+ - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
+YAML
+pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml
+
+# 代替: Python リテラル
 pdb2reaction scan2d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
 
-# LBFGS + 内側軌跡ダンプ + Plotly出力
+# LBFGS、内側軌跡ダンプ、Plotly 出力
 pdb2reaction scan2d -i input.pdb -q 0 \
  --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```
+
+## `--spec` の書式（推奨）
+
+```yaml
+one_based: true # 任意。未指定時は CLI の --one-based を使用
+pairs:
+ - [1, 5, 1.30, 3.10]
+ - [2, 8, 1.20, 3.20]
+```
+
+- `pairs` は必須で、ちょうど 2 つの四つ組を含む必要があります。
+- 各四つ組は `(i, j, low_Å, high_Å)` です。
+- インデックスは整数または PDB セレクタのどちらでも指定できます（`--scan-lists` と同じ）。
 
 ## `--scan-lists` の書式
 
@@ -102,7 +124,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ## ワークフロー
 1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_i###_j###.*` に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
-2. 単一の `--scan-lists` リテラルを 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
+2. `--spec`（推奨）または `--scan-lists` を 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
 4. 各 `(i, j)` について、`<out-dir>/grid/point_i###_j###.xyz` に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した UMA エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz` として保存されます。
 5. すべての点を走査したら、`<out-dir>/surface.csv` を作成します。`--baseline {min|first}` で kcal/mol の基準を設定します。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
