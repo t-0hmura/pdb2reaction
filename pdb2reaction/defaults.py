@@ -202,7 +202,7 @@ RFO_KW: Dict[str, Any] = {
     "max_energy_incr": None,
     "hessian_update": "bfgs",
     "hessian_init": "calc",
-    "hessian_recalc": 200,
+    "hessian_recalc": 500,
     "hessian_recalc_adapt": None,
     "small_eigval_thresh": 1e-8,
     "alpha0": 1.0,

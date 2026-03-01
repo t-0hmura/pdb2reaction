@@ -403,8 +403,7 @@ class uma_pysis(Calculator):
         vram_total: Optional[float] = None,
     ) -> None:
         if self.print_timing:
-            click.echo(f"[HessianTiming] ML Hessian ({mode_label}): {mode_elapsed_s:.2f} s")
-            click.echo(f"[HessianTiming] Hessian total (incl. assembly): {total_elapsed_s:.2f} s")
+            click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed_s:.2f} s")
 
         if self.print_vram and core.device.type == "cuda":
             dev = core.device
