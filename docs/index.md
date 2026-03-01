@@ -101,14 +101,14 @@ ja/index
 | First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart_all.md) |
 | Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart_scan.md) |
 | TS validation (`tsopt` -> `freq`) | `pdb2reaction tsopt`, `pdb2reaction freq` | [Quickstart: tsopt -> freq](quickstart_tsopt_freq.md) |
-| Run complete reaction path search from PDB | `pdb2reaction all` | [all.md](all.md) |
-| Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract.md](extract.md) |
-| Optimize a single structure | `pdb2reaction opt` | [opt.md](opt.md) |
-| Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
-| Search for minimum energy path | `pdb2reaction path-search` | [path_search.md](path_search.md) |
-| Run IRC from a transition state | `pdb2reaction irc` | [irc.md](irc.md) |
-| Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
-| Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy_diagram.md](energy_diagram.md) |
+| Run complete reaction path search from PDB | `pdb2reaction all` | [all](all.md) |
+| Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
+| Optimize a single structure | `pdb2reaction opt` | [opt](opt.md) |
+| Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
+| Search for minimum energy path | `pdb2reaction path-search` | [path_search](path_search.md) |
+| Run IRC from a transition state | `pdb2reaction irc` | [irc](irc.md) |
+| Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
+| Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy_diagram](energy_diagram.md) |
 | Diagnose failures by symptom | — | [Common Error Recipes](recipes_common_errors.md) |
 | Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |

@@ -62,14 +62,14 @@ glossary
 | 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
 | 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart_scan.md) |
 | TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart_tsopt_freq.md) |
-| PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all.md](all.md) |
-| タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract.md](extract.md) |
-| 単一構造を最適化 | `pdb2reaction opt` | [opt.md](opt.md) |
-| 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt.md](tsopt.md) |
-| 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search.md](path_search.md) |
-| 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc.md](irc.md) |
-| エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig.md](trj2fig.md) |
-| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy_diagram.md](energy_diagram.md) |
+| PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
+| タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract](extract.md) |
+| 単一構造を最適化 | `pdb2reaction opt` | [opt](opt.md) |
+| 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
+| 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search](path_search.md) |
+| 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc](irc.md) |
+| エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
+| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy_diagram](energy_diagram.md) |
 | 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes_common_errors.md) |
 | 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
