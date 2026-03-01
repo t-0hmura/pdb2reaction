@@ -94,6 +94,19 @@ ja/index
 
 ---
 
+## Documentation Guide
+
+| Topic | Page |
+|-------|------|
+| **Getting Started** | [Getting Started](getting_started.md) |
+| **Installation** | [Installation](installation.md) |
+| **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
+| **Symptom-first failure routing** | [Common Error Recipes](recipes_common_errors.md) |
+| **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
+| **CLI conventions & input requirements** | [CLI Conventions](cli_conventions.md) |
+
+---
+
 ## Quick Start by Goal
 
 | Objectives | Command | Guide |
@@ -113,19 +126,6 @@ ja/index
 | Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
-
----
-
-## Documentation Guide
-
-| Topic | Page |
-|-------|------|
-| **Getting Started** | [Getting Started](getting_started.md) |
-| **Installation** | [Installation](installation.md) |
-| **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
-| **Symptom-first failure routing** | [Common Error Recipes](recipes_common_errors.md) |
-| **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
-| **CLI conventions & input requirements** | [CLI Conventions](cli_conventions.md) |
 
 ---
 
@@ -252,13 +252,13 @@ result_all/
 ├── summary.yaml # Machine-readable summary
 ├── pockets/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
-├── path_search/ # MEP trajectories and diagrams
+├─┬ path_search/ # MEP trajectories and diagrams
 │ ├── mep_trj.xyz # MEP trajectory
 │ ├── mep.pdb # MEP in PDB format
 │ ├── mep_w_ref.pdb # MEP merged with full system
 │ ├── mep_plot.png # Energy profile plot
 │ └── seg_*/ # Per-segment details
-└── path_search/post_seg_*/ # Post-processing outputs
+└┬─ path_search/post_seg_*/ # Post-processing outputs
  ├── tsopt/ # TS optimization results
  ├── irc/ # IRC trajectories
  ├── freq/ # Vibrational modes

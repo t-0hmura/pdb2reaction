@@ -55,6 +55,18 @@ glossary
 
 ---
 
+## ドキュメント案内
+
+- [**はじめに**](getting_started.md) - クイックスタートと概要
+- [**インストール**](installation.md) - セットアップと依存関係
+- [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
+- [**典型エラー別レシピ**](recipes_common_errors.md) - 症状別の最短対処ルート
+- [**CLI 規約**](cli_conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
+- [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
+- [**システム要件**](#システム要件) - 必要なハードウェア・ソフトウェア
+
+---
+
 ## 目的別ガイド
 
 | 目的 | 推奨コマンド | ガイド |
@@ -77,23 +89,9 @@ glossary
 
 ---
 
-## ドキュメント案内
-
-### はじめに
-
-- [**はじめに**](getting_started.md) - クイックスタートと概要
-- [**インストール**](installation.md) - セットアップと依存関係
-- [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
-- [**典型エラー別レシピ**](recipes_common_errors.md) - 症状別の最短対処ルート
-- [**CLI 規約**](cli_conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
-- [**トラブルシューティング**](troubleshooting.md) - よくあるエラーと対処法
-- [**システム要件**](#システム要件) - 必要なハードウェア・ソフトウェア
-
-### メインワークフロー
-
-- [`all`](all.md) - **end-to-endワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
-
 ### CLI サブコマンド
+### メインワークフロー
+- [`all`](all.md) - **end-to-endワークフロー**: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT
 
 #### 構造準備
 | サブコマンド | 説明 |
@@ -207,13 +205,13 @@ result_all/
 ├── summary.yaml # YAML 形式の結果要約
 ├── pockets/ # 抽出されたクラスターモデル
 ├── scan/ # （オプション）スキャン結果
-├── path_search/ # MEP軌跡とダイアグラム
+├─┬ path_search/ # MEP軌跡とダイアグラム
 │ ├── mep_trj.xyz # MEP軌跡
 │ ├── mep.pdb # PDB形式のMEP
 │ ├── mep_w_ref.pdb # 全系とマージされたMEP
 │ ├── mep_plot.png # エネルギープロファイルプロット
 │ └── seg_*/ # セグメントごとの詳細
-└── path_search/post_seg_*/ # 後処理出力
+└┬─ path_search/post_seg_*/ # 後処理出力
  ├── tsopt/ # TS最適化結果
  ├── irc/ # IRC軌跡
  ├── freq/ # 振動モード
