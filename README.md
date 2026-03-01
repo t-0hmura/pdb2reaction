@@ -41,10 +41,11 @@ using Meta's **UMA** machine-learning interatomic potential.
 
 ## Documentation
 
-- [**Getting Started**](docs/getting_started.md) — Installation, quick start, and workflow overview
+- [**Getting Started**](docs/getting_started.md) — Quick start and workflow overview
+- [**Installation**](docs/installation.md) — Setup and dependency installation
 - [**Concepts & Workflow**](docs/concepts.md) — Key terms: pockets, templates, segments, and stages
-- [**CLI Command Reference (generated)**](docs/reference/commands/index.md)
-- [**YAML Schema (generated)**](docs/reference/yaml.md)
+- [**CLI Command Reference**](docs/reference/commands/index.md)
+- [**YAML Schema**](docs/reference/yaml.md)
 - [**Troubleshooting**](docs/troubleshooting.md) — Common errors and fixes
 - **Full command index**: [docs/index.md](docs/index.md)
 
@@ -81,7 +82,7 @@ pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
 
-For detailed installation instructions, see [Getting Started](docs/getting_started.md).
+For detailed installation instructions, see [Installation](docs/installation.md).
 
 ---
 

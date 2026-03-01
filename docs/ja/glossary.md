@@ -104,7 +104,8 @@
 
 ## 関連ページ
 
-- [はじめに](getting_started.md) — インストールと初回実行
+- [インストール](installation.md) — セットアップと依存関係
+- [はじめに](getting_started.md) — クイックスタートと初回実行
 - [概念とワークフロー](concepts.md) — ポケット抽出、MEP 探索、後処理の全体像
 - [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法

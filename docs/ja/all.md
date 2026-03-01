@@ -318,7 +318,8 @@ dft:
 
 ## 関連項目
 
-- [はじめに](getting_started.md) — インストールと初回実行
+- [インストール](installation.md) — セットアップと依存関係
+- [はじめに](getting_started.md) — 初回実行とワークフロー概要
 - [概念とワークフロー](concepts.md) — ポケット、セグメント、ステージの全体像
 - [extract](extract.md) — 単独のポケット抽出（`all` が内部で呼び出し）
 - [path-search](path_search.md) — 単独のMEP 探索（`all` が内部で呼び出し）

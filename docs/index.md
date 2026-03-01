@@ -8,6 +8,7 @@
 :hidden:
 
 getting_started
+installation
 quickstart_all
 quickstart_scan
 quickstart_tsopt_freq
@@ -16,6 +17,7 @@ recipes_common_errors
 troubleshooting
 cli_conventions
 ja/getting_started
+ja/installation
 ja/quickstart_all
 ja/quickstart_scan
 ja/quickstart_tsopt_freq
@@ -118,7 +120,8 @@ ja/index
 
 | Topic | Page |
 |-------|------|
-| **Installation & first run** | [Getting Started](getting_started.md) |
+| **Getting Started** | [Getting Started](getting_started.md) |
+| **Installation** | [Installation](installation.md) |
 | **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
 | **Symptom-first failure routing** | [Common Error Recipes](recipes_common_errors.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
@@ -173,8 +176,8 @@ ja/index
 
 | Topic | Page |
 |-------|------|
-| **CLI command reference (generated)** | [Command Reference](reference/commands/index.md) |
-| **YAML schema (generated)** | [YAML Schema (Generated)](reference/yaml.md) |
+| **CLI command reference** | [Command Reference](reference/commands/index.md) |
+| **YAML schema** | [YAML Schema](reference/yaml.md) |
 | **YAML configuration options** | [YAML Reference](yaml_reference.md) |
 | **UMA calculator settings** | [UMA Calculator](uma_pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |

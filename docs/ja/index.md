@@ -8,6 +8,7 @@
 :hidden:
 
 getting_started
+installation
 quickstart_all
 quickstart_scan
 quickstart_tsopt_freq
@@ -80,7 +81,8 @@ glossary
 
 ### はじめに
 
-- [**はじめに**](getting_started.md) - インストール、クイックスタート、概要
+- [**はじめに**](getting_started.md) - クイックスタートと概要
+- [**インストール**](installation.md) - セットアップと依存関係
 - [**概念とワークフロー**](concepts.md) - ポケット、テンプレート、セグメント、各ステージの全体像
 - [**典型エラー別レシピ**](recipes_common_errors.md) - 症状別の最短対処ルート
 - [**CLI 規約**](cli_conventions.md) - ブール値オプション、セレクタ、電荷指定などの共通規約
@@ -129,8 +131,8 @@ glossary
 
 ### 設定・リファレンス
 
-- [**CLI コマンドリファレンス（自動生成）**](../reference/commands/index.md)
-- [**YAML スキーマ（自動生成）**](../reference/yaml.md)
+- [**CLI コマンドリファレンス**](../reference/commands/index.md)
+- [**YAML スキーマ**](../reference/yaml.md)
 - [**YAML リファレンス**](yaml_reference.md) - 全サブコマンドの YAML 設定オプション
 - [**UMA 計算機**](uma_pysis.md) - UMA 機械学習ポテンシャル設定
 - [**用語集**](glossary.md) - 略語と技術用語の定義

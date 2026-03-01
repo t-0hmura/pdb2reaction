@@ -208,7 +208,8 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 ## 関連項目
 
-- [はじめに](getting_started.md) — インストールと初回実行
+- [インストール](installation.md) — セットアップと依存関係
+- [はじめに](getting_started.md) — 初回実行とワークフロー概要
 - [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 - [YAML リファレンス](yaml_reference.md) — 全設定オプション

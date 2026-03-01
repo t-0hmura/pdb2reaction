@@ -316,7 +316,8 @@ For a complete reference of all YAML options, see **[YAML Configuration Referenc
 
 ## See Also
 
-- [Getting Started](getting_started.md) — Installation and first run guide
+- [Installation](installation.md) — Setup and dependency installation
+- [Getting Started](getting_started.md) — First run and workflow overview
 - [Concepts & Workflow](concepts.md) — Mental model of pockets, segments, and stages
 - [extract](extract.md) — Standalone pocket extraction (called internally by `all`)
 - [path-search](path_search.md) — Standalone MEP search (called internally by `all`)

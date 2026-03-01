@@ -214,7 +214,8 @@ Default output directories:
 
 ## See Also
 
-- [Getting Started](getting_started.md) — Installation and first run
+- [Installation](installation.md) — Setup and dependency installation
+- [Getting Started](getting_started.md) — First run and workflow overview
 - [Common Error Recipes](recipes_common_errors.md) — Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Common errors and fixes
 - [YAML Reference](yaml_reference.md) — Complete configuration options

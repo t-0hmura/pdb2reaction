@@ -116,7 +116,8 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ## Next steps
 
 ### Getting started
-- [Getting Started](getting_started.md) — installation and first run
+- [Getting Started](getting_started.md) — quick start and workflow overview
+- [Installation](installation.md) — setup and dependencies
 - [Common Error Recipes](recipes_common_errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
 

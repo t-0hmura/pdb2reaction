@@ -105,6 +105,8 @@ This page provides definitions for abbreviations and technical terms used throug
 ## See Also
 
 - [Getting Started](getting_started.md) — installation and a first run
+- [Installation](installation.md) — setup and dependencies
+- [Getting Started](getting_started.md) — quick start and first run
 - [Concepts & Workflow](concepts.md) — how pocket extraction, MEP search, and post-processing fit together
 - [Common Error Recipes](recipes_common_errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes

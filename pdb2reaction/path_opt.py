@@ -55,6 +55,7 @@ from .utils import (
     prepare_input_structure,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
+    convert_xyz_to_pdb,
     PreparedInputStructure,
     apply_ref_pdb_override,
     resolve_charge_spin,
@@ -308,12 +309,33 @@ def _optimize_single(
             needs_pdb = ref_pdb_path is not None
             needs_gjf = prepared_input.is_gjf
             if needs_pdb or needs_gjf:
-                convert_xyz_like_outputs(
+                converted = convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
                     ref_pdb_path=ref_pdb_path,
                     out_pdb_path=final_xyz.with_suffix(".pdb") if needs_pdb else None,
                     out_gjf_path=final_xyz.with_suffix(".gjf") if needs_gjf else None,
+                )
+                # Fallback: if the source wasn't PDB (e.g. .xyz from a scan),
+                # convert_xyz_like_outputs skips PDB output.  Use ref_pdb directly.
+                if not converted and needs_pdb and not final_xyz.with_suffix(".pdb").exists():
+                    try:
+                        convert_xyz_to_pdb(final_xyz, ref_pdb_path, final_xyz.with_suffix(".pdb"))
+                    except Exception as e:
+                        click.echo(
+                            f"[{tag}] WARNING: PDB fallback conversion failed: {e}",
+                            err=True,
+                        )
+        elif ref_pdb is not None:
+            # No prepared_input but ref_pdb is available — still try PDB conversion
+            try:
+                out_pdb = final_xyz.with_suffix(".pdb")
+                if not out_pdb.exists():
+                    convert_xyz_to_pdb(final_xyz, ref_pdb, out_pdb)
+            except Exception as e:
+                click.echo(
+                    f"[{tag}] WARNING: PDB conversion failed: {e}",
+                    err=True,
                 )
         g_final = geom_loader(final_xyz, coord_type=g.coord_type)
         try:
