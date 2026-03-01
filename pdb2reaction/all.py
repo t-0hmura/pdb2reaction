@@ -2411,7 +2411,7 @@ def cli(
 
     if not skip_extract:
         _echo_section(
-            f"\n====== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) started ======"
+            f"====== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) started ======"
         )
         try:
             ex_res = extract_api(
@@ -2449,7 +2449,7 @@ def cli(
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
     else:
         _echo_section(
-            f"\n====== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets started ======"
+            f"====== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets started ======"
         )
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
