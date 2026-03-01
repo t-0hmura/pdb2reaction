@@ -18,8 +18,8 @@ Define each stage in order:
 ```yaml
 one_based: true
 stages:
- - [["TYR,285,CA", "MMT,309,C10", 1.35]]
- - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+ - [["TYR,285,CA", "SAM,309,C10", 1.35]]
+ - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 ```
 
 ## 2. Run scan

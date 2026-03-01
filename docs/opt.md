@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **Summary:** Optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`) or RFO (`--opt-mode hess`, default). Optional imaginary-mode flattening can be enabled with `--flatten`.
+> **Summary:** Optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). Optional imaginary-mode flattening can be enabled with `--flatten`.
 
-`pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`) or RFO (`--opt-mode hess`, default). For PDB inputs, link-hydrogen parents are automatically frozen.
+`pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). For PDB inputs, link-hydrogen parents are automatically frozen.
 
 The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
 
@@ -61,15 +61,15 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--opt-mode grad|hess] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
+ [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## Workflow
-- **Optimizers**: `--opt-mode grad` → L-BFGS; `--opt-mode hess` (default) → RFOptimizer.
-  > **Naming note:** The CLI accepts `grad` (= LBFGS) and `hess` (= RFO, default). In YAML, use `lbfgs` or `rfo` directly.
+- **Optimizers**: `--opt-mode grad` (alias: `lbfgs`, default) → L-BFGS; `--opt-mode hess` (alias: `rfo`) → RFOptimizer.
+  > **Naming note:** The CLI accepts `grad|lbfgs` and `hess|rfo`. In YAML, use `lbfgs` or `rfo` directly.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)` where `target_A` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted. Always pass the physically correct values explicitly.
@@ -93,7 +93,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `10.0` |
 | `--freeze-links/--no-freeze-links` | Toggle link-hydrogen parent freezing (PDB inputs only). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `lbfgs` (LBFGS) or `rfo` (RFO). | `rfo` |
+| `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. | `grad` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flatten loop. | `False` |
 | `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |

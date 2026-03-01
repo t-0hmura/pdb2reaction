@@ -48,11 +48,13 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --out-dir TEXT                  Output directory.  [default:
                                   ./result_path_opt/]
-  --thresh TEXT                   Convergence preset for the string optimizer,
-                                  pre-alignment refinement, and endpoint
-                                  preoptimization (gau_loose|gau|gau_tight|gau_v
-                                  tight|baker|never). Defaults to 'gau' when not
-                                  provided.
+  --thresh TEXT                   Convergence preset for endpoint
+                                  preoptimization only (gau_loose|gau|gau_tight|
+                                  gau_vtight|baker|never). Defaults to 'gau'
+                                  when not provided.
+  --thresh-stopt TEXT             Convergence preset for the string optimizer
+                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|ba
+                                  ker|never).  [default: gau]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

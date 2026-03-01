@@ -8,7 +8,7 @@
 - **想定場面:** 反応物と生成物の **2 端点**が揃っていて、まず MEP の初期推定を得たい場合に使います。
 - **手法:** 既定は GSM。`--mep-mode dmf` で DMF に切り替え可能。
 - **主な出力:** `final_geometries_trj.xyz`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
-- **既定値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 10`、`--thresh gau`。
+- **既定値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 10`、`--thresh gau`、`--thresh-stopt gau`。
 - **次にやること:** HEI は **TS 候補**です。`tsopt` → `freq`（虚数振動数は **1 つ**） → `irc` で検証します。
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[freq](freq.md) と [irc](irc.md) によるモード/接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path_search.md) を使用してください。
@@ -19,7 +19,7 @@ UMA 計算機で各イメージのエネルギー/勾配/ヘシアンを評価�
 ## 最小例
 
 ```bash
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-opt -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --out-dir ./result_path_opt
 ```
 
@@ -34,30 +34,30 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 1. MEP 探索前に端点を事前最適化する。
 
 ```bash
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-opt -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
 ```
 
 2. GSM ではなく DMF モードで実行する。
 
 ```bash
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-opt -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
 ```
 
 3. リンク親原子を凍結し、climb を切って短時間で確認する。
 
 ```bash
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-opt -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --freeze-links --no-climb --out-dir ./result_path_opt_fast
 ```
 
 ## 使用法
 ```bash
-pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
- [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] \
+ [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-stopt PRESET] \
  [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode grad|hess] [--fix-ends/--no-fix-ends] \
  [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -75,9 +75,10 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 ### 主要な挙動
 - **エンドポイント**: 入力は2構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で軌跡/HEIのPDB 出力が有効。
 - **電荷/スピン**: CLI は `.gjf` テンプレートのメタデータより優先されます。`-q` 省略時に `--ligand-charge` がある場合、エンドポイントは酵素–基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先されます。`.gjf` 以外の入力で `-q` を省略すると、導出が成功しない限り中断します。`.gjf` 入力で電荷メタデータが無く `-q` も無い場合は中断します。多重度は省略時 `1` がデフォルトです。正しい状態を得るため、常に明示的に指定してください。
-- **MEPセグメント**: `--max-nodes` はGSM/DMFの内部ノード数を制御（GSMの総画像数は `max_nodes + 2`）。`--thresh` またはYAMLで収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）を指定。
+- **MEPセグメント**: `--max-nodes` はGSM/DMFの内部ノード数を制御（GSMの総画像数は `max_nodes + 2`）。GSM成長およびクライミング精密化の収束プリセットは `--thresh-stopt` または `stopt.thresh`（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）で指定します。
+- **エンドポイント事前最適化**: `--thresh` は `--opt-mode` で選ばれた単一構造最適化（`opt.lbfgs.thresh` / `opt.rfo.thresh`）のみに適用されます。
 - **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
-- **ダンプ**: `--dump` で StringOptimizer の `opt.dump=True` に対応し、`out_dir` 内に軌跡ダンプを出力します。リスタート YAML は YAML で有効化した場合のみ書き出されます。
+- **ダンプ**: `--dump` で StringOptimizer の `stopt.dump=True` に対応し、`out_dir` 内に軌跡ダンプを出力します。リスタート YAML は YAML で有効化した場合のみ書き出されます。
 - **終了コード**: `0` 成功、`3` 最適化失敗、`4` 軌跡書き込みエラー、`5` HEI 出力エラー、`130` キーボード割り込み、`1` 予期せぬエラー。
 
 ## CLI オプション
@@ -99,7 +100,8 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [--lig
 | `--convert-files/--no-convert-files` | PDB/Gaussian入力用のXYZ/TRJ → PDB/GJFコンパニオンをトグル | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
-| `--thresh TEXT` | GSM/ストリングオプティマイザーの収束プリセットを上書き | `gau` |
+| `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
@@ -136,10 +138,10 @@ out_dir/
 ### `gs`
 - Growing String表現の制御: `max_nodes`, `perp_thresh`, 再パラメータ化（`reparam_check`, `reparam_every`, `reparam_every_full`, `param`）、`max_micro_cycles`, DLCリセット、climb関連、scheduler。
 
-### `opt`
-- StringOptimizer設定: type, `stop_in_when_full`, `scale_step`, `max_cycles`, dump系、`reparam_thresh`, `coord_diff_thresh`, `out_dir`, `print_every`。
+### `stopt`
+- StringOptimizer設定: type, `thresh`, `stop_in_when_full`, `scale_step`, `max_cycles`, dump系、`reparam_thresh`, `coord_diff_thresh`, `out_dir`, `print_every`。
 
-### `sopt.lbfgs` / `sopt.rfo`
+### `opt.lbfgs` / `opt.rfo`
 - エンドポイント事前最適化の単一構造オプティマイザー設定。キーは [YAML リファレンス](yaml_reference.md) の `lbfgs` / `rfo` と同等で、YAML が CLI の `--preopt-max-cycles` を上書きします。
 
 ### YAML例（デフォルト値）
@@ -177,8 +179,9 @@ gs:
  climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
  climb_fixed: false # keep climbing image fixed
  scheduler: null # optional scheduler backend
-opt:
+stopt:
  type: string # optimizer type label
+ thresh: gau # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  scale_step: global # step scaling mode
  max_cycles: 300 # maximum optimization cycles
@@ -230,5 +233,5 @@ dmf:
 - [tsopt](tsopt.md) — HEIをTS 候補として最適化（freq/IRCで検証）
 - [extract](extract.md) — path-opt入力用のポケットPDBを生成
 - [all](all.md) — end-to-endワークフロー（デフォルトでpath-searchを使用）
-- [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`opt` の完全な設定オプション
+- [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

@@ -9,7 +9,7 @@
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **既定値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`。
+- **既定値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau`。
 - **次にやること:** HEI は **TS 候補**です。単独では TS 検証になりません。続けて [tsopt](tsopt.md) → [freq](freq.md) → [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は、反応順に並んだ 2 構造以上を入力として連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
@@ -22,7 +22,7 @@
 ## 最小例
 
 ```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --out-dir ./result_path_search
 ```
 
@@ -38,30 +38,30 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 1. 中間体を明示して多段の経路を与える。
 
 ```bash
-pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+pdb2reaction path-search -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
 2. テンプレート参照を使って全系マージ出力を有効化する。
 
 ```bash
-pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
 3. DMF + minima リファインで探索する。
 
 ```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
 ## 使用法
 
 ```bash
-pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
  [--workers N] [--workers-per-node N]
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
  [--refine-mode {peak|minima}]
  [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
  [--opt-mode grad|hess] [--dump/--no-dump]
@@ -74,12 +74,12 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 ### 例
 - **ポケットのみ**の2つのエンドポイント間のMEP:
  ```bash
- pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0
  ```
 - YAML 上書きとマージされた全系出力を使用した**マルチステップ**探索:
  ```bash
  pdb2reaction path-search \
- -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+ -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 \
  --ref-full-pdb holo_template.pdb --out-dir ./run_ps
  ```
 
@@ -87,7 +87,7 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。`-i` を繰り返すか1つのフラグに複数パスを渡す | 必須 |
+| `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。各ファイルごとに `-i`/`--input` を繰り返して指定 | 必須 |
 | `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
@@ -102,7 +102,8 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
-| `--thresh TEXT` | GSMおよびイメージごとの最適化の収束プリセットを上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
+| `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
@@ -137,23 +138,23 @@ out_dir/ (デフォルト:./result_path_search/)
 ```
 
 
-- コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`）が出力されます。
+- コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`）が出力されます。
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
-- `--ref-full-pdb` は1回の指定で複数ファイルを続けて渡せます。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
+- 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - UMA 計算機は全構造で共有され、効率化されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
 マージ順は **defaults < config < 明示指定 CLI < override** です。
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`opt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`stopt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
-`sopt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir:./result_path_search/`、`dump: False` です。
+`opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir:./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
@@ -195,8 +196,9 @@ gs:
  climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
  climb_fixed: false # keep climbing image fixed
  scheduler: null # optional scheduler backend
-opt:
+stopt:
  type: string # optimizer type label
+ thresh: gau # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  align: false # alignment toggle (kept off)
  scale_step: global # step scaling mode
@@ -236,7 +238,7 @@ dmf:
  beta: 10.0 # Beta parameter for DMF
  update_teval: false # Update transition evaluation
  k_fix: 300.0 # Harmonic constant for restraints
-sopt:
+opt:
  lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit

@@ -33,7 +33,6 @@ ja/cli_conventions
 :hidden:
 
 all
-init
 extract
 fix_altloc
 add_elem_info
@@ -50,7 +49,6 @@ dft
 trj2fig
 energy_diagram
 ja/all
-ja/init
 ja/extract
 ja/fix_altloc
 ja/add_elem_info

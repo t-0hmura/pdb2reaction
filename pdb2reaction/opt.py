@@ -409,10 +409,10 @@ def _flatten_all_imag_modes_for_geom(
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    type=click.Choice(["grad", "hess", "lbfgs", "rfo"], case_sensitive=False),
     default="grad",
     show_default=True,
-    help="Optimization mode: grad (=LBFGS) or hess (=RFO).",
+    help="Optimization mode: grad (lbfgs) or hess (rfo). Aliases lbfgs/rfo are accepted.",
 )
 @click.option(
     "--flatten/--no-flatten",
@@ -581,7 +581,7 @@ def cli(
                 opt_mode,
                 param="--opt-mode",
                 alias_groups=OPT_MODE_ALIASES,
-                allowed_hint="grad|hess",
+                allowed_hint="grad|hess|lbfgs|rfo",
             )
             main_kind = kind
             flatten_kind = kind

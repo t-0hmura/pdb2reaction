@@ -8,7 +8,7 @@
 - **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--preopt`, `--align`, `--thresh gau`.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md), [freq](freq.md), and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
@@ -21,7 +21,7 @@ If you only have **two** endpoints and do not need recursive refinement, [path-o
 ## Minimal example
 
 ```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --out-dir ./result_path_search
 ```
 
@@ -37,29 +37,29 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 1. Provide explicit intermediates for a multistep path.
 
 ```bash
-pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+pdb2reaction path-search -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
 2. Enable merged full-system outputs with template references.
 
 ```bash
-pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
 3. Use DMF mode with minima refinement.
 
 ```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
 ## Usage
 ```bash
-pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
  [--workers N] [--workers-per-node N]
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET]
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
  [--refine-mode {peak|minima}]
  [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
  [--opt-mode grad|hess] [--dump/--no-dump]
@@ -72,19 +72,19 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 ### Examples
 - **Pocket-only** MEP between two endpoints:
  ```bash
- pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0
  ```
 - **Multistep** search with YAML overrides and merged full-system output:
  ```bash
  pdb2reaction path-search \
- -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+ -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 \
  --ref-full-pdb holo_template.pdb --out-dir ./run_ps
  ```
 
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i` or pass multiple paths after one flag. | Required |
+| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i`/`--input` for each file. | Required |
 | `-q, --charge INT` | Total charge. Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds (PDB inputs). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `--ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
@@ -99,7 +99,8 @@ pdb2reaction path-search -i R.pdb [I.pdb...] P.pdb [-q CHARGE] [--ligand-charge 
 | `--dump/--no-dump` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
-| `--thresh TEXT` | Override convergence preset for GSM and per-image optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
+| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
@@ -134,22 +135,22 @@ out_dir/ (default:./result_path_search/)
 ├─ energy_diagram_MEP.png # Static export of the MEP state-energy diagram (relative to reactant)
 └─ seg_000_*/ # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
 ```
-- Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `opt`, `sopt.*`, `bond`, `search`).
+- Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`).
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
-- `--ref-full-pdb` can be given once followed by multiple filenames; with `--align`, only the first template is reused for merges.
+- Repeat `--ref-full-pdb` once per file when providing multiple templates; with `--align`, only the first template is reused for merges.
 - All UMA calculators are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
 
 Merge order is **defaults < config < explicit CLI < override**.
-The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml_reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `opt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
+The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml_reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
-`sopt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml_reference.md) but defaults to `out_dir:./result_path_search/` and `dump: False`.
+`opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml_reference.md) but defaults to `out_dir:./result_path_search/` and `dump: False`.
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
@@ -191,8 +192,9 @@ gs:
  climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
  climb_fixed: false # keep climbing image fixed
  scheduler: null # optional scheduler backend
-opt:
+stopt:
  type: string # optimizer type label
+ thresh: gau # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  align: false # alignment toggle (kept off)
  scale_step: global # step scaling mode
@@ -232,7 +234,7 @@ dmf:
  beta: 10.0 # beta parameter for DMF
  update_teval: false # update transition evaluation
  k_fix: 300.0 # harmonic constant for restraints
-sopt:
+opt:
  lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit

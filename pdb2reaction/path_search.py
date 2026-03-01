@@ -56,7 +56,6 @@ from .defaults import (
 from .path_opt import _optimize_single, _run_dmf_mep
 from .utils import (
     as_list,
-    collect_option_values,
     load_yaml_dict,
     deep_update,
     apply_yaml_overrides,
@@ -835,8 +834,8 @@ def _build_multistep_path(
     geom_cfg: Dict[str, Any],
     gs_cfg: Dict[str, Any],
     opt_cfg: Dict[str, Any],
-    sopt_kind: str,
-    sopt_cfg: Dict[str, Any],
+    single_opt_kind: str,
+    single_opt_cfg: Dict[str, Any],
     bond_cfg: Dict[str, Any],
     search_cfg: Dict[str, Any],
     refine_mode_kind: str,
@@ -987,8 +986,8 @@ def _build_multistep_path(
     left_end = _optimize_single(
         left_img,
         shared_calc,
-        sopt_kind,
-        sopt_cfg,
+        single_opt_kind,
+        single_opt_cfg,
         out_dir,
         tag=f"{tag0}_left",
         prepared_input=prepared_input,
@@ -997,8 +996,8 @@ def _build_multistep_path(
     right_end = _optimize_single(
         right_img,
         shared_calc,
-        sopt_kind,
-        sopt_cfg,
+        single_opt_kind,
+        single_opt_cfg,
         out_dir,
         tag=f"{tag0}_right",
         prepared_input=prepared_input,
@@ -1023,8 +1022,8 @@ def _build_multistep_path(
             g_opt = _optimize_single(
                 g_int,
                 shared_calc,
-                sopt_kind,
-                sopt_cfg,
+                single_opt_kind,
+                single_opt_cfg,
                 out_dir,
                 tag=f"{tag0}_kink_int{i}",
                 prepared_input=prepared_input,
@@ -1094,7 +1093,7 @@ def _build_multistep_path(
     if left_changed:
         subL = _build_multistep_path(
             gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+            single_opt_kind, single_opt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index,
             kink_seq_count=kink_seq_count,
@@ -1119,7 +1118,7 @@ def _build_multistep_path(
     if right_changed:
         subR = _build_multistep_path(
             right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+            single_opt_kind, single_opt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index,
             kink_seq_count=current_kink_run,
@@ -1136,7 +1135,7 @@ def _build_multistep_path(
             tail_g, head_g,
             shared_calc,
             geom_cfg, gs_cfg, opt_cfg,
-            sopt_kind, sopt_cfg,
+            single_opt_kind, single_opt_cfg,
             bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir=out_dir,
             ref_pdb_path=ref_pdb_path,
@@ -1580,12 +1579,7 @@ def _merge_final_and_write(final_images: List[Any],
 
 @click.command(
     help="Multistep MEP search via recursive GSM/DMF segmentation.",
-    context_settings={
-        "help_option_names": ["-h", "--help"],
-        # Allow a single '-i' followed by multiple paths (as extra args)
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
-    },
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
     "-i", "--input",
@@ -1593,9 +1587,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     required=True,
-    help=("Two or more structures in reaction order. "
-          "Either repeat '-i' (e.g., '-i A -i B -i C') or use a single '-i' "
-          "followed by multiple space-separated paths (e.g., '-i A B C').")
+    help="Two or more structures in reaction order. Repeat -i/--input for each path.",
 )
 @click.option(
     "--mep-mode",
@@ -1704,9 +1696,19 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     show_default=False,
     help=(
-        "Convergence preset for GSM and single optimizations "
+        "Convergence preset for single-structure optimizations only "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
         "Defaults to 'gau' when not provided."
+    ),
+)
+@click.option(
+    "--thresh-stopt",
+    type=str,
+    default="gau",
+    show_default=True,
+    help=(
+        "Convergence preset for the string optimizer (stopt) "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -1786,6 +1788,7 @@ def cli(
     convert_files: bool,
     out_dir: str,
     thresh: Optional[str],
+    thresh_stopt: str,
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
@@ -1799,47 +1802,6 @@ def cli(
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
-
-    argv_all = sys.argv[1:]
-    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
-    i_vals = collect_option_values(argv_all, ("-i", "--input"))
-    if i_vals:
-        i_parsed: List[Path] = []
-        for tok in i_vals:
-            p = Path(tok)
-            if (not p.exists()) or p.is_dir():
-                raise click.BadParameter(
-                    f"Input path '{tok}' not found or is a directory. "
-                    f"When using '-i', list only existing file paths (multiple paths may follow a single '-i')."
-                )
-            i_parsed.append(p)
-        input_paths = tuple(i_parsed)
-
-    ref_vals = collect_option_values(argv_all, ("--ref-full-pdb",))
-    if ref_vals:
-        ref_parsed: List[Path] = []
-        for tok in ref_vals:
-            p = Path(tok)
-            if (not p.exists()) or p.is_dir():
-                raise click.BadParameter(
-                    f"Reference PDB path '{tok}' not found or is a directory. "
-                    f"When using '--ref-full-pdb', multiple files may follow a single option."
-                )
-            ref_parsed.append(p)
-        ref_pdb_paths = tuple(ref_parsed)
-
-    pocket_ref_vals = collect_option_values(argv_all, ("--ref-pdb",))
-    if pocket_ref_vals:
-        pocket_ref_parsed: List[Path] = []
-        for tok in pocket_ref_vals:
-            p = Path(tok)
-            if (not p.exists()) or p.is_dir():
-                raise click.BadParameter(
-                    f"Pocket reference PDB path '{tok}' not found or is a directory. "
-                    f"When using '--ref-pdb', multiple files may follow a single option."
-                )
-            pocket_ref_parsed.append(p)
-        pocket_ref_pdb_paths = tuple(pocket_ref_parsed)
 
     def _is_param_explicit(name: str) -> bool:
         try:
@@ -1898,12 +1860,58 @@ def cli(
         calc_cfg = dict(UMA_CALC_KW)
         dmf_cfg  = dict(DMF_KW)
         gs_cfg   = dict(GS_KW)
-        opt_cfg  = dict(STOPT_KW)
+        stopt_cfg = dict(STOPT_KW)
+        stopt_cfg["out_dir"] = out_dir
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg   = dict(RFO_KW)
         bond_cfg  = dict(BOND_KW)
         search_cfg = dict(SEARCH_KW)
         search_cfg["refine_mode"] = refine_mode_kind
+
+        def _apply_single_opt_yaml_layer(layer_cfg: Dict[str, Any]) -> None:
+            """Apply single-structure optimizer overrides from YAML.
+
+            Canonical schema:
+              opt:
+                <common keys>
+                lbfgs: {...}
+                rfo: {...}
+            """
+            if not isinstance(layer_cfg, dict):
+                return
+            opt_section = layer_cfg.get("opt")
+            if isinstance(opt_section, dict):
+                common_updates = {k: v for k, v in opt_section.items() if k in OPT_BASE_KW}
+                if common_updates:
+                    deep_update(lbfgs_cfg, common_updates)
+                    deep_update(rfo_cfg, common_updates)
+
+                lbfgs_section = opt_section.get("lbfgs")
+                if isinstance(lbfgs_section, dict):
+                    deep_update(lbfgs_cfg, lbfgs_section)
+                else:
+                    apply_yaml_overrides(
+                        layer_cfg,
+                        [(lbfgs_cfg, (("lbfgs",),))],
+                    )
+
+                rfo_section = opt_section.get("rfo")
+                if isinstance(rfo_section, dict):
+                    deep_update(rfo_cfg, rfo_section)
+                else:
+                    apply_yaml_overrides(
+                        layer_cfg,
+                        [(rfo_cfg, (("rfo",),))],
+                    )
+                return
+
+            apply_yaml_overrides(
+                layer_cfg,
+                [
+                    (lbfgs_cfg, (("lbfgs",),)),
+                    (rfo_cfg, (("rfo",),)),
+                ],
+            )
 
         apply_yaml_overrides(
             config_layer_cfg,
@@ -1912,13 +1920,12 @@ def cli(
                 (calc_cfg, (("calc",),)),
                 (dmf_cfg, (("dmf",),)),
                 (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+                (stopt_cfg, (("stopt",),)),
                 (bond_cfg, (("bond",),)),
                 (search_cfg, (("search",),)),
             ],
         )
+        _apply_single_opt_yaml_layer(config_layer_cfg)
 
         resolved_charge = charge
         resolved_spin = spin
@@ -1963,24 +1970,25 @@ def cli(
             gs_cfg["max_nodes"] = int(max_nodes)
             search_cfg["max_nodes_segment"] = int(max_nodes)
         if _is_param_explicit("max_cycles"):
-            opt_cfg["max_cycles"] = int(max_cycles)
-            opt_cfg["stop_in_when_full"] = int(max_cycles)
+            stopt_cfg["max_cycles"] = int(max_cycles)
+            stopt_cfg["stop_in_when_full"] = int(max_cycles)
             dmf_cfg["max_cycles"] = int(max_cycles)
         if _is_param_explicit("climb"):
             gs_cfg["climb"] = bool(climb)
             gs_cfg["climb_lanczos"] = bool(climb)
         if _is_param_explicit("dump"):
-            opt_cfg["dump"] = bool(dump)
+            stopt_cfg["dump"] = bool(dump)
             lbfgs_cfg["dump"] = bool(dump)
             rfo_cfg["dump"] = bool(dump)
         if _is_param_explicit("out_dir"):
-            opt_cfg["out_dir"] = out_dir
+            stopt_cfg["out_dir"] = out_dir
             lbfgs_cfg["out_dir"] = out_dir
             rfo_cfg["out_dir"] = out_dir
         if _is_param_explicit("thresh") and thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
+        if _is_param_explicit("thresh_stopt") and thresh_stopt is not None:
+            stopt_cfg["thresh"] = str(thresh_stopt)
 
         # Final YAML overrides (highest precedence)
         apply_yaml_overrides(
@@ -1990,13 +1998,12 @@ def cli(
                 (calc_cfg, (("calc",),)),
                 (dmf_cfg, (("dmf",),)),
                 (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+                (stopt_cfg, (("stopt",),)),
                 (bond_cfg, (("bond",),)),
                 (search_cfg, (("search",),)),
             ],
         )
+        _apply_single_opt_yaml_layer(override_layer_cfg)
 
         refine_mode_kind = search_cfg.get("refine_mode")
         if refine_mode_kind is None:
@@ -2014,30 +2021,32 @@ def cli(
             allowed_hint="grad|hess",
         )
         if opt_kind == "lbfgs":
-            sopt_kind = "lbfgs"
-            sopt_cfg = lbfgs_cfg
+            single_opt_kind = "lbfgs"
+            single_opt_cfg = lbfgs_cfg
         else:
-            sopt_kind = "rfo"
-            sopt_cfg = rfo_cfg
+            single_opt_kind = "rfo"
+            single_opt_cfg = rfo_cfg
 
-        opt_cfg["stop_in_when_full"] = int(opt_cfg.get("max_cycles", STOPT_KW["max_cycles"]))
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+        stopt_cfg["stop_in_when_full"] = int(
+            stopt_cfg.get("max_cycles", STOPT_KW["max_cycles"])
+        )
+        out_dir_path = Path(stopt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_geom_for_echo(calc_cfg)
         echo_gs   = dict(gs_cfg)
-        echo_opt  = dict(opt_cfg)
-        echo_opt["out_dir"] = str(out_dir_path)
+        echo_stopt = dict(stopt_cfg)
+        echo_stopt["out_dir"] = str(out_dir_path)
 
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs",   echo_gs))
-        click.echo(pretty_block("opt",  echo_opt))
+        click.echo(pretty_block("stopt", echo_stopt))
         if mep_mode_kind == "dmf":
             click.echo(pretty_block("dmf", dmf_cfg))
-        echo_sopt = dict(sopt_cfg)
-        echo_sopt["out_dir"] = str(out_dir_path)
-        echo_sopt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{sopt_kind}_opt"
-        click.echo(pretty_block("sopt."+sopt_kind, echo_sopt))
+        echo_opt = dict(single_opt_cfg)
+        echo_opt["out_dir"] = str(out_dir_path)
+        echo_opt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{single_opt_kind}_opt"
+        click.echo(pretty_block("opt." + single_opt_kind, echo_opt))
         click.echo(pretty_block("bond", bond_cfg))
         click.echo(pretty_block("search", search_cfg))
         click.echo(
@@ -2132,8 +2141,8 @@ def cli(
                 g_opt = _optimize_single(
                     g,
                     shared_calc,
-                    sopt_kind,
-                    sopt_cfg,
+                    single_opt_kind,
+                    single_opt_cfg,
                     out_dir_path,
                     tag=tag,
                     prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else main_prepared,
@@ -2145,7 +2154,7 @@ def cli(
             click.echo("[init] Skipping endpoint preoptimization as requested by --no-preopt.")
 
         # Align all inputs to the first structure, guided by freeze constraints, when requested
-        align_thresh = str(opt_cfg.get("thresh", "gau"))
+        align_thresh = str(single_opt_cfg.get("thresh", "gau"))
         if align:
             try:
                 click.echo("\n====== Aligning all inputs to the first structure (freeze-guided scan + relaxation) started ======\n")
@@ -2179,8 +2188,8 @@ def cli(
             sub = _build_multistep_path(
                 tail_g, head_g,
                 shared_calc,
-                geom_cfg, gs_cfg, opt_cfg,
-                sopt_kind, sopt_cfg,
+                geom_cfg, gs_cfg, stopt_cfg,
+                single_opt_kind, single_opt_cfg,
                 bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
@@ -2200,8 +2209,8 @@ def cli(
             pair_path = _build_multistep_path(
                 gA, gB,
                 shared_calc,
-                geom_cfg, gs_cfg, opt_cfg,
-                sopt_kind, sopt_cfg,
+                geom_cfg, gs_cfg, stopt_cfg,
+                single_opt_kind, single_opt_cfg,
                 bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
                 out_dir=out_dir_path,
                 ref_pdb_path=ref_pdb_for_segments,
@@ -2225,7 +2234,7 @@ def cli(
                     bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
                     shared_calc=shared_calc,
                     gs_cfg=gs_bridge_cfg,
-                    opt_cfg=opt_cfg,
+                    opt_cfg=stopt_cfg,
                     out_dir=out_dir_path,
                     tag=pair_tag,
                     ref_pdb_path=ref_pdb_for_segments,

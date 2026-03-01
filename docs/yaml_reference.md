@@ -13,6 +13,7 @@
 | [`rfo`](#rfo) | RFO optimizer settings | opt, scan, scan2d, scan3d, path-search |
 | [`gs`](#gs) | Growing String Method settings | path-opt, path-search |
 | [`dmf`](#dmf) | Direct Max Flux settings | path-opt, path-search |
+| [`stopt`](#stopt) | StringOptimizer settings | path-opt, path-search |
 | [`irc`](#irc-section) | IRC integration settings | irc |
 | [`freq`](#freq-section) | Vibrational analysis settings | freq |
 | [`thermo`](#thermo) | Thermochemistry settings | freq |
@@ -22,7 +23,6 @@
 | [`search`](#search) | Recursive path search settings | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
 | [`rsirfo`](#rsirfo) | RS-I-RFO TS optimization | tsopt |
-| [`sopt`](#sopt) | Single-structure optimizer for path-search | path-search |
 
 ---
 
@@ -80,15 +80,11 @@ calc:
 
 ### `opt`
 
-Shared optimizer controls used by both L-BFGS and RFO.
+Shared single-structure optimizer controls used by both L-BFGS and RFO.
 
 ```yaml
 opt:
- type: string # StringOptimizer-only (path-opt/path-search): optimizer type label
  thresh: gau # Convergence preset: gau_loose, gau, gau_tight, gau_vtight, baker, never
- stop_in_when_full: 300 # StringOptimizer-only: early stop threshold when string is full
- align: false # StringOptimizer-only: alignment toggle
- scale_step: global # StringOptimizer-only: step scaling mode
  max_cycles: 10000 # Maximum optimizer iterations
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum step norm for acceptance
@@ -103,8 +99,6 @@ opt:
  line_search: true # Enable line search
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
- reparam_thresh: 0.0 # StringOptimizer-only: reparameterization threshold
- coord_diff_thresh: 0.0 # StringOptimizer-only: coordinate difference threshold
  prefix: "" # Filename prefix
  out_dir:./result_opt/ # Output directory
 ```
@@ -254,26 +248,24 @@ search:
 
 ---
 
-### `sopt`
+### `stopt`
 
-Single-structure optimizers for path-search (HEI±1 and kink nodes).
+StringOptimizer settings for chain-of-states path optimization (`path-opt`, `path-search`).
 
 ```yaml
-sopt:
- lbfgs:
- # Same keys as lbfgs section above
- thresh: gau
- max_cycles: 10000
- out_dir:./result_path_search/
- dump: false
- #... (see lbfgs section)
- rfo:
- # Same keys as rfo section above
- thresh: gau
- max_cycles: 10000
- out_dir:./result_path_search/
- dump: false
- #... (see rfo section)
+stopt:
+ type: string # Optimizer type label
+ thresh: gau # StringOptimizer convergence preset
+ stop_in_when_full: 300 # Early stop threshold when the string is full
+ align: false # Alignment toggle
+ scale_step: global # Step scaling mode
+ max_cycles: 300 # Maximum StringOptimizer iterations
+ dump: false # Dump trajectory/restart data
+ dump_restart: false # Dump restart checkpoints
+ reparam_thresh: 0.0 # Reparameterization threshold
+ coord_diff_thresh: 0.0 # Coordinate-difference threshold
+ out_dir:./result_path_opt/ # Output directory
+ print_every: 10 # Logging stride
 ```
 
 ---
@@ -492,18 +484,17 @@ gs:
  climb: true
  climb_lanczos: true
 
-opt:
+stopt:
  thresh: gau
  max_cycles: 300
  dump: false
  out_dir:./result_all/
 
-sopt:
- lbfgs:
+opt:
  thresh: gau
+ lbfgs:
  max_cycles: 10000
  rfo:
- thresh: gau
  max_cycles: 10000
 
 bond:

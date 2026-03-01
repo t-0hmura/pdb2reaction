@@ -4,7 +4,7 @@
 End-to-end enzymatic reaction workflow: extraction, MEP search, TS optimization, IRC, and post-processing.
 
 Example:
-    pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' --ligand-charge 'GPP:-3,MMT:-1'
+    pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,SAM' --ligand-charge 'GPP:-3,SAM:1'
 
 For detailed documentation, see: docs/all.md
 """
@@ -52,8 +52,6 @@ from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
 from .utils import (
     build_energy_diagram,
-    collect_option_values,
-    collect_single_option_values,
     convert_xyz_like_outputs,
     deep_update,
     detect_freeze_links_logged,
@@ -1580,11 +1578,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "when extraction is skipped) and use stage results as inputs for path_search; "
         "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode."
     ),
-    context_settings={
-        "help_option_names": ["-h", "--help"],
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
-    },
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
     "--help-advanced",
@@ -1606,9 +1600,8 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "Two or more **full structures** (PDB/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
         "or a single **full structure** (with --scan-lists or with --tsopt True). "
         "Extraction (-c/--center) requires PDB inputs. When using --scan-lists without extraction, "
-        "the input may be PDB/XYZ/GJF (integer indices only for non-PDB inputs). You may pass a single '-i' "
-        "followed by multiple space-separated files "
-        "(e.g., '-i A.pdb B.pdb C.pdb')."
+        "the input may be PDB/XYZ/GJF (integer indices only for non-PDB inputs). "
+        "Repeat -i/--input for each file."
     ),
 )
 @click.option(
@@ -1622,7 +1615,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "Substrate specification for the extractor: "
         "a PDB path, a residue-ID list like '123,124' or 'A:123,B:456' "
         "(insertion codes OK: '123A' / 'A:123A'), "
-        "or a residue-name list like 'GPP,MMT'. "
+        "or a residue-name list like 'GPP,SAM'. "
         "When omitted, extraction is skipped and the **full input structure(s)** are used directly as pockets."
     ),
 )
@@ -1663,7 +1656,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--exclude-backbone",
     "exclude_backbone",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
     help="Remove backbone atoms on non‑substrate amino acids (with PRO/HYP safeguards).",
 )
@@ -1687,7 +1680,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=str,
     default=None,
     help=(
-        "Total charge (number) or per-resname mapping like 'GPP:-3,MMT:-1'. "
+        "Total charge (number) or per-resname mapping like 'GPP:-3,SAM:1'. "
         "Used for extractor charge summaries; when extraction is skipped, PDB inputs "
         "derive the total charge and numeric values act as a total-charge fallback."
     ),
@@ -2021,9 +2014,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. A single "
         "literal runs one stage; multiple literals run **sequentially**, each starting from the "
         "prior stage's relaxed structure. "
-        "Example: --scan-lists '[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
-        "Pass a single --scan-lists followed by multiple values to define multiple stages "
-        "(repeated flags are not accepted). "
+        "Example: --scan-lists '[(12,45,1.35)]' --scan-lists '[(10,55,2.20),(23,34,1.80)]'. "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
         "auto-mapped to the pocket after extraction. For non-PDB single-structure scans, only integer "
         "indices are supported (1-based by default). Stage results feed into the MEP step (path_search or path_opt)."
@@ -2145,7 +2136,7 @@ def cli(
     """
     The **all** command composes `extract` → (optional `scan` on pocket or full input) → MEP search
     (`path_search` with ``--refine-path True`` or concatenated `path-opt` otherwise) and hides ref-template
-    bookkeeping. It also accepts the sloppy `-i A B C` style like `path_search` does.
+    bookkeeping.
     With single input:
       - with --scan-lists: run staged scan and use stage results as inputs for path_search,
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
@@ -2154,8 +2145,6 @@ def cli(
     a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
-    argv_all = sys.argv[1:]
-
     _echo_state.reset()
     set_convert_file_enabled(convert_files)
     command_str = " ".join(sys.argv)
@@ -2201,23 +2190,6 @@ def cli(
         if opt_mode_post is None
         else _mode_alias.get(str(opt_mode_post).strip().lower(), "hess")
     )
-
-    i_vals = collect_option_values(argv_all, ("-i", "--input"))
-    if i_vals:
-        i_parsed: List[Path] = []
-        for tok in i_vals:
-            p = Path(tok)
-            if (not p.exists()) or p.is_dir():
-                raise click.BadParameter(
-                    f"Input path '{tok}' not found or is a directory. "
-                    "When using '-i', list only existing file paths (multiple paths may follow a single '-i')."
-                )
-            i_parsed.append(p)
-        input_paths = tuple(i_parsed)
-
-    scan_vals = collect_single_option_values(argv_all, ("--scan-lists",), "--scan-lists")
-    if scan_vals:
-        scan_lists_raw = tuple(scan_vals)
 
     is_single = len(input_paths) == 1
     has_scan = bool(scan_lists_raw)

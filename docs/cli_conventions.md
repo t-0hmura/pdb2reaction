@@ -43,19 +43,6 @@ The following subcommands support progressive help (`--help` for core options, `
 
 `all`, `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`.
 
-`init` has only a single help level (`--help`).
-
----
-
-## Init Template
-
-Generate a starter YAML and run a parse-only check:
-
-```bash
-pdb2reaction init --out pdb2reaction_all.config.yaml
-pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
-```
-
 ---
 
 ## Residue Selectors
@@ -145,7 +132,7 @@ Atom selectors identify specific atoms for scans and restraints. They can be:
 
 ### PDB-style selector string
 ```bash
---scan-lists '[("TYR,285,CA", "MMT,309,C10", 2.20)]'
+--scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'
 ```
 
 Selector fields can be separated by:

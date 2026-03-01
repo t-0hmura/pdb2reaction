@@ -78,7 +78,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 
 ```bash
 pdb2reaction -i holo.pdb -c '308,309' \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
 ```
 
 ### 3) TSOPT のみ（ポケット TS 最適化）

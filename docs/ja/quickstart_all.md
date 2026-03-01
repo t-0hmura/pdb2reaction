@@ -7,13 +7,13 @@
 ## 最小コマンド
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all
+pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all
 ```
 
 後処理（TS 最適化、熱化学、DFT）まで同時に実行する場合:
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 

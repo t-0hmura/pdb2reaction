@@ -39,7 +39,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 2. リテラル入力を使う。
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
 ```
 
 3. ステージごとの軌跡を保存して確認する。
@@ -63,25 +63,25 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numbe
 cat > scan.yaml << 'YAML'
 one_based: true
 stages:
- - [["TYR,285,CA", "MMT,309,C10", 1.35]]
- - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+ - [["TYR,285,CA", "SAM,309,C10", 1.35]]
+ - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 YAML
 pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml
 
 # 代替: Python リテラル
-pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # 2 ステージ、LBFGS 緩和、軌跡ダンプ
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
- '[("TYR,285,CA","MMT,309,C10",1.35)]' \
- '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
  --preopt --endopt
 
 # 単一の --scan-lists の後に複数リテラルを渡す
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
- '[("TYR,285,CA","MMT,309,C10",1.35)]' \
- '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
 ## `--spec` の書式（推奨）
@@ -122,7 +122,7 @@ stages:
 | 方法 | 例 | 備考 |
 | --- | --- | --- |
 | 整数インデックス | `(1, 5, 2.0)` | デフォルトは 1 始まり（`--one-based`） |
-| PDB セレクタ | `("TYR,285,CA", "MMT,309,C10", 2.0)` | 残基名、残基番号、原子名の三つ組 |
+| PDB セレクタ | `("TYR,285,CA", "SAM,309,C10", 2.0)` | 残基名、残基番号、原子名の三つ組 |
 
 PDB セレクタのトークンは、カンマ `,`、スペース、スラッシュ `/`、バッククォート `` ` ``、バックスラッシュ `\` のいずれでも区切れます。トークンの順序も任意です。
 
@@ -138,13 +138,13 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ```bash
 # 正しい: シングルクォートでリストを囲み、セレクタはダブルクォート
---scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+--scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # 正しい: 整数インデックスなら内側のダブルクォートは不要
 --scan-lists '[(1, 5, 2.0)]'
 
 # 非推奨: ダブルクォートで外側を囲むとエスケープが必要
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]"
+--scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
 ### 複数ステージ
@@ -155,8 +155,8 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 # ステージ 1: 1 つの結合を 1.35 Å に駆動
 # ステージ 2: 2 つの結合を同時に駆動
 --scan-lists \
- '[("TYR,285,CA","MMT,309,C10",1.35)]' \
- '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
 ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。**`--scan-lists` フラグは繰り返さず**、すべてのリテラルを 1 つのフラグの後に記述してください。

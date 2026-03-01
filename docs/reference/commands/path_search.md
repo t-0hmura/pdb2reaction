@@ -11,10 +11,7 @@ Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Two or more structures in reaction order.
-                                  Either repeat '-i' (e.g., '-i A -i B -i C') or
-                                  use a single '-i' followed by multiple space-
-                                  separated paths (e.g., '-i A B C').
-                                  [required]
+                                  Repeat -i/--input for each path.  [required]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --refine-mode [peak|minima]     Refinement seed selection around the highest-
@@ -58,10 +55,13 @@ Options:
                                   [default: convert-files]
   --out-dir TEXT                  Output directory.  [default:
                                   ./result_path_search/]
-  --thresh TEXT                   Convergence preset for GSM and single
-                                  optimizations (gau_loose|gau|gau_tight|gau_vti
-                                  ght|baker|never). Defaults to 'gau' when not
-                                  provided.
+  --thresh TEXT                   Convergence preset for single-structure
+                                  optimizations only (gau_loose|gau|gau_tight|ga
+                                  u_vtight|baker|never). Defaults to 'gau' when
+                                  not provided.
+  --thresh-stopt TEXT             Convergence preset for the string optimizer
+                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|ba
+                                  ker|never).  [default: gau]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

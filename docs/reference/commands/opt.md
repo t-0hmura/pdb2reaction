@@ -41,8 +41,10 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --max-cycles INTEGER            Maximum number of optimization cycles.
                                   [default: 10000]
-  --opt-mode [grad|hess]          Optimization mode: grad (=LBFGS) or hess
-                                  (=RFO).  [default: hess]
+  --opt-mode [grad|hess|lbfgs|rfo]
+                                  Optimization mode: grad (lbfgs) or hess (rfo).
+                                  Aliases lbfgs/rfo are accepted.  [default:
+                                  grad]
   --flatten / --no-flatten        Enable/disable imaginary-mode flatten loop
                                   after optimization.  [default: no-flatten]
   --dump / --no-dump              Write optimization trajectory to

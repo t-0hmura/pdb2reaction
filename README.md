@@ -97,19 +97,13 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ### Scan mode (single structure)
 ```bash
 pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
-    --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+    --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
 ```
 
 ### TS optimization only
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
     --tsopt
-```
-
-### Generate a starter config template
-```bash
-pdb2reaction init --out pdb2reaction_all.config.yaml
-pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
 ```
 
 ### Step-by-step workflow
@@ -145,7 +139,6 @@ pdb2reaction dft -i optimized.pdb
 | Subcommand | Role | Documentation |
 |---|---|---|
 | `all` | End-to-end: extraction → MEP → TS → IRC → freq → DFT | [docs/all.md](docs/all.md) |
-| `init` | Generate a starter YAML template for `pdb2reaction all` | [docs/init.md](docs/init.md) |
 
 ### Structure Preparation
 

@@ -38,6 +38,7 @@ from .uma_pysis import uma_ase, uma_pysis
 from .defaults import (
     GEOM_KW_DEFAULT,
     UMA_CALC_KW,
+    OPT_BASE_KW,
     LBFGS_KW,
     RFO_KW,
     OPT_MODE_ALIASES,
@@ -274,8 +275,8 @@ def _run_dmf_mep(
 def _optimize_single(
     g,
     shared_calc,
-    sopt_kind: str,
-    sopt_cfg: Dict[str, Any],
+    opt_kind: str,
+    opt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
     prepared_input: Optional[PreparedInputStructure],
@@ -286,19 +287,19 @@ def _optimize_single(
     """
     g.set_calculator(shared_calc)
 
-    seg_dir = out_dir / f"{tag}_{sopt_kind}_opt"
+    seg_dir = out_dir / f"{tag}_{opt_kind}_opt"
     seg_dir.mkdir(parents=True, exist_ok=True)
-    args = dict(sopt_cfg)
+    args = dict(opt_cfg)
     args["out_dir"] = str(seg_dir)
 
-    if sopt_kind == "lbfgs":
+    if opt_kind == "lbfgs":
         opt = LBFGS(g, **args)
     else:
         opt = RFOptimizer(g, **args)
 
-    click.echo(f"\n====== [{tag}] Single-structure {sopt_kind.upper()} started ======\n")
+    click.echo(f"\n====== [{tag}] Single-structure {opt_kind.upper()} started ======\n")
     opt.run()
-    click.echo(f"\n====== [{tag}] Single-structure {sopt_kind.upper()} finished ======\n")
+    click.echo(f"\n====== [{tag}] Single-structure {opt_kind.upper()} finished ======\n")
 
     try:
         final_xyz = Path(opt.final_fn)
@@ -482,9 +483,19 @@ def _optimize_single(
     default=None,
     show_default=False,
     help=(
-        "Convergence preset for the string optimizer, pre-alignment refinement, "
-        "and endpoint preoptimization (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Convergence preset for endpoint preoptimization only "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
         "Defaults to 'gau' when not provided."
+    ),
+)
+@click.option(
+    "--thresh-stopt",
+    type=str,
+    default="gau",
+    show_default=True,
+    help=(
+        "Convergence preset for the string optimizer (stopt) "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -547,6 +558,7 @@ def cli(
     ref_pdb: Optional[Path],
     out_dir: str,
     thresh: Optional[str],
+    thresh_stopt: str,
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
@@ -587,9 +599,55 @@ def cli(
         calc_cfg = dict(UMA_CALC_KW)
         dmf_cfg = dict(DMF_KW)
         gs_cfg = dict(GS_KW)
-        opt_cfg = dict(STOPT_KW)
+        stopt_cfg = dict(STOPT_KW)
+        stopt_cfg["out_dir"] = out_dir
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg = dict(RFO_KW)
+
+        def _apply_single_opt_yaml_layer(layer_cfg: Dict[str, Any]) -> None:
+            """Apply single-structure optimizer overrides from YAML.
+
+            Canonical schema:
+              opt:
+                <common keys>
+                lbfgs: {...}
+                rfo: {...}
+            """
+            if not isinstance(layer_cfg, dict):
+                return
+            opt_section = layer_cfg.get("opt")
+            if isinstance(opt_section, dict):
+                common_updates = {k: v for k, v in opt_section.items() if k in OPT_BASE_KW}
+                if common_updates:
+                    deep_update(lbfgs_cfg, common_updates)
+                    deep_update(rfo_cfg, common_updates)
+
+                lbfgs_section = opt_section.get("lbfgs")
+                if isinstance(lbfgs_section, dict):
+                    deep_update(lbfgs_cfg, lbfgs_section)
+                else:
+                    apply_yaml_overrides(
+                        layer_cfg,
+                        [(lbfgs_cfg, (("lbfgs",),))],
+                    )
+
+                rfo_section = opt_section.get("rfo")
+                if isinstance(rfo_section, dict):
+                    deep_update(rfo_cfg, rfo_section)
+                else:
+                    apply_yaml_overrides(
+                        layer_cfg,
+                        [(rfo_cfg, (("rfo",),))],
+                    )
+                return
+
+            apply_yaml_overrides(
+                layer_cfg,
+                [
+                    (lbfgs_cfg, (("lbfgs",),)),
+                    (rfo_cfg, (("rfo",),)),
+                ],
+            )
 
         apply_yaml_overrides(
             config_layer_cfg,
@@ -598,11 +656,10 @@ def cli(
                 (calc_cfg, (("calc",),)),
                 (dmf_cfg, (("dmf",),)),
                 (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+                (stopt_cfg, (("stopt",),)),
             ],
         )
+        _apply_single_opt_yaml_layer(config_layer_cfg)
 
         # Resolve charge/spin from templates/ligand charge and then apply precedence.
         resolved_charge, resolved_spin = resolve_charge_spin(
@@ -632,8 +689,8 @@ def cli(
         if _is_param_explicit("max_nodes"):
             gs_cfg["max_nodes"] = int(max_nodes)
         if _is_param_explicit("max_cycles"):
-            opt_cfg["max_cycles"] = int(max_cycles)
-            opt_cfg["stop_in_when_full"] = int(max_cycles)
+            stopt_cfg["max_cycles"] = int(max_cycles)
+            stopt_cfg["stop_in_when_full"] = int(max_cycles)
             dmf_cfg["max_cycles"] = int(max_cycles)
         if _is_param_explicit("climb"):
             gs_cfg["climb"] = bool(climb)
@@ -642,17 +699,18 @@ def cli(
             gs_cfg["fix_first"] = bool(fix_ends)
             gs_cfg["fix_last"] = bool(fix_ends)
         if _is_param_explicit("dump"):
-            opt_cfg["dump"] = bool(dump)
+            stopt_cfg["dump"] = bool(dump)
             lbfgs_cfg["dump"] = bool(dump)
             rfo_cfg["dump"] = bool(dump)
         if _is_param_explicit("out_dir"):
-            opt_cfg["out_dir"] = out_dir
+            stopt_cfg["out_dir"] = out_dir
             lbfgs_cfg["out_dir"] = out_dir
             rfo_cfg["out_dir"] = out_dir
         if _is_param_explicit("thresh") and thresh is not None:
-            opt_cfg["thresh"] = str(thresh)
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
+        if _is_param_explicit("thresh_stopt") and thresh_stopt is not None:
+            stopt_cfg["thresh"] = str(thresh_stopt)
         if _is_param_explicit("preopt_max_cycles"):
             lbfgs_cfg["max_cycles"] = int(preopt_max_cycles)
             rfo_cfg["max_cycles"] = int(preopt_max_cycles)
@@ -664,15 +722,16 @@ def cli(
                 (calc_cfg, (("calc",),)),
                 (dmf_cfg, (("dmf",),)),
                 (gs_cfg, (("gs",),)),
-                (opt_cfg, (("opt",),)),
-                (lbfgs_cfg, (("sopt", "lbfgs"), ("opt", "lbfgs"), ("lbfgs",))),
-                (rfo_cfg, (("sopt", "rfo"), ("opt", "rfo"), ("rfo",))),
+                (stopt_cfg, (("stopt",),)),
             ],
         )
+        _apply_single_opt_yaml_layer(override_layer_cfg)
 
         # Use external Kabsch alignment; keep internal align disabled.
-        opt_cfg["align"] = False
-        opt_cfg["stop_in_when_full"] = int(opt_cfg.get("max_cycles", STOPT_KW["max_cycles"]))
+        stopt_cfg["align"] = False
+        stopt_cfg["stop_in_when_full"] = int(
+            stopt_cfg.get("max_cycles", STOPT_KW["max_cycles"])
+        )
 
         opt_kind = normalize_choice(
             opt_mode,
@@ -682,33 +741,35 @@ def cli(
         )
         mep_mode_kind = mep_mode.strip().lower()
         if opt_kind == "lbfgs":
-            sopt_kind = "lbfgs"
-            sopt_cfg = lbfgs_cfg
+            single_opt_kind = "lbfgs"
+            single_opt_cfg = lbfgs_cfg
         else:
-            sopt_kind = "rfo"
-            sopt_cfg = rfo_cfg
+            single_opt_kind = "rfo"
+            single_opt_cfg = rfo_cfg
 
-        sopt_cfg = dict(sopt_cfg)
-        preopt_max_cycles_effective = int(sopt_cfg.get("max_cycles", preopt_max_cycles))
+        single_opt_cfg = dict(single_opt_cfg)
+        preopt_max_cycles_effective = int(
+            single_opt_cfg.get("max_cycles", preopt_max_cycles)
+        )
 
         # For display: resolved configuration
-        out_dir_path = Path(opt_cfg["out_dir"]).resolve()
+        out_dir_path = Path(stopt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_geom_for_echo(calc_cfg)
         echo_gs = dict(gs_cfg)
-        echo_opt = dict(opt_cfg)
-        echo_opt["out_dir"] = str(out_dir_path)
+        echo_stopt = dict(stopt_cfg)
+        echo_stopt["out_dir"] = str(out_dir_path)
 
         click.echo(pretty_block("geom", echo_geom))
         click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs", echo_gs))
-        click.echo(pretty_block("opt", echo_opt))
+        click.echo(pretty_block("stopt", echo_stopt))
         if mep_mode_kind == "dmf":
             click.echo(pretty_block("dmf", dmf_cfg))
-        echo_sopt = dict(sopt_cfg)
-        echo_sopt["out_dir"] = str(out_dir_path)
-        echo_sopt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{sopt_kind}_opt"
-        click.echo(pretty_block("sopt." + sopt_kind, echo_sopt))
+        echo_opt = dict(single_opt_cfg)
+        echo_opt["out_dir"] = str(out_dir_path)
+        echo_opt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{single_opt_kind}_opt"
+        click.echo(pretty_block("opt." + single_opt_kind, echo_opt))
         click.echo(
             pretty_block(
                 "run_flags",
@@ -811,8 +872,8 @@ def cli(
                     g_opt = _optimize_single(
                         g,
                         shared_calc,
-                        sopt_kind,
-                        sopt_cfg,
+                        single_opt_kind,
+                        single_opt_cfg,
                         preopt_out_dir,
                         tag=tag,
                         prepared_input=prepared_inputs[i] if i < len(prepared_inputs) else None,
@@ -832,7 +893,7 @@ def cli(
             )
 
         # External Kabsch alignment (if freeze_atoms exist, use only them)
-        align_thresh = str(opt_cfg.get("thresh", "gau"))
+        align_thresh = str(single_opt_cfg.get("thresh", "gau"))
         try:
             click.echo(
                 "\n====== Aligning all inputs to the first structure "
@@ -926,7 +987,7 @@ def cli(
             **gs_cfg,
         )
 
-        opt_args = dict(opt_cfg)
+        opt_args = dict(stopt_cfg)
         opt_args["out_dir"] = str(out_dir_path)
 
         optimizer = StringOptimizer(

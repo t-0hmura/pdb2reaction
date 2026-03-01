@@ -13,6 +13,7 @@
 | [`rfo`](#rfo) | RFOの設定 | opt, scan, scan2d, scan3d, path-search |
 | [`gs`](#gs) | GSM（Growing String Method）設定 | path-opt, path-search |
 | [`dmf`](#dmf) | DMF（Direct Max Flux）設定 | path-opt, path-search |
+| [`stopt`](#stopt) | StringOptimizer 設定 | path-opt, path-search |
 | [`irc`](#ja-irc-section) | IRC積分設定 | irc |
 | [`freq`](#ja-freq-section) | 振動数解析設定 | freq |
 | [`thermo`](#thermo) | 熱化学設定 | freq |
@@ -22,7 +23,6 @@
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
 | [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt |
-| [`sopt`](#sopt) | path-search用単一構造最適化 | path-search |
 
 ---
 
@@ -80,15 +80,11 @@ calc:
 
 ### `opt`
 
-L-BFGS/RFOで共通の最適化設定。
+L-BFGS/RFO で共通の単一構造最適化設定。
 
 ```yaml
 opt:
- type: string # StringOptimizer 専用（path-opt/path-search）：optimizer type label
  thresh: gau # Convergence preset: gau_loose, gau, gau_tight, gau_vtight, baker, never
- stop_in_when_full: 300 # StringOptimizer 専用：string が満たされたときの早期停止閾値
- align: false # StringOptimizer 専用：alignment の有効/無効
- scale_step: global # StringOptimizer 専用：step scaling モード
  max_cycles: 10000 # Maximum optimizer iterations
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum step norm for acceptance
@@ -103,8 +99,6 @@ opt:
  line_search: true # Enable line search
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
- reparam_thresh: 0.0 # StringOptimizer 専用：再パラメータ化の閾値
- coord_diff_thresh: 0.0 # StringOptimizer 専用：座標差分の閾値
  prefix: "" # Filename prefix
  out_dir:./result_opt/ # Output directory
 ```
@@ -254,26 +248,24 @@ search:
 
 ---
 
-### `sopt`
+### `stopt`
 
-path-search向け単一構造最適化（HEI±1やkinkノード）。
+chain-of-states 経路最適化（`path-opt`, `path-search`）向けの StringOptimizer 設定。
 
 ```yaml
-sopt:
- lbfgs:
- # Same keys as lbfgs section above
- thresh: gau
- max_cycles: 10000
- out_dir:./result_path_search/
- dump: false
- #... (see lbfgs section)
- rfo:
- # Same keys as rfo section above
- thresh: gau
- max_cycles: 10000
- out_dir:./result_path_search/
- dump: false
- #... (see rfo section)
+stopt:
+ type: string # Optimizer type label
+ thresh: gau # StringOptimizer convergence preset
+ stop_in_when_full: 300 # Early stop threshold when the string is full
+ align: false # Alignment toggle
+ scale_step: global # Step scaling mode
+ max_cycles: 300 # Maximum StringOptimizer iterations
+ dump: false # Dump trajectory/restart data
+ dump_restart: false # Dump restart checkpoints
+ reparam_thresh: 0.0 # Reparameterization threshold
+ coord_diff_thresh: 0.0 # Coordinate-difference threshold
+ out_dir:./result_path_opt/ # Output directory
+ print_every: 10 # Logging stride
 ```
 
 ---
@@ -490,18 +482,17 @@ gs:
  climb: true
  climb_lanczos: true
 
-opt:
+stopt:
  thresh: gau
  max_cycles: 300
  dump: false
  out_dir:./result_all/
 
-sopt:
- lbfgs:
+opt:
  thresh: gau
+ lbfgs:
  max_cycles: 10000
  rfo:
- thresh: gau
  max_cycles: 10000
 
 bond:

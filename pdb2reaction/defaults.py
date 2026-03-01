@@ -327,6 +327,7 @@ GS_KW: Dict[str, Any] = {
 
 STOPT_KW: Dict[str, Any] = {
     "type": "string",
+    "thresh": "gau",
     "stop_in_when_full": 300,
     "align": False,
     "scale_step": "global",

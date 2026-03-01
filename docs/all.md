@@ -15,13 +15,13 @@ It supports three common modes:
 - **Multi-structure workflow** — Provide ≥2 structures (PDB/GJF/XYZ) in reaction order plus a substrate definition. `all` extracts pockets, runs GSM/DMF MEP search, merges the optimized path back into the full-system template(s), and optionally runs TSOPT/freq/DFT per reactive segment.
 - **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists`. The scan generates an ordered set of intermediates that become MEP endpoints.
  - One `--scan-lists` literal runs a single scan stage.
- - Multiple stages are passed as multiple values after a single `--scan-lists` flag (the flag itself cannot be repeated).
+ - Multiple stages are passed by repeating `--scan-lists`.
 - **TSOPT-only pocket TS optimization** — Provide a single input structure, omit `--scan-lists`, and set `--tsopt`. `all` extracts the pocket (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
 ## Minimal example
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
 ```
 
 ## Output checklist
@@ -35,14 +35,14 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --ou
 1. Run full post-processing in one command.
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
 2. Single-structure staged scan route.
 
 ```bash
-pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.20)]" \
+pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-lists "[(10,55,2.20)]" \
  --multiplicity 1 --out-dir ./result_scan_all
 ```
 
@@ -51,7 +51,7 @@ PDB/GJF companion files are generated when templates are available, controlled b
 
 ## Usage
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2...] -c SUBSTRATE [options]
+pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [options]
 ```
 
 For help output, `pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the full option list.
@@ -59,31 +59,31 @@ For help output, `pdb2reaction all --help` shows core options and `pdb2reaction 
 ### Examples
 ```bash
 # Multi-structure ensemble with explicit ligand charges and post-processing
-pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
- --ligand-charge 'GPP:-3,MMT:-1' --multiplicity 1 --freeze-links \
+pdb2reaction all -i reactant.pdb -i product.pdb -c 'GPP,SAM' \
+ --ligand-charge 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
  --out-dir ./result_all --tsopt --thermo --dft
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --opt-mode hess --tsopt --thermo --dft
 
 # TSOPT-only workflow (no path search)
-pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
- --ligand-charge 'GPP:-3,MMT:-1' --tsopt --thermo --dft
+pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
+ --ligand-charge 'GPP:-3,SAM:1' --tsopt --thermo --dft
 ```
 
 ## Workflow
 1. **Active-site pocket extraction** (if `-c/--center` is provided)
- - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,MMT`).
+ - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,SAM`).
  - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`, and `--verbose`.
  - Per-input pocket PDBs are saved under `<out-dir>/pockets/`. When multiple structures are supplied, their pockets are unioned per residue selection.
  - The **first pocket’s total charge** is propagated to scan/MEP/TSOPT.
 
 2. **Optional staged scan (single-input only)**
  - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
- - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals after a single flag (repeated flags are not accepted).
+ - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals by repeating `--scan-lists`.
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on pockets (recursive GSM/DMF)**
@@ -290,7 +290,7 @@ The effective YAML is forwarded to **every** invoked subcommand. Each tool reads
 
 | Subcommand | YAML Sections |
 |------------|---------------|
-| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
+| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |

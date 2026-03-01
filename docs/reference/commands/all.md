@@ -21,15 +21,13 @@ Options:
                                   Extraction (-c/--center) requires PDB inputs.
                                   When using --scan-lists without extraction,
                                   the input may be PDB/XYZ/GJF (integer indices
-                                  only for non-PDB inputs). You may pass a
-                                  single '-i' followed by multiple space-
-                                  separated files (e.g., '-i A.pdb B.pdb
-                                  C.pdb').  [required]
+                                  only for non-PDB inputs). Repeat -i/--input
+                                  for each file.  [required]
   -c, --center TEXT               Substrate specification for the extractor: a
                                   PDB path, a residue-ID list like '123,124' or
                                   'A:123,B:456' (insertion codes OK: '123A' /
                                   'A:123A'), or a residue-name list like
-                                  'GPP,MMT'. When omitted, extraction is skipped
+                                  'GPP,SAM'. When omitted, extraction is skipped
                                   and the **full input structure(s)** are used
                                   directly as pockets.
   --out-dir DIRECTORY             Top-level output directory for the pipeline.
@@ -43,15 +41,15 @@ Options:
                                   pocket.  [default: True]
   --exclude-backbone BOOLEAN      Remove backbone atoms on non‑substrate amino
                                   acids (with PRO/HYP safeguards).  [default:
-                                  True]
+                                  False]
   --add-linkH BOOLEAN             Add link hydrogens for severed bonds (carbon-
                                   only) in pockets.  [default: True]
   --selected-resn TEXT            Force-include residues (comma/space separated;
                                   chain/insertion codes allowed).  [default: ""]
   --ligand-charge TEXT            Total charge (number) or per-resname mapping
-                                  like 'GPP:-3,MMT:-1'. Used for extractor
-                                  charge summaries; when extraction is skipped,
-                                  PDB inputs derive the total charge and numeric
+                                  like 'GPP:-3,SAM:1'. Used for extractor charge
+                                  summaries; when extraction is skipped, PDB
+                                  inputs derive the total charge and numeric
                                   values act as a total-charge fallback.
   -q, --charge INTEGER            Force the total system charge (overrides
                                   extractor/GJF/--ligand-charge-derived values;
@@ -80,7 +78,7 @@ Options:
   --opt-mode [grad|hess]          Optimizer mode forwarded to scan/tsopt and
                                   used for single optimizations: grad
                                   (=LBFGS/Dimer) or hess (=RFO/RSIRFO).
-                                  [default: hess]
+                                  [default: grad]
   --opt-mode-post [grad|hess]     Optimizer mode override for TSOPT/post-IRC
                                   endpoint optimizations. If unset, uses --opt-
                                   mode when explicitly provided; otherwise falls
@@ -168,17 +166,15 @@ Options:
                                   literal runs one stage; multiple literals run
                                   **sequentially**, each starting from the prior
                                   stage's relaxed structure. Example: --scan-
-                                  lists '[(12,45,1.35)]'
-                                  '[(10,55,2.20),(23,34,1.80)]'. Pass a single
-                                  --scan-lists followed by multiple values to
-                                  define multiple stages (repeated flags are not
-                                  accepted). Indices refer to the original full
-                                  input PDB (1-based). When extraction is used,
-                                  they are auto-mapped to the pocket after
-                                  extraction. For non-PDB single-structure
-                                  scans, only integer indices are supported
-                                  (1-based by default). Stage results feed into
-                                  the MEP step (path_search or path_opt).
+                                  lists '[(12,45,1.35)]' --scan-lists
+                                  '[(10,55,2.20),(23,34,1.80)]'. Indices refer
+                                  to the original full input PDB (1-based). When
+                                  extraction is used, they are auto-mapped to
+                                  the pocket after extraction. For non-PDB
+                                  single-structure scans, only integer indices
+                                  are supported (1-based by default). Stage
+                                  results feed into the MEP step (path_search or
+                                  path_opt).
   --scan-out-dir DIRECTORY        Override the scan output directory (default:
                                   <out-dir>/scan/). Relative paths are resolved
                                   against the default parent.

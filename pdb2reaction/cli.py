@@ -25,7 +25,6 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "trj2fig": (".trj2fig", "cli", "Plot energy profile from trajectory."),
     "add-elem-info": (".add_elem_info", "cli", "Repair/add PDB element columns."),
     "dft": (".dft", "cli", "Run single-point DFT."),
-    "init": (".init", "cli", "Generate starter YAML templates."),
     "scan2d": (".scan2d", "cli", "Run 2D distance scan."),
     "scan3d": (".scan3d", "cli", "Run 3D distance scan."),
     "extract": (".extract", "cli", "Extract a binding pocket."),

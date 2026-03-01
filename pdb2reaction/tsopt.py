@@ -1438,10 +1438,10 @@ def _build_rsirfo_kwargs(
 )
 @click.option(
     "--opt-mode",
-    type=click.Choice(["grad", "hess"], case_sensitive=False),
+    type=click.Choice(["grad", "hess", "dimer", "rsirfo"], case_sensitive=False),
     default="hess",
     show_default=True,
-    help="grad (=Dimer) or hess (=RS-I-RFO).",
+    help="grad (dimer) or hess (rsirfo). Aliases dimer/rsirfo are accepted.",
 )
 @click.option(
     "--dump/--no-dump",
@@ -1635,7 +1635,7 @@ def cli(
             opt_mode,
             param="--opt-mode",
             alias_groups=TSOPT_MODE_ALIASES,
-            allowed_hint="grad|hess",
+            allowed_hint="grad|hess|dimer|rsirfo",
         )
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 

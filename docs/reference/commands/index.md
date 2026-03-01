@@ -11,7 +11,6 @@ energy_diagram
 extract
 fix_altloc
 freq
-init
 irc
 opt
 path_opt
@@ -32,7 +31,6 @@ tsopt
 | `pdb2reaction extract` | [extract](extract.md) |
 | `pdb2reaction fix-altloc` | [fix-altloc](fix_altloc.md) |
 | `pdb2reaction freq` | [freq](freq.md) |
-| `pdb2reaction init` | [init](init.md) |
 | `pdb2reaction irc` | [irc](irc.md) |
 | `pdb2reaction opt` | [opt](opt.md) |
 | `pdb2reaction path-opt` | [path-opt](path_opt.md) |

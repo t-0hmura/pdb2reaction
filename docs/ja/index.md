@@ -24,7 +24,6 @@ cli_conventions
 :hidden:
 
 all
-init
 extract
 fix_altloc
 add_elem_info

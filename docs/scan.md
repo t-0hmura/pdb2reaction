@@ -40,7 +40,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 2. Use literal input.
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
 ```
 
 3. Dump trajectories for stage-by-stage inspection.
@@ -64,25 +64,25 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <numbe
 cat > scan.yaml << 'YAML'
 one_based: true
 stages:
- - [["TYR,285,CA", "MMT,309,C10", 1.35]]
- - [["TYR,285,CA", "MMT,309,C10", 2.20], ["TYR,285,CB", "MMT,309,C11", 1.80]]
+ - [["TYR,285,CA", "SAM,309,C10", 1.35]]
+ - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 YAML
 pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml
 
 # Alternative: Python literal
-pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # Two stages, LBFGS relaxations, and trajectory dumping
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
- '[("TYR,285,CA","MMT,309,C10",1.35)]' \
- '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
  --preopt --endopt
 
 # Supply multiple stage literals after a single --scan-lists
 pdb2reaction scan -i input.pdb -q 0 --scan-lists \
- '[("TYR,285,CA","MMT,309,C10",1.35)]' \
- '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
 ## `--spec` format (recommended)
@@ -123,7 +123,7 @@ Atoms can be given as **integer indices** or **PDB selector strings**:
 | Method | Example | Notes |
 | --- | --- | --- |
 | Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based`) |
-| PDB selector | `("TYR,285,CA", "MMT,309,C10", 2.0)` | Residue name, residue number, atom name |
+| PDB selector | `("TYR,285,CA", "SAM,309,C10", 2.0)` | Residue name, residue number, atom name |
 
 PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
 
@@ -139,13 +139,13 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ```bash
 # Correct: single-quote the list, double-quote selector strings inside
---scan-lists '[("TYR,285,CA","MMT,309,C10",1.35)]'
+--scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # Correct: integer indices need no inner quotes
 --scan-lists '[(1, 5, 2.0)]'
 
 # Avoid: double-quoting the outer literal requires escaping inner quotes
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.35)]"
+--scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
 ### Multiple stages
@@ -156,8 +156,8 @@ Pass multiple literals after a single `--scan-lists` flag. Each literal becomes 
 # Stage 1: drive one bond to 1.35 Å
 # Stage 2: drive two bonds simultaneously
 --scan-lists \
- '[("TYR,285,CA","MMT,309,C10",1.35)]' \
- '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]'
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
 Stages run sequentially; each starts from the previous stage's relaxed result. **Do not repeat the `--scan-lists` flag** — supply all stage literals after a single flag.

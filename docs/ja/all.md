@@ -15,13 +15,13 @@
 - **end-to-end（複数構造）** — 反応順に並べた 2 構造以上（PDB/GJF/XYZ）と基質定義を与えます。`all` がポケット抽出→GSM/DMF による MEP 探索→全系テンプレートへのマージまで行い、必要に応じてセグメントごとに TSOPT / freq / DFT を実行します。
 - **単一構造 + 段階的スキャン** — 1 つの構造に対して `--scan-lists` を 1 つ以上与えます。スキャンで得られた中間体列を MEP の端点として用います。
  - `--scan-lists` を 1 つだけ渡すと 1 ステージです。
- - 複数ステージは、`--scan-lists` を 1 回指定した後に複数値として渡します（フラグの繰り返し指定はできません）。
+ - 複数ステージは、`--scan-lists` を繰り返して指定します。
 - **TSOPT のみ（ポケット TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合はポケットを抽出し、その系で TS 最適化 + IRC（必要に応じて freq / DFT）だけを実行します。
 
 ## 最小例
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
 ```
 
 ## 出力の見方
@@ -35,14 +35,14 @@ pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --ou
 1. TS 最適化・熱化学・DFT まで一括実行する。
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
 2. 単一構造 + 段階的スキャンを実行する。
 
 ```bash
-pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.20)]" \
+pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-lists "[(10,55,2.20)]" \
  --multiplicity 1 --out-dir ./result_scan_all
 ```
 
@@ -51,30 +51,30 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" "[(10,55,2.
 
 ## 使用法
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2...] -c SUBSTRATE [options]
+pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [options]
 ```
 
 ### 例
 ```bash
 # 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
-pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,MMT' \
- --ligand-charge 'GPP:-3,MMT:-1' --multiplicity 1 --freeze-links \
+pdb2reaction all -i reactant.pdb -i product.pdb -c 'GPP,SAM' \
+ --ligand-charge 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
  --out-dir ./result_all --tsopt --thermo --dft
 
 # 単一構造段階的スキャン + GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i single.pdb -c '308,309' \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20),("TYR,285,CB","MMT,309,C11",1.80)]' \
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --opt-mode hess --tsopt --thermo --dft
 
 # TSOPT のみワークフロー（経路探索なし）
-pdb2reaction all -i reactant.pdb -c 'GPP,MMT' \
- --ligand-charge 'GPP:-3,MMT:-1' --tsopt --thermo --dft
+pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
+ --ligand-charge 'GPP:-3,SAM:1' --tsopt --thermo --dft
 ```
 
 ## ワークフロー
 1. **活性部位ポケット抽出**（`-c/--center` が指定された場合）
- - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,MMT`）で指定可能
+ - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,SAM`）で指定可能
  - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
  - 入力ごとのポケット PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
  - **最初のポケットの総電荷**がスキャン/MEP/TSOPT に伝播
@@ -293,7 +293,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 
 | サブコマンド | YAML セクション |
 |------------|-----------------|
-| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `opt`, `sopt`, `bond`, `search` |
+| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |

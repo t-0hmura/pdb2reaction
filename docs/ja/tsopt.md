@@ -6,7 +6,7 @@
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
-- **モード:** `rsirfo` = RS‑I‑RFO（既定、一般的により堅牢）。`dimer` = Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。
+- **モード:** `hess`（`rsirfo`）= RS‑I‑RFO（既定、一般的により堅牢）。`grad`（`dimer`）= Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。
 - **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
 - **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
@@ -61,7 +61,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ## 使用法
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--opt-mode grad|hess] [--flatten/--no-flatten] \
+ [--opt-mode grad|hess|dimer|rsirfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -104,7 +104,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
 | `--max-cycles INT` | `opt.max_cycles` に転送されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | `dimer`（Dimer）または `rsirfo`（RSIRFO） | `rsirfo` |
+| `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も受理。 | `hess` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
@@ -134,7 +134,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
+- `--opt-mode` はワークフロー選択用です（デフォルト: `hess` = `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - 虚数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で設定可能）。複数残る場合は `root` がどの虚数モードを出力するかに影響します。
 - 設定マージ優先順位は `defaults < config < 明示 CLI < override` です。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。

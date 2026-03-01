@@ -45,18 +45,18 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <num
 cat > scan2d.yaml << 'YAML'
 one_based: true
 pairs:
- - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
- - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
+ - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
+ - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
 YAML
 pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml
 
 # 代替: Python リテラル
 pdb2reaction scan2d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 
 # LBFGS、内側軌跡ダンプ、Plotly 出力
 pdb2reaction scan2d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```
@@ -97,7 +97,7 @@ pairs:
 | 方法 | 例 | 備考 |
 | --- | --- | --- |
 | 整数インデックス | `(1, 5, 1.30, 3.10)` | デフォルトは 1 始まり（`--one-based`） |
-| PDB セレクタ | `("TYR,285,CA", "MMT,309,C10", 1.30, 3.10)` | 残基名、残基番号、原子名の三つ組 |
+| PDB セレクタ | `("TYR,285,CA", "SAM,309,C10", 1.30, 3.10)` | 残基名、残基番号、原子名の三つ組 |
 
 PDB セレクタのトークンは、カンマ `,`、スペース、スラッシュ `/`、バッククォート `` ` ``、バックスラッシュ `\` のいずれでも区切れます。トークンの順序も任意です。
 
@@ -113,13 +113,13 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ```bash
 # 正しい: シングルクォートでリストを囲み、セレクタはダブルクォート
---scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+--scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 
 # 正しい: 整数インデックスなら内側のダブルクォートは不要
 --scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
 
 # 非推奨: ダブルクォートで外側を囲むとエスケープが必要
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10),...]"
+--scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
 ```
 
 ## ワークフロー

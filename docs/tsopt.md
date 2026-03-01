@@ -6,7 +6,7 @@
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
-- **Modes:** `rsirfo` = RS‑I‑RFO (default, generally more robust). `dimer` = Hessian Guided Dimer (often cheaper per step).
+- **Modes:** `hess` (`rsirfo`) = RS‑I‑RFO (default, generally more robust). `grad` (`dimer`) = Hessian Guided Dimer (often cheaper per step).
 - **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
 - **Optional cleanup:** `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
@@ -15,7 +15,7 @@
 - Use **`--opt-mode hess` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
 - Use **`--opt-mode grad` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
 
-> **Naming note:** The CLI accepts `grad` (= Dimer) and `hess` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
+> **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then validate/optimize the HEI with `tsopt` → `freq` → `irc`.
 
@@ -63,7 +63,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--opt-mode grad|hess] [--flatten/--no-flatten] \
+ [--opt-mode grad|hess|dimer|rsirfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -132,7 +132,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Choose optimizer: `dimer` (Dimer) or `rsirfo` (RSIRFO). | `rsirfo` |
+| `--opt-mode TEXT` | Optimizer preset: `grad` (`dimer`) or `hess` (`rsirfo`). Aliases `dimer`/`rsirfo` are accepted. | `hess` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |

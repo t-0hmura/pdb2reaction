@@ -45,18 +45,18 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <num
 cat > scan2d.yaml << 'YAML'
 one_based: true
 pairs:
- - ["TYR,285,CA", "MMT,309,C10", 1.30, 3.10]
- - ["TYR,285,CB", "MMT,309,C11", 1.20, 3.20]
+ - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
+ - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
 YAML
 pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml
 
 # Alternative: Python literal
 pdb2reaction scan2d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]' \
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```
@@ -97,7 +97,7 @@ Atoms can be given as **integer indices** or **PDB selector strings**:
 | Method | Example | Notes |
 | --- | --- | --- |
 | Integer index | `(1, 5, 1.30, 3.10)` | 1-based by default (`--one-based`) |
-| PDB selector | `("TYR,285,CA", "MMT,309,C10", 1.30, 3.10)` | Residue name, residue number, atom name |
+| PDB selector | `("TYR,285,CA", "SAM,309,C10", 1.30, 3.10)` | Residue name, residue number, atom name |
 
 PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
 
@@ -113,13 +113,13 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ```bash
 # Correct: single-quote the list, double-quote selector strings inside
---scan-lists '[("TYR,285,CA","MMT,309,C10",1.30,3.10),("TYR,285,CB","MMT,309,C11",1.20,3.20)]'
+--scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 
 # Correct: integer indices need no inner quotes
 --scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
 
 # Avoid: double-quoting the outer literal requires escaping inner quotes
---scan-lists "[(\"TYR,285,CA\",\"MMT,309,C10\",1.30,3.10),...]"
+--scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
 ```
 
 ## Workflow

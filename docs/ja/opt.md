@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** L-BFGS（`--opt-mode grad`）または RFO（`--opt-mode hess`、デフォルト）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚モードフラット化を実行できます。
+> **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚モードフラット化を実行できます。
 
 `pdb2reaction opt` は、pysisyphus LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用いて、UMA のエネルギー・勾配・ヘシアンで単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、または `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
 
@@ -59,14 +59,14 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
 ## 使用法
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--opt-mode grad|hess] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
+ [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## ワークフロー
-- **オプティマイザー**: `--opt-mode grad` → L-BFGS、`--opt-mode hess`（デフォルト）→ RFOptimizer
+- **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
 - **Flatten loop**: `--flatten` を有効にすると最適化後に虚モードフラット化を行います。`opt` では各反復で検出された虚モードをすべて潰してから再最適化します。
 - **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈します（`target_A` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
 - **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルトより優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱い、`extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が無い場合は中断します。多重度は省略時 `1` がデフォルトです。
@@ -90,7 +90,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `10.0` |
 | `--freeze-links/--no-freeze-links` | リンク水素の親原子の凍結を切り替え（PDB 入力のみ） | `True` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
-| `--opt-mode TEXT` | オプティマイザー選択: `lbfgs`（LBFGS）または `rfo`（RFO） | `rfo` |
+| `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も受理。 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚モードフラット化ループを有効/無効化 | `False` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |

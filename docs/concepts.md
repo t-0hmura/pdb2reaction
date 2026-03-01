@@ -77,7 +77,7 @@ Typical command:
 
 ```bash
 pdb2reaction -i holo.pdb -c '308,309' \
- --scan-lists '[("TYR,285,CA","MMT,309,C10",2.20)]'
+ --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
 ```
 
 ### 3) TSOPT-only mode (pocket TS optimization)

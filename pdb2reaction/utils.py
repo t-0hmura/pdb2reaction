@@ -463,7 +463,7 @@ def apply_yaml_overrides(
                 yaml_cfg,
                 [
                     (geom_cfg, (("geom",),)),
-                    (lbfgs_cfg, (("sopt", "lbfgs"), ("lbfgs",))),
+                    (lbfgs_cfg, (("opt", "lbfgs"), ("lbfgs",))),
                 ],
             )
 

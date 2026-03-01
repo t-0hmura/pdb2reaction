@@ -43,17 +43,6 @@ pdb2reaction all --help-advanced # 全オプション
 
 ---
 
-## init テンプレート
-
-`all` 用の YAML テンプレートを生成して検証できます:
-
-```bash
-pdb2reaction init --out pdb2reaction_all.config.yaml
-pdb2reaction all --config pdb2reaction_all.config.yaml --dry-run
-```
-
----
-
 ## 残基セレクタ
 
 残基セレクタは、基質や抽出中心として使用する残基を指定します。
@@ -141,7 +130,7 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 ### PDB形式のセレクタ文字列
 ```bash
---scan-lists '[("TYR,285,CA", "MMT,309,C10", 2.20)]'
+--scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'
 ```
 
 セレクタのフィールドは以下で区切れます：

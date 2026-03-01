@@ -37,8 +37,9 @@ Options:
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop (grad: dimer loop, hess: post-RSIRFO).
                                   [default: no-flatten]
-  --opt-mode [grad|hess]          grad (=Dimer) or hess (=RS-I-RFO).  [default:
-                                  hess]
+  --opt-mode [grad|hess|dimer|rsirfo]
+                                  grad (dimer) or hess (rsirfo). Aliases
+                                  dimer/rsirfo are accepted.  [default: hess]
   --dump / --no-dump              Write optimization trajectory to the output
                                   directory.  [default: no-dump]
   --out-dir TEXT                  Output directory.  [default: ./result_tsopt/]
