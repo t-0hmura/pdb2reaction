@@ -52,6 +52,8 @@ from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
 from .utils import (
     build_energy_diagram,
+    collect_option_values,
+    collect_single_option_values,
     convert_xyz_like_outputs,
     deep_update,
     detect_freeze_links_logged,
@@ -1578,7 +1580,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "when extraction is skipped) and use stage results as inputs for path_search; "
         "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode."
     ),
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
 )
 @click.option(
     "--help-advanced",
@@ -2145,6 +2147,8 @@ def cli(
     a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
     concatenated into the final MEP without invoking ``path_search``.
     """
+    argv_all = sys.argv[1:]
+
     _echo_state.reset()
     set_convert_file_enabled(convert_files)
     command_str = " ".join(sys.argv)
@@ -2190,6 +2194,23 @@ def cli(
         if opt_mode_post is None
         else _mode_alias.get(str(opt_mode_post).strip().lower(), "hess")
     )
+
+    i_vals = collect_option_values(argv_all, ("-i", "--input"))
+    if i_vals:
+        i_parsed: List[Path] = []
+        for tok in i_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Input path '{tok}' not found or is a directory. "
+                    "When using '-i', list only existing file paths (multiple paths may follow a single '-i')."
+                )
+            i_parsed.append(p)
+        input_paths = tuple(i_parsed)
+
+    scan_vals = collect_single_option_values(argv_all, ("--scan-lists",), "--scan-lists")
+    if scan_vals:
+        scan_lists_raw = tuple(scan_vals)
 
     is_single = len(input_paths) == 1
     has_scan = bool(scan_lists_raw)

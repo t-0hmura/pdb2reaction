@@ -56,6 +56,7 @@ from .defaults import (
 from .path_opt import _optimize_single, _run_dmf_mep
 from .utils import (
     as_list,
+    collect_option_values,
     load_yaml_dict,
     deep_update,
     apply_yaml_overrides,
@@ -1579,7 +1580,7 @@ def _merge_final_and_write(final_images: List[Any],
 
 @click.command(
     help="Multistep MEP search via recursive GSM/DMF segmentation.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
 )
 @click.option(
     "-i", "--input",
@@ -1802,6 +1803,47 @@ def cli(
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
+
+    argv_all = sys.argv[1:]
+    # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
+    i_vals = collect_option_values(argv_all, ("-i", "--input"))
+    if i_vals:
+        i_parsed: List[Path] = []
+        for tok in i_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Input path '{tok}' not found or is a directory. "
+                    f"When using '-i', list only existing file paths (multiple paths may follow a single '-i')."
+                )
+            i_parsed.append(p)
+        input_paths = tuple(i_parsed)
+
+    ref_vals = collect_option_values(argv_all, ("--ref-full-pdb",))
+    if ref_vals:
+        ref_parsed: List[Path] = []
+        for tok in ref_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Reference PDB path '{tok}' not found or is a directory. "
+                    f"When using '--ref-full-pdb', multiple files may follow a single option."
+                )
+            ref_parsed.append(p)
+        ref_pdb_paths = tuple(ref_parsed)
+
+    pocket_ref_vals = collect_option_values(argv_all, ("--ref-pdb",))
+    if pocket_ref_vals:
+        pocket_ref_parsed: List[Path] = []
+        for tok in pocket_ref_vals:
+            p = Path(tok)
+            if (not p.exists()) or p.is_dir():
+                raise click.BadParameter(
+                    f"Pocket reference PDB path '{tok}' not found or is a directory. "
+                    f"When using '--ref-pdb', multiple files may follow a single option."
+                )
+            pocket_ref_parsed.append(p)
+        pocket_ref_pdb_paths = tuple(pocket_ref_parsed)
 
     def _is_param_explicit(name: str) -> bool:
         try:
