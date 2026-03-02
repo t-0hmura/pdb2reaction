@@ -1660,7 +1660,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="Freeze parent atoms of link hydrogens (PDB only).",
 )
-@click.option("--max-nodes", type=int, default=10, show_default=True,
+@click.option("--max-nodes", type=int, default=20, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
 @click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")

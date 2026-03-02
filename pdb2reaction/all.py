@@ -1747,7 +1747,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @click.option(
     "--max-nodes",
     type=int,
-    default=10,
+    default=20,
     show_default=True,
     help="Max internal nodes for **segment** GSM (String has max_nodes+2 images including endpoints).",
 )

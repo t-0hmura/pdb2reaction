@@ -426,7 +426,7 @@ def _optimize_single(
 @click.option(
     "--max-nodes",
     type=int,
-    default=10,
+    default=20,
     show_default=True,
     help="Number of internal nodes (string has max_nodes+2 images including endpoints).",
 )
