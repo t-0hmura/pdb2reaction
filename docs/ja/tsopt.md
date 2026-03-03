@@ -15,6 +15,8 @@
 - **`--opt-mode hess`（RS‑I‑RFO）**: デフォルト。ヘシアン計算のコストを許容でき、堅牢性を重視する場合に推奨。
 - **`--opt-mode grad`（Dimer）**: 軽量な探索を行いたい場合や、複数の TS 初期構造から素早く反復したい場合に有効。
 
+> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受理します。YAML では `dimer` または `rsirfo` を直接指定してください。
+
 XYZ/GJF 入力では `--ref-pdb` により参照 PDB トポロジーを与え、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換ができます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を得てから `tsopt` → `freq` → `irc` の順で検証してください。
 
 ## 最小例
@@ -115,6 +117,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
 | `--show-config/--no-show-config` | 解決後の設定レイヤーを表示して実行を継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに入力/設定を検証し、実行計画を表示 | `False` |
+
+```{note}
+**`--flatten` はデフォルトで無効です。** `defaults.py` では `flatten_max_iter=50` と定義されていますが、CLI の初期化で `--flatten` が明示的に渡されない限り `flatten_max_iter=0` が設定されます。TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
+```
 
 ## 出力
 ```
