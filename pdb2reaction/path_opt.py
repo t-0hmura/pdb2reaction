@@ -276,7 +276,7 @@ def _optimize_single(
     g,
     shared_calc,
     opt_kind: str,
-    opt_cfg: Dict[str, Any],
+    single_opt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
     prepared_input: Optional[PreparedInputStructure],
@@ -289,7 +289,7 @@ def _optimize_single(
 
     seg_dir = out_dir / f"{tag}_{opt_kind}_opt"
     seg_dir.mkdir(parents=True, exist_ok=True)
-    args = dict(opt_cfg)
+    args = dict(single_opt_cfg)
     args["out_dir"] = str(seg_dir)
 
     if opt_kind == "lbfgs":

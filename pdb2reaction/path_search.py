@@ -339,7 +339,7 @@ def _run_mep_between(
     gB,
     shared_calc,
     gs_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
+    stopt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
     ref_pdb_path: Optional[Path],
@@ -365,7 +365,7 @@ def _run_mep_between(
 
     seg_dir = out_dir / f"{tag}_mep"
     seg_dir.mkdir(parents=True, exist_ok=True)
-    _opt_args = dict(opt_cfg)
+    _opt_args = dict(stopt_cfg)
     _opt_args["out_dir"] = str(seg_dir)
 
     optimizer = StringOptimizer(
@@ -579,7 +579,7 @@ def _refine_between(
     gR,
     shared_calc,
     gs_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
+    stopt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
     ref_pdb_path: Optional[Path],
@@ -607,7 +607,7 @@ def _refine_between(
             dmf_cfg=dmf_cfg,
         )
 
-    return _run_mep_between(gL, gR, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
+    return _run_mep_between(gL, gR, shared_calc, gs_cfg, stopt_cfg, out_dir, tag=f"{tag}_refine", ref_pdb_path=ref_pdb_path)
 
 
 def _bridge_segments(
@@ -615,7 +615,7 @@ def _bridge_segments(
     head_g,
     shared_calc,
     gs_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
+    stopt_cfg: Dict[str, Any],
     out_dir: Path,
     tag: str,
     rmsd_thresh: float,
@@ -649,7 +649,7 @@ def _bridge_segments(
             dmf_cfg=dmf_cfg,
         )
 
-    return _run_mep_between(tail_g, head_g, shared_calc, gs_cfg, opt_cfg, out_dir, tag=f"{tag}_bridge", ref_pdb_path=ref_pdb_path)
+    return _run_mep_between(tail_g, head_g, shared_calc, gs_cfg, stopt_cfg, out_dir, tag=f"{tag}_bridge", ref_pdb_path=ref_pdb_path)
 
 
 def _stitch_paths(
@@ -658,7 +658,7 @@ def _stitch_paths(
     bridge_rmsd_thresh: float,
     shared_calc,
     gs_cfg,
-    opt_cfg,
+    stopt_cfg,
     out_dir: Path,
     tag: str,
     ref_pdb_path: Optional[Path],
@@ -746,7 +746,7 @@ def _stitch_paths(
             bridge_name_base = f"{left_base}_{right_base}"
 
             br = _bridge_segments(
-                tail, head, shared_calc, gs_cfg, opt_cfg, out_dir, tag=bridge_name_base,
+                tail, head, shared_calc, gs_cfg, stopt_cfg, out_dir, tag=bridge_name_base,
                 rmsd_thresh=bridge_rmsd_thresh, ref_pdb_path=ref_pdb_path,
                 mep_mode_kind=mep_mode_kind, calc_cfg=calc_cfg or {}, max_nodes=max_nodes,
                 prepared_inputs=prepared_inputs or [],
@@ -834,7 +834,7 @@ def _build_multistep_path(
     shared_calc,
     geom_cfg: Dict[str, Any],
     gs_cfg: Dict[str, Any],
-    opt_cfg: Dict[str, Any],
+    stopt_cfg: Dict[str, Any],
     single_opt_kind: str,
     single_opt_cfg: Dict[str, Any],
     bond_cfg: Dict[str, Any],
@@ -884,7 +884,7 @@ def _build_multistep_path(
                 gB,
                 shared_calc,
                 gs_seg_cfg,
-                opt_cfg,
+                stopt_cfg,
                 out_dir,
                 tag=seg_tag,
                 ref_pdb_path=ref_pdb_path,
@@ -951,7 +951,7 @@ def _build_multistep_path(
             gB,
             shared_calc,
             gs_seg_cfg,
-            opt_cfg,
+            stopt_cfg,
             out_dir,
             tag=tag0,
             ref_pdb_path=ref_pdb_path,
@@ -1044,7 +1044,7 @@ def _build_multistep_path(
             right_end,
             shared_calc,
             gs_seg_cfg,
-            opt_cfg,
+            stopt_cfg,
             out_dir,
             tag=tag0,
             ref_pdb_path=ref_pdb_path,
@@ -1093,7 +1093,7 @@ def _build_multistep_path(
     trailing_kink_run = kink_seq_count
     if left_changed:
         subL = _build_multistep_path(
-            gA, left_end, shared_calc, geom_cfg, gs_cfg, opt_cfg,
+            gA, left_end, shared_calc, geom_cfg, gs_cfg, stopt_cfg,
             single_opt_kind, single_opt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}L",
             pair_index=pair_index,
@@ -1118,7 +1118,7 @@ def _build_multistep_path(
 
     if right_changed:
         subR = _build_multistep_path(
-            right_end, gB, shared_calc, geom_cfg, gs_cfg, opt_cfg,
+            right_end, gB, shared_calc, geom_cfg, gs_cfg, stopt_cfg,
             single_opt_kind, single_opt_cfg, bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir, ref_pdb_path, prepared_input, depth + 1, seg_counter, branch_tag=f"{branch_tag}R",
             pair_index=pair_index,
@@ -1135,7 +1135,7 @@ def _build_multistep_path(
         sub = _build_multistep_path(
             tail_g, head_g,
             shared_calc,
-            geom_cfg, gs_cfg, opt_cfg,
+            geom_cfg, gs_cfg, stopt_cfg,
             single_opt_kind, single_opt_cfg,
             bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
             out_dir=out_dir,
@@ -1156,7 +1156,7 @@ def _build_multistep_path(
         bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
         shared_calc=shared_calc,
         gs_cfg=gs_bridge_cfg,
-        opt_cfg=opt_cfg,
+        stopt_cfg=stopt_cfg,
         out_dir=out_dir,
         tag=tag0,
         ref_pdb_path=ref_pdb_path,
@@ -2276,7 +2276,7 @@ def cli(
                     bridge_rmsd_thresh=float(search_cfg.get("bridge_rmsd_thresh", 1e-4)),
                     shared_calc=shared_calc,
                     gs_cfg=gs_bridge_cfg,
-                    opt_cfg=stopt_cfg,
+                    stopt_cfg=stopt_cfg,
                     out_dir=out_dir_path,
                     tag=pair_tag,
                     ref_pdb_path=ref_pdb_for_segments,
