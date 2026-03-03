@@ -132,7 +132,7 @@ ja/index
 ### Main Workflow
 | Subcommand | Description |
 |------------|-------------|
-| [`all`](all.md) | End-to-end workflow: extraction → MEP → TS optimization → IRC → freq → DFT |
+| [`all`](all.md) | End-to-end workflow: extraction → MEP → TS optimization → IRC → vibrational analysis → DFT |
 
 ### Structure Preparation
 | Subcommand | Description |
@@ -166,7 +166,7 @@ ja/index
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
-| [`energy-diagram`](energy_diagram.md) | Build an energy diagram from numeric input values |
+| [`energy-diagram`](energy_diagram.md) | Draw a state energy diagram from numeric values |
 
 ---
 
@@ -256,10 +256,10 @@ result_all/
 │ ├── mep_w_ref.pdb # MEP merged with full system
 │ ├── mep_plot.png # Energy profile plot
 │ └── seg_*/ # Per-segment details
-└┬─ path_search/post_seg_*/ # Post-processing outputs
+└─┬ path_search/post_seg_*/ # Post-processing outputs
  ├── tsopt/ # TS optimization results
  ├── irc/ # IRC trajectories
- ├── freq/ # Vibrational modes
+ ├── freq/ # Vibrational analysis
  └── dft/ # DFT results
 ```
 

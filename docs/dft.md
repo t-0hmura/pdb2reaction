@@ -70,7 +70,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/_trj.xyz/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
 2. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
-3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing energy (Hartree/kcal·mol⁻¹), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
+3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing the energy (in hartree and kcal/mol), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Lowdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options
 | Option | Description | Default |
@@ -81,7 +81,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
 | `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
-| `--conv-tol FLOAT` | SCF convergence tolerance in Hartree (`dft.conv_tol`). | `1e-9` |
+| `--conv-tol FLOAT` | SCF convergence tolerance in hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `--out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
@@ -98,7 +98,7 @@ out_dir/ (default:./result_dft/)
 ├─ result.yaml # Energy/charge/spin summaries with convergence/engine metadata
 ```
 - `result.yaml` expands to:
- - `energy`: Hartree/kcal·mol⁻¹ values, convergence flag, wall time, engine metadata
+ - `energy`: energy in hartree and kcal/mol, convergence flag, wall time, engine metadata
  (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
  - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
@@ -121,10 +121,10 @@ Accepts a mapping root; the `dft` section (and optional `geom`) is applied when 
 - explicit CLI options
 
 `dft` keys (defaults in parentheses):
-- `func` (`"wb97m-v"`): Exchange–correlation functional.
+- `func` (`"wb97m-v"`): Exchange-correlation functional.
 - `basis` (`"def2-tzvpd"`): Basis set name.
 - `func_basis` (_None_): Optional combined `FUNC/BASIS` string that overrides `func`/`basis` when provided.
-- `conv_tol` (`1e-9`): SCF convergence threshold (Hartree).
+- `conv_tol` (`1e-9`): SCF convergence threshold (hartree).
 - `max_cycle` (`100`): Maximum SCF iterations.
 - `grid_level` (`3`): PySCF `grids.level`.
 - `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
@@ -138,7 +138,7 @@ geom:
 dft:
  func: wb97m-v # exchange–correlation functional
  basis: def2-tzvpd # basis set name (alternatively use func_basis: "FUNC/BASIS")
- conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
+ conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level
  verbose: 0 # PySCF verbosity (0-9)

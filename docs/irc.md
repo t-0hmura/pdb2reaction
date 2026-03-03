@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Runs EulerPC-based IRC (Intrinsic Reaction Coordinate) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
+> **Summary:** Runs EulerPC-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
 
 ### At a glance
 - **Input:** A TS structure (ideally already optimized and validated).
@@ -11,7 +11,7 @@
 
 `pdb2reaction irc` runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` (which includes an imaginary-mode check; confirm **one** imaginary mode) → `irc`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` (which includes an imaginary-frequency check; confirm **one** imaginary frequency) → `irc`.
 
 ## Minimal example
 
@@ -84,7 +84,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); used unless YAML sets `calc.spin`. | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps; used unless YAML sets `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in mass-weighted coordinates; used unless YAML sets `irc.step_length`. | `0.10` |
-| `--root INT` | Imaginary-mode index for the initial displacement; used unless YAML sets `irc.root`. | `0` |
+| `--root INT` | Index of the imaginary vibrational mode for the initial displacement; used unless YAML sets `irc.root`. | `0` |
 | `--forward/--no-forward` | Run forward branch (`irc.forward`), used unless YAML sets `irc.forward`. | `True` |
 | `--backward/--no-backward` | Run backward branch (`irc.backward`), used unless YAML sets `irc.backward`. | `True` |
 | `--freeze-links/--no-freeze-links` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). See [extract](extract.md) for link-hydrogen details. | `True` |
@@ -171,7 +171,7 @@ irc:
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
-- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-mode check is already included in `tsopt`)
+- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-frequency check is already included in `tsopt`)
 - [opt](opt.md) — Optimize IRC endpoints to true minima
 - [all](all.md) — End-to-end workflow that runs IRC after tsopt
 - [YAML Reference](yaml_reference.md) — Full `irc` configuration options

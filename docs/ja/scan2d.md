@@ -11,7 +11,7 @@
 - **主な出力:** `surface.csv`、`scan2d_map.png`、`scan2d_landscape.html`、および `grid/` 配下の各点の構造。
 - **注意:** `(high − low) / --max-step-size` が大きいと格子点数が急増します。
 
-`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和して、バイアスなしの UMA エネルギーを記録し可視化用の出力を生成します。LBFGS の代わりに RFOptimizer を使用する場合は `--opt-mode hess` を指定してください。
+`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和してバイアスなしの UMA エネルギーを記録します。可視化用の出力も生成します。RFOptimizer を使用する場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -177,10 +177,10 @@ out_dir/ (デフォルト:./result_scan2d/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- `uma_pysis` 経由の UMA が唯一の計算バックエンドであり、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- `uma_pysis` 経由の UMA が唯一の計算バックエンドで、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
-- バイアスは最終エネルギー記録前に必ず除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま再利用できます。
-- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットを固定します。
+- バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
+- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットの境界を固定します。
 
 
 ```yaml

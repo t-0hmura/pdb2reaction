@@ -38,7 +38,7 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb
 # Process a directory recursively
 pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
 
-# Overwrite input files in-place (creates.bak backups)
+# Overwrite input files in-place (creates .bak backups)
 pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 # Force processing even if no altLoc is detected

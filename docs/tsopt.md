@@ -2,13 +2,13 @@
 
 ## Overview
 
-> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (`--opt-mode hess`, default). `tsopt` performs a final Hessian calculation and imaginary-mode check automatically; a validated TS should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
+> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (`--opt-mode hess`, default). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
 - **Modes:** `hess` (`rsirfo`) = RS‑I‑RFO (default, generally more robust). `grad` (`dimer`) = Hessian Guided Dimer (often cheaper per step).
-- **Quality control:** `tsopt` includes a final imaginary-mode check (look for n=1 in the output). The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
-- **Optional cleanup:** `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
+- **Quality control:** `tsopt` includes a final imaginary-frequency check (look for n=1 in the output). The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
+- **Optional cleanup:** `--flatten` (default: disabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
 
 ### Choosing `--opt-mode`
@@ -17,7 +17,7 @@
 
 > **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-mode check) → `irc`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-frequency check) → `irc`.
 
 ## Minimal example
 
@@ -136,7 +136,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable the extra-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). After TS optimization converges, iteratively flattens negative-eigenvalue modes of the Hessian until only one imaginary mode remains (or the iteration cap is reached). Applies to dimer (dimer loop) and rsirfo (post-RSIRFO). | `False` |
+| `--flatten/--no-flatten` | Enable the surplus-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). After TS optimization converges, iteratively flattens surplus negative-eigenvalue modes of the Hessian matrix until only one imaginary frequency remains (or the iteration cap is reached). Applies to both dimer (dimer loop) and RS-I-RFO (post-convergence). | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
@@ -166,8 +166,8 @@ out_dir/ (default:./result_tsopt/)
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
-- Imaginary-mode detection defaults to ~5 cm⁻¹ (configurable via
- `hessian_dimer.neg_freq_thresh_cm`). The selected `root` controls the followed TS mode during optimization.
+- Imaginary-frequency detection threshold defaults to 5.0 cm⁻¹ (configurable via
+ `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
  manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
@@ -312,7 +312,7 @@ rsirfo:
 
 - [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
 - [irc](irc.md) — Trace the reaction path from an optimized TS
-- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-mode check is already included in `tsopt`)
-- [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
+- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-frequency check is already included in `tsopt`)
+- [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC (→ optional freq/DFT)
 - [YAML Reference](yaml_reference.md) — Full `hessian_dimer` (Hessian Guided Dimer) and `rsirfo` configuration options
 - [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

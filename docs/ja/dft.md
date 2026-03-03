@@ -4,14 +4,12 @@
 
 > **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-TZVPD です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
-`pdb2reaction dft` は PySCF（CPU）または GPU4PySCF（GPU）を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-TZVPD です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
-
 バックエンドは `--engine` で制御します:
 - `gpu`（デフォルト）: GPU4PySCF を使用します。**GPU が利用できない場合はエラーになります。**
 - `cpu`: CPU PySCF を強制的に使用します。
 - `auto`（移植性重視の場合に推奨）: GPU4PySCF を試行し、GPU が利用できない場合は CPU PySCF にフォールバックします。
 
-総エネルギーに加えて、Mulliken、meta-Löwdin、IAO の原子電荷およびスピン密度も報告します。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、原子数の検証や電荷導出に使われますが、DFT 段階自体は PDB/GJF 出力を生成しません。
+総エネルギーに加え、Mulliken、meta-Löwdin、IAO の原子電荷およびスピン密度も報告します。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、原子数の検証や電荷導出に使用されますが、DFT 段階自体は PDB/GJF 出力を生成しません。
 
 ## 最小例
 
@@ -105,9 +103,9 @@ out_dir/ (デフォルト:./result_dft/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。GPU リソースが検出されない場合に自動フォールバックさせるには `--engine auto` を使用してください。CPU のみで実行するには `--engine cpu` を指定します。
-- **Blackwellアーキテクチャ**GPUが検出された場合、現在のGPU4PySCFがサポートされていない可能性があるため警告が出力されます。
-- GPU4PySCFのコンパイル済みホイールはBlackwellをサポートしない場合があり、非x86環境ではソースビルドが必要です。該当環境ではCPUバックエンドまたは自身でのビルドを推奨します（参照: https://github.com/pyscf/gpu4pyscf）。
-- 密度フィッティングは常にPySCFデフォルトで試行されます（補助基底の推定は実装されていません）。
+- **Blackwell アーキテクチャ** GPU が検出された場合、GPU4PySCF が未対応の可能性があるため警告が出力されます。
+- GPU4PySCF のコンパイル済みホイールは Blackwell を未サポートの場合があり、非 x86 環境ではソースビルドが必要です。該当環境では CPU バックエンドまたは自身でのビルドを推奨します（参照: https://github.com/pyscf/gpu4pyscf）。
+- 密度フィッティングは常に PySCF のデフォルト設定で試行されます（補助基底の推定は未実装）。
 - YAML 入力ファイルのルートはマッピングでなければなりません。`dft` セクションは任意です。マッピング以外のルートは `load_yaml_dict` でエラーになります。
 - IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当列は `null` となり警告が出力されます。
 
@@ -127,7 +125,7 @@ out_dir/ (デフォルト:./result_dft/)
 - `verbose` (`0`): PySCF冗長度（0–9）
 - `out_dir` (`"./result_dft/"`): 出力ディレクトリ
 
-_汎関数/基底の既定は `wb97m-v/def2-tzvpd` ですがCLIで上書き可能です。電荷/スピンは `.gjf` テンプレートがあればそれを継承し、`-q` が省略され `--ligand-charge` が与えられている場合は `extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が使えない場合は中断します。多重度は省略時 `1` がデフォルトです。_
+_汎関数/基底のデフォルトは `wb97m-v/def2-tzvpd` ですが CLI で上書き可能です。電荷/スピンは `.gjf` テンプレートがあればそれを継承し、`-q` が省略され `--ligand-charge` がある場合は `extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge` もない場合は中断します。多重度は省略時 `1` がデフォルトです。_
 
 ```yaml
 geom:

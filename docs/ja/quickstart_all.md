@@ -2,7 +2,7 @@
 
 ## 目的
 
-2 つの完全系 PDB から、end-to-endのワークフローを 1 回実行します。
+2 つの完全系 PDB（反応物 R と生成物 P）から、end-to-end のワークフローを 1 回実行します。
 
 ## 最小コマンド
 
@@ -10,7 +10,7 @@
 pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all
 ```
 
-後処理（TS 最適化、熱化学、DFT）まで同時に実行する場合:
+後処理（TS 最適化、熱化学解析、DFT 一点計算）まで同時に実行する場合:
 
 ```bash
 pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \

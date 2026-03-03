@@ -9,9 +9,9 @@
 - **主要パラメータ:** `--step-size`（質量重み付き座標でのステップ長）、`--max-cycles`（ステップ数）。
 - **強制上書き:** IRC はマージ後に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAML 設定より優先）。
 
-`pdb2reaction irc` は UMA を用いて EulerPC ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに設計されています。CLI に出ていないパラメータは YAML で明示的に指定することで、再現性のある実行が可能です。
+`pdb2reaction irc` は UMA を用いた EulerPC ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに保たれています。CLI で公開されていないパラメータは YAML で指定することで、再現性のある実行が可能です。
 
-XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt`（虚振動数チェック含む、**1 つ** であることを確認）→ `irc` です。
+XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt`（内部で虚振動数チェック済み、**1 つ** であることを確認）→ `irc` です。
 
 ## 最小例
 
@@ -82,7 +82,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
 | `--max-cycles INT` | 最大IRCステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
 | `--step-size FLOAT` | 質量重み付き座標でのステップ長（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
-| `--root INT` | 初期変位の虚数モードインデックス（YAML が `irc.root` を指定していない場合に使用） | `0` |
+| `--root INT` | 初期変位の虚振動モードインデックス（YAML が `irc.root` を指定していない場合に使用） | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
 | `--freeze-links/--no-freeze-links` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ） | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
@@ -105,9 +105,9 @@ out_dir/ (デフォルト:./result_irc/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- UMAはIRC全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
-- VRAMが十分な場合は `--hessian-calc-mode` を `Analytical` に設定することを強く推奨します。
-- `--freeze-links` はPDB 入力にのみ適用され、リンク水素の親原子を凍結したままヘシアンを構築します。
+- UMA は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
+- VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を強く推奨します。
+- `--freeze-links` は PDB 入力にのみ適用され、リンク水素の親原子を凍結したままヘシアンを構築します。
 
 
 マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
@@ -170,7 +170,7 @@ irc:
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
-- [freq](freq.md) — 完全な振動解析とサーモ補正（虚振動数チェックは `tsopt` に含まれています）
+- [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行するend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `irc` の完全な設定オプション

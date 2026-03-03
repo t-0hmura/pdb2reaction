@@ -9,7 +9,7 @@
 
 ## クイックスタート
 
-以下は多くの CUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名やバージョンはお使いの環境に合わせて調整してください。この例はデフォルトの GSM MEP モード（DMF なし）を前提としています。DMF を使用する場合は、先に conda で cyipopt をインストールしてください。
+以下は多くの CUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名やバージョンはお使いの環境に合わせて調整してください。この例はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提としています。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。
 
 ```bash
 # 1) CUDA 対応の PyTorchビルドをインストール
@@ -37,7 +37,7 @@ huggingface-cli login
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-- MEP 探索で Direct Max Flux 法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください:
+- MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
  ```bash
  # 専用のconda環境を作成してアクティブ化
  conda create -n pdb2reaction python=3.11 -y
@@ -47,7 +47,7 @@ huggingface-cli login
  conda install -c conda-forge cyipopt -y
  ```
 
-- *環境モジュール*を使用するHPC クラスターでは、PyTorchをインストールする**前に**CUDAをロードしてください:
+- *環境モジュール*を使用する HPC クラスターでは、PyTorch をインストールする**前に** CUDA をロードしてください。
  ```bash
  module load cuda/12.9
  ```
@@ -70,8 +70,8 @@ huggingface-cli login
  conda activate pdb2reaction
  ```
 
-3. **cyipoptをインストール**
- MEP 探索でDMF法を使用する場合に必要です。
+3. **cyipopt をインストール**
+ MEP 探索で DMF 法（`--mep-mode dmf`）を使用する場合に必要です。GSM のみを使用する場合はスキップできます。
 
  ```bash
  conda install -c conda-forge cyipopt -y

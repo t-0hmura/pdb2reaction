@@ -176,8 +176,8 @@ gs:
  fix_last: true # Keep last endpoint fixed
  max_nodes: 10 # Maximum string nodes (internal images)
  perp_thresh: 0.005 # Perpendicular displacement threshold
- reparam_check: rms # Reparametrization check metric
- reparam_every: 1 # Reparametrization stride
+ reparam_check: rms # Reparameterization check metric
+ reparam_every: 1 # Reparameterization stride
  reparam_every_full: 1 # Full reparametrization stride
  param: equi # Parametrization scheme
  max_micro_cycles: 10 # Micro-iteration limit
@@ -281,7 +281,7 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # Negative frequency threshold (cm⁻¹)
+ neg_freq_thresh_cm: 5.0 # Imaginary-frequency detection threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -425,7 +425,7 @@ dft:
  func: wb97m-v # Exchange-correlation functional
  basis: def2-tzvpd # Basis set name
  func_basis: null # Combined "FUNC/BASIS" string (overrides func/basis)
- conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
+ conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  verbose: 0 # PySCF verbosity (0-9)

@@ -9,10 +9,10 @@
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **既定値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau`。
-- **次にやること:** HEI は **TS 候補**です。単独では TS 検証になりません。続けて [tsopt](tsopt.md)（虚振動数チェック含む）→ [irc](irc.md) を実行してください。
+- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau`。
+- **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
 
-`pdb2reaction path-search` は、反応順に並んだ 2 構造以上を入力として連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
+`pdb2reaction path-search` は反応順に並んだ 2 構造以上を入力とし、連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
 
 
 `--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し（XYZ 座標は保持）、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では PDB コンパニオンは生成されません）。
@@ -119,9 +119,9 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 3. **kink vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *kink* とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **精密化セグメント（GSM/DMF）** を起動。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジMEPを挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
-6. **アライメント & マージング（オプション）** – `--align`（既定）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定するとポケット軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
+6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定するとポケット軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
 
-結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。UMA 計算機は全構造で共有され、効率的に再利用されます。
+結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。UMA 計算機は全構造で共有・再利用されます。
 
 ## 出力
 ```
@@ -145,21 +145,21 @@ out_dir/ (デフォルト:./result_path_search/)
 
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
-- UMA 計算機は全構造で共有され、効率化されます。
+- UMA 計算機は全構造で共有・再利用されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
 マージ順は **defaults < config < 明示指定 CLI < override** です。
 
 YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`stopt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
-`gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` の既定値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
+`gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` のデフォルト値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
 `opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir:./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
 
-`dmf` は `--mep-mode dmf` 選択時に適用される Direct Max Flux + (C)FB-ENM の設定です。既定値は `DMF_KW` を踏襲し、実行ごとに上書きできます。
+`dmf` は `--mep-mode dmf` 選択時に適用される Direct Max Flux + (C)FB-ENM の設定です。デフォルト値は `DMF_KW` を踏襲し、実行ごとに上書きできます。
 
 ### YAML例（デフォルト値）
 ```yaml

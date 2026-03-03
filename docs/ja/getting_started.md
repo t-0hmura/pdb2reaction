@@ -2,7 +2,7 @@
 
 ## 概要
 
-`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を用いて **PDB 構造** から **酵素反応経路** を自動的に構築する Python 製の CLI ツールキットです。
+`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB 構造** から **酵素反応経路** を自動的に構築する Python 製の CLI ツールキットです。
 
 多くのケースで、次のような **1 コマンド** から反応経路の初期案を得られます。
 ```bash
@@ -10,7 +10,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-さらに `--tsopt --thermo --dft` を追加すると、**MEP 探索 → TS 最適化 → IRC → 熱化学解析 → DFT 一点計算** までまとめて実行できます。
+さらに `--tsopt --thermo --dft` を追加すると、**MEP 探索 → TS 最適化 → IRC（固有反応座標）→ 熱化学解析 → DFT 一点計算** までまとめて実行できます。
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
@@ -18,15 +18,15 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 
 入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt` を与えると、`pdb2reaction` が次を自動化します。
 
-- ユーザーが指定した基質の周辺から **活性部位ポケット** を抽出し、計算用の **クラスターモデル** を構築
-- Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP)** を探索
-- 必要に応じて **遷移状態** を最適化し、**振動解析**・**IRC 計算**・**DFT 一点計算** を実行
+- ユーザーが指定した基質の周辺から **活性部位ポケット**（抽出範囲）を切り出し、計算用の **クラスターモデル**（Cluster Model）を構築
+- Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
+- 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
 
-```{important}
-単一コマンドの TS 結果は「候補」として扱ってください。酵素反応では、端点の品質、ポケット定義、拘束、スキャンターゲットの調整を伴う反復的な改善が一般的です。最終解釈の前に、`irc` で反応経路が期待する端点に到達することを必ず確認してください。`tsopt` は内部で虚振動数チェックを実施済みですが、IRC が経路の決定的な検証となります。
-```
+ポテンシャルエネルギー面（PES: Potential Energy Surface）の計算には Meta の UMA を用います。想定される主な用途は以下の通りです。
 
-UMA レベルの計算には Meta の UMA（MLIP）を用います。
+- DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
+- 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
+- 基質バリアントや酵素変異体にわたる**反応経路のハイスループット計算**
 
 一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
 
@@ -78,7 +78,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 - [クイックスタート: `pdb2reaction all`](quickstart_all.md)
 - [クイックスタート: `pdb2reaction scan` で単一構造の段階的スキャン](quickstart_scan.md)
-- [クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
+- [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart_tsopt_freq.md)
 
 ---
 
@@ -94,7 +94,7 @@ pdb2reaction [OPTIONS]...
 pdb2reaction all [OPTIONS]...
 ```
 
-`all` は、クラスター抽出から MEP 探索、TS 最適化、振動解析、DFT 一点計算までを 1 コマンドで一括実行するサブコマンドです。
+`all` は、クラスター抽出から MEP 探索、TS 最適化、IRC、振動解析、DFT 一点計算までを 1 コマンドで一括実行するサブコマンドです。
 
 クラスター抽出を行う場合、ワークフロー全体で共通の重要オプションが 2 つあります:
 
@@ -130,7 +130,7 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 - デフォルトで `path-search` による**再帰的 MEP 探索**を実行（出力は `path_search/`）
 - `--no-refine-path` を指定すると**シングルパス** `path-opt` に切り替え
 - PDB テンプレートがある場合、クラスターモデル MEP を**完全系**にマージ
-- 必要に応じて各セグメントで TS 最適化、振動解析、DFT 一点計算を実行
+- 必要に応じて各セグメントで TS 最適化、IRC、振動解析、DFT 一点計算を実行
 
 ドッキング、MD、手動モデリングなどで中間体を準備できる場合に推奨するモードです。
 
@@ -223,10 +223,10 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |
 | `--thermo/--no-thermo` | 振動解析と熱化学を実行 |
 | `--dft/--no-dft` | DFT 一点計算を実行 |
-| `--refine-path/--no-refine-path` | 再帰的 MEP 精密化（デフォルト） vs シングルパス |
+| `--refine-path/--no-refine-path` | 再帰的 MEP 精密化（デフォルト: `True`） vs シングルパス |
 | `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO、デフォルト `hess`）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 |
-| `--mep-mode gsm\|dmf` | MEP 手法: Growing String Method または Direct Max Flux |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン計算モード。**VRAMが十分な場合はAnalytical推奨** |
+| `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。**VRAM が十分な場合は `Analytical` 推奨** |
 
 すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml_reference.md) を参照してください。
 
@@ -259,7 +259,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
 | `all` | end-to-endワークフロー | [all](all.md) |
-| `extract` | 活性部位ポケット（クラスターモデル）抽出 | [extract](extract.md) |
+| `extract` | 活性部位ポケットからクラスターモデルを抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |
 | `path-opt` | MEP最適化 (GSM/DMF) | [path_opt](path_opt.md) |
@@ -275,7 +275,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{tip}
-`all`、`tsopt`、`freq`、`irc` では、VRAMが十分にある場合は **`--hessian-calc-mode Analytical`** を設定することを強く推奨します。
+`all`、`tsopt`、`freq`、`irc` では、VRAM が十分にある場合は **`--hessian-calc-mode Analytical`** を設定することを強く推奨します（デフォルトは `FiniteDifference`）。
 ```
 
 ---
@@ -304,7 +304,7 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
 | オプション | 用途 |
 |----------|------|
 | `-i` | 入力構造 |
-| `-c` | ポケット抽出用の基質定義 |
+| `-c` | 活性部位ポケット抽出用の基質定義 |
 | `--ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
 | `--tsopt` | TS 最適化 + IRC を有効化 |
 | `--thermo` | 振動解析を実行 |

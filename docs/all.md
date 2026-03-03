@@ -7,12 +7,12 @@
 pocket extraction → (optional) staged UMA scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
 
 ```{important}
-`--tsopt` produces **TS candidates**. `all` automatically runs IRC and freq for validation, but always inspect the results (imaginary mode + endpoint connectivity) before mechanistic interpretation.
+`--tsopt` produces **TS candidates**. `all` automatically runs IRC for endpoint validation (`tsopt` itself includes an imaginary-frequency check), but always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.
 ```
 
 It supports three common modes:
 
-- **Multi-structure workflow** — Provide ≥2 structures (PDB/GJF/XYZ) in reaction order plus a substrate definition. `all` extracts pockets, runs GSM/DMF MEP search, merges the optimized path back into the full-system template(s), and optionally runs TSOPT/freq/DFT per reactive segment.
+- **Multi-structure workflow** — Provide ≥2 structures (PDB/GJF/XYZ) in reaction order plus a substrate definition. `all` extracts pockets, runs GSM/DMF MEP search, merges the optimized path back into the full-system template(s), and optionally runs TSOPT+IRC/freq/DFT per reactive segment.
 - **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists`. The scan generates an ordered set of intermediates that become MEP endpoints.
  - One `--scan-lists` literal runs a single scan stage.
  - Multiple stages are passed by repeating `--scan-lists`.
@@ -98,7 +98,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
 
 5. **Optional per-segment post-processing** (only for reactive segments — segments with bond changes; bridge segments are skipped)
- - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC IRC, then re-optimize IRC endpoints with `--thresh-post` (default `baker`). The endpoint optimization working directory is automatically deleted after completion.
+ - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC-based IRC, then re-optimize IRC endpoints with `--thresh-post` (default `baker`). The endpoint optimization working directory is automatically deleted after completion.
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
 - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
@@ -195,7 +195,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
 | `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable extra-imaginary-mode flattening in `tsopt`. | `False` |
+| `--flatten/--no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`).
 

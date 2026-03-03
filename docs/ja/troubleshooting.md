@@ -63,9 +63,9 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 - 触媒残基が含まれない
 
 対処の例:
-- `--radius` を増やす（例: 2.6 → 3.5 Å）
-- `--selected-resn` で残基を強制包含する（例: `--selected-resn 'A:123,B:456'`）
-- 主鎖削除が強すぎる場合は `--no-exclude-backbone` を試す
+- `--radius` を増やしてください（例: 2.6 → 3.5 Angstrom）
+- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）
+- 主鎖削除が強すぎる場合は `--no-exclude-backbone` を試してください
 
 ---
 
@@ -112,7 +112,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 - import 時に CUDA runtime error が出る
 
 対処:
-- クラスタの CUDA と整合する PyTorch を入れます。
+- クラスターの CUDA と整合する PyTorch を入れます。
 - GPU が見えているか確認します:
 
  ```bash
@@ -152,26 +152,26 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 症状:
 - TS 最適化が多くのサイクルを回しても収束しない
-- 最適化後も複数の虚振動数が残る
+- 最適化後もヘシアン行列に複数の負の固有値が残る（虚振動数が 2 本以上）
 
 対処の例:
-- オプティマイザモードを切り替える: `--opt-mode grad` (Dimer) または `--opt-mode hess` (RS-I-RFO)
-- 余分な虚モードのフラット化を有効にする: `--flatten`
-- 最大サイクル数を増やす: `--tsopt-max-cycles 20000`
-- より厳しい収束条件を使う: `--thresh baker` または `--thresh gau_tight`
+- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
+- 余分な虚振動モードのフラット化を有効にしてください: `--flatten`
+- 最大サイクル数を増やしてください: `--tsopt-max-cycles 20000`
+- より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 
 ---
 
 ### IRC が正常に終了しない
 
 症状:
-- IRCが明確な極小に到達する前に停止
-- エネルギーが振動したり勾配が大きいまま
+- IRC が明確な極小構造（停留点）に到達する前に停止する
+- エネルギーが振動したり勾配ノルムが大きいままになる
 
 対処の例:
-- ステップサイズを減らす: `--step-size 0.05`（デフォルトは0.10）
-- 最大サイクル数を増やす: `--max-cycles 200`
-- IRC 実行前に TS 候補の虚振動数が 1 本だけであることを確認
+- ステップサイズを減らしてください: `--step-size 0.05`（デフォルト: 0.10 Bohr sqrt(amu)）
+- 最大サイクル数を増やしてください: `--max-cycles 200`
+- IRC 実行前に TS 候補の虚振動数が 1 本（|ν| >= 100 cm⁻¹）だけであることを確認してください
 
 ---
 
@@ -182,19 +182,19 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 結合変化が正しく検出されない
 
 対処の例:
-- `--max-nodes` を増やす（複雑な反応には 15 や 20 など）
-- 端点の事前最適化を有効にする: `--preopt`
-- 別のMEP手法を試す: `--mep-mode dmf`（GSMが失敗した場合）またはその逆
-- YAMLで結合検出パラメータを調整（`bond.bond_factor`、`bond.delta_fraction`）
+- `--max-nodes` を増やしてください（複雑な反応には 15 や 20 など）
+- 端点の事前最適化を有効にしてください: `--preopt`
+- 別の MEP 手法を試してください: `--mep-mode dmf`（GSM が失敗した場合）またはその逆
+- YAML で結合検出パラメータを調整してください（`bond.bond_factor`、`bond.delta_fraction`）
 
 ---
 
 ## パフォーマンス / 安定性のヒント
 
-- **VRAM不足**: `--radius` を減らす、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
-- **解析ヘシアンが遅いまたはOOM**: デフォルトの `FiniteDifference` を維持。`--hessian-calc-mode Analytical` は十分なVRAMがある場合のみ使用（500原子以上には16 GB以上推奨）
-- **workers > 1**: HPC で UMA スループットは改善しますが、解析ヘシアンは無効になります
-- **大規模系（1000原子以上）**: より小さなポケット（`--radius 2.5`）を抽出するか、マルチ GPUセットアップで実行を検討
+- **VRAM 不足**: `--radius` の値を減らしてポケットを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
+- **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は十分な VRAM がある場合のみ使用してください（500 原子以上では 16 GB 以上推奨）
+- **workers > 1**: HPC で UMA のスループットは改善しますが、解析ヘシアンは無効になります
+- **大規模系（1000 原子以上）**: より小さなポケット（`--radius 2.5` Angstrom）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 
 ---
 

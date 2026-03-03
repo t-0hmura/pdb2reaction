@@ -51,7 +51,7 @@ For full details, keep [Troubleshooting](troubleshooting.md) open in parallel.
 - Signal:
  - TSOPT stalls, IRC branches look unstable, or MEP refinement stops unexpectedly.
 - First checks:
- - Confirm TS candidate quality with one dominant imaginary mode.
+ - Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹.
  - Reduce optimizer aggressiveness and increase cycle limits.
 - Typical fix path:
  - Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.

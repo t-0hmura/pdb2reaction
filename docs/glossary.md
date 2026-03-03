@@ -8,7 +8,7 @@ This page provides definitions for abbreviations and technical terms used throug
 
 | Term | Full Name | Description |
 |------|-----------|-------------|
-| **MEP** | Minimum Energy Path | The lowest-energy pathway connecting reactants to products through a transition state (on a potential energy surface). |
+| **MEP** | Minimum Energy Path | The lowest-energy pathway on a potential energy surface (PES) connecting reactants to products through a transition state. |
 | **TS** | Transition State | A first-order saddle point on the potential energy surface, typically the highest-energy point along the reaction coordinate. |
 | **IRC** | Intrinsic Reaction Coordinate | A mass-weighted steepest-descent path from a TS toward reactants and products. Often used to validate TS connectivity. |
 | **GSM** | Growing String Method | A string-based method that grows images from endpoints and optimizes them to approximate an MEP. |
@@ -37,8 +37,8 @@ This page provides definitions for abbreviations and technical terms used throug
 |------|-----------|-------------|
 | **MLIP** | Machine Learning Interatomic Potential | A model (often neural-network-based) that predicts energies and forces from atomic structures, trained on quantum-mechanical data. |
 | **UMA** | Universal Machine-learning potential for Atoms | Meta's family of pretrained MLIPs used as the default calculator backend in pdb2reaction. |
-| **Analytical Hessian** | — | Computing the exact second derivatives of energy; faster but requires more VRAM. |
-| **Finite Difference** | — | Approximating derivatives by small displacements; slower but more memory-efficient. |
+| **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. |
+| **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. |
 
 ---
 
@@ -73,7 +73,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | Term | Full Name | Description |
 |------|-----------|-------------|
 | **ZPE** | Zero-Point Energy | The vibrational energy at 0 K; a quantum correction to the electronic energy. |
-| **Gibbs Energy** | Free Energy (G) | G = H − TS; includes thermal and entropic contributions. |
+| **Gibbs Energy** | Gibbs Free Energy (G) | G = H − TS; includes thermal and entropic contributions. |
 | **Enthalpy** | (H) | H = E + PV; total heat content at constant pressure. |
 | **Entropy** | (S) | A measure of disorder; contributes −TS to Gibbs energy. |
 
@@ -96,7 +96,7 @@ This page provides definitions for abbreviations and technical terms used throug
 
 | Term | Description |
 |------|-------------|
-| **Boolean option** | CLI flags that take `True` or `False` (capitalized). Example: `--tsopt`. |
+| **Boolean option** | CLI flags that accept toggle form (`--flag` / `--no-flag`) or value form (`True`/`False`, `yes`/`no`, `1`/`0`). Example: `--tsopt`. |
 | **Residue selector** | A specification like `'SAM,GPP'` (names) or `'A:123,B:456'` (chain:ID). |
 | **Atom selector** | A specification like `'TYR,285,CA'` identifying a specific atom by residue name, number, and atom name. |
 

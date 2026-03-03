@@ -2,17 +2,17 @@
 
 ## 概要
 
-> **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚モードフラット化を実行できます。
+> **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚振動モードフラット化を実行できます。
 
-`pdb2reaction opt` は、pysisyphus LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用いて、UMA のエネルギー・勾配・ヘシアンで単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、または `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
+`pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、UMA のエネルギー・勾配・ヘシアンで単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
 
-開始構造が PDB または Gaussian テンプレートの場合、最適化された構造を `.pdb`（PDB 入力）および `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
+開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
 - `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（0始まり）。
 - 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDBを参照して書き出します。
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
 
-Gaussian `.gjf` テンプレートは電荷/スピンの既定値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
+Gaussian `.gjf` テンプレートは電荷/スピンのデフォルト値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
 
 ## 最小例
 
@@ -49,7 +49,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
  --out-dir ./result_opt_hess
 ```
 
-4. LBFGS モードで実行し、最適化後に虚モードをフラット化する。
+4. LBFGS モードで実行し、最適化後に虚振動モードをフラット化する。
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
@@ -67,10 +67,10 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 
 ## ワークフロー
 - **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
-- **Flatten loop**: `--flatten` を有効にすると最適化後に虚モードフラット化を行います。`opt` では各反復で検出された虚モードをすべて潰してから再最適化します。
+- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動モードフラット化を実行します。各反復で検出された虚振動モードをすべて除去してから再最適化します。
 - **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈します（`target_A` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
-- **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルトより優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素–基質複合体として扱い、`extract.py` の電荷サマリーで総電荷を導出します。明示的な `-q` は常に優先され、`.gjf` 以外で `--ligand-charge` が無い場合は中断します。多重度は省略時 `1` がデフォルトです。
-- **凍結原子**: CLIのリンク検出はYAMLの `geom.freeze_atoms` とマージされ、UMA 計算機の `calc.freeze_atoms` に反映されます。
+- **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルト値より優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素-基質複合体として扱い、`extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge` もない場合は中断します。多重度は省略時 `1` がデフォルトです。
+- **凍結原子**: CLI のリンク検出結果は YAML の `geom.freeze_atoms` とマージされ、UMA 計算機の `calc.freeze_atoms` に反映されます。
 - **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
 - **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
 
@@ -91,7 +91,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--freeze-links/--no-freeze-links` | リンク水素の親原子の凍結を切り替え（PDB 入力のみ） | `True` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も受理。 | `grad` |
-| `--flatten/--no-flatten` | 最適化後の虚モードフラット化ループを有効/無効化 | `False` |
+| `--flatten/--no-flatten` | 最適化後の虚振動モードフラット化ループを有効/無効化 | `False` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -122,7 +122,7 @@ out_dir/
 
 ### `calc`
 - UMA設定（`model`、`task_name`、デバイス選択、近傍半径、ヘシアン形式など）
-- `charge`/`spin` は CLI オプションに対応（`.gjf` がある場合はテンプレート値が既定）
+- `charge`/`spin` は CLI オプションに対応（`.gjf` がある場合はテンプレート値がデフォルト）
 
 ### `opt`
 LBFGSとRFOの両方で使用される共有オプティマイザー制御:

@@ -4,7 +4,7 @@
 
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** using machine-learning interatomic potentials (MLIPs).
 
-In many workflows, a **single command** like the one below is enough to generate a useful initianl reaction path:
+In many workflows, a **single command** like the one below is enough to generate a useful initial reaction path:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
@@ -22,11 +22,11 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
 
-```{important}
-Treat single-command TS outputs as initial candidates. For enzyme reactions, iterative refinement is common (endpoint quality, pocket definition, constraints, scan targets), and TS validation with `irc` (to confirm the reaction path connects the expected endpoints) is required before interpretation. `tsopt` already includes a final imaginary-mode check, but IRC provides the definitive connection test.
-```
+Calculations use Meta's UMA machine-learning interatomic potential (MLIP). Typical use cases include:
 
-At the UMA stage, calculations use Meta's UMA machine-learning interatomic potential (MLIP).
+- **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be prohibitively slow
+- **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
+- **High-throughput screening** of reaction pathways across substrate variants or enzyme mutants
 
 The CLI is designed to generate **multi‑step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small‑molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
@@ -80,7 +80,7 @@ For setup and dependency installation, see [Installation](installation.md).
 
 - [Quickstart: run `pdb2reaction all`](quickstart_all.md)
 - [Quickstart: run a single-structure staged scan with `pdb2reaction scan`](quickstart_scan.md)
-- [Quickstart: validate TS with `pdb2reaction tsopt` -> `pdb2reaction freq`](quickstart_tsopt_freq.md)
+- [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart_tsopt_freq.md)
 
 ---
 
@@ -128,7 +128,7 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 Behavior:
 
 - takes two or more **full systems** in reaction order,
-- extracts catalytic cluster models for each structure,
+- extracts cluster models for each structure,
 - performs a **recursive MEP search** via `path-search` by default (outputs under `path_search/`),
 - optionally switches to a **single‑pass** `path-opt` run with `--no-refine-path`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
@@ -196,9 +196,9 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 Behavior:
 
 - skips the MEP/path search entirely,
-- optimizes the **cluster-model TS** with TS optimization,
-- runs an **IRC** in both directions and optimizes both ends to relax down to R and P minima,
-- can then perform `freq` and `dft` on the R/TS/P,
+- performs **transition-state optimization** on the cluster model,
+- runs an **IRC** in both directions and optimizes the endpoints to obtain R and P minima,
+- can then run vibrational analysis (`freq`) and single-point DFT (`dft`) on the R/TS/P structures,
 - produces UMA, Gibbs, and DFT//UMA energy diagrams.
 
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
@@ -225,10 +225,10 @@ Below are the most commonly used options across workflows.
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
 | `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
 | `--dft/--no-dft` | Perform single‑point DFT calculations. |
-| `--refine-path/--no-refine-path` | Recursive MEP refinement (default) vs single‑pass. |
+| `--refine-path/--no-refine-path` | Recursive MEP refinement (default: enabled) vs single‑pass. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian calculation mode. **Analytical recommended when VRAM available.** |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. **Analytical recommended when sufficient VRAM is available.** |
 
 For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml_reference.md).
 
@@ -239,7 +239,7 @@ For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Refer
 Every `pdb2reaction all` run writes:
 
 - `summary.log` – formatted summary for quick inspection, and
-- `summary.yaml` – YAML version summary.
+- `summary.yaml` – machine-readable YAML summary.
 
 They typically contain:
 

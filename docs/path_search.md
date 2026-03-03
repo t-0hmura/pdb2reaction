@@ -9,7 +9,7 @@
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
 - **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau`.
-- **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-mode check) and [irc](irc.md).
+- **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
 

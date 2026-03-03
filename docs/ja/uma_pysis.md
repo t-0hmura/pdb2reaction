@@ -1,7 +1,7 @@
 # `uma_pysis` 計算機
 
 ## 概要
-`uma_pysis` は、MetaのUMA機械学習ポテンシャルをPySisyphus向けの計算機（内部でASEとFAIR-Chemを使用）として提供します。エネルギー/力/ヘシアン（解析自動微分または有限差分）を Hartree 単位で返し、デバイス配置・グラフ構築・単位変換を内部で処理します。`pdb2reaction` では最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
+`uma_pysis` は Meta の UMA 機械学習ポテンシャルを PySisyphus 向けの計算機（内部で ASE と FAIR-Chem を使用）として提供します。エネルギー/力/ヘシアン（解析自動微分または有限差分）を Hartree 単位で返し、デバイス配置・グラフ構築・単位変換を内部で処理します。`pdb2reaction` の最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
 
 ## クイックスタート
 ```python
@@ -38,7 +38,7 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (H
 
 ## HPC での使用例: PBS + Open MPI + Ray
 
-`workers` / `workers_per_node` は、スケジューラ配下で Ray クラスタを構築することでノード間にスケールアウトできます。以下はOpen MPIを使うPBSスクリプトの一例です（モジュール名、ポート、リソース要求は環境に合わせて調整してください）。
+`workers` / `workers_per_node` は、スケジューラ配下で Ray クラスタを構築することでノード間にスケールアウトできます。以下は Open MPI を使う PBS スクリプトの一例です（モジュール名、ポート、リソース要求は環境に合わせて調整してください）。
 
 ```bash
 #!/bin/bash

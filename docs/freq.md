@@ -5,10 +5,10 @@
 > **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with UMA. When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
 ### At a glance
-- **Use when:** You want to validate a minimum/TS candidate and/or compute thermo corrections from UMA.
+- **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies) and/or compute thermochemistry corrections from UMA. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed vibrational mode inspection.
 - **Frozen atoms:** Supported via PHVA (partial Hessian vibrational analysis).
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
-- **TS check:** A properly converged TS is expected to have **exactly one** imaginary frequency (negative cm⁻¹).
+- **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value).
 - **Performance:** If you have ample VRAM, `--hessian-calc-mode Analytical` is usually recommended.
 
 `pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
@@ -78,7 +78,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
  subspace with translation/rotation modes projected there. Both 3N×3N and active-block
  Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
- Frequencies with |ν| < 10.0 cm⁻¹ (`neg_freq_thresh_cm`) are not counted as imaginary modes.
+ Frequencies with |ν| < 10.0 cm⁻¹ (`neg_freq_thresh_cm`) are not counted as imaginary.
 - **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
  value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
  (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `_trj.xyz`
@@ -130,7 +130,7 @@ out_dir/ (default:./result_freq/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Imaginary modes are reported as negative frequencies. `freq` prints how many were detected
+- Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
  and dumps details when `--dump`.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI < override); if YAML
  specifies `calc.hessian_calc_mode`, it overrides the CLI value.
@@ -173,8 +173,8 @@ thermo:
 
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
-- [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-mode check; follow with IRC for endpoint validation)
-- [irc](irc.md) — IRC from TS (often paired with freq on endpoints)
+- [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-frequency check; follow with IRC for endpoint validation)
+- [irc](irc.md) — IRC from TS (freq is often run on IRC endpoints for thermochemistry)
 - [dft](dft.md) — Single-point DFT for higher-level energy refinement
 - [all](all.md) — End-to-end workflow with `--thermo`
 - [YAML Reference](yaml_reference.md) — Full `freq` and `thermo` configuration options

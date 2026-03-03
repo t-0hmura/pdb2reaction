@@ -15,7 +15,7 @@ Optimize a TS candidate and verify that it is a first-order saddle point.
 pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ```
 
-`tsopt` performs a final Hessian calculation and imaginary-mode analysis automatically at the end of optimization. Check the terminal output for lines like:
+`tsopt` performs a final Hessian evaluation and imaginary-frequency check automatically at the end of optimization. Check the terminal output for lines like:
 
 ```
 [Imaginary modes] n=1  ([-593.1])
@@ -24,12 +24,12 @@ pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ## What to check
 
 - `result_tsopt/final_geometry.pdb` — optimized TS structure
-- `result_tsopt/vib/` — imaginary-mode animation files (`final_imag_mode_*.xyz`, `.pdb`)
+- `result_tsopt/vib/` — animation files for the imaginary-frequency normal mode (`final_imag_mode_*.xyz`, `.pdb`)
 - Terminal output: **n=1** with a sufficiently large imaginary frequency (|ν| ≥ 100 cm⁻¹) indicates a good TS candidate
 
 ## 2. (Optional) Separate frequency analysis
 
-A standalone `freq` run is useful when you want full vibrational mode output or thermochemistry corrections (`--thermo` in the `all` command). If you only need the imaginary-mode check, the `tsopt` output above is sufficient.
+A standalone `freq` run is useful when you want full vibrational frequency output or thermochemistry corrections (`--thermo` in the `all` command). If you only need the imaginary-frequency check, the `tsopt` output above is sufficient.
 
 ```bash
 pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq

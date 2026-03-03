@@ -214,11 +214,11 @@ out_dir/ (デフォルト:./result_scan3d/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- `uma_pysis` 経由の UMA が唯一の計算バックエンドであり、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- `uma_pysis` 経由の UMA が唯一の計算バックエンドで、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` の格子点を基準にします。
 - 3D 可視化は 50x50x50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
-- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットを固定します。
+- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットの境界を固定します。
 
 ## 関連項目
 - [scan](scan.md) -- 1D 結合距離スキャン

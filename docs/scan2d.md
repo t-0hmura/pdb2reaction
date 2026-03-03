@@ -199,7 +199,7 @@ out_dir/ (default:./result_scan2d/)
 ├─ grid/point_i###_j###.xyz # Relaxed geometries for every (i, j) pair
 ├─ grid/point_i###_j###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###.gjf # Gaussian companions when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (mirrored to.pdb for PDB inputs with conversion)
+└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
 ```
 
 ## Notes

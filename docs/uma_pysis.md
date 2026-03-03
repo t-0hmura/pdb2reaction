@@ -1,7 +1,7 @@
 # `uma_pysis` calculator
 
 ## Overview
-`uma_pysis` exposes Meta's UMA machine-learning interatomic potentials to PySisyphus as a calculator (using ASE and FAIR-Chem internally). It returns energies, forces, and Hessians (via analytical autograd or finite differences) in Hartree units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`uma_pysis` exposes Meta's UMA machine-learning interatomic potential (MLIP) to PySisyphus as a calculator (using ASE and FAIR-Chem internally). It returns energies, forces, and Hessian matrices (via analytical autograd or finite differences) in hartree-based atomic units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
 
 ## Quick start
 ```python
@@ -20,20 +20,20 @@ coords_bohr = np.array([
 symbols = ["C", "O"]
 
 # NOTE: These methods return dicts; extract values with the appropriate key
-energy_h = calc.get_energy(symbols, coords_bohr)["energy"] # float (Hartree)
-forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (Hartree/Bohr)
-hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (Hartree/Bohr²)
+energy_h = calc.get_energy(symbols, coords_bohr)["energy"] # float (hartree)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (hartree/bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (hartree/bohr²)
 ```
 
-- Coordinates are supplied in **Bohr**; the wrapper converts to Å for UMA and converts energies/derivatives back to Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻².
+- Coordinates are supplied in **bohr**; the wrapper converts to Angstrom for UMA and converts energies/derivatives back to hartree / hartree bohr⁻¹ / hartree bohr⁻².
 - Attach the calculator to a `pysisyphus` geometry object or call it directly as above.
 
 ## Key features
 - **UMA backend** – loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch.
 - **Device handling** – `device="auto"` selects CUDA when available, otherwise CPU. Graph construction happens on the chosen device; when `workers>1`, the parallel predictor manages device transfers.
-- **Hessian modes** – `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
-- **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. Hessians either drop frozen degrees of freedom (`return_partial_hessian=True`) or zero corresponding columns in the full matrix.
-- **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian in the model's native dtype (typically float32).
+- **Hessian evaluation** – `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
+- **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. The Hessian matrix either drops frozen degrees of freedom (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
+- **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian matrix in the model's native dtype (typically float32).
 - **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput. **Warning:** when `workers>1`, analytical Hessians are silently switched to finite differences (`force_fd=True`) even if `hessian_calc_mode="Analytical"` is set. No warning is printed — check your logs if Hessian timings are unexpectedly long.
 
 ## HPC example: PBS + Open MPI + Ray
@@ -52,7 +52,8 @@ cd "$PBS_O_WORKDIR"
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-module load gcc ompi cuda/12.9 source ~/apps/miniconda3/etc/profile.d/conda.sh
+module load gcc ompi cuda/12.9
+source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate pdb2reaction
 # -------------------
 

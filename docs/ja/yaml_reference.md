@@ -72,7 +72,7 @@ calc:
 - VRAMが十分な場合は `hessian_calc_mode: Analytical` を推奨します。
 - `workers > 1` の場合、解析ヘシアンは無効化されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
-- `freq` は既定で `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
+- `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = false` を常に強制します（YAMLより優先）。
 - `irc` では `calc.return_partial_hessian` が YAML/CLI マージ後に `false` へ強制されます。
 

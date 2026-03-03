@@ -1,6 +1,6 @@
 # pdb2reaction ドキュメント
 
-**pdb2reaction** は、機械学習原子間ポテンシャル (MLIP) を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
+**pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 
 ```{toctree}
 :maxdepth: 2
@@ -75,7 +75,7 @@ glossary
 | 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart_scan.md) |
 | TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart_tsopt_freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
-| タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract](extract.md) |
+| タンパク質–リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt](opt.md) |
 | 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
 | 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search](path_search.md) |
@@ -99,7 +99,7 @@ glossary
 ### 構造準備
 | サブコマンド | 説明 |
 |---------|------|
-| [`extract`](extract.md) | タンパク質-リガンド複合体から活性部位ポケット（クラスターモデル）を抽出 |
+| [`extract`](extract.md) | タンパク質–リガンド複合体の活性部位ポケットからクラスターモデルを抽出 |
 | [`add-elem-info`](add_elem_info.md) | PDB の元素カラム（77–78）を修復 |
 
 ### 構造最適化
@@ -124,8 +124,8 @@ glossary
 ### 解析・後処理
 | サブコマンド | 説明 |
 |---------|------|
-| [`irc`](irc.md) | 固有反応座標（IRC）計算 |
-| [`freq`](freq.md) | 振動数解析と熱化学 |
+| [`irc`](irc.md) | 固有反応座標（IRC: Intrinsic Reaction Coordinate）計算 |
+| [`freq`](freq.md) | 振動解析と熱化学 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
 | [`energy-diagram`](energy_diagram.md) | 数値入力から状態エネルギーダイアグラムを作成 |
@@ -148,7 +148,8 @@ glossary
 
 ### ハードウェア
 - **OS**: Linux（Ubuntu 20.04+、CentOS 8+で動作確認）
-- **GPU**: CUDA 12.x 互換 - **VRAM**: 最小8 GB（1000原子以上には16 GB以上推奨）
+- **GPU**: CUDA 12.x 互換
+- **VRAM**: 最小 8 GB（1000 原子以上では 16 GB 以上推奨）
 - **RAM**: 16 GB以上推奨
 
 ### ソフトウェア
@@ -189,7 +190,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 ### 電荷とスピン
 - 基質残基の電荷を指定するには `--ligand-charge` を使用: `'SAM:1,GPP:-3'`
 - 総電荷を上書きするには `-q/--charge` を使用
-- スピン多重度は `-m/--multiplicity`（デフォルト: 1）で設定
+- スピン多重度（Spin Multiplicity）は `-m/--multiplicity`（デフォルト: 1 = 一重項）で設定
 
 ### ブール値オプション
 ブール値 CLI オプションは `--flag` / `--no-flag` と `--flag True/False` の両方を受理します（新規スクリプトでは toggle 形式を推奨）:

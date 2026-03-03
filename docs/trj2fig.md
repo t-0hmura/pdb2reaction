@@ -2,8 +2,8 @@
 
 ## Overview
 `trj2fig` converts an XYZ trajectory into polished energy profiles. By default it
-reads the Hartree energies encoded in each frame’s comment line, converts them
-to kcal/mol or Hartree, optionally references all values to a chosen frame, and
+reads the energies (in hartree) encoded in each frame’s comment line, converts them
+to kcal/mol or hartree, optionally references all values to a chosen frame, and
 exports the resulting series as static/interactive figures and CSV tables. The
 reference can be the first frame (`init`), the last frame when `--reverse-x` is
 used, or any explicit index. When you supply `-q/--charge` and/or
@@ -21,7 +21,7 @@ pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [op
 # Default PNG, ΔE relative to the first frame
 pdb2reaction trj2fig -i traj.xyz
 
-# CSV + SVG with ΔE relative to frame 5, reported in Hartree
+# CSV + SVG with ΔE relative to frame 5, reported in hartree
 pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
 
 # Multiple figure formats with the x-axis reversed (reference becomes last frame)
@@ -34,14 +34,14 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ## Workflow
 1. Parse the XYZ trajectory. By default, read the first floating-point number
  found in every frame comment (scientific notation such as `1.5e-3` is supported). If
- `-q/-m` is present, recompute Hartree energies for each frame with
+ `-q/-m` is present, recompute energies (in hartree) for each frame with
  `uma_pysis` using those charge/spin values instead of the comment.
  If no energies are found or produced, the run aborts.
 2. Normalize the reference specification:
  - `init` → frame `0` (or the last frame when `--reverse-x` is active).
  - `None`/`none`/`null` → absolute energies (no referencing).
  - Integer literal → the corresponding 0-based frame index.
-3. Convert energies to either kcal/mol (default) or Hartree and, when a
+3. Convert energies to either kcal/mol (default) or hartree and, when a
  reference is active, subtract the reference value to produce ΔE.
 4. Build the Plotly figure (strong ticks, spline interpolation, markers, no
  title) and export it to every requested extension.
