@@ -1,8 +1,8 @@
-# クイックスタート: `pdb2reaction tsopt` -> `pdb2reaction freq`
+# クイックスタート: `pdb2reaction tsopt`
 
 ## 目的
 
-TS 候補を最適化し、振動解析で妥当性を確認します。
+TS 候補を最適化し、一次鞍点であることを確認します。
 
 ## 事前に必要なもの
 
@@ -15,19 +15,25 @@ TS 候補を最適化し、振動解析で妥当性を確認します。
 pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ```
 
-## 2. 最適化結果に対して振動解析
+`tsopt` は最適化の最後に自動で Hessian 計算と虚振動数解析を実行します。ターミナル出力で以下のような行を確認してください:
 
-```bash
-pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
+```
+[Imaginary modes] n=1  ([-593.1])
 ```
 
 ## まず確認する出力
 
-- `result_tsopt/final_geometry.pdb`
-- `result_freq/frequencies_cm-1.txt`
-- `result_freq/mode_*_trj.xyz` と `result_freq/mode_*.pdb`
+- `result_tsopt/final_geometry.pdb` — 最適化済み TS 構造
+- `result_tsopt/vib/` — 虚振動モードのアニメーションファイル（`final_imag_mode_*.xyz`, `.pdb`）
+- ターミナル出力: **n=1** かつ十分な大きさの虚振動数（|ν| ≥ 100 cm⁻¹）であれば良好な TS 候補です
 
-一次鞍点として妥当な TS では、虚振動（負の cm^-1）は 1 本になることが期待されます。
+## 2.（任意）個別の振動解析
+
+全振動モードの一覧や熱力学補正（`all` コマンドの `--thermo`）が必要な場合は、別途 `freq` を実行してください。虚振動数の確認だけであれば、上記の `tsopt` の出力で十分です。
+
+```bash
+pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
+```
 
 ## 補足
 

@@ -4,7 +4,7 @@
 
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** using machine-learning interatomic potentials (MLIPs).
 
-In many workflows, a **single command** like the one below is enough to generate a useful **first-pass** reaction path:
+In many workflows, a **single command** like the one below is enough to generate a useful initianl reaction path:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
@@ -23,7 +23,7 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
 
 ```{important}
-Treat single-command TS outputs as initial candidates. For enzyme reactions, iterative refinement is common (endpoint quality, pocket definition, constraints, scan targets), and TS validation with both `freq` and `irc` is required before interpretation.
+Treat single-command TS outputs as initial candidates. For enzyme reactions, iterative refinement is common (endpoint quality, pocket definition, constraints, scan targets), and TS validation with `irc` (to confirm the reaction path connects the expected endpoints) is required before interpretation. `tsopt` already includes a final imaginary-mode check, but IRC provides the definitive connection test.
 ```
 
 At the UMA stage, calculations use Meta's UMA machine-learning interatomic potential (MLIP).

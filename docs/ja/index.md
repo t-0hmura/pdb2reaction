@@ -73,7 +73,7 @@ glossary
 |--------------|--------------|--------|
 | 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
 | 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart_scan.md) |
-| TS 検証（`tsopt` -> `freq`） | `pdb2reaction tsopt`, `pdb2reaction freq` | [クイックスタート: tsopt -> freq](quickstart_tsopt_freq.md) |
+| TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart_tsopt_freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
 | タンパク質-リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt](opt.md) |

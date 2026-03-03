@@ -9,9 +9,9 @@
 - **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
 - **Outputs:** `final_geometries_trj.xyz` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
 - **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 10`, `--thresh gau`, `--thresh-stopt gau`.
-- **Next step:** Validate the HEI with `tsopt` → `freq` (expect **one** imaginary mode) → `irc`.
+- **Next step:** Optimize the HEI with `tsopt` (includes imaginary-mode check; expect **one** imaginary mode) → `irc`.
 
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [freq](freq.md) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-mode check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
 
 > **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want a single-pass MEP without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
 
@@ -231,7 +231,7 @@ dmf:
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 
 - [path-search](path_search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
-- [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (validate with freq/IRC)
+- [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (includes imaginary-mode check; follow with IRC)
 - [extract](extract.md) — Generate pocket PDBs for path-opt inputs
 - [all](all.md) — End-to-end workflow (uses path-search by default)
 - [YAML Reference](yaml_reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options

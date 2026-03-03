@@ -11,7 +11,7 @@
 
 `pdb2reaction irc` runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `freq` (confirm **one** imaginary mode) → `irc`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` (which includes an imaginary-mode check; confirm **one** imaginary mode) → `irc`.
 
 ## Minimal example
 
@@ -171,7 +171,7 @@ irc:
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
-- [freq](freq.md) — Verify the TS candidate has one imaginary frequency; analyze IRC endpoints
+- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-mode check is already included in `tsopt`)
 - [opt](opt.md) — Optimize IRC endpoints to true minima
 - [all](all.md) — End-to-end workflow that runs IRC after tsopt
 - [YAML Reference](yaml_reference.md) — Full `irc` configuration options

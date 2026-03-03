@@ -2,12 +2,12 @@
 
 ## 概要
 
-> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS‑I‑RFO（`--opt-mode hess`、デフォルト）で最適化します。妥当な TS では虚振動数が **ちょうど 1 つ**であるべきです。必ず freq/IRC でモードと接続性を確認してください。
+> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS‑I‑RFO（`--opt-mode hess`、デフォルト）で最適化します。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
 - **モード:** `hess`（`rsirfo`）= RS‑I‑RFO（既定、一般的により堅牢）。`grad`（`dimer`）= Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。
-- **品質確認:** 最適化後も TS は *候補* です。[freq](freq.md) と [irc](irc.md) でモードと接続性を確認してください。
+- **品質確認:** `tsopt` は最終的な虚振動数チェックを含みます（出力の n=1 を確認）。結果はなお *候補* であり、[irc](irc.md) で端点の接続性を確認してください。完全な振動解析やサーモ補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
 - **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
 
@@ -17,7 +17,7 @@
 
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受理します。YAML では `dimer` または `rsirfo` を直接指定してください。
 
-XYZ/GJF 入力では `--ref-pdb` により参照 PDB トポロジーを与え、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換ができます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を得てから `tsopt` → `freq` → `irc` の順で検証してください。
+XYZ/GJF 入力では `--ref-pdb` により参照 PDB トポロジーを与え、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換ができます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を得てから `tsopt`（虚振動数チェック含む）→ `irc` の順で検証してください。
 
 ## 最小例
 
@@ -281,7 +281,7 @@ rsirfo:
 
 - [path-search](path_search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
-- [freq](freq.md) — 虚振動数が 1 つのみであることを確認（妥当な TS の条件）
+- [freq](freq.md) — 完全な振動解析とサーモ補正（虚振動数チェックは `tsopt` に含まれています）
 - [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

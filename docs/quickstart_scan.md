@@ -11,7 +11,9 @@ Run a staged scan from a single structure by driving one or more bond distances.
 
 ---
 
-## 1. Prepare `scan.yaml`
+## Method A: `--spec` (YAML file, recommended for complex scans)
+
+### 1. Prepare `scan.yaml`
 
 Define each stage in order:
 
@@ -22,7 +24,7 @@ stages:
  - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 ```
 
-## 2. Run scan
+### 2. Run scan
 
 ```bash
 pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_scan
@@ -30,14 +32,74 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_sca
 
 ---
 
+## Method B: `--scan-lists` (inline CLI)
+
+`--scan-lists` accepts Python-literal strings directly on the command line.
+
+### Basic syntax
+
+Each literal is a list of `(atom1, atom2, target_Å)` triples. One literal = one stage.
+
+```bash
+# Single stage, integer atom indices (1-based by default)
+pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(1, 5, 1.35)]' --out-dir ./result_scan
+
+# Single stage, PDB selector strings
+pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA", "SAM,309,C10", 1.35)]' --out-dir ./result_scan
+```
+
+### PDB selectors
+
+Atoms can be specified by residue name, residue number, and atom name. Token separators are flexible:
+
+```bash
+"TYR,285,CA"     # comma-separated
+"TYR 285 CA"     # space-separated
+"TYR/285/CA"     # slash-separated
+"285,TYR,CA"     # order is flexible
+```
+
+### Multiple stages
+
+Pass multiple literals — each becomes one sequential stage:
+
+```bash
+# Stage 1: drive one bond to 1.35 Å
+# Stage 2: drive two bonds simultaneously
+pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
+  --out-dir ./result_scan
+```
+
+Stages run sequentially; each starts from the previous stage's relaxed result.
+
+### Quoting rules
+
+```bash
+# Correct: single-quote the outer list, double-quote selector strings inside
+--scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+
+# Correct: integer indices need no inner quotes
+--scan-lists '[(1, 5, 2.0)]'
+
+# Avoid: double-quoting the outer literal requires escaping
+--scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
+```
+
+> **Tip:** Use `--print-parsed` to verify that your scan targets were parsed correctly before a full run.
+
+---
+
 ## What to check
 
 - `result_scan/stage_01/result.pdb`
-- `result_scan/stage_02/result.pdb`
+- `result_scan/stage_02/result.pdb` (if multiple stages)
 - Optional trajectories when `--dump` is enabled (`scan_trj.xyz`, `scan.pdb`)
 
 ## Notes
 
+- `--spec` and `--scan-lists` are mutually exclusive — use one or the other.
 - Use `pdb2reaction scan --help-advanced` to inspect all scan controls.
 - For full input-format details, see [scan](scan.md).
 

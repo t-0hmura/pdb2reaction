@@ -31,7 +31,7 @@ Full system(s) (PDB/XYZ/GJF)
 Each stage is available as an individual subcommand. The `pdb2reaction all` command runs many stages end-to-end.
 
 ```{important}
-Transition states: treat HEI / `tsopt` outputs as **TS candidates** until validated via `freq` (a single imaginary mode) and `irc` (endpoints reach intended minima).
+Transition states: treat HEI / `tsopt` outputs as **TS candidates** until validated via `irc` (endpoints reach intended minima). `tsopt` already performs a final imaginary-mode check internally — look for exactly one imaginary mode (|ν| ≥ 100 cm⁻¹) in its output.
 ```
 
 ---

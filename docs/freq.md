@@ -173,7 +173,7 @@ thermo:
 
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
-- [tsopt](tsopt.md) — Optimize TS candidates (validate with freq/IRC; expected: one imaginary frequency)
+- [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-mode check; follow with IRC for endpoint validation)
 - [irc](irc.md) — IRC from TS (often paired with freq on endpoints)
 - [dft](dft.md) — Single-point DFT for higher-level energy refinement
 - [all](all.md) — End-to-end workflow with `--thermo`

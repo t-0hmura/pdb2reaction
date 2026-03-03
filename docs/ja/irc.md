@@ -11,7 +11,7 @@
 
 `pdb2reaction irc` は UMA を用いて EulerPC ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに設計されています。CLI に出ていないパラメータは YAML で明示的に指定することで、再現性のある実行が可能です。
 
-XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `freq`（虚数振動数が **1 つ**であることを確認）→ `irc` です。
+XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt`（虚振動数チェック含む、**1 つ** であることを確認）→ `irc` です。
 
 ## 最小例
 
@@ -170,7 +170,7 @@ irc:
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
-- [freq](freq.md) — TS 候補の虚数振動数を確認し、IRC端点を解析
+- [freq](freq.md) — 完全な振動解析とサーモ補正（虚振動数チェックは `tsopt` に含まれています）
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行するend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `irc` の完全な設定オプション

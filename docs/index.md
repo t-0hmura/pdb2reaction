@@ -111,7 +111,7 @@ ja/index
 |-------------------------|---------|-------|
 | First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart_all.md) |
 | Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart_scan.md) |
-| TS validation (`tsopt` -> `freq`) | `pdb2reaction tsopt`, `pdb2reaction freq` | [Quickstart: tsopt -> freq](quickstart_tsopt_freq.md) |
+| TS optimization and validation | `pdb2reaction tsopt` | [Quickstart: tsopt](quickstart_tsopt_freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all](all.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt](opt.md) |

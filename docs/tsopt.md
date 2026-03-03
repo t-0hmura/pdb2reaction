@@ -2,12 +2,12 @@
 
 ## Overview
 
-> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (`--opt-mode hess`, default). A validated TS should show **exactly one** imaginary frequency; always confirm the mode/connectivity with freq/IRC.
+> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (`--opt-mode hess`, default). `tsopt` performs a final Hessian calculation and imaginary-mode check automatically; a validated TS should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
 - **Modes:** `hess` (`rsirfo`) = RS‑I‑RFO (default, generally more robust). `grad` (`dimer`) = Hessian Guided Dimer (often cheaper per step).
-- **Quality control:** The optimized structure is still a *candidate* until [freq](freq.md) and [irc](irc.md) confirm the expected mode and connectivity.
+- **Quality control:** `tsopt` includes a final imaginary-mode check (look for n=1 in the output). The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
 - **Optional cleanup:** `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
 
@@ -17,7 +17,7 @@
 
 > **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then validate/optimize the HEI with `tsopt` → `freq` → `irc`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-mode check) → `irc`.
 
 ## Minimal example
 
@@ -312,7 +312,7 @@ rsirfo:
 
 - [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
 - [irc](irc.md) — Trace the reaction path from an optimized TS
-- [freq](freq.md) — Confirm a single imaginary frequency (expected for a validated TS)
+- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-mode check is already included in `tsopt`)
 - [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC → freq
 - [YAML Reference](yaml_reference.md) — Full `hessian_dimer` (Hessian Guided Dimer) and `rsirfo` configuration options
 - [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

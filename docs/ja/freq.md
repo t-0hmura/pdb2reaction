@@ -152,7 +152,7 @@ thermo:
 
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
-- [tsopt](tsopt.md) — 遷移状態の最適化（妥当な TS であれば虚振動数は 1 つのみ）
+- [tsopt](tsopt.md) — 遷移状態の最適化（虚振動数チェック含む、IRC で端点の接続性を確認）
 - [irc](irc.md) — TS からの IRC（端点での freq と組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
 - [all](all.md) — `--thermo` を含むend-to-endワークフロー
