@@ -164,11 +164,12 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 Advanced settings can be passed via layered YAML inputs:
 
 ```bash
+pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
 Precedence:
 ```
-defaults < config < CLI options < override-yaml
+defaults < config (--config) < CLI options < override-yaml (--override-yaml)
 ```
 
 See [YAML Reference](yaml_reference.md) for all available options.

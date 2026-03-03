@@ -75,6 +75,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 ```
 
 ## Workflow
+
+0. **Preflight checks** (automatic)
+ - `all` automatically runs `add-elem-info` (fills missing element symbols in PDB columns 77–78) and `fix-altloc` (resolves alternate conformations) on every PDB input before any other processing. When using individual subcommands (e.g., `extract`, `opt`), you must run these manually if needed.
+
 1. **Active-site pocket extraction** (if `-c/--center` is provided)
  - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,SAM`).
  - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`, and `--verbose`.
@@ -93,8 +97,8 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 4. **Merge pockets back to the full systems**
  - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
 
-5. **Optional per-segment post-processing**
- - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC IRC, and emit segment energy diagrams.
+5. **Optional per-segment post-processing** (only for reactive segments — segments with bond changes; bridge segments are skipped)
+ - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC IRC, then re-optimize IRC endpoints with `--thresh-post` (default `baker`). The endpoint optimization working directory is automatically deleted after completion.
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
 - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
@@ -170,7 +174,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--max-nodes INT` | MEP internal nodes per segment. | `10` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
-| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `hess` |
+| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `True` |
 | `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
@@ -252,6 +256,22 @@ out_dir/ (default:./result_all/)
 └─ tsopt_single/ # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
 ```
 - Console logs summarizing pocket charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
+
+### Energy diagram naming convention
+
+Energy diagram files are named by method and scope:
+
+| File name | Generated when | Content |
+|---|---|---|
+| `energy_diagram_MEP.png` | path-opt/path-search completes | All-segment MEP barriers (raw GSM/DMF values) |
+| `energy_diagram_UMA.png` | per-segment tsopt+IRC completes | R→TS→P (UMA energy) |
+| `energy_diagram_G_UMA.png` | per-segment thermo completes | R→TS→P (UMA Gibbs free energy) |
+| `energy_diagram_DFT.png` | per-segment DFT completes | R→TS→P (DFT energy) |
+| `energy_diagram_G_DFT_plus_UMA.png` | per-segment DFT+thermo completes | R→TS→P (DFT energy + UMA thermal correction) |
+| `energy_diagram_UMA_all.png` | all segments aggregated | All segments combined (UMA) |
+| `energy_diagram_G_UMA_all.png` | all segments + thermo | All segments combined (UMA Gibbs) |
+| `energy_diagram_DFT_all.png` | all segments + DFT | All segments combined (DFT) |
+| `energy_diagram_G_DFT_plus_UMA_all.png` | all segments + DFT + thermo | All segments combined (DFT//UMA Gibbs) |
 
 ### Reading `summary.log`
 The log is organized into numbered sections:

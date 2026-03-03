@@ -255,9 +255,9 @@ StringOptimizer settings for chain-of-states path optimization (`path-opt`, `pat
 ```yaml
 stopt:
  type: string # Optimizer type label
- thresh: gau # StringOptimizer convergence preset
+ thresh: gau_loose # StringOptimizer convergence preset
  stop_in_when_full: 300 # Early stop threshold when the string is full
- align: false # Alignment toggle
+ align: false # Alignment toggle (forced to False in path-opt/path-search; external Kabsch alignment is used instead)
  scale_step: global # Step scaling mode
  max_cycles: 300 # Maximum StringOptimizer iterations
  dump: false # Dump trajectory/restart data
@@ -485,7 +485,7 @@ gs:
  climb_lanczos: true
 
 stopt:
- thresh: gau
+ thresh: gau_loose
  max_cycles: 300
  dump: false
  out_dir:./result_all/

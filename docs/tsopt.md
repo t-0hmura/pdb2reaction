@@ -144,6 +144,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--show-config/--no-show-config` | Print resolved config layers and continue execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. | `False` |
 
+```{note}
+**`--flatten` is disabled by default.** Although `defaults.py` defines `flatten_max_iter=50`, the CLI initialization sets `flatten_max_iter=0` unless `--flatten` is explicitly passed. If your TS candidate has multiple imaginary frequencies, try adding `--flatten` to enable the surplus-mode cleanup loop.
+```
+
 ## Outputs
 ```
 out_dir/ (default:./result_tsopt/)

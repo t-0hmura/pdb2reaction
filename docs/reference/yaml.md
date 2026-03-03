@@ -73,7 +73,7 @@ dft:
 | `freq.n_frames` | `int` | `20` |
 | `freq.sort` | `str` | `'value'` |
 | `freq.temperature` | `float` | `298.15` |
-| `freq.pressure` | `float` | `1.0` |
+| `freq.pressure` | `float` | `1.0` (atm) |
 | `dft.func_basis` | `str` | `'wb97m-v/def2-tzvpd'` |
 | `dft.max_cycle` | `int` | `100` |
 | `dft.conv_tol` | `float` | `1e-09` |

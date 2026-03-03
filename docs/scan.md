@@ -160,7 +160,7 @@ Pass multiple literals after a single `--scan-lists` flag. Each literal becomes 
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-Stages run sequentially; each starts from the previous stage's relaxed result. **Do not repeat the `--scan-lists` flag** — supply all stage literals after a single flag.
+Stages run sequentially; each starts from the previous stage's relaxed result. You may either repeat the `--scan-lists` flag for each stage or supply all stage literals after a single flag — both forms are accepted (`multiple=True`).
 
 ## Workflow
 1. Load the structure through `geom_loader`, resolving charge/spin from the CLI

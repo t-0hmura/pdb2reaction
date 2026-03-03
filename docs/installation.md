@@ -112,4 +112,4 @@ If you prefer to build the environment piece by piece:
  pdb2reaction --version
  ```
 
- This should display the installed version (e.g., `{{ version }}`).
+ This should display the installed version.

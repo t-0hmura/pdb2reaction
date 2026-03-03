@@ -34,7 +34,7 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (H
 - **Hessian modes** – `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
 - **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. Hessians either drop frozen degrees of freedom (`return_partial_hessian=True`) or zero corresponding columns in the full matrix.
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian in the model's native dtype (typically float32).
-- **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput. Analytical Hessians are skipped in this mode.
+- **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput. **Warning:** when `workers>1`, analytical Hessians are silently switched to finite differences (`force_fd=True`) even if `hessian_calc_mode="Analytical"` is set. No warning is printed — check your logs if Hessian timings are unexpectedly long.
 
 ## HPC example: PBS + Open MPI + Ray
 

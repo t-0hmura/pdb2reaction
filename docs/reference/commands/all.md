@@ -1,8 +1,6 @@
 # `pdb2reaction all`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
-
 Usage: pdb2reaction all [OPTIONS]
 
   Run pocket extraction → (optional single-structure staged scan) → MEP search →
