@@ -25,5 +25,15 @@ Options:
                                 recomputation when supplied.
   --reverse-x / --no-reverse-x  Reverse the x-axis (last frame on the left).
                                 [default: no-reverse-x]
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction
+                                  (e.g. 'water'). 'none' to disable.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                    Show this message and exit.
 ```
+
+---
+
+See also: [trj2fig workflow](../../trj2fig.md) | [energy-diagram](energy_diagram.md)

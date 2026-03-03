@@ -26,6 +26,7 @@ class GeomKW(TypedDict, total=False):
 
 
 class CalcKW(TypedDict, total=False):
+    backend: str
     charge: int
     spin: int
     model: str
@@ -43,6 +44,11 @@ class CalcKW(TypedDict, total=False):
     print_vram: bool
     return_partial_hessian: bool
     freeze_atoms: Optional[List[int]]
+    # Solvent correction
+    solvent: str
+    solvent_model: str
+    xtb_cmd: str
+    xtb_acc: float
 
 
 class OptBaseKW(TypedDict, total=False):
@@ -124,6 +130,7 @@ GEOM_KW_DEFAULT: Dict[str, Any] = {
 # -----------------------------------------------
 
 CALC_KW_DEFAULT: Dict[str, Any] = {
+    "backend": "uma",
     "charge": 0,
     "spin": 1,
     "model": "uma-s-1p1",
@@ -140,6 +147,11 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "print_timing": True,
     "print_vram": True,
     "return_partial_hessian": False,
+    # Solvent correction
+    "solvent": "none",
+    "solvent_model": "alpb",
+    "xtb_cmd": "xtb",
+    "xtb_acc": 0.2,
 }
 
 # Extended UMA calculator defaults with Hessian control
@@ -147,6 +159,25 @@ UMA_CALC_KW: Dict[str, Any] = {
     **CALC_KW_DEFAULT,
     "out_hess_torch": True,
     "freeze_atoms": None,
+}
+
+# -----------------------------------------------
+# Backend-specific defaults
+# -----------------------------------------------
+
+ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
+    "model": "orb_v3_conservative_omol",
+    "precision": "float32",
+    "compile_model": False,
+}
+
+MACE_BACKEND_DEFAULTS: Dict[str, Any] = {
+    "model": "MACE-OMOL-0",
+    "default_dtype": "float64",
+}
+
+AIMNET2_BACKEND_DEFAULTS: Dict[str, Any] = {
+    "model": "aimnet2",
 }
 
 # -----------------------------------------------

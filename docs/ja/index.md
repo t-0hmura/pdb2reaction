@@ -139,7 +139,7 @@ glossary
 | **CLI コマンドリファレンス** | [Command Reference](../reference/commands/index.md) |
 | **YAML スキーマ** | [YAML Schema](../reference/yaml.md) |
 | **YAML 設定オプション** | [YAML リファレンス](yaml_reference.md) |
-| **UMA 計算機設定** | [UMA 計算機](uma_pysis.md) |
+| **MLIP バックエンド設定** | [MLIP 計算機](uma_pysis.md) |
 | **用語** | [用語集](glossary.md) |
 
 ---
@@ -219,7 +219,7 @@ result_all/
 │ ├── mep_w_ref.pdb # 全系とマージされたMEP
 │ ├── mep_plot.png # エネルギープロファイルプロット
 │ └── seg_*/ # セグメントごとの詳細
-└┬─ path_search/post_seg_*/ # 後処理出力
+└┬── path_search/post_seg_*/ # 後処理出力
  ├── tsopt/ # TS最適化結果
  ├── irc/ # IRC軌跡
  ├── freq/ # 振動モード

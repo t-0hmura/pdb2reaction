@@ -53,8 +53,8 @@ Options:
                                   gau_vtight|baker|never). Defaults to 'gau'
                                   when not provided.
   --thresh-stopt TEXT             Convergence preset for the string optimizer
-                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|ba
-                                  ker|never).  [default: gau]
+                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|
+                                  baker|never).  [default: gau]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -72,5 +72,15 @@ Options:
                                   when --preopt True).  [default: 10000]
   --fix-ends / --no-fix-ends      Fix structures of input endpoints during GSM.
                                   [default: no-fix-ends]
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction
+                                  (e.g. 'water'). 'none' to disable.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
+
+---
+
+See also: [path-opt workflow](../../path_opt.md) | [path-search](path_search.md) | [tsopt](tsopt.md)

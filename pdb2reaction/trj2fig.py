@@ -40,20 +40,24 @@ def read_energies_xyz(fname: Path | str) -> List[float]:
 
 
 def recompute_energies(
-    traj_path: Path, charge: Optional[int], multiplicity: Optional[int]
+    traj_path: Path, charge: Optional[int], multiplicity: Optional[int],
+    backend: str = "uma", solvent: str = "none", solvent_model: str = "alpb",
 ) -> List[float]:
     """
-    Recalculate Hartree energies for every frame using uma_pysis.
+    Recalculate Hartree energies for every frame using the backend factory.
     """
     # Import lazily so comment-only mode does not require torch/UMA deps.
-    from .uma_pysis import uma_pysis
+    from .backends import create_calculator
 
     frames_obj = read(traj_path, index=":", format="xyz")
     frames = [frames_obj] if isinstance(frames_obj, Atoms) else list(frames_obj)
     if not frames:
         raise RuntimeError(f"No frames found in {traj_path}")
 
-    calc = uma_pysis(charge=charge or 0, spin=multiplicity or 1)
+    calc = create_calculator(
+        backend=backend, charge=charge or 0, spin=multiplicity or 1,
+        solvent=solvent, solvent_model=solvent_model,
+    )
     energies: List[float] = []
     for atoms in frames:
         elems = atoms.get_chemical_symbols()
@@ -284,6 +288,9 @@ def run_trj2fig(
     reverse_x: bool,
     charge: Optional[int] = None,
     multiplicity: Optional[int] = None,
+    backend: str = "uma",
+    solvent: str = "none",
+    solvent_model: str = "alpb",
 ) -> None:
     traj = input_path.expanduser().resolve()
     if not traj.is_file():
@@ -292,7 +299,10 @@ def run_trj2fig(
     if charge is None and multiplicity is None:
         energies = read_energies_xyz(traj)
     else:
-        energies = recompute_energies(traj, charge, multiplicity)
+        energies = recompute_energies(
+            traj, charge, multiplicity,
+            backend=backend, solvent=solvent, solvent_model=solvent_model,
+        )
     values, ylabel, is_delta = transform_series(energies, reference, unit, reverse_x)
 
     need_plot = any(Path(o).suffix.lower() != ".csv" for o in outs)
@@ -378,6 +388,12 @@ def main() -> None:
     show_default=True,
     help="Reverse the x-axis (last frame on the left).",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 def cli(
     input_path: Path,
     outs: Tuple[Path, ...],
@@ -387,9 +403,13 @@ def cli(
     charge: Optional[int],
     multiplicity: Optional[int],
     reverse_x: bool,
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     # Combine outputs from -o with positional filenames that follow the options
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
         all_outs = [Path("energy.png")]
-    run_trj2fig(input_path, all_outs, unit, reference, reverse_x, charge, multiplicity)
+    run_trj2fig(input_path, all_outs, unit, reference, reverse_x, charge, multiplicity,
+                backend=backend, solvent=solvent, solvent_model=solvent_model)

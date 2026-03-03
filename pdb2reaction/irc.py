@@ -26,7 +26,7 @@ import time
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
-from pdb2reaction.uma_pysis import uma_pysis
+from pdb2reaction.backends import create_calculator
 from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW
 from pdb2reaction.utils import (
     load_yaml_dict,
@@ -218,6 +218,12 @@ _link_or_copy_file = link_or_copy_file  # backward compat alias
     show_default=True,
     help="Validate options and print the execution plan without running IRC.",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -240,6 +246,9 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     def _is_param_explicit(name: str) -> bool:
         try:
@@ -292,6 +301,12 @@ def cli(
                 calc_cfg["workers"] = int(workers)
             if _is_param_explicit("workers_per_node"):
                 calc_cfg["workers_per_node"] = int(workers_per_node)
+            if _is_param_explicit("backend"):
+                calc_cfg["backend"] = backend
+            if _is_param_explicit("solvent"):
+                calc_cfg["solvent"] = solvent
+            if _is_param_explicit("solvent_model"):
+                calc_cfg["solvent_model"] = solvent_model
             if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
                 calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
             if _is_param_explicit("max_cycles") and max_cycles is not None:
@@ -386,7 +401,7 @@ def cli(
 
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
-            calc = uma_pysis(**calc_cfg)
+            calc = create_calculator(**calc_cfg)
             geometry.set_calculator(calc)
 
             # --------------------------

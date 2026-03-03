@@ -9,7 +9,7 @@
 - **主要パラメータ:** `--step-size`（質量重み付き座標でのステップ長）、`--max-cycles`（ステップ数）。
 - **強制上書き:** IRC はマージ後に `geom.coord_type = cart` と `calc.return_partial_hessian = false` を強制します（YAML 設定より優先）。
 
-`pdb2reaction irc` は UMA を用いた EulerPC ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに保たれています。CLI で公開されていないパラメータは YAML で指定することで、再現性のある実行が可能です。
+`pdb2reaction irc` は MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに保たれています。CLI で公開されていないパラメータは YAML で指定することで、再現性のある実行が可能です。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt`（内部で虚振動数チェック済み、**1 つ** であることを確認）→ `irc` です。
 
@@ -50,6 +50,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 150 \
 ## 使用法
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] [-m 2S+1]
  [--max-cycles N] [--step-size Δs] [--root k]
  [--freeze-links/--no-freeze-links]
@@ -70,7 +71,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
 ## ワークフロー
-1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（`.pdb` 入力または `--ref-pdb` 指定時）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` がリンク水素の親原子を凍結して `geom.freeze_atoms` にマージします。
+1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -105,12 +106,12 @@ out_dir/ (デフォルト:./result_irc/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- UMA は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
-- VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を強く推奨します。
-- `--freeze-links` は PDB 入力にのみ適用され、リンク水素の親原子を凍結したままヘシアンを構築します。
+- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
+- ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+- `--freeze-links` は PDB 入力にのみ適用されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 
 
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください: PDB 入力では `--freeze-links` が `geom.freeze_atoms` にマージされ、`--hessian-calc-mode` とCLIの電荷/スピンが `calc` に反映されます。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLIより優先）。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLI より優先）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -152,7 +153,7 @@ irc:
  imag_below: 0.0 # imaginary frequency cutoff
  force_inflection: true # enforce inflection detection
  check_bonds: false # check bonds during propagation
- out_dir:./result_irc/ # output directory
+ out_dir: ./result_irc/ # output directory
  prefix: "" # filename prefix
  dump_fn: irc_data.h5 # IRC data filename
  dump_every: 5 # dump stride

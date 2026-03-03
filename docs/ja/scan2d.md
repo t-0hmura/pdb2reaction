@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** 調和拘束と UMA 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`--spec`（YAML/JSON、推奨）または `--scan-lists` を使用します。
+> **要約:** 調和拘束と MLIP 緩和（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）により、2 距離（d₁, d₂）のグリッドスキャンを行います。`--spec`（YAML/JSON、推奨）または `--scan-lists` を使用します。
 
 ### 要点
 - **入力:** 1 つの構造 + `--spec scan2d.yaml`（推奨）または `--scan-lists` の **単一** リテラル（四つ組はちょうど 2 つ）。
@@ -35,6 +35,7 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan
 ## 使用法
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -177,7 +178,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- `uma_pysis` 経由の UMA が唯一の計算バックエンドで、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- MLIP バックエンド（デフォルト: UMA、`--backend` で切替可能）が計算エンジンで、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットの境界を固定します。
@@ -196,13 +197,13 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir:./result_scan2d/ # output directory
+ out_dir: ./result_scan2d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir:./result_scan2d/ # LBFGS-specific output directory
+ out_dir: ./result_scan2d/ # LBFGS-specific output directory
 rfo:
  trust_radius: 0.1 # trust-region radius
- out_dir:./result_scan2d/ # RFO-specific output directory
+ out_dir: ./result_scan2d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```

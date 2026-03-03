@@ -2,14 +2,14 @@
 
 ## Overview
 
-> **Summary:** Runs EulerPC-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
+> **Summary:** Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
 
 ### At a glance
 - **Input:** A TS structure (ideally already optimized and validated).
 - **Key knobs:** `--step-size` (mass-weighted step length) and `--max-cycles` (number of steps).
 - **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` after merge (even if YAML sets them).
 
-`pdb2reaction irc` runs EulerPC-based IRC integrations with UMA. The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
+`pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default). The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` (which includes an imaginary-frequency check; confirm **one** imaginary frequency) → `irc`.
 
@@ -50,6 +50,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 150 \
 ## Usage
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] [-m 2S+1]
  [--max-cycles N] [--step-size Δs] [--root k]
  [--freeze-links/--no-freeze-links]
@@ -108,11 +109,11 @@ out_dir/ (default:./result_irc/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- UMA is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
-- When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
-- `--freeze-links` only applies to PDB inputs, keeping parent atoms of link hydrogens frozen during Hessian construction.
+- The MLIP backend is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
+- For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 
-Provide mappings with merge order **defaults < config < explicit CLI < override**.
+See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
 Shared sections reuse [YAML Reference](yaml_reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):
@@ -155,7 +156,7 @@ irc:
  imag_below: 0.0 # imaginary frequency cutoff
  force_inflection: true # enforce inflection detection
  check_bonds: false # check bonds during propagation
- out_dir:./result_irc/ # output directory
+ out_dir: ./result_irc/ # output directory
  prefix: "" # filename prefix
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence

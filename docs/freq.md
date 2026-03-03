@@ -2,16 +2,16 @@
 
 ## Overview
 
-> **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with UMA. When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
+> **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
 ### At a glance
-- **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies) and/or compute thermochemistry corrections from UMA. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed vibrational mode inspection.
-- **Frozen atoms:** Supported via PHVA (partial Hessian vibrational analysis).
+- **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies) and/or compute thermochemistry corrections from an MLIP backend (UMA by default). Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed vibrational mode inspection.
+- **Frozen atoms:** Supported via PHVA (Partial Hessian Vibrational Analysis).
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
 - **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value).
-- **Performance:** If you have ample VRAM, `--hessian-calc-mode Analytical` is usually recommended.
+- **Performance:** For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
 
-`pdb2reaction freq` performs vibrational analysis with the UMA calculator, honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
+`pdb2reaction freq` performs vibrational analysis with an MLIP backend (UMA by default), honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
 
 
 ## Minimal example
@@ -50,6 +50,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 ## Usage
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--freeze-links/--no-freeze-links] \
  [--max-write N] [--amplitude-ang Å] [--n-frames N] \
  [--show-config] [--dry-run] \
@@ -72,9 +73,9 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
  `pysisyphus.helpers.geom_loader`. For PDB inputs, `--freeze-links` detects link
  hydrogens and freezes their parent atoms, then merges the resulting indices with
  `geom.freeze_atoms`; the merged list is echoed and propagated to UMA and PHVA.
-- **UMA calculator**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
- UMA may return a partial (active) Hessian block whenever atoms are frozen.
- When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
+- **MLIP backend**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
+ The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
+ For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
  subspace with translation/rotation modes projected there. Both 3N×3N and active-block
  Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).

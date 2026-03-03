@@ -34,6 +34,19 @@
 遷移状態（一次鞍点: First-Order Saddle Point）: HEI や `tsopt` の出力は **TS 候補** として扱い、`irc`（両端が意図した極小構造へ到達すること）で検証してから解釈してください。`tsopt` は内部で虚振動数チェックを実施済みです — 出力に虚振動数が 1 本（|ν| >= 100 cm⁻¹）あることを確認してください。虚振動数が複数残る場合は `--flatten` の適用を検討してください。
 ```
 
+### MLIP バックエンド
+
+pdb2reaction は複数の機械学習ポテンシャル (MLIP) バックエンドに対応しています。計算コマンドに `--backend` を渡してバックエンドを選択できます:
+
+| バックエンド | フラグ | インストール | 備考 |
+|---------|------|---------|-------|
+| **UMA**（デフォルト） | `--backend uma` | 同梱 | 解析ヘシアン・マルチワーカー推論対応 |
+| **ORB** | `--backend orb` | `pip install 'pdb2reaction[orb]'` | orb-models; 有限差分ヘシアンのみ |
+| **MACE** | `--backend mace` | `pip install 'pdb2reaction[mace]'` | mace-torch; fairchem-core と競合（別環境推奨） |
+| **AIMNet2** | `--backend aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; 有限差分ヘシアンのみ |
+
+全バックエンド共通で `--solvent` オプションにより xTB ベースの暗黙溶媒補正を適用できます。
+
 ---
 
 ## 重要な概念
@@ -46,6 +59,8 @@
 ポケット抽出は主に以下で制御します。
 - `-c/--center`: 基質の指定（残基ID、残基名、または基質のみのPDB）
 - `-r/--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`
+
+電荷とスピンの指定については [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
 
 ### イメージ（Image）とセグメント（Segment）
 - **イメージ（Image）**: 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点に対応します。
@@ -60,6 +75,16 @@
 この挙動は `--convert-files/--no-convert-files`（デフォルト: `True`）で制御します。
 
 ---
+
+### リンク水素と凍結原子
+
+pdb2reaction がポケットを抽出する際、切断された結合は**リンク水素**でキャップされます。デフォルト（`--freeze-links`）では、リンク水素の親原子が最適化や経路探索中に凍結され、境界での非物理的な再配置を防ぎます。
+
+- **力**: 凍結原子の力はゼロ化されます。
+- **ヘシアン**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
+- **振動解析**: 凍結原子がある場合、`freq` は自動的に部分ヘシアン振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
+
+凍結原子は `geom.freeze_atoms` YAML キー（0 始まりインデックス）で手動設定も可能です。CLI で検出されたリンク原子は YAML 指定の原子とマージされます。
 
 ## 代表的な3つの使い方
 

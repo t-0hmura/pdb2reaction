@@ -54,8 +54,8 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --out-dir TEXT                  Base output directory.  [default:
                                   ./result_scan2d/]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never).  Defaults to 'baker'.
+  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|
+                                  gau_vtight|baker|never).  Defaults to 'baker'.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --preopt / --no-preopt          Pre-optimize the initial structure without
@@ -70,5 +70,15 @@ Options:
                                   Print parsed scan targets after resolving
                                   --spec/--scan-lists.  [default: no-print-
                                   parsed]
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction
+                                  (e.g. 'water'). 'none' to disable.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
+
+---
+
+See also: [scan2d workflow](../../scan2d.md) | [scan](scan.md) | [scan3d](scan3d.md)

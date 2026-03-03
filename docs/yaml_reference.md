@@ -7,7 +7,7 @@
 | Section | Description | Used by |
 |---------|-------------|---------|
 | [`geom`](#geom) | Geometry and coordinate settings | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
-| [`calc`](#calc) | UMA calculator configuration | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
+| [`calc`](#calc) | MLIP backend configuration | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | Shared optimizer settings | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
 | [`lbfgs`](#lbfgs) | L-BFGS optimizer settings | opt, scan, scan2d, scan3d, path-search |
 | [`rfo`](#rfo) | RFO optimizer settings | opt, scan, scan2d, scan3d, path-search |
@@ -47,10 +47,11 @@ geom:
 
 ### `calc`
 
-UMA machine-learning calculator configuration.
+MLIP backend configuration. Supports multiple backends (UMA, ORB, MACE, AIMNet2) and optional xTB solvent corrections.
 
 ```yaml
 calc:
+ backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p1 # UMA pretrained model name
@@ -66,9 +67,17 @@ calc:
  # freeze_atoms: null # Inherited from geom.freeze_atoms; do not set directly
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
  return_partial_hessian: false # Return only active-DOF Hessian block
+ # Solvent correction (xTB)
+ solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
+ solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
+ xtb_cmd: xtb            # Path to xTB executable
+ xtb_acc: 0.2            # xTB accuracy parameter
 ```
 
 **Notes:**
+- `backend` selects the MLIP engine. UMA (default) supports analytical Hessians and multi-worker inference; other backends use finite-difference Hessians.
+- `workers` / `workers_per_node` are only effective with the UMA backend.
+- `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
 - `workers > 1` disables analytical Hessians
 - Charge/spin inherit `.gjf` template metadata when available
@@ -100,7 +109,7 @@ opt:
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
  prefix: "" # Filename prefix
- out_dir:./result_opt/ # Output directory
+ out_dir: ./result_opt/ # Output directory
 ```
 
 **Convergence Presets:**
@@ -264,7 +273,7 @@ stopt:
  dump_restart: false # Dump restart checkpoints
  reparam_thresh: 0.0 # Reparameterization threshold
  coord_diff_thresh: 0.0 # Coordinate-difference threshold
- out_dir:./result_path_opt/ # Output directory
+ out_dir: ./result_path_opt/ # Output directory
  print_every: 10 # Logging stride
 ```
 
@@ -372,7 +381,7 @@ irc:
  imag_below: 0.0 # Imaginary frequency cutoff
  force_inflection: true # Enforce inflection detection
  check_bonds: false # Check bonds during propagation
- out_dir:./result_irc/ # Output directory
+ out_dir: ./result_irc/ # Output directory
  prefix: "" # Filename prefix
  dump_fn: irc_data.h5 # IRC data filename
  dump_every: 5 # Dump stride
@@ -429,7 +438,7 @@ dft:
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  verbose: 0 # PySCF verbosity (0-9)
- out_dir:./result_dft/ # Output directory root
+ out_dir: ./result_dft/ # Output directory root
 ```
 
 ---
@@ -449,7 +458,7 @@ bias:
 
 ### `bond`
 
-UMA-based bond-change detection.
+MLIP-based bond-change detection.
 
 ```yaml
 bond:
@@ -473,11 +482,13 @@ geom:
  freeze_atoms: []
 
 calc:
+ backend: uma
  charge: 0
  spin: 1
  model: uma-s-1p1
  device: auto
  hessian_calc_mode: Analytical # Recommended when VRAM permits
+ solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:
  max_nodes: 12
@@ -488,7 +499,7 @@ stopt:
  thresh: gau_loose
  max_cycles: 300
  dump: false
- out_dir:./result_all/
+ out_dir: ./result_all/
 
 opt:
  thresh: gau
@@ -529,4 +540,4 @@ dft:
 - [path-search](path_search.md) - Recursive MEP search
 - [freq](freq.md) - Vibrational analysis
 - [dft](dft.md) - DFT calculations
-- [uma_pysis](uma_pysis.md) - UMA calculator details
+- [uma_pysis](uma_pysis.md) - MLIP backend details

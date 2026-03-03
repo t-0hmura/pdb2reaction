@@ -18,3 +18,7 @@ Options:
                                 is omitted.  [default: no-overwrite]
   -h, --help                    Show this message and exit.
 ```
+
+---
+
+See also: [add-elem-info workflow](../../add_elem_info.md) | [extract](extract.md)

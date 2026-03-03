@@ -60,6 +60,7 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 
 ```bash
 pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
  [--workers N] [--workers-per-node N]
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
  [--refine-mode {peak|minima}]
@@ -116,12 +117,12 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギーイメージ（HEI）を取得。
 2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
-3. **kink vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *kink* とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **精密化セグメント（GSM/DMF）** を起動。
+3. **kink vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *キンク*（kink: 共有結合変化を伴わない構造変化区間）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **反応セグメント**（共有結合変化を伴う区間に対して GSM/DMF で精密化するセグメント）を起動。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
-5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジMEPを挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
+5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジセグメント（隣接するサブパス間の RMSD ギャップを埋めるために挿入される補間 MEP）を挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
 6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定するとポケット軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
 
-結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。UMA 計算機は全構造で共有・再利用されます。
+結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンド（デフォルト: UMA）は全構造で共有・再利用されます。
 
 ## 出力
 ```
@@ -145,16 +146,16 @@ out_dir/ (デフォルト:./result_path_search/)
 
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
-- UMA 計算機は全構造で共有・再利用されます。
+- MLIP バックエンド（デフォルト: UMA）は全構造で共有・再利用されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
-マージ順は **defaults < config < 明示指定 CLI < override** です。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDBでは `--freeze-links` が `geom.freeze_atoms` にマージ）、`stopt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については [概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）、`stopt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` のデフォルト値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
-`opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir:./result_path_search/`、`dump: False` です。
+`opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
@@ -207,7 +208,7 @@ stopt:
  dump_restart: false # dump restart checkpoints
  reparam_thresh: 0.0 # reparametrization threshold
  coord_diff_thresh: 0.0 # coordinate difference threshold
- out_dir:./result_path_search/ # output directory
+ out_dir: ./result_path_search/ # output directory
  print_every: 10 # logging stride
 dmf:
  max_cycles: 300 # DMF/IPOPT の最大反復数
@@ -256,7 +257,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_path_search/ # output directory
+ out_dir: ./result_path_search/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -282,7 +283,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_path_search/ # output directory
+ out_dir: ./result_path_search/ # output directory
  trust_radius: 0.1 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0 # minimum trust radius

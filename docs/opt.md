@@ -6,7 +6,7 @@
 
 `pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). For PDB inputs, link-hydrogen parents are automatically frozen.
 
-The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while UMA provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
+The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
@@ -61,6 +61,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
 ## Usage
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
@@ -72,8 +73,8 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
   > **Naming note:** The CLI accepts `grad|lbfgs` and `hess|rfo`. In YAML, use `lbfgs` or `rfo` directly.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_A)` where `target_A` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
-- **Charge/spin resolution**: CLI `-q/-m` override `.gjf` template metadata, which in turn override the `calc` defaults. If `-q` is omitted but `--ligand-charge` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge` aborts; multiplicity defaults to `1` when omitted. Always pass the physically correct values explicitly.
-- **Freeze atoms**: CLI freeze-link logic is merged with YAML `geom.freeze_atoms`, then propagated to the UMA calculator (`calc.freeze_atoms`).
+- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
+- **Freeze atoms**: When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 - **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
 
@@ -117,7 +118,7 @@ out_dir/
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
 (yaml-configuration-override-yaml)=
-Settings are applied with **defaults < config < explicit CLI < override**.
+See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
 
 ### `geom`
 - `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.
@@ -174,7 +175,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_opt/ # output directory
+ out_dir: ./result_opt/ # output directory
 lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit
@@ -192,7 +193,7 @@ lbfgs:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_opt/ # output directory
+ out_dir: ./result_opt/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -218,7 +219,7 @@ rfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_opt/ # output directory
+ out_dir: ./result_opt/ # output directory
  trust_radius: 0.1 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0 # minimum trust radius

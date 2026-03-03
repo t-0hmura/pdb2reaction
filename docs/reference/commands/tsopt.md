@@ -43,9 +43,9 @@ Options:
   --dump / --no-dump              Write optimization trajectory to the output
                                   directory.  [default: no-dump]
   --out-dir TEXT                  Output directory.  [default: ./result_tsopt/]
-  --thresh TEXT                   Convergence preset for the active optimizer (g
-                                  au_loose|gau|gau_tight|gau_vtight|baker|never)
-                                  . Defaults to 'baker' when not provided.
+  --thresh TEXT                   Convergence preset for the active optimizer
+                                  (gau_loose|gau|gau_tight|gau_vtight|baker|
+                                  never). Defaults to 'baker' when not provided.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -58,5 +58,15 @@ Options:
                                   Choose UMA Hessian evaluation mode (used
                                   unless YAML sets calc.hessian_calc_mode).
                                   Defaults to 'FiniteDifference'.
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction
+                                  (e.g. 'water'). 'none' to disable.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
+
+---
+
+See also: [tsopt workflow](../../tsopt.md) | [irc](irc.md) | [freq](freq.md)

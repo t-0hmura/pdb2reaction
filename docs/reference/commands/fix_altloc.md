@@ -26,3 +26,7 @@ Options:
                                 no-force]
   -h, --help                    Show this message and exit.
 ```
+
+---
+
+See also: [fix-altloc workflow](../../fix_altloc.md) | [extract](extract.md)

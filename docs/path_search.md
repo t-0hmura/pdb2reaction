@@ -58,6 +58,7 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ## Usage
 ```bash
 pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
  [--workers N] [--workers-per-node N]
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
  [--refine-mode {peak|minima}]
@@ -114,13 +115,13 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
    > **Default:** When `--refine-mode` is omitted, it defaults to `peak` for GSM and `minima` for DMF.
 3. **Decide between kink vs. refinement**:
- - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink*: insert `search.kink_max_nodes` linear nodes and optimize each individually.
- - Otherwise, launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
+ - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink* -- a conformational rearrangement with no bond breaking or formation (see [Glossary](glossary.md)): insert `search.kink_max_nodes` linear nodes and optimize each individually.
+ - Otherwise, the region is a *reactive segment* -- a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
 4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
-5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a bridge MEP segment (GSM/DMF). When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
+5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* -- a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) -- using GSM/DMF. When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
 6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-full-pdb` to merge pocket trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
 
-Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. UMA calculators are constructed once and shared across all structures for efficiency.
+Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. MLIP backends are constructed once and shared across all structures for efficiency.
 
 ## Outputs
 ```
@@ -142,15 +143,15 @@ out_dir/ (default:./result_path_search/)
 
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
 - Repeat `--ref-full-pdb` once per file when providing multiple templates; with `--align`, only the first template is reused for merges.
-- All UMA calculators are shared across structures for efficiency.
+- All MLIP backends are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
 
-Merge order is **defaults < config < explicit CLI < override**.
+See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
 The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml_reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
-`opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml_reference.md) but defaults to `out_dir:./result_path_search/` and `dump: False`.
+`opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml_reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
 
 `bond` carries the UMA-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
@@ -203,7 +204,7 @@ stopt:
  dump_restart: false # dump restart checkpoints
  reparam_thresh: 0.0 # reparametrization threshold
  coord_diff_thresh: 0.0 # coordinate difference threshold
- out_dir:./result_path_search/ # output directory
+ out_dir: ./result_path_search/ # output directory
  print_every: 10 # logging stride
 dmf:
  max_cycles: 300 # maximum DMF/IPOPT iterations
@@ -252,7 +253,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_path_search/ # output directory
+ out_dir: ./result_path_search/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -278,7 +279,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_path_search/ # output directory
+ out_dir: ./result_path_search/ # output directory
  trust_radius: 0.1 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0 # minimum trust radius

@@ -1,7 +1,7 @@
-# `uma_pysis` calculator
+# MLIP Calculator
 
 ## Overview
-`uma_pysis` exposes Meta's UMA machine-learning interatomic potential (MLIP) to PySisyphus as a calculator (using ASE and FAIR-Chem internally). It returns energies, forces, and Hessian matrices (via analytical autograd or finite differences) in hartree-based atomic units while handling device placement, graph construction, and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for PySisyphus. The default backend is **UMA** (Meta's Universal Machine-learning interatomic potential for Atomistic simulations), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling device placement and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
 
 ## Quick start
 ```python
@@ -28,8 +28,44 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (h
 - Coordinates are supplied in **bohr**; the wrapper converts to Angstrom for UMA and converts energies/derivatives back to hartree / hartree bohr⁻¹ / hartree bohr⁻².
 - Attach the calculator to a `pysisyphus` geometry object or call it directly as above.
 
+## Backend selection
+
+Select a backend with `--backend` on any command, or set `calc.backend` in YAML:
+
+```bash
+# UMA (default)
+pdb2reaction opt -i input.pdb -q 0
+
+# ORB
+pdb2reaction opt -i input.pdb -q 0 --backend orb
+
+# MACE (use a separate environment from UMA)
+pdb2reaction opt -i input.pdb -q 0 --backend mace
+
+# AIMNet2
+pdb2reaction opt -i input.pdb -q 0 --backend aimnet2
+```
+
+| Backend | Install | Analytical Hessian | Multi-worker | Notes |
+|---------|---------|-------------------|-------------|-------|
+| **UMA** | included | Yes | Yes | Full feature set via fairchem |
+| **ORB** | `pip install 'pdb2reaction[orb]'` | No (FD only) | No | orb-models |
+| **MACE** | `pip install 'pdb2reaction[mace]'` | No (FD only) | No | Conflicts with fairchem-core |
+| **AIMNet2** | `pip install 'pdb2reaction[aimnet2]'` | No (FD only) | No | aimnet |
+
+### Implicit solvent correction
+
+All backends support xTB-based implicit solvent corrections via `--solvent`:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 --solvent water
+pdb2reaction opt -i input.pdb -q 0 --backend orb --solvent water --solvent-model cpcmx
+```
+
+The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), added to the MLIP energy/forces/Hessian. Requires `xtb` to be installed and accessible on `PATH`.
+
 ## Key features
-- **UMA backend** – loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch.
+- **MLIP backends** – the default UMA backend loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch. Alternative backends (ORB, MACE, AIMNet2) are available via `--backend`.
 - **Device handling** – `device="auto"` selects CUDA when available, otherwise CPU. Graph construction happens on the chosen device; when `workers>1`, the parallel predictor manages device transfers.
 - **Hessian evaluation** – `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
 - **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. The Hessian matrix either drops frozen degrees of freedom (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
@@ -176,6 +212,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 
 | Option | Description | Default |
 | --- | --- | --- |
+| `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge. | `0` |
 | `spin` | Spin multiplicity (2S+1). | `1` |
 | `model` | UMA pretrained model name. | `"uma-s-1p1"` |
@@ -188,6 +225,8 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `False` |
 | `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |
 | `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
+| `solvent` | Implicit solvent name (e.g. `"water"`) or `"none"`. | `"none"` |
+| `solvent_model` | xTB solvent model: `"alpb"` or `"cpcmx"`. | `"alpb"` |
 
 
 ---
@@ -196,6 +235,6 @@ Common constructor keywords (defaults shown in the rightmost column):
 
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
-- [opt](opt.md) -- Single-structure optimization using UMA
-- [path_opt](path_opt.md) -- MEP optimization with UMA calculator
-- [all](all.md) -- End-to-end workflow using UMA across stages
+- [opt](opt.md) -- Single-structure optimization using an MLIP backend
+- [path_opt](path_opt.md) -- MEP optimization with MLIP backend
+- [all](all.md) -- End-to-end workflow using MLIP across stages

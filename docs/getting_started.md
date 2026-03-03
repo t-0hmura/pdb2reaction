@@ -22,7 +22,7 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
 
-Calculations use Meta's UMA machine-learning interatomic potential (MLIP). Typical use cases include:
+Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `--backend`. Implicit solvent corrections can be applied with `--solvent` (powered by xTB). Typical use cases include:
 
 - **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be prohibitively slow
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
@@ -30,7 +30,7 @@ Calculations use Meta's UMA machine-learning interatomic potential (MLIP). Typic
 
 The CLI is designed to generate **multi‑step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small‑molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
-On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi‑worker inference; see [UMA Calculator](uma_pysis.md) for configuration details.
+On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi‑worker inference; see [MLIP Calculator](uma_pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `--backend`.
 
 ```{important}
 - Input PDB files must already contain **hydrogen atoms**.
@@ -177,7 +177,7 @@ This mode is useful for building reaction paths starting from a single structure
 
 ### Single‑structure TSOPT‑only mode
 
-Use this when you already have a **transition state candidate** and only want to optimize it and proceed to IRC calculations.
+Use this when you already have a **transition-state candidate** and only want to optimize it and proceed to IRC calculations.
 
 Provide exactly one PDB and enable `--tsopt`:
 
@@ -228,7 +228,7 @@ Below are the most commonly used options across workflows.
 | `--refine-path/--no-refine-path` | Recursive MEP refinement (default: enabled) vs single‑pass. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. **Analytical recommended when sufficient VRAM is available.** |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation). |
 
 For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml_reference.md).
 
@@ -277,7 +277,7 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
 ```{tip}
-In `all`, `tsopt`, `freq` and `irc`, setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
+For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
 ```
 
 ---
@@ -326,6 +326,6 @@ pdb2reaction all --help-advanced
 ```
 
 For `all`, `--help` is intentionally short. Use `--help-advanced` to see every option.
-For detailed UMA calculator options, see [UMA Calculator](uma_pysis.md).
+For detailed MLIP backend options, see [MLIP Calculator](uma_pysis.md).
 
 If you encounter any issues, please open an Issue on the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).

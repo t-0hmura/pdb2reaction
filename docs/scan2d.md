@@ -11,7 +11,7 @@
 - **Outputs:** `surface.csv` plus `scan2d_map.png` and `scan2d_landscape.html`, and per-point structures under `grid/`.
 - **Caution:** Grid size grows quickly as `(high − low) / --max-step-size` increases.
 
-`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased UMA energies for visualization. Use `--opt-mode hess` when you need RFOptimizer instead of LBFGS.
+`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of LBFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -35,6 +35,7 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -205,7 +206,7 @@ out_dir/ (default:./result_scan2d/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- UMA via `uma_pysis` is the only calculator backend and reuses the same
+- The MLIP backend (UMA by default) reuses the same
  `HarmonicBiasCalculator` as the 1D scan.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
  trust radii; Optimizer scratch files live under temporary directories.
@@ -228,13 +229,13 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir:./result_scan2d/ # output directory
+ out_dir: ./result_scan2d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir:./result_scan2d/ # LBFGS-specific output directory
+ out_dir: ./result_scan2d/ # LBFGS-specific output directory
 rfo:
  trust_radius: 0.1 # trust-region radius
- out_dir:./result_scan2d/ # RFO-specific output directory
+ out_dir: ./result_scan2d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```

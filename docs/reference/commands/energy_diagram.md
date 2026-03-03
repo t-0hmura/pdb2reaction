@@ -18,3 +18,7 @@ Options:
   --label-y TEXT     Y-axis label.  [default: ΔE (kcal/mol)]
   -h, --help         Show this message and exit.
 ```
+
+---
+
+See also: [energy-diagram workflow](../../energy_diagram.md) | [dft](dft.md) | [trj2fig](trj2fig.md)

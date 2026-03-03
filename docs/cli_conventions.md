@@ -167,12 +167,22 @@ Advanced settings can be passed via layered YAML inputs:
 pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
-Precedence:
+See [YAML Reference](yaml_reference.md) for all available options.
+
+### Configuration precedence
+
+Settings are resolved in the following order (later sources override earlier ones):
+
 ```
-defaults < config (--config) < CLI options < override-yaml (--override-yaml)
+built-in defaults  <  --config (YAML)  <  CLI options  <  --override-yaml
 ```
 
-See [YAML Reference](yaml_reference.md) for all available options.
+- **Built-in defaults** — hard-coded values for every parameter.
+- **`--config`** — a YAML file that overrides defaults. Useful for site-wide or project-wide settings.
+- **CLI options** — explicit flags on the command line (e.g., `--backend orb`). Only *explicitly supplied* values override YAML; options left at their CLI default do not mask YAML values.
+- **`--override-yaml`** — a second YAML layer applied last, intended for per-run tweaks.
+
+This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`.
 
 ---
 

@@ -15,8 +15,11 @@
 | **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します。 |
 | **NEB** | Nudged Elastic Band | イメージ間にばね力を導入し、間隔を保ちながら経路を最適化する chain-of-states 手法。 |
 | **HEI** | Highest-Energy Image | MEP 上でエネルギーが最大のイメージ。TS の初期推定としてよく使われます。 |
-| **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。 |
-| **セグメント** | — | 2つの隣接する端点を結ぶ MEP（例: R → I1, I1 → I2, …）。 |
+| **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点。 |
+| **セグメント** | — | 2 つの隣接する端点を結ぶ MEP 区間（例: R → I1, I1 → I2, …）。 |
+| **反応セグメント** | Reactive Segment | 端点間で共有結合の変化が検出されるセグメント。反応セグメントのみが TS 最適化に進みます。 |
+| **ブリッジセグメント** | Bridge Segment | 非隣接の中間体を結び、未解決の結合変化を含むセグメント。`path-search` がすべての反応領域を分離するまで再帰的に分割します。 |
+| **キンク** | Kink | MEP 上で共有結合の変化は検出されないが幾何的な歪みが残る領域。`path-search` は線形補間ノードを挿入し、完全なストリング計算の代わりに個別に最適化します。 |
 
 ---
 
@@ -28,6 +31,9 @@
 | **RFO** | Rational Function Optimization | 明示的なヘシアン情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用。 |
 | **RS-I-RFO** | Restricted-Step Image-RFO | ヘシアン行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode hess` で使用。 |
 | **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。 |
+| **EulerPC** | Euler Predictor-Corrector | IRC 計算の積分スキーム。勾配方向への予測ステップと経路を修正する補正ステップの 2 段階で構成されます。 |
+| **PHVA** | Partial Hessian Vibrational Analysis（部分ヘシアン振動解析） | 凍結されていない活性自由度のみで振動解析を行う手法。`freeze_atoms` 設定時に自動適用されます。 |
+| **DLC** | Delocalized Internal Coordinates（非局在内部座標） | 原子間距離・角度・二面角から構成される冗長内部座標系。構造最適化のデフォルト座標系（`coord_type: dlc`）。 |
 
 ---
 
@@ -88,7 +94,8 @@
 | **kJ/mol** | キロジュール/モル。1 kcal/mol ≈ 4.184 kJ/mol。 |
 | **eV** | 電子ボルト。1 eV ≈ 23.06 kcal/mol。 |
 | **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å。 |
-| **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の表現でよく使われる長さ単位。 |
+| **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の標準単位。 |
+| **cm⁻¹** | 波数（逆センチメートル）。振動数の標準単位。虚振動数は負の値で表されます。 |
 
 ---
 
@@ -110,4 +117,4 @@
 - [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 - [YAML リファレンス](yaml_reference.md) — 設定ファイルの仕様
-- [UMA 計算機](uma_pysis.md) — UMA ポテンシャルの詳細
+- [MLIP 計算機](uma_pysis.md) — MLIP バックエンドの詳細

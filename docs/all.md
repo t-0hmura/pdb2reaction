@@ -4,7 +4,7 @@
 
 `pdb2reaction all` runs the entire workflow end-to-end:
 
-pocket extraction → (optional) staged UMA scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`).
+pocket extraction → (optional) staged MLIP scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). The default MLIP backend is UMA; select an alternative with `--backend`.
 
 ```{important}
 `--tsopt` produces **TS candidates**. `all` automatically runs IRC for endpoint validation (`tsopt` itself includes an imaginary-frequency check), but always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.
@@ -51,7 +51,7 @@ PDB/GJF companion files are generated when templates are available, controlled b
 
 ## Usage
 ```bash
-pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [options]
+pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
 For help output, `pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the full option list.
@@ -102,22 +102,14 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
 - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
- - When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
+ - For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
 
 6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
  - Skips the MEP/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
 
-**Charge resolution (highest to lowest priority):**
-
-| Priority | Source | When Used |
-|----------|--------|-----------|
-| 1 | `-q/--charge` | Explicit CLI override |
-| 2 | Pocket extraction | When `-c` is provided (sums amino acids, ions, `--ligand-charge`) |
-| 3 | `--ligand-charge` | Fallback when extraction is skipped |
-| 4 | `.gjf` template | Embedded charge/spin metadata |
-| 5 | Default | None (unresolved charge is an error) |
+Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
 
 **Spin resolution:** `--multiplicity` (CLI) → `.gjf` template → default (1)
 
@@ -179,7 +171,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `True` |
 | `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
-### UMA Calculator Options
+### MLIP Calculator Options
 
 | Option | Description | Default |
 | --- | --- | --- |

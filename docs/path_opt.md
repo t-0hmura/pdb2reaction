@@ -15,7 +15,7 @@
 
 > **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want a single-pass MEP without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
 
-UMA provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
+An MLIP backend (UMA by default) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
 
 ```{note}
 **Frozen atoms in DMF mode** use `HarmonicFixAtoms` (harmonic restraints with k=300 eV/Å²) instead of pysisyphus's hard coordinate freeze used by GSM. This means frozen atoms in DMF can move slightly from their reference positions, which differs from the rigid freeze in GSM mode.
@@ -61,6 +61,7 @@ pdb2reaction path-opt -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ## Usage
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
  [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-stopt PRESET] \
@@ -72,14 +73,14 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--
 ## Workflow
 1. **Pre-alignment & freeze resolution**
  - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
- - For PDB inputs with `--freeze-links=True` (default), parent atoms of link hydrogens are detected and merged into `freeze_atoms`.
+ - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 2. **String growth and HEI export**
  - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
  - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
-- **Charge/spin**: CLI overrides `.gjf` template metadata. If `-q` is omitted but `--ligand-charge` is provided, the endpoints are treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge for PDB inputs (or XYZ/GJF when `--ref-pdb` is supplied); explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` aborts unless derivation succeeds. If `.gjf` inputs lack charge metadata and `-q` is not provided, the command aborts; multiplicity defaults to `1` when omitted. Always set them explicitly for correct states.
+- **Charge/spin**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images for the GSM string or DMF path (total images = `max_nodes + 2` for GSM). GSM growth and optional climbing-image refinement use the StringOptimizer convergence preset from `--thresh-stopt` or `stopt.thresh` (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Endpoint preoptimization**: `--thresh` controls only the single-structure endpoint optimizer selected by `--opt-mode` (`opt.lbfgs.thresh` / `opt.rfo.thresh`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
@@ -126,12 +127,12 @@ out_dir/
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
 
-Merge order is **defaults < config < explicit CLI < override**.
+See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
 ### `geom`
 - Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
 
 ### `calc`
-- UMA calculator setup identical to the single-structure optimization (`model`, `device`, neighbor radii, Hessian options, etc.).
+- MLIP backend setup identical to the single-structure optimization (`model`, `device`, neighbor radii, Hessian options, etc.).
 
 ### `dmf`
 - Direct Max Flux + (C)FB-ENM interpolation controls. Keys mirror the CLI-accessible `dmf` block:
@@ -190,7 +191,7 @@ stopt:
  dump_restart: false # dump restart checkpoints
  reparam_thresh: 0.0 # reparametrization threshold
  coord_diff_thresh: 0.0 # coordinate difference threshold
- out_dir:./result_path_opt/ # output directory
+ out_dir: ./result_path_opt/ # output directory
  print_every: 10 # logging stride
 dmf:
  max_cycles: 300 # maximum DMF/IPOPT iterations

@@ -60,5 +60,15 @@ Options:
                                   execution.  [default: no-show-config]
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running IRC.  [default: no-dry-run]
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction
+                                  (e.g. 'water'). 'none' to disable.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
+
+---
+
+See also: [irc workflow](../../irc.md) | [tsopt](tsopt.md) | [freq](freq.md)

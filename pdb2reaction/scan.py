@@ -38,7 +38,7 @@ from .defaults import (
     UMA_CALC_KW,
     OUT_DIR_SCAN,
 )
-from .uma_pysis import uma_pysis
+from .backends import create_calculator
 from .opt import HarmonicBiasCalculator
 from .utils import (
     build_sopt_kwargs,
@@ -209,6 +209,12 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     show_default=True,
     help="After each stage, run an additional unbiased optimization of the stage result.",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -235,6 +241,9 @@ def cli(
     preopt: bool,
     print_parsed: bool,
     endopt: bool,
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
@@ -298,6 +307,21 @@ def cli(
                 thresh=thresh,
                 bias_k=bias_k,
             )
+
+            def _is_param_explicit(name: str) -> bool:
+                try:
+                    from click.core import ParameterSource
+                    source = click.get_current_context().get_parameter_source(name)
+                    return source not in (None, ParameterSource.DEFAULT)
+                except Exception:
+                    return False
+
+            if _is_param_explicit("backend"):
+                calc_cfg["backend"] = backend
+            if _is_param_explicit("solvent"):
+                calc_cfg["solvent"] = solvent
+            if _is_param_explicit("solvent_model"):
+                calc_cfg["solvent_model"] = solvent_model
 
             kind = normalize_choice(
                 opt_mode,
@@ -434,7 +458,7 @@ def cli(
                     )
 
             # Build UMA calculator (only uma_pysis is supported)
-            base_calc = uma_pysis(**calc_cfg)
+            base_calc = create_calculator(**calc_cfg)
 
             # ------------------------------------------------------------------
             # Optional preoptimization WITHOUT bias

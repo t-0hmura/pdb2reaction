@@ -177,7 +177,7 @@ ja/index
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
 | **YAML schema** | [YAML Schema](reference/yaml.md) |
 | **YAML configuration options** | [YAML Reference](yaml_reference.md) |
-| **UMA calculator settings** | [UMA Calculator](uma_pysis.md) |
+| **MLIP backend settings** | [MLIP Calculator](uma_pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
 
 ---
@@ -256,7 +256,7 @@ result_all/
 │ ├── mep_w_ref.pdb # MEP merged with full system
 │ ├── mep_plot.png # Energy profile plot
 │ └── seg_*/ # Per-segment details
-└─┬ path_search/post_seg_*/ # Post-processing outputs
+└┬── path_search/post_seg_*/ # Post-processing outputs
  ├── tsopt/ # TS optimization results
  ├── irc/ # IRC trajectories
  ├── freq/ # Vibrational analysis

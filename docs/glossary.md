@@ -17,6 +17,9 @@ This page provides definitions for abbreviations and technical terms used throug
 | **HEI** | Highest-Energy Image | The image along an MEP with maximum energy; often used as a TS guess. |
 | **Image** | — | A single geometry (one "node") along a chain-of-states path. |
 | **Segment** | — | An MEP between two adjacent endpoints (e.g., R → I1, I1 → I2, …). |
+| **Reactive segment** | — | A segment in which covalent bond changes are detected between the endpoints. Only reactive segments proceed to TS optimization. |
+| **Bridge segment** | — | A segment connecting two non-adjacent intermediates that still contains unresolved bond changes; `path-search` recursively subdivides bridge segments until all reactive regions are isolated. |
+| **Kink** | — | A region along an MEP where no covalent bond change is detected but a geometric distortion persists. `path-search` inserts linearly interpolated nodes and optimizes them individually rather than running a full string calculation. |
 
 ---
 
@@ -28,6 +31,9 @@ This page provides definitions for abbreviations and technical terms used throug
 | **RFO** | Rational Function Optimization | A trust-region optimization method that uses explicit Hessian information. Used in `opt --opt-mode hess`. |
 | **RS-I-RFO** | Restricted-Step Image-RFO | A variant of RFO for saddle point (TS) optimization that follows one negative eigenvalue. |
 | **Dimer** | Dimer Method | A TS optimization method that estimates the lowest curvature mode without computing the full Hessian. Used in `tsopt --opt-mode grad`. |
+| **EulerPC** | Euler Predictor-Corrector | An integration scheme for IRC calculations: a predictor step along the gradient direction followed by a corrector step that refines the path. |
+| **PHVA** | Partial Hessian Vibrational Analysis | Vibrational analysis performed only on the active (non-frozen) degrees of freedom. Automatically applied when `freeze_atoms` is set. |
+| **DLC** | Delocalized Internal Coordinates | A redundant internal coordinate system constructed from interatomic distances, angles, and dihedrals. Used by default for geometry optimization (`coord_type: dlc`). |
 
 ---
 
@@ -88,7 +94,8 @@ This page provides definitions for abbreviations and technical terms used throug
 | **kJ/mol** | Kilojoules per mole; 1 kcal/mol ≈ 4.184 kJ/mol. |
 | **eV** | Electron volt; 1 eV ≈ 23.06 kcal/mol. |
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
-| **Angstrom (Å)** | 10⁻¹⁰ meters; standard unit for atomic distances. |
+| **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
+| **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
 
 ---
 
@@ -110,4 +117,4 @@ This page provides definitions for abbreviations and technical terms used throug
 - [Common Error Recipes](recipes_common_errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
 - [YAML Reference](yaml_reference.md) — configuration file format
-- [UMA Calculator](uma_pysis.md) — machine learning potential details
+- [MLIP Calculator](uma_pysis.md) — machine learning potential details

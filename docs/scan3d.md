@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and UMA relaxations. Use `--spec` (YAML/JSON, recommended) or `--scan-lists`; or plot an existing `surface.csv` via `--csv`.
+> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations (UMA by default). Use `--spec` (YAML/JSON, recommended) or `--scan-lists`; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
 - **Input:** One structure + `--spec scan3d.yaml` (recommended) or one `--scan-lists` literal (three quadruples), unless you use `--csv` to plot only.
@@ -35,6 +35,7 @@ pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --out-dir ./result_scan
 ## Usage
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--spec scan3d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
@@ -204,13 +205,13 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir:./result_scan3d/ # output directory
+ out_dir: ./result_scan3d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir:./result_scan3d/ # LBFGS-specific output directory
+ out_dir: ./result_scan3d/ # LBFGS-specific output directory
 rfo:
  trust_radius: 0.1 # trust-region radius
- out_dir:./result_scan3d/ # RFO-specific output directory
+ out_dir: ./result_scan3d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
@@ -236,7 +237,7 @@ out_dir/ (default:./result_scan3d/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- UMA via `uma_pysis` is the only calculator backend and reuses the same
+- The MLIP backend (UMA by default) reuses the same
  `HarmonicBiasCalculator` as the 1D/2D scans.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
  trust radii; optimizer scratch files live under temporary directories.

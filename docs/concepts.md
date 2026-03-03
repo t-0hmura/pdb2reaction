@@ -34,6 +34,19 @@ Each stage is available as an individual subcommand. The `pdb2reaction all` comm
 Transition states: treat HEI / `tsopt` outputs as **TS candidates** until validated via `irc` (endpoints reach intended minima). `tsopt` already performs a final imaginary-frequency check internally — look for exactly one imaginary frequency (|ν| ≥ 100 cm⁻¹) in its output.
 ```
 
+### MLIP backends
+
+pdb2reaction supports multiple machine-learning interatomic potential (MLIP) backends. Pass `--backend` to any calculation command to choose one:
+
+| Backend | Flag | Install | Notes |
+|---------|------|---------|-------|
+| **UMA** (default) | `--backend uma` | included | Full feature set including analytical Hessians and multi-worker inference |
+| **ORB** | `--backend orb` | `pip install 'pdb2reaction[orb]'` | orb-models; FD Hessians only |
+| **MACE** | `--backend mace` | `pip install 'pdb2reaction[mace]'` | mace-torch; conflicts with fairchem-core (use separate env) |
+| **AIMNet2** | `--backend aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; FD Hessians only |
+
+All backends share the same `--solvent` option for xTB-based implicit solvent corrections.
+
 ---
 
 ## Key objects and terms
@@ -45,6 +58,8 @@ Transition states: treat HEI / `tsopt` outputs as **TS candidates** until valida
 Pocket extraction is controlled by:
 - `-c/--center`: how to locate the substrate (residue IDs, residue names, or a substrate-only PDB).
 - `-r/--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`.
+
+For charge and spin specification, see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification).
 
 ### Images and segments
 - **Image**: a single geometry (one “node”) along a chain-of-states path.
@@ -58,6 +73,16 @@ Pocket extraction is controlled by:
 This behavior is controlled globally by `--convert-files/--no-convert-files` (default: `True`).
 
 ---
+
+### Link hydrogen and frozen atoms
+
+When pdb2reaction extracts a pocket from a larger structure, severed bonds are capped with **link hydrogens**. By default (`--freeze-links`), the parent atoms of these link hydrogens are frozen during optimization and path searches to prevent unphysical rearrangement at the boundary.
+
+- **Forces**: frozen atoms receive zeroed forces.
+- **Hessian**: frozen degrees of freedom are either removed (`return_partial_hessian: true`) or zeroed in the full matrix.
+- **Vibrational analysis**: when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA), diagonalizing only the active block of the Hessian.
+
+Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (0-based indices). CLI-detected link atoms are merged with YAML-specified atoms.
 
 ## Three common workflow modes
 

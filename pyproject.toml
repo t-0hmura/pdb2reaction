@@ -67,6 +67,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+orb = ["orb-models"]
+mace = ["mace-torch"]
+aimnet2 = ["aimnet"]
 docs = [
     "sphinx>=7.0",
     "myst-parser>=2.0",

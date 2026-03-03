@@ -32,7 +32,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
-from .uma_pysis import uma_pysis
+from .backends import create_calculator
 from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, FREQ_KW, THERMO_KW
 from .utils import (
     load_yaml_dict,
@@ -362,7 +362,7 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
 
     kw = dict(uma_kwargs or {})
     kw["out_hess_torch"] = True
-    calc = uma_pysis(**kw)
+    calc = create_calculator(**kw)
     results = calc.get_hessian(geom.atoms, geom.cart_coords)
 
     # Keep Geometry cache in sync so optimizers/freq analysis can share one Hessian
@@ -384,7 +384,7 @@ def _calc_energy(geom, uma_kwargs: dict, calc=None) -> float:
     Compute electronic energy (Hartree) from UMA calculator.
     """
     if calc is None:
-        calc = uma_pysis(**uma_kwargs)
+        calc = create_calculator(**uma_kwargs)
     geom.set_calculator(calc)
     E = float(geom.energy)
     geom.set_calculator(None)
@@ -589,6 +589,12 @@ CALC_KW["return_partial_hessian"] = True
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None,
               help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -615,6 +621,10 @@ def cli(
     dry_run: bool,
     # hessian
     hessian_calc_mode: Optional[str],
+    # backend
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     def _is_param_explicit(name: str) -> bool:
         try:
@@ -669,6 +679,12 @@ def cli(
         calc_cfg["workers"] = int(workers)
     if _is_param_explicit("workers_per_node"):
         calc_cfg["workers_per_node"] = int(workers_per_node)
+    if _is_param_explicit("backend"):
+        calc_cfg["backend"] = backend
+    if _is_param_explicit("solvent"):
+        calc_cfg["solvent"] = solvent
+    if _is_param_explicit("solvent_model"):
+        calc_cfg["solvent_model"] = solvent_model
     if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
     if _is_param_explicit("max_write"):

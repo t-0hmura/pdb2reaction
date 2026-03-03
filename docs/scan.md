@@ -12,7 +12,7 @@
 - **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported.
 - **`--spec` vs `--scan-lists`:** Use `--spec` (YAML/JSON file) for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Use `--scan-lists` (inline Python literal) when you have a simple single-stage scan and want a quick one-liner.
 
-`pdb2reaction scan` performs a staged, bond-length–driven scan using the UMA calculator and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
+`pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
@@ -54,6 +54,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./res
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ),...]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -163,11 +164,7 @@ Pass multiple literals after a single `--scan-lists` flag. Each literal becomes 
 Stages run sequentially; each starts from the previous stage's relaxed result. You may either repeat the `--scan-lists` flag for each stage or supply all stage literals after a single flag — both forms are accepted (`multiple=True`).
 
 ## Workflow
-1. Load the structure through `geom_loader`, resolving charge/spin from the CLI
- overrides, the embedded Gaussian template (if present), or defaults. If `-q`
- is omitted but `--ligand-charge` is provided, the input is treated as an
- enzyme–substrate complex and `extract.py`’s charge summary derives the total
- charge before any scans.
+1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
  biasing so the starting point is relaxed.
 3. Parse stage targets from `--spec` (recommended) or `--scan-lists`, then normalize the
@@ -252,8 +249,7 @@ out_dir/ (default:./result_scan/)
  Tuples must have positive targets. Atom indices are normalized to 0-based internally. For
  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
  (space/comma/slash/backtick/backslash) and unordered tokens.
-- `--freeze-links` augments user `freeze_atoms` by adding parents of link-H
- atoms in PDB files so pockets stay rigid.
+- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are written
  regardless of `--dump`; trajectories are written only when `--dump` is `True`
  and converted to `scan.pdb` (PDB inputs only) when conversion is enabled.
@@ -293,7 +289,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_scan/ # output directory
+ out_dir: ./result_scan/ # output directory
 lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit
@@ -311,7 +307,7 @@ lbfgs:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_scan/ # output directory
+ out_dir: ./result_scan/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -337,7 +333,7 @@ rfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_scan/ # output directory
+ out_dir: ./result_scan/ # output directory
  trust_radius: 0.1 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0 # minimum trust radius

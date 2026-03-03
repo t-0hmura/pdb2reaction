@@ -142,7 +142,7 @@ dft:
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level
  verbose: 0 # PySCF verbosity (0-9)
- out_dir:./result_dft/ # output directory root
+ out_dir: ./result_dft/ # output directory root
 ```
 
 ---

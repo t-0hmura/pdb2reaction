@@ -176,6 +176,24 @@ def add_scan_common_options(
             show_default=True,
             help="Pre-optimize the initial structure without bias before the scan.",
         ),
+        click.option(
+            "--backend",
+            type=click.Choice(["uma", "orb", "mace", "aimnet2"]),
+            default="uma",
+            help="MLIP backend.",
+        ),
+        click.option(
+            "--solvent",
+            default="none",
+            help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.",
+        ),
+        click.option(
+            "--solvent-model",
+            "solvent_model",
+            default="alpb",
+            type=click.Choice(["alpb", "cpcmx"]),
+            help="xTB solvent model.",
+        ),
     ]
     if include_baseline:
         options.append(

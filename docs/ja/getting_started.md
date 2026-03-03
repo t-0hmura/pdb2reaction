@@ -22,7 +22,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
 - 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
 
-ポテンシャルエネルギー面（PES: Potential Energy Surface）の計算には Meta の UMA を用います。想定される主な用途は以下の通りです。
+ポテンシャルエネルギー面（PES: Potential Energy Surface）の計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。`--solvent` オプションで xTB ベースの暗黙溶媒補正を適用することも可能です。想定される主な用途は以下の通りです。
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 - 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
@@ -30,7 +30,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 
 一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
 
-**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [UMA 計算機](uma_pysis.md)）。
+**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma_pysis.md)）。`--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
 
 ```{important}
 - 入力 PDB ファイルには**水素原子**が含まれている必要があります。
@@ -226,7 +226,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `--refine-path/--no-refine-path` | 再帰的 MEP 精密化（デフォルト: `True`） vs シングルパス |
 | `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO、デフォルト `hess`）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 |
 | `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。**VRAM が十分な場合は `Analytical` 推奨** |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照 |
 
 すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml_reference.md) を参照してください。
 
@@ -275,7 +275,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{tip}
-`all`、`tsopt`、`freq`、`irc` では、VRAM が十分にある場合は **`--hessian-calc-mode Analytical`** を設定することを強く推奨します（デフォルトは `FiniteDifference`）。
+ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 ```
 
 ---
@@ -323,6 +323,6 @@ pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
 ```
 
-`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。UMA 計算機の詳細オプションについては [UMA 計算機](uma_pysis.md) を参照してください。
+`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。UMA バックエンドの詳細オプションについては [MLIP バックエンド](uma_pysis.md) を参照してください。
 
 問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。

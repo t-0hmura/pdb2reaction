@@ -26,13 +26,13 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG
 
-# Support both relative and absolute import paths for uma_pysis
+# Support both relative and absolute import paths for the backend factory
 try:
     # Within the package
-    from .uma_pysis import uma_pysis
+    from .backends import create_calculator
 except Exception:
     # Direct execution, etc.
-    from pdb2reaction.uma_pysis import uma_pysis
+    from pdb2reaction.backends import create_calculator
 
 from .utils import as_list
 
@@ -163,7 +163,7 @@ def _attach_calc_if_needed(geom, shared_calc=None, *, charge=0, spin=1,
     if shared_calc is not None:
         geom.set_calculator(shared_calc)
     elif not has_calc:
-        geom.set_calculator(uma_pysis(charge=charge, spin=spin, model=model, device=device))
+        geom.set_calculator(create_calculator(charge=charge, spin=spin, model=model, device=device))
 
 
 def _freeze_union(g_ref, g_mob, n_atoms: Optional[int] = None) -> List[int]:

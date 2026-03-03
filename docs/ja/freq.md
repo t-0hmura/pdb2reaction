@@ -2,16 +2,16 @@
 
 ## 概要
 
-> **要約:** UMA を用いて振動数と熱化学量（ZPE、ギブズエネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
+> **要約:** MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズエネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
 
 ### 要点
-- **想定場面:** 構造が極小点か TS かを検証する場合や、UMA による熱化学補正を求める場合に使用します。
-- **凍結原子:** PHVA（部分ヘシアン振動解析）として扱われます。
+- **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。
+- **凍結原子:** PHVA（Partial Hessian Vibrational Analysis: 部分ヘシアン振動解析）として扱われます。
 - **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`_trj.xyz`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
 - **TS のチェック:** 適切に収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であることが期待されます。
-- **性能:** VRAM が十分なら `--hessian-calc-mode Analytical` を推奨します。
+- **性能:** ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 
-`pdb2reaction freq` は UMA 計算機で振動解析を実行し、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力します。
+`pdb2reaction freq` は MLIP バックエンド（デフォルト: UMA）で振動解析を実行し、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力します。
 
 
 ## 最小例
@@ -50,6 +50,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 ## 使用法
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--freeze-links/--no-freeze-links] \
  [--max-write N] [--amplitude-ang Å] [--n-frames N] \
  [--show-config] [--dry-run] \
@@ -69,7 +70,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 
 ## ワークフロー
 - **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` によりリンク水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、UMA と PHVA に伝播されます。
-- **UMA 計算機**: `--hessian-calc-mode` で解析的または有限差分ヘシアンを選択します。凍結原子がある場合、UMA は活性ブロックのみのヘシアンを返すことがあります。VRAM に余裕がある場合は `Analytical` を強く推奨します。
+- **MLIP バックエンド（デフォルト: UMA）**: ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 - **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N ヘシアンと活性ブロックヘシアンの両方に対応し、振動数は cm⁻¹ で報告されます（負の値は虚振動数）。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。`--sort abs` を指定すると絶対値順にソートされます。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `_trj.xyz` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
 - **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。

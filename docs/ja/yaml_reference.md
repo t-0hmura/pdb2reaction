@@ -7,7 +7,7 @@
 | セクション | 説明 | 使用されるコマンド |
 |---------|-------------|---------|
 | [`geom`](#geom) | ジオメトリと座標設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
-| [`calc`](#calc) | UMA 計算機の設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
+| [`calc`](#calc) | MLIP バックエンドの設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | 最適化の共通設定 | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
 | [`lbfgs`](#lbfgs) | L-BFGSの設定 | opt, scan, scan2d, scan3d, path-search |
 | [`rfo`](#rfo) | RFOの設定 | opt, scan, scan2d, scan3d, path-search |
@@ -47,10 +47,11 @@ geom:
 
 ### `calc`
 
-UMA機械学習計算機の設定。
+MLIP バックエンドの設定。複数バックエンド（UMA, ORB, MACE, AIMNet2）と xTB 溶媒補正に対応。
 
 ```yaml
 calc:
+ backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p1 # UMA pretrained model name
@@ -66,9 +67,17 @@ calc:
  # freeze_atoms: null # geom.freeze_atoms から継承されるため直接指定しない
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
  return_partial_hessian: false # Return only active-DOF Hessian block
+ # Solvent correction (xTB)
+ solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
+ solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
+ xtb_cmd: xtb            # Path to xTB executable
+ xtb_acc: 0.2            # xTB accuracy parameter
 ```
 
 **注記:**
+- `backend` で MLIP エンジンを選択。UMA（デフォルト）は解析ヘシアンとマルチワーカー推論に対応。他のバックエンドは有限差分ヘシアンを使用。
+- `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
+- `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - VRAMが十分な場合は `hessian_calc_mode: Analytical` を推奨します。
 - `workers > 1` の場合、解析ヘシアンは無効化されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
@@ -100,7 +109,7 @@ opt:
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
  prefix: "" # Filename prefix
- out_dir:./result_opt/ # Output directory
+ out_dir: ./result_opt/ # Output directory
 ```
 
 **収束プリセット:**
@@ -264,7 +273,7 @@ stopt:
  dump_restart: false # Dump restart checkpoints
  reparam_thresh: 0.0 # Reparameterization threshold
  coord_diff_thresh: 0.0 # Coordinate-difference threshold
- out_dir:./result_path_opt/ # Output directory
+ out_dir: ./result_path_opt/ # Output directory
  print_every: 10 # Logging stride
 ```
 
@@ -372,7 +381,7 @@ irc:
  imag_below: 0.0 # Imaginary frequency cutoff
  force_inflection: true # Enforce inflection detection
  check_bonds: false # Check bonds during propagation
- out_dir:./result_irc/ # Output directory
+ out_dir: ./result_irc/ # Output directory
  prefix: "" # Filename prefix
  dump_fn: irc_data.h5 # IRC data filename
  dump_every: 5 # Dump stride
@@ -429,7 +438,7 @@ dft:
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  verbose: 0 # PySCF verbosity (0-9)
- out_dir:./result_dft/ # Output directory root
+ out_dir: ./result_dft/ # Output directory root
 ```
 
 ---
@@ -449,7 +458,7 @@ bias:
 
 ### `bond`
 
-UMAベースの結合変化検出。
+MLIPベースの結合変化検出。
 
 ```yaml
 bond:
@@ -471,11 +480,13 @@ geom:
  freeze_atoms: []
 
 calc:
+ backend: uma
  charge: 0
  spin: 1
  model: uma-s-1p1
  device: auto
  hessian_calc_mode: Analytical # Recommended when VRAM permits
+ solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:
  max_nodes: 12
@@ -486,7 +497,7 @@ stopt:
  thresh: gau
  max_cycles: 300
  dump: false
- out_dir:./result_all/
+ out_dir: ./result_all/
 
 opt:
  thresh: gau
@@ -527,4 +538,4 @@ dft:
 - [path-search](path_search.md) - 再帰的 MEP 探索
 - [freq](freq.md) - 振動解析
 - [dft](dft.md) - DFT計算
-- [uma_pysis](uma_pysis.md) - UMA 計算機の詳細
+- [uma_pysis](uma_pysis.md) - MLIP バックエンドの詳細

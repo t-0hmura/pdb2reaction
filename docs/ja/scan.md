@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`--spec`（YAML/JSON、推奨）でターゲット距離を指定し、`--scan-lists` は 入力として利用できます。
+> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`--spec`（YAML/JSON、推奨）でターゲット距離を指定し、`--scan-lists` は入力として利用できます。
 
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。
@@ -11,7 +11,7 @@
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）。`--dump` なら結合した軌跡も保存。
 - **注意:** 可能な限り `--spec` を使ってください。`--scan-lists` は **Python リテラル**のためクォート/エスケープが必要です。
 
-`pdb2reaction scan` は UMA 計算機と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
+`pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
 
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
@@ -53,6 +53,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./res
 ## 使用法
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--spec scan.yaml | --scan-lists '[(i,j,targetÅ),...]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -162,7 +163,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。**`--scan-lists` フラグは繰り返さず**、すべてのリテラルを 1 つのフラグの後に記述してください。
 
 ## ワークフロー
-1. `geom_loader` で構造を読み込み、CLI の上書き値・埋め込み Gaussian テンプレート（存在する場合）・デフォルト値から電荷とスピンを解決します。`-q` が省略され `--ligand-charge` がある場合は酵素-基質複合体として扱い、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。
+1. `geom_loader` で構造を読み込み、電荷とスピンを解決します。電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `--spec`（推奨）または `--scan-lists` からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
  各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
@@ -231,7 +232,7 @@ out_dir/ (デフォルト:./result_scan/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--scan-lists` には単一フラグの後に複数リテラルを並べてください。フラグの繰り返しには対応していません。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
-- `--freeze-links` はユーザー指定の `freeze_atoms` に PDB のリンク水素親原子を追加し、ポケット構造の境界を固定します。
+- `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 - ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は `--dump` の設定にかかわらず常に書き出されます。軌跡は `--dump` の場合のみ保存され、PDB 入力かつ変換が有効な場合は `scan.pdb` も生成されます。
 
 
@@ -269,7 +270,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_scan/ # output directory
+ out_dir: ./result_scan/ # output directory
 lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit
@@ -287,7 +288,7 @@ lbfgs:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_scan/ # output directory
+ out_dir: ./result_scan/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -313,7 +314,7 @@ rfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_scan/ # output directory
+ out_dir: ./result_scan/ # output directory
  trust_radius: 0.1 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0 # minimum trust radius

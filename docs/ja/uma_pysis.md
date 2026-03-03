@@ -1,7 +1,7 @@
-# `uma_pysis` 計算機
+# MLIP 計算機
 
 ## 概要
-`uma_pysis` は Meta の UMA 機械学習ポテンシャルを PySisyphus 向けの計算機（内部で ASE と FAIR-Chem を使用）として提供します。エネルギー/力/ヘシアン（解析自動微分または有限差分）を Hartree 単位で返し、デバイス配置・グラフ構築・単位変換を内部で処理します。`pdb2reaction` の最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を PySisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Machine-learning interatomic potential for Atomistic simulations）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー/力/ヘシアンを Hartree 単位で返し、デバイス配置・単位変換を内部で処理します。`pdb2reaction` の最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
 
 ## クイックスタート
 ```python
@@ -28,8 +28,44 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (H
 - 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
 - `pysisyphus` の geometry オブジェクトにアタッチするか、上記のように直接呼び出せます。
 
+## バックエンド選択
+
+任意のコマンドで `--backend` を指定するか、YAML で `calc.backend` を設定します:
+
+```bash
+# UMA（デフォルト）
+pdb2reaction opt -i input.pdb -q 0
+
+# ORB
+pdb2reaction opt -i input.pdb -q 0 --backend orb
+
+# MACE（UMA とは別の環境を使用）
+pdb2reaction opt -i input.pdb -q 0 --backend mace
+
+# AIMNet2
+pdb2reaction opt -i input.pdb -q 0 --backend aimnet2
+```
+
+| バックエンド | インストール | 解析ヘシアン | マルチワーカー | 備考 |
+|---------|---------|-------------------|-------------|-------|
+| **UMA** | 同梱 | あり | あり | fairchem による完全機能 |
+| **ORB** | `pip install 'pdb2reaction[orb]'` | なし（有限差分のみ） | なし | orb-models |
+| **MACE** | `pip install 'pdb2reaction[mace]'` | なし（有限差分のみ） | なし | fairchem-core と競合 |
+| **AIMNet2** | `pip install 'pdb2reaction[aimnet2]'` | なし（有限差分のみ） | なし | aimnet |
+
+### 暗黙溶媒補正
+
+すべてのバックエンドで xTB ベースの暗黙溶媒補正が `--solvent` により利用可能です:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 --solvent water
+pdb2reaction opt -i input.pdb -q 0 --backend orb --solvent water --solvent-model cpcmx
+```
+
+デルタアプローチによる補正: ΔE = E_xTB(溶媒) - E_xTB(真空) を MLIP エネルギー/力/ヘシアンに加算します。`xtb` が `PATH` 上にインストールされている必要があります。
+
 ## 主な特徴
-- **UMAバックエンド** – FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。
+- **MLIPバックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `--backend` で利用可能。
 - **デバイス処理** – `device="auto"` はCUDAがあればGPU、なければCPUを選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
 - **ヘシアンモード** – `hessian_calc_mode="Analytical"` で2階自動微分、`"FiniteDifference"`（デフォルト）は力の中心差分。`workers>1` の場合は解析ヘシアンは無効化されます。
 - **凍結原子** – `freeze_atoms` に0始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
@@ -175,6 +211,7 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
+| `backend` | MLIP バックエンドエンジン | `"uma"` |
 | `charge` | 総電荷 | `0` |
 | `spin` | スピン多重度（2S+1） | `1` |
 | `model` | UMAプリトレイン済みモデル名 | `"uma-s-1p1"` |
@@ -187,6 +224,8 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
 | `hessian_double` | ヘシアンをfloat64で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
+| `solvent` | 暗黙溶媒名（例: `"water"`）または `"none"` | `"none"` |
+| `solvent_model` | xTB 溶媒モデル: `"alpb"` または `"cpcmx"` | `"alpb"` |
 
 
 ---
@@ -195,6 +234,6 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
-- [opt](opt.md) -- UMA を使う単一構造最適化
-- [path_opt](path_opt.md) -- UMA 計算機を使う MEP 最適化
-- [all](all.md) -- UMA を複数段で使うend-to-endワークフロー
+- [opt](opt.md) -- MLIP バックエンドを使う単一構造最適化
+- [path_opt](path_opt.md) -- MLIP バックエンドを使う MEP 最適化
+- [all](all.md) -- MLIP を複数段で使うend-to-endワークフロー

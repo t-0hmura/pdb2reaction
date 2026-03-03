@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (`--opt-mode hess`, default). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
+> **Summary:** Optimize a transition-state *candidate* using Dimer (`--opt-mode grad`) or RS‑I‑RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
@@ -63,6 +63,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--opt-mode grad|hess|dimer|rsirfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
@@ -86,20 +87,13 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## Workflow
-- **Charge/spin resolution**: when the input is `.gjf`, charge and multiplicity inherit the
- template values. If `-q` is omitted but `--ligand-charge` is provided, the structure is
- treated as an enzyme–substrate complex and `extract.py`’s charge summary derives the total
- charge for PDB inputs (or XYZ/GJF with `--ref-pdb`); explicit `-q` still overrides. Otherwise
- `-q/--charge` is required and multiplicity defaults to `1`. Override them explicitly to ensure
- UMA runs on the intended state.
+- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
 - **Geometry loading & freeze-links**: structures are read via
- `pysisyphus.helpers.geom_loader`. On PDB inputs, `--freeze-links` finds link hydrogens
- and freezes their parent atoms. The merged set is echoed, stored in `geom.freeze_atoms`, and
- forwarded to UMA's `calc.freeze_atoms`.
-- **UMA Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
- evaluations; both honor active (PHVA) subspaces. UMA may return only the active block when
+ `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
+- **MLIP Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
+ evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
  frozen atoms are present.
- When you have ample VRAM available, setting `--hessian-calc-mode` to `Analytical` is strongly recommended.
+ For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
 - **Dimer mode details**:
  - The Hessian Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact
  Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
@@ -172,7 +166,7 @@ out_dir/ (default:./result_tsopt/)
  manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
  memory usage and preserving correct active-space eigenvectors.
-- Config merge precedence is `defaults < config < explicit CLI < override`.
+- See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
 
 Shared sections reuse
 [YAML Reference](yaml_reference.md). Keep the full block below intact if it already
@@ -212,12 +206,12 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_tsopt/ # output directory
+ out_dir: ./result_tsopt/ # output directory
 hessian_dimer:
  thresh_loose: gau_loose # loose convergence preset
  thresh: baker # main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm^-1)
+ neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # flattening amplitude (Å)
  flatten_max_iter: 50 # flattening iteration cap (disabled when --no-flatten)
  flatten_sep_cutoff: 0.0 # minimum distance between representative atoms (Å)
@@ -227,7 +221,7 @@ hessian_dimer:
  device: auto # device selection for eigensolver
  root: 0 # targeted TS root index
  dimer:
- length: 0.0189 # dimer separation (Bohr)
+ length: 0.0189 # dimer separation (bohr)
  rotation_max_cycles: 15 # max rotation iterations
  rotation_method: fourier # rotation optimizer method
  rotation_thresh: 0.0001 # rotation convergence threshold
@@ -263,7 +257,7 @@ hessian_dimer:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_tsopt/ # output directory
+ out_dir: ./result_tsopt/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -289,7 +283,7 @@ rsirfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_tsopt/ # output directory
+ out_dir: ./result_tsopt/ # output directory
  roots: [0] # target root indices
  hessian_ref: null # reference Hessian
  rx_modes: null # reaction-mode definitions for projection

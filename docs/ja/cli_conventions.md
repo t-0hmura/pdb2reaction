@@ -162,14 +162,25 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 詳細設定は多層 YAML で渡せます：
 
 ```bash
-```
-
-適用順序：
-```
-デフォルト < config < CLI オプション < override-yaml
+pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
 利用可能なすべてのオプションは [YAML リファレンス](yaml_reference.md) を参照してください。
+
+### 設定の優先順位
+
+設定は以下の順序で解決されます（後のものが前のものを上書き）：
+
+```
+組み込みデフォルト  <  --config (YAML)  <  CLI オプション  <  --override-yaml
+```
+
+- **組み込みデフォルト** — すべてのパラメータのハードコード値。
+- **`--config`** — デフォルトを上書きする YAML ファイル。サイト共通やプロジェクト共通の設定に便利です。
+- **CLI オプション** — コマンドラインで明示的に指定されたフラグ（例: `--backend orb`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
+- **`--override-yaml`** — 最後に適用される YAML レイヤー。実行ごとの微調整に使用します。
+
+この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。
 
 ---
 
@@ -189,8 +200,11 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 - `path-opt`: `./result_path_opt/`
 - `path-search`: `./result_path_search/`
 - `scan`: `./result_scan/`
+- `scan2d`: `./result_scan2d/`
+- `scan3d`: `./result_scan3d/`
 - `freq`: `./result_freq/`
 - `irc`: `./result_irc/`
+- `dft`: `./result_dft/`
 - `dft`: `./result_dft/`
 
 ---

@@ -4,7 +4,7 @@
 
 > **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚振動モードフラット化を実行できます。
 
-`pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、UMA のエネルギー・勾配・ヘシアンで単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
+`pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
@@ -59,6 +59,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
 ## 使用法
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
@@ -69,8 +70,8 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 - **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
 - **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動モードフラット化を実行します。各反復で検出された虚振動モードをすべて除去してから再最適化します。
 - **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈します（`target_A` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
-- **電荷/スピン解決**: CLI の `-q/-m` は `.gjf` テンプレートのメタデータより優先され、テンプレートのメタデータは `calc` セクションのデフォルト値より優先されます。`-q` が省略され `--ligand-charge` が与えられている場合は酵素-基質複合体として扱い、`extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge` もない場合は中断します。多重度は省略時 `1` がデフォルトです。
-- **凍結原子**: CLI のリンク検出結果は YAML の `geom.freeze_atoms` とマージされ、UMA 計算機の `calc.freeze_atoms` に反映されます。
+- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
+- **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 - **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
 - **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
 
@@ -114,7 +115,7 @@ out_dir/
 コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
 
 (ja-yaml-configuration-override-yaml)=
-設定は **デフォルト < config < 明示CLI < override** の順で適用されます。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
 
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
@@ -171,7 +172,7 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_opt/ # output directory
+ out_dir: ./result_opt/ # output directory
 lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit
@@ -189,7 +190,7 @@ lbfgs:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_opt/ # output directory
+ out_dir: ./result_opt/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -215,7 +216,7 @@ rfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_opt/ # output directory
+ out_dir: ./result_opt/ # output directory
  trust_radius: 0.1 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0 # minimum trust radius

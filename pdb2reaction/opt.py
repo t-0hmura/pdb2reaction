@@ -39,7 +39,7 @@ from .defaults import (
     OPT_MODE_ALIASES,
     UMA_CALC_KW,
 )
-from .uma_pysis import uma_pysis
+from .backends import create_calculator
 from .utils import (
     resolve_freeze_atoms,
     deep_update,
@@ -465,6 +465,12 @@ def _flatten_all_imag_modes_for_geom(
     show_default=True,
     help="Validate options and print the execution plan without running optimization.",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -489,6 +495,9 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     time_start = time.perf_counter()
 
@@ -552,6 +561,12 @@ def cli(
                 calc_cfg["workers"] = int(workers)
             if _is_param_explicit("workers_per_node"):
                 calc_cfg["workers_per_node"] = int(workers_per_node)
+            if _is_param_explicit("backend"):
+                calc_cfg["backend"] = backend
+            if _is_param_explicit("solvent"):
+                calc_cfg["solvent"] = solvent
+            if _is_param_explicit("solvent_model"):
+                calc_cfg["solvent_model"] = solvent_model
             if _is_param_explicit("max_cycles"):
                 opt_cfg["max_cycles"] = int(max_cycles)
             if _is_param_explicit("dump"):
@@ -656,7 +671,7 @@ def cli(
             )
 
             # Attach UMA calculator
-            base_calc = uma_pysis(**calc_cfg)
+            base_calc = create_calculator(**calc_cfg)
             geometry.set_calculator(base_calc)
 
             resolved_dist_freeze: List[Tuple[int, int, float]] = []

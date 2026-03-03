@@ -38,7 +38,7 @@ from pysisyphus.constants import AU2KCALPERMOL, BOHR2ANG
 from Bio import PDB
 from Bio.PDB import PDBParser, PDBIO
 
-from .uma_pysis import uma_pysis
+from .backends import create_calculator
 from .defaults import (
     GEOM_KW_DEFAULT,
     UMA_CALC_KW,
@@ -1769,6 +1769,12 @@ def _merge_final_and_write(final_images: List[Any],
           "Useful when --input uses XYZ/GJF intermediates but PDB snapshots exist for merging. "
           "Must match the number and order of --input.")
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -1797,6 +1803,9 @@ def cli(
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
     pocket_ref_pdb_paths: Optional[Sequence[Path]],
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_inputs: List[PreparedInputStructure] = []
@@ -2165,7 +2174,14 @@ def cli(
             )
             calc_cfg["freeze_atoms"] = freeze_union
 
-        shared_calc = uma_pysis(**calc_cfg)
+        if _is_param_explicit("backend"):
+            calc_cfg["backend"] = backend
+        if _is_param_explicit("solvent"):
+            calc_cfg["solvent"] = solvent
+        if _is_param_explicit("solvent_model"):
+            calc_cfg["solvent_model"] = solvent_model
+
+        shared_calc = create_calculator(**calc_cfg)
         for g in geoms:
             g.set_calculator(shared_calc)
 

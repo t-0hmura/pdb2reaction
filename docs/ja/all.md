@@ -4,7 +4,9 @@
 
 `pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。典型的なフローは次のとおりです。
 
-ポケット抽出 →（任意）段階的 UMA スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+ポケット抽出 →（任意）段階的 MLIP スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+
+MLIP バックエンドはデフォルトで UMA を使用しますが、`--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
 
 ```{important}
 `--tsopt` の出力は **TS 候補** です。`all` は自動的に IRC による検証まで実行しますが、結果の虚振動モードと端点極小は必ず目視で確認してください。
@@ -51,7 +53,7 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-list
 
 ## 使用法
 ```bash
-pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [options]
+pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
 ### 例
@@ -97,7 +99,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//UMA Gibbs ダイアグラムも生成
 - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
- - VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を強く推奨
+ - ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、ポケット（または抽出がスキップされた場合は全入力構造）で `tsopt`（内部で虚振動数チェック済み）→ EulerPC IRC を実行
@@ -106,17 +108,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 
 ### 電荷とスピンの優先順位
 
-**電荷の解決（優先度順）:**
-
-| 優先度 | ソース | 適用条件 |
-|--------|--------|----------|
-| 1 | `-q/--charge` | CLI で明示指定 |
-| 2 | ポケット抽出 | `-c` 指定時（アミノ酸・イオン・`--ligand-charge` を合算） |
-| 3 | `--ligand-charge` | 抽出スキップ時のフォールバック |
-| 4 | `.gjf` テンプレート | 埋め込み電荷/スピン情報 |
-| 5 | デフォルト | なし（未解決ならエラー） |
-
-**スピンの解決:** `--multiplicity`（CLI） → `.gjf` テンプレート → デフォルト (1)
+電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。`all` コマンドでは、ポケット抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
 
 > **ヒント:** 非標準の基質には `--ligand-charge` を必ず指定し、正しい電荷伝播を確保してください。
 
@@ -177,7 +169,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `True` |
 | `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
-### UMA計算機オプション
+### MLIP 計算機オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
@@ -252,7 +244,7 @@ out_dir/ (デフォルト:./result_all/)
 ```
 
 
-- コンソールにはポケット電荷の解決結果、YAML 内容、スキャン段数、MEP 進行状況（GSM/DMF）、各ステージの所要時間が出力されます。
+- コンソールには電荷解決結果、YAML 設定、MEP 進行状況、各ステージの所要時間が出力されます。
 
 ### `summary.log` の読み方
 ログは番号付きセクションで構成されます:

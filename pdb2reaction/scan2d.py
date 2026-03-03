@@ -41,7 +41,7 @@ from .defaults import (
     UMA_CALC_KW,
     OUT_DIR_SCAN2D,
 )
-from .uma_pysis import uma_pysis
+from .backends import create_calculator
 from .opt import HarmonicBiasCalculator
 from .utils import (
     axis_label_csv,
@@ -268,6 +268,9 @@ def cli(
     baseline: str,
     zmin: Optional[float],
     zmax: Optional[float],
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
 
     set_convert_file_enabled(convert_files)
@@ -334,6 +337,21 @@ def cli(
                 source_path=source_path,
                 freeze_links=freeze_links,
             )
+
+            def _is_param_explicit(name: str) -> bool:
+                try:
+                    from click.core import ParameterSource
+                    source = click.get_current_context().get_parameter_source(name)
+                    return source not in (None, ParameterSource.DEFAULT)
+                except Exception:
+                    return False
+
+            if _is_param_explicit("backend"):
+                calc_cfg["backend"] = backend
+            if _is_param_explicit("solvent"):
+                calc_cfg["solvent"] = solvent
+            if _is_param_explicit("solvent_model"):
+                calc_cfg["solvent_model"] = solvent_model
 
             pdb_atom_meta: List[Dict[str, Any]] = []
             if source_path.suffix.lower() == ".pdb":
@@ -409,7 +427,7 @@ def cli(
             )
             set_freeze_atoms_or_warn(geom_outer, freeze, context="scan2d")
 
-            base_calc = uma_pysis(**calc_cfg)
+            base_calc = create_calculator(**calc_cfg)
             biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
 
             # Records (including preopt) will be accumulated here

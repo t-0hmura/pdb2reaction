@@ -46,7 +46,8 @@ from . import path_opt as _path_opt
 from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
-from .uma_pysis import uma_pysis, GEOM_KW_DEFAULT, CALC_KW as _UMA_CALC_KW
+from .backends import create_calculator, create_ase_calculator
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW as _UMA_CALC_KW
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
@@ -329,8 +330,15 @@ def _build_calc_cfg(
     workers: Optional[int] = None,
     workers_per_node: Optional[int] = None,
     yaml_cfg: Optional[Dict[str, Any]] = None,
+    backend: Optional[str] = None,
+    solvent: Optional[str] = None,
+    solvent_model: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Return a UMA calculator configuration honoring YAML overrides when provided."""
+    """Return a calculator configuration honoring YAML overrides when provided.
+
+    Precedence: defaults → YAML → CLI explicit.
+    Pass ``None`` for backend/solvent/solvent_model to skip CLI override.
+    """
     cfg: Dict[str, Any] = dict(CALC_KW)
     cfg["charge"] = int(charge)
     cfg["spin"] = int(spin)
@@ -338,6 +346,7 @@ def _build_calc_cfg(
         cfg["workers"] = int(workers)
     if workers_per_node is not None:
         cfg["workers_per_node"] = int(workers_per_node)
+    # Apply YAML first (overrides defaults)
     if yaml_cfg:
         apply_yaml_overrides(
             yaml_cfg,
@@ -345,6 +354,13 @@ def _build_calc_cfg(
                 (cfg, (("calc",),)),
             ],
         )
+    # CLI explicit values override YAML
+    if backend is not None:
+        cfg["backend"] = backend
+    if solvent is not None:
+        cfg["solvent"] = solvent
+    if solvent_model is not None:
+        cfg["solvent_model"] = solvent_model
     return cfg
 
 
@@ -1324,7 +1340,7 @@ def _run_tsopt_on_hei(
     )
 
     calc_args = dict(calc_cfg)
-    calc = uma_pysis(**calc_args)
+    calc = create_calculator(**calc_args)
     g_ts.set_calculator(calc)
 
     prepared_input.cleanup()
@@ -1419,7 +1435,7 @@ def _irc_and_match(
     elems, c_first, c_last = read_xyz_first_last(finished_trj)
 
     calc_args = dict(calc_cfg)
-    shared_calc = uma_pysis(**calc_args)
+    shared_calc = create_calculator(**calc_args)
     g_left = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last, freeze_atoms)
     g_left.set_calculator(shared_calc)
@@ -1712,6 +1728,12 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.option(
     "--verbose",
     type=click.BOOL,
@@ -2088,6 +2110,9 @@ def cli(
     charge_override: Optional[int],
     workers: int,
     workers_per_node: int,
+    backend: str,
+    solvent: str,
+    solvent_model: str,
     verbose: bool,
     spin: int,
     freeze_links_flag: bool,
@@ -2544,12 +2569,22 @@ def cli(
         _freeze_atoms_for_log(),
     )
 
+    def _is_param_explicit(name: str) -> bool:
+        try:
+            source = ctx.get_parameter_source(name)
+            return source not in (None, ParameterSource.DEFAULT)
+        except Exception:
+            return False
+
     calc_cfg_shared = _build_calc_cfg(
         q_int,
         spin,
-        workers=workers,
-        workers_per_node=workers_per_node,
+        workers=workers if _is_param_explicit("workers") else None,
+        workers_per_node=workers_per_node if _is_param_explicit("workers_per_node") else None,
         yaml_cfg=yaml_cfg,
+        backend=backend if _is_param_explicit("backend") else None,
+        solvent=solvent if _is_param_explicit("solvent") else None,
+        solvent_model=solvent_model if _is_param_explicit("solvent_model") else None,
     )
 
     # -------------------------------------------------------------------------
@@ -3952,7 +3987,7 @@ def cli(
                 continue
 
             calc_args = dict(calc_cfg_shared)
-            calc = uma_pysis(**calc_args)
+            calc = create_calculator(**calc_args)
             gL.set_calculator(calc)
             gR.set_calculator(calc)
             g_ts.set_calculator(calc)

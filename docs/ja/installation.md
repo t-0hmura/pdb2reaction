@@ -37,6 +37,8 @@ huggingface-cli login
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB、MACE、AIMNet2 を使用するには、対応する extra をインストール（例: `pip install 'pdb2reaction[orb]'`）し、コマンドに `--backend orb` を渡してください。[詳細なインストール手順](#詳細なインストール手順)の手順 7 を参照してください。
+
 - MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
  ```bash
  # 専用のconda環境を作成してアクティブ化
@@ -106,10 +108,27 @@ huggingface-cli login
  - <https://huggingface.co/facebook/UMA>
  - <https://huggingface.co/docs/hub/security-tokens>
 
-7. **インストールの確認**
+7. **（任意）追加の MLIP バックエンドをインストール**
+
+ pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
+
+ ```bash
+ # ORB バックエンド
+ pip install 'pdb2reaction[orb]'
+
+ # MACE バックエンド（fairchem-core と競合するため、別環境を推奨）
+ pip install 'pdb2reaction[mace]'
+
+ # AIMNet2 バックエンド
+ pip install 'pdb2reaction[aimnet2]'
+ ```
+
+ 暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。
+
+8. **インストールの確認**
 
  ```bash
  pdb2reaction --version
  ```
 
- インストールされたバージョンが表示されます（例: `{{ version }}`）。
+ インストールされたバージョンが表示されます。

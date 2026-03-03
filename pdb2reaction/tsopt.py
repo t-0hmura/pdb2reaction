@@ -42,7 +42,7 @@ from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignore
 
 # local helpers from pdb2reaction
-from .uma_pysis import uma_pysis
+from .backends import create_calculator
 from .defaults import (
     GEOM_KW_DEFAULT,
     UMA_CALC_KW,
@@ -253,7 +253,7 @@ def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
     """
     Return true Cartesian gradient (shape 3N,) in Hartree/Bohr.
     """
-    calc = uma_pysis(**uma_kwargs)
+    calc = create_calculator(**uma_kwargs)
     geom.set_calculator(calc)
     g = np.array(geom.gradient, dtype=float).reshape(-1)
     geom.set_calculator(None)
@@ -875,7 +875,7 @@ class HessianDimer:
     # ----- One dimer segment for up to n_steps; returns (steps_done, converged) -----
     def _dimer_segment(self, threshold: str, n_steps: int) -> Tuple[int, bool]:
         # Dimer calculator using current mode as initial N
-        calc_sp = uma_pysis(**self.uma_kwargs)
+        calc_sp = create_calculator(**self.uma_kwargs)
 
         # Merge user dimer kwargs (but enforce N_raw & write_orientations)
         dimer_kwargs = dict(self.dimer_kwargs)
@@ -1488,6 +1488,12 @@ def _build_rsirfo_kwargs(
     default=None,
     help="Choose UMA Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -1510,6 +1516,9 @@ def cli(
     show_config: bool,
     dry_run: bool,
     hessian_calc_mode: Optional[str],
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     def _is_param_explicit(name: str) -> bool:
         try:
@@ -1581,6 +1590,12 @@ def cli(
             calc_cfg["workers"] = int(workers)
         if _is_param_explicit("workers_per_node"):
             calc_cfg["workers_per_node"] = int(workers_per_node)
+        if _is_param_explicit("backend"):
+            calc_cfg["backend"] = backend
+        if _is_param_explicit("solvent"):
+            calc_cfg["solvent"] = solvent
+        if _is_param_explicit("solvent_model"):
+            calc_cfg["solvent_model"] = solvent_model
         if _is_param_explicit("max_cycles"):
             opt_cfg["max_cycles"] = int(max_cycles)
         if _is_param_explicit("dump"):
@@ -1770,7 +1785,7 @@ def cli(
                 coord_kwargs.pop("coord_type", None)
                 geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
 
-                calc = uma_pysis(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
+                calc = create_calculator(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
                 geometry.set_calculator(calc)
 
                 # Construct RSIRFO optimizer

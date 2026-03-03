@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS‑I‑RFO（`--opt-mode hess`、デフォルト）で最適化します。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
+> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS-I-RFO（Restricted-Step Image Rational Function Optimization）（`--opt-mode hess`、デフォルト）で最適化します。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
@@ -63,6 +63,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ## 使用法
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--opt-mode grad|hess|dimer|rsirfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
@@ -86,9 +87,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## ワークフロー
-- **電荷/スピン解決**: 入力が `.gjf` の場合、電荷と多重度はテンプレート値を継承します。`-q` が省略され `--ligand-charge` がある場合、酵素-基質複合体として扱い、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で `extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に最優先です。テンプレートや導出が適用されない場合は `-q/--charge` が必須で、多重度は省略時 `1` です。
-- **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` がリンク水素を検出して親原子を凍結し、`geom.freeze_atoms` にマージしてログに表示します。凍結原子は UMA の `calc.freeze_atoms` にも伝播します。
-- **UMA ヘシアン**: `--hessian-calc-mode` で解析的評価と有限差分評価を切り替えます。凍結原子がある場合、UMA は活性ブロックのみを返すことがあります。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を強く推奨します。
+- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
+- **構造ロードと freeze-links**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
+- **MLIP ヘシアン（デフォルト: UMA）**: ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 - **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚振動モードが1つになったら最終的な正確ヘシアンで振動解析を行います。
@@ -142,7 +143,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `hess` = `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - 虚振動モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。複数残る場合は `root` がどの虚振動モードを追跡するかに影響します。
-- 設定マージ優先順位は `defaults < config < 明示 CLI < override` です。
+- 設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 
 共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
@@ -181,12 +182,12 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_tsopt/ # output directory
+ out_dir: ./result_tsopt/ # output directory
 hessian_dimer:
  thresh_loose: gau_loose # loose convergence preset
  thresh: baker # main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm^-1)
+ neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # flattening amplitude (Å)
  flatten_max_iter: 50 # flattening iteration cap (disabled when --no-flatten)
  flatten_sep_cutoff: 0.0 # minimum distance between representative atoms (Å)
@@ -232,7 +233,7 @@ hessian_dimer:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_tsopt/ # output directory
+ out_dir: ./result_tsopt/ # output directory
  keep_last: 7 # history size for LBFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -258,7 +259,7 @@ rsirfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir:./result_tsopt/ # output directory
+ out_dir: ./result_tsopt/ # output directory
  roots: [0] # target root indices
  hessian_ref: null # reference Hessian
  rx_modes: null # reaction-mode definitions for projection

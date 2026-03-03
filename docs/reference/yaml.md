@@ -22,8 +22,10 @@ extract:
   radius_het2het: 0.0
 
 calc:
+  backend: uma
   workers: 1
   workers_per_node: 1
+  solvent: none
 
 path_search:
   mep_mode: gsm
@@ -61,6 +63,9 @@ dft:
 | `extract.radius_het2het` | `float` | `0.0` |
 | `calc.workers` | `int` | `1` |
 | `calc.workers_per_node` | `int` | `1` |
+| `calc.backend` | `str` | `'uma'` |
+| `calc.solvent` | `str` | `'none'` |
+| `calc.solvent_model` | `str` | `'alpb'` |
 | `path_search.mep_mode` | `str` | `'gsm'` |
 | `path_search.max_nodes` | `int` | `10` |
 | `path_search.max_cycles` | `int` | `300` |

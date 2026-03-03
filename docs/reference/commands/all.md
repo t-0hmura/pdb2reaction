@@ -94,12 +94,12 @@ Options:
                                   path-opt GSM between each adjacent pair and
                                   concatenate the segments (no path_search).
                                   [default: True]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never). Defaults to 'gau' when
-                                  not provided.
+  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|
+                                  gau_vtight|baker|never). Defaults to 'gau'
+                                  when not provided.
   --thresh-post TEXT              Convergence preset for post-IRC endpoint
-                                  optimizations (gau_loose|gau|gau_tight|gau_vti
-                                  ght|baker|never).  [default: baker]
+                                  optimizations (gau_loose|gau|gau_tight|
+                                  gau_vtight|baker|never).  [default: baker]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -189,5 +189,15 @@ Options:
   --scan-preopt BOOLEAN           Override scan --preopt flag. When omitted,
                                   this follows --preopt (default True).
   --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to True.
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction
+                                  (e.g. 'water'). 'none' to disable.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
+
+---
+
+See also: [all workflow](../../all.md) | [path-search](path_search.md) | [tsopt](tsopt.md)

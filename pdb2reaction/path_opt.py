@@ -34,7 +34,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 
-from .uma_pysis import uma_ase, uma_pysis
+from .backends import create_calculator, create_ase_calculator
 from .defaults import (
     GEOM_KW_DEFAULT,
     UMA_CALC_KW,
@@ -149,7 +149,8 @@ def _run_dmf_mep(
         img.info["charge"] = charge
         img.info["spin"] = spin
 
-    calc_uma = uma_ase(
+    calc_uma = create_ase_calculator(
+        backend=calc_cfg.get("backend", "uma"),
         model=str(calc_cfg.get("model", "uma-s-1p1")),
         device=str(calc_cfg.get("device", "auto")),
         task_name=str(calc_cfg.get("task_name", "omol")),
@@ -240,7 +241,7 @@ def _run_dmf_mep(
     if fix_atoms:
         calc_eval_kw.setdefault("freeze_atoms", fix_atoms)
 
-    calc_eval = uma_pysis(**calc_eval_kw)
+    calc_eval = create_calculator(**calc_eval_kw)
 
     energies = []
     for image in mxflx.images:
@@ -538,6 +539,12 @@ def _optimize_single(
     show_default=True,
     help="Fix structures of input endpoints during GSM.",
 )
+@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+              help="MLIP backend.")
+@click.option("--solvent", default="none",
+              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
+              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -565,6 +572,9 @@ def cli(
     preopt: bool,
     preopt_max_cycles: int,
     fix_ends: bool,
+    backend: str,
+    solvent: str,
+    solvent_model: str,
 ) -> None:
     def _is_param_explicit(name: str) -> bool:
         try:
@@ -843,8 +853,16 @@ def cli(
             )
             calc_cfg["freeze_atoms"] = freeze_union
 
-        # Shared UMA calculator (reuse the same instance for all images)
-        shared_calc = uma_pysis(**calc_cfg)
+        # Inject backend / solvent options into calc_cfg
+        if _is_param_explicit("backend"):
+            calc_cfg["backend"] = backend
+        if _is_param_explicit("solvent"):
+            calc_cfg["solvent"] = solvent
+        if _is_param_explicit("solvent_model"):
+            calc_cfg["solvent_model"] = solvent_model
+
+        # Shared calculator (reuse the same instance for all images)
+        shared_calc = create_calculator(**calc_cfg)
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
