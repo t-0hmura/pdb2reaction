@@ -1,9 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Run from this script directory so relative fixture paths resolve.
-cd "$(dirname "$0")"
-
 # Basic opt command tests
 pdb2reaction opt -i r.pdb -q -1 --dump True --out-dir 'test1' > test1.out 2>&1
 pdb2reaction opt -i r.pdb -q -1 --dump True --out-dir 'test2' --config input.yaml > test2.out 2>&1

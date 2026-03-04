@@ -392,10 +392,8 @@ def cli(ctx: click.Context) -> None:
         click.echo(f"pdb2reaction ver. {__version__}\n")
 
 
-# Silence pysisyphus logger without muting application/global logging.
-_pysisyphus_logger = logging.getLogger("pysisyphus")
-_pysisyphus_logger.setLevel(logging.CRITICAL)
-_pysisyphus_logger.propagate = False
+# Pysisyphus log suppression is handled by DefaultGroup._silence_pysisyphus_loggers()
+# which runs after lazy subcommand import (when pysisyphus __init__ handlers are created).
 
 # Filter noisy UMA/pydmf warnings that clutter CLI output
 warnings.filterwarnings(
