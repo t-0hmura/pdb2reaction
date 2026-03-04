@@ -133,6 +133,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
 | `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う | `False` |
+| `--resume/--no-resume` | `--out-dir` から前回の実行を再開。出力ファイルが既に存在する完了済みステージはスキップされる。 | `False` |
 
 ### 電荷・スピンオプション
 
@@ -161,10 +162,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
-| `--max-nodes INT` | MEP内部ノード数 | `10` |
+| `--max-nodes INT` | MEP内部ノード数 | `20` |
 | `--max-cycles INT` | MEP最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
-| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `hess` |
+| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `True` |
 | `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
@@ -271,6 +272,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。
+- **`--resume`**: 同じコマンドに `--resume` を付けて再実行すると、出力ファイルが既に存在するステージをスキップします。各ステージはセンチネルファイルで判定されます（MEP は `summary.yaml`、TSOPT/IRC は `final_geometry.*` + `finished_irc_trj.xyz`、freq/DFT は `R/`+`TS/`+`P/` ディレクトリ）。resume 時に抽出がスキップされた場合は `-q/--charge` または `--ligand-charge` を明示的に指定してください。
 
 
 `all` は YAML の多層指定をサポートします:

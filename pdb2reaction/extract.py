@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import io as _io
+import logging
 import os
 import re
 import sys
@@ -25,6 +26,8 @@ from Bio.PDB import NeighborSearch
 
 # Public API
 __all__ = ["extract", "extract_api"]
+
+logger = logging.getLogger(__name__)
 
 
 _EXTRACT_VERBOSE = False

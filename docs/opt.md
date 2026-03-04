@@ -104,6 +104,9 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--config FILE` | Base YAML configuration file. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layer information before execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print execution plan without running optimization. | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 
 ## Outputs
 ```

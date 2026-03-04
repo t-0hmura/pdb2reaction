@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import sys
@@ -13,6 +14,8 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type
 import click
 
 from .utils import deep_update, load_yaml_dict
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------

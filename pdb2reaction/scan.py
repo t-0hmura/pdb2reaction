@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+import logging
 import math
 import sys
 import textwrap
@@ -70,6 +71,8 @@ from .scan_common import (
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # All defaults imported from defaults.py
@@ -209,12 +212,6 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     show_default=True,
     help="After each stage, run an additional unbiased optimization of the stage result.",
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              help="MLIP backend.")
-@click.option("--solvent", default="none",
-              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -308,19 +305,11 @@ def cli(
                 bias_k=bias_k,
             )
 
-            def _is_param_explicit(name: str) -> bool:
-                try:
-                    from click.core import ParameterSource
-                    source = click.get_current_context().get_parameter_source(name)
-                    return source not in (None, ParameterSource.DEFAULT)
-                except Exception:
-                    return False
-
-            if _is_param_explicit("backend"):
+            if cli_param_overridden(ctx, "backend"):
                 calc_cfg["backend"] = backend
-            if _is_param_explicit("solvent"):
+            if cli_param_overridden(ctx, "solvent"):
                 calc_cfg["solvent"] = solvent
-            if _is_param_explicit("solvent_model"):
+            if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
 
             kind = normalize_choice(

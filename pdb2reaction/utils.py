@@ -13,8 +13,11 @@ Categories:
 Dependencies: PyYAML, ASE, Plotly, Click
 """
 
+from __future__ import annotations
+
 import ast
 import functools
+import logging
 import math
 import os
 import re
@@ -38,6 +41,8 @@ import plotly.graph_objs as go
 from .add_elem_info import guess_element
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 from pysisyphus.helpers import geom_loader
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # YAML helpers (shared representers)
@@ -153,7 +158,7 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
     """Return a formatted elapsed-time string with the provided ``prefix`` label."""
-    elapsed = max(0.0, (end_time or time.perf_counter()) - start_time)
+    elapsed = max(0.0, (end_time if end_time is not None else time.perf_counter()) - start_time)
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{prefix}: {int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
@@ -189,7 +194,8 @@ def as_list(raw: Any) -> List[Any]:
         return []
     try:
         return list(raw)
-    except Exception:
+    except Exception as exc:
+        logger.debug("as_list: cannot convert %r to list: %s", type(raw).__name__, exc)
         return []
 
 
@@ -304,7 +310,8 @@ def normalize_freeze_atoms(raw: Any) -> List[int]:
         return [int(tok) for tok in tokens]
     try:
         return [int(i) for i in raw]
-    except Exception:
+    except Exception as exc:
+        logger.debug("normalize_freeze_atoms: failed to convert %r to int list: %s", raw, exc)
         return []
 
 
@@ -417,7 +424,8 @@ def cli_param_overridden(ctx: click.Context, name: str) -> bool:
     """Return True when a CLI parameter value was explicitly provided."""
     try:
         source = ctx.get_parameter_source(name)
-    except Exception:
+    except Exception as exc:
+        logger.debug("cli_param_overridden: failed to query source for %r: %s", name, exc)
         return True
     return source not in (None, ParameterSource.DEFAULT)
 
@@ -1859,7 +1867,11 @@ def unbiased_energy_hartree(geom, base_calc) -> float:
         return float("nan")
     try:
         return float(base_calc.get_energy(elems, coords_bohr)["energy"])
-    except Exception:
+    except Exception as exc:
+        click.echo(
+            f"[energy] WARNING: energy evaluation failed: {exc}",
+            err=True,
+        )
         return float("nan")
 
 

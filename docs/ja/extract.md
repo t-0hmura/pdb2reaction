@@ -104,7 +104,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-H2O/--no-include-H2O` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `True` |
+| `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkH/--no-add-linkH` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基（オプションのチェーン/挿入コード付きID） | `""` |
 | `--ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |

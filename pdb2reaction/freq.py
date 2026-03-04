@@ -11,6 +11,7 @@ For detailed documentation, see: docs/freq.md
 
 from __future__ import annotations
 
+import logging
 import sys
 import textwrap
 import os
@@ -47,8 +48,11 @@ from .utils import (
     resolve_charge_spin,
     set_convert_file_enabled,
     resolve_freeze_atoms,
+    cli_param_overridden,
 )
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+
+logger = logging.getLogger(__name__)
 
 _link_or_copy_file = link_or_copy_file  # backward compat alias
 
@@ -590,11 +594,11 @@ CALC_KW["return_partial_hessian"] = True
               default=None,
               help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 @click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              help="MLIP backend.")
-@click.option("--solvent", default="none",
+              show_default=True, help="MLIP backend.")
+@click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              help="xTB solvent model.")
+              show_default=True, help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -626,13 +630,6 @@ def cli(
     solvent: str,
     solvent_model: str,
 ) -> None:
-    def _is_param_explicit(name: str) -> bool:
-        try:
-            source = ctx.get_parameter_source(name)
-            return source not in (None, ParameterSource.DEFAULT)
-        except Exception:
-            return False
-
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
@@ -675,47 +672,47 @@ def cli(
         ],
     )
 
-    if _is_param_explicit("workers"):
+    if cli_param_overridden(ctx, "workers"):
         calc_cfg["workers"] = int(workers)
-    if _is_param_explicit("workers_per_node"):
+    if cli_param_overridden(ctx, "workers_per_node"):
         calc_cfg["workers_per_node"] = int(workers_per_node)
-    if _is_param_explicit("backend"):
+    if cli_param_overridden(ctx, "backend"):
         calc_cfg["backend"] = backend
-    if _is_param_explicit("solvent"):
+    if cli_param_overridden(ctx, "solvent"):
         calc_cfg["solvent"] = solvent
-    if _is_param_explicit("solvent_model"):
+    if cli_param_overridden(ctx, "solvent_model"):
         calc_cfg["solvent_model"] = solvent_model
-    if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
+    if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
-    if _is_param_explicit("max_write"):
+    if cli_param_overridden(ctx, "max_write"):
         freq_cfg["max_write"] = int(max_write)
-    if _is_param_explicit("amplitude_ang"):
+    if cli_param_overridden(ctx, "amplitude_ang"):
         freq_cfg["amplitude_ang"] = float(amplitude_ang)
-    if _is_param_explicit("n_frames"):
+    if cli_param_overridden(ctx, "n_frames"):
         freq_cfg["n_frames"] = int(n_frames)
-    if _is_param_explicit("sort"):
+    if cli_param_overridden(ctx, "sort"):
         freq_cfg["sort"] = str(sort)
-    if _is_param_explicit("out_dir"):
+    if cli_param_overridden(ctx, "out_dir"):
         freq_cfg["out_dir"] = str(out_dir)
-    if _is_param_explicit("temperature"):
+    if cli_param_overridden(ctx, "temperature"):
         thermo_cfg["temperature"] = float(temperature)
-    if _is_param_explicit("pressure_atm"):
+    if cli_param_overridden(ctx, "pressure_atm"):
         thermo_cfg["pressure_atm"] = float(pressure_atm)
-    if _is_param_explicit("dump"):
+    if cli_param_overridden(ctx, "dump"):
         thermo_cfg["dump"] = bool(dump)
 
     charge_value = calc_cfg.get("charge", charge)
     if charge_value is None:
         charge_value = charge
     calc_cfg["charge"] = int(charge_value)
-    if _is_param_explicit("charge"):
+    if cli_param_overridden(ctx, "charge"):
         calc_cfg["charge"] = int(charge)
 
     spin_value = calc_cfg.get("spin", spin)
     if spin_value is None:
         spin_value = spin
     calc_cfg["spin"] = int(spin_value)
-    if _is_param_explicit("spin"):
+    if cli_param_overridden(ctx, "spin"):
         calc_cfg["spin"] = int(spin)
 
     apply_yaml_overrides(
@@ -948,7 +945,7 @@ def cli(
         except Exception as e:
             import traceback
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "))
+            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "), err=True)
 
         # summary.md and key_* outputs are disabled.
         click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
@@ -956,12 +953,12 @@ def cli(
         click.echo(format_elapsed("[time] Elapsed Time for Freq", time_start))
 
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.")
+        click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         import traceback
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "))
+        click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
     finally:
         prepared_input.cleanup()

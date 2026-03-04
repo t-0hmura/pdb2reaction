@@ -11,6 +11,7 @@ For detailed documentation, see: docs/dft.md
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, List, Union
@@ -40,9 +41,12 @@ from .utils import (
     prepared_cli_input,
     set_convert_file_enabled,
     YamlFlowList,
+    cli_param_overridden,
 )
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 from .uma_pysis import GEOM_KW_DEFAULT
+
+logger = logging.getLogger(__name__)
 
 
 # -----------------------------------------------
@@ -407,13 +411,6 @@ def cli(
     show_config: bool,
     dry_run: bool,
 ) -> None:
-    def _is_param_explicit(name: str) -> bool:
-        try:
-            source = ctx.get_parameter_source(name)
-            return source not in (None, ParameterSource.DEFAULT)
-        except Exception:
-            return False
-
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
@@ -450,13 +447,13 @@ def cli(
                 ],
             )
 
-            if _is_param_explicit("conv_tol"):
+            if cli_param_overridden(ctx, "conv_tol"):
                 dft_cfg["conv_tol"] = float(conv_tol)
-            if _is_param_explicit("max_cycle"):
+            if cli_param_overridden(ctx, "max_cycle"):
                 dft_cfg["max_cycle"] = int(max_cycle)
-            if _is_param_explicit("grid_level"):
+            if cli_param_overridden(ctx, "grid_level"):
                 dft_cfg["grid_level"] = int(grid_level)
-            if _is_param_explicit("out_dir"):
+            if cli_param_overridden(ctx, "out_dir"):
                 dft_cfg["out_dir"] = out_dir
 
             func_basis_value = str(
@@ -465,7 +462,7 @@ def cli(
                     f"{DFT_DEFAULT_FUNC}/{DFT_DEFAULT_BASIS}",
                 )
             )
-            if _is_param_explicit("func_basis"):
+            if cli_param_overridden(ctx, "func_basis"):
                 func_basis_value = func_basis
             if func_basis_value:
                 cfg_func, cfg_basis = _parse_func_basis(func_basis_value)
@@ -483,7 +480,7 @@ def cli(
 
             # Echo resolved config
             engine_name = str(dft_cfg.get("engine", engine if engine else "gpu")).strip().lower()
-            if _is_param_explicit("engine"):
+            if cli_param_overridden(ctx, "engine"):
                 engine_name = (engine or "gpu").strip().lower()
             out_dir_path = Path(dft_cfg["out_dir"]).resolve()
             echo_cfg = {
@@ -712,11 +709,11 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))
 
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.")
+            click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except click.ClickException:
             raise
         except Exception as e:
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "))
+            click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "), err=True)
             sys.exit(1)

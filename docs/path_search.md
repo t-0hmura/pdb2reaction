@@ -91,7 +91,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | When loading PDB pockets, freeze the parent atoms of link hydrogens. See [extract](extract.md) for link-hydrogen details. | `True` |
-| `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `10` |
+| `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to LBFGS; `hess` maps to RFO. | `grad` |

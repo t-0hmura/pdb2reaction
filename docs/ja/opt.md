@@ -101,6 +101,9 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `--config FILE` | ベースYAML設定ファイル | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済みYAMLレイヤ情報を表示 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 
 ## 出力
 ```

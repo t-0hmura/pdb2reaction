@@ -23,6 +23,11 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     # pdb2reaction core dependencies
@@ -89,6 +94,11 @@ pdb2reaction = "pdb2reaction.cli:cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-v --tb=short"
+markers = [
+    "gpu: marks tests that require CUDA GPU (deselect with '-m \"not gpu\"')",
+    "slow: marks tests that take a long time to run",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -96,6 +106,7 @@ include = ["pdb2reaction*", "pysisyphus*", "thermoanalysis*"]
 
 [tool.setuptools.package-data]
 pdb2reaction = ["py.typed"]
+pysisyphus = ["wavefunction/ints/*.npy"]
 
 [tool.setuptools_scm]
 version_file = "pdb2reaction/_version.py"

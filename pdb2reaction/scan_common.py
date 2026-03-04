@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Callable, Dict, Tuple, Any
 
 import click
 
 from .utils import deep_update, load_yaml_dict
+
+logger = logging.getLogger(__name__)
 
 
 def add_scan_common_options(
@@ -180,11 +183,13 @@ def add_scan_common_options(
             "--backend",
             type=click.Choice(["uma", "orb", "mace", "aimnet2"]),
             default="uma",
+            show_default=True,
             help="MLIP backend.",
         ),
         click.option(
             "--solvent",
             default="none",
+            show_default=True,
             help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.",
         ),
         click.option(
@@ -192,6 +197,7 @@ def add_scan_common_options(
             "solvent_model",
             default="alpb",
             type=click.Choice(["alpb", "cpcmx"]),
+            show_default=True,
             help="xTB solvent model.",
         ),
     ]

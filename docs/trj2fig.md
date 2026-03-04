@@ -59,6 +59,9 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-q, --charge INT` | Total charge; triggers energy recomputation with `uma_pysis` when provided. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation with `uma_pysis` when provided. | _None_ |
 | `--reverse-x/--no-reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 
 ## Outputs
 ```

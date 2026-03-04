@@ -94,7 +94,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
-| `--max-nodes INT` | MEPセグメントごとの内部ノード | `10` |
+| `--max-nodes INT` | MEPセグメントごとの内部ノード | `20` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | `--opt-mode TEXT` | HEI±1/kinkノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO） | `grad` |

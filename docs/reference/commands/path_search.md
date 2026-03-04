@@ -39,7 +39,7 @@ Options:
   --max-nodes INTEGER             Number of internal nodes (string has
                                   max_nodes+2 images including endpoints). Used
                                   for *segment* GSM unless overridden by YAML
-                                  search.max_nodes_segment.  [default: 10]
+                                  search.max_nodes_segment.  [default: 20]
   --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
                                   300]
   --climb / --no-climb            Enable climbing image for standard GSM

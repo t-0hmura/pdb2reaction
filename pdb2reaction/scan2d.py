@@ -14,10 +14,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import logging
 import math
 import sys
 import textwrap
 import traceback
+import shutil
 import tempfile
 import time
 
@@ -78,6 +80,8 @@ from .scan_common import (
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
+
+logger = logging.getLogger(__name__)
 
 # Defaults imported from defaults.py
 DEFAULT_THRESH_2D = "baker"
@@ -293,6 +297,7 @@ def cli(
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
 
+        tmp_root = None
         try:
             time_start = time.perf_counter()
 
@@ -338,19 +343,11 @@ def cli(
                 freeze_links=freeze_links,
             )
 
-            def _is_param_explicit(name: str) -> bool:
-                try:
-                    from click.core import ParameterSource
-                    source = click.get_current_context().get_parameter_source(name)
-                    return source not in (None, ParameterSource.DEFAULT)
-                except Exception:
-                    return False
-
-            if _is_param_explicit("backend"):
+            if cli_param_overridden(ctx, "backend"):
                 calc_cfg["backend"] = backend
-            if _is_param_explicit("solvent"):
+            if cli_param_overridden(ctx, "solvent"):
                 calc_cfg["solvent"] = solvent
-            if _is_param_explicit("solvent_model"):
+            if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
 
             pdb_atom_meta: List[Dict[str, Any]] = []
@@ -1011,7 +1008,7 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start))
 
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.")
+            click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
@@ -1021,3 +1018,6 @@ def cli(
                 err=True,
             )
             sys.exit(1)
+        finally:
+            if tmp_root is not None:
+                shutil.rmtree(tmp_root, ignore_errors=True)

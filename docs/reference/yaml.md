@@ -67,7 +67,7 @@ dft:
 | `calc.solvent` | `str` | `'none'` |
 | `calc.solvent_model` | `str` | `'alpb'` |
 | `path_search.mep_mode` | `str` | `'gsm'` |
-| `path_search.max_nodes` | `int` | `10` |
+| `path_search.max_nodes` | `int` | `20` |
 | `path_search.max_cycles` | `int` | `300` |
 | `scan.max_step_size` | `float` | `0.2` |
 | `scan.bias_k` | `float` | `300.0` |

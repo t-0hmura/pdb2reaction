@@ -41,13 +41,13 @@ using Meta's **UMA** machine-learning interatomic potential.
 
 ## Documentation
 
-- [**Getting Started**](docs/getting_started.md) — Quick start and workflow overview
-- [**Installation**](docs/installation.md) — Setup and dependency installation
-- [**Concepts & Workflow**](docs/concepts.md) — Key terms: pockets, templates, segments, and stages
-- [**CLI Command Reference**](docs/reference/commands/index.md)
-- [**YAML Schema**](docs/reference/yaml.md)
-- [**Troubleshooting**](docs/troubleshooting.md) — Common errors and fixes
-- **Full command index**: [docs/index.md](docs/index.md)
+- [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting_started.md) — Quick start and workflow overview
+- [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
+- [**Concepts & Workflow**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/concepts.md) — Key terms: pockets, templates, segments, and stages
+- [**CLI Command Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/reference/commands/index.md)
+- [**YAML Schema**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/reference/yaml.md)
+- [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors and fixes
+- **Full command index**: [docs/index.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/index.md)
 
 ***This software is still under development. Please use it at your own risk.***
 
@@ -82,7 +82,7 @@ pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
 
-For detailed installation instructions, see [Installation](docs/installation.md).
+For detailed installation instructions, see [Installation](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md).
 
 ---
 
@@ -138,42 +138,42 @@ pdb2reaction dft -i optimized.pdb
 
 | Subcommand | Role | Documentation |
 |---|---|---|
-| `all` | End-to-end: extraction → MEP → TS → IRC → freq → DFT | [docs/all.md](docs/all.md) |
+| `all` | End-to-end: extraction → MEP → TS → IRC → freq → DFT | [docs/all.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/all.md) |
 
 ### Structure Preparation
 
 | Subcommand | Role | Documentation |
 |---|---|---|
-| `extract` | Extract active-site pocket (cluster model) | [docs/extract.md](docs/extract.md) |
-| `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix_altloc.md](docs/fix_altloc.md) |
-| `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add_elem_info.md](docs/add_elem_info.md) |
+| `extract` | Extract active-site pocket (cluster model) | [docs/extract.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/extract.md) |
+| `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix_altloc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/fix_altloc.md) |
+| `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add_elem_info.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/add_elem_info.md) |
 
 ### Optimization & Path Search
 
 | Subcommand | Role | Documentation |
 |---|---|---|
-| `opt` | Geometry optimization (L-BFGS or RFO) | [docs/opt.md](docs/opt.md) |
-| `tsopt` | TS optimization (Dimer or RS-I-RFO) | [docs/tsopt.md](docs/tsopt.md) |
-| `path-opt` | MEP optimization via GSM or DMF | [docs/path_opt.md](docs/path_opt.md) |
-| `path-search` | Recursive MEP search with refinement | [docs/path_search.md](docs/path_search.md) |
-| `scan` | 1D bond-length driven scan | [docs/scan.md](docs/scan.md) |
-| `scan2d` | 2D distance grid scan | [docs/scan2d.md](docs/scan2d.md) |
-| `scan3d` | 3D distance grid scan | [docs/scan3d.md](docs/scan3d.md) |
+| `opt` | Geometry optimization (L-BFGS or RFO) | [docs/opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/opt.md) |
+| `tsopt` | TS optimization (Dimer or RS-I-RFO) | [docs/tsopt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/tsopt.md) |
+| `path-opt` | MEP optimization via GSM or DMF | [docs/path_opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path_opt.md) |
+| `path-search` | Recursive MEP search with refinement | [docs/path_search.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path_search.md) |
+| `scan` | 1D bond-length driven scan | [docs/scan.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan.md) |
+| `scan2d` | 2D distance grid scan | [docs/scan2d.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan2d.md) |
+| `scan3d` | 3D distance grid scan | [docs/scan3d.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan3d.md) |
 
 ### Analysis
 
 | Subcommand | Role | Documentation |
 |---|---|---|
-| `freq` | Vibrational frequency analysis + thermochemistry | [docs/freq.md](docs/freq.md) |
-| `irc` | IRC calculation (EulerPC) | [docs/irc.md](docs/irc.md) |
-| `dft` | Single-point DFT (GPU4PySCF / PySCF) | [docs/dft.md](docs/dft.md) |
+| `freq` | Vibrational frequency analysis + thermochemistry | [docs/freq.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/freq.md) |
+| `irc` | IRC calculation (EulerPC) | [docs/irc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/irc.md) |
+| `dft` | Single-point DFT (GPU4PySCF / PySCF) | [docs/dft.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/dft.md) |
 
 ### Visualization
 
 | Subcommand | Role | Documentation |
 |---|---|---|
-| `trj2fig` | Energy plot from XYZ trajectory | [docs/trj2fig.md](docs/trj2fig.md) |
-| `energy-diagram` | Energy diagram from numeric values | [docs/energy_diagram.md](docs/energy_diagram.md) |
+| `trj2fig` | Energy plot from XYZ trajectory | [docs/trj2fig.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/trj2fig.md) |
+| `energy-diagram` | Energy diagram from numeric values | [docs/energy_diagram.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/energy_diagram.md) |
 
 
 > **Tip:** In `tsopt`, `freq`, and `irc`, setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
@@ -182,7 +182,7 @@ pdb2reaction dft -i optimized.pdb
 
 ## HPC / Multi-GPU
 
-On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/uma_pysis.md](docs/uma_pysis.md) for details.
+On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/uma_pysis.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/uma_pysis.md) for details.
 
 ---
 

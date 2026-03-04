@@ -8,7 +8,7 @@
 - **Use when:** You have reactant and product endpoints (R → P) and want a first-pass MEP.
 - **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
 - **Outputs:** `final_geometries_trj.xyz` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
-- **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 10`, `--thresh gau`, `--thresh-stopt gau`.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 20`, `--thresh gau`, `--thresh-stopt gau`.
 - **Next step:** Optimize the HEI with `tsopt` (includes imaginary-frequency check; expect **one** imaginary frequency) → `irc`.
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
@@ -96,7 +96,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links/--no-freeze-links` | PDB-only: freeze link-H parents (merged with YAML). See [extract](extract.md) for link-hydrogen details. | `True` |
-| `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `10` |
+| `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `20` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`stopt.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |

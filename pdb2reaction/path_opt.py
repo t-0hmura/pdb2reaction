@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import logging
 import sys
 import traceback
 import textwrap
@@ -63,11 +64,14 @@ from .utils import (
     load_prepared_geometries,
     write_xyz_trj_with_energy,
     normalize_choice,
+    cli_param_overridden,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
 
 _link_or_copy_file = link_or_copy_file  # backward compat alias
+
+logger = logging.getLogger(__name__)
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
@@ -349,7 +353,11 @@ def _optimize_single(
             )
         g_final.set_calculator(shared_calc)
         return g_final
-    except Exception:
+    except Exception as exc:
+        click.echo(
+            f"[path-opt] WARNING: Failed to load optimized geometry; returning input: {exc}",
+            err=True,
+        )
         return g
 
 
@@ -540,11 +548,11 @@ def _optimize_single(
     help="Fix structures of input endpoints during GSM.",
 )
 @click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              help="MLIP backend.")
-@click.option("--solvent", default="none",
+              show_default=True, help="MLIP backend.")
+@click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              help="xTB solvent model.")
+              show_default=True, help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -576,13 +584,6 @@ def cli(
     solvent: str,
     solvent_model: str,
 ) -> None:
-    def _is_param_explicit(name: str) -> bool:
-        try:
-            source = ctx.get_parameter_source(name)
-            return source not in (None, ParameterSource.DEFAULT)
-        except Exception:
-            return False
-
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
@@ -683,45 +684,45 @@ def cli(
         if charge_value is None:
             charge_value = resolved_charge
         calc_cfg["charge"] = int(charge_value)
-        if _is_param_explicit("charge"):
+        if cli_param_overridden(ctx, "charge"):
             calc_cfg["charge"] = int(resolved_charge)
         spin_value = calc_cfg.get("spin", resolved_spin)
         if spin_value is None:
             spin_value = resolved_spin
         calc_cfg["spin"] = int(spin_value)
-        if _is_param_explicit("spin"):
+        if cli_param_overridden(ctx, "spin"):
             calc_cfg["spin"] = int(resolved_spin)
 
-        if _is_param_explicit("workers"):
+        if cli_param_overridden(ctx, "workers"):
             calc_cfg["workers"] = int(workers)
-        if _is_param_explicit("workers_per_node"):
+        if cli_param_overridden(ctx, "workers_per_node"):
             calc_cfg["workers_per_node"] = int(workers_per_node)
-        if _is_param_explicit("max_nodes"):
+        if cli_param_overridden(ctx, "max_nodes"):
             gs_cfg["max_nodes"] = int(max_nodes)
-        if _is_param_explicit("max_cycles"):
+        if cli_param_overridden(ctx, "max_cycles"):
             stopt_cfg["max_cycles"] = int(max_cycles)
             stopt_cfg["stop_in_when_full"] = int(max_cycles)
             dmf_cfg["max_cycles"] = int(max_cycles)
-        if _is_param_explicit("climb"):
+        if cli_param_overridden(ctx, "climb"):
             gs_cfg["climb"] = bool(climb)
             gs_cfg["climb_lanczos"] = bool(climb)
-        if _is_param_explicit("fix_ends"):
+        if cli_param_overridden(ctx, "fix_ends"):
             gs_cfg["fix_first"] = bool(fix_ends)
             gs_cfg["fix_last"] = bool(fix_ends)
-        if _is_param_explicit("dump"):
+        if cli_param_overridden(ctx, "dump"):
             stopt_cfg["dump"] = bool(dump)
             lbfgs_cfg["dump"] = bool(dump)
             rfo_cfg["dump"] = bool(dump)
-        if _is_param_explicit("out_dir"):
+        if cli_param_overridden(ctx, "out_dir"):
             stopt_cfg["out_dir"] = out_dir
             lbfgs_cfg["out_dir"] = out_dir
             rfo_cfg["out_dir"] = out_dir
-        if _is_param_explicit("thresh") and thresh is not None:
+        if cli_param_overridden(ctx, "thresh") and thresh is not None:
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
-        if _is_param_explicit("thresh_stopt") and thresh_stopt is not None:
+        if cli_param_overridden(ctx, "thresh_stopt") and thresh_stopt is not None:
             stopt_cfg["thresh"] = str(thresh_stopt)
-        if _is_param_explicit("preopt_max_cycles"):
+        if cli_param_overridden(ctx, "preopt_max_cycles"):
             lbfgs_cfg["max_cycles"] = int(preopt_max_cycles)
             rfo_cfg["max_cycles"] = int(preopt_max_cycles)
 
@@ -854,11 +855,11 @@ def cli(
             calc_cfg["freeze_atoms"] = freeze_union
 
         # Inject backend / solvent options into calc_cfg
-        if _is_param_explicit("backend"):
+        if cli_param_overridden(ctx, "backend"):
             calc_cfg["backend"] = backend
-        if _is_param_explicit("solvent"):
+        if cli_param_overridden(ctx, "solvent"):
             calc_cfg["solvent"] = solvent
-        if _is_param_explicit("solvent_model"):
+        if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
 
         # Shared calculator (reuse the same instance for all images)
@@ -1123,7 +1124,7 @@ def cli(
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)
         sys.exit(3)
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.")
+        click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

@@ -14,10 +14,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import logging
 import math
 import sys
 import textwrap
 import traceback
+import shutil
 import tempfile
 import time
 
@@ -73,6 +75,8 @@ from .scan_common import (
     resolve_yaml_sources,
 )
 from .scan2d import _build_scan_context
+
+logger = logging.getLogger(__name__)
 
 # Defaults imported from defaults.py
 DEFAULT_THRESH_3D = "baker"
@@ -186,6 +190,7 @@ def cli(
     )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
+    _scan3d_tmp_root: Optional[Path] = None
 
     def _run_scan3d(
         prepared_input: Optional["PreparedInputStructure"],
@@ -239,19 +244,11 @@ def cli(
             set_charge_spin=(csv_path is None),
         )
 
-        def _is_param_explicit(name: str) -> bool:
-            try:
-                from click.core import ParameterSource
-                source = click.get_current_context().get_parameter_source(name)
-                return source not in (None, ParameterSource.DEFAULT)
-            except Exception:
-                return False
-
-        if _is_param_explicit("backend"):
+        if cli_param_overridden(ctx, "backend"):
             calc_cfg["backend"] = backend
-        if _is_param_explicit("solvent"):
+        if cli_param_overridden(ctx, "solvent"):
             calc_cfg["solvent"] = solvent
-        if _is_param_explicit("solvent_model"):
+        if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
 
         pdb_atom_meta: List[Dict[str, Any]] = []
@@ -338,7 +335,9 @@ def cli(
                 sys.exit(1)
             click.echo(f"[read] Loaded precomputed grid from '{resolved_csv_path}'.")
         else:
+            nonlocal _scan3d_tmp_root
             tmp_root = Path(tempfile.mkdtemp(prefix="scan3d_tmp_"))
+            _scan3d_tmp_root = tmp_root
             grid_dir = out_dir_path / "grid"
             tmp_opt_dir = tmp_root / "opt"
             ensure_dir(grid_dir)
@@ -956,9 +955,12 @@ def cli(
         else:
             _run_scan3d(None, charge, spin, None, None)
     except KeyboardInterrupt:
-        click.echo("Interrupted by user.")
+        click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-        click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "))
+        click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
+    finally:
+        if _scan3d_tmp_root is not None:
+            shutil.rmtree(_scan3d_tmp_root, ignore_errors=True)

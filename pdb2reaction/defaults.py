@@ -7,6 +7,8 @@ All default dictionaries are defined here to avoid redundant definitions across 
 Modules should import defaults from here instead of defining local copies.
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
 from typing_extensions import TypedDict
 

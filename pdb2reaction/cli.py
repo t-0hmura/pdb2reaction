@@ -1,5 +1,7 @@
 # pdb2reaction/cli.py
 
+from __future__ import annotations
+
 import logging
 import warnings
 
@@ -69,7 +71,7 @@ _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
 # but entries here ensure correct normalization *before* the lazy
 # subcommand is imported (needed for early argv rewriting).
 _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
-    "all": frozenset({"--flatten"}),
+    "all": frozenset({"--flatten", "--show-config", "--dry-run", "--resume"}),
     "trj2fig": frozenset({"--reverse-x"}),
     "add-elem-info": frozenset({"--overwrite"}),
     "scan": frozenset(
@@ -384,15 +386,16 @@ _DEFAULT_GROUP_KWARGS = {
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.version_option(version=__version__, prog_name="pdb2reaction")
-def cli() -> None:
-    click.echo(f"pdb2reaction ver. {__version__}\n")
+@click.pass_context
+def cli(ctx: click.Context) -> None:
+    if not ctx.resilient_parsing:
+        click.echo(f"pdb2reaction ver. {__version__}\n")
 
 
 # Silence pysisyphus logger without muting application/global logging.
-logging.disable(logging.CRITICAL)
-# _pysisyphus_logger = logging.getLogger("pysisyphus")
-# _pysisyphus_logger.setLevel(logging.CRITICAL)
-# _pysisyphus_logger.propagate = False
+_pysisyphus_logger = logging.getLogger("pysisyphus")
+_pysisyphus_logger.setLevel(logging.CRITICAL)
+_pysisyphus_logger.propagate = False
 
 # Filter noisy UMA/pydmf warnings that clutter CLI output
 warnings.filterwarnings(

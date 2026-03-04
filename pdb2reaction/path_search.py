@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable
 
+import logging
 import sys
 import textwrap
 import tempfile
@@ -80,12 +81,15 @@ from .utils import (
     YamlLiteralStr,
     load_prepared_geometries,
     normalize_choice,
+    cli_param_overridden,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
 from .bond_changes import has_bond_change
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
 from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+
+logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -539,8 +543,8 @@ def _run_dmf_between(
         fix_atoms = sorted(
             {int(i) for g in [gA,gB] for i in getattr(g, "freeze_atoms", [])}
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Failed to collect freeze_atoms for DMF segment %s: %s", tag, exc)
 
     dmf_res = _run_dmf_mep(
         geoms=[gA, gB],
@@ -710,7 +714,8 @@ def _stitch_paths(
         if segment_builder is not None and bond_cfg is not None:
             try:
                 adj_changed, adj_summary = has_bond_change(tail, head, bond_cfg)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Bond-change detection at segment interface failed: %s", exc)
                 adj_changed, adj_summary = False, ""
 
         if adj_changed and segment_builder is not None:
@@ -767,7 +772,8 @@ def _stitch_paths(
                     try:
                         barrier_kcal = (max(br.energies) - br.energies[0]) * AU2KCALPERMOL
                         delta_kcal = (br.energies[-1] - br.energies[0]) * AU2KCALPERMOL
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("Failed to compute bridge energy barrier/delta: %s", exc)
                         barrier_kcal = float("nan")
                         delta_kcal = float("nan")
                     bridge_report = SegmentReport(
@@ -783,7 +789,8 @@ def _stitch_paths(
                             if sr.tag == right_tag_upcoming:
                                 insert_pos = j
                                 break
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("Failed to find insert position for bridge segment: %s", exc)
                         insert_pos = None
                     if insert_pos is None:
                         segments_out.append(bridge_report)
@@ -902,7 +909,8 @@ def _build_multistep_path(
         try:
             barrier_kcal = (max(gsm.energies) - gsm.energies[0]) * AU2KCALPERMOL
             delta_kcal = (gsm.energies[-1] - gsm.energies[0]) * AU2KCALPERMOL
-        except Exception:
+        except Exception as exc:
+            logger.debug("Failed to compute segment energy barrier/delta: %s", exc)
             barrier_kcal = float("nan")
             delta_kcal = float("nan")
 
@@ -1075,7 +1083,8 @@ def _build_multistep_path(
     try:
         barrier_kcal = (max(step_E) - step_E[0]) * AU2KCALPERMOL
         delta_kcal = (step_E[-1] - step_E[0]) * AU2KCALPERMOL
-    except Exception:
+    except Exception as exc:
+        logger.debug("Failed to compute step energy barrier/delta: %s", exc)
         barrier_kcal = float("nan")
         delta_kcal = float("nan")
 
@@ -1770,11 +1779,11 @@ def _merge_final_and_write(final_images: List[Any],
           "Must match the number and order of --input.")
 )
 @click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              help="MLIP backend.")
-@click.option("--solvent", default="none",
+              show_default=True, help="MLIP backend.")
+@click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              help="xTB solvent model.")
+              show_default=True, help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -1853,13 +1862,6 @@ def cli(
                 )
             pocket_ref_parsed.append(p)
         pocket_ref_pdb_paths = tuple(pocket_ref_parsed)
-
-    def _is_param_explicit(name: str) -> bool:
-        try:
-            source = ctx.get_parameter_source(name)
-            return source not in (None, ParameterSource.DEFAULT)
-        except Exception:
-            return False
 
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -2003,42 +2005,42 @@ def cli(
         if charge_value is None:
             charge_value = resolved_charge
         calc_cfg["charge"] = int(charge_value)
-        if _is_param_explicit("charge"):
+        if cli_param_overridden(ctx, "charge"):
             calc_cfg["charge"] = int(resolved_charge)
 
         spin_value = calc_cfg.get("spin", resolved_spin)
         if spin_value is None:
             spin_value = resolved_spin
         calc_cfg["spin"] = int(spin_value)
-        if _is_param_explicit("spin"):
+        if cli_param_overridden(ctx, "spin"):
             calc_cfg["spin"] = int(resolved_spin)
 
-        if _is_param_explicit("workers"):
+        if cli_param_overridden(ctx, "workers"):
             calc_cfg["workers"] = int(workers)
-        if _is_param_explicit("workers_per_node"):
+        if cli_param_overridden(ctx, "workers_per_node"):
             calc_cfg["workers_per_node"] = int(workers_per_node)
-        if _is_param_explicit("max_nodes"):
+        if cli_param_overridden(ctx, "max_nodes"):
             gs_cfg["max_nodes"] = int(max_nodes)
             search_cfg["max_nodes_segment"] = int(max_nodes)
-        if _is_param_explicit("max_cycles"):
+        if cli_param_overridden(ctx, "max_cycles"):
             stopt_cfg["max_cycles"] = int(max_cycles)
             stopt_cfg["stop_in_when_full"] = int(max_cycles)
             dmf_cfg["max_cycles"] = int(max_cycles)
-        if _is_param_explicit("climb"):
+        if cli_param_overridden(ctx, "climb"):
             gs_cfg["climb"] = bool(climb)
             gs_cfg["climb_lanczos"] = bool(climb)
-        if _is_param_explicit("dump"):
+        if cli_param_overridden(ctx, "dump"):
             stopt_cfg["dump"] = bool(dump)
             lbfgs_cfg["dump"] = bool(dump)
             rfo_cfg["dump"] = bool(dump)
-        if _is_param_explicit("out_dir"):
+        if cli_param_overridden(ctx, "out_dir"):
             stopt_cfg["out_dir"] = out_dir
             lbfgs_cfg["out_dir"] = out_dir
             rfo_cfg["out_dir"] = out_dir
-        if _is_param_explicit("thresh") and thresh is not None:
+        if cli_param_overridden(ctx, "thresh") and thresh is not None:
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
-        if _is_param_explicit("thresh_stopt") and thresh_stopt is not None:
+        if cli_param_overridden(ctx, "thresh_stopt") and thresh_stopt is not None:
             stopt_cfg["thresh"] = str(thresh_stopt)
 
         # Final YAML overrides (highest precedence)
@@ -2159,7 +2161,8 @@ def cli(
         if geoms:
             try:
                 freeze_list = [int(i) for i in list(getattr(geoms[0], "freeze_atoms", []))]
-            except Exception:
+            except Exception as exc:
+                logger.debug("Failed to read freeze_atoms from geometry; falling back to geom_cfg: %s", exc)
                 freeze_list = [int(i) for i in list(geom_cfg.get("freeze_atoms", []))]
             freeze_text = ",".join(map(str, freeze_list))
             click.echo("freeze_atoms")
@@ -2174,11 +2177,11 @@ def cli(
             )
             calc_cfg["freeze_atoms"] = freeze_union
 
-        if _is_param_explicit("backend"):
+        if cli_param_overridden(ctx, "backend"):
             calc_cfg["backend"] = backend
-        if _is_param_explicit("solvent"):
+        if cli_param_overridden(ctx, "solvent"):
             calc_cfg["solvent"] = solvent
-        if _is_param_explicit("solvent_model"):
+        if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
 
         shared_calc = create_calculator(**calc_cfg)
@@ -2444,7 +2447,8 @@ def cli(
         # --------------------------
         try:
             overall_changed, overall_summary = has_bond_change(combined_all.images[0], combined_all.images[-1], bond_cfg)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Failed to evaluate overall bond changes: %s", exc)
             overall_changed, overall_summary = False, ""
 
         click.echo("\n====== MEP summary started ======\n")
@@ -2692,8 +2696,8 @@ def cli(
                         for i in getattr(g, "freeze_atoms", [])
                     }
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to collect freeze_atoms for summary log: %s", exc)
 
             diag_for_log: Dict[str, Any] = {}
             if diagram_payload is not None:

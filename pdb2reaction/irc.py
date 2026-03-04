@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, List
 
+import logging
 import os
 import shutil
 import sys
@@ -39,8 +40,11 @@ from pdb2reaction.utils import (
     prepared_cli_input,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
+    cli_param_overridden,
 )
 from pdb2reaction.cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+
+logger = logging.getLogger(__name__)
 
 
 def _echo_convert_trj_if_exists(
@@ -219,11 +223,11 @@ _link_or_copy_file = link_or_copy_file  # backward compat alias
     help="Validate options and print the execution plan without running IRC.",
 )
 @click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              help="MLIP backend.")
-@click.option("--solvent", default="none",
+              show_default=True, help="MLIP backend.")
+@click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              help="xTB solvent model.")
+              show_default=True, help="xTB solvent model.")
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -250,13 +254,6 @@ def cli(
     solvent: str,
     solvent_model: str,
 ) -> None:
-    def _is_param_explicit(name: str) -> bool:
-        try:
-            source = ctx.get_parameter_source(name)
-            return source not in (None, ParameterSource.DEFAULT)
-        except Exception:
-            return False
-
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
@@ -297,43 +294,43 @@ def cli(
                 ],
             )
 
-            if _is_param_explicit("workers"):
+            if cli_param_overridden(ctx, "workers"):
                 calc_cfg["workers"] = int(workers)
-            if _is_param_explicit("workers_per_node"):
+            if cli_param_overridden(ctx, "workers_per_node"):
                 calc_cfg["workers_per_node"] = int(workers_per_node)
-            if _is_param_explicit("backend"):
+            if cli_param_overridden(ctx, "backend"):
                 calc_cfg["backend"] = backend
-            if _is_param_explicit("solvent"):
+            if cli_param_overridden(ctx, "solvent"):
                 calc_cfg["solvent"] = solvent
-            if _is_param_explicit("solvent_model"):
+            if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
-            if _is_param_explicit("hessian_calc_mode") and hessian_calc_mode is not None:
+            if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
                 calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
-            if _is_param_explicit("max_cycles") and max_cycles is not None:
+            if cli_param_overridden(ctx, "max_cycles") and max_cycles is not None:
                 irc_cfg["max_cycles"] = int(max_cycles)
-            if _is_param_explicit("step_size") and step_size is not None:
+            if cli_param_overridden(ctx, "step_size") and step_size is not None:
                 irc_cfg["step_length"] = float(step_size)
-            if _is_param_explicit("root") and root is not None:
+            if cli_param_overridden(ctx, "root") and root is not None:
                 irc_cfg["root"] = int(root)
-            if _is_param_explicit("forward") and forward is not None:
+            if cli_param_overridden(ctx, "forward") and forward is not None:
                 irc_cfg["forward"] = bool(forward)
-            if _is_param_explicit("backward") and backward is not None:
+            if cli_param_overridden(ctx, "backward") and backward is not None:
                 irc_cfg["backward"] = bool(backward)
-            if _is_param_explicit("out_dir"):
+            if cli_param_overridden(ctx, "out_dir"):
                 irc_cfg["out_dir"] = str(out_dir)
 
             charge_value = calc_cfg.get("charge", resolved_charge)
             if charge_value is None:
                 charge_value = resolved_charge
             calc_cfg["charge"] = int(charge_value)
-            if _is_param_explicit("charge"):
+            if cli_param_overridden(ctx, "charge"):
                 calc_cfg["charge"] = int(resolved_charge)
 
             spin_value = calc_cfg.get("spin", resolved_spin)
             if spin_value is None:
                 spin_value = resolved_spin
             calc_cfg["spin"] = int(spin_value)
-            if _is_param_explicit("spin"):
+            if cli_param_overridden(ctx, "spin"):
                 calc_cfg["spin"] = int(resolved_spin)
 
             apply_yaml_overrides(
@@ -438,9 +435,9 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
 
         except KeyboardInterrupt:
-            click.echo("Interrupted by user.")
+            click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
             tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
-            click.echo("Unhandled exception during IRC:\n" + tb)
+            click.echo("Unhandled exception during IRC:\n" + tb, err=True)
             sys.exit(1)

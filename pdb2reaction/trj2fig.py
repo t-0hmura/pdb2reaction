@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import logging
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
@@ -23,6 +24,8 @@ from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 from .utils import read_xyz_energies
+
+logger = logging.getLogger(__name__)
 
 AXIS_WIDTH = 3         # axis and tick thickness
 FONT_SIZE = 18         # tick-label font size
@@ -389,11 +392,11 @@ def main() -> None:
     help="Reverse the x-axis (last frame on the left).",
 )
 @click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              help="MLIP backend.")
-@click.option("--solvent", default="none",
+              show_default=True, help="MLIP backend.")
+@click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              help="xTB solvent model.")
+              show_default=True, help="xTB solvent model.")
 def cli(
     input_path: Path,
     outs: Tuple[Path, ...],

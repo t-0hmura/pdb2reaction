@@ -44,6 +44,9 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-q, --charge INT` | 総電荷。指定時は `uma_pysis` で再計算 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は `uma_pysis` で再計算 | _None_ |
 | `--reverse-x/--no-reverse-x` | x軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
+| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 
 ## 出力
 ```

@@ -8,7 +8,7 @@
 - **想定場面:** 反応物と生成物の **2 端点**が揃っていて、まず MEP の初期推定を得たい場合に使います。
 - **手法:** デフォルトは GSM。`--mep-mode dmf` で DMF に切り替え可能。
 - **主な出力:** `final_geometries_trj.xyz`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 10`、`--thresh gau`、`--thresh-stopt gau`。
+- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 20`、`--thresh gau`、`--thresh-stopt gau`。
 - **次にやること:** HEI は **TS 候補**です。`tsopt`（内部で虚振動数チェック済み、**1 つ** であること）→ `irc` で検証します。
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path_search.md) を使用してください。
@@ -92,7 +92,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 | テンプレート/`1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ: リンクH親を凍結（YAMLとマージ） | `True` |
-| `--max-nodes INT` | 内部ノード数（ストリングイメージ = `max_nodes + 2`） | `10` |
+| `--max-nodes INT` | 内部ノード数（ストリングイメージ = `max_nodes + 2`） | `20` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）またはDMF（ダイレクトフラックス）経路生成器を選択 | `gsm` |
 | `--max-cycles INT` | オプティマイザーマクロイテレーション上限 | `300` |
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化 | `True` |

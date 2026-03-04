@@ -10,6 +10,7 @@ post-processing energies, and key output paths in a single place.
 
 from __future__ import annotations
 
+import logging
 import textwrap
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
@@ -17,6 +18,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 from pysisyphus.constants import AU2KCALPERMOL
 from . import __version__
 from .uma_pysis import CALC_KW
+
+logger = logging.getLogger(__name__)
 
 
 def _fmt_bool(val: Optional[Any]) -> str:
