@@ -160,7 +160,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # full Hessian (avoids shape mismatches)
+ return_partial_hessian: true # partial Hessian (active-DOF only)
 opt:
  thresh: gau # convergence preset (Gaussian/Baker-style)
  max_cycles: 10000 # optimizer cycle cap

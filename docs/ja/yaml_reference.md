@@ -66,7 +66,7 @@ calc:
  hessian_double: true # Assemble/return Hessian in float64
  # freeze_atoms: null # geom.freeze_atoms から継承されるため直接指定しない
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
- return_partial_hessian: false # Return only active-DOF Hessian block
+ return_partial_hessian: false # 完全 3N×3N ヘシアンを返す（active-DOF ブロックではない）
  print_timing: true # ヘシアン計算のタイミング内訳を表示
  print_vram: true # ヘシアン計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
  # Solvent correction (xTB)
@@ -84,8 +84,8 @@ calc:
 - `workers > 1` の場合、解析ヘシアンは無効化されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
-- IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = false` を常に強制します（YAMLより優先）。
-- `irc` では `calc.return_partial_hessian` が YAML/CLI マージ後に `false` へ強制されます。
+- IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAMLより優先、partial Hessian で active-DOF 処理）。
+- `irc` では `calc.return_partial_hessian` が YAML/CLI マージ後に `true` へ強制されます。
 
 ---
 
@@ -495,7 +495,7 @@ gs:
  climb_lanczos: true
 
 stopt:
- thresh: gau
+ thresh: gau_loose
  max_cycles: 300
  dump: false
  out_dir: ./result_all/

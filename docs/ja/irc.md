@@ -7,7 +7,7 @@
 ### 要点
 - **入力:** TS 構造（最適化・検証済みが望ましい）。
 - **主要パラメータ:** `--step-size`（質量重み付き座標でのステップ長）、`--max-cycles`（ステップ数）。
-- **強制上書き:** IRC はマージ後に `geom.coord_type = cart` を強制します（YAML 設定より優先）。`calc.return_partial_hessian` は YAML で明示しない場合 `true`（partial-first）がデフォルトです。
+- **強制上書き:** IRC はマージ後に `geom.coord_type = cart` を強制します（YAML 設定より優先）。`calc.return_partial_hessian` は `true` に強制されます（partial Hessian、pysisyphus で active-DOF 処理）。
 
 `pdb2reaction irc` は MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに保たれています。CLI で公開されていないパラメータは YAML で指定することで、再現性のある実行が可能です。
 
@@ -71,7 +71,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
 ## ワークフロー
-1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。注: `geom.coord_type` は YAML/CLI の設定に関わらず `cart`（デカルト座標）に強制され、`calc.return_partial_hessian` は `False`（完全ヘシアン必須）に強制されます。
+1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。注: `geom.coord_type` は YAML/CLI の設定に関わらず `cart`（デカルト座標）に強制され、`calc.return_partial_hessian` は `true`（partial Hessian、active-DOF 処理）に強制されます。
 2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐が実行されます。各ステップでは質量重み付き最急降下予測子と修正子ステップを使用します。
 3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡が XYZ ファイルとして書き込まれます。参照 PDB が利用可能な場合、PDB コンパニオンも生成されます（`--convert-files`）。
 
@@ -117,7 +117,7 @@ out_dir/ (デフォルト:./result_irc/)
 - `--freeze-links` は PDB 入力にのみ適用されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 
 
-設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `false` に強制されます（YAML/CLI より優先）。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `true` に強制されます（YAML/CLI より優先）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -142,7 +142,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # irc では false に強制（完全ヘシアン）
+ return_partial_hessian: true # irc では true に強制（partial Hessian、active-DOF 処理）
 irc:
  step_length: 0.1 # integration step length
  max_cycles: 125 # maximum steps along IRC

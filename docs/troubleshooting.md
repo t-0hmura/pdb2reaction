@@ -157,7 +157,7 @@ Symptoms:
 Fixes to try:
 - Switch optimizer modes: `--opt-mode grad` (Dimer) or `--opt-mode hess` (RS-I-RFO).
 - Enable flattening of extra imaginary modes: `--flatten`.
-- Increase max cycles: `--tsopt-max-cycles 20000`.
+- Increase max cycles: `--max-cycles 20000` (for standalone `tsopt`; `--tsopt-max-cycles 20000` for `all`).
 - Use tighter convergence: `--thresh baker` or `--thresh gau_tight`.
 
 ---

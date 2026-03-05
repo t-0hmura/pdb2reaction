@@ -66,7 +66,7 @@ calc:
  hessian_double: true # Assemble/return Hessian in float64
  # freeze_atoms: null # Inherited from geom.freeze_atoms; do not set directly
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
- return_partial_hessian: false # Return only active-DOF Hessian block
+ return_partial_hessian: false # Return full 3N×3N Hessian (not active-DOF block)
  print_timing: true # Print Hessian timing breakdown
  print_vram: true # Print CUDA VRAM usage during Hessian (UMA backend only)
  # Solvent correction (xTB)
@@ -84,8 +84,8 @@ calc:
 - `workers > 1` disables analytical Hessians
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
-- IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` regardless of YAML.
-- For `irc`, `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging
+- IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML.
+- For `irc`, `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging (partial Hessian with active-DOF processing)
 
 ---
 

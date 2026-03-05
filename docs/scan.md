@@ -115,7 +115,7 @@ Each literal is a Python list of triples `(atom1, atom2, target_Å)`:
 
 - Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
 - Each triple drives the distance between `atom1`–`atom2` toward `target_Å`.
-- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `--scan-lists` flag (do not repeat the flag).
+- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `--scan-lists` flag. You may also repeat the flag — both forms are accepted (`multiple=True`).
 
 ### Specifying atoms
 
@@ -248,7 +248,7 @@ out_dir/ (default:./result_scan/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Provide multiple literals after a single `--scan-lists` flag; repeated flags are not accepted.
+- Provide multiple literals after a single `--scan-lists` flag, or repeat the flag for each stage — both forms are accepted (`multiple=True`).
  Tuples must have positive targets. Atom indices are normalized to 0-based internally. For
  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
  (space/comma/slash/backtick/backslash) and unordered tokens.

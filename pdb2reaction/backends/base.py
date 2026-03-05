@@ -115,6 +115,19 @@ class MLIPCalculator(Calculator):
         frozen_dof_idx = [3 * i + j for i in self.freeze_atoms for j in range(3)]
         return active_atoms, active_dof_idx, frozen_dof_idx
 
+    def _build_partial_hessian_meta(self, n_atoms: int) -> Optional[dict]:
+        """Return ``within_partial_hessian`` metadata dict when partial
+        Hessian is active, otherwise ``None``."""
+        if not self.return_partial_hessian or len(self.freeze_atoms) == 0:
+            return None
+        active_atoms, active_dof_idx, _ = self._active_and_frozen_dof_idx(n_atoms)
+        return {
+            "active_atoms": np.array(active_atoms, dtype=int),
+            "active_dofs": np.array(active_dof_idx, dtype=int),
+            "active_n_dof": len(active_dof_idx),
+            "full_n_dof": n_atoms * 3,
+        }
+
     def _zero_frozen_forces_ev(self, F: np.ndarray) -> np.ndarray:
         """Zero forces (eV/Å) on frozen atoms."""
         if (F is None) or (len(self.freeze_atoms) == 0):
@@ -277,5 +290,9 @@ class MLIPCalculator(Calculator):
         total_elapsed = time.perf_counter() - hess_total_start
         if self.print_timing:
             click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed:.2f} s")
+
+        partial_meta = self._build_partial_hessian_meta(n_atoms)
+        if partial_meta is not None:
+            out["within_partial_hessian"] = partial_meta
 
         return out

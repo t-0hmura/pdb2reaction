@@ -7,7 +7,7 @@
 ### At a glance
 - **Input:** A TS structure (ideally already optimized and validated).
 - **Key knobs:** `--step-size` (mass-weighted step length) and `--max-cycles` (number of steps).
-- **Hard overrides:** IRC forces `geom.coord_type = cart` after merge (even if YAML sets it). `calc.return_partial_hessian` defaults to `true` (partial-first) when not explicitly set in YAML.
+- **Hard overrides:** IRC forces `geom.coord_type = cart` after merge (even if YAML sets it). `calc.return_partial_hessian` is forced to `true` (partial Hessian with active-DOF processing in pysisyphus).
 
 `pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default). The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
 
@@ -71,7 +71,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
 ## Workflow
-1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs. Note: `geom.coord_type` is forced to `cart` (Cartesian) regardless of YAML/CLI settings, and `calc.return_partial_hessian` is forced to `False` (full Hessian required).
+1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs. Note: `geom.coord_type` is forced to `cart` (Cartesian) regardless of YAML/CLI settings, and `calc.return_partial_hessian` is forced to `true` (partial Hessian with active-DOF processing).
 2. **EulerPC integration** – The EulerPC predictor-corrector integrator traces the IRC path from the transition state. Forward and/or backward branches are run according to `--forward`/`--backward` flags. Each step uses a mass-weighted steepest-descent predictor followed by a corrector step.
 3. **Trajectory output** – Finished, forward, and backward IRC trajectories are written as XYZ files. When a reference PDB is available, PDB companions are also generated (`--convert-files`).
 
@@ -117,7 +117,7 @@ out_dir/ (default:./result_irc/)
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 
 See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
-Shared sections reuse [YAML Reference](yaml_reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `false` after YAML/CLI merging.
+Shared sections reuse [YAML Reference](yaml_reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
@@ -142,7 +142,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # forced false for irc (full Hessian)
+ return_partial_hessian: true # forced true for irc (partial Hessian with active-DOF processing)
 irc:
  step_length: 0.1 # integration step length
  max_cycles: 125 # maximum steps along IRC

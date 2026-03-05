@@ -486,6 +486,11 @@ class UMACalculator(MLIPCalculator):
             vram_base_reserved=vram_base_reserved,
             vram_total=vram_total,
         )
+
+        partial_meta = self._build_partial_hessian_meta(len(elem))
+        if partial_meta is not None:
+            out["within_partial_hessian"] = partial_meta
+
         return out
 
 
