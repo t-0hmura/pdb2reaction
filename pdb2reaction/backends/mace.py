@@ -3,7 +3,7 @@
 """
 MACE (mace-torch) backend for pdb2reaction.
 
-Requires: ``pip install pdb2reaction[mace]`` (mace-torch).
+Requires: ``pip install mace-torch`` (separate env, conflicts with fairchem-core).
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ class MACECalculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "MACE backend requires torch and mace-torch. "
-                "Install with: pip install 'pdb2reaction[mace]'"
+                "Install with: pip install mace-torch (separate env required)"
             ) from exc
 
         # Warn about potential UMA/MACE conflict
@@ -106,7 +106,7 @@ class MACECalculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "Could not import mace.calculators. "
-                "Install with: pip install 'pdb2reaction[mace]'"
+                "Install with: pip install mace-torch (separate env required)"
             ) from exc
 
         mp_aliases = []

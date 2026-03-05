@@ -116,11 +116,10 @@ huggingface-cli login
  # ORB バックエンド
  pip install 'pdb2reaction[orb]'
 
- # MACE バックエンド（fairchem-core と競合するため、別環境を推奨）
- pip install 'pdb2reaction[mace]'
-
  # AIMNet2 バックエンド
  pip install 'pdb2reaction[aimnet2]'
+
+ # MACE: pip uninstall fairchem-core && pip install mace-torch（別環境が必要）
  ```
 
  暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。

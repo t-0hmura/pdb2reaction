@@ -27,7 +27,23 @@ Given **(i) two or more PDB files** (R → ... → P), **or (ii) one PDB with `-
 - explores **minimum-energy paths (MEPs)** with GSM or DMF,
 - *optionally* optimizes **transition states**, runs **vibrational analysis**, **IRC**, and **single-point DFT**,
 
-using Meta's **UMA** machine-learning interatomic potential.
+using machine-learning interatomic potentials (MLIPs).
+
+### Supported ML potentials
+
+| Potential | Repository | Install extra |
+|-----------|------------|---------------|
+| **UMA** (default) | <https://github.com/facebookresearch/fairchem> | *(included)* |
+| **ORB** | <https://github.com/orbital-materials/orb-models> | `pip install pdb2reaction[orb]` |
+| **MACE** | <https://github.com/ACEsuit/mace> | see note below |
+| **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install pdb2reaction[aimnet2]` |
+
+> **Note:** MACE and UMA cannot coexist due to conflicting `e3nn` versions (`fairchem-core` requires `e3nn>=0.5`, `mace-torch` requires `e3nn==0.4.4`). To use MACE, uninstall `fairchem-core` first:
+> ```bash
+> pip uninstall fairchem-core
+> pip install mace-torch
+> ```
+> This means UMA will no longer be available in that environment. We recommend using a **separate conda environment** for MACE.
 
 > **Expectation setting for TS search**
 > - Treat single-command outputs as a strong initial guess, not guaranteed final TS validation.
@@ -81,6 +97,16 @@ pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
 pip install git+https://github.com/t-0hmura/pdb2reaction.git
 plotly_get_chrome -y
 ```
+
+### DFT single-point (`pdb2reaction dft`)
+
+DFT dependencies are **not** installed by default. To use `pdb2reaction dft`, install the `[dft]` extra:
+
+```bash
+pip install "pdb2reaction[dft]"
+```
+
+This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries. Note that DFT single-point calculations are practical only for systems up to **~500 atoms**; larger systems will require prohibitive compute time and memory.
 
 For detailed installation instructions, see [Installation](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md).
 

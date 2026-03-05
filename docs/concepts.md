@@ -42,7 +42,7 @@ pdb2reaction supports multiple machine-learning interatomic potential (MLIP) bac
 |---------|------|---------|-------|
 | **UMA** (default) | `--backend uma` | included | Full feature set including analytical Hessians and multi-worker inference |
 | **ORB** | `--backend orb` | `pip install 'pdb2reaction[orb]'` | orb-models; FD Hessians only |
-| **MACE** | `--backend mace` | `pip install 'pdb2reaction[mace]'` | mace-torch; conflicts with fairchem-core (use separate env) |
+| **MACE** | `--backend mace` | separate env (see README) | mace-torch; conflicts with fairchem-core |
 | **AIMNet2** | `--backend aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; FD Hessians only |
 
 All backends share the same `--solvent` option for xTB-based implicit solvent corrections.

@@ -116,11 +116,10 @@ If you prefer to build the environment piece by piece:
  # ORB backend
  pip install 'pdb2reaction[orb]'
 
- # MACE backend (conflicts with fairchem-core; use a separate environment)
- pip install 'pdb2reaction[mace]'
-
  # AIMNet2 backend
  pip install 'pdb2reaction[aimnet2]'
+
+ # MACE: pip uninstall fairchem-core && pip install mace-torch (separate env required)
  ```
 
  To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.

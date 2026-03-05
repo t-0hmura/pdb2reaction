@@ -50,7 +50,7 @@ pdb2reaction opt -i input.pdb -q 0 --backend aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | 同梱 | あり | あり | fairchem による完全機能 |
 | **ORB** | `pip install 'pdb2reaction[orb]'` | なし（有限差分のみ） | なし | orb-models |
-| **MACE** | `pip install 'pdb2reaction[mace]'` | なし（有限差分のみ） | なし | fairchem-core と競合 |
+| **MACE** | 別環境が必要（README 参照） | なし（有限差分のみ） | なし | fairchem-core と競合 |
 | **AIMNet2** | `pip install 'pdb2reaction[aimnet2]'` | なし（有限差分のみ） | なし | aimnet |
 
 ### 暗黙溶媒補正
