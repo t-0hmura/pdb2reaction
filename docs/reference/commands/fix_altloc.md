@@ -1,7 +1,7 @@
 # `pdb2reaction fix-altloc`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction fix-altloc [OPTIONS]
 
@@ -26,7 +26,3 @@ Options:
                                 no-force]
   -h, --help                    Show this message and exit.
 ```
-
----
-
-See also: [fix-altloc workflow](../../fix_altloc.md) | [extract](extract.md)

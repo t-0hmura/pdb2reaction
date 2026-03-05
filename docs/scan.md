@@ -207,6 +207,9 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 | `--out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
 | `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `True` |
 
@@ -341,7 +344,7 @@ rfo:
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source
- hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc: 500 # rebuild Hessian every N steps
  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
  alpha0: 1.0 # initial micro step

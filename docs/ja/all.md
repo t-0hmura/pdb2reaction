@@ -151,7 +151,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `-r, --radius FLOAT` | ポケット包含カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
 | `--include-H2O, --include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `True` |
+| `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkH/--no-add-linkH` | 切断結合にリンク水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基 | `""` |
 | `--freeze-links/--no-freeze-links` | ポケットPDBでリンクHの親を凍結 | `True` |
@@ -176,6 +176,9 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA並列度（workers > 1 で解析ヘシアン無効） | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有UMAヘシアンエンジン | `FiniteDifference` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 
 ### 後処理オプション
 
@@ -262,6 +265,22 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 - `energy_diagrams`（任意） – `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` などを含む図表データ。
 
 `summary.yaml` には `summary.log` にある整形テーブルやファイルツリーは含まれません。
+
+### エネルギーダイアグラムの命名規則
+
+エネルギーダイアグラムファイルは手法とスコープに基づいて命名されます:
+
+| ファイル名 | 生成タイミング | 内容 |
+|---|---|---|
+| `energy_diagram_MEP.png` | path-opt/path-search 完了時 | 全セグメント MEP 障壁（生の GSM/DMF 値） |
+| `energy_diagram_UMA.png` | セグメントごとの tsopt+IRC 完了時 | R→TS→P（UMA エネルギー） |
+| `energy_diagram_G_UMA.png` | セグメントごとの thermo 完了時 | R→TS→P（UMA ギブズ自由エネルギー） |
+| `energy_diagram_DFT.png` | セグメントごとの DFT 完了時 | R→TS→P（DFT エネルギー） |
+| `energy_diagram_G_DFT_plus_UMA.png` | セグメントごとの DFT+thermo 完了時 | R→TS→P（DFT エネルギー + UMA 熱補正） |
+| `energy_diagram_UMA_all.png` | 全セグメント集約時 | 全セグメント統合（UMA） |
+| `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（UMA ギブズ） |
+| `energy_diagram_DFT_all.png` | 全セグメント + DFT | 全セグメント統合（DFT） |
+| `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//UMA ギブズ） |
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。

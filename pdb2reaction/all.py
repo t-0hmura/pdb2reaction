@@ -11,7 +11,6 @@ For detailed documentation, see: docs/all.md
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from collections import defaultdict
 from typing import List, Sequence, Optional, Tuple, Dict, Any
@@ -20,7 +19,6 @@ import logging
 import signal
 import sys
 import os
-import math
 import tempfile
 import re
 import click
@@ -49,7 +47,7 @@ from . import path_opt as _path_opt
 from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
-from .backends import create_calculator, create_ase_calculator
+from .backends import create_calculator
 from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW as _UMA_CALC_KW
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from .trj2fig import run_trj2fig
@@ -145,45 +143,6 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         shown = label or src
         _echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}", err=True)
         return False
-
-
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    """Resolve the first existing file for a list of relative patterns."""
-    for pattern in patterns:
-        if any(ch in pattern for ch in "*?[]"):
-            for candidate in sorted(out_dir.glob(pattern)):
-                if candidate.is_file():
-                    return candidate.resolve()
-            continue
-        candidate = out_dir / pattern
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
-
-
-def _link_or_copy_file(src: Path, dst: Path) -> bool:
-    """Create a symlink when possible; fall back to copy."""
-    try:
-        if dst.exists() or dst.is_symlink():
-            if dst.is_dir():
-                return False
-            dst.unlink()
-        rel = os.path.relpath(src, start=dst.parent)
-        dst.symlink_to(rel)
-        return True
-    except Exception as exc:
-        logger.debug("Symlink failed for %s -> %s: %s; trying copy", src, dst, exc)
-        try:
-            shutil.copy2(src, dst)
-            return True
-        except Exception as exc2:
-            logger.debug("Copy also failed for %s -> %s: %s", src, dst, exc2)
-            return False
-
-
-def _write_output_summary_md(out_dir: Path) -> None:
-    """summary.md and key_* outputs are disabled."""
-    return None
 
 
 # ---------- Resume / checkpoint helpers ----------
@@ -355,6 +314,10 @@ def _build_effective_args_yaml(
     ) as tf:
         yaml.safe_dump(merged, tf, sort_keys=False, allow_unicode=True)
         effective = Path(tf.name).resolve()
+
+    # Register cleanup so the temp file is removed when the process exits.
+    import atexit
+    atexit.register(lambda p=effective: p.unlink(missing_ok=True))
 
     return effective, merged
 
@@ -698,6 +661,11 @@ def _write_args_yaml_with_freeze_atoms(
     out_path = tmp_dir / "args_freeze_atoms.yaml"
     with out_path.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(cfg, fh, sort_keys=False, allow_unicode=True)
+
+    # Register cleanup so the temp directory is removed when the process exits.
+    import atexit, shutil as _shutil
+    atexit.register(lambda d=tmp_dir: _shutil.rmtree(d, ignore_errors=True))
+
     return out_path
 
 
@@ -719,33 +687,6 @@ def _read_summary(summary_yaml: Path) -> List[Dict[str, Any]]:
     except Exception as exc:
         logger.debug("Failed to read summary YAML %s: %s", summary_yaml, exc)
         return []
-
-
-def _pdb_models_to_coords_and_elems(pdb_path: Path) -> Tuple[List[np.ndarray], List[str]]:
-    """
-    Return ([coords_model1, coords_model2, ...] in Å), [elements] from a multi-model PDB.
-    """
-    parser = PDB.PDBParser(QUIET=True)
-    st = parser.get_structure("seg", str(pdb_path))
-    models = list(st.get_models())
-    if not models:
-        raise click.ClickException(f"[post] No MODEL found in PDB: {pdb_path}")
-    atoms0 = [a for a in models[0].get_atoms()]
-    elems: List[str] = []
-    for a in atoms0:
-        el = (a.element or "").strip()
-        if not el:
-            nm = a.get_name().strip()
-            el = "".join([c for c in nm if c.isalpha()])[:2].title() or "C"
-        elems.append(el)
-    coords_list: List[np.ndarray] = []
-    for m in models:
-        atoms = [a for a in m.get_atoms()]
-        if len(atoms) != len(atoms0):
-            raise click.ClickException(f"[post] Atom count mismatch across models in {pdb_path}")
-        coords = np.array([a.get_coord() for a in atoms], dtype=float)
-        coords_list.append(coords)
-    return coords_list, elems
 
 
 def _geom_from_angstrom(
@@ -907,40 +848,6 @@ def _build_global_segment_labels(n_segments: int) -> List[str]:
                 [f"IM{seg_idx - 1}_2", f"TS{seg_idx}", f"IM{seg_idx}_1"]
             )
     return labels
-
-
-def _concat_images_horizontally(
-    image_paths: Sequence[Path],
-    out_path: Path,
-    gap: int = 20,
-) -> None:
-    """
-    Concatenate multiple PNG images horizontally into a single PNG.
-    Gaps between images are left blank; no interpolation between segments.
-    """
-    existing = [p for p in image_paths if p is not None and p.exists()]
-    if not existing:
-        return
-    try:
-        from PIL import Image
-    except Exception:
-        _echo(f"[irc_all] Pillow not available; skipping '{out_path.name}'.")
-        return
-
-    images = [Image.open(str(p)) for p in existing]
-    widths = [im.width for im in images]
-    heights = [im.height for im in images]
-    max_height = max(heights)
-    total_width = sum(widths) + gap * (len(images) - 1)
-    canvas = Image.new("RGB", (total_width, max_height), "white")
-    x = 0
-    for im in images:
-        y = (max_height - im.height) // 2
-        canvas.paste(im, (x, y))
-        x += im.width + gap
-    ensure_dir(out_path.parent)
-    canvas.save(str(out_path))
-    _echo(f"[irc_all] Wrote aggregated IRC plot → {out_path}")
 
 
 def _merge_irc_trajectories_to_single_plot(
@@ -1297,101 +1204,103 @@ def _run_tsopt_on_hei(
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
-    needs_gjf = prepared_input.is_gjf
-    ref_pdb = prepared_input.source_path if needs_pdb else None
-    ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
-    ensure_dir(ts_dir)
+    try:
+        apply_ref_pdb_override(prepared_input, ref_pdb)
+        needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
+        needs_gjf = prepared_input.is_gjf
+        ref_pdb = prepared_input.source_path if needs_pdb else None
+        ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
+        ensure_dir(ts_dir)
 
-    freeze_use = overrides.get("freeze_links")
-    if freeze_use is None:
-        freeze_use = freeze_links
+        freeze_use = overrides.get("freeze_links")
+        if freeze_use is None:
+            freeze_use = freeze_links
 
-    opt_mode = overrides.get("opt_mode", opt_mode_default)
-    tsopt_mode = None if opt_mode is None else str(opt_mode).strip().lower()
-    if tsopt_mode in ("grad", "lbfgs", "dimer"):
-        tsopt_mode = "grad"
-    elif tsopt_mode in ("hess", "rfo", "rsirfo"):
-        tsopt_mode = "hess"
+        opt_mode = overrides.get("opt_mode", opt_mode_default)
+        tsopt_mode = None if opt_mode is None else str(opt_mode).strip().lower()
+        if tsopt_mode in ("grad", "lbfgs", "dimer"):
+            tsopt_mode = "grad"
+        elif tsopt_mode in ("hess", "rfo", "rsirfo"):
+            tsopt_mode = "hess"
 
-    ts_args: List[str] = [
-        "-i",
-        str(hei_pdb),
-        "-q",
-        str(int(charge)),
-        "-m",
-        str(int(spin)),
-        "--out-dir",
-        str(ts_dir),
-    ]
-    _append_toggle_arg(ts_args, "--freeze-links", bool(freeze_use))
-    _append_toggle_arg(ts_args, "--convert-files", bool(convert_files))
+        ts_args: List[str] = [
+            "-i",
+            str(hei_pdb),
+            "-q",
+            str(int(charge)),
+            "-m",
+            str(int(spin)),
+            "--out-dir",
+            str(ts_dir),
+        ]
+        _append_toggle_arg(ts_args, "--freeze-links", bool(freeze_use))
+        _append_toggle_arg(ts_args, "--convert-files", bool(convert_files))
 
-    if tsopt_mode is not None:
-        ts_args.extend(["--opt-mode", tsopt_mode])
+        if tsopt_mode is not None:
+            ts_args.extend(["--opt-mode", tsopt_mode])
 
-    _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
-    _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
-    _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
-    _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
+        _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
+        _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
+        _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
+        _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
 
-    hess_mode = overrides.get("hessian_calc_mode")
-    if hess_mode:
-        ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
+        hess_mode = overrides.get("hessian_calc_mode")
+        if hess_mode:
+            ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
 
-    if args_yaml is not None:
-        ts_args.extend(["--config", str(args_yaml)])
-    if ref_pdb is not None:
-        ts_args.extend(["--ref-pdb", str(ref_pdb)])
+        if args_yaml is not None:
+            ts_args.extend(["--config", str(args_yaml)])
+        if ref_pdb is not None:
+            ts_args.extend(["--ref-pdb", str(ref_pdb)])
 
-    _echo()
-    _echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
-    _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
+        _echo()
+        _echo(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
+        _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
 
-    ts_pdb = ts_dir / "final_geometry.pdb"
-    ts_xyz = ts_dir / "final_geometry.xyz"
-    ts_gjf = ts_dir / "final_geometry.gjf"
+        ts_pdb = ts_dir / "final_geometry.pdb"
+        ts_xyz = ts_dir / "final_geometry.xyz"
+        ts_gjf = ts_dir / "final_geometry.gjf"
 
-    ts_geom_path: Optional[Path] = None
+        ts_geom_path: Optional[Path] = None
 
-    if ts_xyz.exists():
-        try:
-            convert_xyz_like_outputs(
-                ts_xyz,
-                prepared_input,
-                ref_pdb_path=ref_pdb,
-                out_pdb_path=ts_pdb if needs_pdb else None,
-                out_gjf_path=ts_gjf if needs_gjf else None,
-            )
-        except Exception as e:
-            _echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
+        if ts_xyz.exists():
+            try:
+                convert_xyz_like_outputs(
+                    ts_xyz,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=ts_pdb if needs_pdb else None,
+                    out_gjf_path=ts_gjf if needs_gjf else None,
+                )
+            except Exception as e:
+                _echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
 
-    if ts_xyz.exists():
-        ts_geom_path = ts_xyz
-    elif needs_pdb and ts_pdb.exists():
-        ts_geom_path = ts_pdb
-    elif ts_pdb.exists():
-        ts_geom_path = ts_pdb
-    elif needs_gjf and ts_gjf.exists():
-        ts_geom_path = ts_gjf
-    elif ts_gjf.exists():
-        ts_geom_path = ts_gjf
-    else:
-        raise click.ClickException("[tsopt] TS outputs not found.")
+        if ts_xyz.exists():
+            ts_geom_path = ts_xyz
+        elif needs_pdb and ts_pdb.exists():
+            ts_geom_path = ts_pdb
+        elif ts_pdb.exists():
+            ts_geom_path = ts_pdb
+        elif needs_gjf and ts_gjf.exists():
+            ts_geom_path = ts_gjf
+        elif ts_gjf.exists():
+            ts_geom_path = ts_gjf
+        else:
+            raise click.ClickException("[tsopt] TS outputs not found.")
 
-    g_ts = geom_loader(
-        ts_geom_path,
-        coord_type=DEFAULT_COORD_TYPE,
-        freeze_atoms=_freeze_atoms_for_log(),
-    )
+        g_ts = geom_loader(
+            ts_geom_path,
+            coord_type=DEFAULT_COORD_TYPE,
+            freeze_atoms=_freeze_atoms_for_log(),
+        )
 
-    calc_args = dict(calc_cfg)
-    calc = create_calculator(**calc_args)
-    g_ts.set_calculator(calc)
+        calc_args = dict(calc_cfg)
+        calc = create_calculator(**calc_args)
+        g_ts.set_calculator(calc)
 
-    prepared_input.cleanup()
-    return ts_geom_path, g_ts
+        return ts_geom_path, g_ts
+    finally:
+        prepared_input.cleanup()
 
 
 def _irc_and_match(
@@ -2713,6 +2622,11 @@ def cli(
             and (struct_dir / "ts.pdb").is_file()
             and (tsroot / "irc" / "finished_irc_trj.xyz").is_file()
         )
+        # Defaults for variables that may not be set on the --resume path
+        g_react_opt = None
+        g_prod_opt = None
+        irc_res: Dict[str, Any] = {}
+
         if _tsonly_struct_done:
             _skip_msg("TSOPT-only — TSOPT/IRC/endpoint-opt")
             pR = struct_dir / "reactant.pdb"
@@ -2865,6 +2779,10 @@ def cli(
             and (dft_root / "P" / "result.yaml").is_file()
         )
 
+        ref_pdb_for_tsopt_only = (
+            ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
+        )
+
         if do_thermo and _tsonly_freq_done:
             _skip_msg("TSOPT-only — Freq/Thermo")
             try:
@@ -2878,9 +2796,6 @@ def cli(
         elif do_thermo:
             _echo()
             _echo("[thermo] Single TSOPT: freq on R/TS/P")
-            ref_pdb_for_tsopt_only = (
-                ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
-            )
             tR = _run_freq_for_state(
                 pR,
                 q_int,
@@ -3029,17 +2944,20 @@ def cli(
         # Build summary.yaml for TSOPT-only runs, mirroring path_search/path_opt outputs
         bond_cfg = dict(_path_search.BOND_KW)
         bond_summary = ""
-        try:
-            changed, bond_summary = _path_search.has_bond_change(
-                g_react_opt, g_prod_opt, bond_cfg
-            )
-            if not changed:
+        if g_react_opt is not None and g_prod_opt is not None:
+            try:
+                changed, bond_summary = _path_search.has_bond_change(
+                    g_react_opt, g_prod_opt, bond_cfg
+                )
+                if not changed:
+                    bond_summary = "(no covalent changes detected)"
+            except Exception as e:
+                _echo(
+                    f"[post] WARNING: Failed to detect bond changes for TSOPT-only endpoints: {e}",
+                    err=True,
+                )
                 bond_summary = "(no covalent changes detected)"
-        except Exception as e:
-            _echo(
-                f"[post] WARNING: Failed to detect bond changes for TSOPT-only endpoints: {e}",
-                err=True,
-            )
+        else:
             bond_summary = "(no covalent changes detected)"
 
         barrier = (eT - e_react) * AU2KCALPERMOL

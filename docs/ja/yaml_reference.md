@@ -67,6 +67,8 @@ calc:
  # freeze_atoms: null # geom.freeze_atoms から継承されるため直接指定しない
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
  return_partial_hessian: false # Return only active-DOF Hessian block
+ print_timing: true # ヘシアン計算のタイミング内訳を表示
+ print_vram: true # ヘシアン計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
  # Solvent correction (xTB)
  solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
@@ -157,7 +159,7 @@ rfo:
  max_energy_incr: null # Allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.
- hessian_recalc: 200 # Rebuild Hessian every N steps
+ hessian_recalc: 500 # Rebuild Hessian every N steps
  hessian_recalc_adapt: null # Adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # Eigenvalue threshold for stability
  alpha0: 1.0 # Initial micro step
@@ -215,7 +217,6 @@ dmf:
  delta_scale: 0.2 # FB-ENM displacement scaling
  bond_scale: 1.25 # Bond cutoff scaling
  fix_planes: true # Enforce planar constraints
- two_hop_mode: sparse # Neighbor traversal strategy
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
  corr0_scale: 1.1 # Correlation scale for corr0
@@ -225,7 +226,6 @@ dmf:
  pivotal: true # Pivotal residue handling
  single: true # Single-atom pivots
  remove_fourmembered: true # Prune four-membered rings
- two_hop_mode: sparse # Neighbor traversal strategy
  dmf_options:
  remove_rotation_and_translation: false # Keep rigid-body motions
  mass_weighted: false # Toggle mass weighting
@@ -264,7 +264,7 @@ chain-of-states 経路最適化（`path-opt`, `path-search`）向けの StringOp
 ```yaml
 stopt:
  type: string # Optimizer type label
- thresh: gau # StringOptimizer convergence preset
+ thresh: gau_loose # StringOptimizer convergence preset
  stop_in_when_full: 300 # Early stop threshold when the string is full
  align: false # Alignment toggle
  scale_step: global # Step scaling mode
@@ -368,6 +368,7 @@ irc:
  max_cycles: 125 # Maximum steps along IRC
  downhill: false # Follow downhill direction only
  forward: true # Propagate in forward direction
+ backward: true # Propagate in backward direction
  root: 0 # Normal-mode root index
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme

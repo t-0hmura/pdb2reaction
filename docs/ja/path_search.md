@@ -9,7 +9,7 @@
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau`。
+- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は反応順に並んだ 2 構造以上を入力とし、連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
@@ -104,9 +104,12 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `--convert-files/--no-convert-files` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 | `--preopt/--no-preopt` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
@@ -199,7 +202,7 @@ gs:
  scheduler: null # optional scheduler backend
 stopt:
  type: string # optimizer type label
- thresh: gau # StringOptimizer convergence preset
+ thresh: gau_loose # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  align: false # alignment toggle (kept off)
  scale_step: global # step scaling mode
@@ -219,7 +222,6 @@ dmf:
  delta_scale: 0.2 # FB-ENM displacement scaling
  bond_scale: 1.25 # bond cutoff scaling
  fix_planes: true # enforce planar constraints
- two_hop_mode: sparse # neighbor traversal strategy
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
  corr0_scale: 1.1 # Correlation scale for corr0
@@ -229,7 +231,6 @@ dmf:
  pivotal: true # Pivotal residue handling
  single: true # Single-atom pivots
  remove_fourmembered: true # Prune four-membered rings
- two_hop_mode: sparse # Neighbor traversal strategy
  dmf_options:
  remove_rotation_and_translation: false # Keep rigid-body motions
  mass_weighted: false # Toggle mass weighting
@@ -291,7 +292,7 @@ opt:
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source
- hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc: 500 # rebuild Hessian every N steps
  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
  alpha0: 1.0 # initial micro step

@@ -8,12 +8,16 @@
 - **想定場面:** 反応物と生成物の **2 端点**が揃っていて、まず MEP の初期推定を得たい場合に使います。
 - **手法:** デフォルトは GSM。`--mep-mode dmf` で DMF に切り替え可能。
 - **主な出力:** `final_geometries_trj.xyz`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 20`、`--thresh gau`、`--thresh-stopt gau`。
+- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 20`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**です。`tsopt`（内部で虚振動数チェック済み、**1 つ** であること）→ `irc` で検証します。
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path_search.md) を使用してください。
 
 MLIP バックエンド（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
+
+```{note}
+**DMF モードでの凍結原子**は、GSM で使用される pysisyphus のハード座標凍結ではなく、`HarmonicFixAtoms`（k=300 eV/Å² の調和拘束）を使用します。そのため、DMF での凍結原子は参照位置からわずかに移動する可能性があり、GSM モードの剛体凍結とは挙動が異なります。
+```
 
 
 ## 最小例
@@ -102,9 +106,12 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー | _None_ |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
@@ -182,7 +189,7 @@ gs:
  scheduler: null # optional scheduler backend
 stopt:
  type: string # optimizer type label
- thresh: gau # StringOptimizer convergence preset
+ thresh: gau_loose # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  scale_step: global # step scaling mode
  max_cycles: 300 # maximum optimization cycles
@@ -201,7 +208,6 @@ dmf:
  delta_scale: 0.2 # FB-ENM displacement scaling
  bond_scale: 1.25 # bond cutoff scaling
  fix_planes: true # enforce planar constraints
- two_hop_mode: sparse # neighbor traversal strategy
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
  corr0_scale: 1.1 # Correlation scale for corr0
@@ -211,7 +217,6 @@ dmf:
  pivotal: true # Pivotal residue handling
  single: true # Single-atom pivots
  remove_fourmembered: true # Prune four-membered rings
- two_hop_mode: sparse # Neighbor traversal strategy
  dmf_options:
  remove_rotation_and_translation: false # Keep rigid-body motions
  mass_weighted: false # Toggle mass weighting

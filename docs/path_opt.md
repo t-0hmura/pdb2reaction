@@ -8,7 +8,7 @@
 - **Use when:** You have reactant and product endpoints (R → P) and want a first-pass MEP.
 - **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
 - **Outputs:** `final_geometries_trj.xyz` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
-- **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 20`, `--thresh gau`, `--thresh-stopt gau`.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 20`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** Optimize the HEI with `tsopt` (includes imaginary-frequency check; expect **one** imaginary frequency) → `irc`.
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
@@ -106,9 +106,12 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} -i PRODUCT.{pdb|xyz} [-q CHARGE] [--
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `--out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for endpoint preoptimization only (`opt.lbfgs/rfo.thresh`). | `gau` |
-| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau` |
+| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layers) and continue. | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
@@ -183,7 +186,7 @@ gs:
  scheduler: null # optional scheduler backend
 stopt:
  type: string # optimizer type label
- thresh: gau # StringOptimizer convergence preset
+ thresh: gau_loose # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  scale_step: global # step scaling mode
  max_cycles: 300 # maximum optimization cycles
@@ -202,7 +205,6 @@ dmf:
  delta_scale: 0.2 # FB-ENM displacement scaling
  bond_scale: 1.25 # bond cutoff scaling
  fix_planes: true # enforce planar constraints
- two_hop_mode: sparse # neighbor traversal strategy
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
  corr0_scale: 1.1 # correlation scale for corr0
@@ -212,7 +214,6 @@ dmf:
  pivotal: true # pivotal residue handling
  single: true # single-atom pivots
  remove_fourmembered: true # prune four-membered rings
- two_hop_mode: sparse # neighbor traversal strategy
  dmf_options:
  remove_rotation_and_translation: false # keep rigid-body motions
  mass_weighted: false # toggle mass weighting

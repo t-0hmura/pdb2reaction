@@ -20,14 +20,12 @@ import sys
 import textwrap
 import tempfile
 import os
-import shutil
 import time
 import re
 
 import click
 import numpy as np
 import yaml
-from click.core import ParameterSource
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
@@ -87,7 +85,7 @@ from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
 from .bond_changes import has_bond_change
 from .align_freeze_atoms import align_and_refine_sequence_inplace, kabsch_R_t
-from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
 
@@ -149,27 +147,6 @@ def _bond_changes_block(text: Optional[str]):
 
 
 
-_link_or_copy_file = link_or_copy_file  # backward compat alias
-
-
-def _convert_to_gjf(
-    xyz_path: Path,
-    template: Optional[GjfTemplate],
-    out_path: Optional[Path] = None,
-) -> Optional[Path]:
-    """
-    Convert XYZ to Gaussian input using a template, when available.
-    """
-    target = convert_xyz_to_gjf_if_enabled(
-        xyz_path,
-        template,
-        out_path=out_path,
-        context="GJF",
-    )
-    if target is not None:
-        click.echo(f"[convert] Wrote '{target}'.")
-    return target
-
 
 def _calc_rmsd(A: np.ndarray, B: np.ndarray, indices: Optional[Sequence[int]] = None) -> float:
     """RMSD between A and B (no rigid alignment). Optional subset selection via `indices`."""
@@ -202,16 +179,6 @@ def _gs_cfg_with_overrides(base: Dict[str, Any], **overrides: Any) -> Dict[str, 
 # -----------------------------------------------
 # Kink detection & interpolation helpers
 # -----------------------------------------------
-
-def _max_displacement_between(ga, gb, indices: Optional[Sequence[int]] = None) -> float:
-    """Maximum per‑atom displacement (Å) between two structures (no alignment)."""
-    A = np.asarray(ga.coords3d, dtype=float)
-    B = np.asarray(gb.coords3d, dtype=float)
-    if A.shape != B.shape or A.shape[1] != 3:
-        raise ValueError("Geometries must have the same number of atoms for displacement.")
-    disp = np.linalg.norm(A - B, axis=1)
-    return float(np.max(disp))
-
 
 def _new_geom_from_coords(atoms: Sequence[str], coords: np.ndarray, coord_type: str, freeze_atoms: Sequence[int]) -> Any:
     """
@@ -247,14 +214,6 @@ def _make_linear_interpolations(gL, gR, n_internal: int) -> List[Any]:
         C = (1.0 - t) * A + t * B
         interps.append(_new_geom_from_coords(atoms, C, coord_type, freeze_union))
     return interps
-
-
-def _energy_of(g) -> float:
-    """
-    Return the energy (Hartree) of a Geometry (ensures calculator is attached).
-    """
-    g.set_calculator(getattr(g, "calculator", None))
-    return float(g.energy)
 
 
 # ---- Segment/bridge tagging helpers ----
@@ -1714,11 +1673,12 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--thresh-stopt",
     type=str,
-    default="gau",
-    show_default=True,
+    default=None,
+    show_default=False,
     help=(
         "Convergence preset for the string optimizer (stopt) "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau_loose' when not provided."
     ),
 )
 @click.option(
@@ -2748,7 +2708,7 @@ def cli(
             zero_step_exc=ZeroStepLength,
             zero_step_msg="ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).",
             opt_exc=OptimizationError,
-            opt_msg="ERROR: Path search failed — {e}",
+            opt_msg="ERROR: Path search failed — {exc}",
         )
     finally:
         for prepared in prepared_inputs:

@@ -86,7 +86,7 @@ For setup and dependency installation, see [Installation](installation.md).
 
 ## Command line basics
 
-The main entry point is the `pdb2reaction` command, installed via `pip`. Internally it uses the **Click** library, and the default subcommand is `all`.
+The main entry point is the `pdb2reaction` command, installed via `pip`. A shorthand alias **`p2r`** is also available — all commands can be run with either name. Internally it uses the **Click** library, and the default subcommand is `all`.
 
 That means:
 

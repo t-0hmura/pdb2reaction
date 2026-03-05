@@ -12,17 +12,13 @@ For detailed documentation, see: docs/irc.md
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple, List
+from typing import Any, Dict, Optional
 
 import logging
-import os
-import shutil
 import sys
 import textwrap
 
 import click
-from click.core import ParameterSource
-import yaml
 import time
 
 from pysisyphus.helpers import geom_loader
@@ -42,7 +38,7 @@ from pdb2reaction.utils import (
     convert_xyz_like_outputs,
     cli_param_overridden,
 )
-from pdb2reaction.cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+from pdb2reaction.cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +64,6 @@ def _echo_convert_trj_if_exists(
                 click.echo(f"[convert] Wrote {written}.")
 
 
-
-_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
 # --------------------------
@@ -282,7 +276,7 @@ def cli(
             # 1) Assemble configuration: defaults < config < CLI(explicit) < override
             # --------------------------
             geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
-            calc_cfg: Dict[str, Any] = dict(CALC_KW_DEFAULT)
+            calc_cfg: Dict[str, Any] = dict(UMA_CALC_KW)
             irc_cfg: Dict[str, Any] = dict(IRC_KW)
 
             apply_yaml_overrides(
@@ -351,7 +345,7 @@ def cli(
             # Ensure the calculator receives the freeze list used by geometry
             # (so FD Hessian can skip frozen DOF, etc.)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
-            calc_cfg["return_partial_hessian"] = False
+            calc_cfg["return_partial_hessian"] = True
 
             out_dir_path = Path(irc_cfg["out_dir"]).resolve()
             if show_config:

@@ -12,11 +12,9 @@ For detailed documentation, see: docs/dft.md
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, List, Union
 
-import shutil
 import sys
 import traceback
 import textwrap
@@ -24,7 +22,6 @@ import time
 from functools import reduce
 
 import click
-from click.core import ParameterSource
 import yaml
 import numpy as np
 
@@ -43,7 +40,7 @@ from .utils import (
     YamlFlowList,
     cli_param_overridden,
 )
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
 from .uma_pysis import GEOM_KW_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -130,17 +127,6 @@ def _format_row_value_for_echo(x: Union[int, str, float, None]) -> str:
     if isinstance(x, float):
         return f"{x:.10g}"
     return str(x)
-
-
-def _first_existing_artifact(out_dir: Path, patterns: Sequence[str]) -> Optional[Path]:
-    for pattern in patterns:
-        matches = sorted(out_dir.glob(pattern))
-        if matches:
-            return matches[0]
-    return None
-
-
-_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
 # This function is based on https://pyscf.org/_modules/pyscf/lo/iao.html

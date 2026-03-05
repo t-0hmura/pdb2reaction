@@ -219,6 +219,8 @@ pdb2reaction --help
 pdb2reaction <subcommand> --help
 pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
+# Shorthand alias (equivalent to pdb2reaction)
+p2r --help
 # Equivalent module invocation
 python -m pdb2reaction --help
 ```

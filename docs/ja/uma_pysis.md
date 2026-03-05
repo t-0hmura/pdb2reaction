@@ -67,7 +67,9 @@ pdb2reaction opt -i input.pdb -q 0 --backend orb --solvent water --solvent-model
 ## 主な特徴
 - **MLIPバックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `--backend` で利用可能。
 - **デバイス処理** – `device="auto"` はCUDAがあればGPU、なければCPUを選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
-- **ヘシアンモード** – `hessian_calc_mode="Analytical"` で2階自動微分、`"FiniteDifference"`（デフォルト）は力の中心差分。`workers>1` の場合は解析ヘシアンは無効化されます。
+### ヘシアンモード
+
+`hessian_calc_mode="Analytical"` で2階自動微分、`"FiniteDifference"`（デフォルト）は力の中心差分。`workers>1` の場合は解析ヘシアンは無効化されます。
 - **凍結原子** – `freeze_atoms` に0始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
 - **精度制御** – エネルギー/力は常にfloat64。`hessian_double=False` でヘシアンをモデルのネイティブdtype（通常float32）で返します。
 - **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。解析ヘシアンはこのモードでは無効です。
@@ -88,7 +90,8 @@ cd "$PBS_O_WORKDIR"
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-module load gcc ompi cuda/12.9 source ~/apps/miniconda3/etc/profile.d/conda.sh
+module load gcc ompi cuda/12.9
+source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate pdb2reaction
 # -------------------
 

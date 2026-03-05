@@ -13,19 +13,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import logging
 import sys
 import traceback
 import textwrap
 import time
-import os
-import shutil
 
 import click
 import numpy as np
-from click.core import ParameterSource
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import geom_loader
@@ -67,9 +64,7 @@ from .utils import (
     cli_param_overridden,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
-
-_link_or_copy_file = link_or_copy_file  # backward compat alias
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
 
@@ -500,11 +495,12 @@ def _optimize_single(
 @click.option(
     "--thresh-stopt",
     type=str,
-    default="gau",
-    show_default=True,
+    default=None,
+    show_default=False,
     help=(
         "Convergence preset for the string optimizer (stopt) "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau_loose' when not provided."
     ),
 )
 @click.option(
@@ -935,7 +931,7 @@ def cli(
                 {int(i) for g in geoms for i in getattr(g, "freeze_atoms", [])}
             )
         except Exception:
-            pass
+            logger.warning("Failed to collect freeze_atoms from geometries", exc_info=True)
 
         if mep_mode_kind == "dmf":
             try:

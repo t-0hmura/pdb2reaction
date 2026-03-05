@@ -12,21 +12,16 @@ For detailed documentation, see: docs/opt.md
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import ast
-import inspect
 import logging
-import os
-import shutil
 import sys
 
 import click
 import numpy as np
 import torch
-import yaml
 import time
-from click.core import ParameterSource
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -58,7 +53,7 @@ from .utils import (
     convert_xyz_like_outputs,
     cli_param_overridden,
 )
-from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 from .freq import (
     _torch_device,
     _safe_masses_amu,
@@ -78,8 +73,6 @@ OPT_FLATTEN_MAX_ITER = 50
 # Note: All defaults imported from defaults.py - no local copies needed
 
 
-
-_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
 class HarmonicBiasCalculator:
@@ -589,6 +582,7 @@ def cli(
             # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
             resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+            calc_cfg["return_partial_hessian"] = True
 
             # Normalize and select optimizer kind
             kind = normalize_choice(

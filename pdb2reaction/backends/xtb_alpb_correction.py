@@ -8,8 +8,6 @@ from xTB implicit-solvent terms on the same geometry:
     dH = H(solv) - H(vac)
 """
 
-from __future__ import absolute_import, division, print_function
-
 import concurrent.futures
 import os
 import re

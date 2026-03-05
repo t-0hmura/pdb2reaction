@@ -1,7 +1,7 @@
 # `pdb2reaction opt`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction opt [OPTIONS]
 
@@ -50,9 +50,9 @@ Options:
   --dump / --no-dump              Write optimization trajectory to
                                   'optimization_trj.xyz'.  [default: no-dump]
   --out-dir TEXT                  Output directory.  [default: ./result_opt/]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|
-                                  gau_vtight|baker|never). Defaults to 'gau'
-                                  when not provided.
+  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
+                                  u_vtight|baker|never). Defaults to 'gau' when
+                                  not provided.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -63,13 +63,8 @@ Options:
                                   dry-run]
   --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction
-                                  (e.g. 'water'). 'none' to disable.
-                                  [default: none]
-  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
-
----
-
-See also: [opt workflow](../../opt.md) | [freq](freq.md) | [tsopt](tsopt.md)

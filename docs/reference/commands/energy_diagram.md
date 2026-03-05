@@ -1,7 +1,7 @@
 # `pdb2reaction energy-diagram`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction energy-diagram [OPTIONS]
 
@@ -18,7 +18,3 @@ Options:
   --label-y TEXT     Y-axis label.  [default: ΔE (kcal/mol)]
   -h, --help         Show this message and exit.
 ```
-
----
-
-See also: [energy-diagram workflow](../../energy_diagram.md) | [dft](dft.md) | [trj2fig](trj2fig.md)

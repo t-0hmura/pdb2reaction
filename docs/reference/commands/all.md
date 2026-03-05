@@ -1,6 +1,8 @@
 # `pdb2reaction all`
 
 ```text
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
+
 Usage: pdb2reaction all [OPTIONS]
 
   Run pocket extraction → (optional single-structure staged scan) → MEP search →
@@ -57,6 +59,11 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --verbose BOOLEAN               Enable INFO-level logging inside extractor.
                                   [default: True]
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
@@ -67,7 +74,7 @@ Options:
                                   Direct Max Flux (dmf).  [default: gsm]
   --max-nodes INTEGER             Max internal nodes for **segment** GSM (String
                                   has max_nodes+2 images including endpoints).
-                                  [default: 10]
+                                  [default: 20]
   --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
                                   300]
   --climb BOOLEAN                 Enable transition-state climbing after growth
@@ -94,12 +101,12 @@ Options:
                                   path-opt GSM between each adjacent pair and
                                   concatenate the segments (no path_search).
                                   [default: True]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|
-                                  gau_vtight|baker|never). Defaults to 'gau'
-                                  when not provided.
+  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
+                                  u_vtight|baker|never). Defaults to 'gau' when
+                                  not provided.
   --thresh-post TEXT              Convergence preset for post-IRC endpoint
-                                  optimizations (gau_loose|gau|gau_tight|
-                                  gau_vtight|baker|never).  [default: baker]
+                                  optimizations (gau_loose|gau|gau_tight|gau_vti
+                                  ght|baker|never).  [default: baker]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -108,6 +115,10 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running any stage.  [default: no-dry-
                                   run]
+  --resume / --no-resume          Resume a previous run from --out-dir.
+                                  Completed stages whose output files already
+                                  exist are skipped. Useful when a long pipeline
+                                  was interrupted.  [default: no-resume]
   --preopt BOOLEAN                If False, skip initial single-structure
                                   optimizations of the pocket inputs.  [default:
                                   True]
@@ -189,15 +200,5 @@ Options:
   --scan-preopt BOOLEAN           Override scan --preopt flag. When omitted,
                                   this follows --preopt (default True).
   --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to True.
-  --backend [uma|orb|mace|aimnet2]
-                                  MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction
-                                  (e.g. 'water'). 'none' to disable.
-                                  [default: none]
-  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
-
----
-
-See also: [all workflow](../../all.md) | [path-search](path_search.md) | [tsopt](tsopt.md)

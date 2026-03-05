@@ -1,7 +1,7 @@
 # `pdb2reaction scan3d`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction scan3d [OPTIONS]
 
@@ -59,12 +59,17 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   --out-dir TEXT                  Base output directory.  [default:
                                   ./result_scan3d/]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|
-                                  gau_vtight|baker|never).  Defaults to 'baker'.
+  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
+                                  u_vtight|baker|never).  Defaults to 'baker'.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --preopt / --no-preopt          Pre-optimize the initial structure without
                                   bias before the scan.  [default: preopt]
+  --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --baseline [min|first]          Reference for relative energy (kcal/mol):
                                   'min' or 'first' (i=0,j=0,k=0).  [default:
                                   min]
@@ -76,15 +81,5 @@ Options:
                                   Print parsed scan targets after resolving
                                   --spec/--scan-lists.  [default: no-print-
                                   parsed]
-  --backend [uma|orb|mace|aimnet2]
-                                  MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction
-                                  (e.g. 'water'). 'none' to disable.
-                                  [default: none]
-  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
-
----
-
-See also: [scan3d workflow](../../scan3d.md) | [scan](scan.md) | [scan2d](scan2d.md)

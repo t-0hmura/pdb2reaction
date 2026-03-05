@@ -8,7 +8,7 @@
 - **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau`.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
@@ -101,9 +101,12 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
 | `--out-dir TEXT` | Output directory. | `./result_path_search/` |
 | `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
-| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau` |
+| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint before MEP search (recommended). | `True` |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
@@ -195,7 +198,7 @@ gs:
  scheduler: null # optional scheduler backend
 stopt:
  type: string # optimizer type label
- thresh: gau # StringOptimizer convergence preset
+ thresh: gau_loose # StringOptimizer convergence preset
  stop_in_when_full: 300 # early stop threshold when string is full
  align: false # alignment toggle (kept off)
  scale_step: global # step scaling mode
@@ -215,7 +218,6 @@ dmf:
  delta_scale: 0.2 # FB-ENM displacement scaling
  bond_scale: 1.25 # bond cutoff scaling
  fix_planes: true # enforce planar constraints
- two_hop_mode: sparse # neighbor traversal strategy
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
  corr0_scale: 1.1 # correlation scale for corr0
@@ -225,7 +227,6 @@ dmf:
  pivotal: true # pivotal residue handling
  single: true # single-atom pivots
  remove_fourmembered: true # prune four-membered rings
- two_hop_mode: sparse # neighbor traversal strategy
  dmf_options:
  remove_rotation_and_translation: false # keep rigid-body motions
  mass_weighted: false # toggle mass weighting
@@ -287,7 +288,7 @@ opt:
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source
- hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc: 500 # rebuild Hessian every N steps
  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
  alpha0: 1.0 # initial micro step

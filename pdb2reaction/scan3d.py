@@ -12,10 +12,9 @@ For detailed documentation, see: docs/scan3d.md
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import logging
-import math
 import sys
 import textwrap
 import traceback

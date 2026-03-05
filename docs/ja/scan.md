@@ -194,6 +194,9 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `True` |
 
@@ -322,7 +325,7 @@ rfo:
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source
- hessian_recalc: 200 # rebuild Hessian every N steps
+ hessian_recalc: 500 # rebuild Hessian every N steps
  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
  alpha0: 1.0 # initial micro step

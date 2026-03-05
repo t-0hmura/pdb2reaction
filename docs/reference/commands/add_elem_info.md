@@ -1,7 +1,7 @@
 # `pdb2reaction add-elem-info`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction add-elem-info [OPTIONS]
 
@@ -18,7 +18,3 @@ Options:
                                 is omitted.  [default: no-overwrite]
   -h, --help                    Show this message and exit.
 ```
-
----
-
-See also: [add-elem-info workflow](../../add_elem_info.md) | [extract](extract.md)

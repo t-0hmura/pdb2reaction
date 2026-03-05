@@ -153,7 +153,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
 | `--include-H2O, --include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `True` |
+| `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
 | `--add-linkH/--no-add-linkH` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
 | `--freeze-links/--no-freeze-links` | Freeze link parents in pocket PDBs. | `True` |
@@ -178,6 +178,9 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians). | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine. | `FiniteDifference` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 
 ### Post-Processing Options
 

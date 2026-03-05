@@ -7,7 +7,7 @@
 ### At a glance
 - **Input:** A TS structure (ideally already optimized and validated).
 - **Key knobs:** `--step-size` (mass-weighted step length) and `--max-cycles` (number of steps).
-- **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = false` after merge (even if YAML sets them).
+- **Hard overrides:** IRC forces `geom.coord_type = cart` after merge (even if YAML sets it). `calc.return_partial_hessian` defaults to `true` (partial-first) when not explicitly set in YAML.
 
 `pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default). The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
 
@@ -95,6 +95,9 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`calc.hessian_calc_mode`), used unless YAML sets `calc.hessian_calc_mode`. | `FiniteDifference` |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
+| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate and print execution plan without running IRC. | `False` |
 
 ## Outputs
@@ -145,6 +148,7 @@ irc:
  max_cycles: 125 # maximum steps along IRC
  downhill: false # follow downhill direction only
  forward: true # propagate in forward direction
+ backward: true # propagate in backward direction
  root: 0 # normal-mode root index
  hessian_init: calc # Hessian initialization source
  displ: energy # displacement construction method

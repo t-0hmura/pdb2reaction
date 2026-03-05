@@ -22,10 +22,8 @@ extract:
   radius_het2het: 0.0
 
 calc:
-  backend: uma
   workers: 1
   workers_per_node: 1
-  solvent: none
 
 path_search:
   mep_mode: gsm
@@ -63,11 +61,8 @@ dft:
 | `extract.radius_het2het` | `float` | `0.0` |
 | `calc.workers` | `int` | `1` |
 | `calc.workers_per_node` | `int` | `1` |
-| `calc.backend` | `str` | `'uma'` |
-| `calc.solvent` | `str` | `'none'` |
-| `calc.solvent_model` | `str` | `'alpb'` |
 | `path_search.mep_mode` | `str` | `'gsm'` |
-| `path_search.max_nodes` | `int` | `20` |
+| `path_search.max_nodes` | `int` | `10` |
 | `path_search.max_cycles` | `int` | `300` |
 | `scan.max_step_size` | `float` | `0.2` |
 | `scan.bias_k` | `float` | `300.0` |
@@ -78,7 +73,7 @@ dft:
 | `freq.n_frames` | `int` | `20` |
 | `freq.sort` | `str` | `'value'` |
 | `freq.temperature` | `float` | `298.15` |
-| `freq.pressure` | `float` | `1.0` (atm) |
+| `freq.pressure` | `float` | `1.0` |
 | `dft.func_basis` | `str` | `'wb97m-v/def2-tzvpd'` |
 | `dft.max_cycle` | `int` | `100` |
 | `dft.conv_tol` | `float` | `1e-09` |

@@ -1,7 +1,7 @@
 # `pdb2reaction path-opt`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction path-opt [OPTIONS]
 
@@ -31,7 +31,7 @@ Options:
                                   only).  [default: freeze-links]
   --max-nodes INTEGER             Number of internal nodes (string has
                                   max_nodes+2 images including endpoints).
-                                  [default: 10]
+                                  [default: 20]
   --max-cycles INTEGER            Maximum optimization cycles.  [default: 300]
   --climb / --no-climb            Search for a transition state (climbing image)
                                   after path growth.  [default: climb]
@@ -53,8 +53,8 @@ Options:
                                   gau_vtight|baker|never). Defaults to 'gau'
                                   when not provided.
   --thresh-stopt TEXT             Convergence preset for the string optimizer
-                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|
-                                  baker|never).  [default: gau]
+                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|ba
+                                  ker|never).  [default: gau]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -74,13 +74,8 @@ Options:
                                   [default: no-fix-ends]
   --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction
-                                  (e.g. 'water'). 'none' to disable.
-                                  [default: none]
-  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
-
----
-
-See also: [path-opt workflow](../../path_opt.md) | [path-search](path_search.md) | [tsopt](tsopt.md)

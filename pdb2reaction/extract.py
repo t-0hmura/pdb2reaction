@@ -16,7 +16,6 @@ import io as _io
 import logging
 import os
 import re
-import sys
 from typing import Dict, List, Set, Tuple, Iterable, Any, Optional, Sequence
 
 import click

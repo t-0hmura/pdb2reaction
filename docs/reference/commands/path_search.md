@@ -1,7 +1,7 @@
 # `pdb2reaction path-search`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction path-search [OPTIONS]
 
@@ -56,12 +56,12 @@ Options:
   --out-dir TEXT                  Output directory.  [default:
                                   ./result_path_search/]
   --thresh TEXT                   Convergence preset for single-structure
-                                  optimizations only (gau_loose|gau|gau_tight|
-                                  gau_vtight|baker|never). Defaults to 'gau'
-                                  when not provided.
+                                  optimizations only (gau_loose|gau|gau_tight|ga
+                                  u_vtight|baker|never). Defaults to 'gau' when
+                                  not provided.
   --thresh-stopt TEXT             Convergence preset for the string optimizer
-                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|
-                                  baker|never).  [default: gau]
+                                  (stopt) (gau_loose|gau|gau_tight|gau_vtight|ba
+                                  ker|never).  [default: gau]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -90,13 +90,8 @@ Options:
                                   of --input.
   --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction
-                                  (e.g. 'water'). 'none' to disable.
-                                  [default: none]
-  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
-
----
-
-See also: [path-search workflow](../../path_search.md) | [path-opt](path_opt.md) | [all](all.md)

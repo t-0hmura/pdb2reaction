@@ -1,7 +1,7 @@
 # `pdb2reaction freq`
 
 ```text
-pdb2reaction ver. 0.2.1.dev39+gd7f50241d
+pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
 
 Usage: pdb2reaction freq [OPTIONS]
 
@@ -40,7 +40,7 @@ Options:
                                   and .pdb.  [default: 0.8]
   --n-frames INTEGER              Number of frames per mode animation.
                                   [default: 20]
-  --sort [value|abs]              Sort modes by 'value' (cm⁻¹) or by absolute
+  --sort [value|abs]              Sort modes by 'value' (cm^-1) or by absolute
                                   value.  [default: value]
   --out-dir TEXT                  Output directory.  [default: ./result_freq/]
   --config FILE                   Base YAML configuration file applied before
@@ -62,13 +62,8 @@ Options:
                                   'FiniteDifference' (can also be set via YAML).
   --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction
-                                  (e.g. 'water'). 'none' to disable.
-                                  [default: none]
-  --solvent-model [alpb|cpcmx]   xTB solvent model.  [default: alpb]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```
-
----
-
-See also: [freq workflow](../../freq.md) | [opt](opt.md) | [tsopt](tsopt.md)

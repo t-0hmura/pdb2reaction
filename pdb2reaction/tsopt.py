@@ -14,22 +14,16 @@ from __future__ import annotations
 
 import logging
 import sys
-import math
 import textwrap
-import os
-import shutil
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List, Sequence
 
 import click
 import numpy as np
 import torch
-from click.core import ParameterSource
 from ase import Atoms
 from ase.io import write
 import ase.units as units
-import yaml
 import time
 
 # ---------------- pysisyphus / pdb2reaction imports ----------------
@@ -70,7 +64,7 @@ from .utils import (
     strip_inherited_keys,
     cli_param_overridden,
 )
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, link_or_copy_file
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
 from .freq import (
     _torch_device,
     _safe_masses_amu,
@@ -83,8 +77,6 @@ from .freq import (
 )
 
 logger = logging.getLogger(__name__)
-
-_link_or_copy_file = link_or_copy_file  # backward compat alias
 
 
 # ===================================================================
@@ -159,30 +151,6 @@ def _omega2_to_freq_cm(omega2: torch.Tensor) -> float:
     hnu = s_new * torch.sqrt(torch.abs(omega2))
     hnu = torch.where(omega2 < 0, -hnu, hnu)
     return float((hnu / units.invcm).item())
-
-def _self_check_tr_projection(H: torch.Tensor,
-                              coords_bohr_t: torch.Tensor,
-                              masses_au_t: torch.Tensor,
-                              freeze_idx: Optional[List[int]] = None) -> Tuple[float, float, int]:
-    """
-    Lightweight TR-projection diagnostic. Returns zeros for residuals (clone-based
-    checks disabled to conserve VRAM) and the rank estimate of the TR basis used.
-    """
-    with torch.no_grad():
-        N = coords_bohr_t.shape[0]
-        if freeze_idx and len(freeze_idx) > 0:
-            frozen = set(int(i) for i in freeze_idx if 0 <= int(i) < N)
-            active_idx = [i for i in range(N) if i not in frozen]
-            if len(active_idx) == 0:
-                return 0.0, 0.0, 0
-            coords_act = coords_bohr_t[active_idx, :]
-            masses_act = masses_au_t[active_idx]
-            _, r = _tr_orthonormal_basis(coords_act, masses_act)
-            return 0.0, 0.0, r
-        else:
-            _, r = _tr_orthonormal_basis(coords_bohr_t, masses_au_t)
-            return 0.0, 0.0, r
-
 
 def _mode_direction_by_root(H: torch.Tensor,
                             coords_bohr_t: torch.Tensor,
@@ -291,20 +259,6 @@ def _extract_active_block(H_full: torch.Tensor, mask_dof: np.ndarray) -> torch.T
     device = H_full.device
     m = torch.as_tensor(mask_dof, device=device, dtype=torch.bool)
     return H_full[m][:, m].clone()
-
-
-def _embed_active_vector(vec_act: torch.Tensor,
-                         mask_dof: np.ndarray,
-                         total_3N: int) -> torch.Tensor:
-    """
-    Embed a (3N_act,) vector back to full (3N,) with zeros on frozen DOFs.
-    """
-    device = vec_act.device
-    dtype = vec_act.dtype
-    full = torch.zeros(total_3N, device=device, dtype=dtype)
-    m = torch.as_tensor(mask_dof, device=device, dtype=torch.bool)
-    full[m] = vec_act
-    return full
 
 
 def _representative_atoms_for_mode(mode_vec: torch.Tensor, flatten_k: int) -> np.ndarray:
@@ -729,10 +683,10 @@ class HessianDimer:
                  fn: str,
                  out_dir: str = "./result_dimer",
                  thresh_loose: str = "gau_loose",
-                 thresh: str = "gau",
-                 update_interval_hessian: int = 100,
-                 neg_freq_thresh_cm: float = 10.0,
-                 flatten_amp_ang: float = 0.20,
+                 thresh: str = "baker",
+                 update_interval_hessian: int = 500,
+                 neg_freq_thresh_cm: float = 5.0,
+                 flatten_amp_ang: float = 0.10,
                  flatten_max_iter: int = 0,
                  mem: int = 100000,
                  uma_kwargs: Optional[dict] = None,
@@ -745,9 +699,9 @@ class HessianDimer:
                  max_total_cycles: int = 10000,
                  #
                  # Multi-mode flatten control
-                 flatten_sep_cutoff: float = 1.0,
-                 flatten_k: int = 5,
-                 flatten_loop_bofill: bool = True,
+                 flatten_sep_cutoff: float = 0.0,
+                 flatten_k: int = 10,
+                 flatten_loop_bofill: bool = False,
                  #
                  # Propagate geometry kwargs so freeze-links and YAML geometry overrides
                  # also apply in grad mode.
@@ -1553,7 +1507,8 @@ def cli(
         geom_cfg = dict(GEOM_KW)
         calc_cfg = dict(CALC_KW)
         opt_cfg = dict(OPT_BASE_KW_LOCAL)
-        simple_cfg = dict(hessian_dimer_KW)
+        import copy
+        simple_cfg = copy.deepcopy(hessian_dimer_KW)
         # tsopt default: keep flatten loop off unless enabled via config or explicit --flatten.
         simple_cfg["flatten_max_iter"] = 0
         rsirfo_cfg = dict(RSIRFO_KW)
@@ -1642,6 +1597,7 @@ def cli(
         # Pass freeze_atoms from geom → calc (so UMA knows active DOF for FD Hessian)
         if "freeze_atoms" in geom_cfg:
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+        calc_cfg["return_partial_hessian"] = True
 
         kind = normalize_choice(
             opt_mode,
@@ -1720,8 +1676,8 @@ def cli(
                     fn=str(geom_input_path),
                     out_dir=str(out_dir_path),
                     thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
-                    thresh=simple_cfg.get("thresh", "gau"),
-                    update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 200)),
+                    thresh=simple_cfg.get("thresh", "baker"),
+                    update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 500)),
                     neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
                     flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
                     flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
@@ -1733,7 +1689,7 @@ def cli(
                     dimer_kwargs=dict(simple_cfg.get("dimer", {})),
                     lbfgs_kwargs=dict(simple_cfg.get("lbfgs", {})),
                     max_total_cycles=int(opt_cfg["max_cycles"]),
-                    flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
+                    flatten_sep_cutoff=float(simple_cfg.get("flatten_sep_cutoff", 0.0)),
                     flatten_k=int(simple_cfg.get("flatten_k", 10)),
                     flatten_loop_bofill=bool(simple_cfg.get("flatten_loop_bofill", False)),
                     # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
@@ -1840,7 +1796,7 @@ def cli(
                             modes,
                             neg_freq_thresh_cm,
                             float(simple_cfg.get("flatten_amp_ang", 0.10)),
-                            float(simple_cfg.get("flatten_sep_cutoff", 2.0)),
+                            float(simple_cfg.get("flatten_sep_cutoff", 0.0)),
                             int(simple_cfg.get("flatten_k", 10)),
                             main_root,
                         )
