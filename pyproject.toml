@@ -92,6 +92,7 @@ Documentation = "https://t-0hmura.github.io/pdb2reaction/"
 
 [project.scripts]
 pdb2reaction = "pdb2reaction.cli:cli"
+p2r = "pdb2reaction.cli:cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
