@@ -81,7 +81,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
  `scale=2` for sharper output.
 - `--reverse-x` flips both the axis direction and the behavior of `-r init` so
  that the initial frame appears on the right side of the plot.
-- The `--output-peak` option was removed.
+- The `--output-peak` option was removed in v0.3.0. If your scripts rely on it, use the CSV output and filter peaks manually.
 
 ---
 

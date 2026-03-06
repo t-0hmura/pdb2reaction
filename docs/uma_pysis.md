@@ -1,7 +1,7 @@
 # MLIP Calculator
 
 ## Overview
-`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for PySisyphus. The default backend is **UMA** (Meta's Universal Machine-learning interatomic potential for Atomistic simulations), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling device placement and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for PySisyphus. The default backend is **UMA** (Meta's Universal Models for Atoms), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling device placement and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
 
 ## Quick start
 ```python

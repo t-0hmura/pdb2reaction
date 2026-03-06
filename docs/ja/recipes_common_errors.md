@@ -44,7 +44,7 @@
  - 実行環境にオプション依存パッケージ（cyipopt 等）が入っているか。
  - GPU 可視性と PyTorch CUDA 互換性に問題がないか。
 - 典型的な修正手順:
- - 先に環境を修復し、`pdb2reaction --version` や `python -c "import torch; print(torch.cuda.is_available())"` で確認後に本実行。
+ - 先に環境を修復し、`pdb2reaction --version` や `python -c "import torch; print(torch.cuda.is_available())"` で確認後、`--dry-run` で事前チェックしてから本実行。
 
 ## レシピ 4: 収束・後処理で止まる
 

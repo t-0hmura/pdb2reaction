@@ -1,7 +1,7 @@
 # MLIP 計算機
 
 ## 概要
-`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を PySisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Machine-learning interatomic potential for Atomistic simulations）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー/力/ヘシアンを Hartree 単位で返し、デバイス配置・単位変換を内部で処理します。`pdb2reaction` の最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を PySisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー/力/ヘシアンを Hartree 単位で返し、デバイス配置・単位変換を内部で処理します。`pdb2reaction` の最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
 
 ## クイックスタート
 ```python

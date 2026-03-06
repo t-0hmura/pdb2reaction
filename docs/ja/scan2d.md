@@ -26,9 +26,10 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan
 - `result_scan2d/scan2d_map.png` と `result_scan2d/scan2d_landscape.html`
 
 ## よくある例
-1. YAML spec から実行する。
-2. `--scan-lists` を使う。
-3. `--dump` を有効にして d1 ごとの内側軌跡を保存する。
+
+1. **YAML spec から実行する** — 下記の[例](#例)を参照。
+2. **`--scan-lists` を使う** — 下記の[例](#例)を参照。
+3. **`--dump` を有効にして d1 ごとの内側軌跡を保存する** — 下記の[例](#例)を参照。
 
 > **Note:** `--spec` / `--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 

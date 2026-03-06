@@ -99,7 +99,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | `--opt-mode TEXT` | HEI±1/kinkノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO） | `grad` |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）またはDMF（direct flux） | `gsm` |
-| `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
+| `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小点へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
@@ -119,7 +119,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 ## ワークフロー
 
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギーイメージ（HEI）を取得。
-2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
+2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
 3. **kink vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *キンク*（kink: 共有結合変化を伴わない構造変化区間）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **反応セグメント**（共有結合変化を伴う区間に対して GSM/DMF で精密化するセグメント）を起動。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジセグメント（隣接するサブパス間の RMSD ギャップを埋めるために挿入される補間 MEP）を挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
@@ -186,7 +186,7 @@ calc:
 gs:
  fix_first: true # keep the first endpoint fixed during optimization
  fix_last: true # keep the last endpoint fixed during optimization
- max_nodes: 10 # maximum string nodes
+ max_nodes: 20 # maximum string nodes
  perp_thresh: 0.005 # perpendicular displacement threshold
  reparam_check: rms # reparametrization check metric
  reparam_every: 1 # reparametrization stride

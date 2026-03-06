@@ -10,7 +10,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-You can also run **MEP search (Minimum Energy Path) → TS optimization (Transition State) → IRC (Intrinsic Reaction Coordinate) → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
+You can also run **Minimum Energy Path (MEP) search → Transition State (TS) optimization → Intrinsic Reaction Coordinate (IRC) → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
@@ -199,7 +199,7 @@ Behavior:
 - performs **transition-state optimization** on the cluster model,
 - runs an **IRC** in both directions and optimizes the endpoints to obtain R and P minima,
 - can then run vibrational analysis (`freq`) and single-point DFT (`dft`) on the R/TS/P structures,
-- produces UMA, Gibbs, and DFT//UMA energy diagrams.
+- produces UMA, Gibbs, and DFT//UMA (DFT single-point energies at UMA-optimized geometries) energy diagrams.
 
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
 

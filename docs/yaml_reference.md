@@ -184,7 +184,7 @@ Growing String Method settings.
 gs:
  fix_first: true # Keep first endpoint fixed
  fix_last: true # Keep last endpoint fixed
- max_nodes: 10 # Maximum string nodes (internal images)
+ max_nodes: 20 # Maximum string nodes (internal images)
  perp_thresh: 0.005 # Perpendicular displacement threshold
  reparam_check: rms # Reparameterization check metric
  reparam_every: 1 # Reparameterization stride
@@ -501,9 +501,9 @@ stopt:
 
 opt:
  thresh: gau
- lbfgs:
+ lbfgs:                     # also accepted at top-level as `lbfgs:`
  max_cycles: 10000
- rfo:
+ rfo:                       # also accepted at top-level as `rfo:`
  max_cycles: 10000
 
 bond:

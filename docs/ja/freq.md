@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズエネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
+> **要約:** MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
 
 ### 要点
 - **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。
@@ -118,7 +118,7 @@ out_dir/ (デフォルト:./result_freq/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
-- `--hessian-calc-mode` は **デフォルト < config < 明示CLI < override** の優先順位で解決されます。YAML で `calc.hessian_calc_mode` が指定されている場合、最終 override レイヤーが優先されます。
+- `--hessian-calc-mode` は **デフォルト < config < 明示CLI < override** の優先順位で解決されます。CLI で明示的に指定した値が最優先です。
 
 
 マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
@@ -162,4 +162,4 @@ thermo:
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
 - [all](all.md) — `--thermo` を含むend-to-endワークフロー
 - [YAML リファレンス](yaml_reference.md) — `freq` と `thermo` の設定オプション一覧
-- [用語集](glossary.md) — ZPE、ギブズエネルギー、エンタルピー、エントロピーの定義
+- [用語集](glossary.md) — ZPE、ギブズ自由エネルギー、エンタルピー、エントロピーの定義

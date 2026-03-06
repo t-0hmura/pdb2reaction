@@ -25,7 +25,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
 
 ## ワークフロー
-1. `Bio.PDB.PDBParser` で入力を解析し、`extract.py` で使用される残基定義（`AMINO_ACIDS`、`WATER_RES`、`ION`）と照合する。
+1. `Bio.PDB.PDBParser` で入力を解析し、`extract.py` で使用される残基定義（`AMINO_ACIDS`、`WATER_RES`、`ION`）と同じ定義を使用して分類する。
 2. 各原子について、原子名・残基名・HETATMフラグを組み合わせて元素を推定:
  - `ION` 辞書に登録された単原子イオン残基は対応する元素を使用
  - タンパク質/核酸/水はH/DやSeの特例を扱い、C/N/O/P/Sは先頭文字で判定（炭素側鎖ラベルはC）

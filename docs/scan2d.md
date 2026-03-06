@@ -26,9 +26,10 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan
 - `result_scan2d/scan2d_map.png` and `result_scan2d/scan2d_landscape.html`
 
 ## Common examples
-1. Run from a YAML spec.
-2. Run with a `--scan-lists` literal.
-3. Enable `--dump` to store inner trajectories by d1 step.
+
+1. **Run from a YAML spec** — see [Examples](#examples) below.
+2. **Run with a `--scan-lists` literal** — see [Examples](#examples) below.
+3. **Enable `--dump`** to store inner trajectories by d1 step — see [Examples](#examples) below.
 
 > **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--spec` / `--scan-lists`.
 

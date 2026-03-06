@@ -79,7 +79,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 ## ワークフロー
 
 0. **事前チェック**（自動）
- - `all` は全 PDB 入力に対し、他の処理の前に `add-elem-info`（PDB 列 77–78 の元素記号を補完）と `fix-altloc`（交互配座の解消）を自動実行します。個別のサブコマンド（`extract`、`opt` など）を使用する場合は、必要に応じてこれらを手動で実行してください。
+ - `all` は全 PDB 入力に対し、他の処理の前に `add-elem-info`（PDB 列 77–78 の元素記号を補完）と `fix-altloc`（代替配座の解消）を自動実行します。個別のサブコマンド（`extract`、`opt` など）を使用する場合は、必要に応じてこれらを手動で実行してください。
 
 1. **活性部位ポケット抽出**（`-c/--center` が指定された場合）
  - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,SAM`）で指定可能
@@ -100,11 +100,11 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 4. **ポケットを全系にマージ**
  - 参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref*.pdb` とセグメントごとの `mep_w_ref_seg_XX.pdb` が `<out-dir>/path_search/` に出力される
 
-5. **オプションのセグメントごとの後処理**
+5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
  - `--tsopt`: 各 HEI ポケットで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡してセグメントエネルギーダイアグラムを出力
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//UMA Gibbs ダイアグラムも生成
-- 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
+  - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
  - ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）

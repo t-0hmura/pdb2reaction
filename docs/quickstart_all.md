@@ -4,6 +4,12 @@
 
 Run the end-to-end workflow once from two full PDB structures.
 
+## Prerequisites
+
+- pdb2reaction installed (see [Installation](installation.md))
+- Two PDB files (reactant R and product P) with **hydrogen atoms** already added
+- The same atoms in the same order across all input PDB files
+
 ## Minimal command
 
 ```bash

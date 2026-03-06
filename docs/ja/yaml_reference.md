@@ -185,7 +185,7 @@ Growing String Method（GSM）の設定。
 gs:
  fix_first: true # Keep first endpoint fixed
  fix_last: true # Keep last endpoint fixed
- max_nodes: 10 # Maximum string nodes (internal images)
+ max_nodes: 20 # Maximum string nodes (internal images)
  perp_thresh: 0.005 # Perpendicular displacement threshold
  reparam_check: rms # Reparametrization check metric
  reparam_every: 1 # Reparametrization stride
@@ -502,9 +502,9 @@ stopt:
 
 opt:
  thresh: gau
- lbfgs:
+ lbfgs:                     # トップレベルの `lbfgs:` としても記述可
  max_cycles: 10000
- rfo:
+ rfo:                       # トップレベルの `rfo:` としても記述可
  max_cycles: 10000
 
 bond:

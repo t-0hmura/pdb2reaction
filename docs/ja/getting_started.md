@@ -10,7 +10,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-さらに `--tsopt --thermo --dft` を追加すると、**MEP 探索（最小エネルギー経路: Minimum Energy Path） → TS 最適化（遷移状態: Transition State） → IRC（固有反応座標: Intrinsic Reaction Coordinate） → 熱化学解析 → DFT 一点計算** までまとめて実行できます。
+さらに `--tsopt --thermo --dft` を追加すると、**最小エネルギー経路（MEP: Minimum Energy Path）探索 → 遷移状態（TS: Transition State）最適化 → 固有反応座標（IRC: Intrinsic Reaction Coordinate） → 振動解析・熱化学 → DFT 一点計算** までまとめて実行できます。
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
@@ -199,7 +199,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 - TS 最適化で**クラスターモデル上の TS** を収束させます。
 - 両方向で **IRC** を実行し、両端点を最適化して R および P 極小に緩和します。
 - R/TS/P に対して `freq` と `dft` を実行できます。
-- UMA、Gibbs、DFT//UMA エネルギーダイアグラムを生成します。
+- UMA、Gibbs、DFT//UMA（UMA 最適化構造での DFT 一点エネルギー）エネルギーダイアグラムを生成します。
 
 `energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にもコピーされます。
 

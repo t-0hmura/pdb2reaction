@@ -182,7 +182,7 @@ calc:
 gs:
  fix_first: true # keep the first endpoint fixed during optimization
  fix_last: true # keep the last endpoint fixed during optimization
- max_nodes: 10 # maximum string nodes
+ max_nodes: 20 # maximum string nodes
  perp_thresh: 0.005 # perpendicular displacement threshold
  reparam_check: rms # reparametrization check metric
  reparam_every: 1 # reparametrization stride

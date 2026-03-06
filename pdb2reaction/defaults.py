@@ -320,7 +320,7 @@ DMF_KW: Dict[str, Any] = {
 GS_KW: Dict[str, Any] = {
     "fix_first": True,
     "fix_last": True,
-    "max_nodes": 10,
+    "max_nodes": 20,
     "perp_thresh": 5e-3,
     "reparam_check": "rms",
     "reparam_every": 1,

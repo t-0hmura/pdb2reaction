@@ -10,6 +10,7 @@
 | `scan` |
 | `tsopt` |
 | `freq` |
+| `thermo` |
 | `dft` |
 
 ## Starter Template
@@ -27,7 +28,7 @@ calc:
 
 path_search:
   mep_mode: gsm
-  max_nodes: 10
+  max_nodes: 20
   max_cycles: 300
 
 scan:
@@ -43,8 +44,10 @@ freq:
   amplitude_ang: 0.8
   n_frames: 20
   sort: value
+
+thermo:
   temperature: 298.15
-  pressure: 1.0
+  pressure_atm: 1.0
 
 dft:
   func_basis: wb97m-v/def2-tzvpd
@@ -62,7 +65,7 @@ dft:
 | `calc.workers` | `int` | `1` |
 | `calc.workers_per_node` | `int` | `1` |
 | `path_search.mep_mode` | `str` | `'gsm'` |
-| `path_search.max_nodes` | `int` | `10` |
+| `path_search.max_nodes` | `int` | `20` |
 | `path_search.max_cycles` | `int` | `300` |
 | `scan.max_step_size` | `float` | `0.2` |
 | `scan.bias_k` | `float` | `300.0` |
@@ -72,8 +75,8 @@ dft:
 | `freq.amplitude_ang` | `float` | `0.8` |
 | `freq.n_frames` | `int` | `20` |
 | `freq.sort` | `str` | `'value'` |
-| `freq.temperature` | `float` | `298.15` |
-| `freq.pressure` | `float` | `1.0` |
+| `thermo.temperature` | `float` | `298.15` |
+| `thermo.pressure_atm` | `float` | `1.0` |
 | `dft.func_basis` | `str` | `'wb97m-v/def2-tzvpd'` |
 | `dft.max_cycle` | `int` | `100` |
 | `dft.conv_tol` | `float` | `1e-09` |

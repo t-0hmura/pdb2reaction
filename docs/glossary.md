@@ -20,6 +20,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Reactive segment** | — | A segment in which covalent bond changes are detected between the endpoints. Only reactive segments proceed to TS optimization. |
 | **Bridge segment** | — | A segment connecting two non-adjacent intermediates that still contains unresolved bond changes; `path-search` recursively subdivides bridge segments until all reactive regions are isolated. |
 | **Kink** | — | A region along an MEP where no covalent bond change is detected but a geometric distortion persists. `path-search` inserts linearly interpolated nodes and optimizes them individually rather than running a full string calculation. |
+| **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. The MEP is the lowest-energy pathway on the PES. |
 
 ---
 
@@ -42,7 +43,11 @@ This page provides definitions for abbreviations and technical terms used throug
 | Term | Full Name | Description |
 |------|-----------|-------------|
 | **MLIP** | Machine Learning Interatomic Potential | A model (often neural-network-based) that predicts energies and forces from atomic structures, trained on quantum-mechanical data. |
-| **UMA** | Universal Machine-learning potential for Atoms | Meta's family of pretrained MLIPs used as the default calculator backend in pdb2reaction. |
+| **UMA** | Universal Models for Atoms | Meta's family of pretrained MLIPs used as the default calculator backend in pdb2reaction. |
+| **ORB** | ORB Models | Orbital Materials' MLIP backend. Selected with `--backend orb`. |
+| **MACE** | MACE | Equivariant message-passing MLIP. Selected with `--backend mace`. |
+| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2. Selected with `--backend aimnet2`. |
+| **xTB** | Extended Tight Binding | A semi-empirical quantum chemistry method. In pdb2reaction, used for implicit solvation correction via `--solvent`. |
 | **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. |
 | **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. |
 
@@ -82,6 +87,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Gibbs Energy** | Gibbs Free Energy (G) | G = H − TS; includes thermal and entropic contributions. |
 | **Enthalpy** | (H) | H = E + PV; total heat content at constant pressure. |
 | **Entropy** | (S) | A measure of disorder; contributes −TS to Gibbs energy. |
+| **QRRHO** | Quasi-Rigid-Rotor Harmonic Oscillator | A thermochemical approximation incorporating Grimme's correction for low-frequency vibrations. Automatically applied in `freq`. |
 
 ---
 
@@ -96,6 +102,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
 | **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
 | **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
+| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. |
 
 ---
 

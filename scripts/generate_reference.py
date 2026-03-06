@@ -37,7 +37,7 @@ calc:
 
 path_search:
   mep_mode: gsm
-  max_nodes: 10
+  max_nodes: 20
   max_cycles: 300
 
 scan:

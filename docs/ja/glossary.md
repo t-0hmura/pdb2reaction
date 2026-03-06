@@ -20,6 +20,7 @@
 | **反応セグメント** | Reactive Segment | 端点間で共有結合の変化が検出されるセグメント。反応セグメントのみが TS 最適化に進みます。 |
 | **ブリッジセグメント** | Bridge Segment | 非隣接の中間体を結び、未解決の結合変化を含むセグメント。`path-search` がすべての反応領域を分離するまで再帰的に分割します。 |
 | **キンク** | Kink | MEP 上で共有結合の変化は検出されないが幾何的な歪みが残る領域。`path-search` は線形補間ノードを挿入し、完全なストリング計算の代わりに個別に最適化します。 |
+| **PES** | Potential Energy Surface（ポテンシャルエネルギー面） | 原子配置に対するエネルギーの超曲面。MEP は PES 上の最低エネルギー経路。 |
 
 ---
 
@@ -42,7 +43,11 @@
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
 | **MLIP** | Machine Learning Interatomic Potential | 量子化学データから学習し、構造からエネルギー・力を予測する（多くはニューラルネットの）原子間ポテンシャル。 |
-| **UMA** | Universal Machine-learning potential for Atoms | Meta が公開している事前学習 MLIP 群。pdb2reaction のデフォルト計算バックエンドです。 |
+| **UMA** | Universal Models for Atoms | Meta が公開している事前学習 MLIP 群。pdb2reaction のデフォルト計算バックエンドです。 |
+| **ORB** | ORB Models | Orbital Materials の MLIP バックエンド。`--backend orb` で選択。 |
+| **MACE** | MACE | Equivariant message-passing MLIP。`--backend mace` で選択。 |
+| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2。`--backend aimnet2` で選択。 |
+| **xTB** | Extended Tight Binding | 半経験的量子化学手法。pdb2reaction では `--solvent` による暗黙溶媒補正に使用。 |
 | **解析ヘシアン** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択。 |
 | **有限差分** | Finite Difference | 微小変位による微分近似。低速だがメモリ効率が良い。`--hessian-calc-mode FiniteDifference`（デフォルト）で選択。 |
 
@@ -79,9 +84,10 @@
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
 | **ZPE** | Zero-Point Energy（零点エネルギー） | 0 K での振動エネルギー。電子エネルギーへの量子補正。 |
-| **ギブズエネルギー** | Gibbs Free Energy (G) | G = H - TS。熱・エントロピー寄与を含む自由エネルギー。 |
+| **ギブズ自由エネルギー** | Gibbs Free Energy (G) | G = H - TS。熱・エントロピー寄与を含む自由エネルギー。 |
 | **エンタルピー** | (H) | H = E + PV。定圧での全熱含量。 |
-| **エントロピー** | (S) | 無秩序さの尺度。ギブズエネルギーに −TS として寄与。 |
+| **エントロピー** | (S) | 無秩序さの尺度。ギブズ自由エネルギーに −TS として寄与。 |
+| **QRRHO** | Quasi-Rigid-Rotor Harmonic Oscillator | Grimme の低振動数補正を含む熱化学近似。`freq` で自動適用。 |
 
 ---
 
@@ -96,6 +102,7 @@
 | **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å。 |
 | **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の標準単位。 |
 | **cm⁻¹** | 波数（逆センチメートル）。振動数の標準単位。虚振動数は負の値で表されます。 |
+| **虚振動数** | ヘシアン行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告されます。 |
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS-I-RFO（Restricted-Step Image Rational Function Optimization）（`--opt-mode hess`、デフォルト）で最適化します。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
+> **要約:** 遷移状態（TS）*候補*を、Dimer（`--opt-mode grad`）または RS-I-RFO（Restricted-Step Image Rational Function Optimization）（`--opt-mode hess`、デフォルト）で最適化します。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS（一次鞍点）では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
 
 ### 要点
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。

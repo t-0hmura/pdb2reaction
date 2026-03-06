@@ -31,7 +31,7 @@ Full system(s) (PDB/XYZ/GJF)
 Each stage is available as an individual subcommand. The `pdb2reaction all` command runs many stages end-to-end.
 
 ```{important}
-Transition states (first-order saddle points): treat HEI / `tsopt` outputs as **TS candidates** until validated via `irc` (endpoints reach intended minima). `tsopt` already performs a final imaginary-frequency check internally — look for exactly one imaginary frequency (|ν| ≥ 100 cm⁻¹) in its output. If multiple imaginary frequencies remain, consider applying `--flatten`.
+Transition states (first-order saddle points): treat the Highest-Energy Image (HEI) / `tsopt` outputs as **TS candidates** until validated via `irc` (endpoints reach intended minima). `tsopt` already performs a final imaginary-frequency check internally — look for exactly one imaginary frequency (|ν| ≥ 100 cm⁻¹) in its output. If multiple imaginary frequencies remain, consider applying `--flatten`.
 ```
 
 ### MLIP backends
