@@ -134,22 +134,22 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' -r 6.0
 
 # 2. Optimize geometry
-pdb2reaction opt -i pocket.pdb
+pdb2reaction opt -i pocket.pdb --ligand-charge 'SAM:1,GPP:-3'
 
 # 3. MEP search
-pdb2reaction path-search -i R.pdb P.pdb
+pdb2reaction path-search -i R.pdb P.pdb --ligand-charge 'SAM:1,GPP:-3'
 
 # 4. TS optimization
-pdb2reaction tsopt -i hei.pdb
+pdb2reaction tsopt -i hei.pdb --ligand-charge 'SAM:1,GPP:-3'
 
 # 5. Frequency analysis
-pdb2reaction freq -i ts_optimized.pdb
+pdb2reaction freq -i ts_optimized.pdb --ligand-charge 'SAM:1,GPP:-3'
 
 # 6. IRC
-pdb2reaction irc -i ts_optimized.pdb
+pdb2reaction irc -i ts_optimized.pdb --ligand-charge 'SAM:1,GPP:-3'
 
 # 7. DFT single-point
-pdb2reaction dft -i optimized.pdb
+pdb2reaction dft -i optimized.pdb --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
