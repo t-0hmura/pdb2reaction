@@ -19,7 +19,8 @@ jobs:
       - name: Install minimal dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install click pyyaml
+          pip install click pyyaml scipy numpy
+          pip install -e . --no-deps
 
       - name: Run docs quality suite
         timeout-minutes: 20

@@ -1,7 +1,6 @@
 # `pdb2reaction energy-diagram`
 
 ```text
-pdb2reaction ver. 0.2.1.dev79+g9886ed690.d20260306
 
 Usage: pdb2reaction energy-diagram [OPTIONS]
 

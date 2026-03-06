@@ -115,7 +115,10 @@ def _capture_help(command_name: str, *, advanced: bool) -> str:
             f"Failed to collect help for '{TOOL_NAME} {command_name}' "
             f"(advanced={advanced}):\n{result.output}"
         )
-    return result.output.rstrip() + "\n"
+    # Strip version banner so docs stay stable across builds.
+    lines = result.output.splitlines(keepends=True)
+    lines = [ln for ln in lines if not ln.startswith(f"{TOOL_NAME} ver. ")]
+    return "".join(lines).rstrip() + "\n"
 
 
 def _render_command_page(command_name: str, help_text: str) -> str:

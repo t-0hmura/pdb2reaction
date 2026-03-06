@@ -1,7 +1,6 @@
 # `pdb2reaction trj2fig`
 
 ```text
-pdb2reaction ver. 0.2.1.dev79+g9886ed690.d20260306
 
 Usage: pdb2reaction trj2fig [OPTIONS] [EXTRA_OUTS]...
 
