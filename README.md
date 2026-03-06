@@ -45,10 +45,6 @@ using machine-learning interatomic potentials (MLIPs).
 > ```
 > This means UMA will no longer be available in that environment. We recommend using a **separate conda environment** for MACE.
 
-> **Expectation setting for TS search**
-> - Treat single-command outputs as a strong initial guess, not guaranteed final TS validation.
-> - Always validate TS candidates with frequency analysis and IRC before mechanistic interpretation.
-
 > **Important (prerequisites):**
 > - Input PDB files must already contain **hydrogen atoms**.
 > - When providing multiple PDBs, they must contain **the same atoms in the same order** (only coordinates may differ).
@@ -229,27 +225,6 @@ python -m pdb2reaction --help
 `scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
 
 > If you encounter any issues, please open an issue at <https://github.com/t-0hmura/pdb2reaction/issues>.
-
----
-
-## Docs / Smoke Checks
-
-To keep docs and CLI behavior in sync:
-
-```bash
-python scripts/check_intro_template.py
-python scripts/check_all_scan_contract.py
-python scripts/check_markdown_links.py
-python scripts/smoke_docs_commands.py
-```
-
-To verify trajectory dump behavior across `opt` / `tsopt` routes:
-
-```bash
-# Optional: override per-case timeout in seconds (default: 120)
-export PDB2REACTION_DUMP_CASE_TIMEOUT_SEC=180
-python scripts/smoke_dump_trajectories.py
-```
 
 ---
 
