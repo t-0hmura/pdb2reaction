@@ -1,7 +1,8 @@
 # `pdb2reaction all`
 
 ```text
-pdb2reaction ver. 0.2.1.dev62+g359decf9f.d20260305
+Warp DeprecationWarning: The symbol `warp.vec` will soon be removed from the public API. Use `warp.types.vector` instead.
+pdb2reaction ver. 0.2.1.dev79+g9886ed690.d20260306
 
 Usage: pdb2reaction all [OPTIONS]
 

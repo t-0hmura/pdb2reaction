@@ -23,6 +23,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml numpy biopython pytest pytest-cov
+          pip install -e . --no-deps
 
       - name: Run unit tests (CPU-only, no GPU)
         timeout-minutes: 10
