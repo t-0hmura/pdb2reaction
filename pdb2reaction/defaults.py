@@ -278,24 +278,6 @@ OPT_MODE_ALIASES = (
 )
 
 # -----------------------------------------------
-# Scan-specific defaults
-# -----------------------------------------------
-
-SCAN_OPT_BASE_KW: Dict[str, Any] = {
-    **OPT_BASE_KW,
-    "dump": False,
-    "max_cycles": 10000,
-}
-
-SCAN_LBFGS_KW: Dict[str, Any] = {
-    **LBFGS_KW,
-}
-
-SCAN_RFO_KW: Dict[str, Any] = {
-    **RFO_KW,
-}
-
-# -----------------------------------------------
 # DMF (Direct Max Flux + (C)FB-ENM) defaults
 # -----------------------------------------------
 

@@ -1553,7 +1553,11 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "when extraction is skipped) and use stage results as inputs for path_search; "
         "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode."
     ),
-    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    },
 )
 @click.option(
     "--help-advanced",
@@ -2148,6 +2152,9 @@ def cli(
     signal.signal(signal.SIGINT, _sigint_handler)
 
     _echo_state.reset()
+    global _FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML
+    _FREEZE_ATOMS_GLOBAL = None
+    _FREEZE_ATOMS_YAML = None
     set_convert_file_enabled(convert_files)
     command_str = " ".join(sys.argv)
     time_start = time.perf_counter()

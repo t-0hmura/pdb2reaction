@@ -1548,7 +1548,11 @@ def _merge_final_and_write(final_images: List[Any],
 
 @click.command(
     help="Multistep MEP search via recursive GSM/DMF segmentation.",
-    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    },
 )
 @click.option(
     "-i", "--input",

@@ -160,7 +160,11 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 
 @click.command(
     help="Bond-length driven scan with staged harmonic restraints and relaxation.",
-    context_settings={"help_option_names": ["-h", "--help"], "allow_extra_args": True},
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    },
 )
 @click.option(
     "-i", "--input",
@@ -533,7 +537,7 @@ def cli(
                 }
                 stages_summary.append(srec)
 
-                trj_blocks: List[str] = [] if dump else None
+                trj_blocks: Optional[List[str]] = [] if dump else None
 
                 pairs = [(i, j) for (i, j, _) in tuples]
 
