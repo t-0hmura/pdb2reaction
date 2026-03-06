@@ -743,7 +743,7 @@ class HessianDimer:
         self._cycles_spent = 0
 
         # UMA settings
-        self.uma_kwargs = dict(charge=0, spin=1, model="uma-s-1p1",
+        self.uma_kwargs = dict(charge=0, spin=1, model="uma-s-1p2",
                                task_name="omol", device="auto") if uma_kwargs is None else dict(uma_kwargs)
 
         # Geometry & masses (use provided geom kwargs so freeze_atoms etc. apply)

@@ -9,7 +9,7 @@ import numpy as np
 from pdb2reaction.uma_pysis import uma_pysis
 
 # Example: a neutral singlet diatomic on GPU when available
-calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
+calc = uma_pysis(charge=0, spin=1, model="uma-s-1p2", device="auto")
 
 # uma_pysis expects coordinates in Bohr (shape: [n_atoms, 3])
 coords_bohr = np.array([
@@ -217,7 +217,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge. | `0` |
 | `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | UMA pretrained model name. | `"uma-s-1p1"` |
+| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-s-1p2`, `uma-m-1p1`). | `"uma-s-1p2"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |

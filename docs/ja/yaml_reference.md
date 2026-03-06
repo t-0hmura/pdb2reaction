@@ -54,7 +54,7 @@ calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
- model: uma-s-1p1 # UMA pretrained model name
+ model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction
@@ -484,7 +484,7 @@ calc:
  backend: uma
  charge: 0
  spin: 1
- model: uma-s-1p1
+ model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
  device: auto
  hessian_calc_mode: Analytical # Recommended when VRAM permits
  solvent: none                 # Set to e.g. "water" for implicit solvent

@@ -135,7 +135,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "backend": "uma",
     "charge": 0,
     "spin": 1,
-    "model": "uma-s-1p1",
+    "model": "uma-s-1p2",
     "task_name": "omol",
     "device": "auto",
     "max_neigh": None,

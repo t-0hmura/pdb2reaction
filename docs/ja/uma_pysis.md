@@ -9,7 +9,7 @@ import numpy as np
 from pdb2reaction.uma_pysis import uma_pysis
 
 # 例: 中性一重項の2原子系（GPUが利用可能ならGPU、なければCPU）
-calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
+calc = uma_pysis(charge=0, spin=1, model="uma-s-1p2", device="auto")
 
 # uma_pysis には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
 coords_bohr = np.array([
@@ -217,7 +217,7 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `backend` | MLIP バックエンドエンジン | `"uma"` |
 | `charge` | 総電荷 | `0` |
 | `spin` | スピン多重度（2S+1） | `1` |
-| `model` | UMAプリトレイン済みモデル名 | `"uma-s-1p1"` |
+| `model` | UMAモデル名 (`uma-s-1p1`, `uma-s-1p2`, `uma-m-1p1`) | `"uma-s-1p2"` |
 | `task_name` | UMAバッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
 | `workers` / `workers_per_node` | 並列UMA予測器（`workers>1` で解析ヘシアン無効） | `1` / `1` |

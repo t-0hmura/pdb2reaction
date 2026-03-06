@@ -57,7 +57,7 @@ class UMAcore:
         *,
         charge: int = 0,
         spin: int = 1,
-        model: str = "uma-s-1p1",
+        model: str = "uma-s-1p2",
         task_name: str = "omol",
         device: str = "auto",
         workers: int = 1,
@@ -209,7 +209,7 @@ class UMACalculator(MLIPCalculator):
     def __init__(
         self,
         *,
-        model: str = "uma-s-1p1",
+        model: str = "uma-s-1p2",
         task_name: str = "omol",
         workers: int = 1,
         workers_per_node: int = 1,
@@ -503,7 +503,7 @@ class UMAASECalculator(FAIRChemCalculator):
     def __init__(
         self,
         *,
-        model: str = "uma-s-1p1",
+        model: str = "uma-s-1p2",
         device: str = "auto",
         task_name: str = "omol",
         workers: int = 1,

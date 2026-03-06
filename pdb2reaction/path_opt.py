@@ -150,7 +150,7 @@ def _run_dmf_mep(
 
     calc_uma = create_ase_calculator(
         backend=calc_cfg.get("backend", "uma"),
-        model=str(calc_cfg.get("model", "uma-s-1p1")),
+        model=str(calc_cfg.get("model", "uma-s-1p2")),
         device=str(calc_cfg.get("device", "auto")),
         task_name=str(calc_cfg.get("task_name", "omol")),
         workers=int(calc_cfg.get("workers", 1)),

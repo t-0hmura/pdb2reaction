@@ -8,7 +8,7 @@ Usage::
     from pdb2reaction.backends import create_calculator, create_ase_calculator
 
     calc = create_calculator(backend="uma", charge=0, spin=1, ...)
-    ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", ...)
+    ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", ...)
 """
 
 from __future__ import annotations

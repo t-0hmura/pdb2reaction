@@ -318,7 +318,7 @@ The effective YAML is forwarded to **every** invoked subcommand. Each tool reads
 **Minimal example:**
 ```yaml
 calc:
- model: uma-s-1p1
+ model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
  hessian_calc_mode: Analytical # recommended when VRAM permits
 gs:
  max_nodes: 12
