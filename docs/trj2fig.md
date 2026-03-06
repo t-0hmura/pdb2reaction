@@ -8,7 +8,7 @@ exports the resulting series as static/interactive figures and CSV tables. The
 reference can be the first frame (`init`), the last frame when `--reverse-x` is
 used, or any explicit index. When you supply `-q/--charge` and/or
 `-m/--multiplicity`, all energies are recomputed for every frame with the
-`uma_pysis` calculator using the provided charge/spin instead of the comment
+MLIP backend (default UMA; see `--backend`) using the provided charge/spin instead of the comment
 lines.
 
 ## Usage
@@ -35,7 +35,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 1. Parse the XYZ trajectory. By default, read the first floating-point number
  found in every frame comment (scientific notation such as `1.5e-3` is supported). If
  `-q/-m` is present, recompute energies (in hartree) for each frame with
- `uma_pysis` using those charge/spin values instead of the comment.
+ the MLIP backend using those charge/spin values instead of the comment.
  If no energies are found or produced, the run aborts.
 2. Normalize the reference specification:
  - `init` → frame `0` (or the last frame when `--reverse-x` is active).
@@ -56,8 +56,8 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | _extra arguments_ | Positional filenames listed after options; merged with the `-o` list. | _None_ |
 | `--unit {kcal,hartree}` | Target unit for the plotted/exported values. | `kcal` |
 | `-r, --reference TEXT` | Reference specification (`init`, `None`, or 0-based integer). | `init` |
-| `-q, --charge INT` | Total charge; triggers energy recomputation with `uma_pysis` when provided. | _None_ |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation with `uma_pysis` when provided. | _None_ |
+| `-q, --charge INT` | Total charge; triggers energy recomputation when provided. | _None_ |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation when provided. | _None_ |
 | `--reverse-x/--no-reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 | `--backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |

@@ -274,6 +274,7 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `dft` | Single-point DFT | [dft](dft.md) |
 | `trj2fig` | Plot energy profiles | [trj2fig](trj2fig.md) |
 | `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy_diagram.md) |
+| `fix-altloc` | Resolve PDB alternate-location indicators | [fix_altloc](fix_altloc.md) |
 | `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
 
 ```{tip}

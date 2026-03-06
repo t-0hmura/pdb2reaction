@@ -111,7 +111,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `--preopt/--no-preopt` | Pre-optimize each endpoint before MEP search (recommended). | `True` |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
-| `--ref-pdb PATH...` | Pocket reference PDBs to use when inputs are XYZ/GJF (one per input; keeps XYZ coordinates). | _None_ |
+| `--ref-pdb PATH...` | Pocket reference PDBs used for the final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
 
 ## Workflow
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).

@@ -51,10 +51,11 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
  [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [--workers N] [--workers-per-node N] \
  [--freeze-links/--no-freeze-links] \
- [--max-write N] [--amplitude-ang Å] [--n-frames N] \
- [--show-config] [--dry-run] \
- [--temperature K] [--pressure atm] [--dump/--no-dump] \
+ [--max-write N] [--amplitude-ang Å] [--n-frames N] [--sort value|abs] \
+ [--out-dir DIR] [--config FILE] [--show-config] [--dry-run] \
+ [--temperature K] [--pressure FLOAT] [--dump/--no-dump] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```

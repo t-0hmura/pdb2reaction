@@ -60,6 +60,7 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
  [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+ [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
 ### Examples

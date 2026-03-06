@@ -52,12 +52,13 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 150 \
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] \
  [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--workers N] [--workers-per-node N] [-m 2S+1]
- [--max-cycles N] [--step-size Δs] [--root k]
- [--freeze-links/--no-freeze-links]
- [--out-dir DIR]
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
- [--hessian-calc-mode Analytical|FiniteDifference]
+ [--workers N] [--workers-per-node N] [-m 2S+1] \
+ [--max-cycles N] [--step-size Δs] [--root k] \
+ [--forward/--no-forward] [--backward/--no-backward] \
+ [--freeze-links/--no-freeze-links] \
+ [--out-dir DIR] [--config FILE] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE] \
+ [--hessian-calc-mode Analytical|FiniteDifference] \
  [--show-config] [--dry-run]
 ```
 
@@ -106,6 +107,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 out_dir/ (default:./result_irc/)
 ├─ <prefix>finished_irc_trj.xyz # Complete IRC trajectory
 ├─ <prefix>forward_irc_trj.xyz # Present when the forward branch runs
+├─ <prefix>backward_irc_trj.xyz # Present when the backward branch runs
 └─ *.pdb # Trajectory companions when a reference PDB is available (conversion enabled)
 ```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.

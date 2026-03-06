@@ -72,7 +72,7 @@ pdb2reaction opt -i input.pdb -q 0 --backend orb --solvent water --solvent-model
 `hessian_calc_mode="Analytical"` で2階自動微分、`"FiniteDifference"`（デフォルト）は力の中心差分。`workers>1` の場合は解析ヘシアンは無効化されます。
 - **凍結原子** – `freeze_atoms` に0始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
 - **精度制御** – エネルギー/力は常にfloat64。`hessian_double=False` でヘシアンをモデルのネイティブdtype（通常float32）で返します。
-- **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。解析ヘシアンはこのモードでは無効です。
+- **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチスループットの向上に有効です。**注意:** `workers>1` の場合、`hessian_calc_mode="Analytical"` を指定していても解析ヘシアンは暗黙的に有限差分（`force_fd=True`）へ切り替わります。警告は出力されないため、ヘシアン計算時間が想定より長い場合はログを確認してください。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 

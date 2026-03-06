@@ -51,10 +51,11 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
  [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [--workers N] [--workers-per-node N] \
  [--freeze-links/--no-freeze-links] \
- [--max-write N] [--amplitude-ang Å] [--n-frames N] \
- [--show-config] [--dry-run] \
- [--temperature K] [--pressure atm] [--dump/--no-dump] \
+ [--max-write N] [--amplitude-ang Å] [--n-frames N] [--sort value|abs] \
+ [--out-dir DIR] [--config FILE] [--show-config] [--dry-run] \
+ [--temperature K] [--pressure FLOAT] [--dump/--no-dump] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -93,7 +94,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--temperature FLOAT` | 熱化学計算の温度（K） | `298.15` |
 | `--pressure FLOAT` | 熱化学計算の圧力（atm） | `1.0` |
 | `--dump/--no-dump` | `thermoanalysis.yaml` を書き込み | `False` |
-| `--hessian-calc-mode CHOICE` | UMAヘシアンモード | `FiniteDifference` |
+| `--hessian-calc-mode CHOICE` | MLIP ヘシアンモード（Analytical または FiniteDifference）。 | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB テンプレートが利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか（GJF は出力しない） | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--config FILE` | 明示CLI適用前に読み込むベース YAML。 | _None_ |

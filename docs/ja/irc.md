@@ -54,8 +54,9 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
  [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] [-m 2S+1] \
  [--max-cycles N] [--step-size Δs] [--root k] \
+ [--forward/--no-forward] [--backward/--no-backward] \
  [--freeze-links/--no-freeze-links] \
- [--out-dir DIR] \
+ [--out-dir DIR] [--config FILE] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--show-config] [--dry-run]
@@ -106,6 +107,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 out_dir/ (デフォルト:./result_irc/)
 ├─ <prefix>finished_irc_trj.xyz # 完全な IRC 軌跡
 ├─ <prefix>forward_irc_trj.xyz # 順方向分岐が実行された場合
+├─ <prefix>backward_irc_trj.xyz # 逆方向分岐が実行された場合
 └─ *.pdb # PDB 入力用の軌跡コンパニオン（変換有効時）
 ```
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
@@ -163,8 +165,6 @@ irc:
  check_bonds: false # check bonds during propagation
  out_dir: ./result_irc/ # output directory
  prefix: "" # filename prefix
- dump_fn: irc_data.h5 # IRC data filename
- dump_every: 5 # dump stride
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
  max_pred_steps: 500 # predictor-corrector max steps

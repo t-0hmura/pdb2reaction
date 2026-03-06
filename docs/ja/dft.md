@@ -55,7 +55,8 @@ pdb2reaction dft -i input.pdb --ligand-charge 'LIG:0' -m 1 \
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files]
+ [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+ [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
 ### 例
