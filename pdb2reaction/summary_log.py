@@ -17,7 +17,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from pysisyphus.constants import AU2KCALPERMOL
 from . import __version__
-from .uma_pysis import CALC_KW
+from .defaults import UMA_CALC_KW as CALC_KW
 
 logger = logging.getLogger(__name__)
 

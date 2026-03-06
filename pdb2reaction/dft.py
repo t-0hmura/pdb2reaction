@@ -41,7 +41,7 @@ from .utils import (
     cli_param_overridden,
 )
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
-from .uma_pysis import GEOM_KW_DEFAULT
+from .defaults import GEOM_KW_DEFAULT
 
 logger = logging.getLogger(__name__)
 
