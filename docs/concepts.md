@@ -31,7 +31,7 @@ Full system(s) (PDB/XYZ/GJF)
 Each stage is available as an individual subcommand. The `pdb2reaction all` command runs many stages end-to-end.
 
 ```{important}
-Transition states: treat HEI / `tsopt` outputs as **TS candidates** until validated via `irc` (endpoints reach intended minima). `tsopt` already performs a final imaginary-frequency check internally — look for exactly one imaginary frequency (|ν| ≥ 100 cm⁻¹) in its output.
+Transition states (first-order saddle points): treat HEI / `tsopt` outputs as **TS candidates** until validated via `irc` (endpoints reach intended minima). `tsopt` already performs a final imaginary-frequency check internally — look for exactly one imaginary frequency (|ν| ≥ 100 cm⁻¹) in its output. If multiple imaginary frequencies remain, consider applying `--flatten`.
 ```
 
 ### MLIP backends
@@ -53,7 +53,8 @@ All backends share the same `--solvent` option for xTB-based implicit solvent co
 
 ### Full system vs. pocket (cluster model)
 - **Full system**: your original structure(s). In enzyme use cases this is typically a protein–ligand complex.
-- **Pocket / cluster model**: a truncated structure around the substrate(s) used to reduce system size for MEP/TS search.
+- **Pocket**: the extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`.
+- **Cluster model**: the computational subsystem cut from the pocket. Severed bonds are capped with link hydrogens, and the model is used for MEP/TS search.
 
 Pocket extraction is controlled by:
 - `-c/--center`: how to locate the substrate (residue IDs, residue names, or a substrate-only PDB).

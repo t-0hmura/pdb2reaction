@@ -252,7 +252,7 @@ result_all/
 pdb2reaction --help
 
 # コマンドのヘルプ
-pdb2reaction <command> --help
+pdb2reaction <subcommand> --help
 ```
 
 問題や機能リクエストについては、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) をご覧ください。

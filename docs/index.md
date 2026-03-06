@@ -132,7 +132,7 @@ ja/index
 ### Main Workflow
 | Subcommand | Description |
 |------------|-------------|
-| [`all`](all.md) | End-to-end workflow: extraction → MEP → TS optimization → IRC → vibrational analysis → DFT |
+| [`all`](all.md) | End-to-end workflow: extraction → scan → MEP → TS optimization → IRC → thermochemistry → DFT |
 
 ### Structure Preparation
 | Subcommand | Description |
@@ -231,9 +231,10 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
 - Spin multiplicity is set with `-m/--multiplicity` (default `1`)
 
 ### Boolean options
-Boolean CLI options use toggle form (`--flag` / `--no-flag`):
+Boolean CLI options accept both toggle form (`--flag` / `--no-flag`) and explicit values (`--flag True/False`). Toggle form is recommended for new scripts:
 ```bash
 --tsopt --thermo --no-dft
+--tsopt True --thermo yes --dft 0
 ```
 
 ### YAML configuration

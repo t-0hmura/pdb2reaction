@@ -9,15 +9,15 @@ Refer to the upstream projects for additional details:
 
 ## Quick start
 
-Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (no DMF). For DMF, install cyipopt via conda first.
+Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.
 
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
-# 2) Install pdb2reaction from GitHub
+# 2) Install pdb2reaction
 # 3) Install a headless Chrome for Plotly figure export
 
 pip install torch --index-url https://download.pytorch.org/whl/cu129
-pip install git+https://github.com/t-0hmura/pdb2reaction.git
+pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
@@ -73,7 +73,7 @@ If you prefer to build the environment piece by piece:
  ```
 
 3. **Install cyipopt**
- Required if you want to use the DMF method in MEP search.
+ Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search. You can skip this step if you only use GSM.
 
  ```bash
  conda install -c conda-forge cyipopt -y
@@ -92,7 +92,7 @@ If you prefer to build the environment piece by piece:
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
  ```bash
- pip install git+https://github.com/t-0hmura/pdb2reaction.git
+ pip install pdb2reaction
  plotly_get_chrome -y
  ```
 

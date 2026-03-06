@@ -45,11 +45,11 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 
 ### CLI conventions
 
-| Convention | Example |
-|------------|---------|
-| **Residue selectors** | `'SAM,GPP'` or `'A:123,B:456'` |
-| **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` |
-| **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` |
+| Convention | Example | Notes |
+|------------|---------|-------|
+| **Residue selectors** | `'SAM,GPP'` or `'A:123,B:456'` | Quote multi-value strings to prevent shell expansion |
+| **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` | Colon separates name and charge; comma separates entries |
+| **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` | Delimiters: space, comma, slash, backtick, backslash |
 
 For full details, see [CLI Conventions](cli_conventions.md).
 

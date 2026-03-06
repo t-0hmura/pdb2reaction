@@ -82,7 +82,7 @@ using machine-learning interatomic potentials (MLIPs).
 
 ```bash
 pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
-pip install git+https://github.com/t-0hmura/pdb2reaction.git
+pip install pdb2reaction
 plotly_get_chrome -y
 huggingface-cli login
 ```
@@ -94,7 +94,7 @@ conda create -n pdb2reaction python=3.11 -y
 conda activate pdb2reaction
 conda install -c conda-forge cyipopt -y
 pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
-pip install git+https://github.com/t-0hmura/pdb2reaction.git
+pip install pdb2reaction
 plotly_get_chrome -y
 ```
 

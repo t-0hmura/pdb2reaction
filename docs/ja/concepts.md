@@ -143,8 +143,8 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ## 次に読むページ
 
 ### 入門
-- [インストール](installation.md) — セットアップと依存関係
 - [はじめに](getting_started.md) — クイックスタートとワークフロー概要
+- [インストール](installation.md) — セットアップと依存関係
 - [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 

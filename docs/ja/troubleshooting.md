@@ -157,7 +157,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処の例:
 - オプティマイザーモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`
-- 最大サイクル数を増やしてください: `--tsopt-max-cycles 20000`
+- 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 
 ---

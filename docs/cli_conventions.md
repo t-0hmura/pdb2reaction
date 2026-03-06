@@ -18,7 +18,7 @@ Both notations are accepted:
 ```
 
 For options that are defined only as `--flag`, the root CLI also accepts `--no-flag` and `--flag False` as compatibility aliases.
-All subcommands use Click as their CLI backend, and the same bool normalization applies at the root CLI level.
+`extract` and `fix-altloc` use a parser wrapper (argparse backend), but the same bool normalization applies at the root CLI level. All other subcommands use Click as their CLI backend.
 
 Common boolean options:
 - `--tsopt`, `--thermo`, `--dft` — enable post-processing stages

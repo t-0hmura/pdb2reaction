@@ -13,11 +13,11 @@
 
 ```bash
 # 1) CUDA 対応の PyTorchビルドをインストール
-# 2) GitHubからpdb2reactionをインストール
+# 2) pdb2reactionをインストール
 # 3) Plotly図表エクスポート用のヘッドレスChromeをインストール
 
 pip install torch --index-url https://download.pytorch.org/whl/cu129
-pip install git+https://github.com/t-0hmura/pdb2reaction.git
+pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
@@ -92,7 +92,7 @@ huggingface-cli login
 5. **`pdb2reaction` 本体と可視化用Chromeをインストール**
 
  ```bash
- pip install git+https://github.com/t-0hmura/pdb2reaction.git
+ pip install pdb2reaction
  plotly_get_chrome -y
  ```
 

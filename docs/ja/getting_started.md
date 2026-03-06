@@ -51,6 +51,8 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 | **電荷マッピング** | `--ligand-charge 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
 | **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
 
+詳細は [CLI 規約](cli_conventions.md) を参照してください。
+
 補足: CLI サブコマンド名は `path-search`（ハイフン区切り）ですが、ドキュメントファイル名は [`path_search.md`](path_search.md)（アンダースコア区切り）です。
 
 
@@ -272,6 +274,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `dft` | DFT 一点計算 | [dft](dft.md) |
 | `trj2fig` | エネルギープロファイルプロット | [trj2fig](trj2fig.md) |
 | `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy_diagram.md) |
+| `fix-altloc` | PDB代替位置指示子の解決 | [fix_altloc](fix_altloc.md) |
 | `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
 
 ```{tip}
