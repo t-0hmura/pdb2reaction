@@ -51,7 +51,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
  --out-dir ./result_opt_hess
 ```
 
-4. Run LBFGS mode and flatten imaginary modes after minimization.
+4. Run LBFGS mode and flatten imaginary modes after optimization.
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
