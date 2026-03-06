@@ -20,7 +20,7 @@ def add_scan_common_options(
     out_dir_default: str,
     baseline_help: str,
     dump_help: str,
-    max_step_help: str = "Maximum step size in either distance [Å].",
+    max_step_help: str = "Maximum step size per scanned distance [Å].",
     thresh_default: str | None = "baker",
     max_step_size_default: float = 0.20,
     bias_k_default: float = 300.0,

@@ -31,7 +31,7 @@ Options:
   --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
                                   1-based (default) or 0-based.  [default: one-
                                   based]
-  --max-step-size FLOAT           Maximum step size in either distance [Å].
+  --max-step-size FLOAT           Maximum step size per scanned distance [Å].
                                   [default: 0.2]
   --bias-k FLOAT                  Harmonic well strength k [eV/Å^2].  [default:
                                   300.0]

@@ -139,7 +139,7 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     out_dir_default="./result_scan3d/",
     baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0,k=0).",
     dump_help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
-    max_step_help="Maximum step size in each distance [Å].",
+    max_step_help="Maximum step size per scanned distance [Å].",
 )
 @click.option(
     "--print-parsed/--no-print-parsed",
