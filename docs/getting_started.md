@@ -10,7 +10,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-You can also run **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
+You can also run **MEP search (Minimum Energy Path) → TS optimization (Transition State) → IRC (Intrinsic Reaction Coordinate) → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```

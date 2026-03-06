@@ -128,7 +128,7 @@ glossary
 | [`freq`](freq.md) | 振動解析と熱化学 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
-| [`energy-diagram`](energy_diagram.md) | 数値入力から状態エネルギーダイアグラムを作成 |
+| [`energy-diagram`](energy_diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
 
 ---
 

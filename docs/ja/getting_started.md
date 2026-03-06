@@ -10,7 +10,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 ```
 
 ---
-さらに `--tsopt --thermo --dft` を追加すると、**MEP 探索 → TS 最適化 → IRC（固有反応座標）→ 熱化学解析 → DFT 一点計算** までまとめて実行できます。
+さらに `--tsopt --thermo --dft` を追加すると、**MEP 探索（最小エネルギー経路: Minimum Energy Path） → TS 最適化（遷移状態: Transition State） → IRC（固有反応座標: Intrinsic Reaction Coordinate） → 熱化学解析 → DFT 一点計算** までまとめて実行できます。
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```

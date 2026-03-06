@@ -166,7 +166,7 @@ ja/index
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
-| [`energy-diagram`](energy_diagram.md) | Draw a state energy diagram from numeric values |
+| [`energy-diagram`](energy_diagram.md) | Draw an energy diagram from numeric values |
 
 ---
 
