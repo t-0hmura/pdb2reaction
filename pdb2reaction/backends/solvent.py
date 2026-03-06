@@ -160,6 +160,8 @@ class SolventCorrectedCalculator(MLIPCalculator):
             result["forces"] = np.asarray(result["forces"], dtype=np.float64) + df_au
         if dh_ev_ang2 is not None:
             dh_au = np.asarray(dh_ev_ang2, dtype=np.float64) * _H_EVAA_2_AU
+            n_atoms = len(elem)
+            dh_au = self._apply_active_trim_np(dh_au, n_atoms)
             result["hessian"] = np.asarray(result["hessian"], dtype=np.float64) + dh_au
         return result
 
