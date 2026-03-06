@@ -79,6 +79,9 @@ dft = [
 ]
 ci = [
     # Non-GPU deps sufficient for unit tests and docs generation
+    # NOTE: torch CPU must be installed separately via --index-url
+    "torch",
+    "ase",
     "numpy",
     "biopython",
     "scipy",
