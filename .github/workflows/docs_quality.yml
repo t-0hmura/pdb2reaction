@@ -19,8 +19,11 @@ jobs:
       - name: Install minimal dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install click pyyaml scipy numpy
           pip install -e . --no-deps
+          pip install click pyyaml numpy biopython scipy \
+            autograd dask distributed h5py fabric jinja2 joblib \
+            matplotlib natsort psutil rmsd sympy scikit-learn \
+            pandas tabulate plotly
 
       - name: Run docs quality suite
         timeout-minutes: 20
