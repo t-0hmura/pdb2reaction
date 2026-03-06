@@ -1,7 +1,6 @@
 # `pdb2reaction all`
 
 ```text
-Warp DeprecationWarning: The symbol `warp.vec` will soon be removed from the public API. Use `warp.types.vector` instead.
 
 Usage: pdb2reaction all [OPTIONS]
 
