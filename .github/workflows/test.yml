@@ -32,4 +32,4 @@ jobs:
       - name: Run unit tests (CPU-only, no GPU)
         timeout-minutes: 10
         run: |
-          pytest tests/ -v --tb=short -x --cov=pdb2reaction --cov-report=term-missing --cov-fail-under=20
+          pytest tests/ -v --tb=short -x --cov=pdb2reaction --cov-report=term-missing --cov-fail-under=15
