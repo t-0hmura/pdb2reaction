@@ -15,7 +15,7 @@
 
 ### 1. `scan.yaml` を作成
 
-ステージごとの目標距離（単位: Angstrom）を順番に定義します。
+ステージごとの目標距離（単位: Å）を順番に定義します。
 
 ```yaml
 one_based: true
@@ -38,7 +38,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_sca
 
 ### 基本構文
 
-各リテラルは `(atom1, atom2, target_distance)` のタプルリストです（距離の単位は Angstrom）。1 リテラル = 1 ステージ。
+各リテラルは `(atom1, atom2, target_distance)` のタプルリストです（距離の単位は Å）。1 リテラル = 1 ステージ。
 
 ```bash
 # 単一ステージ、整数原子インデックス（デフォルトで1-based）

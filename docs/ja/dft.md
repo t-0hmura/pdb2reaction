@@ -37,7 +37,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --engine auto --out-dir ./result_dft_tight
 ```
 
-2. 可搬性重視で CPU バックエンドを強制する。
+2. 移植性重視で CPU バックエンドを強制する。
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 --engine cpu --out-dir ./result_dft_cpu
@@ -55,7 +55,7 @@ pdb2reaction dft -i input.pdb --ligand-charge 'LIG:0' -m 1 \
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+ [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files]
 ```
 
 ### 例

@@ -8,14 +8,14 @@
 - **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
 - **モード:** `hess`（`rsirfo`）= RS‑I‑RFO（デフォルト、一般的により堅牢）。`grad`（`dimer`）= Hessian Guided Dimer（1ステップあたりのコストが低いことが多い）。
 - **品質確認:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行します（出力の n=1 を確認）。結果はなお *候補* であり、[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
-- **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚振動モードの除去を制御します。
+- **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚振動数モードの除去を制御します。
 - **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
 
 ### `--opt-mode` の選び方
 - **`--opt-mode hess`（RS‑I‑RFO）**: デフォルト。ヘシアン計算のコストを許容でき、堅牢性を重視する場合に推奨。
 - **`--opt-mode grad`（Dimer）**: 軽量な探索や、複数の TS 初期構造から素早く反復したい場合に有効。
 
-> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受理します。YAML では `dimer` または `rsirfo` を直接指定してください。
+> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML では `dimer` または `rsirfo` を直接指定してください。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
@@ -92,10 +92,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 - **MLIP ヘシアン（デフォルト: UMA）**: ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 - **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
- - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚振動モードが1つになったら最終的な正確ヘシアンで振動解析を行います。
+ - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚振動数モードが1つになったら最終的な正確ヘシアンで振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
-- **RS-I-RFOモード**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚振動モードが1つになるか上限に達するまで繰り返します。
-- **モード出力と変換**: 検出された虚振動モードはすべて `vib/final_imag_mode_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` にもミラーされます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
+- **RS-I-RFOモード**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚振動数モードが1つになるか上限に達するまで繰り返します。
+- **モード出力と変換**: 検出された虚振動数モードはすべて `vib/final_imag_mode_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` としても出力されます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -103,15 +103,15 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
-| `--max-cycles INT` | `opt.max_cycles` に転送されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も受理。 | `hess` |
+| `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
+| `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も指定可。 | `hess` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚振動モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。dimer（dimerループ）/rsirfo（RS-IRFO後）に適用 | `False` |
+| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。dimer（dimerループ）/rsirfo（RS-IRFO後）に適用 | `False` |
 | `--hessian-calc-mode CHOICE` | UMAヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -145,7 +145,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `hess` = `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
-- 虚振動モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。複数残る場合は `root` がどの虚振動モードを追跡するかに影響します。
+- 虚振動数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。複数残る場合は `root` がどの虚振動数モードを追跡するかに影響します。
 - 設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 

@@ -139,7 +139,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `pairs`（2 四つ組）を持つ YAML/JSON 仕様。`one_based` を任意指定可能。 | 推奨 |
-| `--scan-lists TEXT` | **単一 ** の Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
+| `--scan-lists TEXT` | **単一**の Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のペア情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
@@ -211,7 +211,7 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-`opt` の詳細は [docs/opt.md](opt.md) を参照してください。
+`opt` の詳細は [YAML リファレンス](yaml_reference.md) を参照してください。
 `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
 
 ## 関連項目

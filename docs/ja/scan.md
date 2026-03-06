@@ -87,7 +87,7 @@ pdb2reaction scan -i input.pdb -q 0 --scan-lists \
 
 ## `--spec` の書式（推奨）
 
-`--spec` は、ルートがマッピングの YAML/JSON を受け付けます:
+`--spec` は、ルートがマッピング形式の YAML/JSON ファイルを受け付けます:
 
 ```yaml
 one_based: true # 任意。未指定時は CLI の --one-based を使用
@@ -167,7 +167,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `--spec`（推奨）または `--scan-lists` からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
  各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
-4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最小化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
+4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
 6. すべてのステージについて繰り返します。軌跡は `--dump` の場合のみ保存されます。
 
@@ -177,7 +177,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート）。`-q` を省略して `--ligand-charge` がある場合は電荷が導出され、明示的な `-q` が最優先 | `.gjf` テンプレートまたは `--ligand-charge` がない場合は必須 |
 | `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `stages` を持つ YAML/JSON スキャン仕様。`one_based` を任意指定可能。 | 推奨 |
 | `--scan-lists TEXT` | : `(i,j,targetÅ)` タプルを含む Python リテラル。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
@@ -224,8 +224,8 @@ out_dir/ (デフォルト:./result_scan/)
 │ └─ result.gjf # Gaussian テンプレートがあり変換有効時
 └─ stage_XX/ # ステージごとのフォルダ
  ├─ result.xyz
- ├─ result.pdb # 最終構造の PDB ミラー（変換有効時）
- ├─ result.gjf # テンプレートがある場合の Gaussian ミラー（変換有効時）
+ ├─ result.pdb # 最終構造の PDB コンパニオン（変換有効時）
+ ├─ result.gjf # テンプレートがある場合の Gaussian コンパニオン（変換有効時）
  ├─ scan_trj.xyz # --dump の場合
  └─ scan.pdb # PDB 入力で変換有効時の軌跡コンパニオン（scan.gjf は生成されない）
 ```

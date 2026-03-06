@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚振動モードフラット化を実行できます。
+> **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小に最適化します。必要に応じて `--flatten` で虚振動数モードフラット化を実行できます。
 
 `pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
 
@@ -49,7 +49,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
  --out-dir ./result_opt_hess
 ```
 
-4. LBFGS モードで実行し、最適化後に虚振動モードをフラット化する。
+4. LBFGS モードで実行し、最適化後に虚振動数モードをフラット化する。
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
@@ -61,18 +61,18 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
- [--dist-freeze '[(i,j,target_A),...]'] [--one-based|--zero-based] \
- [--bias-k K_eV_per_A2] [--dump/--no-dump] [--out-dir DIR] \
+ [--dist-freeze '[(i,j,target_Å),...]'] [--one-based|--zero-based] \
+ [--bias-k K_eV_per_Å²] [--dump/--no-dump] [--out-dir DIR] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ## ワークフロー
 - **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
-- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動モードフラット化を実行します。各反復で検出された虚振動モードをすべて除去してから再最適化します。
-- **拘束**: `--dist-freeze` はPythonリテラルタプル `(i, j, target_A)` を解釈します（`target_A` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
+- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードフラット化を実行します。各反復で検出された虚振動数モードをすべて除去してから再最適化します。
+- **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
 - **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
 - **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
-- **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` にミラーされます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
+- **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` としても出力されます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
 - **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
 
 ## CLI オプション
@@ -84,15 +84,15 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [--ligand-charge <number
 | `-i, --input PATH` | `geom_loader` が受け入れる入力構造 | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック | テンプレート/`1` |
-| `--dist-freeze TEXT` | 調和拘束用の `(i,j,target_A)` タプルを記述する Python リテラル文字列（繰り返し指定可） | _None_ |
+| `--dist-freeze TEXT` | 調和拘束用の `(i,j,target_Å)` タプルを記述する Python リテラル文字列（繰り返し指定可） | _None_ |
 | `--one-based/--zero-based` | `--dist-freeze` インデックスを1始まり（デフォルト）または0始まりとして解釈 | `True` |
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `10.0` |
 | `--freeze-links/--no-freeze-links` | リンク水素の親原子の凍結を切り替え（PDB 入力のみ） | `True` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
-| `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も受理。 | `grad` |
-| `--flatten/--no-flatten` | 最適化後の虚振動モードフラット化ループを有効/無効化 | `False` |
+| `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。 | `grad` |
+| `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -130,7 +130,7 @@ out_dir/
 
 ### `opt`
 LBFGSとRFOの両方で使用される共有オプティマイザー制御:
-- `thresh` プリセット、`max_cycles`、`print_every`、`min_step_norm`、収束トグル（`rms_force` など）、`converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
+- `thresh` プリセット、`max_cycles`、`print_every`、`min_step_norm`、収束切り替え（`rms_force` など）、`converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`

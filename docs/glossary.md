@@ -33,7 +33,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Dimer** | Dimer Method | A TS optimization method that estimates the lowest curvature mode without computing the full Hessian. Used in `tsopt --opt-mode grad`. |
 | **EulerPC** | Euler Predictor-Corrector | An integration scheme for IRC calculations: a predictor step along the gradient direction followed by a corrector step that refines the path. |
 | **PHVA** | Partial Hessian Vibrational Analysis | Vibrational analysis performed only on the active (non-frozen) degrees of freedom. Automatically applied when `freeze_atoms` is set. |
-| **DLC** | Delocalized Internal Coordinates | A redundant internal coordinate system constructed from interatomic distances, angles, and dihedrals. Used by default for geometry optimization (`coord_type: dlc`). |
+| **DLC** | Delocalized Internal Coordinates | A redundant internal coordinate system constructed from interatomic distances, angles, and dihedrals. Available via `coord_type: dlc` (default is `cart` = Cartesian). |
 
 ---
 

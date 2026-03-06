@@ -243,7 +243,7 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-More YAML options about `opt` are available in [docs/opt.md](opt.md).
+More YAML options for `opt` are available in [YAML Reference](yaml_reference.md).
 `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ## See Also

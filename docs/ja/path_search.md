@@ -59,16 +59,16 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ## 使用法
 
 ```bash
-pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
- [--workers N] [--workers-per-node N]
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
- [--refine-mode {peak|minima}]
- [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
- [--opt-mode grad|hess] [--dump/--no-dump]
- [--out-dir DIR] [--preopt/--no-preopt]
- [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...]
- [--convert-files/--no-convert-files]
+pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
+ [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [--workers N] [--workers-per-node N] \
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET] \
+ [--refine-mode {peak|minima}] \
+ [--max-nodes N] [--max-cycles N] [--climb/--no-climb] \
+ [--opt-mode grad|hess] [--dump/--no-dump] \
+ [--out-dir DIR] [--preopt/--no-preopt] \
+ [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...] \
+ [--convert-files/--no-convert-files] \
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
@@ -91,7 +91,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [--ligand-
 | `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。各ファイルごとに `-i`/`--input` を繰り返して指定 | 必須 |
 | `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB ポケット読み込み時、リンク水素の親原子を凍結 | `True` |
 | `--max-nodes INT` | MEPセグメントごとの内部ノード | `20` |

@@ -199,7 +199,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 - R/TS/P に対して `freq` と `dft` を実行できます。
 - UMA、Gibbs、DFT//UMA エネルギーダイアグラムを生成します。
 
-`energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にミラーされます。
+`energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にもコピーされます。
 
 ```{important}
 単一入力実行には **`--scan-lists`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
@@ -217,7 +217,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 | `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、または PDB パスをサポート |
 | `--ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
-| `-m, --multiplicity INT` | スピン多重度（例: シングレットは `1`）。 |
+| `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`）。 |
 | `--scan-lists TEXT...` | 単一入力実行用の段階的距離スキャン |
 | `--out-dir PATH` | トップレベル出力ディレクトリ |
 | `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |

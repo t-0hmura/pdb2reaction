@@ -33,7 +33,7 @@
 | **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。 |
 | **EulerPC** | Euler Predictor-Corrector | IRC 計算の積分スキーム。勾配方向への予測ステップと経路を修正する補正ステップの 2 段階で構成されます。 |
 | **PHVA** | Partial Hessian Vibrational Analysis（部分ヘシアン振動解析） | 凍結されていない活性自由度のみで振動解析を行う手法。`freeze_atoms` 設定時に自動適用されます。 |
-| **DLC** | Delocalized Internal Coordinates（非局在内部座標） | 原子間距離・角度・二面角から構成される冗長内部座標系。構造最適化のデフォルト座標系（`coord_type: dlc`）。 |
+| **DLC** | Delocalized Internal Coordinates（非局在化内部座標） | 原子間距離・角度・二面角から構成される冗長内部座標系。`coord_type: dlc` で利用可能（デフォルトは `cart` = デカルト座標）。 |
 
 ---
 
@@ -56,7 +56,7 @@
 | **DFT** | Density Functional Theory | 電子密度汎関数に基づく電子状態計算法。 |
 | **Hessian（ヘシアン行列）** | — | エネルギーの二階微分行列。固有値から振動数を、固有ベクトルから振動モード（変位ベクトル）を得ます。振動解析や TS 最適化に使用します。 |
 | **SP** | Single Point | 固定構造での計算（最適化なし）。高精度エネルギー補正によく使用。 |
-| **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。シングレット = 1、ダブレット = 2、トリプレット = 3 など。`-m/--multiplicity` で指定（デフォルト: 1）。 |
+| **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1）。 |
 
 ---
 
@@ -103,7 +103,7 @@
 
 | 用語 | 説明 |
 |------|------|
-| **ブール値オプション** | `True` または `False`（大文字始まり）を取る CLI フラグ。例: `--tsopt`。 |
+| **ブール値オプション** | トグル形式（`--flag` / `--no-flag`）または値形式（`True`/`False`、`yes`/`no`、`1`/`0`）を受け付ける CLI フラグ。例: `--tsopt`。 |
 | **残基セレクタ** | `'SAM,GPP'`（名前）や `'A:123,B:456'`（チェーン:ID）のような指定方法。 |
 | **原子セレクタ** | `'TYR,285,CA'` のように残基名・番号・原子名で特定の原子を指定する方法。 |
 

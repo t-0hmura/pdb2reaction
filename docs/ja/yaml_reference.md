@@ -15,7 +15,7 @@
 | [`dmf`](#dmf) | DMF（Direct Max Flux）設定 | path-opt, path-search |
 | [`stopt`](#stopt) | StringOptimizer 設定 | path-opt, path-search |
 | [`irc`](#ja-irc-section) | IRC積分設定 | irc |
-| [`freq`](#ja-freq-section) | 振動数解析設定 | freq |
+| [`freq`](#ja-freq-section) | 振動解析設定 | freq |
 | [`thermo`](#thermo) | 熱化学設定 | freq |
 | [`dft`](#ja-dft-section) | DFT計算設定 | dft |
 | [`bias`](#bias) | 調和バイアス設定 | scan, scan2d, scan3d |
@@ -398,7 +398,7 @@ irc:
 (ja-freq-section)=
 ### `freq` (section)
 
-振動数解析設定。
+振動解析設定。
 
 ```yaml
 freq:

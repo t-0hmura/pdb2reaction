@@ -23,6 +23,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 
 - `result_irc/finished_irc_trj.xyz`
 - `result_irc/forward_irc_trj.xyz`
+- `result_irc/backward_irc_trj.xyz`
 
 ## Common examples
 

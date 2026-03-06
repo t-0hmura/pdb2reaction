@@ -133,7 +133,7 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
 ## CLI の注意点
 
 ```{important}
-- ブール値オプションは `--flag` / `--no-flag` と `--flag True/False`（`yes/no`, `1/0` 含む）の両方を受理します。新規スクリプトでは toggle 形式を推奨します。
+- ブール値オプションは `--flag` / `--no-flag` と `--flag True/False`（`yes/no`, `1/0` 含む）の両方を受け付けます。新規スクリプトでは `--flag`/`--no-flag` 形式を推奨します。
 - 複数 PDB を与える場合、各ファイルは **同じ原子が同じ順序** で並んでいることが重要です（座標だけが異なる）。
 - 酵素の反応機構解析では、水素を含んだ入力 PDB を用意することを強く推奨します。
 ```

@@ -192,9 +192,6 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
  [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
  scan trajectory output is controlled by `--dump`.
 
-More YAML options for `opt` are available in [YAML Reference](yaml_reference.md).
-
-
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
@@ -219,7 +216,6 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-More YAML options about `opt` are available in [docs/opt.md](opt.md).
 `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ### Section `bias`

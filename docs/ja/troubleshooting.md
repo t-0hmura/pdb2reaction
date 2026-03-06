@@ -53,7 +53,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 - 水素付加を行う場合、全フレームで同一順序になる手順を選びます。
 
 ヒント:
-- MD 由来なら、同一のトポロジ/軌跡からフレーム抽出する方が安全です（異なるツールで生成した PDB を混ぜると順序がズレやすい）。
+- MD 由来なら、同一のトポロジー/軌跡からフレーム抽出する方が安全です（異なるツールで生成した PDB を混ぜると順序がズレやすい）。
 
 ---
 
@@ -63,7 +63,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 - 触媒残基が含まれない
 
 対処の例:
-- `--radius` を増やしてください（例: 2.6 → 3.5 Angstrom）
+- `--radius` を増やしてください（例: 2.6 → 3.5 Å）
 - `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）
 - 主鎖削除が強すぎる場合は `--no-exclude-backbone` を試してください
 
@@ -155,8 +155,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 最適化後もヘシアン行列に複数の負の固有値が残る（虚振動数が 2 本以上）
 
 対処の例:
-- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
-- 余分な虚振動モードのフラット化を有効にしてください: `--flatten`
+- オプティマイザーモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
+- 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`
 - 最大サイクル数を増やしてください: `--tsopt-max-cycles 20000`
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 
@@ -194,7 +194,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - **VRAM 不足**: `--radius` の値を減らしてポケットを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
 - **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は十分な VRAM がある場合のみ使用してください（500 原子以上では 16 GB 以上推奨）
 - **workers > 1**: HPC で UMA のスループットは改善しますが、解析ヘシアンは無効になります
-- **大規模系（1000 原子以上）**: より小さなポケット（`--radius 2.5` Angstrom）を抽出するか、マルチ GPU セットアップでの実行を検討してください
+- **大規模系（1000 原子以上）**: より小さなポケット（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 
 ---
 

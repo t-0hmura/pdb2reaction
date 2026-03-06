@@ -30,7 +30,7 @@
 
 ---
 
-## Progressive Help (`all`)
+## 段階的ヘルプ（`all`）
 
 `pdb2reaction all` は 2 段階ヘルプです:
 
@@ -204,7 +204,6 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 - `scan3d`: `./result_scan3d/`
 - `freq`: `./result_freq/`
 - `irc`: `./result_irc/`
-- `dft`: `./result_dft/`
 - `dft`: `./result_dft/`
 
 ---

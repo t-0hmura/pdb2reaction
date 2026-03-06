@@ -80,8 +80,9 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - Unsupported extensions abort the run; `.png` uses Plotly’s PNG export with
  `scale=2` for sharper output.
 - `--reverse-x` flips both the axis direction and the behavior of `-r init` so
-  that the initial frame appears on the right side of the plot.
+ that the initial frame appears on the right side of the plot.
 - The `--output-peak` option was removed.
+
 ---
 
 ## See Also

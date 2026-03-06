@@ -64,6 +64,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
  insertion codes, and record ordering stay untouched.
 - ATOM and HETATM records across all models/chains/residues are supported.
 - Deuterium labels map to hydrogen; selenium (`SE*`) and halogens are recognized automatically.
+
 ---
 
 ## See Also

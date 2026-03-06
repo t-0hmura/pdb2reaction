@@ -56,6 +56,8 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-list
 pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
+ヘルプ出力は `pdb2reaction all --help` で主要オプションを、`pdb2reaction all --help-advanced` で全オプションを確認できます。
+
 ### 例
 ```bash
 # 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
@@ -75,6 +77,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 ```
 
 ## ワークフロー
+
+0. **事前チェック**（自動）
+ - `all` は全 PDB 入力に対し、他の処理の前に `add-elem-info`（PDB 列 77–78 の元素記号を補完）と `fix-altloc`（交互配座の解消）を自動実行します。個別のサブコマンド（`extract`、`opt` など）を使用する場合は、必要に応じてこれらを手動で実行してください。
+
 1. **活性部位ポケット抽出**（`-c/--center` が指定された場合）
  - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,SAM`）で指定可能
  - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
@@ -230,7 +236,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
 | `--scan-one-based/--no-scan-one-based` | 1始まり/0始まりインデックス | `True` |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
-| `--scan-bias-k FLOAT` | 調和バイアス強度（eV/Å²） | `300` |
+| `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
 | `--scan-preopt/--no-scan-preopt` | scan事前最適化 | `True` |
 | `--scan-endopt/--no-scan-endopt` | scanステージ終端最適化 | `True` |

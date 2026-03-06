@@ -146,7 +146,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `--spec FILE` | `pairs`（3 四つ組）を持つ YAML/JSON 仕様。`one_based` を任意指定可能。 | `--csv` 未指定時に推奨 |
-| `--scan-lists TEXT` | **単一 ** の Python リテラルで 3 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--spec` の代替（`--csv` 未指定時） |
+| `--scan-lists TEXT` | **単一**の Python リテラルで 3 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--spec` の代替（`--csv` 未指定時） |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のペア情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
@@ -170,9 +170,6 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ### 共有 YAML セクション
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml_reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、軌跡出力は `--dump` で制御します。
-
-`opt` の詳細は [docs/opt.md](opt.md) を参照してください。
-
 
 ```yaml
 geom:
@@ -221,7 +218,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 - MLIP バックエンド（デフォルト: UMA、`--backend` で切替可能）が計算エンジンで、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` の格子点を基準にします。
-- 3D 可視化は 50x50x50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
+- 3D 可視化は 50×50×50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出ポケットの境界を固定します。
 
 ## 関連項目
