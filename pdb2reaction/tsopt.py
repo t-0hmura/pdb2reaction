@@ -1270,6 +1270,7 @@ hessian_dimer_KW = {
 RSIRFO_KW: Dict[str, Any] = dict(RFO_KW)
 RSIRFO_KW.update({
     "thresh": "baker",          # main threshold preset for TS search
+    "trust_max": 0.30,          # TS searches need larger trust radius than minimizations
     "roots": [0],               # mode indices to follow uphill
     "hessian_ref": None,        # reference Hessian file (HDF5)
     "rx_modes": None,           # reaction-mode definitions for projection
