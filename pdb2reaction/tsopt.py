@@ -48,6 +48,9 @@ from .defaults import (
     DIMER_KW,
     HESSIAN_DIMER_KW,
     OUT_DIR_TSOPT,
+    LBFGS_TS_KW,
+    HESSIAN_DIMER_CLI_KW,
+    RSIRFO_KW,
 )
 from .utils import (
     resolve_freeze_atoms,
@@ -1256,34 +1259,8 @@ CALC_KW = dict(UMA_CALC_KW)
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of Hessian Guided Dimer
 OPT_BASE_KW_LOCAL = {**OPT_BASE_KW, "out_dir": OUT_DIR_TSOPT, "thresh": "baker"}
 
-# Reference: internal L-BFGS defaults for TS optimization
-LBFGS_TS_KW: Dict[str, Any] = {**LBFGS_KW, "thresh": "baker"}
-
-# Hessian Guided Dimer defaults (CLI-level) - extend HESSIAN_DIMER_KW with nested dimer/lbfgs configs
-hessian_dimer_KW = {
-    **HESSIAN_DIMER_KW,
-    "dimer": {**DIMER_KW},
-    "lbfgs": {**LBFGS_TS_KW},
-}
-
-# RSIRFO (TS Hessian optimizer) defaults (subset; additional keys may be provided)
-RSIRFO_KW: Dict[str, Any] = dict(RFO_KW)
-RSIRFO_KW.update({
-    "thresh": "baker",          # main threshold preset for TS search
-    "trust_max": 0.30,          # TS searches need larger trust radius than minimizations
-    "roots": [0],               # mode indices to follow uphill
-    "hessian_ref": None,        # reference Hessian file (HDF5)
-    "rx_modes": None,           # reaction-mode definitions for projection
-    "prim_coord": None,         # primary coordinates for monitoring
-    "rx_coords": None,          # reaction coordinates for monitoring
-    "hessian_update": "bofill", # override base "bfgs"
-    "hessian_recalc_reset": True,# reset recalc counter after exact Hessian
-    "max_micro_cycles": 50,     # micro-iterations per macro cycle
-    "augment_bonds": False,     # augment reaction path based on bond analysis
-    "min_line_search": True,    # enforce minimum line-search step
-    "max_line_search": True,    # enforce maximum line-search step
-    "assert_neg_eigval": False, # ensure a negative eigenvalue at convergence
-})
+# hessian_dimer_KW kept as alias for backward compatibility with internal references
+hessian_dimer_KW = HESSIAN_DIMER_CLI_KW
 
 def _build_rsirfo_kwargs(
     opt_cfg: Dict[str, Any],

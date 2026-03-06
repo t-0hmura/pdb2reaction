@@ -474,3 +474,54 @@ HESSIAN_DIMER_KW: Dict[str, Any] = {
     "device": "auto",
     "root": 0,
 }
+
+# -----------------------------------------------
+# LBFGS for TS inner loop (baker threshold)
+# -----------------------------------------------
+
+LBFGS_TS_KW: Dict[str, Any] = {
+    **LBFGS_KW,
+    "thresh": "baker",
+}
+
+# -----------------------------------------------
+# Hessian Guided Dimer CLI-level defaults
+#   (extends HESSIAN_DIMER_KW with nested dimer/lbfgs configs)
+# -----------------------------------------------
+
+HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
+    **HESSIAN_DIMER_KW,
+    "dimer": {**DIMER_KW},
+    "lbfgs": {**LBFGS_TS_KW},
+}
+
+# -----------------------------------------------
+# RS-I-RFO defaults for TS optimization (heavy mode)
+# -----------------------------------------------
+
+RSIRFO_KW: Dict[str, Any] = {
+    **RFO_KW,
+    "thresh": "baker",
+    "trust_max": 0.30,
+    "roots": [0],
+    "hessian_ref": None,
+    "rx_modes": None,
+    "prim_coord": None,
+    "rx_coords": None,
+    "hessian_update": "bofill",
+    "hessian_recalc_reset": True,
+    "max_micro_cycles": 50,
+    "augment_bonds": False,
+    "min_line_search": True,
+    "max_line_search": True,
+    "assert_neg_eigval": False,
+}
+
+# -----------------------------------------------
+# Freq calc defaults (UMA + partial Hessian)
+# -----------------------------------------------
+
+FREQ_CALC_KW: Dict[str, Any] = {
+    **UMA_CALC_KW,
+    "return_partial_hessian": True,
+}

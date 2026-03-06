@@ -31,7 +31,7 @@ from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
 from .backends import create_calculator
-from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, FREQ_KW, THERMO_KW
+from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, FREQ_CALC_KW, FREQ_KW, THERMO_KW
 from .utils import (
     load_yaml_dict,
     deep_update,
@@ -464,9 +464,8 @@ def _write_mode_trj_and_pdb(geom,
 # Geometry defaults (local copy for CLI)
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
-# Calc defaults (extend UMA_CALC_KW with freq-specific settings)
-CALC_KW = dict(UMA_CALC_KW)
-CALC_KW["return_partial_hessian"] = True
+# Calc defaults for freq (from defaults.py)
+CALC_KW = FREQ_CALC_KW
 
 
 # ===================================================================
