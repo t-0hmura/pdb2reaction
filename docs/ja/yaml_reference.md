@@ -154,7 +154,7 @@ rfo:
  # Inherits all opt settings, plus:
  trust_radius: 0.1 # Trust-region radius
  trust_update: true # Enable trust-region updates
- trust_min: 0.0 # Minimum trust radius
+ trust_min: 0.01 # Minimum trust radius
  trust_max: 0.1 # Maximum trust radius
  max_energy_incr: null # Allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
