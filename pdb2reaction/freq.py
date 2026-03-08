@@ -11,6 +11,7 @@ For detailed documentation, see: docs/freq.md
 
 from __future__ import annotations
 
+import gc
 import logging
 import sys
 import textwrap
@@ -547,7 +548,7 @@ CALC_KW = FREQ_CALC_KW
               help="Number of frames per mode animation.")
 @click.option("--sort", type=click.Choice(["value", "abs"]), default="value", show_default=True,
               help="Sort modes by 'value' (cm^-1) or by absolute value.")
-@click.option("--out-dir", type=str, default="./result_freq/", show_default=True, help="Output directory.")
+@click.option("--out-dir", type=str, default=FREQ_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
     "--config",
     "config_yaml",
@@ -956,3 +957,8 @@ def cli(
         sys.exit(1)
     finally:
         prepared_input.cleanup()
+        # Release GPU memory so subsequent pipeline stages don't OOM
+        calc = geometry = H = modes = None
+        gc.collect()  # break cyclic refs inside torch.nn.Module
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()

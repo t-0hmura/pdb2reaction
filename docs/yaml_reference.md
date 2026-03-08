@@ -54,7 +54,7 @@ calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
- model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction
@@ -153,7 +153,7 @@ rfo:
  # Inherits all opt settings, plus:
  trust_radius: 0.1 # Trust-region radius
  trust_update: true # Enable trust-region updates
- trust_min: 0.01 # Minimum trust radius
+ trust_min: 0.0001 # Minimum trust radius
  trust_max: 0.1 # Maximum trust radius
  max_energy_incr: null # Allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
@@ -483,7 +483,7 @@ calc:
  backend: uma
  charge: 0
  spin: 1
- model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
  device: auto
  hessian_calc_mode: Analytical # Recommended when VRAM permits
  solvent: none                 # Set to e.g. "water" for implicit solvent

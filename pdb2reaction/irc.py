@@ -18,8 +18,11 @@ import logging
 import sys
 import textwrap
 
+import gc
+
 import click
 import time
+import torch
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
@@ -435,3 +438,9 @@ def cli(
             tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
             click.echo("Unhandled exception during IRC:\n" + tb, err=True)
             sys.exit(1)
+        finally:
+            # Release GPU memory (model + Hessian) so subsequent stages don't OOM
+            calc = eulerpc = geometry = None
+            gc.collect()  # break cyclic refs inside torch.nn.Module
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

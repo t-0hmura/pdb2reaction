@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
+import gc
 import logging
 import sys
 import traceback
@@ -23,6 +24,7 @@ import time
 
 import click
 import numpy as np
+import torch
 
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import geom_loader
@@ -236,6 +238,14 @@ def _run_dmf_mep(
             pass
     mxflx.solve(tol="tight")
 
+    # Free DMF calculator before creating eval calculator to avoid GPU OOM
+    for image in mxflx.images:
+        image.calc = None
+    calc_uma = None
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     calc_eval_kw = dict(calc_cfg)
     if fix_atoms:
         calc_eval_kw.setdefault("freeze_atoms", fix_atoms)
@@ -269,7 +279,13 @@ def _run_dmf_mep(
             out_gjf_path=out_dir_path / "hei.gjf" if needs_gjf else None,
         )
 
-    return DMFMepResult(images=list(mxflx.images), energies=list(energies), hei_idx=int(hei_idx))
+    # Free eval calculator before returning (caller may create a new one)
+    result = DMFMepResult(images=list(mxflx.images), energies=list(energies), hei_idx=int(hei_idx))
+    calc_eval = mxflx = None
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return result
 
 
 def _optimize_single(
@@ -1133,3 +1149,8 @@ def cli(
     finally:
         for prepared in prepared_inputs:
             prepared.cleanup()
+        # Release GPU memory so subsequent pipeline stages don't OOM
+            shared_calc = gs = geoms = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()

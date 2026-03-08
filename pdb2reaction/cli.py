@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 
 import click
@@ -406,4 +407,9 @@ warnings.filterwarnings(
     category=UserWarning,
     message=r"t_eval update skipped due to insufficient candidates",
     module=r"dmf"
+)
+# Suppress fairchem dataset_list deprecation warning (baked into UMA checkpoint config;
+# cannot be fixed caller-side until fairchem removes dataset_list from checkpoints).
+logging.getLogger("fairchem.core.models.uma.escn_md").addFilter(
+    lambda record: "dataset_list" not in record.getMessage()
 )

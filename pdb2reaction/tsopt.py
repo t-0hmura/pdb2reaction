@@ -12,6 +12,7 @@ For detailed documentation, see: docs/tsopt.md
 
 from __future__ import annotations
 
+import gc
 import logging
 import sys
 import textwrap
@@ -1870,3 +1871,10 @@ def cli(
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)
             sys.exit(1)
+        finally:
+            # Release GPU memory (model + Hessian) so subsequent stages don't OOM
+            calc = geometry = optimizer = last_optimizer = None
+            freqs_cm = modes = None
+            gc.collect()  # break cyclic refs inside torch.nn.Module
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

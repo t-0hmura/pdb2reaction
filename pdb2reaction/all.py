@@ -15,6 +15,8 @@ from pathlib import Path
 from collections import defaultdict
 from typing import List, Sequence, Optional, Tuple, Dict, Any
 
+import gc
+import torch
 import logging
 import signal
 import sys
@@ -202,6 +204,11 @@ def _run_cli_main(
         _echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
     finally:
         sys.argv = saved
+        # Release GPU memory between pipeline stages to prevent OOM.
+        # gc.collect() breaks cyclic refs inside torch.nn.Module.
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         _echo("\n")
 
 
@@ -2767,6 +2774,14 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
+        # ── Release GPU memory before freq/thermo/DFT ──
+        for _g in (gL, gR, gT, g_react_irc, g_prod_irc, g_react_opt, g_prod_opt):
+            if _g is not None and hasattr(_g, "calculator"):
+                _g.calculator = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
 
         # Resume: check if freq outputs already exist
@@ -4191,6 +4206,19 @@ def cli(
                 g_ts, ref_for_structs, struct_dir, "ts_from_hei"
             )
             state_structs = {"R": pL, "TS": pT, "P": pR}
+
+        # ── Release GPU memory before freq/thermo/DFT ──
+        # Geometry objects from IRC/endpoint-opt hold calculator references;
+        # freq/DFT run as CLI subprocesses and don't need them.
+        for _g in (
+            locals().get("gL"), locals().get("gR"), locals().get("gT"),
+            locals().get("g_ts"), locals().get("g_react_opt"), locals().get("g_prod_opt"),
+        ):
+            if _g is not None and hasattr(_g, "calculator"):
+                _g.calculator = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
         freq_seg_root = _resolve_override_dir(seg_dir / "freq", freq_out_dir)
