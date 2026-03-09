@@ -165,12 +165,12 @@ glossary
 
 ### 基本的な MEP 探索
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ### TS 最適化を含む完全ワークフロー
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 ```
 
@@ -181,7 +181,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 
 ### TS 最適化のみ
 ```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt
 ```
 

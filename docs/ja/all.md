@@ -23,7 +23,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`--back
 ## 最小例
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" --out-dir ./result_all
 ```
 
 ## 出力の見方
@@ -37,7 +37,7 @@ pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" -
 1. TS 最適化（内部で虚振動数チェック済み）・IRC・熱化学・DFT まで一括実行する。
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
@@ -62,7 +62,7 @@ pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [--backend uma|orb|mace|
 ```bash
 # 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
 pdb2reaction all -i reactant.pdb -i product.pdb -c 'GPP,SAM' \
- --ligand-charge 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
+ -l 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
  --out-dir ./result_all --tsopt --thermo --dft
 
@@ -73,7 +73,7 @@ pdb2reaction all -i single.pdb -c '308,309' \
 
 # TSOPT のみワークフロー（経路探索なし）
 pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
- --ligand-charge 'GPP:-3,SAM:1' --tsopt --thermo --dft
+ -l 'GPP:-3,SAM:1' --tsopt --thermo --dft
 ```
 
 ## ワークフロー
@@ -145,7 +145,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`、推奨）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`、推奨）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
 | `-m, --multiplicity INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
 

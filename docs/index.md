@@ -203,12 +203,12 @@ ja/index
 
 ### Basic MEP search
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ### Full workflow with TS optimization
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 ```
 
@@ -219,7 +219,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
 
 ### TS-only optimization
 ```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt
 ```
 

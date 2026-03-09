@@ -110,6 +110,7 @@ def _echo_convert_trj_if_exists(
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
 @click.option(
+    "-l",
     "--ligand-charge",
     type=str,
     default=None,

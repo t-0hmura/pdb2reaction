@@ -84,7 +84,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 - あるいは（抽出ありの場合）残基名ごとの電荷マッピングを与える:
 
  ```bash
- pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
  ```
 
 ---

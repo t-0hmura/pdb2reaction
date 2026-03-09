@@ -28,7 +28,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.

@@ -7,7 +7,7 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ---
@@ -15,7 +15,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
 The full workflow — **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** — can be run in one command:
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
@@ -112,44 +112,44 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ### Full workflow (multi-structure)
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
 ### Scan mode (single structure)
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
     --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
 ```
 
 ### TS optimization only
 ```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
     --tsopt
 ```
 
 ### Step-by-step workflow
 ```bash
 # 1. Extract active-site pocket (cluster model)
-pdb2reaction extract -i complex.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' -r 6.0
+pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 6.0
 
 # 2. Optimize geometry
-pdb2reaction opt -i pocket.pdb --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction opt -i pocket.pdb -l 'SAM:1,GPP:-3'
 
 # 3. MEP search
-pdb2reaction path-search -i R.pdb P.pdb --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction path-search -i R.pdb P.pdb -l 'SAM:1,GPP:-3'
 
 # 4. TS optimization
-pdb2reaction tsopt -i hei.pdb --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3'
 
 # 5. Frequency analysis
-pdb2reaction freq -i ts_optimized.pdb --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction freq -i ts_optimized.pdb -l 'SAM:1,GPP:-3'
 
 # 6. IRC
-pdb2reaction irc -i ts_optimized.pdb --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction irc -i ts_optimized.pdb -l 'SAM:1,GPP:-3'
 
 # 7. DFT single-point
-pdb2reaction dft -i optimized.pdb --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 ```
 
 ---

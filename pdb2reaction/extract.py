@@ -4,7 +4,7 @@
 Automated binding-pocket (active-site) extraction from protein-substrate complexes.
 
 Example:
-    pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
+    pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l -3
 
 For detailed documentation, see: docs/extract.md
 """
@@ -196,6 +196,7 @@ _EXTRACT_ALL_FLAGS = (
     "--exclude-backbone", "--no-exclude-backbone",
     "--add-linkH", "--no-add-linkH",
     "--selected-resn",
+    "-l",
     "--ligand-charge",
     "-v", "--verbose", "--no-verbose",
     "-h", "--help", "--help-advanced",
@@ -292,6 +293,7 @@ def _gather_extract_variadic(
     help="Comma/space-separated residue IDs to force-include.",
 )
 @click.option(
+    "-l",
     "--ligand-charge",
     type=str, default=None,
     help="Total charge number or per-resname mapping like 'GPP:-3,SAM:1'.",

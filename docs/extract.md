@@ -25,26 +25,26 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--exclude-backbone/--no-exclude-backbone]
  [--add-linkH/--no-add-linkH]
  [--selected-resn LIST]
- [--ligand-charge MAP_OR_NUMBER]
+ [-l, --ligand-charge MAP_OR_NUMBER]
  [--verbose/--no-verbose]
 ```
 
 ### Examples
 ```bash
 # Minimal (ID-based substrate) with explicit total ligand charge
-pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
+pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l -3
 
 # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb -l 'GPP:-3,SAM:1'
 
 # Name-based substrate selection including all matches (WARNING is logged)
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb -l 'GPP:-3,SAM:1'
 
 # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 
 # Multi-structure to multiple outputs with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 ```
 
 ## Workflow
@@ -105,7 +105,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `False` |
 | `--add-linkH/--no-add-linkH` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `True` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | _None_ |
+| `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | _None_ |
 | `-v, --verbose/--no-verbose` | Emit INFO-level logging (`True`) or keep warnings only (`False`). | `True` |
 
 ## Outputs

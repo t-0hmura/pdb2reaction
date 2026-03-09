@@ -78,8 +78,8 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 ### 残基別マッピング（推奨）
 ```bash
---ligand-charge 'SAM:1,GPP:-3' # SAM は +1、GPP は -3
---ligand-charge 'LIG:-2' # LIG は -2
+-l 'SAM:1,GPP:-3' # SAM は +1、GPP は -3
+-l 'LIG:-2' # LIG は -2
 ```
 
 ### 総電荷の明示的上書き

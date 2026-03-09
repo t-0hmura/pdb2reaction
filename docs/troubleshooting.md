@@ -84,7 +84,7 @@ Fix:
 - Or (when using extraction) provide a residue-name mapping:
 
  ```bash
- pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
  ```
 
 ---

@@ -45,7 +45,7 @@ Options:
                                   only) in pockets.  [default: True]
   --selected-resn TEXT            Force-include residues (comma/space separated;
                                   chain/insertion codes allowed).  [default: ""]
-  --ligand-charge TEXT            Total charge (number) or per-resname mapping
+  -l, --ligand-charge TEXT            Total charge (number) or per-resname mapping
                                   like 'GPP:-3,SAM:1'. Used for extractor charge
                                   summaries; when extraction is skipped, PDB
                                   inputs derive the total charge and numeric

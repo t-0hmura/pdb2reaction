@@ -25,26 +25,26 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--exclude-backbone/--no-exclude-backbone]
  [--add-linkH/--no-add-linkH]
  [--selected-resn LIST]
- [--ligand-charge MAP_OR_NUMBER]
+ [-l, --ligand-charge MAP_OR_NUMBER]
  [--verbose/--no-verbose]
 ```
 
 ### 例
 ```bash
 # 最小（ID基準の基質）+ 明示的な総リガンド電荷
-pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb --ligand-charge -3
+pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l -3
 
 # PDBとして提供される基質; 残基名ごとの電荷マッピング
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb -l 'GPP:-3,SAM:1'
 
 # 名前基準の基質選択（すべてのマッチを含む）
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb -l 'GPP:-3,SAM:1'
 
 # ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 
 # ヘテロ-ヘテロ近接を有効にした複数構造から複数出力
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 --ligand-charge 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 ```
 
 ## ワークフロー
@@ -107,7 +107,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkH/--no-add-linkH` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基（オプションのチェーン/挿入コード付きID） | `""` |
-| `--ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
+| `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `-v, --verbose/--no-verbose` | INFOレベルログを出力（`True`）または警告のみ（`False`） | `True` |
 
 ## 出力

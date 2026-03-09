@@ -339,6 +339,7 @@ def _flatten_all_imag_modes_for_geom(
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
 @click.option(
+    "-l",
     "--ligand-charge",
     type=str,
     default=None,

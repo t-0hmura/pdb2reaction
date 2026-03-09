@@ -93,7 +93,7 @@ Use this when you already have **two or more** full structures along a reaction 
 Typical command:
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ### 2) Single-structure staged scan → MEP

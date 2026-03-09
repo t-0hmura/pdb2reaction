@@ -38,7 +38,7 @@ Options:
                                   cut-bond directions.  [default: add-linkH]
   --selected-resn TEXT            Comma/space-separated residue IDs to force-
                                   include.
-  --ligand-charge TEXT            Total charge number or per-resname mapping
+  -l, --ligand-charge TEXT            Total charge number or per-resname mapping
                                   like 'GPP:-3,SAM:1'.
   -v, --verbose / --no-verbose    Enable INFO-level logging.  [default: v]
   -h, --help                      Show this message and exit.

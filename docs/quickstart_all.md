@@ -13,13 +13,13 @@ Run the end-to-end workflow once from two full PDB structures.
 ## Minimal command
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all
+pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --out-dir ./result_all
 ```
 
 If you want post-processing in the same run:
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 

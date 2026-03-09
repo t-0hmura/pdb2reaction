@@ -6,13 +6,13 @@
 
 多くのケースで、次のような **1 コマンド** から反応経路の初期案を得られます。
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ---
 さらに `--tsopt --thermo --dft` を追加すると、**最小エネルギー経路（MEP: Minimum Energy Path）探索 → 遷移状態（TS: Transition State）最適化 → 固有反応座標（IRC: Intrinsic Reaction Coordinate） → 振動解析・熱化学 → DFT 一点計算** までまとめて実行できます。
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
 
@@ -48,7 +48,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt 
 | 規約 | 例 | 備考 |
 |-----|-----|------|
 | **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
-| **電荷マッピング** | `--ligand-charge 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
+| **電荷マッピング** | `-l 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
 | **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
 
 詳細は [CLI 規約](cli_conventions.md) を参照してください。
@@ -116,13 +116,13 @@ pdb2reaction all [OPTIONS]...
 **最小例**
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 **詳細例**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 処理の流れ:
@@ -151,7 +151,7 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GP
 **最小例**
 
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]'
+pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]'
 ```
 
 **詳細例**
@@ -184,13 +184,13 @@ PDB を 1 つだけ指定し、`--tsopt` を有効にします:
 **最小例**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 ```
 
 **詳細例**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
 ```
 
 処理の流れ:
@@ -217,7 +217,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 |----------|------|
 | `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt`** → TSOPT のみモード |
 | `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、または PDB パスをサポート |
-| `--ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
+| `-l, --ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`）。 |
 | `--scan-lists TEXT...` | 単一入力実行用の段階的距離スキャン |
@@ -289,10 +289,10 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --t
 
 ```bash
 # 基本的な MEP 探索（2 構造以上）
-pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
+pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' -l 'SUB:-1'
 
 # 後処理付きフルワークフロー
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 
 # 単一構造 + 段階的スキャン
@@ -308,7 +308,7 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
 |----------|------|
 | `-i` | 入力構造 |
 | `-c` | 活性部位ポケット抽出用の基質定義 |
-| `--ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
+| `-l, --ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
 | `--tsopt` | TS 最適化 + IRC を有効化 |
 | `--thermo` | 振動解析を実行 |
 | `--dft` | DFT 一点計算を実行 |

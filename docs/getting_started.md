@@ -6,13 +6,13 @@
 
 In many workflows, a **single command** like the one below is enough to generate a useful initial reaction path:
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ---
 You can also run **Minimum Energy Path (MEP) search → Transition State (TS) optimization → Intrinsic Reaction Coordinate (IRC) → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
 
@@ -48,7 +48,7 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 | Convention | Example | Notes |
 |------------|---------|-------|
 | **Residue selectors** | `'SAM,GPP'` or `'A:123,B:456'` | Quote multi-value strings to prevent shell expansion |
-| **Charge mapping** | `--ligand-charge 'SAM:1,GPP:-3'` | Colon separates name and charge; comma separates entries |
+| **Charge mapping** | `-l 'SAM:1,GPP:-3'` | Colon separates name and charge; comma separates entries |
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` | Delimiters: space, comma, slash, backtick, backslash |
 
 For full details, see [CLI Conventions](cli_conventions.md).
@@ -116,13 +116,13 @@ Use this when you already have several full PDB structures along a putative reac
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
+pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 Behavior:
@@ -151,7 +151,7 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]'
+pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]'
 ```
 
 **Richer example**
@@ -184,13 +184,13 @@ Provide exactly one PDB and enable `--tsopt`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
 ```
 
 Behavior:
@@ -217,7 +217,7 @@ Below are the most commonly used options across workflows.
 |--------|-------------|
 | `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT‑only mode. |
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
-| `--ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
+| `-l, --ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of total system charge. |
 | `-m, --multiplicity INT` | Spin multiplicity (e.g., `1` for singlet). |
 | `--scan-lists TEXT...` | Staged distance scans for single‑input runs. |
@@ -289,10 +289,10 @@ For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluat
 
 ```bash
 # Basic MEP search (2+ structures)
-pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' --ligand-charge 'SUB:-1'
+pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' -l 'SUB:-1'
 
 # Full workflow with post-processing
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3' \
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 
 # Single structure with staged scan
@@ -308,7 +308,7 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
 |--------|---------|
 | `-i` | Input structure(s) |
 | `-c` | Substrate definition for pocket extraction |
-| `--ligand-charge` | Substrate charges (e.g., `'SAM:1,GPP:-3'`) |
+| `-l, --ligand-charge` | Substrate charges (e.g., `'SAM:1,GPP:-3'`) |
 | `--tsopt` | Enable TS optimization + IRC |
 | `--thermo` | Run vibrational analysis |
 | `--dft` | Run single-point DFT |

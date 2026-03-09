@@ -4,7 +4,7 @@
 End-to-end enzymatic reaction workflow: extraction, MEP search, TS optimization, IRC, and post-processing.
 
 Example:
-    pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,SAM' --ligand-charge 'GPP:-3,SAM:1'
+    pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,SAM' -l 'GPP:-3,SAM:1'
 
 For detailed documentation, see: docs/all.md
 """
@@ -1502,6 +1502,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--input",
         "-c",
         "--center",
+        "-l",
         "--ligand-charge",
         "-q",
         "--charge",
@@ -1662,6 +1663,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Force-include residues (comma/space separated; chain/insertion codes allowed).",
 )
 @click.option(
+    "-l",
     "--ligand-charge",
     type=str,
     default=None,
@@ -3204,10 +3206,19 @@ def cli(
             scan_input_pdb = Path(input_paths[0]).resolve()
         else:
             scan_input_pdb = Path(pocket_outputs[0]).resolve()
-        pockets_for_path = [scan_input_pdb] + stage_results_resumed
+        initial_path_for_path = scan_input_pdb
+        initial_ref_pdb_for_path = scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None
+        preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
+        preopt_pdb = (scan_dir / "preopt" / "result.pdb").resolve()
+        if preopt_xyz.exists():
+            initial_path_for_path = preopt_xyz
+            if preopt_pdb.exists():
+                initial_ref_pdb_for_path = preopt_pdb
+            _echo(f"[all] Using scan preopt XYZ as initial path endpoint: {initial_path_for_path}")
+        pockets_for_path = [initial_path_for_path] + stage_results_resumed
         pocket_ref_pdbs = None
-        if scan_input_pdb.suffix.lower() == ".pdb":
-            candidate_pdbs_r: List[Path] = [scan_input_pdb]
+        if initial_ref_pdb_for_path is not None:
+            candidate_pdbs_r: List[Path] = [initial_ref_pdb_for_path]
             missing_pdb_r = False
             for stage_path in stage_results_resumed:
                 if stage_path.suffix.lower() == ".pdb":
@@ -3323,10 +3334,20 @@ def cli(
         for p in stage_results:
             _echo(f"  - {p}")
 
-        pockets_for_path = [scan_input_pdb] + stage_results
+        initial_path_for_path = scan_input_pdb
+        initial_ref_pdb_for_path = scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None
+        if scan_preopt_use:
+            preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
+            preopt_pdb = (scan_dir / "preopt" / "result.pdb").resolve()
+            if preopt_xyz.exists():
+                initial_path_for_path = preopt_xyz
+                if preopt_pdb.exists():
+                    initial_ref_pdb_for_path = preopt_pdb
+                _echo(f"[all] Using scan preopt XYZ as initial path endpoint: {initial_path_for_path}")
+        pockets_for_path = [initial_path_for_path] + stage_results
 
-        if scan_input_pdb.suffix.lower() == ".pdb":
-            candidate_pdbs: List[Path] = [scan_input_pdb]
+        if initial_ref_pdb_for_path is not None:
+            candidate_pdbs: List[Path] = [initial_ref_pdb_for_path]
             missing_pdb = False
             for stage_path in stage_results:
                 if stage_path.suffix.lower() == ".pdb":

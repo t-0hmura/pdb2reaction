@@ -21,7 +21,7 @@ It supports three common modes:
 ## Minimal example
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" --out-dir ./result_all
 ```
 
 ## Output checklist
@@ -35,7 +35,7 @@ pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" -
 1. Run full post-processing in one command.
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" --ligand-charge "SAM:1,GPP:-3" \
+pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
@@ -60,7 +60,7 @@ For help output, `pdb2reaction all --help` shows core options and `pdb2reaction 
 ```bash
 # Multi-structure ensemble with explicit ligand charges and post-processing
 pdb2reaction all -i reactant.pdb -i product.pdb -c 'GPP,SAM' \
- --ligand-charge 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
+ -l 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
  --out-dir ./result_all --tsopt --thermo --dft
 
@@ -71,7 +71,7 @@ pdb2reaction all -i single.pdb -c '308,309' \
 
 # TSOPT-only workflow (no path search)
 pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
- --ligand-charge 'GPP:-3,SAM:1' --tsopt --thermo --dft
+ -l 'GPP:-3,SAM:1' --tsopt --thermo --dft
 ```
 
 ## Workflow
@@ -141,7 +141,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted (recommended). Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `-l, --ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted (recommended). Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `-q, --charge INT` | Force the total system charge (overrides `--ligand-charge`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 

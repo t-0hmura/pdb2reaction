@@ -1339,6 +1339,7 @@ def _build_rsirfo_kwargs(
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
 @click.option(
+    "-l",
     "--ligand-charge",
     type=str,
     default=None,

@@ -94,7 +94,7 @@ pdb2reaction がポケットを抽出する際、切断された結合は**リ�
 例:
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' --ligand-charge 'SAM:1,GPP:-3'
+pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
 
 ### 2) 単一構造の段階的スキャン → MEP

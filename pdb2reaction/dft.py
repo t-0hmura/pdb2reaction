@@ -315,6 +315,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     ),
 )
 @click.option(
+    "-l",
     "--ligand-charge",
     type=str,
     default=None,
