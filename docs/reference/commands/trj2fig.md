@@ -24,7 +24,7 @@ Options:
                                   recomputation when supplied.
   --reverse-x / --no-reverse-x    Reverse the x-axis (last frame on the left).
                                   [default: no-reverse-x]
-  --backend [uma|orb|mace|aimnet2]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]

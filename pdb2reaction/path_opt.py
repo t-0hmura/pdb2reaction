@@ -491,7 +491,7 @@ def _optimize_single(
     help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option(
-    "--out-dir",
+    "-o", "--out-dir",
     "out_dir",
     type=str,
     default="./result_path_opt/",
@@ -560,7 +560,7 @@ def _optimize_single(
     show_default=True,
     help="Fix structures of input endpoints during GSM.",
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")

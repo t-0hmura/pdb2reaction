@@ -2,10 +2,10 @@
 
 ## Overview
 
-> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations (UMA by default). Use `--spec` (YAML/JSON, recommended) or `--scan-lists`; or plot an existing `surface.csv` via `--csv`.
+> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations (UMA by default). Use `-s/--scan-lists` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
-- **Input:** One structure + `--spec scan3d.yaml` (recommended) or one `--scan-lists` literal (three quadruples), unless you use `--csv` to plot only.
+- **Input:** One structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `-s/--scan-lists` inline literal (three quadruples), unless you use `--csv` to plot only.
 - **Grid ordering:** Values are reordered so points closest to the (pre)optimized structure are visited first.
 - **Energies:** Recorded energies are evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
@@ -17,7 +17,7 @@ For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping 
 
 ## Minimal example
 ```bash
-pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --out-dir ./result_scan3d/
+pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 ```
 
 ## Output checklist
@@ -27,23 +27,23 @@ pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml --out-dir ./result_scan
 
 ## Common examples
 1. Run from a YAML spec.
-2. Run with a `--scan-lists` literal.
+2. Run with an inline literal.
 3. Enable `--dump` to keep inner d3 trajectories per `(d1,d2)` slice.
 
-> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--spec` / `--scan-lists`.
+> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `-s/--scan-lists`.
 
 ## Usage
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--spec scan3d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
-Note: `-i/--input` and one of `--spec`/`--scan-lists` are required unless `--csv` is provided.
+Note: `-i/--input` and `-s/--scan-lists` are required unless `--csv` is provided.
 
 ### Examples
 ```bash
-# Recommended: YAML/JSON spec
+# Recommended: YAML/JSON spec file
 cat > scan3d.yaml << 'YAML'
 one_based: true
 pairs:
@@ -51,23 +51,23 @@ pairs:
  - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
  - ["TYR,285,CG", "SAM,309,C12", 1.10, 3.00]
 YAML
-pdb2reaction scan3d -i input.pdb -q 0 --spec scan3d.yaml
+pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 
-# Alternative: Python literal
+# Alternative: inline Python literal
 pdb2reaction scan3d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
 
 # LBFGS relaxations, dumped inner trajectories, and an HTML isosurface plot
 pdb2reaction scan3d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode grad \
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
+ --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
  --preopt --baseline min
 
 # Plot only from an existing surface.csv (skip new energy evaluation)
-pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
+pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./result_scan3d/
 ```
 
-## `--spec` format (recommended)
+## YAML/JSON spec file format (recommended)
 
 ```yaml
 one_based: true # optional; defaults to CLI --one-based
@@ -79,18 +79,18 @@ pairs:
 
 - `pairs` is required and must contain exactly 3 quadruples.
 - Each quadruple is `(i, j, low_Å, high_Å)`.
-- Indices may be integers or PDB selectors, same as `--scan-lists`.
+- Indices may be integers or PDB selectors, same as inline literals.
 
-## `--scan-lists` format
+## Inline Python literal format
 
-`--scan-lists` is the advanced input mode. It accepts a **single Python literal** string. Shell quoting matters.
+`-s/--scan-lists` also accepts a **single inline Python literal** string. Shell quoting matters.
 
 ### Basic structure
 
 The literal is a Python list of exactly **three** quadruples `(atom1, atom2, low_Å, high_Å)`:
 
 ```
---scan-lists '[(atom1, atom2, low_Å, high_Å), (atom3, atom4, low_Å, high_Å), (atom5, atom6, low_Å, high_Å)]'
+-s '[(atom1, atom2, low_Å, high_Å), (atom3, atom4, low_Å, high_Å), (atom5, atom6, low_Å, high_Å)]'
 ```
 
 - Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
@@ -120,13 +120,13 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ```bash
 # Correct: single-quote the list, double-quote selector strings inside
---scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
+-s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
 
 # Correct: integer indices need no inner quotes
---scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20), (3, 12, 1.10, 3.00)]'
+-s '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20), (3, 12, 1.10, 3.00)]'
 
 # Avoid: double-quoting the outer literal requires escaping inner quotes
---scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
+-s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
 ```
 
 ## Workflow
@@ -136,7 +136,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
  structure is treated as an enzyme–substrate complex and `extract.py`’s charge
  summary derives the total charge before scanning (for PDB inputs, or XYZ/GJF
  when `--ref-pdb` is supplied).
-2. Parse targets from `--spec` (recommended) or `--scan-lists` (default 1-based indices unless
+2. Parse targets from `-s/--scan-lists` (YAML/JSON file or inline literal; default 1-based indices unless
  `--zero-based` is passed) into three quadruples. For PDB inputs, each
  atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
  delimiters may be spaces, commas, slashes, backticks, or backslashes, and
@@ -164,10 +164,9 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `--spec FILE` | YAML/JSON spec with `pairs` (3 quadruples); optional `one_based`. | Recommended unless `--csv` is provided |
-| `--scan-lists TEXT` | **Single** Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` unless `--csv` is provided |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--spec`/`--scan-lists` resolution. | `False` |
+| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `-s/--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
@@ -176,11 +175,11 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
-| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--spec`/`--scan-lists` become optional. | _None_ |
+| `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
+| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `-s/--scan-lists` become optional. | _None_ |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |

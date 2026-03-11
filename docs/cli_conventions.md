@@ -188,10 +188,10 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 
 ## Output Directory
 
-Use `--out-dir` to specify where results are saved:
+Use `-o/--out-dir` to specify where results are saved:
 
 ```bash
---out-dir ./my_results/ # Custom output directory
+-o ./my_results/ # Custom output directory
 ```
 
 Default output directories:

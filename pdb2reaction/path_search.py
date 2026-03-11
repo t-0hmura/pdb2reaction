@@ -1663,7 +1663,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
-@click.option("--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
+@click.option("-o", "--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,
@@ -1743,7 +1743,7 @@ def _merge_final_and_write(final_images: List[Any],
           "Useful when --input uses XYZ/GJF intermediates but PDB snapshots exist for merging. "
           "Must match the number and order of --input.")
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
@@ -2154,11 +2154,17 @@ def cli(
             g.set_calculator(shared_calc)
 
         # If any input is PDB, treat as "PDB input" for final output handling.
+        # Fall back to --ref-pdb (pocket_ref_pdb_paths) when inputs are XYZ.
         ref_pdb_for_segments: Optional[Path] = None
         for p in p_list:
             if p.suffix.lower() == ".pdb":
                 ref_pdb_for_segments = p.resolve()
                 break
+        if ref_pdb_for_segments is None and pocket_ref_pdb_paths:
+            for p in pocket_ref_pdb_paths:
+                if Path(p).suffix.lower() == ".pdb":
+                    ref_pdb_for_segments = Path(p).resolve()
+                    break
 
         if preopt:
             new_geoms: List[Any] = []
@@ -2313,14 +2319,15 @@ def cli(
 
         if needs_pdb or needs_gjf:
             try:
-                convert_xyz_like_outputs(
+                did_convert = convert_xyz_like_outputs(
                     final_trj,
                     main_prepared,
                     ref_pdb_path=ref_pdb_for_segments,
                     out_pdb_path=out_dir_path / "mep.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
                 )
-                click.echo("[convert] Wrote final MEP outputs.")
+                if did_convert:
+                    click.echo("[convert] Wrote final MEP outputs.")
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
 

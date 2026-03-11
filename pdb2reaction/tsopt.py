@@ -720,7 +720,10 @@ class HessianDimer:
         self.fn = fn
         self.out_dir = Path(out_dir); self.out_dir.mkdir(parents=True, exist_ok=True)
         self.vib_dir = self.out_dir / "vib"; self.vib_dir.mkdir(parents=True, exist_ok=True)
-        self.ref_pdb: Optional[Path] = Path(fn) if Path(fn).suffix.lower() == ".pdb" else None
+        # Use prepared_input.source_path if available (may be overridden by --ref-pdb),
+        # otherwise fall back to fn directly.
+        _src = (prepared_input.source_path if prepared_input is not None else Path(fn))
+        self.ref_pdb: Optional[Path] = _src if _src.suffix.lower() == ".pdb" else None
         self.prepared_input = prepared_input
 
         self.thresh_loose = thresh_loose
@@ -1391,7 +1394,7 @@ def _build_rsirfo_kwargs(
     show_default=True,
     help="Write optimization trajectory to the output directory.",
 )
-@click.option("--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory.")
+@click.option("-o", "--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,
@@ -1430,7 +1433,7 @@ def _build_rsirfo_kwargs(
     default=None,
     help="Choose UMA Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")

@@ -2,22 +2,22 @@
 
 ## Overview
 
-> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and UMA relaxations. Use `--spec` (YAML/JSON, recommended) or `--scan-lists`.
+> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and UMA relaxations. Use `-s/--scan-lists` with a YAML/JSON spec file (recommended) or an inline Python literal.
 
 ### At a glance
-- **Input:** One structure + `--spec scan2d.yaml` (recommended), or one `--scan-lists` literal containing exactly two quadruples.
+- **Input:** One structure + `-s/--scan-lists scan2d.yaml` (recommended), or one `-s/--scan-lists` inline literal containing exactly two quadruples.
 - **Grid ordering:** Each axis is reordered so the point closest to the (pre)optimized structure is visited first.
 - **Energies:** Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv` plus `scan2d_map.png` and `scan2d_landscape.html`, and per-point structures under `grid/`.
 - **Caution:** Grid size grows quickly as `(high − low) / --max-step-size` increases.
 
-`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of LBFGS.
+`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of LBFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Minimal example
 ```bash
-pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan2d/
+pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 ```
 
 ## Output checklist
@@ -27,43 +27,43 @@ pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml --out-dir ./result_scan
 
 ## Common examples
 
-1. **Run from a YAML spec** — see [Examples](#examples) below.
-2. **Run with a `--scan-lists` literal** — see [Examples](#examples) below.
+1. **Run from a YAML spec file** -- see [Examples](#examples) below.
+2. **Run with an inline literal** -- see [Examples](#examples) below.
 3. **Enable `--dump`** to store inner trajectories by d1 step — see [Examples](#examples) below.
 
-> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--spec` / `--scan-lists`.
+> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `-s/--scan-lists`.
 
 ## Usage
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--spec scan2d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan2d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### Examples
 ```bash
-# Recommended: YAML/JSON spec
+# Recommended: YAML/JSON spec file
 cat > scan2d.yaml << 'YAML'
 one_based: true
 pairs:
  - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
  - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
 YAML
-pdb2reaction scan2d -i input.pdb -q 0 --spec scan2d.yaml
+pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
 
-# Alternative: Python literal
+# Alternative: inline Python literal
 pdb2reaction scan2d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode grad \
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
+ --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```
 
-## `--spec` format (recommended)
+## YAML/JSON spec file format (recommended)
 
 ```yaml
 one_based: true # optional; defaults to CLI --one-based
@@ -74,18 +74,18 @@ pairs:
 
 - `pairs` is required and must contain exactly 2 quadruples.
 - Each quadruple is `(i, j, low_Å, high_Å)`.
-- Indices may be integers or PDB selectors, same as `--scan-lists`.
+- Indices may be integers or PDB selectors, same as inline literals.
 
-## `--scan-lists` format
+## Inline Python literal format
 
-`--scan-lists` is the advanced input mode. It accepts a **single Python literal** string. Shell quoting matters.
+`-s/--scan-lists` also accepts a **single inline Python literal** string. Shell quoting matters.
 
 ### Basic structure
 
 The literal is a Python list of exactly **two** quadruples `(atom1, atom2, low_Å, high_Å)`:
 
 ```
---scan-lists '[(atom1, atom2, low_Å, high_Å), (atom3, atom4, low_Å, high_Å)]'
+-s '[(atom1, atom2, low_Å, high_Å), (atom3, atom4, low_Å, high_Å)]'
 ```
 
 - Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
@@ -115,13 +115,13 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ```bash
 # Correct: single-quote the list, double-quote selector strings inside
---scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
+-s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 
 # Correct: integer indices need no inner quotes
---scan-lists '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
+-s '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
 
 # Avoid: double-quoting the outer literal requires escaping inner quotes
---scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
+-s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
 ```
 
 ## Workflow
@@ -132,7 +132,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
  scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
  structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
  stored in `surface.csv` with indices `i = j = -1`.
-2. Parse targets from `--spec` (recommended) or `--scan-lists` into two quadruples, normalize indices
+2. Parse targets from `-s/--scan-lists` (YAML/JSON file or inline literal) into two quadruples, normalize indices
  (1-based by default). For PDB inputs, each atom entry can be an integer index
  or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
  slashes, backticks, or backslashes, and token order is flexible (fallback
@@ -165,10 +165,9 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `--spec FILE` | YAML/JSON spec with `pairs` (2 quadruples); optional `one_based`. | Recommended |
-| `--scan-lists TEXT` | **Single** Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--spec`/`--scan-lists` resolution. | `False` |
+| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `-s/--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
@@ -177,10 +176,10 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--dump/--no-dump` | Write `inner_path_d1_###_trj.xyz` for each outer step. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
+| `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |

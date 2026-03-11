@@ -30,20 +30,20 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (h
 
 ## Backend selection
 
-Select a backend with `--backend` on any command, or set `calc.backend` in YAML:
+Select a backend with `-b/--backend` on any command, or set `calc.backend` in YAML:
 
 ```bash
 # UMA (default)
 pdb2reaction opt -i input.pdb -q 0
 
 # ORB
-pdb2reaction opt -i input.pdb -q 0 --backend orb
+pdb2reaction opt -i input.pdb -q 0 -b orb
 
 # MACE (use a separate environment from UMA)
-pdb2reaction opt -i input.pdb -q 0 --backend mace
+pdb2reaction opt -i input.pdb -q 0 -b mace
 
 # AIMNet2
-pdb2reaction opt -i input.pdb -q 0 --backend aimnet2
+pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 ```
 
 | Backend | Install | Analytical Hessian | Multi-worker | Notes |
@@ -59,13 +59,13 @@ All backends support xTB-based implicit solvent corrections via `--solvent`:
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 --solvent water
-pdb2reaction opt -i input.pdb -q 0 --backend orb --solvent water --solvent-model cpcmx
+pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ```
 
 The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), added to the MLIP energy/forces/Hessian. Requires `xtb` to be installed and accessible on `PATH`.
 
 ## Key features
-- **MLIP backends** – the default UMA backend loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch. Alternative backends (ORB, MACE, AIMNet2) are available via `--backend`.
+- **MLIP backends** – the default UMA backend loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch. Alternative backends (ORB, MACE, AIMNet2) are available via `-b/--backend`.
 - **Device handling** – `device="auto"` selects CUDA when available, otherwise CPU. Graph construction happens on the chosen device; when `workers>1`, the parallel predictor manages device transfers.
 ### Hessian evaluation
 
@@ -238,5 +238,5 @@ Common constructor keywords (defaults shown in the rightmost column):
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 - [opt](opt.md) -- Single-structure optimization using an MLIP backend
-- [path_opt](path_opt.md) -- MEP optimization with MLIP backend
+- [path-opt](path_opt.md) -- MEP optimization with MLIP backend
 - [all](all.md) -- End-to-end workflow using MLIP across stages

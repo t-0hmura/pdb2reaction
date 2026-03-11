@@ -26,7 +26,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (PDB inputs only).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region
@@ -52,7 +52,7 @@ Options:
                                   Convert XYZ/TRJ outputs into PDB/GJF
                                   companions based on the input format.
                                   [default: convert-files]
-  --out-dir TEXT                  Output directory.  [default:
+  -o, --out-dir TEXT              Output directory.  [default:
                                   ./result_path_search/]
   --thresh TEXT                   Convergence preset for single-structure
                                   optimizations only (gau_loose|gau|gau_tight|ga
@@ -88,7 +88,7 @@ Options:
                                   XYZ/GJF intermediates but PDB snapshots exist
                                   for merging. Must match the number and order
                                   of --input.
-  --backend [uma|orb|mace|aimnet2]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]

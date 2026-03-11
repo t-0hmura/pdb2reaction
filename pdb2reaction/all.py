@@ -1512,6 +1512,12 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--dft",
         "--config",
         "--dry-run",
+        "--solvent",
+        "-s",
+        "--scan-lists",
+        "-b",
+        "--backend",
+        "-o",
         "--help-advanced",
     }
 )
@@ -1607,7 +1613,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     ),
 )
 @click.option(
-    "--out-dir",
+    "-o", "--out-dir",
     "out_dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=Path("./result_all/"),
@@ -1698,7 +1704,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help="Workers per node when using a parallel UMA predictor (workers>1).",
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
@@ -2009,19 +2015,17 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Preferred DFT backend: GPU (default), CPU, or auto (try GPU then CPU).",
 )
 @click.option(
-    "--scan-lists",
+    "-s", "--scan-lists",
     "scan_lists_raw",
     type=str,
     multiple=True,
     required=False,
     help=(
-        "Python-like list of (i,j,target_Å) per stage for **single-structure** scan. A single "
-        "literal runs one stage; multiple literals run **sequentially**, each starting from the "
-        "prior stage's relaxed structure. "
-        "Example: --scan-lists '[(12,45,1.35)]' --scan-lists '[(10,55,2.20),(23,34,1.80)]'. "
+        "Scan targets: inline Python literal or a YAML/JSON spec file path. "
+        "Multiple inline literals define sequential stages, e.g. "
+        "'[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
-        "auto-mapped to the pocket after extraction. For non-PDB single-structure scans, only integer "
-        "indices are supported (1-based by default). Stage results feed into the MEP step (path_search or path_opt)."
+        "auto-mapped to the pocket after extraction."
     ),
 )
 @click.option(
@@ -2074,6 +2078,16 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     default=None,
     help="Override scan --endopt flag. Defaults to True.",
 )
+@click.option(
+    "--ref-pdb",
+    "ref_pdb_cli",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help=(
+        "Reference PDB for topology when -i provides XYZ inputs. "
+        "Enables PDB output conversion in TSOPT-only, scan, and path_search pipelines."
+    ),
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -2124,6 +2138,7 @@ def cli(
     scan_relax_max_cycles: Optional[int],
     scan_preopt_override: Optional[bool],
     scan_endopt_override: Optional[bool],
+    ref_pdb_cli: Optional[Path],
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
     flatten: bool,
@@ -2224,7 +2239,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = collect_single_option_values(argv_all, ("--scan-lists",), "--scan-lists")
+    scan_vals = collect_single_option_values(argv_all, ("-s", "--scan-lists"), "--scan-lists")
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
@@ -2584,10 +2599,18 @@ def cli(
     else:
         q_int = int(resolved_charge) if resolved_charge is not None else 0
 
+    # Resolve --ref-pdb for topology
+    ref_pdb_for_topology: Optional[Path] = None
+    if ref_pdb_cli is not None:
+        ref_pdb_for_topology = ref_pdb_cli.resolve()
+        _echo(f"[all] --ref-pdb provided: {ref_pdb_for_topology}")
+
     freeze_ref: Optional[Path] = None
     if freeze_links_flag:
         if not skip_extract and pocket_outputs:
             freeze_ref = pocket_outputs[0]
+        elif ref_pdb_for_topology is not None:
+            freeze_ref = ref_pdb_for_topology
         else:
             for p in input_paths:
                 if p.suffix.lower() == ".pdb":
@@ -2665,6 +2688,7 @@ def cli(
                 _echo("[resume] WARNING: Could not reload energies from summary.yaml; "
                       "energy diagram may show zeros", err=True)
         else:
+            _tsopt_ref = ref_pdb_for_topology or (ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None)
             ts_pdb, g_ts = _run_tsopt_on_hei(
                 ts_initial_pdb,
                 q_int,
@@ -2674,7 +2698,7 @@ def cli(
                 tsroot,
                 freeze_links_flag,
                 tsopt_opt_mode_default,
-                ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
+                _tsopt_ref,
                 convert_files,
                 overrides=tsopt_overrides,
             )
@@ -2683,8 +2707,8 @@ def cli(
                 seg_idx=1,
                 seg_dir=tsroot,
                 ref_pdb_for_seg=ts_pdb,
-                seg_pocket_pdb=ts_initial_pdb,
-                ref_pdb_template=ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None,
+                seg_pocket_pdb=ref_pdb_for_topology or ts_initial_pdb,
+                ref_pdb_template=_tsopt_ref,
                 g_ts=g_ts,
                 q_int=q_int,
                 spin=spin,
@@ -2711,7 +2735,7 @@ def cli(
                 g_prod_irc, e_prod_irc = gL, eL
 
             ensure_dir(struct_dir)
-            pocket_ref = ts_initial_pdb
+            pocket_ref = ref_pdb_for_topology or ts_initial_pdb
             pR_irc = _save_single_geom_as_pdb_for_tools(
                 g_react_irc, pocket_ref, struct_dir, "reactant_irc"
             )
@@ -2803,7 +2827,7 @@ def cli(
             and (dft_root / "P" / "result.yaml").is_file()
         )
 
-        ref_pdb_for_tsopt_only = (
+        ref_pdb_for_tsopt_only = ref_pdb_for_topology or (
             ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
         )
 
@@ -3152,16 +3176,14 @@ def cli(
             )
 
         try:
+            ts_xyz_copy = out_dir / "ts_seg_01.xyz"
+            write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_xyz_copy)
+            _echo(f"[all] Wrote TS structure → {ts_xyz_copy}")
             ts_pdb = pT.with_suffix(".pdb")
             if ts_pdb.exists():
-                ts_copy = out_dir / "ts_seg_01.pdb"
-                shutil.copy2(ts_pdb, ts_copy)
-            else:
-                ts_copy = out_dir / "ts_seg_01.xyz"
-                write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_copy)
-            _echo(
-                f"[all] Copied TS structure for TSOPT-only run → {ts_copy}"
-            )
+                ts_pdb_copy = out_dir / "ts_seg_01.pdb"
+                shutil.copy2(ts_pdb, ts_pdb_copy)
+                _echo(f"[all] Copied TS structure → {ts_pdb_copy}")
         except Exception as e:
             _echo(
                 f"[all] WARNING: Failed to write TS structure in TSOPT-only mode: {e}",
@@ -3207,7 +3229,7 @@ def cli(
         else:
             scan_input_pdb = Path(pocket_outputs[0]).resolve()
         initial_path_for_path = scan_input_pdb
-        initial_ref_pdb_for_path = scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None
+        initial_ref_pdb_for_path = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
         preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
         preopt_pdb = (scan_dir / "preopt" / "result.pdb").resolve()
         if preopt_xyz.exists():
@@ -3296,8 +3318,9 @@ def cli(
             "--opt-mode",
             str(scan_opt_mode_use),
         ]
-        if scan_input_pdb.suffix.lower() == ".pdb":
-            scan_args.extend(["--ref-pdb", str(scan_input_pdb)])
+        _scan_ref = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
+        if _scan_ref is not None:
+            scan_args.extend(["--ref-pdb", str(_scan_ref)])
 
         if dump_override_requested:
             scan_args.append("--dump" if dump else "--no-dump")
@@ -3335,7 +3358,7 @@ def cli(
             _echo(f"  - {p}")
 
         initial_path_for_path = scan_input_pdb
-        initial_ref_pdb_for_path = scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None
+        initial_ref_pdb_for_path = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
         if scan_preopt_use:
             preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
             preopt_pdb = (scan_dir / "preopt" / "result.pdb").resolve()
@@ -3449,6 +3472,8 @@ def cli(
             ref_pdb_for_seg: Optional[Path] = None
             if pocket_ref_pdbs and len(pocket_ref_pdbs) >= idx:
                 ref_pdb_for_seg = pocket_ref_pdbs[idx - 1]
+            elif ref_pdb_for_topology is not None:
+                ref_pdb_for_seg = ref_pdb_for_topology
             elif pL.suffix.lower() == ".pdb":
                 ref_pdb_for_seg = pL
             elif pR.suffix.lower() == ".pdb":
@@ -3771,9 +3796,15 @@ def cli(
         if gave_ref_pdb:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):
                 ps_args.extend(["--ref-full-pdb", str(p)])
-            if pocket_ref_pdbs:
-                for p in pocket_ref_pdbs:
-                    ps_args.extend(["--ref-pdb", str(p)])
+        # Pass --ref-pdb (pocket PDB snapshots) independently of --ref-full-pdb
+        # so that path_search can convert XYZ outputs to PDB even without merge.
+        if pocket_ref_pdbs:
+            for p in pocket_ref_pdbs:
+                ps_args.extend(["--ref-pdb", str(p)])
+        elif ref_pdb_for_topology is not None:
+            # Use CLI --ref-pdb for all inputs when no pocket PDB snapshots are available
+            for _ in pockets_for_path:
+                ps_args.extend(["--ref-pdb", str(ref_pdb_for_topology)])
 
         _echo()
         _echo("[all] Invoking path_search with arguments:")
@@ -3978,6 +4009,8 @@ def cli(
             candidate_ref = hei_base.with_suffix(".pdb")
             if candidate_ref.exists():
                 ref_pdb_for_seg = candidate_ref
+            elif ref_pdb_for_topology is not None:
+                ref_pdb_for_seg = ref_pdb_for_topology
 
         struct_dir = seg_dir / "structures"
         ensure_dir(struct_dir)
@@ -4148,16 +4181,14 @@ def cli(
             }
 
             try:
+                ts_xyz_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
+                write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_xyz_copy)
+                _echo(f"[all] Wrote TS structure for segment {seg_idx:02d} → {ts_xyz_copy}")
                 ts_pdb = pT.with_suffix(".pdb")
                 if ts_pdb.exists():
-                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
-                    shutil.copy2(ts_pdb, ts_copy)
-                else:
-                    ts_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
-                    write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_copy)
-                _echo(
-                    f"[all] Copied TS structure for segment {seg_idx:02d} → {ts_copy}"
-                )
+                    ts_pdb_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
+                    shutil.copy2(ts_pdb, ts_pdb_copy)
+                    _echo(f"[all] Copied TS structure for segment {seg_idx:02d} → {ts_pdb_copy}")
             except Exception as e:
                 _echo(
                     f"[all] WARNING: Failed to write TS structure for segment {seg_idx:02d}: {e}",

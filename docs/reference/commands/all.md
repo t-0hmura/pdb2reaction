@@ -29,7 +29,7 @@ Options:
                                   'GPP,SAM'. When omitted, extraction is skipped
                                   and the **full input structure(s)** are used
                                   directly as pockets.
-  --out-dir DIRECTORY             Top-level output directory for the pipeline.
+  -o, --out-dir DIRECTORY         Top-level output directory for the pipeline.
                                   [default: result_all]
   -r, --radius FLOAT              Inclusion cutoff (Å) around substrate atoms.
                                   [default: 2.6]
@@ -45,7 +45,7 @@ Options:
                                   only) in pockets.  [default: True]
   --selected-resn TEXT            Force-include residues (comma/space separated;
                                   chain/insertion codes allowed).  [default: ""]
-  -l, --ligand-charge TEXT            Total charge (number) or per-resname mapping
+  -l, --ligand-charge TEXT        Total charge (number) or per-resname mapping
                                   like 'GPP:-3,SAM:1'. Used for extractor charge
                                   summaries; when extraction is skipped, PDB
                                   inputs derive the total charge and numeric
@@ -58,7 +58,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  --backend [uma|orb|mace|aimnet2]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
@@ -169,20 +169,14 @@ Options:
                                   3.
   --dft-engine [gpu|cpu|auto]     Preferred DFT backend: GPU (default), CPU, or
                                   auto (try GPU then CPU).  [default: gpu]
-  --scan-lists TEXT               Python-like list of (i,j,target_Å) per stage
-                                  for **single-structure** scan. A single
-                                  literal runs one stage; multiple literals run
-                                  **sequentially**, each starting from the prior
-                                  stage's relaxed structure. Example: --scan-
-                                  lists '[(12,45,1.35)]' --scan-lists
+  -s, --scan-lists TEXT           Scan targets: inline Python literal or a
+                                  YAML/JSON spec file path. Multiple inline
+                                  literals define sequential stages, e.g.
+                                  '[(12,45,1.35)]'
                                   '[(10,55,2.20),(23,34,1.80)]'. Indices refer
                                   to the original full input PDB (1-based). When
                                   extraction is used, they are auto-mapped to
-                                  the pocket after extraction. For non-PDB
-                                  single-structure scans, only integer indices
-                                  are supported (1-based by default). Stage
-                                  results feed into the MEP step (path_search or
-                                  path_opt).
+                                  the pocket after extraction.
   --scan-out-dir DIRECTORY        Override the scan output directory (default:
                                   <out-dir>/scan/). Relative paths are resolved
                                   against the default parent.
@@ -199,5 +193,8 @@ Options:
   --scan-preopt BOOLEAN           Override scan --preopt flag. When omitted,
                                   this follows --preopt (default True).
   --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to True.
+  --ref-pdb FILE                  Reference PDB for topology when -i provides
+                                  XYZ inputs. Enables PDB output conversion in
+                                  TSOPT-only, scan, and path_search pipelines.
   -h, --help                      Show this message and exit.
 ```

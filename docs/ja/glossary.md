@@ -44,9 +44,9 @@
 |------|----------|------|
 | **MLIP** | Machine Learning Interatomic Potential | 量子化学データから学習し、構造からエネルギー・力を予測する（多くはニューラルネットの）原子間ポテンシャル。 |
 | **UMA** | Universal Models for Atoms | Meta が公開している事前学習 MLIP 群。pdb2reaction のデフォルト計算バックエンドです。 |
-| **ORB** | ORB Models | Orbital Materials の MLIP バックエンド。`--backend orb` で選択。 |
-| **MACE** | MACE | Equivariant message-passing MLIP。`--backend mace` で選択。 |
-| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2。`--backend aimnet2` で選択。 |
+| **ORB** | ORB Models | Orbital Materials の MLIP バックエンド。`-b orb` で選択。 |
+| **MACE** | MACE | Equivariant message-passing MLIP。`-b mace` で選択。 |
+| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2。`-b aimnet2` で選択。 |
 | **xTB** | Extended Tight Binding | 半経験的量子化学手法。pdb2reaction では `--solvent` による暗黙溶媒補正に使用。 |
 | **解析ヘシアン** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択。 |
 | **有限差分** | Finite Difference | 微小変位による微分近似。低速だがメモリ効率が良い。`--hessian-calc-mode FiniteDifference`（デフォルト）で選択。 |

@@ -20,7 +20,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
@@ -41,7 +41,7 @@ Options:
                                   [default: 20]
   --sort [value|abs]              Sort modes by 'value' (cm^-1) or by absolute
                                   value.  [default: value]
-  --out-dir TEXT                  Output directory.  [default: ./result_freq/]
+  -o, --out-dir TEXT              Output directory.  [default: ./result_freq/]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --temperature FLOAT             Temperature (K) for thermochemistry summary.
@@ -59,7 +59,7 @@ Options:
   --hessian-calc-mode [finitedifference|analytical]
                                   How UMA computes Hessian. Defaults to
                                   'FiniteDifference' (can also be set via YAML).
-  --backend [uma|orb|mace|aimnet2]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]

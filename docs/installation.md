@@ -124,6 +124,27 @@ If you prefer to build the environment piece by piece:
 
  To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.
 
+ #### Installing xTB
+
+ **For ALPB solvation model** (recommended starting point):
+
+ ```bash
+ conda install -c conda-forge xtb
+ ```
+
+ **For CPCM-X solvation model** (requires building from source):
+
+ ```bash
+ git clone --depth 1 https://github.com/grimme-lab/xtb.git
+ cd xtb
+ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
+ make -C build -j8
+ ```
+
+ Requires GCC >= 10. Set `CPXHOME` to `build/_deps/cpcmx-src/` at runtime.
+
+ To use a custom xTB binary, set the `xtb_cmd` key in your YAML config or use `calc.xtb_cmd` in Python.
+
 8. **Verify installation**
 
  ```bash

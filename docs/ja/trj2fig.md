@@ -1,7 +1,7 @@
 # `trj2fig`
 
 ## 概要
-`trj2fig` は XYZ 軌跡から整形済みのエネルギープロファイルを生成します。デフォルトでは各フレームのコメント行に含まれる Hartree エネルギーを読み取り、kcal/mol または Hartree に変換して、必要に応じて基準フレームに対する相対値にします。静的/インタラクティブな図と CSV を出力します。基準は最初のフレーム（`init`）、`--reverse-x` 使用時の最後のフレーム、または任意のフレームインデックスを指定できます。`-q/--charge` と `-m/--multiplicity` を与えると、コメント行ではなく MLIP バックエンド（デフォルト: UMA、`--backend` で選択可能）で各フレームのエネルギーを再計算します。
+`trj2fig` は XYZ 軌跡から整形済みのエネルギープロファイルを生成します。デフォルトでは各フレームのコメント行に含まれる Hartree エネルギーを読み取り、kcal/mol または Hartree に変換して、必要に応じて基準フレームに対する相対値にします。静的/インタラクティブな図と CSV を出力します。基準は最初のフレーム（`init`）、`--reverse-x` 使用時の最後のフレーム、または任意のフレームインデックスを指定できます。`-q/--charge` と `-m/--multiplicity` を与えると、コメント行ではなく MLIP バックエンド（デフォルト: UMA、`-b/--backend` で選択可能）で各フレームのエネルギーを再計算します。
 
 ## 使用法
 ```bash
@@ -44,7 +44,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-q, --charge INT` | 総電荷。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
 | `--reverse-x/--no-reverse-x` | x軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
-| `--backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 

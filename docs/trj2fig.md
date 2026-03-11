@@ -8,7 +8,7 @@ exports the resulting series as static/interactive figures and CSV tables. The
 reference can be the first frame (`init`), the last frame when `--reverse-x` is
 used, or any explicit index. When you supply `-q/--charge` and/or
 `-m/--multiplicity`, all energies are recomputed for every frame with the
-MLIP backend (default UMA; see `--backend`) using the provided charge/spin instead of the comment
+MLIP backend (default UMA; see `-b/--backend`) using the provided charge/spin instead of the comment
 lines.
 
 ## Usage
@@ -59,7 +59,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-q, --charge INT` | Total charge; triggers energy recomputation when provided. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation when provided. | _None_ |
 | `--reverse-x/--no-reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 

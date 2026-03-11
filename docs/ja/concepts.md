@@ -36,14 +36,14 @@
 
 ### MLIP バックエンド
 
-pdb2reaction は複数の機械学習ポテンシャル (MLIP) バックエンドに対応しています。計算コマンドに `--backend` を渡してバックエンドを選択できます:
+pdb2reaction は複数の機械学習ポテンシャル (MLIP) バックエンドに対応しています。計算コマンドに `-b/--backend` を渡してバックエンドを選択できます:
 
 | バックエンド | フラグ | インストール | 備考 |
 |---------|------|---------|-------|
-| **UMA**（デフォルト） | `--backend uma` | 同梱 | 解析ヘシアン・マルチワーカー推論対応 |
-| **ORB** | `--backend orb` | `pip install 'pdb2reaction[orb]'` | orb-models; 有限差分ヘシアンのみ |
-| **MACE** | `--backend mace` | 別環境が必要（README 参照） | mace-torch; fairchem-core と競合 |
-| **AIMNet2** | `--backend aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; 有限差分ヘシアンのみ |
+| **UMA**（デフォルト） | `-b uma` | 同梱 | 解析ヘシアン・マルチワーカー推論対応 |
+| **ORB** | `-b orb` | `pip install 'pdb2reaction[orb]'` | orb-models; 有限差分ヘシアンのみ |
+| **MACE** | `-b mace` | 別環境が必要（README 参照） | mace-torch; fairchem-core と競合 |
+| **AIMNet2** | `-b aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; 有限差分ヘシアンのみ |
 
 全バックエンド共通で `--solvent` オプションにより xTB ベースの暗黙溶媒補正を適用できます。
 

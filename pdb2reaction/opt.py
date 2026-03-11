@@ -428,7 +428,7 @@ def _flatten_all_imag_modes_for_geom(
     help="Write optimization trajectory to 'optimization_trj.xyz'.",
 )
 @click.option(
-    "--out-dir",
+    "-o", "--out-dir",
     type=str,
     default="./result_opt/",
     show_default=True,
@@ -465,7 +465,7 @@ def _flatten_all_imag_modes_for_geom(
     show_default=True,
     help="Validate options and print the execution plan without running optimization.",
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")

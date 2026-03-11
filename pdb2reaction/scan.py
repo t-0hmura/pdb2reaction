@@ -51,6 +51,7 @@ from .utils import (
     format_geom_for_echo,
     format_elapsed,
     normalize_choice,
+    is_scan_spec_file,
     parse_scan_list_triples,
     parse_scan_spec_stages,
     prepared_cli_input,
@@ -174,20 +175,13 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
-    "--scan-lists",
+    "-s", "--scan-lists",
     "scan_lists_raw",
     type=str,
     multiple=True,
     required=False,
-    help="Python-like list of (i,j,target) per stage. Pass a single --scan-lists followed by "
-         "multiple literals to run sequential stages, e.g. --scan-lists '[(0,1,1.50)]' '[(5,7,1.20)]'.",
-)
-@click.option(
-    "--spec",
-    "spec_path",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    required=False,
-    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-lists.",
+    help="Scan targets: inline Python literal (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file path. "
+         "Multiple inline literals define sequential stages.",
 )
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
@@ -206,7 +200,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     "print_parsed",
     default=False,
     show_default=True,
-    help="Print parsed scan targets after resolving --spec/--scan-lists.",
+    help="Print parsed scan targets after resolving --scan-lists.",
 )
 @click.option(
     "--endopt/--no-endopt",
@@ -225,7 +219,6 @@ def cli(
     workers_per_node: int,
     spin: Optional[int],
     scan_lists_raw: Sequence[str],
-    spec_path: Optional[Path],
     one_based: bool,
     max_step_size: float,
     bias_k: Optional[float],
@@ -364,25 +357,24 @@ def cli(
             # 2) Parse scan lists
             # ------------------------------------------------------------------
             cli_scan_values = collect_single_option_values(
-                sys.argv[1:], ("--scan-lists",), "--scan-lists"
+                sys.argv[1:], ("-s", "--scan-lists"), "--scan-lists"
             )
-            if spec_path is not None and cli_scan_values:
-                raise click.BadParameter("Use either --spec or --scan-lists, not both.")
+            if not cli_scan_values:
+                raise click.BadParameter("--scan-lists is required.")
 
             stages: List[List[Tuple[int, int, float]]]
             scan_one_based = bool(one_based)
             scan_source = "--scan-lists"
-            if spec_path is not None:
+            if len(cli_scan_values) == 1 and is_scan_spec_file(cli_scan_values[0]):
+                spec_path = Path(cli_scan_values[0])
                 stages, scan_one_based = parse_scan_spec_stages(
                     spec_path,
                     one_based_default=one_based,
                     atom_meta=pdb_atom_meta,
-                    option_name="--spec",
+                    option_name="--scan-lists",
                 )
-                scan_source = f"--spec ({spec_path})"
+                scan_source = f"--scan-lists ({spec_path})"
             else:
-                if not cli_scan_values:
-                    raise click.BadParameter("Provide either --spec or --scan-lists.")
                 stages = []
                 for idx, raw in enumerate(cli_scan_values, start=1):
                     parsed, _ = parse_scan_list_triples(

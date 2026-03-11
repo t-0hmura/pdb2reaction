@@ -11,13 +11,10 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   ...).  [required]
-  --scan-lists TEXT               Python-like list of (i,j,target) per stage.
-                                  Pass a single --scan-lists followed by
-                                  multiple literals to run sequential stages,
-                                  e.g. --scan-lists '[(0,1,1.50)]'
-                                  '[(5,7,1.20)]'.
-  --spec FILE                     YAML/JSON scan spec file (recommended). Use
-                                  this instead of --scan-lists.
+  -s, --scan-lists TEXT           Scan targets: inline Python literal (e.g.
+                                  '[(1,5,1.4)]') or a YAML/JSON spec file path.
+                                  Multiple inline literals define sequential
+                                  stages.
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
@@ -26,7 +23,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
@@ -68,8 +65,7 @@ Options:
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --print-parsed / --no-print-parsed
                                   Print parsed scan targets after resolving
-                                  --spec/--scan-lists.  [default: no-print-
-                                  parsed]
+                                  --scan-lists.  [default: no-print-parsed]
   --endopt / --no-endopt          After each stage, run an additional unbiased
                                   optimization of the stage result.  [default:
                                   endopt]

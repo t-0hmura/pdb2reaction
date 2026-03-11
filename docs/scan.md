@@ -2,15 +2,14 @@
 
 ## Overview
 
-> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--spec` (YAML/JSON, recommended) to define targets; `--scan-lists` remains as a Python-literal input.
+> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `-s/--scan-lists` to define targets as either a YAML/JSON spec file path (recommended) or inline Python literals.
 
 ### At a glance
 - **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
-- **Input:** One structure + `--spec scan.yaml` (recommended), or one or more `--scan-lists` literals (each literal = one stage).
+- **Input:** One structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `-s/--scan-lists` inline literals (each literal = one stage).
 - **Defaults:** `--opt-mode grad` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump`.
-- **Note:** Prefer `--spec` to avoid shell-quoting issues. `--scan-lists` is still supported.
-- **`--spec` vs `--scan-lists`:** Use `--spec` (YAML/JSON file) for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Use `--scan-lists` (inline Python literal) when you have a simple single-stage scan and want a quick one-liner.
+- **Note:** Passing a YAML/JSON file path to `-s/--scan-lists` is recommended for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Inline Python literals work well for simple single-stage scans.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 
@@ -20,7 +19,7 @@ For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping 
 ## Minimal example
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_scan
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 ```
 
 ## Output checklist
@@ -34,61 +33,61 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_sca
 1. Run from a YAML spec.
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml
 ```
 
 2. Use literal input.
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 ```
 
 3. Dump trajectories for stage-by-stage inspection.
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./result_scan_dump
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_dump
 ```
 
-> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `--spec` / `--scan-lists`.
+> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `-s/--scan-lists`.
 
 ## Usage
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--spec scan.yaml | --scan-lists '[(i,j,targetÅ),...]'] [options] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan.yaml | '[(i,j,targetÅ),...]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
 ### Examples
 ```bash
-# Recommended: YAML/JSON spec
+# Recommended: YAML/JSON spec file
 cat > scan.yaml << 'YAML'
 one_based: true
 stages:
  - [["TYR,285,CA", "SAM,309,C10", 1.35]]
  - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 YAML
-pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml
+pdb2reaction scan -i input.pdb -q 0 -s scan.yaml
 
-# Alternative: Python literal
-pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+# Alternative: inline Python literal
+pdb2reaction scan -i input.pdb -q 0 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # Two stages, LBFGS relaxations, and trajectory dumping
-pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
+ --max-step-size 0.20 --dump -o ./result_scan/ --opt-mode grad \
  --preopt --endopt
 
-# Supply multiple stage literals after a single --scan-lists
-pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+# Supply multiple stage literals after a single -s/--scan-lists
+pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-## `--spec` format (recommended)
+## YAML/JSON spec file format (recommended)
 
-`--spec` accepts YAML/JSON with a mapping root:
+`-s/--scan-lists` accepts a YAML/JSON file path with a mapping root:
 
 ```yaml
 one_based: true # optional; defaults to CLI --one-based
@@ -99,11 +98,11 @@ stages:
 
 - `stages` is required.
 - Each stage is a list of `(i, j, target_Å)` triples.
-- Indices may be integers or PDB selectors, same as `--scan-lists`.
+- Indices may be integers or PDB selectors, same as inline literals.
 
-## `--scan-lists` format
+## Inline Python literal format
 
-`--scan-lists` is the advanced input mode. It accepts **Python literal** strings evaluated by the CLI. Shell quoting matters.
+`-s/--scan-lists` also accepts **inline Python literal** strings evaluated by the CLI. Shell quoting matters.
 
 ### Basic structure
 
@@ -115,7 +114,7 @@ Each literal is a Python list of triples `(atom1, atom2, target_Å)`:
 
 - Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
 - Each triple drives the distance between `atom1`–`atom2` toward `target_Å`.
-- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `--scan-lists` flag. You may also repeat the flag — both forms are accepted (`multiple=True`).
+- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `-s/--scan-lists` flag. You may also repeat the flag -- both forms are accepted (`multiple=True`).
 
 ### Specifying atoms
 
@@ -140,34 +139,34 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ```bash
 # Correct: single-quote the list, double-quote selector strings inside
---scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+-s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # Correct: integer indices need no inner quotes
---scan-lists '[(1, 5, 2.0)]'
+-s '[(1, 5, 2.0)]'
 
 # Avoid: double-quoting the outer literal requires escaping inner quotes
---scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
+-s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
 ### Multiple stages
 
-Pass multiple literals after a single `--scan-lists` flag. Each literal becomes one stage:
+Pass multiple literals after a single `-s/--scan-lists` flag. Each literal becomes one stage:
 
 ```bash
 # Stage 1: drive one bond to 1.35 Å
 # Stage 2: drive two bonds simultaneously
---scan-lists \
+-s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-Stages run sequentially; each starts from the previous stage's relaxed result. You may either repeat the `--scan-lists` flag for each stage or supply all stage literals after a single flag — both forms are accepted (`multiple=True`).
+Stages run sequentially; each starts from the previous stage's relaxed result. You may either repeat the `-s/--scan-lists` flag for each stage or supply all stage literals after a single flag -- both forms are accepted (`multiple=True`).
 
 ## Workflow
 1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
  biasing so the starting point is relaxed.
-3. Parse stage targets from `--spec` (recommended) or `--scan-lists`, then normalize the
+3. Parse stage targets from `-s/--scan-lists` (YAML/JSON file or inline literal), then normalize the
  `(i, j)` indices (1-based by default). When the input is a PDB, each entry
  may be either an integer index or an atom selector string like `'TYR,285,CA'`;
  selector fields can be separated by spaces, commas, slashes, backticks, or
@@ -192,10 +191,9 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `--spec FILE` | YAML/JSON scan spec with `stages`; optional `one_based`. | Recommended |
-| `--scan-lists TEXT` | Python literal with `(i,j,targetÅ)` tuples. Each literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Alternative to `--spec` |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` tuples. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--spec`/`--scan-lists` resolution. | `False` |
+| `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `-s/--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
@@ -204,10 +202,10 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 | `--dump/--no-dump` | Dump concatenated biased trajectories (`scan_trj.xyz`/`scan.pdb`). | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--out-dir TEXT` | Output directory root. | `./result_scan/` |
+| `-o, --out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
@@ -248,7 +246,7 @@ out_dir/ (default:./result_scan/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Provide multiple literals after a single `--scan-lists` flag, or repeat the flag for each stage — both forms are accepted (`multiple=True`).
+- Provide multiple literals after a single `-s/--scan-lists` flag, or repeat the flag for each stage -- both forms are accepted (`multiple=True`).
  Tuples must have positive targets. Atom indices are normalized to 0-based internally. For
  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
  (space/comma/slash/backtick/backslash) and unordered tokens.

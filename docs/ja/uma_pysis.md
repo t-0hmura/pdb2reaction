@@ -30,20 +30,20 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (H
 
 ## バックエンド選択
 
-任意のコマンドで `--backend` を指定するか、YAML で `calc.backend` を設定します:
+任意のコマンドで `-b/--backend` を指定するか、YAML で `calc.backend` を設定します:
 
 ```bash
 # UMA（デフォルト）
 pdb2reaction opt -i input.pdb -q 0
 
 # ORB
-pdb2reaction opt -i input.pdb -q 0 --backend orb
+pdb2reaction opt -i input.pdb -q 0 -b orb
 
 # MACE（UMA とは別の環境を使用）
-pdb2reaction opt -i input.pdb -q 0 --backend mace
+pdb2reaction opt -i input.pdb -q 0 -b mace
 
 # AIMNet2
-pdb2reaction opt -i input.pdb -q 0 --backend aimnet2
+pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 ```
 
 | バックエンド | インストール | 解析ヘシアン | マルチワーカー | 備考 |
@@ -59,13 +59,13 @@ pdb2reaction opt -i input.pdb -q 0 --backend aimnet2
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 --solvent water
-pdb2reaction opt -i input.pdb -q 0 --backend orb --solvent water --solvent-model cpcmx
+pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ```
 
 デルタアプローチによる補正: ΔE = E_xTB(溶媒) - E_xTB(真空) を MLIP エネルギー/力/ヘシアンに加算します。`xtb` が `PATH` 上にインストールされている必要があります。
 
 ## 主な特徴
-- **MLIPバックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `--backend` で利用可能。
+- **MLIPバックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
 - **デバイス処理** – `device="auto"` はCUDAがあればGPU、なければCPUを選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
 ### ヘシアンモード
 

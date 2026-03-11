@@ -187,7 +187,7 @@ def _echo_convert_trj_if_exists(
     help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option(
-    "--out-dir",
+    "-o", "--out-dir",
     type=str,
     default="./result_irc/",
     show_default=True,
@@ -220,7 +220,7 @@ def _echo_convert_trj_if_exists(
     show_default=True,
     help="Validate options and print the execution plan without running IRC.",
 )
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")

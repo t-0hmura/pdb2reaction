@@ -44,9 +44,9 @@ This page provides definitions for abbreviations and technical terms used throug
 |------|-----------|-------------|
 | **MLIP** | Machine Learning Interatomic Potential | A model (often neural-network-based) that predicts energies and forces from atomic structures, trained on quantum-mechanical data. |
 | **UMA** | Universal Models for Atoms | Meta's family of pretrained MLIPs used as the default calculator backend in pdb2reaction. |
-| **ORB** | ORB Models | Orbital Materials' MLIP backend. Selected with `--backend orb`. |
-| **MACE** | MACE | Equivariant message-passing MLIP. Selected with `--backend mace`. |
-| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2. Selected with `--backend aimnet2`. |
+| **ORB** | ORB Models | Orbital Materials' MLIP backend. Selected with `-b orb`. |
+| **MACE** | MACE | Equivariant message-passing MLIP. Selected with `-b mace`. |
+| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2. Selected with `-b aimnet2`. |
 | **xTB** | Extended Tight Binding | A semi-empirical quantum chemistry method. In pdb2reaction, used for implicit solvation correction via `--solvent`. |
 | **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. |
 | **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. |

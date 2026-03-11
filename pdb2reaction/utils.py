@@ -1491,8 +1491,7 @@ def convert_xyz_like_outputs(
     if not _CONVERT_FILES_ENABLED:
         return False
 
-    source_suffix = prepared_input.source_path.suffix.lower()
-    needs_pdb = source_suffix == ".pdb" and out_pdb_path is not None and ref_pdb_path is not None
+    needs_pdb = out_pdb_path is not None and ref_pdb_path is not None
     needs_gjf = (
         xyz_path.suffix.lower() == ".xyz"
         and prepared_input.is_gjf
@@ -1963,7 +1962,7 @@ def parse_scan_list_quads(
 def _load_scan_spec_root(
     spec_path: Path,
     *,
-    option_name: str = "--spec",
+    option_name: str = "--scan-lists",
 ) -> Mapping[str, Any]:
     """Load a scan spec (YAML/JSON) and ensure mapping root."""
     try:
@@ -1987,7 +1986,7 @@ def _spec_one_based(
     value: Any,
     *,
     default: bool,
-    option_name: str = "--spec",
+    option_name: str = "--scan-lists",
 ) -> bool:
     """Resolve one_based value from spec with CLI fallback."""
     if value is None:
@@ -2015,12 +2014,18 @@ def _first_spec_field(
     return None, None
 
 
+def is_scan_spec_file(value: str) -> bool:
+    """Return True if *value* looks like an existing YAML/JSON scan spec file."""
+    p = Path(value)
+    return p.is_file() and p.suffix.lower() in {".yaml", ".yml", ".json"}
+
+
 def parse_scan_spec_stages(
     spec_path: Path,
     *,
     one_based_default: bool,
     atom_meta: Optional[_Sequence[Dict[str, Any]]],
-    option_name: str = "--spec",
+    option_name: str = "--scan-lists",
 ) -> Tuple[List[List[Tuple[int, int, float]]], bool]:
     """Parse staged 1D scan spec into 0-based stage triples."""
     spec_cfg = _load_scan_spec_root(spec_path, option_name=option_name)
@@ -2064,7 +2069,7 @@ def parse_scan_spec_quads(
     expected_len: int,
     one_based_default: bool,
     atom_meta: Optional[_Sequence[Dict[str, Any]]],
-    option_name: str = "--spec",
+    option_name: str = "--scan-lists",
 ) -> Tuple[List[Tuple[int, int, float, float]], List[Tuple[Any, Any, float, float]], bool]:
     """Parse 2D/3D scan spec into 0-based quad tuples."""
     spec_cfg = _load_scan_spec_root(spec_path, option_name=option_name)

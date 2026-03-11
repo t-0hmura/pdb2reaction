@@ -22,7 +22,7 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 - explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
 
-Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `--backend`. Implicit solvent corrections can be applied with `--solvent` (powered by xTB). Typical use cases include:
+Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Implicit solvent corrections can be applied with `--solvent` (powered by xTB). Typical use cases include:
 
 - **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be prohibitively slow
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
@@ -30,7 +30,7 @@ Calculations use machine-learning interatomic potentials (MLIPs). The default ba
 
 The CLI is designed to generate **multi‑step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small‑molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
-On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi‑worker inference; see [MLIP Calculator](uma_pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `--backend`.
+On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi‑worker inference; see [MLIP Calculator](uma_pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
 ```{important}
 - Input PDB files must already contain **hydrogen atoms**.
@@ -220,8 +220,8 @@ Below are the most commonly used options across workflows.
 | `-l, --ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of total system charge. |
 | `-m, --multiplicity INT` | Spin multiplicity (e.g., `1` for singlet). |
-| `--scan-lists TEXT...` | Staged distance scans for single‑input runs. |
-| `--out-dir PATH` | Top‑level output directory. |
+| `-s, --scan-lists TEXT...` | Staged distance scans for single‑input runs. |
+| `-o, --out-dir PATH` | Top‑level output directory. |
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
 | `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
 | `--dft/--no-dft` | Perform single‑point DFT calculations. |
@@ -312,7 +312,7 @@ pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
 | `--tsopt` | Enable TS optimization + IRC |
 | `--thermo` | Run vibrational analysis |
 | `--dft` | Run single-point DFT |
-| `--out-dir` | Output directory |
+| `-o, --out-dir` | Output directory |
 
 ---
 

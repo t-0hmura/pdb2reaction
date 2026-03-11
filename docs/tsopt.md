@@ -63,7 +63,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ## Usage
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--opt-mode grad|hess|dimer|rsirfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
@@ -128,7 +128,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | Optimizer preset: `grad` (`dimer`) or `hess` (`rsirfo`). Aliases `dimer`/`rsirfo` are accepted. | `hess` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
-| `--out-dir TEXT` | Output directory. | `./result_tsopt/` |
+| `-o, --out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable the surplus-imaginary-mode flattening loop (`False` forces `flatten_max_iter=0`). After TS optimization converges, iteratively flattens surplus negative-eigenvalue modes of the Hessian matrix until only one imaginary frequency remains (or the iteration cap is reached). Applies to both dimer (dimer loop) and RS-I-RFO (post-convergence). | `False` |
 | `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
@@ -136,10 +136,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved config layers and continue execution. | `False` |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. | `False` |
+| `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. Visible in `--help-advanced`. | `False` |
 
 ```{note}
 **`--flatten` is disabled by default.** Although `defaults.py` defines `flatten_max_iter=50`, the CLI initialization sets `flatten_max_iter=0` unless `--flatten` is explicitly passed. If your TS candidate has multiple imaginary frequencies, try adding `--flatten` to enable the surplus-mode cleanup loop.

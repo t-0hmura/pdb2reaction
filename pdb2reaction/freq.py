@@ -549,7 +549,7 @@ CALC_KW = FREQ_CALC_KW
               help="Number of frames per mode animation.")
 @click.option("--sort", type=click.Choice(["value", "abs"]), default="value", show_default=True,
               help="Sort modes by 'value' (cm^-1) or by absolute value.")
-@click.option("--out-dir", type=str, default=FREQ_KW["out_dir"], show_default=True, help="Output directory.")
+@click.option("-o", "--out-dir", type=str, default=FREQ_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
     "--config",
     "config_yaml",
@@ -589,7 +589,7 @@ CALC_KW = FREQ_CALC_KW
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None,
               help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
-@click.option("--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")

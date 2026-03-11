@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** MLIP（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
+> **要約:** MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
 
 ### 要点
 - **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。
@@ -50,7 +50,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 ## 使用法
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
  [--freeze-links/--no-freeze-links] \
  [--max-write N] [--amplitude-ang Å] [--n-frames N] [--sort value|abs] \
@@ -90,7 +90,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
 | `--n-frames INT` | モードアニメーションのフレーム数 | `20` |
 | `--sort CHOICE` | モード順序: `value`（cm⁻¹）または `abs` | `value` |
-| `--out-dir TEXT` | 出力ディレクトリ | `./result_freq/` |
+| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_freq/` |
 | `--temperature FLOAT` | 熱化学計算の温度（K） | `298.15` |
 | `--pressure FLOAT` | 熱化学計算の圧力（atm） | `1.0` |
 | `--dump/--no-dump` | `thermoanalysis.yaml` を書き込み | `False` |
@@ -99,10 +99,10 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--config FILE` | 明示CLI適用前に読み込むベース YAML。 | _None_ |
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行。 | `False` |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。`--help-advanced` で表示。 | `False` |
 
 ## 出力
 ```

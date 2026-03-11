@@ -36,14 +36,14 @@ Transition states (first-order saddle points): treat the Highest-Energy Image (H
 
 ### MLIP backends
 
-pdb2reaction supports multiple machine-learning interatomic potential (MLIP) backends. Pass `--backend` to any calculation command to choose one:
+pdb2reaction supports multiple machine-learning interatomic potential (MLIP) backends. Pass `-b/--backend` to any calculation command to choose one:
 
 | Backend | Flag | Install | Notes |
 |---------|------|---------|-------|
-| **UMA** (default) | `--backend uma` | included | Full feature set including analytical Hessians and multi-worker inference |
-| **ORB** | `--backend orb` | `pip install 'pdb2reaction[orb]'` | orb-models; FD Hessians only |
-| **MACE** | `--backend mace` | separate env (see README) | mace-torch; conflicts with fairchem-core |
-| **AIMNet2** | `--backend aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; FD Hessians only |
+| **UMA** (default) | `-b uma` | included | Full feature set including analytical Hessians and multi-worker inference |
+| **ORB** | `-b orb` | `pip install 'pdb2reaction[orb]'` | orb-models; FD Hessians only |
+| **MACE** | `-b mace` | separate env (see README) | mace-torch; conflicts with fairchem-core |
+| **AIMNet2** | `-b aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; FD Hessians only |
 
 All backends share the same `--solvent` option for xTB-based implicit solvent corrections.
 

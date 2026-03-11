@@ -19,7 +19,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
@@ -48,7 +48,7 @@ Options:
                                   after optimization.  [default: no-flatten]
   --dump / --no-dump              Write optimization trajectory to
                                   'optimization_trj.xyz'.  [default: no-dump]
-  --out-dir TEXT                  Output directory.  [default: ./result_opt/]
+  -o, --out-dir TEXT              Output directory.  [default: ./result_opt/]
   --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when
                                   not provided.
@@ -60,7 +60,7 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running optimization.  [default: no-
                                   dry-run]
-  --backend [uma|orb|mace|aimnet2]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]

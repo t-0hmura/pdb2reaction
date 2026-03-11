@@ -37,7 +37,7 @@ huggingface-cli login
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB、MACE、AIMNet2 を使用するには、対応する extra をインストール（例: `pip install 'pdb2reaction[orb]'`）し、コマンドに `--backend orb` を渡してください。[詳細なインストール手順](#詳細なインストール手順)の手順 7 を参照してください。
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB、MACE、AIMNet2 を使用するには、対応する extra をインストール（例: `pip install 'pdb2reaction[orb]'`）し、コマンドに `-b orb` を渡してください。[詳細なインストール手順](#詳細なインストール手順)の手順 7 を参照してください。
 
 - MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
  ```bash

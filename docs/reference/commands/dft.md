@@ -15,7 +15,7 @@ Options:
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
-  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region
@@ -36,7 +36,7 @@ Options:
                                   1e-09]
   --grid-level INTEGER            Numerical integration grid level (PySCF
                                   grids.level).  [default: 3]
-  --out-dir TEXT                  Output directory.  [default: ./result_dft/]
+  -o, --out-dir TEXT              Output directory.  [default: ./result_dft/]
   --engine [gpu|cpu|auto]         Preferred SCF backend: GPU (strict), CPU, or
                                   auto (try GPU then CPU if unavailable).
                                   [default: gpu]

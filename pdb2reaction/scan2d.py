@@ -49,6 +49,7 @@ from .utils import (
     axis_label_csv,
     axis_label_html,
     build_sopt_kwargs,
+    is_scan_spec_file,
     make_sopt_optimizer,
     parse_scan_list_quads_checked,
     parse_scan_spec_quads,
@@ -217,18 +218,11 @@ def _build_scan_context(
     help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
 )
 @click.option(
-    "--scan-lists",
+    "-s", "--scan-lists",
     "scan_list_raw",
     type=str,
     required=False,
-    help="Python-like list with two quadruples: '[(i1,j1,low1,high1),(i2,j2,low2,high2)]'.",
-)
-@click.option(
-    "--spec",
-    "spec_path",
-    type=click.Path(path_type=Path, exists=True, dir_okay=False),
-    required=False,
-    help="YAML/JSON scan spec file (recommended). Use this instead of --scan-lists.",
+    help="Scan targets: inline Python literal or a YAML/JSON spec file path.",
 )
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
@@ -242,7 +236,7 @@ def _build_scan_context(
     "print_parsed",
     default=False,
     show_default=True,
-    help="Print parsed scan targets after resolving --spec/--scan-lists.",
+    help="Print parsed scan targets after resolving --scan-lists.",
 )
 @click.pass_context
 def cli(
@@ -254,7 +248,6 @@ def cli(
     workers_per_node: int,
     spin: Optional[int],
     scan_list_raw: Optional[str],
-    spec_path: Optional[Path],
     one_based: bool,
     max_step_size: float,
     bias_k: float,
@@ -354,22 +347,21 @@ def cli(
             if source_path.suffix.lower() == ".pdb":
                 pdb_atom_meta = load_pdb_atom_metadata(source_path)
 
-            if spec_path is not None and scan_list_raw is not None:
-                raise click.BadParameter("Use either --spec or --scan-lists, not both.")
+            if scan_list_raw is None:
+                raise click.BadParameter("--scan-lists is required.")
             scan_one_based = bool(one_based)
             scan_source = "--scan-lists"
-            if spec_path is not None:
+            if is_scan_spec_file(scan_list_raw):
+                spec_path = Path(scan_list_raw)
                 parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
                     spec_path,
                     expected_len=2,
                     one_based_default=one_based,
                     atom_meta=pdb_atom_meta,
-                    option_name="--spec",
+                    option_name="--scan-lists",
                 )
-                scan_source = f"--spec ({spec_path})"
+                scan_source = f"--scan-lists ({spec_path})"
             else:
-                if scan_list_raw is None:
-                    raise click.BadParameter("Provide either --spec or --scan-lists.")
                 parsed, raw_pairs = parse_scan_list_quads_checked(
                     scan_list_raw,
                     expected_len=2,

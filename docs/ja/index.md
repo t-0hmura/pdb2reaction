@@ -176,7 +176,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ### 単一構造スキャンモード
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml
 ```
 
 ### TS 最適化のみ

@@ -6,7 +6,7 @@
 
 ポケット抽出 →（任意）段階的 MLIP スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
 
-MLIP バックエンドはデフォルトで UMA を使用しますが、`--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
+MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
 
 ```{important}
 `--tsopt` の出力は **TS 候補** です。`all` は自動的に IRC による検証まで実行しますが、結果の虚振動モードと端点極小は必ず目視で確認してください。
@@ -53,7 +53,7 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-list
 
 ## 使用法
 ```bash
-pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
 ヘルプ出力は `pdb2reaction all --help` で主要オプションを、`pdb2reaction all --help-advanced` で全オプションを確認できます。
@@ -133,12 +133,12 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt` のみ単一入力可） | 必須 |
-| `--out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
+| `-o, --out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
 | `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化。 | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
-| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う | `False` |
+| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う。`--help-advanced` で表示。 | `False` |
 | `--resume/--no-resume` | `--out-dir` から前回の実行を再開。出力ファイルが既に存在する完了済みステージはスキップされる。 | `False` |
 
 ### 電荷・スピンオプション
@@ -182,7 +182,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA並列度（workers > 1 で解析ヘシアン無効） | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有UMAヘシアンエンジン | `FiniteDifference` |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 

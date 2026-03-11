@@ -4,7 +4,7 @@
 
 `pdb2reaction all` runs the entire workflow end-to-end:
 
-pocket extraction → (optional) staged MLIP scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). The default MLIP backend is UMA; select an alternative with `--backend`.
+pocket extraction → (optional) staged MLIP scan → recursive MEP search (`path-search`, GSM/DMF) → merge back into the full system → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). The default MLIP backend is UMA; select an alternative with `-b/--backend`.
 
 ```{important}
 `--tsopt` produces **TS candidates**. `all` automatically runs IRC for endpoint validation (`tsopt` itself includes an imaginary-frequency check), but always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.
@@ -51,7 +51,7 @@ PDB/GJF companion files are generated when templates are available, controlled b
 
 ## Usage
 ```bash
-pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
 For help output, `pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the full option list.
@@ -129,12 +129,12 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt`). | Required |
-| `--out-dir PATH` | Top-level output directory. | `./result_all/` |
+| `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
 | `--dump/--no-dump` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
-| `--dry-run/--no-dry-run` | Validate and print plan without running stages. | `False` |
+| `--dry-run/--no-dry-run` | Validate and print plan without running stages. Visible in `--help-advanced`. | `False` |
 | `--resume/--no-resume` | Resume a previous run from `--out-dir`. Completed stages whose output files already exist are skipped. | `False` |
 
 ### Charge/Spin Options
@@ -178,7 +178,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians). | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine. | `FiniteDifference` |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 

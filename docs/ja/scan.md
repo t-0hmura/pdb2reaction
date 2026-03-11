@@ -2,16 +2,16 @@
 
 ## 概要
 
-> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`--spec`（YAML/JSON、推奨）でターゲット距離を指定し、`--scan-lists` は入力として利用できます。
+> **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）でターゲット距離を指定します。インライン Python リテラルも利用できます。
 
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。
-- **入力:** 1 つの構造 + `--spec scan.yaml`（推奨）または `--scan-lists` の 1 個以上の リテラル（**1 リテラル = 1 ステージ**）。
+- **入力:** 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--preopt`、`--endopt`、`--max-step-size 0.20 Å`。
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）。`--dump` なら結合した軌跡も保存。
-- **注意:** 可能な限り `--spec` を使ってください。`--scan-lists` は **Python リテラル**のためクォート/エスケープが必要です。
+- **注意:** 可能な限り YAML/JSON ファイルパスを `-s/--scan-lists` に渡してください。インライン Python リテラルはクォート/エスケープが必要です。
 
-`pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`--backend` で ORB・MACE・AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
+`pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
 
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
@@ -19,7 +19,7 @@ XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定する�
 ## 最小例
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_scan
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --out-dir ./result_scan
 ```
 
 ## 出力の見方
@@ -33,28 +33,28 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --out-dir ./result_sca
 1. YAML spec から実行する。
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml
 ```
 
 2. リテラル入力を使う。
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 ```
 
 3. ステージごとの軌跡を保存して確認する。
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 --spec scan.yaml --dump --out-dir ./result_scan_dump
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump --out-dir ./result_scan_dump
 ```
 
-> **Note:** `--spec` / `--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
+> **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
 ## 使用法
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--spec scan.yaml | --scan-lists '[(i,j,targetÅ),...]'] [options] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan.yaml | '[(i,j,targetÅ),...]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -67,27 +67,27 @@ stages:
  - [["TYR,285,CA", "SAM,309,C10", 1.35]]
  - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 YAML
-pdb2reaction scan -i input.pdb -q 0 --spec scan.yaml
+pdb2reaction scan -i input.pdb -q 0 -s scan.yaml
 
 # 代替: Python リテラル
-pdb2reaction scan -i input.pdb -q 0 --scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # 2 ステージ、LBFGS 緩和、軌跡ダンプ
-pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
  --preopt --endopt
 
 # 単一の --scan-lists の後に複数リテラルを渡す
-pdb2reaction scan -i input.pdb -q 0 --scan-lists \
+pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-## `--spec` の書式（推奨）
+## YAML/JSON スペックファイルの書式（推奨）
 
-`--spec` は、ルートがマッピング形式の YAML/JSON ファイルを受け付けます:
+`-s/--scan-lists` に YAML/JSON ファイルパスを渡す場合、ルートがマッピング形式のファイルを受け付けます:
 
 ```yaml
 one_based: true # 任意。未指定時は CLI の --one-based を使用
@@ -98,23 +98,23 @@ stages:
 
 - `stages` は必須です。
 - 各ステージは `(i, j, target_Å)` 三つ組のリストです。
-- インデックスは整数または PDB セレクタのどちらでも指定できます（`--scan-lists` と同じ）。
+- インデックスは整数または PDB セレクタのどちらでも指定できます（インラインリテラルと同じ）。
 
-## `--scan-lists` の書式
+## インライン Python リテラルの書式
 
-`--scan-lists` は **Python リテラル文字列**として CLI に渡します。シェルのクォート処理に注意が必要です。
+`-s/--scan-lists` に **インライン Python リテラル文字列**を渡すこともできます。シェルのクォート処理に注意が必要です。
 
 ### 基本構造
 
 各リテラルは、三つ組 `(原子1, 原子2, ターゲット距離Å)` の Python リストです。
 
 ```
---scan-lists '[(原子1, 原子2, ターゲット距離Å),...]'
+-s '[(原子1, 原子2, ターゲット距離Å),...]'
 ```
 
 - リスト全体を **シングルクォート** `'...'` で囲みます（シェルがカッコや空白を解釈しないようにするため）。
 - 各三つ組は `原子1`–`原子2` 間の距離を `ターゲット距離Å` まで駆動します。
-- **1 リテラル = 1 ステージ**です。複数ステージを実行するには、**1 つの `--scan-lists` フラグの後に複数リテラル**を並べるか、フラグを繰り返して指定できます（`multiple=True`）。
+- **1 リテラル = 1 ステージ**です。複数ステージを実行するには、**1 つの `-s/--scan-lists` フラグの後に複数リテラル**を並べるか、フラグを繰り返して指定できます（`multiple=True`）。
 
 ### 原子の指定方法
 
@@ -139,33 +139,33 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 ```bash
 # 正しい: シングルクォートでリストを囲み、セレクタはダブルクォート
---scan-lists '[("TYR,285,CA","SAM,309,C10",1.35)]'
+-s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 
 # 正しい: 整数インデックスなら内側のダブルクォートは不要
---scan-lists '[(1, 5, 2.0)]'
+-s '[(1, 5, 2.0)]'
 
 # 非推奨: ダブルクォートで外側を囲むとエスケープが必要
---scan-lists "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
+-s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
 ### 複数ステージ
 
-1 つの `--scan-lists` フラグの後に、複数のリテラルを並べます。各リテラルが 1 ステージになります。
+1 つの `-s/--scan-lists` フラグの後に、複数のリテラルを並べます。各リテラルが 1 ステージになります。
 
 ```bash
 # ステージ 1: 1 つの結合を 1.35 Å に駆動
 # ステージ 2: 2 つの結合を同時に駆動
---scan-lists \
+-s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。すべてのリテラルを 1 つの `--scan-lists` フラグの後に並べるか、フラグを繰り返して指定できます（`multiple=True`）。
+ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。すべてのリテラルを 1 つの `-s/--scan-lists` フラグの後に並べるか、フラグを繰り返して指定できます（`multiple=True`）。
 
 ## ワークフロー
 1. `geom_loader` で構造を読み込み、電荷とスピンを解決します。電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
-3. `--spec`（推奨）または `--scan-lists` からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
+3. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
  各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
@@ -179,10 +179,9 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `--spec FILE` | `stages` を持つ YAML/JSON スキャン仕様。`one_based` を任意指定可能。 | 推奨 |
-| `--scan-lists TEXT` | `(i,j,targetÅ)` タプルを含む Python リテラル。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | `--spec` の代替 |
+| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）またはインライン Python リテラル（`(i,j,targetÅ)` タプル）。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈 | `True` |
-| `--print-parsed/--no-print-parsed` | `--spec`/`--scan-lists` 解釈後のステージ情報を表示。 | `False` |
+| `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
@@ -191,10 +190,10 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--dump/--no-dump` | バイアス付き軌跡（`scan_trj.xyz`/`scan.pdb`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換は PDB のみ） | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
-| `--out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
+| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `--backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
@@ -234,7 +233,7 @@ out_dir/ (デフォルト:./result_scan/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- `--scan-lists` には単一フラグの後に複数リテラルを並べるか、フラグを繰り返して指定できます（`multiple=True`）。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
+- `-s/--scan-lists` には単一フラグの後に複数リテラルを並べるか、フラグを繰り返して指定できます（`multiple=True`）。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
 - `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 - ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は `--dump` の設定にかかわらず常に書き出されます。軌跡は `--dump` の場合のみ保存され、PDB 入力かつ変換が有効な場合は `scan.pdb` も生成されます。
 

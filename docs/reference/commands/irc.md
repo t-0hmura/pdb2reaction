@@ -20,7 +20,7 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT            Total charge or per-resname mapping (e.g.,
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
@@ -46,7 +46,7 @@ Options:
                                   [default: convert-files]
   --ref-pdb FILE                  Reference PDB topology to use when the input
                                   is XYZ/GJF (keeps XYZ coordinates).
-  --out-dir TEXT                  Output directory.  [default: ./result_irc/]
+  -o, --out-dir TEXT              Output directory.  [default: ./result_irc/]
   --hessian-calc-mode [finitedifference|analytical]
                                   How UMA builds the Hessian (Analytical or
                                   FiniteDifference); used unless YAML sets
@@ -59,7 +59,7 @@ Options:
                                   execution.  [default: no-show-config]
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running IRC.  [default: no-dry-run]
-  --backend [uma|orb|mace|aimnet2]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
