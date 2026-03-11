@@ -383,6 +383,30 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--help-advanced",
         }
     ),
+    "extract": frozenset(
+        {
+            "-i",
+            "--input",
+            "-c",
+            "--center",
+            "-o",
+            "--output",
+            "-r",
+            "--radius",
+            "-l",
+            "--ligand-charge",
+            "--help-advanced",
+        }
+    ),
+    "fix-altloc": frozenset(
+        {
+            "-i",
+            "--input",
+            "-o",
+            "--out",
+            "--help-advanced",
+        }
+    ),
 }
 
 _PARSER_WRAPPER_SUBCOMMANDS: frozenset[str] = frozenset()

@@ -114,8 +114,8 @@ pdb2reaction irc -i ts.pdb -q 0 --dry-run --out-dir test30 > test30.out 2>&1
 pdb2reaction extract -i r_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --exclude-backbone False -o test31_pocket.pdb > test31.out 2>&1
 
 # test32: add-elem-info
-cp r_complex.pdb /tmp/test_p2r_add_elem.pdb
-pdb2reaction add-elem-info -i /tmp/test_p2r_add_elem.pdb -o /tmp/test_p2r_add_elem_out.pdb > test32.out 2>&1
+cp r_complex.pdb test32_input.pdb
+pdb2reaction add-elem-info -i test32_input.pdb -o test32_output.pdb > test32.out 2>&1
 
 # test33: trj2fig
 pdb2reaction trj2fig -i test1/optimization_trj.xyz -o test33.png > test33.out 2>&1

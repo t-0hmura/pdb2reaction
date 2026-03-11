@@ -181,7 +181,7 @@ def add_scan_common_options(
             help="Pre-optimize the initial structure without bias before the scan.",
         ),
         click.option(
-            "--backend",
+            "-b", "--backend",
             type=click.Choice(["uma", "orb", "mace", "aimnet2"]),
             default="uma",
             show_default=True,
