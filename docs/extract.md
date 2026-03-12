@@ -117,6 +117,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
  # Output directories are not created automatically; ensure they exist
 ```
 - Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
+- Output directories are not created automatically; ensure they exist before running.
 - Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
 
 ## Appendix: PDB naming requirements and reference lists

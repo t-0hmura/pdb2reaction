@@ -85,6 +85,7 @@ calc:
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
+- For `irc`, `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
 
 ---
 
@@ -383,6 +384,8 @@ irc:
  check_bonds: false # Check bonds during propagation
  out_dir: ./result_irc/ # Output directory
  prefix: "" # Filename prefix
+ dump_fn: irc_data.h5 # IRC data filename
+ dump_every: 5 # Dump stride
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
  corr_func: mbs # Correlation function choice
@@ -449,7 +452,7 @@ Harmonic bias settings for scans.
 
 ```yaml
 bias:
- k: 300 # Harmonic bias strength (eV·Å⁻²)
+ k: 300.0 # Harmonic bias strength (eV·Å⁻²)
 ```
 
 ---

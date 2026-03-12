@@ -119,7 +119,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 ```
 - verboseモードが有効な場合、モデル#1の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録
 - 出力ディレクトリは自動作成されません。必要に応じて事前に作成してください。
-- API利用（`extract_api`）では `{'outputs': [...], 'counts': [...], 'charge_summary': {...}}` を返します。
+- API利用（`extract_api`）では `{"outputs": [...], "counts": [...], "charge_summary": {...}}` を返します。
 
 
 ## 付録: PDB 命名規則と内部参照リスト
