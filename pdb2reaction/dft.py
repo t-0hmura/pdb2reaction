@@ -29,9 +29,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import AU2KCALPERMOL
 
 from .utils import (
-    load_yaml_dict,
     apply_yaml_overrides,
-    deep_update,
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
@@ -177,8 +175,6 @@ def fast_iao_mullikan_spin_pop(mol, dm, iaos, verbose=None):
     dm_a = reduce(numpy.dot, (iao_inv, dm[0], iao_inv.conj().T))
     dm_b = reduce(numpy.dot, (iao_inv, dm[1], iao_inv.conj().T))
 
-    # return scf_uhf.mulliken_pop(pmol, [dm_a, dm_b], s_iao, verbose)
-    # -->
     return scf_uhf.mulliken_spin_pop(pmol, [dm_a, dm_b], s_iao, verbose)
 
 

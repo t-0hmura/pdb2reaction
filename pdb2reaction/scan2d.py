@@ -77,7 +77,6 @@ from .utils import (
 )
 from .scan_common import (
     add_scan_common_options,
-    build_scan_defaults,
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
@@ -227,7 +226,7 @@ def _build_scan_context(
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
-    out_dir_default="./result_scan2d/",
+    out_dir_default=OUT_DIR_SCAN2D,
     baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
     dump_help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
 )

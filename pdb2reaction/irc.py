@@ -27,10 +27,8 @@ import torch
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.backends import create_calculator
-from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW
+from pdb2reaction.defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC
 from pdb2reaction.utils import (
-    load_yaml_dict,
-    deep_update,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
@@ -189,7 +187,7 @@ def _echo_convert_trj_if_exists(
 @click.option(
     "-o", "--out-dir",
     type=str,
-    default="./result_irc/",
+    default=OUT_DIR_IRC,
     show_default=True,
     help="Output directory.",
 )

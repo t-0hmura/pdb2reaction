@@ -160,7 +160,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # UMA device selection
  max_neigh: null # maximum neighbors for graph construction
@@ -272,10 +272,10 @@ opt:
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_path_opt/ # output directory
- trust_radius: 0.1 # trust-region radius
+ trust_radius: 0.30 # trust-region radius
  trust_update: true # enable trust-region updates
- trust_min: 0.0 # minimum trust radius
- trust_max: 0.1 # maximum trust radius
+ trust_min: 0.0001 # minimum trust radius
+ trust_max: 0.30 # maximum trust radius
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source

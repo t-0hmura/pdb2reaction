@@ -57,7 +57,7 @@ class UMAcore:
         *,
         charge: int = 0,
         spin: int = 1,
-        model: str = "uma-s-1p2",
+        model: str = "uma-s-1p1",
         task_name: str = "omol",
         device: str = "auto",
         workers: int = 1,
@@ -209,7 +209,7 @@ class UMACalculator(MLIPCalculator):
     def __init__(
         self,
         *,
-        model: str = "uma-s-1p2",
+        model: str = "uma-s-1p1",
         task_name: str = "omol",
         workers: int = 1,
         workers_per_node: int = 1,
@@ -314,9 +314,9 @@ class UMACalculator(MLIPCalculator):
         _t = H.T.clone()
         H.add_(_t).mul_(0.5)
         del _t
-        H.mul_(H_EVAA_2_AU)
         if self.hessian_double:
             H = H.to(dtype=torch.float64)
+        H.mul_(H_EVAA_2_AU)
         if self.out_hess_torch:
             return H.detach()
         else:
@@ -503,7 +503,7 @@ class UMAASECalculator(FAIRChemCalculator):
     def __init__(
         self,
         *,
-        model: str = "uma-s-1p2",
+        model: str = "uma-s-1p1",
         device: str = "auto",
         task_name: str = "omol",
         workers: int = 1,

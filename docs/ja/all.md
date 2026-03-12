@@ -322,7 +322,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 **最小例:**
 ```yaml
 calc:
- model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
  hessian_calc_mode: Analytical # VRAM に余裕がある場合推奨
 gs:
  max_nodes: 12

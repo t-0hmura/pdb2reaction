@@ -186,7 +186,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
-    out_dir_default="./result_scan/",
+    out_dir_default=OUT_DIR_SCAN,
     baseline_help="(unused)",
     dump_help="Write stage trajectory as scan_trj.xyz (and scan.pdb for PDB input).",
     max_step_help="Maximum change in any scanned bond length per step [Å].",

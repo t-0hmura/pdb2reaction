@@ -152,7 +152,7 @@ def _set_all_coords_disabling_freeze(geom, coords3d_bohr: np.ndarray) -> None:
 
 
 def _attach_calc_if_needed(geom, shared_calc=None, *, charge=0, spin=1,
-                           model="uma-s-1p2", device="auto") -> None:
+                           model="uma-s-1p1", device="auto") -> None:
     """
     Set `shared_calc` when provided; otherwise attach UMA if no calculator is present.
     """
@@ -314,7 +314,7 @@ def scan_freeze_atoms_toward_target_inplace(
     out_dir: Path = Path("./result_align_refine/"),
     charge: int = 0,
     spin: int = 1,
-    model: str = "uma-s-1p2",
+    model: str = "uma-s-1p1",
     device: str = "auto",
     verbose: bool = True,
 ) -> Dict[str, Any]:
@@ -448,7 +448,7 @@ def align_and_refine_pair_inplace(
     thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
-    model: str = "uma-s-1p2",
+    model: str = "uma-s-1p1",
     device: str = "auto",
     verbose: bool = True,
 ) -> Dict[str, Any]:
@@ -494,7 +494,7 @@ def align_and_refine_sequence_inplace(
     thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
-    model: str = "uma-s-1p2",
+    model: str = "uma-s-1p1",
     device: str = "auto",
     verbose: bool = True,
 ) -> List[Dict[str, Any]]:

@@ -20,18 +20,13 @@ import torch
 import logging
 import signal
 import sys
-import os
 import tempfile
-import re
 import click
 from click.core import ParameterSource
 import time
 import yaml
 import numpy as np
 import shutil
-
-# Biopython for PDB parsing (post-processing helpers)
-from Bio import PDB
 
 # pysisyphus helpers/constants
 from pysisyphus.helpers import geom_loader

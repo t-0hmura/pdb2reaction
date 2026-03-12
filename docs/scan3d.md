@@ -198,7 +198,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p2 # uma-s-1p1 | uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
  device: auto # UMA device selection
 opt:
  thresh: baker # convergence preset (default: baker)
@@ -209,7 +209,7 @@ lbfgs:
  max_step: 0.3 # maximum step length
  out_dir: ./result_scan3d/ # LBFGS-specific output directory
 rfo:
- trust_radius: 0.1 # trust-region radius
+ trust_radius: 0.30 # trust-region radius
  out_dir: ./result_scan3d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)

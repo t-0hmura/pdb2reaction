@@ -32,10 +32,8 @@ from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
 from .backends import create_calculator
-from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, FREQ_CALC_KW, FREQ_KW, THERMO_KW
+from .defaults import GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW
 from .utils import (
-    load_yaml_dict,
-    deep_update,
     apply_yaml_overrides,
     convert_xyz_like_outputs,
     pretty_block,
@@ -541,11 +539,11 @@ CALC_KW = FREQ_CALC_KW
     default=None,
     help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
-@click.option("--max-write", type=int, default=10, show_default=True,
+@click.option("--max-write", type=int, default=FREQ_KW["max_write"], show_default=True,
               help="How many modes to export (after sorting per --sort).")
-@click.option("--amplitude-ang", type=float, default=0.8, show_default=True,
+@click.option("--amplitude-ang", type=float, default=FREQ_KW["amplitude_ang"], show_default=True,
               help="Animation amplitude (Å) used for both _trj.xyz and .pdb.")
-@click.option("--n-frames", type=int, default=20, show_default=True,
+@click.option("--n-frames", type=int, default=FREQ_KW["n_frames"], show_default=True,
               help="Number of frames per mode animation.")
 @click.option("--sort", type=click.Choice(["value", "abs"]), default="value", show_default=True,
               help="Sort modes by 'value' (cm^-1) or by absolute value.")

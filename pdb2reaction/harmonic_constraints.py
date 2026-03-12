@@ -1,8 +1,5 @@
-import warnings
-
 import numpy as np
 from ase.calculators.calculator import Calculator
-from ase.constraints import FixAtoms, FixBondLengths
 
 
 class HarmonicFixAtoms(Calculator):
@@ -94,47 +91,5 @@ def _iter_constraints(atoms):
     if isinstance(constraints, (list, tuple)):
         return list(constraints)
     return [constraints]
-
-
-def build_harmonic_constraint_calculators(atoms, k_fix=300.0, k_bond=300.0):
-    """
-    Build harmonic-restraint calculators from ASE constraints.
-
-    Supported constraints:
-    - FixAtoms
-    - FixBondLength / FixBondLengths
-    """
-
-    calculators = []
-    constraints = _iter_constraints(atoms)
-    remaining_constraints = []
-    for constraint in constraints:
-        if isinstance(constraint, FixAtoms):
-            indices = np.asarray(constraint.index, dtype=int)
-            ref_positions = atoms.get_positions()[indices]
-            calculators.append(
-                HarmonicFixAtoms(indices, ref_positions, k_fix=k_fix)
-            )
-        elif isinstance(constraint, FixBondLengths):
-            pairs = np.asarray(constraint.pairs, dtype=int)
-            if constraint.bondlengths is None:
-                pos = atoms.get_positions()
-                rij = pos[pairs[:, 0]] - pos[pairs[:, 1]]
-                ref_distances = np.linalg.norm(rij, axis=1)
-            else:
-                ref_distances = np.asarray(constraint.bondlengths, dtype=float)
-            calculators.append(
-                HarmonicFixBondLengths(pairs, ref_distances, k_bond=k_bond)
-            )
-            remaining_constraints.append(constraint)
-        else:
-            warnings.warn(
-                f"Unsupported ASE constraint {type(constraint).__name__}; "
-                "ignored for harmonic restraints."
-            )
-            remaining_constraints.append(constraint)
-    if remaining_constraints != constraints:
-        atoms.set_constraint(remaining_constraints or None)
-    return calculators
 
 

@@ -43,20 +43,13 @@ from .defaults import (
     GEOM_KW_DEFAULT,
     UMA_CALC_KW,
     OPT_BASE_KW,
-    LBFGS_KW,
-    RFO_KW,
     TSOPT_MODE_ALIASES,
-    DIMER_KW,
-    HESSIAN_DIMER_KW,
     OUT_DIR_TSOPT,
-    LBFGS_TS_KW,
     HESSIAN_DIMER_CLI_KW,
     RSIRFO_KW,
 )
 from .utils import (
     resolve_freeze_atoms,
-    deep_update,
-    load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
@@ -747,7 +740,7 @@ class HessianDimer:
         self._cycles_spent = 0
 
         # UMA settings
-        self.uma_kwargs = dict(charge=0, spin=1, model="uma-s-1p2",
+        self.uma_kwargs = dict(charge=0, spin=1, model="uma-s-1p1",
                                task_name="omol", device="auto") if uma_kwargs is None else dict(uma_kwargs)
 
         # Geometry & masses (use provided geom kwargs so freeze_atoms etc. apply)
@@ -1394,7 +1387,7 @@ def _build_rsirfo_kwargs(
     show_default=True,
     help="Write optimization trajectory to the output directory.",
 )
-@click.option("-o", "--out-dir", type=str, default="./result_tsopt/", show_default=True, help="Output directory.")
+@click.option("-o", "--out-dir", type=str, default=OUT_DIR_TSOPT, show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,

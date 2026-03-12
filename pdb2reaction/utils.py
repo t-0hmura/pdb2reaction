@@ -39,6 +39,7 @@ from ase.io import read, write
 import plotly.graph_objs as go
 
 from .add_elem_info import guess_element
+from .defaults import RFO_KW
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 from pysisyphus.helpers import geom_loader
 
@@ -362,9 +363,9 @@ def build_sopt_kwargs(
         args["max_step"] = min(float(lbfgs_cfg.get("max_step", 0.30)), max_step_bohr)
     else:
         args = {**rfo_cfg, **common}
-        tr = float(rfo_cfg.get("trust_radius", 0.10))
+        tr = float(rfo_cfg.get("trust_radius", RFO_KW["trust_radius"]))
         args["trust_radius"] = min(tr, max_step_bohr)
-        args["trust_max"] = min(float(rfo_cfg.get("trust_max", 0.10)), max_step_bohr)
+        args["trust_max"] = min(float(rfo_cfg.get("trust_max", RFO_KW["trust_max"])), max_step_bohr)
     if relax_override_requested:
         args["max_cycles"] = int(relax_max_cycles)
     return args
@@ -560,32 +561,6 @@ def build_scan_configs(
 
     return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
 
-
-def convert_xyz_to_gjf_if_enabled(
-    xyz_path: Path,
-    template: Optional["GjfTemplate"],
-    *,
-    out_path: Optional[Path] = None,
-    context: str = "GJF",
-    on_error: str = "raise",
-) -> Optional[Path]:
-    """Convert XYZ to GJF when enabled; return output path or None."""
-    if not (_CONVERT_FILES_ENABLED and template is not None and xyz_path.exists()):
-        return None
-    target = out_path if out_path is not None else xyz_path.with_suffix(".gjf")
-    try:
-        convert_xyz_to_gjf(xyz_path, template, target)
-        return target
-    except Exception as e:
-        if on_error == "warn":
-            click.echo(
-                f"[convert] WARNING: Failed to convert '{xyz_path.name}' to {context}: {e}",
-                err=True,
-            )
-            return None
-        raise click.ClickException(
-            f"[convert] Failed to convert '{xyz_path.name}' to {context}: {e}"
-        ) from e
 
 
 # =============================================================================

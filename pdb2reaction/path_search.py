@@ -56,7 +56,6 @@ from .path_opt import _optimize_single, _run_dmf_mep
 from .utils import (
     as_list,
     collect_option_values,
-    load_yaml_dict,
     deep_update,
     apply_yaml_overrides,
     pretty_block,
@@ -71,7 +70,6 @@ from .utils import (
     _convert_to_pdb_logged,
     PreparedInputStructure,
     GjfTemplate,
-    convert_xyz_to_gjf_if_enabled,
     geom_from_xyz_string,
     close_matplotlib_figures,
     write_xyz_trj_with_energy,
@@ -1663,7 +1661,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
 )
-@click.option("-o", "--out-dir", "out_dir", type=str, default="./result_path_search/", show_default=True, help="Output directory.")
+@click.option("-o", "--out-dir", "out_dir", type=str, default=OUT_DIR_PATH_SEARCH, show_default=True, help="Output directory.")
 @click.option(
     "--thresh",
     type=str,

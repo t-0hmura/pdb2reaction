@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # pdb2reaction smoke tests — GPU required
 # Speed: --thresh gau_loose, --max-cycles 3-5 everywhere.
 # Coverage: all subcommands, input formats, --ref-pdb, solvent, dry-run, utilities.
@@ -6,7 +7,7 @@
 # --- Subcommand tests (individual) ---
 
 # test1: opt (grad / lbfgs)
-pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 5 --thresh gau_loose --dump True --out-dir test1 > test1.out 2>&1
+pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 5 --thresh gau_loose --dump --out-dir test1 > test1.out 2>&1
 
 # test2: opt (hess / rfo)
 pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test2 > test2.out 2>&1
@@ -24,17 +25,17 @@ pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --out-dir test5 > test5.out 2>&1
 pdb2reaction dft -i h2.gjf --func-basis 'hf/sto-3g' --grid-level 0 --conv-tol 1e-5 --max-cycle 40 --engine cpu --out-dir test6 > test6.out 2>&1
 
 # test7: scan (1D)
-pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --max-cycles 3 --preopt False --endopt False --out-dir test7 > test7.out 2>&1
+pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test7 > test7.out 2>&1
 
 # test8: scan2d (extract pocket first)
-pdb2reaction extract -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --exclude-backbone False --include-H2O True -o p_complex_pocket.pdb
+pdb2reaction extract -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --include-H2O -o p_complex_pocket.pdb
 pdb2reaction scan2d -i p_complex_pocket.pdb --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4)]" --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test8 > test8.out 2>&1
 
 # test9: scan3d
 pdb2reaction scan3d -i p_complex_pocket.pdb --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test9 > test9.out 2>&1
 
 # test10: path-opt (gsm)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --preopt False --climb False --out-dir test10 > test10.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
 
 # test11: path-search
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --out-dir test11 > test11.out 2>&1
@@ -62,18 +63,18 @@ pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh g
 pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thresh gau_loose --out-dir test17 > test17.out 2>&1
 
 # test18: all (complex, extract + scan-lists)
-pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --exclude-backbone False --max-cycles 5 --thresh gau_loose --out-dir test18 > test18.out 2>&1
+pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --out-dir test18 > test18.out 2>&1
 
 # test19: all (complex, multi-input)
-pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --exclude-backbone False --max-cycles 5 --thresh gau_loose --out-dir test19 > test19.out 2>&1
+pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --out-dir test19 > test19.out 2>&1
 
 # --- TSOPT-only mode ---
 
 # test20: all (ts input, --tsopt + --thermo)
-pdb2reaction -i ts.pdb -q 0 --tsopt True --opt-mode-post grad --thermo True --max-cycles 100 --thresh gau --out-dir test20 > test20.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --max-cycles 100 --thresh gau --out-dir test20 > test20.out 2>&1
 
 # test21: all (ts input, --tsopt, opt-mode hess)
-pdb2reaction -i ts.pdb -q 0 --tsopt True --opt-mode-post hess --max-cycles 5 --thresh gau_loose --out-dir test21 > test21.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles 5 --thresh gau_loose --out-dir test21 > test21.out 2>&1
 
 # --- MEP mode ---
 
@@ -111,7 +112,7 @@ pdb2reaction irc -i ts.pdb -q 0 --dry-run --out-dir test30 > test30.out 2>&1
 # --- Utility subcommands ---
 
 # test31: extract
-pdb2reaction extract -i r_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --exclude-backbone False -o test31_pocket.pdb > test31.out 2>&1
+pdb2reaction extract -i r_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone -o test31_pocket.pdb > test31.out 2>&1
 
 # test32: add-elem-info
 cp r_complex.pdb test32_input.pdb

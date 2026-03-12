@@ -29,19 +29,18 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 
 from .defaults import (
+    BIAS_KW,
     GEOM_KW_DEFAULT,
-    CALC_KW_DEFAULT,
     OPT_BASE_KW,
     LBFGS_KW,
     RFO_KW,
     OPT_MODE_ALIASES,
     UMA_CALC_KW,
+    OUT_DIR_OPT,
 )
 from .backends import create_calculator
 from .utils import (
     resolve_freeze_atoms,
-    deep_update,
-    load_yaml_dict,
     apply_yaml_overrides,
     pretty_block,
     strip_inherited_keys,
@@ -78,7 +77,7 @@ OPT_FLATTEN_MAX_ITER = 50
 class HarmonicBiasCalculator:
     """Wrap a base UMA calculator with harmonic distance restraints."""
 
-    def __init__(self, base_calc, k: float = 10.0, pairs: Optional[List[Tuple[int, int, float]]] = None):
+    def __init__(self, base_calc, k: float = 300.0, pairs: Optional[List[Tuple[int, int, float]]] = None):
         self.base = base_calc
         self.k_evAA = float(k)
         self.k_au_bohr2 = self.k_evAA * H_EVAA_2_AU
@@ -377,7 +376,7 @@ def _flatten_all_imag_modes_for_geom(
 @click.option(
     "--bias-k",
     type=float,
-    default=10.0,
+    default=BIAS_KW["k"],
     show_default=True,
     help="Harmonic restraint strength k [eV/Å^2] for --dist-freeze.",
 )
@@ -430,7 +429,7 @@ def _flatten_all_imag_modes_for_geom(
 @click.option(
     "-o", "--out-dir",
     type=str,
-    default="./result_opt/",
+    default=OUT_DIR_OPT,
     show_default=True,
     help="Output directory.",
 )

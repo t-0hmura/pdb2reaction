@@ -45,9 +45,9 @@ from .defaults import (
     DMF_KW,
     GS_KW,
     STOPT_KW,
+    OUT_DIR_PATH_OPT,
 )
 from .utils import (
-    load_yaml_dict,
     apply_yaml_overrides,
     deep_update,
     pretty_block,
@@ -152,7 +152,7 @@ def _run_dmf_mep(
 
     calc_uma = create_ase_calculator(
         backend=calc_cfg.get("backend", "uma"),
-        model=str(calc_cfg.get("model", "uma-s-1p2")),
+        model=str(calc_cfg.get("model", "uma-s-1p1")),
         device=str(calc_cfg.get("device", "auto")),
         task_name=str(calc_cfg.get("task_name", "omol")),
         workers=int(calc_cfg.get("workers", 1)),
@@ -494,7 +494,7 @@ def _optimize_single(
     "-o", "--out-dir",
     "out_dir",
     type=str,
-    default="./result_path_opt/",
+    default=OUT_DIR_PATH_OPT,
     show_default=True,
     help="Output directory.",
 )
