@@ -91,7 +91,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
  atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
  also written.
 - **Performance & exit behavior**: the implementation minimizes GPU memory usage by keeping
- a single Hessian resident, preferring upper-triangular eigendecompositions (`UPLO="U"`).
+ a single Hessian resident.
  Keyboard interrupts exit with code 130; other failures print a traceback and exit with code 1.
 
 ## CLI options
@@ -100,7 +100,8 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
+| `--workers INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians). | `1` |
+| `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens and merge with `geom.freeze_atoms`. See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--max-write INT` | Number of modes to export. | `10` |
@@ -111,7 +112,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dump/--no-dump` | Write `thermoanalysis.yaml`. | `False` |
-| `--hessian-calc-mode CHOICE` | UMA Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
+| `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
@@ -136,8 +137,7 @@ out_dir/ (default:./result_freq/)
 
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
  and dumps details when `--dump`.
-- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI < override); if YAML
- specifies `calc.hessian_calc_mode`, it overrides the CLI value.
+- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI < override); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
 Provide mappings with merge order **defaults < config < explicit CLI < override**.
 Shared sections reuse [YAML Reference](yaml_reference.md).
@@ -150,7 +150,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # UMA device selection
  max_neigh: null # maximum neighbors for graph construction

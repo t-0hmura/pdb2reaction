@@ -53,7 +53,7 @@ def add_scan_common_options(
             type=int,
             default=workers_default,
             show_default=True,
-            help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+            help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
         ),
         click.option(
             "--workers-per-node",
@@ -61,7 +61,7 @@ def add_scan_common_options(
             type=int,
             default=workers_per_node_default,
             show_default=True,
-            help="Workers per node when using a parallel UMA predictor (workers>1).",
+            help="Workers per node when using a parallel MLIP predictor (workers>1).",
         ),
         click.option(
             "-l",
@@ -149,6 +149,7 @@ def add_scan_common_options(
             help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
         ),
         click.option(
+            "-o",
             "--out-dir",
             type=str,
             default=out_dir_default,

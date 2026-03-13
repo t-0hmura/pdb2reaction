@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # pdb2reaction smoke tests — GPU required
-# Speed: --thresh gau_loose, --max-cycles 3-5 everywhere.
 # Coverage: all subcommands, input formats, --ref-pdb, solvent, dry-run, utilities.
 
 # --- Subcommand tests (individual) ---
@@ -112,11 +111,10 @@ pdb2reaction irc -i ts.pdb -q 0 --dry-run --out-dir test30 > test30.out 2>&1
 # --- Utility subcommands ---
 
 # test31: extract
-pdb2reaction extract -i r_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone -o test31_pocket.pdb > test31.out 2>&1
+pdb2reaction extract -i r_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone -o pocket_r.pdb > test31.out 2>&1
 
 # test32: add-elem-info
-cp r_complex.pdb test32_input.pdb
-pdb2reaction add-elem-info -i test32_input.pdb -o test32_output.pdb > test32.out 2>&1
+pdb2reaction add-elem-info -i r_complex.pdb -o r_complex_elem.pdb > test32.out 2>&1
 
 # test33: trj2fig
 pdb2reaction trj2fig -i test1/optimization_trj.xyz -o test33.png > test33.out 2>&1
@@ -124,7 +122,20 @@ pdb2reaction trj2fig -i test1/optimization_trj.xyz -o test33.png > test33.out 2>
 # test34: energy-diagram
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3, 18.7, -1.2]" -o test34.png > test34.out 2>&1
 
+# --- YAML scan spec ---
+
+# test36: scan (1D, YAML spec file)
+pdb2reaction scan -i r.pdb -q -1 -s scan_spec.yaml --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test36 > test36.out 2>&1
+
+# test37: scan2d (YAML spec file)
+pdb2reaction scan2d -i p_complex_pocket.pdb --ligand-charge 'PRE:-2' -s scan2d_spec.yaml --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test37 > test37.out 2>&1
+
 # --- Solvent correction (requires xTB) ---
 
 # test35: opt (solvent water)
 pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loose --solvent water --out-dir test35 > test35.out 2>&1
+
+# --- dist-freeze ---
+
+# test38: opt --dist-freeze --dry-run (inline 3-tuple + 2-tuple)
+pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --out-dir test38 > test38.out 2>&1

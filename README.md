@@ -2,14 +2,17 @@
 
 ## Overview
 
-`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs).
+`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path_search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy_diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
 
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
 pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
 ```
-
+```bash
+pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+    --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
+```
 ---
 
 The full workflow — **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** — can be run in one command:
@@ -29,21 +32,14 @@ Given **(i) two or more PDB files** (R → ... → P), **or (ii) one PDB with `-
 
 using machine-learning interatomic potentials (MLIPs).
 
-### Supported ML potentials
+### Related tools
 
-| Potential | Repository | Install extra |
-|-----------|------------|---------------|
-| **UMA** (default) | <https://github.com/facebookresearch/fairchem> | *(included)* |
-| **ORB** | <https://github.com/orbital-materials/orb-models> | `pip install pdb2reaction[orb]` |
-| **MACE** | <https://github.com/ACEsuit/mace> | see note below |
-| **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install pdb2reaction[aimnet2]` |
+| Tool | Use case | Repository |
+|------|----------|------------|
+| **mlmm-toolkit** | ML/MM (ONIOM) with full protein environment — automates MM parameter generation and ML region assignment from a single PDB input | <https://github.com/t-0hmura/mlmm_toolkit> |
+| **UMA–Pysisyphus Interface** | YAML-input-based reaction mechanism analysis for small molecules | <https://github.com/t-0hmura/uma_pysis> |
 
-> **Note:** MACE and UMA cannot coexist due to conflicting `e3nn` versions (`fairchem-core` requires `e3nn>=0.5`, `mace-torch` requires `e3nn==0.4.4`). To use MACE, uninstall `fairchem-core` first:
-> ```bash
-> pip uninstall fairchem-core
-> pip install mace-torch
-> ```
-> This means UMA will no longer be available in that environment. We recommend using a **separate conda environment** for MACE.
+Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus fork for geometry optimization, TS search, and IRC. This bundled fork is **not compatible** with the upstream pysisyphus package; do not install them side by side.
 
 > **Important (prerequisites):**
 > - Input PDB files must already contain **hydrogen atoms**.
@@ -106,6 +102,22 @@ This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries. Note t
 
 For detailed installation instructions, see [Installation](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md).
 
+### Supported ML potentials
+
+| Potential | Repository | Install extra |
+|-----------|------------|---------------|
+| **UMA** (default) | <https://github.com/facebookresearch/fairchem> | *(included)* |
+| **ORB** | <https://github.com/orbital-materials/orb-models> | `pip install pdb2reaction[orb]` |
+| **MACE** | <https://github.com/ACEsuit/mace> | see note below |
+| **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install pdb2reaction[aimnet2]` |
+
+> **Note:** MACE and UMA cannot coexist due to conflicting `e3nn` versions (`fairchem-core` requires `e3nn>=0.5`, `mace-torch` requires `e3nn==0.4.4`). To use MACE, uninstall `fairchem-core` first:
+> ```bash
+> pip uninstall fairchem-core
+> pip install mace-torch
+> ```
+> This means UMA will no longer be available in that environment. We recommend using a **separate conda environment** for MACE.
+
 ---
 
 ## Quick Examples
@@ -129,26 +141,39 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 ```
 
 ### Step-by-step workflow
+
+**1. Extract active-site pocket (cluster model)** — [`extract`](docs/extract.md)
 ```bash
-# 1. Extract active-site pocket (cluster model)
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 6.0
+```
 
-# 2. Optimize geometry
+**2. Optimize geometry** — [`opt`](docs/opt.md)
+```bash
 pdb2reaction opt -i pocket.pdb -l 'SAM:1,GPP:-3'
+```
 
-# 3. MEP search
+**3. MEP search** — [`path-search`](docs/path_search.md)
+```bash
 pdb2reaction path-search -i R.pdb P.pdb -l 'SAM:1,GPP:-3'
+```
 
-# 4. TS optimization
+**4. TS optimization** — [`tsopt`](docs/tsopt.md)
+```bash
 pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3'
+```
 
-# 5. Frequency analysis
+**5. Frequency analysis** — [`freq`](docs/freq.md)
+```bash
 pdb2reaction freq -i ts_optimized.pdb -l 'SAM:1,GPP:-3'
+```
 
-# 6. IRC
+**6. IRC** — [`irc`](docs/irc.md)
+```bash
 pdb2reaction irc -i ts_optimized.pdb -l 'SAM:1,GPP:-3'
+```
 
-# 7. DFT single-point
+**7. DFT single-point** — [`dft`](docs/dft.md)
+```bash
 pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 ```
 
@@ -198,7 +223,7 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 | `energy-diagram` | Energy diagram from numeric values | [docs/energy_diagram.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/energy_diagram.md) |
 
 
-> **Tip:** In `tsopt`, `freq`, and `irc`, setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
+> **Tip:** In [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), and [`irc`](docs/irc.md), setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
 
 ---
 

@@ -53,7 +53,7 @@ Options:
   -q, --charge INTEGER            Force the total system charge (overrides
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
-  --workers INTEGER               UMA predictor workers; >1 spawns a parallel
+  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
@@ -122,7 +122,7 @@ Options:
                                   optimizations of the pocket inputs.  [default:
                                   True]
   --hessian-calc-mode [finitedifference|analytical]
-                                  Common UMA Hessian calculation mode forwarded
+                                  Common MLIP Hessian calculation mode forwarded
                                   to tsopt and freq. Defaults to
                                   'FiniteDifference'.
   --tsopt BOOLEAN                 TS optimization + IRC per reactive segment (or

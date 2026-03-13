@@ -121,7 +121,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 ```
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ path; comment line holds energies when provided
-├─ final_geometries.pdb # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
+├─ final_geometries_trj.pdb # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
 ├─ hei.xyz # Highest-energy image with its energy on the comment line
 ├─ hei.pdb # HEI converted to PDB when a PDB reference is available (conversion enabled)
 ├─ hei.gjf # HEI written using a detected Gaussian template (conversion enabled)
@@ -157,7 +157,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # UMA device selection
  max_neigh: null # maximum neighbors for graph construction

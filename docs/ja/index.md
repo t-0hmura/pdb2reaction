@@ -258,3 +258,7 @@ pdb2reaction <subcommand> --help
 ```
 
 問題や機能リクエストについては、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) をご覧ください。
+
+---
+
+*Note: 本ドキュメントは現在整備中のため、一部未完成の箇所や今後変更される箇所がある可能性があります。*

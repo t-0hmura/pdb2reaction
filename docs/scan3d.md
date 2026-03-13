@@ -198,7 +198,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  device: auto # UMA device selection
 opt:
  thresh: baker # convergence preset (default: baker)
@@ -229,7 +229,7 @@ out_dir/ (default:./result_scan3d/)
 ├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###_k###.gjf # Gaussian companions when templates exist and conversion is enabled
 ├─ grid/preopt_i###_j###_k###.xyz # Starting structure saved before scanning (preoptimized when --preopt is True)
-└─ grid/inner_path_d1_###_d2_###_trj.xyz # Present only when --dump is True (mirrored to .pdb/.gjf with conversion)
+└─ grid/inner_path_d1_###_d2_###_trj.xyz # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
 ```
 
 ## Notes

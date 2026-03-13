@@ -150,7 +150,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
  evaluate the UMA energy without bias. Optional per-outer-step inner
  trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
- `i,j,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
+ `i,j,d1_label,d2_label,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
  reference via `--baseline {min|first}`. With `--baseline first`, the reference
  is the first grid entry (`i = j = 0` after reordering), not necessarily
  `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
@@ -203,6 +203,9 @@ out_dir/ (default:./result_scan2d/)
 ├─ grid/point_i###_j###.xyz # Relaxed geometries for every (i, j) pair
 ├─ grid/point_i###_j###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###.gjf # Gaussian companions when templates exist and conversion is enabled
+├─ grid/preopt_i###_j###.xyz # Starting structure (present when --preopt is True)
+├─ grid/preopt_i###_j###.pdb # PDB companion when conversion is enabled
+├─ grid/preopt_i###_j###.gjf # Gaussian companion when templates exist and conversion is enabled
 └─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
 ```
 
@@ -226,7 +229,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  device: auto # UMA device selection
 opt:
  thresh: baker # convergence preset (default: baker)

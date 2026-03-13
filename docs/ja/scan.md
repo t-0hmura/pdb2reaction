@@ -8,7 +8,7 @@
 - **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。
 - **入力:** 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--preopt`、`--endopt`、`--max-step-size 0.20 Å`。
-- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）。`--dump` なら結合した軌跡も保存。
+- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡（`scan_trj.xyz`/`scan.pdb`）。`--dump` はステップごとの最適化軌跡のみを制御。
 - **注意:** 可能な限り YAML/JSON ファイルパスを `-s/--scan-lists` に渡してください。インライン Python リテラルはクォート/エスケープが必要です。
 
 `pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --out-dir ./result_scan
 
 - `result_scan/stage_01/result.pdb`（または `result.xyz`）
 - `result_scan/stage_02/result.pdb`（または `result.xyz`）
-- `--dump` 指定時は `result_scan/stage_*/scan_trj.xyz` と `scan.pdb`
+- `result_scan/stage_*/scan_trj.xyz` と `scan.pdb`（常に生成されます。`--dump` はステップごとの最適化軌跡ファイルのみを制御）
 
 ## よくある例
 
@@ -169,7 +169,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
  各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
-6. すべてのステージについて繰り返します。軌跡は `--dump` の場合のみ保存されます。
+6. すべてのステージについて繰り返します。結合スキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。`--dump` はステップごとの最適化軌跡ファイルのみを制御します。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -187,7 +187,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
 | `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
-| `--dump/--no-dump` | バイアス付き軌跡（`scan_trj.xyz`/`scan.pdb`）を出力 | `False` |
+| `--dump/--no-dump` | ステップごとの最適化軌跡を出力。注: `scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換は PDB のみ） | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
@@ -221,12 +221,14 @@ out_dir/ (デフォルト:./result_scan/)
 │ ├─ result.xyz
 │ ├─ result.pdb # PDB 入力かつ変換有効時
 │ └─ result.gjf # Gaussian テンプレートがあり変換有効時
-└─ stage_XX/ # ステージごとのフォルダ
- ├─ result.xyz
- ├─ result.pdb # 最終構造の PDB コンパニオン（変換有効時）
- ├─ result.gjf # テンプレートがある場合の Gaussian コンパニオン（変換有効時）
- ├─ scan_trj.xyz # --dump の場合
- └─ scan.pdb # PDB 入力で変換有効時の軌跡コンパニオン（scan.gjf は生成されない）
+├─ stage_XX/ # ステージごとのフォルダ
+│ ├─ result.xyz
+│ ├─ result.pdb # 最終構造の PDB コンパニオン（変換有効時）
+│ ├─ result.gjf # テンプレートがある場合の Gaussian コンパニオン（変換有効時）
+│ ├─ scan_trj.xyz # 常に生成（結合バイアス付き軌跡）
+│ └─ scan.pdb # PDB 入力で変換有効時に常に生成（scan.gjf は生成されない）
+├─ scan_trj.xyz # 全ステージの結合軌跡
+└─ scan.pdb # 結合 PDB 軌跡（変換有効時）
 ```
 - `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果と、各ステージの結合変化レポートがコンソールに出力されます。
 
@@ -235,7 +237,7 @@ out_dir/ (デフォルト:./result_scan/)
 
 - `-s/--scan-lists` には単一フラグの後に複数リテラルを並べるか、フラグを繰り返して指定できます（`multiple=True`）。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
 - `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
-- ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は `--dump` の設定にかかわらず常に書き出されます。軌跡は `--dump` の場合のみ保存され、PDB 入力かつ変換が有効な場合は `scan.pdb` も生成されます。
+- ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は常に書き出されます。結合スキャン軌跡（`scan_trj.xyz` および PDB 入力で変換有効時の `scan.pdb`）も常に書き出されます。`--dump` フラグはステップごとの最適化軌跡ファイルのみを制御します。
 
 
 ```yaml
@@ -245,7 +247,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # UMA device selection
  max_neigh: null # maximum neighbors for graph construction

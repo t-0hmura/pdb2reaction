@@ -15,7 +15,7 @@ Options:
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
-  --workers INTEGER               UMA predictor workers; >1 spawns a parallel
+  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
@@ -48,7 +48,7 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Output directory.  [default: ./result_irc/]
   --hessian-calc-mode [finitedifference|analytical]
-                                  How UMA builds the Hessian (Analytical or
+                                  How the ML backend builds the Hessian (Analytical or
                                   FiniteDifference); used unless YAML sets
                                   calc.hessian_calc_mode. Defaults to
                                   'FiniteDifference'.

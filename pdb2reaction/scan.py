@@ -188,7 +188,8 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default=OUT_DIR_SCAN,
     baseline_help="(unused)",
-    dump_help="Write stage trajectory as scan_trj.xyz (and scan.pdb for PDB input).",
+    dump_help="Write per-step optimizer trajectory files. "
+              "scan_trj.xyz and scan.pdb are always written to out-dir regardless of this flag.",
     max_step_help="Maximum change in any scanned bond length per step [Å].",
     thresh_default=None,
     include_baseline=False,
@@ -462,7 +463,7 @@ def cli(
                     relax_max_cycles,
                     relax_override_requested,
                     pre_dir,
-                    "preopt_",
+                    "preopt",
                 )
                 try:
                     optimizer0.run()
@@ -500,6 +501,8 @@ def cli(
             # 4) Stage-by-stage scan
             # ------------------------------------------------------------------
 
+            all_trj_blocks: List[str] = []
+
             # Iterate stages
             for k, tuples in enumerate(stages, start=1):
                 stage_dir = _ensure_stage_dir(out_dir_path, k)
@@ -529,7 +532,7 @@ def cli(
                 }
                 stages_summary.append(srec)
 
-                trj_blocks: Optional[List[str]] = [] if dump else None
+                trj_blocks: List[str] = []
 
                 pairs = [(i, j) for (i, j, _) in tuples]
 
@@ -549,7 +552,7 @@ def cli(
                                 relax_max_cycles,
                                 relax_override_requested,
                                 stage_dir,
-                                "endopt_",
+                                "endopt",
                             )
                             end_optimizer.run()
                         except ZeroStepLength:
@@ -603,7 +606,7 @@ def cli(
                     geom.set_calculator(biased)
 
                     # Build optimizer and relax (with bias)
-                    prefix = f"scan_s{s:04d}_"
+                    prefix = f"scan_s{s:04d}"
                     optimizer = make_sopt_optimizer(
                         geom,
                         kind,
@@ -624,9 +627,7 @@ def cli(
                     except OptimizationError as e:
                         click.echo(f"[stage {k}] step {s}: OptimizationError — {e}")
 
-                    # Record trajectory block only when requested (biased result)
-                    if dump and trj_blocks is not None:
-                        trj_blocks.append(xyz_string_with_energy(geom))
+                    trj_blocks.append(xyz_string_with_energy(geom))
 
                 # Optional end-of-stage UNBIASED optimization
                 if endopt:
@@ -643,7 +644,7 @@ def cli(
                             relax_max_cycles,
                             relax_override_requested,
                             stage_dir,
-                            "endopt_",
+                            "endopt",
                         )
                         end_optimizer.run()
                     except ZeroStepLength:
@@ -665,11 +666,12 @@ def cli(
                     click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
 
                 # Stage outputs
-                if dump and trj_blocks:
+                if trj_blocks:
                     trj_path = stage_dir / "scan_trj.xyz"
                     with open(trj_path, "w") as f:
                         f.write("".join(trj_blocks))
                     click.echo(f"[write] Wrote '{trj_path}'.")
+                    all_trj_blocks.extend(trj_blocks)
                     if convert_xyz_like_outputs(
                         trj_path,
                         prepared_input,
@@ -678,10 +680,7 @@ def cli(
                         context="stage trajectory",
                     ):
                         if needs_pdb:
-                            written = []
-                            if needs_pdb:
-                                written.append("'scan.pdb'")
-                            click.echo(f"[convert] Wrote {', '.join(written)}.")
+                            click.echo("[convert] Wrote 'scan.pdb'.")
 
                 final_xyz = stage_dir / "result.xyz"
                 with open(final_xyz, "w") as f:
@@ -702,6 +701,24 @@ def cli(
                         if needs_gjf:
                             written.append("'result.gjf'")
                         click.echo(f"[convert] Wrote {', '.join(written)}.")
+
+            # ------------------------------------------------------------------
+            # 4b) Write combined scan_trj.xyz + scan.pdb to out_dir
+            # ------------------------------------------------------------------
+            if all_trj_blocks:
+                combined_trj = out_dir_path / "scan_trj.xyz"
+                with open(combined_trj, "w") as f:
+                    f.write("".join(all_trj_blocks))
+                click.echo(f"[write] Wrote '{combined_trj}'.")
+                if convert_xyz_like_outputs(
+                    combined_trj,
+                    prepared_input,
+                    ref_pdb_path=ref_pdb,
+                    out_pdb_path=out_dir_path / "scan.pdb" if needs_pdb else None,
+                    context="combined scan trajectory",
+                ):
+                    if needs_pdb:
+                        click.echo(f"[convert] Wrote '{out_dir_path / 'scan.pdb'}'.")
 
             # ------------------------------------------------------------------
             # 5) Final summary echo (human‑friendly)

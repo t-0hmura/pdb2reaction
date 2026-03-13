@@ -217,7 +217,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge. | `0` |
 | `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-s-1p1`, `uma-m-1p1`). | `"uma-s-1p1"` |
+| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-m-1p1`). | `"uma-s-1p1"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |

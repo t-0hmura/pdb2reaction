@@ -95,7 +95,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 
 - `result_scan/stage_01/result.pdb`
 - `result_scan/stage_02/result.pdb` (if multiple stages)
-- Optional trajectories when `--dump` is enabled (`scan_trj.xyz`, `scan.pdb`)
+- Concatenated scan trajectories (`scan_trj.xyz`, `scan.pdb`) are always written
 
 ## Notes
 

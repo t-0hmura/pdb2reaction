@@ -11,21 +11,21 @@ Most workflows follow this flow:
 ```text
 Full system(s) (PDB/XYZ/GJF)
  │
- ├─ (optional) pocket extraction [extract] ← requires PDB when you use --center/-c
+ ├─ (optional) pocket extraction [`extract`](extract.md) ← requires PDB when you use --center/-c
  │ ↓
  │ Pocket/cluster model(s) (PDB)
  │ │
- │ ├─ (optional) staged scan [scan] ← single-structure workflows
+ │ ├─ (optional) staged scan [`scan`](scan.md) ← single-structure workflows
  │ │ ↓
  │ │ Ordered intermediates
  │ │ ↓
- │ └─ MEP search [path-search] or [path-opt]
+ │ └─ MEP search [`path-search`](path_search.md) or [`path-opt`](path_opt.md)
  │ ↓
  │ MEP trajectory (mep_trj.xyz) + energy diagrams
  │ ↓
- └─ (optional) TS optimization + IRC [tsopt] → [irc]
- └─ (optional) thermo [freq]
- └─ (optional) single-point DFT [dft]
+ └─ (optional) TS optimization + IRC [`tsopt`](tsopt.md) → [`irc`](irc.md)
+ └─ (optional) thermo [`freq`](freq.md)
+ └─ (optional) single-point DFT [`dft`](dft.md)
 ```
 
 Each stage is available as an individual subcommand. The `pdb2reaction all` command runs many stages end-to-end.

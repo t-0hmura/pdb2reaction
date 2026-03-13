@@ -497,7 +497,7 @@ CALC_KW = FREQ_CALC_KW
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
     "--workers-per-node",
@@ -505,7 +505,7 @@ CALC_KW = FREQ_CALC_KW
     type=int,
     default=CALC_KW["workers_per_node"],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
 @click.option(
     "-l",
@@ -586,7 +586,7 @@ CALC_KW = FREQ_CALC_KW
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None,
-              help="How UMA computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
+              help="How the ML backend computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
@@ -790,7 +790,17 @@ def cli(
     # --------------------------
     try:
         freeze_list = list(calc_cfg.get("freeze_atoms", []))
-        H = _calc_full_hessian_torch(geometry, calc_cfg, device)
+        from .hessian_cache import load as _hess_load
+        _cached_ts = _hess_load("ts")
+        if _cached_ts is not None:
+            click.echo("[freq] Reusing cached TS Hessian.")
+            H = _cached_ts["hessian"]
+            if isinstance(H, torch.Tensor):
+                H = H.to(device=device)
+            else:
+                H = torch.as_tensor(H, device=device)
+        else:
+            H = _calc_full_hessian_torch(geometry, calc_cfg, device)
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
 
         # PHVA: use the freeze list to carve out the active subspace and apply TR projection there.

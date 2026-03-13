@@ -54,7 +54,7 @@ calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction
@@ -384,11 +384,9 @@ irc:
  check_bonds: false # Check bonds during propagation
  out_dir: ./result_irc/ # Output directory
  prefix: "" # Filename prefix
- dump_fn: irc_data.h5 # IRC data filename
- dump_every: 5 # Dump stride
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
- corr_func: mbs # Correlation function choice
+ corr_func: mbs # Corrector function choice
 ```
 
 ---
@@ -486,7 +484,7 @@ calc:
  backend: uma
  charge: 0
  spin: 1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  device: auto
  hessian_calc_mode: Analytical # Recommended when VRAM permits
  solvent: none                 # Set to e.g. "water" for implicit solvent

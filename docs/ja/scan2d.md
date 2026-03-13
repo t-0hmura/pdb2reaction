@@ -175,6 +175,9 @@ out_dir/ (デフォルト:./result_scan2d/)
 ├─ grid/point_i###_j###.xyz # 各 (i, j) の緩和構造
 ├─ grid/point_i###_j###.pdb # 変換有効時の PDB コンパニオン
 ├─ grid/point_i###_j###.gjf # テンプレートがある場合の Gaussian コンパニオン
+├─ grid/preopt_i###_j###.xyz # 事前最適化構造（--preopt が True の場合）
+├─ grid/preopt_i###_j###.pdb # 変換有効時の PDB コンパニオン
+├─ grid/preopt_i###_j###.gjf # テンプレートがある場合の Gaussian コンパニオン
 └─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（PDB 入力時は.pdb にも変換）
 ```
 
@@ -194,7 +197,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  device: auto # UMA device selection
 opt:
  thresh: baker # convergence preset (default: baker)

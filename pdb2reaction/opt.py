@@ -12,7 +12,7 @@ For detailed documentation, see: docs/opt.md
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import ast
 import logging
@@ -51,6 +51,10 @@ from .utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     cli_param_overridden,
+    is_scan_spec_file,
+    parse_dist_freeze_list,
+    parse_dist_freeze_spec,
+    load_pdb_atom_metadata,
 )
 from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 from .freq import (
@@ -134,49 +138,34 @@ class HarmonicBiasCalculator:
         return getattr(self.base, name)
 
 
-def _parse_dist_freeze(
-    args: Sequence[str],
+def _parse_dist_freeze_args(
+    raw_args: Sequence[str],
     one_based: bool,
+    atom_meta: Optional[Sequence[Dict[str, Any]]],
 ) -> List[Tuple[int, int, Optional[float]]]:
-    """Parse --dist-freeze arguments into 0-based pairs with optional targets."""
-    parsed: List[Tuple[int, int, Optional[float]]] = []
-    for idx, raw in enumerate(args, start=1):
-        try:
-            obj = ast.literal_eval(raw)
-        except Exception as e:
-            raise click.BadParameter(f"Invalid literal for --dist-freeze #{idx}: {e}")
-        if isinstance(obj, (list, tuple)) and not obj:
-            iterable = []
-        elif isinstance(obj, (list, tuple)) and isinstance(obj[0], (list, tuple)):
-            iterable = obj
+    """Parse all ``--dist-freeze`` arguments (inline literal or spec file).
+
+    Accepts the same format as ``--scan-lists``: inline Python literal
+    (e.g. ``'[(1,5,1.4)]'``) or a YAML/JSON spec file path.  String atom
+    specs (e.g. ``'A:SER123:OG'``) are supported when *atom_meta* is
+    available.  Target distance is optional — omit to freeze at the current
+    distance.
+    """
+    all_pairs: List[Tuple[int, int, Optional[float]]] = []
+    for raw in raw_args:
+        if is_scan_spec_file(raw):
+            all_pairs.extend(parse_dist_freeze_spec(
+                Path(raw),
+                one_based_default=one_based,
+                atom_meta=atom_meta,
+            ))
         else:
-            iterable = [obj]
-        for entry in iterable:
-            if not (isinstance(entry, (list, tuple)) and len(entry) in (2, 3)):
-                raise click.BadParameter(
-                    f"--dist-freeze #{idx} entries must be (i,j) or (i,j,target_A): {entry}"
-                )
-            if not (
-                isinstance(entry[0], (int, np.integer))
-                and isinstance(entry[1], (int, np.integer))
-            ):
-                raise click.BadParameter(f"Atom indices in --dist-freeze #{idx} must be integers: {entry}")
-            i = int(entry[0])
-            j = int(entry[1])
-            target = None
-            if len(entry) == 3:
-                if not isinstance(entry[2], (int, float, np.floating)):
-                    raise click.BadParameter(f"Target distance must be numeric in --dist-freeze #{idx}: {entry}")
-                target = float(entry[2])
-                if target <= 0.0:
-                    raise click.BadParameter(f"Target distance must be > 0 in --dist-freeze #{idx}: {entry}")
-            if one_based:
-                i -= 1
-                j -= 1
-            if i < 0 or j < 0:
-                raise click.BadParameter(f"--dist-freeze #{idx} produced negative index after conversion: {entry}")
-            parsed.append((i, j, target))
-    return parsed
+            all_pairs.extend(parse_dist_freeze_list(
+                raw,
+                one_based=one_based,
+                atom_meta=atom_meta,
+            ))
+    return all_pairs
 
 
 def _resolve_dist_freeze_targets(
@@ -327,7 +316,7 @@ def _flatten_all_imag_modes_for_geom(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
     "--workers-per-node",
@@ -335,7 +324,7 @@ def _flatten_all_imag_modes_for_geom(
     type=int,
     default=UMA_CALC_KW["workers_per_node"],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
 @click.option(
     "-l",
@@ -364,14 +353,16 @@ def _flatten_all_imag_modes_for_geom(
     multiple=True,
     default=(),
     show_default=False,
-    help="Python-like list(s) of (i,j,target_A) to restrain distances (target optional).",
+    help="Distance restraints: inline Python literal (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file path. "
+         "Same format as --scan-lists: (i,j,target_A) triples. "
+         "Target may be omitted to freeze at the current distance: (i,j).",
 )
 @click.option(
     "--one-based/--zero-based",
     "one_based",
     default=True,
     show_default=True,
-    help="Interpret --dist-freeze indices as 1-based (default) or 0-based.",
+    help="Interpret --dist-freeze / --scan-lists indices as 1-based (default) or 0-based.",
 )
 @click.option(
     "--bias-k",
@@ -524,7 +515,13 @@ def cli(
             geom_input_path = prepared_input.geom_path
             source_path = prepared_input.source_path
 
-            dist_freeze = _parse_dist_freeze(dist_freeze_raw, one_based=bool(one_based))
+            pdb_atom_meta: List[Dict[str, Any]] = []
+            if source_path.suffix.lower() == ".pdb":
+                pdb_atom_meta = load_pdb_atom_metadata(source_path)
+
+            dist_freeze = _parse_dist_freeze_args(
+                dist_freeze_raw, one_based=bool(one_based), atom_meta=pdb_atom_meta,
+            )
 
             # --------------------------
             # 1) Assemble configuration (defaults < config < CLI(explicit) < override)
@@ -710,6 +707,29 @@ def cli(
             # --------------------------
             # 4) Run optimization
             # --------------------------
+            # Seed cached IRC endpoint Hessian for RFO when available
+            if main_kind == "rfo":
+                from .hessian_cache import load as _hess_load
+                _cached = _hess_load("irc_endpoint")
+                if _cached is not None:
+                    click.echo("[opt] Reusing IRC endpoint Hessian for RFO seeding.")
+                    _active_dofs = _cached.get("active_dofs")
+                    _h_raw = _cached["hessian"]
+                    if isinstance(_h_raw, torch.Tensor):
+                        _h_init = _h_raw.clone()
+                    else:
+                        _h_init = torch.as_tensor(_h_raw, dtype=torch.float64)
+                    if _active_dofs is not None:
+                        geometry.within_partial_hessian = {
+                            "active_n_dof": len(_active_dofs),
+                            "full_n_dof": geometry.cart_coords.size,
+                            "active_dofs": _active_dofs,
+                            "active_atoms": sorted(set(d // 3 for d in _active_dofs)),
+                        }
+                    geometry.cart_hessian = _h_init
+                    click.echo(f"[opt] Initial Hessian seeded (shape={_h_init.shape[0]}x{_h_init.shape[1]}).")
+                    del _h_init
+
             main_label = "LBFGS" if main_kind == "lbfgs" else "RFO"
             optimizer = _build_optimizer(main_kind)
             click.echo(f"\n====== Optimization ({main_label}) started ======\n")

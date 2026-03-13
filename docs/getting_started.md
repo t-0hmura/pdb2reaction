@@ -53,7 +53,7 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 
 For full details, see [CLI Conventions](cli_conventions.md).
 
-`path-search` naming note: The CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
+[`path-search`](path_search.md) naming note: The CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
 
 
 ### Recommended tools for hydrogen addition
@@ -96,7 +96,7 @@ pdb2reaction [OPTIONS]...
 pdb2reaction all [OPTIONS]...
 ```
 
-The `all` command runs the full pipeline—cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT—in a single invocation.
+The [`all`](all.md) command runs the full pipeline—cluster extraction, MEP search, TS optimization, vibrational analysis, and optional DFT—in a single invocation.
 
 All high-level workflows share two important options when you use cluster extraction:
 
@@ -130,7 +130,7 @@ Behavior:
 - takes two or more **full systems** in reaction order,
 - extracts cluster models for each structure,
 - performs a **recursive MEP search** via `path-search` by default (outputs under `path_search/`),
-- optionally switches to a **single‑pass** `path-opt` run with `--no-refine-path`,
+- optionally switches to a **single‑pass** [`path-opt`](path_opt.md) run with `--no-refine-path`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
 
@@ -198,7 +198,7 @@ Behavior:
 - skips the MEP/path search entirely,
 - performs **transition-state optimization** on the cluster model,
 - runs an **IRC** in both directions and optimizes the endpoints to obtain R and P minima,
-- can then run vibrational analysis (`freq`) and single-point DFT (`dft`) on the R/TS/P structures,
+- can then run vibrational analysis ([`freq`](freq.md)) and single-point DFT (`dft`) on the R/TS/P structures,
 - produces UMA, Gibbs, and DFT//UMA (DFT single-point energies at UMA-optimized geometries) energy diagrams.
 
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
@@ -256,7 +256,7 @@ Each segment directory under `path_search/` also gets its own `summary.log` and 
 
 Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands—each supports `-h/--help`.
 `pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the complete list.
-`scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
+`scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, [`irc`](irc.md), `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
 
 | Subcommand | Role | Documentation |
 |------------|------|---------------|

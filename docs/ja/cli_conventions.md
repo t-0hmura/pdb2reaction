@@ -18,7 +18,7 @@
 ```
 
 `--flag` 単独で定義されているオプションでも、互換のため `--no-flag` と `--flag False` を受理します。
-`extract` と `fix-altloc` は parser wrapper（argparse バックエンド）ですが、root CLI で同じ bool 正規化が適用されます。その他のサブコマンドはすべて Click を CLI バックエンドとして使用します。
+`extract` と `fix-altloc` を含むすべてのサブコマンドが Click を CLI バックエンドとして使用します。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化

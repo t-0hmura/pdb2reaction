@@ -14,7 +14,7 @@ Options:
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
-  --workers INTEGER               UMA predictor workers; >1 spawns a parallel
+  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
@@ -54,7 +54,7 @@ Options:
                                   without running TS optimization.  [default:
                                   no-dry-run]
   --hessian-calc-mode [finitedifference|analytical]
-                                  Choose UMA Hessian evaluation mode (used
+                                  Choose MLIP Hessian evaluation mode (used
                                   unless YAML sets calc.hessian_calc_mode).
                                   Defaults to 'FiniteDifference'.
   -b, --backend [uma|orb|mace|aimnet2]

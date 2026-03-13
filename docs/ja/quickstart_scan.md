@@ -95,7 +95,7 @@ pdb2reaction scan -i input.pdb -q 0 -s \
 
 - `result_scan/stage_01/result.pdb`
 - `result_scan/stage_02/result.pdb`（複数ステージの場合）
-- `--dump` 指定時は `scan_trj.xyz` / `scan.pdb`
+- `scan_trj.xyz` / `scan.pdb`（常に生成されます）
 
 ## 補足
 

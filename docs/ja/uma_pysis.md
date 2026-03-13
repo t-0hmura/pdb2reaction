@@ -217,7 +217,7 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `backend` | MLIP バックエンドエンジン | `"uma"` |
 | `charge` | 総電荷 | `0` |
 | `spin` | スピン多重度（2S+1） | `1` |
-| `model` | UMAモデル名 (`uma-s-1p1`, `uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
+| `model` | UMAモデル名 (`uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
 | `task_name` | UMAバッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
 | `workers` / `workers_per_node` | 並列UMA予測器（`workers>1` で解析ヘシアン無効） | `1` / `1` |

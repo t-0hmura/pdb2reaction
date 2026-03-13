@@ -1324,7 +1324,7 @@ def _build_rsirfo_kwargs(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
     "--workers-per-node",
@@ -1332,7 +1332,7 @@ def _build_rsirfo_kwargs(
     type=int,
     default=CALC_KW["workers_per_node"],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
 @click.option(
     "-l",
@@ -1424,7 +1424,7 @@ def _build_rsirfo_kwargs(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="Choose UMA Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
+    help="Choose MLIP Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
@@ -1742,6 +1742,17 @@ def cli(
 
                 def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
                     H = _calc_full_hessian_torch(geometry, uma_kwargs_for_rsirfo, device)
+                    from .hessian_cache import store as _hess_store
+                    freeze_atoms = list(geom_cfg.get("freeze_atoms", []))
+                    if freeze_atoms and H.shape[0] < 3 * len(geometry.atomic_numbers):
+                        all_dofs = set(range(3 * len(geometry.atomic_numbers)))
+                        frozen_dofs = set()
+                        for _fi in freeze_atoms:
+                            frozen_dofs.update([3 * _fi, 3 * _fi + 1, 3 * _fi + 2])
+                        _active_dofs = sorted(all_dofs - frozen_dofs)
+                    else:
+                        _active_dofs = None
+                    _hess_store("ts", H, active_dofs=_active_dofs)
                     freqs_local, modes_local = _frequencies_cm_and_modes(
                         H,
                         geometry.atomic_numbers,

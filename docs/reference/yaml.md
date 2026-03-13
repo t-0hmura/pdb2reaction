@@ -43,8 +43,10 @@ freq:
   amplitude_ang: 0.8
   n_frames: 20
   sort: value
+
+thermo:
   temperature: 298.15
-  pressure: 1.0
+  pressure_atm: 1.0
 
 dft:
   func_basis: wb97m-v/def2-tzvpd
@@ -72,8 +74,8 @@ dft:
 | `freq.amplitude_ang` | `float` | `0.8` |
 | `freq.n_frames` | `int` | `20` |
 | `freq.sort` | `str` | `'value'` |
-| `freq.temperature` | `float` | `298.15` |
-| `freq.pressure` | `float` | `1.0` |
+| `thermo.temperature` | `float` | `298.15` |
+| `thermo.pressure_atm` | `float` | `1.0` |
 | `dft.func_basis` | `str` | `'wb97m-v/def2-tzvpd'` |
 | `dft.max_cycle` | `int` | `100` |
 | `dft.conv_tol` | `float` | `1e-09` |

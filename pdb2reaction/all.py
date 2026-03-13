@@ -45,7 +45,7 @@ from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
 from .backends import create_calculator
-from .defaults import GEOM_KW_DEFAULT, UMA_CALC_KW as _UMA_CALC_KW
+from .defaults import GEOM_KW_DEFAULT, OUT_DIR_ALL, UMA_CALC_KW as _UMA_CALC_KW
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from .trj2fig import run_trj2fig
 from .summary_log import write_summary_log
@@ -958,6 +958,29 @@ def _optimize_endpoint_geom(
         if thresh is not None:
             cfg["thresh"] = str(thresh)
 
+        # Seed cached IRC endpoint Hessian for RFO when available
+        if sopt_kind == "rfo":
+            from .hessian_cache import load as _hess_load
+            _cached = _hess_load("irc_endpoint")
+            if _cached is not None:
+                _echo(f"[endpoint-opt] Reusing IRC endpoint Hessian for RFO seeding.")
+                _active_dofs = _cached.get("active_dofs")
+                _h_raw = _cached["hessian"]
+                if isinstance(_h_raw, torch.Tensor):
+                    _h = _h_raw.clone()
+                else:
+                    import torch as _torch
+                    _h = _torch.as_tensor(_h_raw, dtype=_torch.float64)
+                if _active_dofs is not None:
+                    geom.within_partial_hessian = {
+                        "active_n_dof": len(_active_dofs),
+                        "full_n_dof": geom.cart_coords.size,
+                        "active_dofs": _active_dofs,
+                        "active_atoms": sorted(set(d // 3 for d in _active_dofs)),
+                    }
+                geom.cart_hessian = _h
+                del _h
+
         _echo(f"[endpoint-opt] Optimizing '{tag}' with {label} → {opt_dir}")
         opt = OptClass(geom, **cfg)
         try:
@@ -1611,7 +1634,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "-o", "--out-dir",
     "out_dir",
     type=click.Path(path_type=Path, file_okay=False),
-    default=Path("./result_all/"),
+    default=Path(OUT_DIR_ALL),
     show_default=True,
     help="Top-level output directory for the pipeline.",
 )
@@ -1689,7 +1712,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
     "--workers-per-node",
@@ -1697,7 +1720,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=CALC_KW["workers_per_node"],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
@@ -1871,7 +1894,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="Common UMA Hessian calculation mode forwarded to tsopt and freq. Defaults to 'FiniteDifference'.",
+    help="Common MLIP Hessian calculation mode forwarded to tsopt and freq. Defaults to 'FiniteDifference'.",
 )
 # ===== Post-processing toggles =====
 @click.option(
@@ -1893,7 +1916,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Run freq on (R, TS, P) per reactive segment (or TSOPT-only mode) "
-        "and build Gibbs free-energy diagram (UMA)."
+        "and build Gibbs free-energy diagram (MLIP)."
     ),
 )
 @click.option(
@@ -1904,7 +1927,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Run DFT single-point on (R, TS, P) and build DFT energy diagram. "
-        "With --thermo True, also generate a DFT//UMA Gibbs diagram."
+        "With --thermo True, also generate a DFT//MLIP Gibbs diagram."
     ),
 )
 @click.option(
@@ -2741,6 +2764,15 @@ def cli(
 
             endpoint_opt_dir = tsroot / "endpoint_opt"
             ensure_dir(endpoint_opt_dir)
+
+            # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
+            from .hessian_cache import load as _hess_load, store as _hess_store, clear as _clear_hess_cache
+            _react_hk = "irc_left" if eL >= eR_raw else "irc_right"
+            _prod_hk  = "irc_right" if eL >= eR_raw else "irc_left"
+
+            _c = _hess_load(_react_hk)
+            if _c:
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
             try:
                 g_react_opt, _ = _optimize_endpoint_geom(
                     g_react_irc,
@@ -2756,6 +2788,10 @@ def cli(
                     err=True,
                 )
                 g_react_opt = g_react_irc
+
+            _c = _hess_load(_prod_hk)
+            if _c:
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
             try:
                 g_prod_opt, _ = _optimize_endpoint_geom(
                     g_prod_irc,
@@ -2838,23 +2874,25 @@ def cli(
                 _tsonly_freq_done = False
         elif do_thermo:
             _echo()
-            _echo("[thermo] Single TSOPT: freq on R/TS/P")
-            tR = _run_freq_for_state(
-                pR,
+            _echo("[thermo] Single TSOPT: freq on TS/R/P")
+            tT = _run_freq_for_state(
+                pT,
                 q_int,
                 spin,
-                freq_root / "R",
+                freq_root / "TS",
                 args_yaml,
                 freeze_links_flag,
                 ref_pdb_for_tsopt_only,
                 convert_files,
                 overrides=freq_overrides,
             )
-            tT = _run_freq_for_state(
-                pT,
+            from .hessian_cache import clear as _clear_hess_cache
+            _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
+            tR = _run_freq_for_state(
+                pR,
                 q_int,
                 spin,
-                freq_root / "TS",
+                freq_root / "R",
                 args_yaml,
                 freeze_links_flag,
                 ref_pdb_for_tsopt_only,
@@ -4108,6 +4146,17 @@ def cli(
 
             endpoint_opt_dir = seg_dir / "endpoint_opt"
             ensure_dir(endpoint_opt_dir)
+
+            # Map IRC left/right Hessians → R/P endpoint
+            # When reverse_irc is True, _irc_and_match swapped left/right to match GSM endpoints,
+            # so "irc_left" (=forward) now corresponds to gR and "irc_right" (=backward) to gL.
+            from .hessian_cache import load as _hess_load, store as _hess_store, clear as _clear_hess_cache
+            _left_hk  = "irc_right" if reverse_irc else "irc_left"
+            _right_hk = "irc_left"  if reverse_irc else "irc_right"
+
+            _c = _hess_load(_left_hk)
+            if _c:
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
             try:
                 g_react_opt, _ = _optimize_endpoint_geom(
                     gL,
@@ -4123,6 +4172,10 @@ def cli(
                     err=True,
                 )
                 g_react_opt = gL
+
+            _c = _hess_load(_right_hk)
+            if _c:
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
             try:
                 g_prod_opt, _ = _optimize_endpoint_geom(
                     gR,
@@ -4321,24 +4374,26 @@ def cli(
             else:
                 _echo()
                 _echo(
-                    f"[thermo] Segment {seg_idx:02d}: freq on R/TS/P"
-                )
-                tR = _run_freq_for_state(
-                    p_react,
-                    q_int,
-                    spin,
-                    freq_seg_root / "R",
-                    args_yaml,
-                    freeze_links_flag,
-                    ref_pdb_for_seg,
-                    convert_files,
-                    overrides=freq_overrides,
+                    f"[thermo] Segment {seg_idx:02d}: freq on TS/R/P"
                 )
                 tT = _run_freq_for_state(
                     p_ts,
                     q_int,
                     spin,
                     freq_seg_root / "TS",
+                    args_yaml,
+                    freeze_links_flag,
+                    ref_pdb_for_seg,
+                    convert_files,
+                    overrides=freq_overrides,
+                )
+                from .hessian_cache import clear as _clear_hess_cache
+                _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
+                tR = _run_freq_for_state(
+                    p_react,
+                    q_int,
+                    spin,
+                    freq_seg_root / "R",
                     args_yaml,
                     freeze_links_flag,
                     ref_pdb_for_seg,

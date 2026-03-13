@@ -353,7 +353,7 @@ def cli(
                     relax_max_cycles=relax_max_cycles,
                     relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
-                    prefix="preopt_",
+                    prefix="preopt",
                 )
                 try:
                     optimizer0.run()
@@ -475,7 +475,7 @@ def cli(
                     relax_max_cycles=relax_max_cycles,
                     relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
-                    prefix=f"d1_{i_idx:03d}_",
+                    prefix=f"d1_{i_idx:03d}",
                 )
                 try:
                     opt1.run()
@@ -528,7 +528,7 @@ def cli(
                         relax_max_cycles=relax_max_cycles,
                         relax_override_requested=relax_override_requested,
                         out_dir=tmp_opt_dir,
-                        prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_",
+                        prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}",
                     )
                     try:
                         opt2.run()
@@ -579,7 +579,7 @@ def cli(
                             relax_max_cycles=relax_max_cycles,
                             relax_override_requested=relax_override_requested,
                             out_dir=tmp_opt_dir,
-                            prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_d3_{k_idx:03d}_",
+                            prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_d3_{k_idx:03d}",
                         )
                         try:
                             opt3.run()

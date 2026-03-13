@@ -97,7 +97,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="UMA predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
 )
 @click.option(
     "--workers-per-node",
@@ -105,7 +105,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=UMA_CALC_KW["workers_per_node"],
     show_default=True,
-    help="Workers per node when using a parallel UMA predictor (workers>1).",
+    help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
 @click.option(
     "-l",
@@ -195,7 +195,7 @@ def _echo_convert_trj_if_exists(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="How UMA builds the Hessian (Analytical or FiniteDifference); used unless YAML sets calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
+    help="How the ML backend builds the Hessian (Analytical or FiniteDifference); used unless YAML sets calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
 )
 @click.option(
     "--config",
@@ -397,6 +397,31 @@ def cli(
             calc = create_calculator(**calc_cfg)
             geometry.set_calculator(calc)
 
+            # Seed cached TS Hessian if available (from tsopt in ``all`` workflow)
+            from .hessian_cache import load as _hess_load, store as _hess_store
+            cached = _hess_load("ts")
+            if cached is not None:
+                click.echo("[irc] Reusing cached TS Hessian from tsopt.")
+                _dev = calc_cfg.get("device", "auto")
+                if _dev == "auto":
+                    _dev = "cuda" if torch.cuda.is_available() else "cpu"
+                active_dofs = cached.get("active_dofs")
+                h_raw = cached["hessian"]
+                if isinstance(h_raw, torch.Tensor):
+                    h_init = h_raw.to(device=torch.device(_dev))
+                else:
+                    h_init = torch.as_tensor(h_raw, dtype=torch.float64, device=torch.device(_dev))
+                if active_dofs is not None:
+                    geometry.within_partial_hessian = {
+                        "active_n_dof": len(active_dofs),
+                        "full_n_dof": geometry.cart_coords.size,
+                        "active_dofs": active_dofs,
+                        "active_atoms": sorted(set(d // 3 for d in active_dofs)),
+                    }
+                geometry.cart_hessian = h_init
+                click.echo(f"[irc] Initial Hessian seeded (shape={h_init.shape[0]}x{h_init.shape[1]}).")
+                del h_init
+
             # --------------------------
             # 3) Construct and run EulerPC
             # --------------------------
@@ -406,6 +431,27 @@ def cli(
             click.echo("\n====== IRC (EulerPC) started ======\n")
             eulerpc.run()
             click.echo("\n====== IRC (EulerPC) finished ======\n")
+
+            # Cache IRC endpoint Hessians (Bofill-updated mw → Cartesian)
+            def _unmw_and_store(mw_H, key):
+                import numpy as np
+                act = eulerpc._act_dofs
+                m_sqrt = geometry.masses_rep ** 0.5
+                ms_act = m_sqrt[act]
+                if isinstance(mw_H, torch.Tensor):
+                    ms_t = torch.as_tensor(ms_act, dtype=mw_H.dtype, device=mw_H.device)
+                    H_cart_act = ms_t.unsqueeze(1) * mw_H * ms_t.unsqueeze(0)
+                    H_cart_act_np = H_cart_act.detach().cpu().numpy()
+                else:
+                    H_cart_act_np = np.diag(ms_act) @ mw_H @ np.diag(ms_act)
+                _hess_store(key, H_cart_act_np, active_dofs=list(act))
+
+            if getattr(eulerpc, "forward_mw_hessian", None) is not None:
+                _unmw_and_store(eulerpc.forward_mw_hessian, "irc_left")
+                click.echo("[irc] Cached forward endpoint Hessian as 'irc_left'.")
+            if getattr(eulerpc, "mw_hessian", None) is not None:
+                _unmw_and_store(eulerpc.mw_hessian, "irc_right")
+                click.echo("[irc] Cached backward endpoint Hessian as 'irc_right'.")
 
             # --------------------------
             # 4) Convert trajectories to PDB based on input type

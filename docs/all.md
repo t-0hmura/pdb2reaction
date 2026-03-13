@@ -91,7 +91,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on pockets (recursive GSM/DMF)**
- - Use `--no-refine-path` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
+ - Use `--refine-path False` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
  - For multi-input PDB runs, the full-system templates are automatically passed to `path-search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
 4. **Merge pockets back to the full systems**
@@ -129,6 +129,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt`). | Required |
+| `--ref-pdb FILE` | Reference PDB for topology when `-i` provides XYZ inputs. | _None_ |
 | `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
 | `--dump/--no-dump` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
@@ -152,7 +153,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
-| `--include-H2O, --include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--include-H2O/--no-include-H2O` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
 | `--add-linkH/--no-add-linkH` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
@@ -231,7 +232,7 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
+| `-s, --scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
 | `--scan-one-based/--no-scan-one-based` | Force scan indexing to 1-based or 0-based. | `True` |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
@@ -318,7 +319,7 @@ The effective YAML is forwarded to **every** invoked subcommand. Each tool reads
 **Minimal example:**
 ```yaml
 calc:
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  hessian_calc_mode: Analytical # recommended when VRAM permits
 gs:
  max_nodes: 12

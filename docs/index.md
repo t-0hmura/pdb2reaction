@@ -296,3 +296,7 @@ pdb2reaction <subcommand> --help
 ```
 
 For issues and feature requests, visit the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).
+
+---
+
+*Note: This documentation is under active development. Some sections may be incomplete or subject to change.*

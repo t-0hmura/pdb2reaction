@@ -27,6 +27,7 @@ OUT_DIR_IRC = "./result_irc/"
 OUT_DIR_TSOPT = "./result_tsopt/"
 OUT_DIR_PATH_OPT = "./result_path_opt/"
 OUT_DIR_PATH_SEARCH = "./result_path_search/"
+OUT_DIR_ALL = "./result_all/"
 
 # -----------------------------------------------
 # Geometry defaults

@@ -8,7 +8,7 @@
 - **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
 - **Input:** One structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `-s/--scan-lists` inline literals (each literal = one stage).
 - **Defaults:** `--opt-mode grad` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
-- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and optional concatenated trajectories when `--dump`.
+- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). `--dump` controls per-step optimizer trajectory files only.
 - **Note:** Passing a YAML/JSON file path to `-s/--scan-lists` is recommended for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Inline Python literals work well for simple single-stage scans.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 - `result_scan/stage_01/result.pdb` (or `result.xyz`)
 - `result_scan/stage_02/result.pdb` (or `result.xyz`)
-- `result_scan/stage_*/scan_trj.xyz` and `scan.pdb` when `--dump` is enabled
+- `result_scan/stage_*/scan_trj.xyz` and `scan.pdb` (always written; `--dump` controls per-step optimizer trajectory files only)
 
 ## Common examples
 
@@ -180,8 +180,9 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 5. After the last step of each stage, optionally run an unbiased relaxation
  (`--endopt`) before reporting covalent bond changes and writing the
  `result.*` files.
-6. Repeat for every stage; optional trajectories are dumped only when `--dump`
- is `True`.
+6. Repeat for every stage. Concatenated scan trajectories (`scan_trj.xyz` and
+ `scan.pdb`) are always written; `--dump` controls per-step optimizer
+ trajectory files only.
 
 ## CLI options
 | Option | Description | Default |
@@ -199,7 +200,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
-| `--dump/--no-dump` | Dump concatenated biased trajectories (`scan_trj.xyz`/`scan.pdb`). | `False` |
+| `--dump/--no-dump` | Dump per-step optimizer trajectories. Note: `scan_trj.xyz`/`scan.pdb` are always written regardless of this flag. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory root. | `./result_scan/` |
@@ -234,12 +235,14 @@ out_dir/ (default:./result_scan/)
 │ ├─ result.xyz
 │ ├─ result.pdb # PDB companion for PDB inputs when conversion is enabled
 │ └─ result.gjf # When a Gaussian template exists and conversion is enabled
-└─ stage_XX/ # One folder per stage
- ├─ result.xyz
- ├─ result.pdb # PDB mirror of the final structure (conversion enabled)
- ├─ result.gjf # Gaussian mirror when templates exist and conversion is enabled
- ├─ scan_trj.xyz # Written when --dump is True
- └─ scan.pdb # Trajectory companion for PDB inputs when conversion is enabled (no scan.gjf is produced)
+├─ stage_XX/ # One folder per stage
+│ ├─ result.xyz
+│ ├─ result.pdb # PDB mirror of the final structure (conversion enabled)
+│ ├─ result.gjf # Gaussian mirror when templates exist and conversion is enabled
+│ ├─ scan_trj.xyz # Always written (concatenated biased trajectory)
+│ └─ scan.pdb # Always written for PDB inputs when conversion is enabled (no scan.gjf is produced)
+├─ scan_trj.xyz # Combined trajectory across all stages
+└─ scan.pdb # Combined PDB trajectory (when conversion is enabled)
 ```
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
@@ -251,9 +254,10 @@ out_dir/ (default:./result_scan/)
  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
  (space/comma/slash/backtick/backslash) and unordered tokens.
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
-- Stage results (`result.xyz` plus optional PDB/GJF companions) are written
- regardless of `--dump`; trajectories are written only when `--dump` is `True`
- and converted to `scan.pdb` (PDB inputs only) when conversion is enabled.
+- Stage results (`result.xyz` plus optional PDB/GJF companions) are always
+ written. Concatenated scan trajectories (`scan_trj.xyz` and `scan.pdb` for
+ PDB inputs with conversion enabled) are also always written. The `--dump`
+ flag controls only per-step optimizer trajectory files.
 
 
 ```yaml
@@ -263,7 +267,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # UMA device selection
  max_neigh: null # maximum neighbors for graph construction

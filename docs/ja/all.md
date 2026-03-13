@@ -100,7 +100,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - 参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref*.pdb` とセグメントごとの `mep_w_ref_seg_XX.pdb` が `<out-dir>/path_search/` に出力される
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI ポケットで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡してセグメントエネルギーダイアグラムを出力
+ - `--tsopt`: 各 HEI ポケットで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化してセグメントエネルギーダイアグラムを出力。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//UMA Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
@@ -134,6 +134,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt` のみ単一入力可） | 必須 |
+| `--ref-pdb FILE` | `-i` で XYZ 入力を使用する場合のトポロジー参照 PDB | _None_ |
 | `-o, --out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/GJFコンパニオンのグローバルトグル | `True` |
 | `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化。 | `False` |
@@ -157,7 +158,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
 | `-r, --radius FLOAT` | ポケット包含カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
-| `--include-H2O, --include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
+| `--include-H2O/--no-include-H2O` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkH/--no-add-linkH` | 切断結合にリンク水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基 | `""` |
@@ -233,7 +234,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
+| `-s, --scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
 | `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
 | `--scan-one-based/--no-scan-one-based` | 1始まり/0始まりインデックス | `True` |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
@@ -323,7 +324,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 **最小例:**
 ```yaml
 calc:
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  hessian_calc_mode: Analytical # VRAM に余裕がある場合推奨
 gs:
  max_nodes: 12

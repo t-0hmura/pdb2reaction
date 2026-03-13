@@ -177,7 +177,7 @@ geom:
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  device: auto # UMA device selection
 opt:
  thresh: baker # convergence preset (default: baker)
@@ -208,7 +208,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 ├─ grid/point_i###_j###_k###.pdb # 変換有効時の PDB コンパニオン
 ├─ grid/point_i###_j###_k###.gjf # テンプレートがある場合の Gaussian コンパニオン
 ├─ grid/preopt_i###_j###_k###.xyz # スキャン開始前の構造（--preopt の場合は最適化済み）
-└─ grid/inner_path_d1_###_d2_###_trj.xyz # --dump の場合のみ（変換有効時は.pdb/.gjf も生成）
+└─ grid/inner_path_d1_###_d2_###_trj.xyz # --dump の場合のみ（PDB 入力で変換有効時は .pdb も生成）
 ```
 
 ## 注意事項

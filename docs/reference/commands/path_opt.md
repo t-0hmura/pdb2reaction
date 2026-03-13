@@ -16,7 +16,7 @@ Options:
   -q, --charge INTEGER            Total charge. Required unless a .gjf template
                                   provides charge metadata or --ligand-charge is
                                   supplied for PDB inputs.
-  --workers INTEGER               UMA predictor workers; >1 spawns a parallel
+  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel UMA
