@@ -140,6 +140,7 @@ ja/index
 | Subcommand | Description |
 |------------|-------------|
 | [`extract`](extract.md) | Extract active-site pocket (cluster model) from protein–ligand complex |
+| [`fix-altloc`](fix_altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77–78) |
 
 ### Geometry Optimization
@@ -193,7 +194,7 @@ ja/index
 - **RAM**: 16 GB+ recommended
 
 ### Software
-- Python 3.11
+- Python >= 3.11
 - PyTorch with CUDA support
 - CUDA 12.x toolkit
 
@@ -293,6 +294,9 @@ pdb2reaction --help
 
 # Command help
 pdb2reaction <subcommand> --help
+
+# Advanced options (dry-run, internal tuning, etc.)
+pdb2reaction <subcommand> --help-advanced
 ```
 
 For issues and feature requests, visit the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).

@@ -404,6 +404,7 @@ freq:
  n_frames: 20 # Number of frames per mode animation
  max_write: 10 # Maximum number of modes to write
  sort: value # Sort order: "value" or "abs"
+ out_dir: ./result_freq/ # Output directory
 ```
 
 ---
@@ -432,7 +433,6 @@ DFT calculation settings.
 dft:
  func: wb97m-v # Exchange-correlation functional
  basis: def2-tzvpd # Basis set name
- func_basis: null # Combined "FUNC/BASIS" string (overrides func/basis)
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level

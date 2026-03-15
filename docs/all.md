@@ -46,7 +46,7 @@ pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-list
  --multiplicity 1 --out-dir ./result_scan_all
 ```
 
-PDB/GJF companion files are generated when templates are available, controlled by `--convert-files/--no-convert-files` (enabled by default).
+PDB/GJF companion files are generated when templates are available, controlled by `--convert-files` (enabled by default).
 
 
 ## Usage
@@ -131,8 +131,8 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt`). | Required |
 | `--ref-pdb FILE` | Reference PDB for topology when `-i` provides XYZ inputs. | _None_ |
 | `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
-| `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump/--no-dump` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
+| `--convert-files BOOL` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
+| `--dump BOOL` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--dump False`. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate and print plan without running stages. Visible in `--help-advanced`. | `False` |
@@ -153,12 +153,12 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Pocket inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
-| `--include-H2O/--no-include-H2O` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
-| `--add-linkH/--no-add-linkH` | Add link hydrogens for severed bonds. | `True` |
+| `--include-H2O BOOL` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids. | `False` |
+| `--add-linkH BOOL` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
-| `--freeze-links/--no-freeze-links` | Freeze link parents in pocket PDBs. | `True` |
-| `--verbose/--no-verbose` | Enable INFO-level extractor logging. | `True` |
+| `--freeze-links BOOL` | Freeze link parents in pocket PDBs. | `True` |
+| `--verbose BOOL` | Enable INFO-level extractor logging. | `True` |
 
 ### MEP Search Options
 
@@ -167,11 +167,11 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `--mep-mode [gsm\|dmf]` | MEP search algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | MEP internal nodes per segment. | `20` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
-| `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
+| `--climb BOOL` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `True` |
-| `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--refine-path BOOL` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### MLIP Calculator Options
 
@@ -234,12 +234,12 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 | --- | --- | --- |
 | `-s, --scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based/--no-scan-one-based` | Force scan indexing to 1-based or 0-based. | `True` |
+| `--scan-one-based BOOL` | Force scan indexing to 1-based or 0-based. | _None_ |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV·Å⁻²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
-| `--scan-preopt/--no-scan-preopt` | Override the scan preoptimization toggle. | `True` |
-| `--scan-endopt/--no-scan-endopt` | Override the scan end-of-stage optimization toggle. | `True` |
+| `--scan-preopt BOOL` | Override the scan preoptimization toggle. | _None_ |
+| `--scan-endopt BOOL` | Override the scan end-of-stage optimization toggle. | _None_ |
 
 ## Outputs
 ```text
