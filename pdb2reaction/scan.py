@@ -366,6 +366,8 @@ def cli(
             stages: List[List[Tuple[int, int, float]]]
             scan_one_based = bool(one_based)
             scan_source = "--scan-lists"
+            _bidir_reset_before: set = set()
+            _bidir_snapshot_before: set = set()
             if len(cli_scan_values) == 1 and is_scan_spec_file(cli_scan_values[0]):
                 spec_path = Path(cli_scan_values[0])
                 stages, scan_one_based = parse_scan_spec_stages(
@@ -384,12 +386,27 @@ def cli(
                         atom_meta=pdb_atom_meta,
                         option_name=f"--scan-lists #{idx}",
                     )
-                    for i, j, r in parsed:
-                        if r <= 0.0:
-                            raise click.BadParameter(
-                                f"Non-positive target length in --scan-lists #{idx}: {(i, j, r)}."
-                            )
-                    stages.append(parsed)
+                    for t in parsed:
+                        for dist in t[2:]:
+                            if dist <= 0.0:
+                                raise click.BadParameter(
+                                    f"Non-positive target length in --scan-lists #{idx}: {t}."
+                                )
+                    # Expand 4-tuples into two stages with reset marker
+                    has_4tuple = any(len(t) == 4 for t in parsed)
+                    if has_4tuple:
+                        for t in parsed:
+                            if len(t) == 4:
+                                i, j, start, end = t
+                                stage_a_idx = len(stages)
+                                stages.append([(i, j, start)])
+                                _bidir_snapshot_before.add(stage_a_idx)
+                                _bidir_reset_before.add(stage_a_idx + 1)
+                                stages.append([(i, j, end)])
+                            else:
+                                stages.append([t])
+                    else:
+                        stages.append(parsed)
             K = len(stages)
             click.echo(f"[scan] Received {K} stage(s).")
             if print_parsed:
@@ -502,9 +519,21 @@ def cli(
             # ------------------------------------------------------------------
 
             all_trj_blocks: List[str] = []
+            _bidir_saved_geom = None
+            _bidir_pass1_trj: List[str] = []
 
             # Iterate stages
             for k, tuples in enumerate(stages, start=1):
+                stage_idx_0 = k - 1  # 0-based
+                # Bidirectional support: snapshot before pass 1
+                if stage_idx_0 in _bidir_snapshot_before:
+                    _bidir_saved_geom = _snapshot_geometry(geom)
+                    _bidir_pass1_trj = []
+                # Bidirectional support: restore geometry before pass 2
+                if stage_idx_0 in _bidir_reset_before and _bidir_saved_geom is not None:
+                    click.echo("[bidir] Restoring initial geometry for reverse-direction pass.")
+                    geom.coords = _bidir_saved_geom.coords.copy()
+
                 stage_dir = _ensure_stage_dir(out_dir_path, k)
                 click.echo(f"[stage] Stage {k}/{K}")
                 click.echo(f"Targets (i,j,target Å): {tuples}")
@@ -533,6 +562,8 @@ def cli(
                 stages_summary.append(srec)
 
                 trj_blocks: List[str] = []
+                stage_trj_path = stage_dir / "scan_trj.xyz"
+                stage_trj_path.write_text("")  # truncate
 
                 pairs = [(i, j) for (i, j, _) in tuples]
 
@@ -628,6 +659,8 @@ def cli(
                         click.echo(f"[stage {k}] step {s}: OptimizationError — {e}")
 
                     trj_blocks.append(xyz_string_with_energy(geom))
+                    with open(stage_trj_path, "a") as _tf:
+                        _tf.write(trj_blocks[-1])
 
                 # Optional end-of-stage UNBIASED optimization
                 if endopt:
@@ -668,10 +701,18 @@ def cli(
                 # Stage outputs
                 if trj_blocks:
                     trj_path = stage_dir / "scan_trj.xyz"
-                    with open(trj_path, "w") as f:
-                        f.write("".join(trj_blocks))
                     click.echo(f"[write] Wrote '{trj_path}'.")
-                    all_trj_blocks.extend(trj_blocks)
+                    # Bidirectional trajectory assembly:
+                    # pass 1 (initial→start) is saved; pass 2 (initial→end)
+                    # triggers assembly: reversed(pass1) + pass2 → start→initial→end
+                    if stage_idx_0 in _bidir_snapshot_before:
+                        _bidir_pass1_trj = list(trj_blocks)
+                    elif stage_idx_0 in _bidir_reset_before:
+                        all_trj_blocks.extend(reversed(_bidir_pass1_trj))
+                        all_trj_blocks.extend(trj_blocks)
+                        _bidir_pass1_trj = []
+                    else:
+                        all_trj_blocks.extend(trj_blocks)
                     if convert_xyz_like_outputs(
                         trj_path,
                         prepared_input,
