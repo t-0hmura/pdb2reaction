@@ -18,7 +18,7 @@ Options:
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel UMA
+  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
@@ -48,9 +48,9 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Output directory.  [default: ./result_irc/]
   --hessian-calc-mode [finitedifference|analytical]
-                                  How the ML backend builds the Hessian (Analytical or
-                                  FiniteDifference); used unless YAML sets
-                                  calc.hessian_calc_mode. Defaults to
+                                  How the ML backend builds the Hessian
+                                  (Analytical or FiniteDifference); used unless
+                                  YAML sets calc.hessian_calc_mode. Defaults to
                                   'FiniteDifference'.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.

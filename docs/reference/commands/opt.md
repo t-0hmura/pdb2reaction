@@ -17,18 +17,22 @@ Options:
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel UMA
+  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
-  --dist-freeze TEXT              Python-like list(s) of (i,j,target_A) to
-                                  restrain distances (target optional).
-  --one-based / --zero-based      Interpret --dist-freeze indices as 1-based
-                                  (default) or 0-based.  [default: one-based]
+  --dist-freeze TEXT              Distance restraints: inline Python literal
+                                  (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file
+                                  path. Same format as --scan-lists:
+                                  (i,j,target_A) triples. Target may be omitted
+                                  to freeze at the current distance: (i,j).
+  --one-based / --zero-based      Interpret --dist-freeze / --scan-lists indices
+                                  as 1-based (default) or 0-based.  [default:
+                                  one-based]
   --bias-k FLOAT                  Harmonic restraint strength k [eV/Å^2] for
-                                  --dist-freeze.  [default: 10.0]
+                                  --dist-freeze.  [default: 300]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of link hydrogens (PDB
                                   only).  [default: freeze-links]

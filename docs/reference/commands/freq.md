@@ -18,7 +18,7 @@ Options:
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel UMA
+  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
@@ -57,8 +57,9 @@ Options:
                                   without running frequency analysis.  [default:
                                   no-dry-run]
   --hessian-calc-mode [finitedifference|analytical]
-                                  How the ML backend computes Hessian. Defaults to
-                                  'FiniteDifference' (can also be set via YAML).
+                                  How the ML backend computes Hessian. Defaults
+                                  to 'FiniteDifference' (can also be set via
+                                  YAML).
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.

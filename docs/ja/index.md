@@ -1,6 +1,6 @@
 # pdb2reaction ドキュメント
 
-*バージョン: v0.3.0*
+*バージョン: v0.3.1*
 
 **pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 
@@ -237,13 +237,6 @@ result_all/
 ## ライセンス
 
 `pdb2reaction` **GNU General Public License version 3 (GPL-3.0)** の下で配布されています。
-
----
-
-## 参考文献
-
-1. Wood, B. M. et al. (2025). UMA: A Family of Universal Models for Atoms. [arXiv:2506.23971](http://arxiv.org/abs/2506.23971)
-2. Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. *Int. J. Quantum Chem.*, 121(3). [DOI:10.1002/qua.26390](https://doi.org/10.1002/qua.26390)
 
 ---
 

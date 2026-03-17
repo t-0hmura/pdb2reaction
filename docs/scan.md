@@ -7,7 +7,7 @@
 ### At a glance
 - **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
 - **Input:** One structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `-s/--scan-lists` inline literals (each literal = one stage).
-- **Defaults:** `--opt-mode grad` (LBFGS), `--preopt`, `--endopt`, `--max-step-size 0.20 Å`.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). `--dump` controls per-step optimizer trajectory files only.
 - **Note:** Passing a YAML/JSON file path to `-s/--scan-lists` is recommended for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Inline Python literals work well for simple single-stage scans.
 
@@ -162,6 +162,23 @@ Pass multiple literals after a single `-s/--scan-lists` flag. Each literal becom
 
 Stages run sequentially; each starts from the previous stage's relaxed result. You may either repeat the `-s/--scan-lists` flag for each stage or supply all stage literals after a single flag -- both forms are accepted (`multiple=True`).
 
+### Bidirectional scan (4-tuple)
+
+Instead of a 3-tuple `(i, j, target)`, you can pass a **4-tuple** `(i, j, start, end)` to scan in both directions from the current geometry. The CLI automatically expands each 4-tuple into two stages:
+
+1. **Pass 1:** Drive `i`--`j` from the current distance toward `start`.
+2. **Pass 2:** Restore the initial geometry and drive `i`--`j` toward `end`.
+
+The concatenated trajectory is assembled as `start → initial → end`, giving a continuous path through the starting structure.
+
+```bash
+# Bidirectional scan: drive bond 12--45 from current geometry
+# toward 1.35 Å (pass 1) and toward 2.50 Å (pass 2)
+pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
+```
+
+This is equivalent to two manual stages with a geometry reset between them, but avoids the need to script it yourself. Mixed 3-tuples and 4-tuples are accepted in the same literal.
+
 ## Workflow
 1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
@@ -192,7 +209,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` tuples. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `-s/--scan-lists` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
@@ -209,8 +226,8 @@ Stages run sequentially; each starts from the previous stage's relaxed result. Y
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `True` |
-| `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `True` |
+| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
+| `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `False` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in

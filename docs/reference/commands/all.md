@@ -56,7 +56,7 @@ Options:
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel UMA
+  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
@@ -130,10 +130,10 @@ Options:
                                   build energy diagrams.  [default: False]
   --thermo BOOLEAN                Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
-                                  energy diagram (UMA).  [default: False]
+                                  energy diagram (MLIP).  [default: False]
   --dft BOOLEAN                   Run DFT single-point on (R, TS, P) and build
                                   DFT energy diagram. With --thermo True, also
-                                  generate a DFT//UMA Gibbs diagram.  [default:
+                                  generate a DFT//MLIP Gibbs diagram.  [default:
                                   False]
   --tsopt-max-cycles INTEGER      Override tsopt --max-cycles value. Defaults to
                                   10000 when not provided.
@@ -191,8 +191,9 @@ Options:
                                   Override scan relaxation max cycles per step.
                                   Defaults to 10000.
   --scan-preopt BOOLEAN           Override scan --preopt flag. When omitted,
-                                  this follows --preopt (default True).
-  --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to True.
+                                  this follows --preopt (default False).
+  --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to
+                                  False.
   --ref-pdb FILE                  Reference PDB for topology when -i provides
                                   XYZ inputs. Enables PDB output conversion in
                                   TSOPT-only, scan, and path_search pipelines.

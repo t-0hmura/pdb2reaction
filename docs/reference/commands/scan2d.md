@@ -19,7 +19,7 @@ Options:
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor (disables analytic Hessian).
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel UMA
+  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
@@ -49,15 +49,15 @@ Options:
                                   [default: convert-files]
   --ref-pdb FILE                  Reference PDB topology to use when the input
                                   is XYZ/GJF (keeps XYZ coordinates).
-  --out-dir TEXT                  Base output directory.  [default:
+  -o, --out-dir TEXT              Base output directory.  [default:
                                   ./result_scan2d/]
   --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never).  Defaults to 'baker'.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --preopt / --no-preopt          Pre-optimize the initial structure without
-                                  bias before the scan.  [default: preopt]
-  --backend [uma|orb|mace|aimnet2]
+                                  bias before the scan.  [default: no-preopt]
+  -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]

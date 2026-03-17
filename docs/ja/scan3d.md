@@ -163,7 +163,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `True` |
+| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または `(i,j,k)=(0,0,0)` に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | 等値面の色範囲（kcal/mol） | 自動 |
 

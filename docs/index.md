@@ -1,6 +1,6 @@
 # pdb2reaction Documentation
 
-*Version: v0.3.0*
+*Version: v0.3.1*
 
 **pdb2reaction** is a Python CLI toolkit for automated enzymatic reaction-path modeling directly from PDB structures using machine-learning interatomic potentials (MLIPs).
 
@@ -276,13 +276,6 @@ A preprint describing `pdb2reaction` is in preparation. Please check back later 
 ## License
 
 `pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.
-
----
-
-## References
-
-1. Wood, B. M. et al. (2025). UMA: A Family of Universal Models for Atoms. [arXiv:2506.23971](http://arxiv.org/abs/2506.23971)
-2. Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. *Int. J. Quantum Chem.*, 121(3). [DOI:10.1002/qua.26390](https://doi.org/10.1002/qua.26390)
 
 ---
 
