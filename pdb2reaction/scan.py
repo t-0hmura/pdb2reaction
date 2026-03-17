@@ -206,7 +206,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 @click.option(
     "--endopt/--no-endopt",
     "endopt",
-    default=True,
+    default=False,
     show_default=True,
     help="After each stage, run an additional unbiased optimization of the stage result.",
 )

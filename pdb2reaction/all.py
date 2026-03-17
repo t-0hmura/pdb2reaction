@@ -2087,14 +2087,14 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "scan_preopt_override",
     type=click.BOOL,
     default=None,
-    help="Override scan --preopt flag. When omitted, this follows --preopt (default True).",
+    help="Override scan --preopt flag. When omitted, this follows --preopt (default False).",
 )
 @click.option(
     "--scan-endopt",
     "scan_endopt_override",
     type=click.BOOL,
     default=None,
-    help="Override scan --endopt flag. Defaults to True.",
+    help="Override scan --endopt flag. Defaults to False.",
 )
 @click.option(
     "--ref-pdb",
@@ -3330,7 +3330,7 @@ def cli(
         scan_preopt_use = preopt if scan_preopt_override is None else bool(
             scan_preopt_override
         )
-        scan_endopt_use = True if scan_endopt_override is None else bool(
+        scan_endopt_use = False if scan_endopt_override is None else bool(
             scan_endopt_override
         )
         scan_opt_mode_use = opt_mode_norm

@@ -29,7 +29,7 @@ def add_scan_common_options(
     freeze_links_default: bool = True,
     dump_default: bool = False,
     convert_files_default: bool = True,
-    preopt_default: bool = True,
+    preopt_default: bool = False,
     one_based_default: bool = True,
     include_baseline: bool = True,
     include_zmin_zmax: bool = True,
