@@ -199,7 +199,7 @@ Behavior:
 - performs **transition-state optimization** on the cluster model,
 - runs an **IRC** in both directions and optimizes the endpoints to obtain R and P minima,
 - can then run vibrational analysis ([`freq`](freq.md)) and single-point DFT (`dft`) on the R/TS/P structures,
-- produces UMA, Gibbs, and DFT//UMA (DFT single-point energies at UMA-optimized geometries) energy diagrams.
+- produces MLIP, Gibbs, and DFT//MLIP (DFT single-point energies at MLIP-optimized geometries) energy diagrams.
 
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
 
@@ -246,7 +246,7 @@ They typically contain:
 - the exact CLI command invoked,
 - global MEP statistics (e.g. maximum barrier, path length),
 - per‑segment barrier heights and key bond changes,
-- energies from UMA, thermochemistry, and DFT post‑processing (where enabled).
+- energies from the MLIP backend, thermochemistry, and DFT post‑processing (where enabled).
 
 Each segment directory under `path_search/` also gets its own `summary.log` and `summary.yaml`, so you can inspect local refinements independently.
 

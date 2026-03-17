@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and UMA relaxations. Use `-s/--scan-lists` with a YAML/JSON spec file (recommended) or an inline Python literal.
+> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `-s/--scan-lists` with a YAML/JSON spec file (recommended) or an inline Python literal.
 
 ### At a glance
 - **Input:** One structure + `-s/--scan-lists scan2d.yaml` (recommended), or one `-s/--scan-lists` inline literal containing exactly two quadruples.
@@ -147,7 +147,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
  the nearest previously converged structure.
 4. At each `(i, j)` pair, store the biased-optimization result under
  `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
- evaluate the UMA energy without bias. Optional per-outer-step inner
+ evaluate the MLIP energy without bias. Optional per-outer-step inner
  trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
  `i,j,d1_label,d2_label,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
@@ -163,7 +163,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
@@ -230,7 +230,7 @@ calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- device: auto # UMA device selection
+ device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap

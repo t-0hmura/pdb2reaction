@@ -60,7 +60,7 @@ calc:
  max_neigh: null # Maximum neighbors for graph construction
  radius: null # Cutoff radius for neighbor search
  r_edges: false # Store radial edges
- workers: 1 # UMA inference workers (workers>1 disables analytical Hessians)
+ workers: 1 # MLIP inference workers (workers>1 disables analytical Hessians; UMA backend only)
  workers_per_node: 1 # Workers per node for parallel predictor
  out_hess_torch: true # Return Hessian as torch.Tensor
  hessian_double: true # Assemble/return Hessian in float64
@@ -68,7 +68,7 @@ calc:
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
  return_partial_hessian: false # Return full 3N×3N Hessian (not active-DOF block)
  print_timing: true # Print Hessian timing breakdown
- print_vram: true # Print CUDA VRAM usage during Hessian (UMA backend only)
+ print_vram: true # Print CUDA VRAM usage during Hessian
  # Solvent correction (xTB)
  solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
@@ -77,8 +77,8 @@ calc:
 ```
 
 **Notes:**
-- `backend` selects the MLIP engine. UMA (default) supports analytical Hessians and multi-worker inference; other backends use finite-difference Hessians.
-- `workers` / `workers_per_node` are only effective with the UMA backend.
+- `backend` selects the MLIP engine. UMA (default) supports analytical Hessians and multi-worker inference; other backends use finite-difference Hessians only.
+- `workers` / `workers_per_node` are effective with the UMA backend only.
 - `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
 - `workers > 1` disables analytical Hessians
@@ -461,7 +461,7 @@ MLIP-based bond-change detection.
 
 ```yaml
 bond:
- device: cuda # UMA device for bond analysis
+ device: cuda # MLIP device for bond analysis
  bond_factor: 1.2 # Covalent-radius scaling for cutoff
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking

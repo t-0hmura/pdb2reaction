@@ -156,7 +156,7 @@ dft:
 
 - [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
 
-- [freq](freq.md) — UMA-based vibrational analysis (often precedes DFT refinement)
+- [freq](freq.md) — MLIP-based vibrational analysis (often precedes DFT refinement)
 - [all](all.md) — End-to-end workflow with `--dft`
 - [YAML Reference](yaml_reference.md) — Full `dft` configuration options
 - [Glossary](glossary.md) — Definitions of DFT, SP (Single Point)

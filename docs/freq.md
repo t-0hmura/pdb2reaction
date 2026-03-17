@@ -73,7 +73,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 - **Geometry loading & freeze handling**: structures are read via
  `pysisyphus.helpers.geom_loader`. For PDB inputs, `--freeze-links` detects link
  hydrogens and freezes their parent atoms, then merges the resulting indices with
- `geom.freeze_atoms`; the merged list is echoed and propagated to UMA and PHVA.
+ `geom.freeze_atoms`; the merged list is echoed and propagated to the MLIP backend and PHVA.
 - **MLIP backend**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
  The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
  For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
@@ -152,7 +152,7 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges

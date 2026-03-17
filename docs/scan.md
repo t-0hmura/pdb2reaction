@@ -192,7 +192,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
  `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
  `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
 4. March through all steps, updating the temporary targets, applying the
- harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with UMA.
+ harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with the MLIP backend.
  Optimizer cycles are capped by `--relax-max-cycles` unless YAML specifies `opt.max_cycles`.
 5. After the last step of each stage, optionally run an unbiased relaxation
  (`--endopt`) before reporting covalent bond changes and writing the
@@ -207,7 +207,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
@@ -239,8 +239,8 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 - `k` (`300`): Harmonic strength in eV·Å⁻².
 
 ### Section `bond`
-UMA-based bond-change detection shared with `path-search`:
-- `device` (`"cuda"`): UMA device for graph analysis.
+MLIP-based bond-change detection shared with `path-search`:
+- `device` (`"cuda"`): MLIP device for graph analysis.
 - `bond_factor` (`1.20`): Covalent-radius scaling for cutoff.
 - `margin_fraction` (`0.05`): Fractional tolerance for comparisons.
 - `delta_fraction` (`0.05`): Minimum relative change to flag formation/breaking.
@@ -286,7 +286,7 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges
@@ -378,7 +378,7 @@ rfo:
 bias:
  k: 300 # harmonic bias strength (eV·Å⁻²)
 bond:
- device: cuda # UMA device for bond analysis
+ device: cuda # MLIP device for bond analysis
  bond_factor: 1.2 # covalent-radius scaling
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds

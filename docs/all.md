@@ -86,7 +86,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - The **first pocket’s total charge** is propagated to scan/MEP/TSOPT.
 
 2. **Optional staged scan (single-input only)**
- - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing a UMA scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
+ - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing an MLIP scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
  - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals by repeating `--scan-lists`.
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
@@ -99,8 +99,8 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 
 5. **Optional per-segment post-processing** (only for reactive segments — segments with bond changes; bridge segments are skipped)
  - `--tsopt`: run TS optimization on each HEI pocket, follow with EulerPC-based IRC, then re-optimize IRC endpoints with `--thresh-post` (default `baker`). The endpoint optimization working directory is automatically deleted after completion.
- - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and a UMA Gibbs diagram.
- - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//UMA Gibbs diagram (DFT energies + UMA thermal correction) is also produced.
+ - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and an MLIP Gibbs diagram.
+ - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
   - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
  - For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
 
@@ -177,8 +177,8 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism (workers > 1 disables analytic Hessians). | `1`, `1` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared UMA Hessian engine. | `FiniteDifference` |
+| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only). | `1`, `1` |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
@@ -261,21 +261,21 @@ Energy diagram files are named by method and scope:
 | File name | Generated when | Content |
 |---|---|---|
 | `energy_diagram_MEP.png` | path-opt/path-search completes | All-segment MEP barriers (raw GSM/DMF values) |
-| `energy_diagram_UMA.png` | per-segment tsopt+IRC completes | R→TS→P (UMA energy) |
-| `energy_diagram_G_UMA.png` | per-segment thermo completes | R→TS→P (UMA Gibbs free energy) |
+| `energy_diagram_UMA.png` | per-segment tsopt+IRC completes | R→TS→P (MLIP energy) |
+| `energy_diagram_G_UMA.png` | per-segment thermo completes | R→TS→P (MLIP Gibbs free energy) |
 | `energy_diagram_DFT.png` | per-segment DFT completes | R→TS→P (DFT energy) |
-| `energy_diagram_G_DFT_plus_UMA.png` | per-segment DFT+thermo completes | R→TS→P (DFT energy + UMA thermal correction) |
-| `energy_diagram_UMA_all.png` | all segments aggregated | All segments combined (UMA) |
-| `energy_diagram_G_UMA_all.png` | all segments + thermo | All segments combined (UMA Gibbs) |
+| `energy_diagram_G_DFT_plus_UMA.png` | per-segment DFT+thermo completes | R→TS→P (DFT energy + MLIP thermal correction) |
+| `energy_diagram_UMA_all.png` | all segments aggregated | All segments combined (MLIP) |
+| `energy_diagram_G_UMA_all.png` | all segments + thermo | All segments combined (MLIP Gibbs) |
 | `energy_diagram_DFT_all.png` | all segments + DFT | All segments combined (DFT) |
-| `energy_diagram_G_DFT_plus_UMA_all.png` | all segments + DFT + thermo | All segments combined (DFT//UMA Gibbs) |
+| `energy_diagram_G_DFT_plus_UMA_all.png` | all segments + DFT + thermo | All segments combined (DFT//MLIP Gibbs) |
 
 ### Reading `summary.log`
 The log is organized into numbered sections:
 - **[1] Global MEP overview** – image/segment counts, MEP trajectory plot paths, and the aggregate MEP energy diagram.
-- **[2] Segment-level MEP summary (UMA path)** – per-segment barriers (`ΔE‡`), reaction energies (`ΔE`), and bond-change summaries.
-- **[3] Per-segment post-processing (TSOPT / Thermo / DFT)** – per-segment TS imaginary frequency checks, IRC outputs, and UMA/thermo/DFT energy tables.
-- **[4] Energy diagrams (overview)** – diagram tables for MEP/UMA/Gibbs/DFT series plus an optional cross-method summary table.
+- **[2] Segment-level MEP summary (MLIP path)** – per-segment barriers (`ΔE‡`), reaction energies (`ΔE`), and bond-change summaries.
+- **[3] Per-segment post-processing (TSOPT / Thermo / DFT)** – per-segment TS imaginary frequency checks, IRC outputs, and MLIP/thermo/DFT energy tables.
+- **[4] Energy diagrams (overview)** – diagram tables for MEP/MLIP/Gibbs/DFT series plus an optional cross-method summary table.
 - **[5] Output directory structure** – a compact tree of generated files with inline annotations.
 
 ### Reading `summary.yaml`
