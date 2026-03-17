@@ -236,7 +236,7 @@ result_all/
 
 ## ライセンス
 
-`pdb2reaction` は Pysisyphus から派生した **GNU General Public License version 3 (GPL-3.0)** の下で配布されています。
+`pdb2reaction` **GNU General Public License version 3 (GPL-3.0)** の下で配布されています。
 
 ---
 
