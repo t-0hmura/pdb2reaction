@@ -155,6 +155,9 @@ calc:
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # MLIP device selection
+ backend: uma # MLIP backend (uma | orb | mace | aimnet2)
+ solvent: none # implicit solvent for xTB correction (e.g. water)
+ solvent_model: alpb # xTB solvent model (alpb | cpcmx)
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges

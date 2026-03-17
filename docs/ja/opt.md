@@ -151,7 +151,10 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP デバイス選択
+ backend: uma # MLIP バックエンド (uma | orb | mace | aimnet2)
+ solvent: none # xTB 暗黙溶媒（例: water）
+ solvent_model: alpb # xTB 溶媒モデル (alpb | cpcmx)
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges
