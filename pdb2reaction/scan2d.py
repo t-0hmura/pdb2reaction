@@ -1,7 +1,7 @@
 # pdb2reaction/scan2d.py
 
 """
-2D grid scan with harmonic restraints on two inter-atomic distances using UMA calculator.
+2D grid scan with harmonic restraints on two inter-atomic distances.
 
 Example:
     pdb2reaction scan2d -i input.pdb -q 0 --scan-lists '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
@@ -160,6 +160,7 @@ def _build_scan_context(
     if source_path is not None:
         freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
     calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+    calc_cfg["return_partial_hessian"] = True
 
     out_dir_path = Path(opt_cfg["out_dir"]).resolve()
     ensure_dir(out_dir_path)

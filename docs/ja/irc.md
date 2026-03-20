@@ -87,7 +87,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
 | `--max-cycles INT` | 最大IRCステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
-| `--step-size FLOAT` | 質量重み付き座標でのステップ長（√amu·bohr）（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
+| `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
 | `--root INT` | 初期変位の虚振動数モードインデックス（YAML が `irc.root` を指定していない場合に使用） | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
@@ -101,7 +101,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
 
 ## 出力
 ```
@@ -182,6 +182,6 @@ irc:
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
 - [opt](opt.md) — IRC端点を真の極小に最適化
-- [all](all.md) — tsopt後にIRCを実行するend-to-endワークフロー
+- [all](all.md) — tsopt後にIRCを実行する一気通貫ワークフロー
 - [YAML リファレンス](yaml_reference.md) — `irc` の完全な設定オプション
 - [用語集](glossary.md) — IRC（固有反応座標）の定義

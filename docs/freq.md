@@ -120,7 +120,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run/--no-dry-run` | Validate and print execution plan without running frequency analysis. Visible in `--help-advanced`. | `False` |
+| `--dry-run/--no-dry-run` | Validate and print execution plan without running frequency analysis. | `False` |
 
 ## Outputs
 ```

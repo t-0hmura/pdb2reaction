@@ -172,7 +172,7 @@ class AIMNet2Calculator(MLIPCalculator):
             raise BackendError(f"AIMNet2 output missing energy key. Keys: {sorted(out.keys())}")
         energy = self._to_scalar(energy)
 
-        forces = self._pick_first_available(out, ("forces", "force", "gradient"))
+        forces = self._pick_first_available(out, ("forces", "force"))
         if forces is None:
             raise BackendError(f"AIMNet2 output missing forces key. Keys: {sorted(out.keys())}")
         forces = self._extract_array(forces, force_2d=True)

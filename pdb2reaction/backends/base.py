@@ -116,8 +116,9 @@ class MLIPCalculator(Calculator):
         return active_atoms, active_dof_idx, frozen_dof_idx
 
     def _build_partial_hessian_meta(self, n_atoms: int) -> Optional[dict]:
-        """Return ``within_partial_hessian`` metadata dict when partial
-        Hessian is active, otherwise ``None``."""
+        """Return the partial-Hessian metadata dict (to be stored as
+        ``out['within_partial_hessian']``) when partial Hessian is active,
+        otherwise ``None``."""
         if not self.return_partial_hessian or len(self.freeze_atoms) == 0:
             return None
         active_atoms, active_dof_idx, _ = self._active_and_frozen_dof_idx(n_atoms)
@@ -149,7 +150,9 @@ class MLIPCalculator(Calculator):
     ) -> Dict[str, Any]:
         """Central-difference Hessian assembled on CPU.
 
-        Columns for frozen-atom DOFs are skipped (remain zero).
+        Frozen-atom DOFs are never displaced, so their rows and columns remain
+        zero in the full (3N×3N) output. When ``return_partial_hessian=True``
+        the active-DOF sub-block is extracted and returned instead.
         """
         n_atoms = len(elem)
         dof = n_atoms * 3
@@ -208,7 +211,8 @@ class MLIPCalculator(Calculator):
         return H
 
     def _apply_active_trim_np(self, H: np.ndarray, n_atoms: int) -> np.ndarray:
-        """Apply active-DOF trimming/column-zeroing (numpy version)."""
+        """Extract the active-DOF sub-block when ``return_partial_hessian=True``,
+        or zero frozen rows/columns when ``False`` (numpy version)."""
         if len(self.freeze_atoms) == 0:
             return H
         _, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
@@ -220,6 +224,7 @@ class MLIPCalculator(Calculator):
         else:
             if frozen_dof_idx:
                 H[:, frozen_dof_idx] = 0.0
+                H[frozen_dof_idx, :] = 0.0
             return H
 
     # ------------------------------------------------------------------

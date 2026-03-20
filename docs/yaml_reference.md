@@ -66,7 +66,7 @@ calc:
  hessian_double: true # Assemble/return Hessian in float64
  # freeze_atoms: null # Inherited from geom.freeze_atoms; do not set directly
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
- return_partial_hessian: false # Return full 3N×3N Hessian (not active-DOF block)
+ return_partial_hessian: true  # Return active-DOF block Hessian
  print_timing: true # Print Hessian timing breakdown
  print_vram: true # Print CUDA VRAM usage during Hessian
  # Solvent correction (xTB)

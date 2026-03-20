@@ -497,7 +497,7 @@ CALC_KW = FREQ_CALC_KW
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -518,13 +518,13 @@ CALC_KW = FREQ_CALC_KW
         "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1).")
 @click.option(
     "--freeze-links/--no-freeze-links",
     "freeze_links",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--convert-files/--no-convert-files",

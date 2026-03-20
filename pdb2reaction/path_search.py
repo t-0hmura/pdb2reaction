@@ -594,7 +594,7 @@ def _bridge_segments(
     if rmsd <= rmsd_thresh:
         return None
     click.echo(
-        f"[{tag}] Gap detected between segments (RMSD={rmsd:.4e} Å) — bridging via {mep_mode_kind.upper()}."
+        f"[{tag}] Gap detected between segments (RMSD={rmsd:.4e} bohr) — bridging via {mep_mode_kind.upper()}."
     )
     if mep_mode_kind == "dmf":
         return _run_dmf_between(
@@ -1594,7 +1594,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -1622,14 +1622,14 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=None,
     show_default=False,
-    help="Spin multiplicity (2S+1) for the ML region (defaults from a .gjf template when available, otherwise 1).",
+    help="Spin multiplicity (2S+1; defaults from a .gjf template when available, otherwise 1).",
 )
 @click.option(
     "--freeze-links/--no-freeze-links",
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option("--max-nodes", type=int, default=20, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
@@ -1708,9 +1708,9 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--preopt/--no-preopt",
     "preopt",
-    default=True,
+    default=False,
     show_default=True,
-    help="If False, skip initial single-structure optimizations of inputs."
+    help="If True, run initial single-structure optimizations of inputs."
 )
 @click.option(
     "--align/--no-align",
@@ -2207,7 +2207,7 @@ def cli(
         click.echo("\n====== Multistep MEP search (multi-structure) started ======\n")
         seg_counter = [0]
 
-        bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 10))
+        bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 5))
         gs_bridge_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=bridge_max_nodes, climb=False, climb_lanczos=False)
 
         combined_imgs: List[Any] = []

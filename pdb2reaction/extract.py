@@ -4,7 +4,7 @@
 Automated binding-pocket (active-site) extraction from protein-substrate complexes.
 
 Example:
-    pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l -3
+    pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l=-3
 
 For detailed documentation, see: docs/extract.md
 """
@@ -192,9 +192,9 @@ _EXTRACT_ALL_FLAGS = (
     "-o", "--output",
     "-r", "--radius",
     "--radius-het2het",
-    "--include-H2O", "--include-h2o", "--no-include-H2O", "--no-include-h2o",
+    "--include-h2o", "--no-include-h2o",
     "--exclude-backbone", "--no-exclude-backbone",
-    "--add-linkH", "--no-add-linkH",
+    "--add-linkh", "--no-add-linkh",
     "--selected-resn",
     "-l",
     "--ligand-charge",
@@ -268,11 +268,11 @@ def _gather_extract_variadic(
 @click.option(
     "--radius-het2het",
     type=float, default=0, show_default=True,
-    help="Cutoff (angstrom) for substrate-protein hetero-atom proximity (non-C/H). 0 disables.",
+    help="Cutoff (angstrom) for substrate hetero-atom (non-C/H) to neighbor hetero-atom proximity. 0 disables.",
 )
 @click.option(
-    "--include-H2O/--no-include-H2O",
-    "include_H2O",
+    "--include-h2o/--no-include-h2o",
+    "include_h2o",
     default=True, show_default=True,
     help="Include waters (HOH/WAT/TIP3/SOL).",
 )
@@ -282,8 +282,8 @@ def _gather_extract_variadic(
     help="Delete main-chain atoms from non-substrate amino acids.",
 )
 @click.option(
-    "--add-linkH/--no-add-linkH",
-    "add_linkH",
+    "--add-linkh/--no-add-linkh",
+    "add_linkh",
     default=True, show_default=True,
     help="Add carbon-only link-H at 1.09 angstrom along cut-bond directions.",
 )
@@ -311,9 +311,9 @@ def cli(
     output_pdb: Sequence[str],
     radius: float,
     radius_het2het: float,
-    include_H2O: bool,
+    include_h2o: bool,
     exclude_backbone: bool,
-    add_linkH: bool,
+    add_linkh: bool,
     selected_resn: str,
     ligand_charge: Optional[str],
     verbose: bool,
@@ -336,9 +336,9 @@ def cli(
         output_pdb=output_list,
         radius=radius,
         radius_het2het=radius_het2het,
-        include_H2O=include_H2O,
+        include_h2o=include_h2o,
         exclude_backbone=exclude_backbone,
-        add_linkH=add_linkH,
+        add_linkh=add_linkh,
         selected_resn=selected_resn,
         ligand_charge=ligand_charge,
         verbose=verbose,
@@ -1546,7 +1546,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     union_bb_contact_keys: Set[ResidueKey] = set()
 
     for st, subs in zip(structs, subs_per_struct):
-        selected_ids, bb_contact_ids = select_residues(st, subs, args.radius, args.radius_het2het, args.include_H2O, args.exclude_backbone)
+        selected_ids, bb_contact_ids = select_residues(st, subs, args.radius, args.radius_het2het, args.include_h2o, args.exclude_backbone)
         union_sel_keys |= _fids_to_keys(st, selected_ids)
         union_bb_contact_keys |= _fids_to_keys(st, bb_contact_ids)
 
@@ -1660,9 +1660,9 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         _echo_info("[extract:multi] Atoms after truncation (model %d): %d", m, kept_atoms)
         model_counts.append({"raw_atoms": raw_atoms, "kept_atoms": kept_atoms})
 
-        # Append TER + link‑H block (honor --add-linkH)
+        # Append TER + link‑H block (honor --add-linkh)
         link_coords = [coord for (_, coord) in linkdefs_per_struct[m-1]]
-        if args.add_linkH and link_coords:
+        if args.add_linkh and link_coords:
             if not main_text.endswith("\n"):
                 main_text += "\n"
             parts = [main_text]
@@ -1745,14 +1745,18 @@ class AS_Select(PDB.Select):
 #   Main driver (single or multi) — CLI or API
 # ---------------------------------------------------------------------
 
-def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]:
+def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     """
-    Run from CLI (args=None → parse_args()) or as an API with a pre-built Namespace.
+    Run extraction with a pre-built argparse Namespace.
+
+    The CLI entry point is the ``cli()`` Click command, which builds the
+    Namespace and calls this function.  For programmatic use, build the
+    Namespace manually or use :func:`extract_pocket`.
 
     Args
     ----
-    args : argparse.Namespace | None
-        If None, parse CLI args. Otherwise, use the provided Namespace.
+    args : argparse.Namespace
+        Parsed arguments (required; use ``extract_pocket()`` for keyword API).
     api : bool
         If True, return a structured result dictionary; if False (CLI), return None.
 
@@ -1762,7 +1766,10 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         When api=True, returns { 'outputs', 'counts', 'charge_summary' }. Otherwise, None.
     """
     if args is None:
-        args = parse_args()
+        raise TypeError(
+            "extract() requires an argparse.Namespace; "
+            "use the 'pdb2reaction extract' CLI or extract_pocket() for keyword API."
+        )
 
     _configure_extract_logger(bool(args.verbose))
 
@@ -1773,10 +1780,10 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
 
     # Log extract options
     _echo_info("[extract] Options: radius=%.2f, radius_het2het=%.2f, "
-               "include_H2O=%s, exclude_backbone=%s, add_linkH=%s, "
+               "include_h2o=%s, exclude_backbone=%s, add_linkh=%s, "
                "selected_resn='%s'",
                args.radius, args.radius_het2het,
-               args.include_H2O, args.exclude_backbone,
+               args.include_h2o, args.exclude_backbone,
                getattr(args, 'add_linkh', False),
                getattr(args, 'selected_resn', ''))
 
@@ -1804,7 +1811,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         selected_ids, backbone_contact_ids = select_residues(
             complex_struct, substrate_residues,
             args.radius, args.radius_het2het,
-            args.include_H2O,
+            args.include_h2o,
             args.exclude_backbone
         )
 
@@ -1864,7 +1871,7 @@ def extract(args: argparse.Namespace | None = None, api=False) -> Dict[str, Any]
         output_path = args.output_pdb[0]
         outputs: List[str] = []
 
-        if args.add_linkH:
+        if args.add_linkh:
             link_coords = compute_linkH_atoms(complex_struct, selected_ids, skip_map)
             _echo_info("[extract] Link-H to add: %d", len(link_coords))
 
@@ -1916,9 +1923,9 @@ def extract_api(complex_pdb: List[str],
                    output: Optional[List[str]] = None,
                    radius: float = 2.6,
                    radius_het2het: float = 0.0,
-                   include_H2O: bool = True,
-                   exclude_backbone: bool = True,
-                   add_linkH: bool = True,
+                   include_h2o: bool = True,
+                   exclude_backbone: bool = False,
+                   add_linkh: bool = True,
                    selected_resn: str = "",
                    ligand_charge: Optional[float | str | Dict[str, float]] = None,
                    verbose: bool = False) -> Dict[str, Any]:
@@ -1939,11 +1946,11 @@ def extract_api(complex_pdb: List[str],
         Atom–atom cutoff (Å) for inclusion around substrate atoms.
     radius_het2het : float
         Independent hetero‑hetero cutoff (Å) for non‑C/H pairs.
-    include_H2O : bool
+    include_h2o : bool
         Include waters in the selection.
     exclude_backbone : bool
         Remove backbone atoms on non‑substrate amino acids (with safeguards).
-    add_linkH : bool
+    add_linkh : bool
         Add link‑H atoms for cut bonds (carbon‑only) and append as HL/LKH HETATM records.
     selected_resn : str
         Additional residues to force‑include (comma/space separated).
@@ -1966,9 +1973,9 @@ def extract_api(complex_pdb: List[str],
         output_pdb=output,
         radius=radius,
         radius_het2het=radius_het2het,
-        include_H2O=include_H2O,
+        include_h2o=include_h2o,
         exclude_backbone=exclude_backbone,
-        add_linkH=add_linkH,
+        add_linkh=add_linkh,
         selected_resn=selected_resn,
         ligand_charge=ligand_charge,
         verbose=verbose,

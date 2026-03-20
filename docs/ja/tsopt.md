@@ -121,7 +121,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに入力/設定を検証し、実行計画を表示。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに入力/設定を検証し、実行計画を表示。 | `False` |
 
 ```{note}
 **`--flatten` はデフォルトで無効です。** `defaults.py` では `flatten_max_iter=50` と定義されていますが、CLI の初期化で `--flatten` が明示的に渡されない限り `flatten_max_iter=0` が設定されます。TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
@@ -168,7 +168,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # partial Hessian (active-DOF only; defaults.py default is false, overridden to true by tsopt at runtime)
+ return_partial_hessian: true # partial Hessian (active-DOF only)
 opt:
  thresh: baker # convergence preset (Gaussian/Baker-style)
  max_cycles: 10000 # optimizer cycle cap
@@ -287,6 +287,6 @@ rsirfo:
 - [path-search](path_search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
-- [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖するend-to-endワークフロー
+- [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖する一気通貫ワークフロー
 - [YAML リファレンス](yaml_reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

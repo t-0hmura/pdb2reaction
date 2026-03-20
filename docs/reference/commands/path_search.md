@@ -29,7 +29,7 @@ Options:
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (PDB inputs only).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1)
                                   (defaults from a .gjf template when available,
                                   otherwise 1).
   --freeze-links / --no-freeze-links

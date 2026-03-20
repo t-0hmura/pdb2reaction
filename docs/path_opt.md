@@ -112,7 +112,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. Visible in `--help-advanced`. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
 | `--fix-ends/--no-fix-ends` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
@@ -166,7 +166,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # full Hessian (avoids shape mismatches)
+ return_partial_hessian: true  # partial Hessian over active DOFs
 gs:
  fix_first: true # keep the first endpoint fixed during optimization
  fix_last: true # keep the last endpoint fixed during optimization

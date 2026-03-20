@@ -45,10 +45,9 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
 _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
     "all": frozenset(
         {
-            "--include-H2O",
             "--include-h2o",
             "--exclude-backbone",
-            "--add-linkH",
+            "--add-linkh",
             "--verbose",
             "--freeze-links",
             "--climb",

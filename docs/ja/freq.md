@@ -103,7 +103,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
 
 ## 出力
 ```
@@ -161,6 +161,6 @@ thermo:
 - [tsopt](tsopt.md) — 遷移状態の最適化（内部で虚振動数チェック済み）。続けて IRC で端点の接続性を確認
 - [irc](irc.md) — TS からの IRC（端点での freq と組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
-- [all](all.md) — `--thermo` を含むend-to-endワークフロー
+- [all](all.md) — `--thermo` を含む一気通貫ワークフロー
 - [YAML リファレンス](yaml_reference.md) — `freq` と `thermo` の設定オプション一覧
 - [用語集](glossary.md) — ZPE、ギブズ自由エネルギー、エンタルピー、エントロピーの定義

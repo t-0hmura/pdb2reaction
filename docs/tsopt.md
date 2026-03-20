@@ -140,7 +140,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. Visible in `--help-advanced`. | `False` |
+| `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. | `False` |
 
 ```{note}
 **`--flatten` is disabled by default.** Although `defaults.py` defines `flatten_max_iter=50`, the CLI initialization sets `flatten_max_iter=0` unless `--flatten` is explicitly passed. If your TS candidate has multiple imaginary frequencies, try adding `--flatten` to enable the surplus-mode cleanup loop.
@@ -192,7 +192,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # partial Hessian (active-DOF only; defaults.py default is false, overridden to true by tsopt at runtime)
+ return_partial_hessian: true # partial Hessian (active-DOF only)
 opt:
  thresh: baker # convergence preset (Gaussian/Baker-style)
  max_cycles: 10000 # optimizer cycle cap

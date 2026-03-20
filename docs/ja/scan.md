@@ -273,7 +273,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # full Hessian (avoids shape mismatches)
+ return_partial_hessian: true  # partial Hessian over active DOFs
 opt:
  thresh: gau # convergence preset (Gaussian/Baker-style)
  max_cycles: 10000 # optimizer cycle cap
@@ -370,7 +370,7 @@ bond:
 
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
-- [all](all.md) — 単一構造入力に `--scan-lists` を使用したend-to-endワークフロー
+- [all](all.md) — 単一構造入力に `--scan-lists` を使用した一気通貫ワークフロー
 - [path-search](path_search.md) — スキャン端点を中間体として MEP を探索
 - [extract](extract.md) — スキャン前にポケット PDB を生成
 - [YAML リファレンス](yaml_reference.md) — `bias` と `bond` の完全な設定オプション

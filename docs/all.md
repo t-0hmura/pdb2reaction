@@ -135,7 +135,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `--dump BOOL` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--dump False`. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
-| `--dry-run/--no-dry-run` | Validate and print plan without running stages. Visible in `--help-advanced`. | `False` |
+| `--dry-run/--no-dry-run` | Validate and print plan without running stages. | `False` |
 | `--resume/--no-resume` | Resume a previous run from `--out-dir`. Completed stages whose output files already exist are skipped. | `False` |
 
 ### Charge/Spin Options
@@ -170,7 +170,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `--climb BOOL` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `True` |
+| `--preopt/--no-preopt` | Pre-optimize pocket endpoints before MEP search. | `False` |
 | `--refine-path BOOL` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### MLIP Calculator Options

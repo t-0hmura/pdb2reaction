@@ -407,7 +407,7 @@ def _optimize_single(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -435,28 +435,28 @@ def _optimize_single(
     type=int,
     default=None,
     show_default=False,
-    help="Spin multiplicity (2S+1) for the ML region.",
+    help="Spin multiplicity (2S+1).",
 )
 @click.option(
     "--freeze-links/--no-freeze-links",
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--max-nodes",
     type=int,
     default=20,
     show_default=True,
-    help="Number of internal nodes (string has max_nodes+2 images including endpoints).",
+    help="Maximum number of internal nodes (string has up to max_nodes+2 images including endpoints).",
 )
 @click.option(
     "--max-cycles",
     type=int,
     default=300,
     show_default=True,
-    help="Maximum optimization cycles.",
+    help="Maximum string optimizer cycles (GSM/DMF path optimization).",
 )
 @click.option(
     "--climb/--no-climb",
@@ -545,20 +545,20 @@ def _optimize_single(
     "--preopt/--no-preopt",
     default=False,
     show_default=True,
-    help="If True, preoptimize each endpoint via the selected single-structure optimizer (LBFGS/RFO) before alignment and GSM.",
+    help="Preoptimize each endpoint via the selected single-structure optimizer (LBFGS/RFO) before alignment and path optimization.",
 )
 @click.option(
     "--preopt-max-cycles",
     type=int,
     default=10000,
     show_default=True,
-    help="Maximum cycles for endpoint preoptimization (applies to the chosen optimizer; only used when --preopt True).",
+    help="Maximum cycles for each endpoint preoptimization pass (LBFGS or RFO; only used when --preopt is enabled).",
 )
 @click.option(
     "--fix-ends/--no-fix-ends",
     default=False,
     show_default=True,
-    help="Fix structures of input endpoints during GSM.",
+    help="Fix structures of input endpoints during path optimization (GSM/DMF).",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")

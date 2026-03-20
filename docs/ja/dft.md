@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-TZVPD です。結果にはエネルギーと電子密度解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
+> **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
 バックエンドは `--engine` で制御します:
 - `gpu`（デフォルト）: GPU4PySCF を使用します。**GPU が利用できない場合はエラーになります。**
@@ -92,7 +92,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。 | `False` |
 
 ## 出力
 ```
@@ -154,6 +154,6 @@ dft:
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 
 - [freq](freq.md) — UMAベースの振動解析（DFT精密化の前に行うことが多い）
-- [all](all.md) — `--dft` を使用したend-to-endワークフロー
+- [all](all.md) — `--dft` を使用した一気通貫ワークフロー
 - [YAML リファレンス](yaml_reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

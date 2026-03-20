@@ -183,8 +183,8 @@ class OrbCalculator(MLIPCalculator):
         from ase import Atoms
 
         atoms = Atoms(symbols=list(elem), positions=np.asarray(coord_ang, dtype=np.float64))
-        atoms.info["charge"] = float(self.charge)
-        atoms.info["spin"] = float(self.mult)
+        atoms.info["charge"] = int(self.charge)
+        atoms.info["spin"] = int(self.mult)
         atoms.calc = self._ase_calc
 
         energy = float(atoms.get_potential_energy())

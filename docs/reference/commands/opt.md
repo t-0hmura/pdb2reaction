@@ -22,7 +22,7 @@ Options:
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --dist-freeze TEXT              Distance restraints: inline Python literal
                                   (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file
                                   path. Same format as --scan-lists:

@@ -101,7 +101,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |
 | `--config FILE` | ベースYAML設定ファイル | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済みYAMLレイヤ情報を表示 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
@@ -126,7 +126,7 @@ out_dir/
 - `freeze_atoms`（`[]`）: 0 始まりの凍結原子インデックス。CLI のリンク検出結果と自動的にマージされます
 
 ### `calc`
-- UMA設定（`model`、`task_name`、デバイス選択、近傍半径、ヘシアン形式など）
+- MLIP バックエンド設定（`model`、`task_name`、デバイス選択、近傍半径、ヘシアン形式など）
 - `charge`/`spin` は CLI オプションに対応（`.gjf` がある場合はテンプレート値がデフォルト）
 
 ### `opt`
@@ -255,6 +255,6 @@ rfo:
 - [tsopt](tsopt.md) — 極小ではなく遷移状態（鞍点）を最適化
 - [freq](freq.md) — 最適化が極小に達したことを確認する振動解析
 - [extract](extract.md) — 最適化前にポケット PDB を生成
-- [all](all.md) — 端点を事前最適化するend-to-endワークフロー
+- [all](all.md) — 端点を事前最適化する一気通貫ワークフロー
 - [YAML リファレンス](yaml_reference.md) — `opt`、`lbfgs`、`rfo` の完全な設定オプション
 - [用語集](glossary.md) — L-BFGS、RFOの定義

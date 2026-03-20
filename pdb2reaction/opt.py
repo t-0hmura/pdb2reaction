@@ -316,7 +316,7 @@ def _flatten_all_imag_modes_for_geom(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -344,7 +344,7 @@ def _flatten_all_imag_modes_for_geom(
     type=int,
     default=None,
     show_default=False,
-    help="Spin multiplicity (2S+1) for the ML region.",
+    help="Spin multiplicity (2S+1).",
 )
 @click.option(
     "--dist-freeze",
@@ -375,7 +375,7 @@ def _flatten_all_imag_modes_for_geom(
     "--freeze-links/--no-freeze-links",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--convert-files/--no-convert-files",

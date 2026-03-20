@@ -23,7 +23,7 @@ Options:
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --max-cycles INTEGER            Maximum number of IRC steps; used unless YAML
                                   sets irc.max_cycles. Defaults to 125 when not
                                   provided.

@@ -224,9 +224,10 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 0始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
-| `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
+| `return_partial_hessian` | アクティブ自由度のみ返す | `True` |
 | `hessian_double` | ヘシアンをfloat64で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
+| `print_timing` | ヘシアン計算のタイミング内訳を表示 | `True` |
 | `solvent` | 暗黙溶媒名（例: `"water"`）または `"none"` | `"none"` |
 | `solvent_model` | xTB 溶媒モデル: `"alpb"` または `"cpcmx"` | `"alpb"` |
 
@@ -239,4 +240,4 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 - [opt](opt.md) -- MLIP バックエンドを使う単一構造最適化
 - [path_opt](path_opt.md) -- MLIP バックエンドを使う MEP 最適化
-- [all](all.md) -- MLIP を複数段で使うend-to-endワークフロー
+- [all](all.md) -- MLIP を複数段で使う一気通貫ワークフロー

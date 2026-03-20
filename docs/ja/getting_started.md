@@ -260,7 +260,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
-| `all` | end-to-endワークフロー | [all](all.md) |
+| `all` | 一気通貫ワークフロー | [all](all.md) |
 | `extract` | 活性部位ポケットからクラスターモデルを抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |

@@ -38,8 +38,8 @@ class XTBError(RuntimeError):
 
 
 def normalize_solvent_name(solvent):
-    text = "" if solvent is None else str(solvent).strip()
-    if (not text) or (text.lower() in ("none", "vac", "vacuum")):
+    text = "" if solvent is None else str(solvent).strip().lower()
+    if (not text) or (text in ("none", "vac", "vacuum")):
         return "none"
     return text
 
@@ -325,7 +325,7 @@ def _parse_xtb_hessian(path, natoms):
          $hessian
          <H11> <H12> ...
          ...
-    2) ORCA-style blocked format with dimension/header rows.
+    2) xTB blocked format with dimension/header rows.
     """
     with open(path, "r") as handle:
         lines = [ln.rstrip("\n") for ln in handle]

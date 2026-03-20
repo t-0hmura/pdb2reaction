@@ -1,7 +1,7 @@
 # pdb2reaction/irc.py
 
 """
-IRC calculations using the EulerPC predictor-corrector integrator with UMA.
+IRC calculations using the EulerPC predictor-corrector integrator.
 
 Example:
     pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
@@ -97,7 +97,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -118,7 +118,7 @@ def _echo_convert_trj_if_exists(
         "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1).")
 @click.option(
     "--max-cycles",
     type=int,
@@ -133,8 +133,8 @@ def _echo_convert_trj_if_exists(
     type=float,
     default=None,
     help=(
-        "Step length in mass-weighted coordinates; used unless YAML sets irc.step_length. "
-        "Defaults to 0.10."
+        "Step length in Bohr (unweighted Cartesian coordinates); used unless YAML sets irc.step_length. "
+        "Default: 0.10 Bohr."
     ),
 )
 @click.option(
@@ -169,7 +169,7 @@ def _echo_convert_trj_if_exists(
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--convert-files/--no-convert-files",

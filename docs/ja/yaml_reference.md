@@ -66,7 +66,7 @@ calc:
  hessian_double: true # Assemble/return Hessian in float64
  # freeze_atoms: null # geom.freeze_atoms から継承されるため直接指定しない
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
- return_partial_hessian: false # 完全 3N×3N ヘシアンを返す（active-DOF ブロックではない）
+ return_partial_hessian: true  # active-DOF ブロックのヘシアンを返す
  print_timing: true # ヘシアン計算のタイミング内訳を表示
  print_vram: true # ヘシアン計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
  # Solvent correction (xTB)
@@ -532,7 +532,7 @@ dft:
 
 ## 参照
 
-- [all](all.md) - end-to-endワークフロー
+- [all](all.md) - 一気通貫ワークフロー
 - [opt](opt.md) - 単一構造最適化
 - [tsopt](tsopt.md) - 遷移状態最適化
 - [path-search](path_search.md) - 再帰的 MEP 探索

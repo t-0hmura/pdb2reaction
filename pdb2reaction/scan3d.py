@@ -1,7 +1,7 @@
 # pdb2reaction/scan3d.py
 
 """
-3D grid scan with harmonic restraints on three inter-atomic distances using UMA calculator.
+3D grid scan with harmonic restraints on three inter-atomic distances.
 
 Example:
     pdb2reaction scan3d -i input.pdb -q 0 --scan-lists '[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'
@@ -855,7 +855,7 @@ def cli(
         fig3d = go.Figure(data=isosurfaces + [colorbar_trace])
 
         fig3d.update_layout(
-            title="3D Energy Landscape (UMA)",
+            title="3D Energy Landscape",
             width=900,
             height=800,
             scene=dict(

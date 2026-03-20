@@ -18,9 +18,9 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --df
 
 Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
 
-- extracts an **active-site pocket** around user‑defined substrates to build a **cluster model**,
-- explores **minimum‑energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
-- _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single‑point DFT calculations**.
+- extracts an **active-site pocket** around user-defined substrates to build a **cluster model**,
+- explores **minimum-energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
+- _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single-point DFT calculations**.
 
 Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Implicit solvent corrections can be applied with `--solvent` (powered by xTB). Typical use cases include:
 
@@ -28,9 +28,9 @@ Calculations use machine-learning interatomic potentials (MLIPs). The default ba
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
 - **High-throughput screening** of reaction pathways across substrate variants or enzyme mutants
 
-The CLI is designed to generate **multi‑step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small‑molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
+The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small-molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
-On **HPC clusters or multi‑GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi‑worker inference; see [MLIP Calculator](uma_pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
+On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma_pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
 ```{important}
 - Input PDB files must already contain **hydrogen atoms**.
@@ -109,7 +109,7 @@ If you omit `--center/-c`, cluster extraction is skipped and the **full input st
 
 ## Main workflow modes
 
-### Multi‑structure MEP workflow (reactant → product)
+### Multi-structure MEP workflow (reactant → product)
 
 Use this when you already have several full PDB structures along a putative reaction coordinate (e.g., R → I1 → I2 → P).
 
@@ -130,7 +130,7 @@ Behavior:
 - takes two or more **full systems** in reaction order,
 - extracts cluster models for each structure,
 - performs a **recursive MEP search** via `path-search` by default (outputs under `path_search/`),
-- optionally switches to a **single‑pass** [`path-opt`](path_opt.md) run with `--no-refine-path`,
+- optionally switches to a **single-pass** [`path-opt`](path_opt.md) run with `--no-refine-path`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
 
@@ -142,9 +142,9 @@ This is the recommended mode when you can generate reasonably spaced intermediat
 
 ---
 
-### Single‑structure + staged scan (feeds MEP refinement)
+### Single-structure + staged scan (feeds MEP refinement)
 
-Use this when you only have **one PDB structure**, but you know which inter‑atomic distances should change along the reaction.
+Use this when you only have **one PDB structure**, but you know which inter-atomic distances should change along the reaction.
 
 Provide a single `-i` together with `--scan-lists`:
 
@@ -164,7 +164,7 @@ Key points:
 
 - `--scan-lists` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
- - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1‑based atom index,
+ - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1-based atom index,
  - automatically remapped to the cluster-model indices.
 - Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals by repeating `--scan-lists`.
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
@@ -175,7 +175,7 @@ This mode is useful for building reaction paths starting from a single structure
 
 ---
 
-### Single‑structure TSOPT‑only mode
+### Single-structure TSOPT-only mode
 
 Use this when you already have a **transition-state candidate** and only want to optimize it and proceed to IRC calculations.
 
@@ -201,10 +201,10 @@ Behavior:
 - can then run vibrational analysis ([`freq`](freq.md)) and single-point DFT (`dft`) on the R/TS/P structures,
 - produces MLIP, Gibbs, and DFT//MLIP (DFT single-point energies at MLIP-optimized geometries) energy diagrams.
 
-Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top‑level `--out-dir`.
+Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top-level `--out-dir`.
 
 ```{important}
-Single‑input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt` (TSOPT‑only). Supplying only a single `-i` without one of these will not trigger a full workflow.
+Single-input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt` (TSOPT-only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 ```
 
 ---
@@ -215,17 +215,17 @@ Below are the most commonly used options across workflows.
 
 | Option | Description |
 |--------|-------------|
-| `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT‑only mode. |
+| `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT-only mode. |
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
 | `-l, --ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of total system charge. |
 | `-m, --multiplicity INT` | Spin multiplicity (e.g., `1` for singlet). |
-| `-s, --scan-lists TEXT...` | Staged distance scans for single‑input runs. |
-| `-o, --out-dir PATH` | Top‑level output directory. |
+| `-s, --scan-lists TEXT...` | Staged distance scans for single-input runs. |
+| `-o, --out-dir PATH` | Top-level output directory. |
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
 | `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
-| `--dft/--no-dft` | Perform single‑point DFT calculations. |
-| `--refine-path/--no-refine-path` | Recursive MEP refinement (default: enabled) vs single‑pass. |
+| `--dft/--no-dft` | Perform single-point DFT calculations. |
+| `--refine-path/--no-refine-path` | Recursive MEP refinement (default: enabled) vs single-pass. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation). |
@@ -245,8 +245,8 @@ They typically contain:
 
 - the exact CLI command invoked,
 - global MEP statistics (e.g. maximum barrier, path length),
-- per‑segment barrier heights and key bond changes,
-- energies from the MLIP backend, thermochemistry, and DFT post‑processing (where enabled).
+- per-segment barrier heights and key bond changes,
+- energies from the MLIP backend, thermochemistry, and DFT post-processing (where enabled).
 
 Each segment directory under `path_search/` also gets its own `summary.log` and `summary.yaml`, so you can inspect local refinements independently.
 

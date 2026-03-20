@@ -1,7 +1,7 @@
 # pdb2reaction/scan.py
 
 """
-Staged bond-length scan with harmonic restraints and full relaxation using UMA calculator.
+Staged bond-length scan with harmonic restraints and full relaxation.
 
 Example:
     pdb2reaction scan -i input.pdb -q 0 --scan-lists '[(12,45,1.35)]' --preopt --endopt
@@ -319,6 +319,7 @@ def cli(
             # Resolve freeze list before logging so printed config matches runtime.
             freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+            calc_cfg["return_partial_hessian"] = True
 
             # Present final config
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()

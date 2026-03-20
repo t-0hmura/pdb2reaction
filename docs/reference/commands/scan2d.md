@@ -24,7 +24,7 @@ Options:
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
                                   1-based (default) or 0-based.  [default: one-
                                   based]

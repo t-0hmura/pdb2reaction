@@ -102,7 +102,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
  - `--tsopt`: 各 HEI ポケットで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化してセグメントエネルギーダイアグラムを出力。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
- - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//UMA Gibbs ダイアグラムも生成
+ - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
  - ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
 
@@ -140,7 +140,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化。 | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
-| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う。 | `False` |
 | `--resume/--no-resume` | `--out-dir` から前回の実行を再開。出力ファイルが既に存在する完了済みステージはスキップされる。 | `False` |
 
 ### 電荷・スピンオプション
@@ -175,7 +175,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `True` |
+| `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `False` |
 | `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
 ### MLIP 計算機オプション
@@ -240,7 +240,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
-| `--scan-preopt/--no-scan-preopt` | scan事前最適化 | `True` |
+| `--scan-preopt/--no-scan-preopt` | scan事前最適化 | `False` |
 | `--scan-endopt/--no-scan-endopt` | scanステージ終端最適化 | `True` |
 
 ## 出力
@@ -288,7 +288,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 | `energy_diagram_UMA_all.png` | 全セグメント集約時 | 全セグメント統合（UMA） |
 | `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（UMA ギブズ） |
 | `energy_diagram_DFT_all.png` | 全セグメント + DFT | 全セグメント統合（DFT） |
-| `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//UMA ギブズ） |
+| `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。

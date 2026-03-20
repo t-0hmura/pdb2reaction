@@ -8,7 +8,7 @@
 - **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--no-preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
@@ -107,8 +107,8 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. Visible in `--help-advanced`. | `False` |
-| `--preopt/--no-preopt` | Pre-optimize each endpoint before MEP search (recommended). | `True` |
+| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
+| `--preopt/--no-preopt` | Pre-optimize each endpoint before MEP search. | `False` |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 | `--ref-pdb PATH...` | Pocket reference PDBs used for the final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
@@ -178,7 +178,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # full Hessian (avoids shape mismatches)
+ return_partial_hessian: true  # partial Hessian over active DOFs
 gs:
  fix_first: true # keep the first endpoint fixed during optimization
  fix_last: true # keep the last endpoint fixed during optimization

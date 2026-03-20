@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **Summary:** Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+> **Summary:** Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
-`pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-TZVPD. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+`pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 The backend is controlled by `--engine`:
 - `gpu` (default): Uses GPU4PySCF. **Raises an error if GPU is unavailable.** Best for production runs on GPU-equipped nodes where you want to guarantee GPU acceleration.
@@ -94,7 +94,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |
-| `--dry-run/--no-dry-run` | Validate options and print execution plan without running DFT. Visible in `--help-advanced`. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and print execution plan without running DFT. | `False` |
 
 ## Outputs
 ```

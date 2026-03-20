@@ -59,7 +59,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "hessian_double": True,
     "print_timing": True,
     "print_vram": True,
-    "return_partial_hessian": False,
+    "return_partial_hessian": True,
     # Solvent correction
     "solvent": "none",
     "solvent_model": "alpb",
@@ -67,7 +67,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "xtb_acc": 0.2,
 }
 
-# Extended UMA calculator defaults with Hessian control
+# Extended UMA calculator defaults with freeze_atoms support
 UMA_CALC_KW: Dict[str, Any] = {
     **CALC_KW_DEFAULT,
     "out_hess_torch": True,
@@ -430,7 +430,7 @@ RSIRFO_KW: Dict[str, Any] = {
 }
 
 # -----------------------------------------------
-# Freq calc defaults (UMA + partial Hessian)
+# Freq calc defaults (alias of UMA_CALC_KW)
 # -----------------------------------------------
 
 FREQ_CALC_KW: Dict[str, Any] = {

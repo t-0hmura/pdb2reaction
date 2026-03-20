@@ -1,8 +1,7 @@
 # pdb2reaction/tsopt.py
 
 """
-Transition-state optimization using Hessian Guided Dimer (grad) or RS-I-RFO (hess)
-with UMA.
+Transition-state optimization using Hessian Guided Dimer (grad/dimer) or RS-I-RFO (hess/rsirfo).
 
 Example:
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_tsopt/
@@ -1324,7 +1323,7 @@ def _build_rsirfo_kwargs(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -1345,13 +1344,13 @@ def _build_rsirfo_kwargs(
         "when -q is omitted (requires PDB input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1) for the ML region.")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1).")
 @click.option(
     "--freeze-links/--no-freeze-links",
     "freeze_links",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--convert-files/--no-convert-files",
@@ -1366,7 +1365,7 @@ def _build_rsirfo_kwargs(
     default=None,
     help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
-@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Max cycles / steps cap.")
+@click.option("--max-cycles", type=int, default=10000, show_default=True, help="Maximum number of optimization cycles.")
 @click.option(
     "--flatten/--no-flatten",
     "flatten",
@@ -1379,13 +1378,13 @@ def _build_rsirfo_kwargs(
     type=click.Choice(["grad", "hess", "dimer", "rsirfo"], case_sensitive=False),
     default="hess",
     show_default=True,
-    help="grad (dimer) or hess (rsirfo). Aliases dimer/rsirfo are accepted.",
+    help="TS optimizer: 'grad'/'dimer' → Hessian Guided Dimer; 'hess'/'rsirfo' → RS-I-RFO.",
 )
 @click.option(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Write optimization trajectory to the output directory.",
+    help="Write optimization trajectory to 'tsopt_trj.xyz' in the output directory.",
 )
 @click.option("-o", "--out-dir", type=str, default=OUT_DIR_TSOPT, show_default=True, help="Output directory.")
 @click.option(

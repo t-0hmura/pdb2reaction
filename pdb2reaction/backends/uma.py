@@ -261,7 +261,7 @@ class UMACalculator(MLIPCalculator):
             self._core = UMAcore(elem, **self._core_kw)
 
     def _supports_analytical_hessian(self) -> bool:
-        return True  # Conditional on workers == 1 at runtime
+        return True  # Analytical path available only when workers == 1 and predictor.model is accessible
 
     # ------------------------------------------------------------------
     # Subclass hooks are NOT used for UMA; we override get_* directly
@@ -323,7 +323,9 @@ class UMACalculator(MLIPCalculator):
             return H.detach().cpu().numpy()
 
     def _apply_analytical_active_trim(self, H: torch.Tensor) -> torch.Tensor:
-        """Apply Active-DOF trimming/column-zeroing to an Analytical Hessian."""
+        """Extract the active-DOF sub-block (n_act×3×n_act×3) when
+        ``return_partial_hessian=True``, or zero frozen rows/columns and
+        return (n_atoms×3×n_atoms×3) when ``False``."""
         n_atoms = H.size(0)
         if len(self.freeze_atoms) == 0:
             return H
@@ -338,6 +340,7 @@ class UMACalculator(MLIPCalculator):
             if frozen_dof_idx:
                 cols = torch.tensor(frozen_dof_idx, device=H.device, dtype=torch.long)
                 H.index_fill_(1, cols, 0.0)
+                H.index_fill_(0, cols, 0.0)
             return H.view(n_atoms, 3, n_atoms, 3)
 
     def _build_fd_hessian_gpu(
@@ -397,7 +400,7 @@ class UMACalculator(MLIPCalculator):
         else:
             H = H.view(n_atoms, 3, n_atoms, 3)
 
-        return {"energy": energy0_eV, "forces": F0, "hessian": H}
+        return {"energy": energy0_eV, "forces": np.asarray(F0, dtype=np.float64).reshape(-1, 3), "hessian": H}
 
     # ------------------------------------------------------------------
     # PySisyphus API (override base to use GPU path + torch Hessian)
@@ -413,10 +416,10 @@ class UMACalculator(MLIPCalculator):
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         res = self._core.compute(coord_ang, forces=True, hessian=False)
-        F_ev = self._zero_frozen_forces_ev(res["forces"])
+        F_ev = self._zero_frozen_forces_ev(np.asarray(res["forces"], dtype=np.float64).reshape(-1, 3))
         return {
             "energy": res["energy"] * EV2AU,
-            "forces": (np.asarray(F_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
+            "forces": (F_ev * F_EVAA_2_AU).reshape(-1),
         }
 
     def get_hessian(self, elem, coords):
@@ -457,11 +460,11 @@ class UMACalculator(MLIPCalculator):
                 raise
             mode_elapsed_s = time.perf_counter() - t0
 
-            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+            res_forces_ev = self._zero_frozen_forces_ev(np.asarray(res["forces"], dtype=np.float64).reshape(-1, 3))
             H = self._apply_analytical_active_trim(res["hessian"])
             out = {
                 "energy": res["energy"] * EV2AU,
-                "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
+                "forces": (res_forces_ev * F_EVAA_2_AU).reshape(-1),
                 "hessian": self._au_hessian(H),
             }
         else:
@@ -469,10 +472,10 @@ class UMACalculator(MLIPCalculator):
             res = self._build_fd_hessian_gpu(elem, coord_ang)
             mode_elapsed_s = time.perf_counter() - t0
 
-            res_forces_ev = self._zero_frozen_forces_ev(res["forces"])
+            res_forces_ev = self._zero_frozen_forces_ev(np.asarray(res["forces"], dtype=np.float64).reshape(-1, 3))
             out = {
                 "energy": res["energy"] * EV2AU,
-                "forces": (np.asarray(res_forces_ev, dtype=np.float64) * F_EVAA_2_AU).reshape(-1),
+                "forces": (res_forces_ev * F_EVAA_2_AU).reshape(-1),
                 "hessian": self._au_hessian(res["hessian"]),
             }
 
@@ -498,7 +501,7 @@ class UMACalculator(MLIPCalculator):
 #                     ASE calculator class
 # ===================================================================
 class UMAASECalculator(FAIRChemCalculator):
-    """UMA ASE calculator for DMF path optimization."""
+    """UMA ASE calculator (wraps FAIRChemCalculator) for use with ASE-based path optimizers (DMF/NEB/growing-string)."""
 
     def __init__(
         self,

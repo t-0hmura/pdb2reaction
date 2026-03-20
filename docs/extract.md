@@ -8,7 +8,7 @@
 - **Input:** One or more complex PDBs with consistent atom ordering (ensemble mode supported).
 - **Substrate selection (`-c`):** residue IDs (`A:123A`), residue names (`GPP,SAM`), or a substrate PDB that matches the complex coordinates.
 - **Selection logic:** distance cutoff (`--radius`) plus optional hetero–hetero proximity (`--radius-het2het`) and peptide/disulfide/PRO safeguards.
-- **Truncation & capping:** trims residues/segments and optionally adds link hydrogens (`--add-linkH` by default).
+- **Truncation & capping:** trims residues/segments and optionally adds link hydrogens (`--add-linkh` by default).
 - **Charges:** unknown residues default to 0 unless `--ligand-charge` supplies a total charge or per-resname mapping.
 
 `pdb2reaction extract` creates an active-site pocket (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
@@ -21,9 +21,9 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  -c SUBSTRATE_SPEC
  [-o POCKET.pdb [POCKET2.pdb...]]
  [--radius Å] [--radius-het2het Å]
- [--include-H2O/--no-include-H2O]
+ [--include-h2o/--no-include-h2o]
  [--exclude-backbone/--no-exclude-backbone]
- [--add-linkH/--no-add-linkH]
+ [--add-linkh/--no-add-linkh]
  [--selected-resn LIST]
  [-l, --ligand-charge MAP_OR_NUMBER]
  [--verbose/--no-verbose]
@@ -54,7 +54,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
  - When `--no-exclude-backbone`, any atom within the cutoff qualifies a residue.
  - When `--exclude-backbone`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N/H*/CA/HA*/C/O). Non-amino acids use any atom.
 - **Independent hetero–hetero cutoff (`--radius-het2het`):** adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled the protein atom must be non-backbone.
-- **Water handling:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL are included by default (`--include-H2O`).
+- **Water handling:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL are included by default (`--include-h2o`).
 - **Forced inclusion:** `--selected-resn` accepts IDs with chains/insertion codes (e.g., `A:123A`).
 - **Neighbor safeguards:**
  - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, auto-include the peptide-adjacent N/C neighbors (C–N ≤ 1.9 Å). Termini keep caps (N/H* or C/O/OXT).
@@ -67,7 +67,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - With `--exclude-backbone`, main-chain atoms on all **non-substrate** amino acids are stripped (subject to PRO/HYP safeguards and PRO neighbor retention).
 - Non-amino-acid residues never lose atoms named like backbone (N/CA/HA/H/H1/H2/H3).
 
-### Link hydrogens (`--add-linkH`)
+### Link hydrogens (`--add-linkh`)
 - Adds carbon-only link hydrogens at 1.09 Å along severed bond vectors (CB–CA, CA–N, CA–C; PRO/HYP use CA–C only).
 - Inserted after a `TER` as contiguous `HETATM` records named `HL` in residue `LKH` (chain `L`). Serial numbers continue from the main block.
 - In multi-structure mode the same bonds are capped across all models; coordinates remain model-specific.
@@ -101,9 +101,9 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | `-o, --output PATH...` | Pocket PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. With 1 `-o` and multiple inputs, creates a single multi-MODEL PDB. With N `-o` values matching N inputs, creates N separate PDBs. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion. | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally 0.001 Å when zero) |
-| `--include-H2O/--no-include-H2O` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `True` |
+| `--include-h2o/--no-include-h2o` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `False` |
-| `--add-linkH/--no-add-linkH` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `True` |
+| `--add-linkh/--no-add-linkh` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `True` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | _None_ |
 | `-v, --verbose/--no-verbose` | Emit INFO-level logging (`True`) or keep warnings only (`False`). | `True` |
@@ -192,7 +192,7 @@ A dictionary mapping ion residue names to their formal charges. Recognized ions 
 
 ### `WATER_RES`
 
-A set of residue names recognized as water molecules. Waters are included by default (`--include-H2O`) and assigned zero charge:
+A set of residue names recognized as water molecules. Waters are included by default (`--include-h2o`) and assigned zero charge:
 
 ```
 HOH, WAT, H2O, DOD, TIP, TIP3, SOL
@@ -204,7 +204,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).
-- Waters can be excluded with `--no-include-H2O`.
+- Waters can be excluded with `--no-include-h2o`.
 - Backbone trimming plus capping respect chain breaks and PRO/HYP safeguards as outlined above; non-amino residues never lose backbone-like atom names.
 - Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
 - INFO logs summarize residue selection, truncation counts, and charge breakdowns.

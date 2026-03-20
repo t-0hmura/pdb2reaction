@@ -112,7 +112,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う。`--help-advanced` で表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う。 | `False` |
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
 | `--fix-ends/--no-fix-ends` | GSM成長/精密化中にエンドポイント構造を固定 | `False` |
@@ -169,7 +169,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # full Hessian (avoids shape mismatches)
+ return_partial_hessian: true  # partial Hessian over active DOFs
 gs:
  fix_first: true # keep the first endpoint fixed during optimization
  fix_last: true # keep the last endpoint fixed during optimization
@@ -303,6 +303,6 @@ opt:
 - [path-search](path_search.md) — 自動精密化を伴う再帰的MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEI を TS 候補として最適化（内部で虚振動数チェック済み）。続けて IRC で接続性を確認
 - [extract](extract.md) — path-opt入力用のポケットPDBを生成
-- [all](all.md) — end-to-endワークフロー（デフォルトでpath-searchを使用）
+- [all](all.md) — 一気通貫ワークフロー（デフォルトでpath-searchを使用）
 - [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

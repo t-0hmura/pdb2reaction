@@ -8,7 +8,7 @@
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
+- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--no-preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は反応順に並んだ 2 構造以上を入力とし、連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
@@ -109,8 +109,8 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う。`--help-advanced` で表示。 | `False` |
-| `--preopt/--no-preopt` | MEP 探索前に各エンドポイントを事前最適化（推奨） | `True` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う。 | `False` |
+| `--preopt/--no-preopt` | MEP 探索前に各エンドポイントを事前最適化 | `False` |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力がXYZ/GJFの場合のポケット参照 PDB（XYZ 座標は保持） | _None_ |
@@ -181,7 +181,7 @@ calc:
  out_hess_torch: true # request torch-form Hessian
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: false # full Hessian (avoids shape mismatches)
+ return_partial_hessian: true  # partial Hessian over active DOFs
 gs:
  fix_first: true # keep the first endpoint fixed during optimization
  fix_last: true # keep the last endpoint fixed during optimization
@@ -328,6 +328,6 @@ search:
 - [path-opt](path_opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化
 - [extract](extract.md) — path-search入力用のポケットPDBを生成
-- [all](all.md) — 内部でpath-searchを呼び出すend-to-endワークフロー
+- [all](all.md) — 内部でpath-searchを呼び出す一気通貫ワークフロー
 - [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

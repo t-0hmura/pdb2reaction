@@ -53,7 +53,7 @@ def add_scan_common_options(
             type=int,
             default=workers_default,
             show_default=True,
-            help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+            help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
         ),
         click.option(
             "--workers-per-node",
@@ -81,7 +81,7 @@ def add_scan_common_options(
             type=int,
             default=None,
             show_default=False,
-            help="Spin multiplicity (2S+1) for the ML region.",
+            help="Spin multiplicity (2S+1).",
         ),
         click.option(
             "--one-based/--zero-based",
@@ -126,7 +126,7 @@ def add_scan_common_options(
             "freeze_links",
             default=freeze_links_default,
             show_default=True,
-            help="Freeze parent atoms of link hydrogens (PDB only).",
+            help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
         ),
         click.option(
             "--dump/--no-dump",

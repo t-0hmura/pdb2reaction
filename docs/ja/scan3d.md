@@ -224,6 +224,6 @@ out_dir/ (デフォルト:./result_scan3d/)
 - [scan](scan.md) -- 1D 結合距離スキャン
 - [scan2d](scan2d.md) -- 2D 距離グリッドスキャン
 - [opt](opt.md) -- スキャン前後の単一構造最適化
-- [all](all.md) -- end-to-endワークフロー
+- [all](all.md) -- 一気通貫ワークフロー
 - [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド

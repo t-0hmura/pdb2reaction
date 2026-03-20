@@ -1655,7 +1655,6 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Independent hetero–hetero cutoff (Å) for non‑C/H pairs.",
 )
 @click.option(
-    "--include-H2O",
     "--include-h2o",
     "include_h2o",
     type=click.BOOL,
@@ -1672,7 +1671,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Remove backbone atoms on non‑substrate amino acids (with PRO/HYP safeguards).",
 )
 @click.option(
-    "--add-linkH",
+    "--add-linkh",
     "add_linkh",
     type=click.BOOL,
     default=True,
@@ -1712,7 +1711,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (disables analytic Hessian).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
 )
 @click.option(
     "--workers-per-node",
@@ -1743,7 +1742,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=1,
     show_default=True,
-    help="Spin multiplicity (2S+1) for the ML region.",
+    help="Spin multiplicity (2S+1).",
 )
 @click.option(
     "--freeze-links",
@@ -1751,7 +1750,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB only).",
+    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--mep-mode",
@@ -1886,9 +1885,9 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--preopt",
     "preopt",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
-    help="If False, skip initial single-structure optimizations of the pocket inputs.",
+    help="If True, run initial single-structure optimizations of the pocket inputs.",
 )
 @click.option(
     "--hessian-calc-mode",
@@ -2473,9 +2472,9 @@ def cli(
                 output=[str(p) for p in pocket_outputs],
                 radius=float(radius),
                 radius_het2het=float(radius_het2het),
-                include_H2O=bool(include_h2o),
+                include_h2o=bool(include_h2o),
                 exclude_backbone=bool(exclude_backbone),
-                add_linkH=bool(add_linkh),
+                add_linkh=bool(add_linkh),
                 selected_resn=selected_resn or "",
                 ligand_charge=ligand_charge,
                 verbose=bool(verbose),
@@ -3366,6 +3365,12 @@ def cli(
         _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
         if args_yaml is not None:
             scan_args.extend(["--config", str(args_yaml)])
+        if cli_param_overridden(ctx, "backend"):
+            scan_args.extend(["--backend", str(backend)])
+        if cli_param_overridden(ctx, "solvent"):
+            scan_args.extend(["--solvent", str(solvent)])
+        if cli_param_overridden(ctx, "solvent_model"):
+            scan_args.extend(["--solvent-model", str(solvent_model)])
         if scan_stage_literals:
             scan_args.append("--scan-lists")
             scan_args.extend(scan_stage_literals)
@@ -3519,6 +3524,12 @@ def cli(
                 po_args.extend(["--thresh", str(thresh)])
             if args_yaml is not None:
                 po_args.extend(["--config", str(args_yaml)])
+            if cli_param_overridden(ctx, "backend"):
+                po_args.extend(["--backend", str(backend)])
+            if cli_param_overridden(ctx, "solvent"):
+                po_args.extend(["--solvent", str(solvent)])
+            if cli_param_overridden(ctx, "solvent_model"):
+                po_args.extend(["--solvent-model", str(solvent_model)])
 
             _echo()
             _echo(f"[all] Invoking path-opt for segment {idx}:")
@@ -3825,6 +3836,12 @@ def cli(
         _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
         if args_yaml is not None:
             ps_args.extend(["--config", str(args_yaml)])
+        if cli_param_overridden(ctx, "backend"):
+            ps_args.extend(["--backend", str(backend)])
+        if cli_param_overridden(ctx, "solvent"):
+            ps_args.extend(["--solvent", str(solvent)])
+        if cli_param_overridden(ctx, "solvent_model"):
+            ps_args.extend(["--solvent-model", str(solvent_model)])
 
         if gave_ref_pdb:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):

@@ -65,7 +65,7 @@ Options:
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --verbose BOOLEAN               Enable INFO-level logging inside extractor.
                                   [default: True]
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1) for the ML region.
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
                                   [default: 1]
   --freeze-links BOOLEAN          Freeze parent atoms of link hydrogens (PDB
                                   only).  [default: True]
