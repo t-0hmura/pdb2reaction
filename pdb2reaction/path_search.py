@@ -2059,12 +2059,12 @@ def cli(
         click.echo(pretty_block("gs",   echo_gs))
         click.echo(pretty_block("stopt", echo_stopt))
         if mep_mode_kind == "dmf":
-            click.echo(pretty_block("dmf", dmf_cfg))
+            click.echo(pretty_block("dmf", dmf_cfg, defaults=DMF_KW))
         echo_opt = dict(single_opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
         echo_opt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{single_opt_kind}_opt"
         click.echo(pretty_block("opt." + single_opt_kind, echo_opt))
-        click.echo(pretty_block("bond", bond_cfg))
+        click.echo(pretty_block("bond", bond_cfg, defaults=BOND_KW))
         click.echo(pretty_block("search", search_cfg))
         click.echo(
             pretty_block(
