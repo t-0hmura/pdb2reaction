@@ -1677,9 +1677,9 @@ def cli(
                     prepared_input=prepared_input,
                 )
 
-                click.echo("\n====== TS optimization (Hessian Guided Dimer) started ======\n")
+                click.echo("====== TS optimization (Hessian Guided Dimer) started ======\n")
                 runner.run()
-                click.echo("\n====== TS optimization (Hessian Guided Dimer) finished ======\n")
+                click.echo("====== TS optimization (Hessian Guided Dimer) finished ======\n")
 
                 needs_pdb = source_path.suffix.lower() == ".pdb"
                 needs_gjf = prepared_input.is_gjf
@@ -1726,9 +1726,9 @@ def cli(
 
                 optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
 
-                click.echo("\n====== TS optimization (RS-I-RFO) started ======\n")
+                click.echo("====== TS optimization (RS-I-RFO) started ======\n")
                 optimizer.run()
-                click.echo("\n====== TS optimization (RS-I-RFO) finished ======\n")
+                click.echo("====== TS optimization (RS-I-RFO) finished ======\n")
                 last_optimizer = optimizer
 
                 # --- RSIRFO: count imaginary modes and optional flatten loop ---
@@ -1797,9 +1797,9 @@ def cli(
 
                         _attach_rsirfo_calc()
                         optimizer = RSIRFOptimizer(geometry, **rsirfo_kwargs)
-                        click.echo("\n====== TS optimization (RS-I-RFO) restarted ======\n")
+                        click.echo("====== TS optimization (RS-I-RFO) restarted ======\n")
                         optimizer.run()
-                        click.echo("\n====== TS optimization (RS-I-RFO) finished ======\n")
+                        click.echo("====== TS optimization (RS-I-RFO) finished ======\n")
                         last_optimizer = optimizer
                         geometry.set_calculator(None)
 

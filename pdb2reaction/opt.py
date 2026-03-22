@@ -733,16 +733,16 @@ def cli(
 
             main_label = "LBFGS" if main_kind == "lbfgs" else "RFO"
             optimizer = _build_optimizer(main_kind)
-            click.echo(f"\n====== Optimization ({main_label}) started ======\n")
+            click.echo(f"====== Optimization ({main_label}) started ======\n")
             optimizer.run()
-            click.echo(f"\n====== Optimization ({main_label}) finished ======\n")
+            click.echo(f"====== Optimization ({main_label}) finished ======\n")
             last_optimizer = optimizer
 
             # --------------------------
             # 5) Flatten loop (all imaginary modes)
             # --------------------------
             if flatten:
-                click.echo("\n====== Optimization (Flatten loop) started ======\n")
+                click.echo("====== Optimization (Flatten loop) started ======\n")
 
                 geometry.set_calculator(None)
                 uma_kwargs_for_flatten = dict(calc_cfg)
@@ -792,9 +792,9 @@ def cli(
                     _attach_opt_calc()
                     optimizer = _build_optimizer(flatten_kind)
                     restart_label = "LBFGS" if flatten_kind == "lbfgs" else "RFO"
-                    click.echo(f"\n====== Optimization ({restart_label}) restarted ======\n")
+                    click.echo(f"====== Optimization ({restart_label}) restarted ======\n")
                     optimizer.run()
-                    click.echo(f"\n====== Optimization ({restart_label}) finished ======\n")
+                    click.echo(f"====== Optimization ({restart_label}) finished ======\n")
                     last_optimizer = optimizer
 
                     geometry.set_calculator(None)
@@ -811,7 +811,7 @@ def cli(
                     )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                click.echo("\n====== Optimization (Flatten loop) finished ======\n")
+                click.echo("====== Optimization (Flatten loop) finished ======\n")
 
             # --------------------------
             # 6) Post-processing: PDB conversions (if input is PDB)

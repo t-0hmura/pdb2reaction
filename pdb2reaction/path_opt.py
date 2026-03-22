@@ -314,9 +314,9 @@ def _optimize_single(
     else:
         opt = RFOptimizer(g, **args)
 
-    click.echo(f"\n====== [{tag}] Single-structure {opt_kind.upper()} started ======\n")
+    click.echo(f"====== [{tag}] Single-structure {opt_kind.upper()} started ======\n")
     opt.run()
-    click.echo(f"\n====== [{tag}] Single-structure {opt_kind.upper()} finished ======\n")
+    click.echo(f"====== [{tag}] Single-structure {opt_kind.upper()} finished ======\n")
 
     try:
         final_xyz = Path(opt.final_fn)
@@ -881,7 +881,7 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
-            click.echo("\n====== Preoptimizing endpoints via single-structure optimizer started ======\n")
+            click.echo("====== Preoptimizing endpoints via single-structure optimizer started ======\n")
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
                 if p.suffix.lower() == ".pdb":
@@ -1031,9 +1031,9 @@ def cli(
         # --------------------------
         # 4) Run optimization
         # --------------------------
-        click.echo("\n====== Growing String optimization started ======\n")
+        click.echo("====== Growing String optimization started ======\n")
         optimizer.run()
-        click.echo("\n====== Growing String optimization finished ======\n")
+        click.echo("====== Growing String optimization finished ======\n")
 
         # --------------------------
         # 5) Write final path (final_geometries_trj.xyz)

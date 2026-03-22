@@ -87,7 +87,7 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
 
 def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
     """Print a readable end-of-run summary."""
-    click.echo("\n====== Scan summary started ======\n")
+    click.echo("====== Scan summary started ======\n")
     for idx_s, s in enumerate(stages):
         idx = int(s.get("index", 0))
         pairs_1b = list(s.get("pairs_1based", []))
@@ -115,7 +115,7 @@ def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
             click.echo("  (no covalent changes detected)")
         if idx_s != len(stages) - 1:
             click.echo("")  # blank line between stages
-    click.echo("\n====== Scan summary finished ======\n")
+    click.echo("====== Scan summary finished ======\n")
 
 
 def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
@@ -652,7 +652,7 @@ def cli(
                         stage_dir,
                         prefix,
                     )
-                    click.echo(f"[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
+                    click.echo(f"\n[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...")
                     try:
                         optimizer.run()
                     except ZeroStepLength:
@@ -769,7 +769,7 @@ def cli(
             _echo_scan_summary(stages_summary)
             # ------------------------------------------------------------------
 
-            click.echo("\n====== Scan finished ======\n")
+            click.echo("====== Scan finished ======\n")
 
             click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
 
