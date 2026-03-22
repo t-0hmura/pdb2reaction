@@ -1,8 +1,9 @@
-# `pdb2reaction irc`
+# pdb2reaction irc
 
-```text
+```
+pdb2reaction ver. 0.2.1.dev116+gff86b942a
 
-Usage: pdb2reaction irc [OPTIONS]
+Usage: cli irc [OPTIONS]
 
   Run an IRC calculation with EulerPC. Only the documented CLI options are
   accepted; all other settings come from YAML.
@@ -15,11 +16,6 @@ Options:
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
-  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (Hessian computation not supported
-                                  with workers>1).  [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
-                                  predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
@@ -30,40 +26,14 @@ Options:
   --step-size FLOAT               Step length in Bohr (unweighted Cartesian
                                   coordinates); used unless YAML sets
                                   irc.step_length. Default: 0.10 Bohr.
-  --root INTEGER                  Imaginary mode index used for the initial
-                                  displacement; used unless YAML sets irc.root.
-                                  Defaults to 0.
   --forward / --no-forward        Run the forward IRC; used unless YAML sets
                                   irc.forward. Defaults to True.
   --backward / --no-backward      Run the backward IRC; used unless YAML sets
                                   irc.backward. Defaults to True.
-  --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of link hydrogens (PDB
-                                  input or XYZ/GJF with --ref-pdb).  [default:
-                                  freeze-links]
-  --convert-files / --no-convert-files
-                                  Convert XYZ/TRJ outputs into PDB/GJF
-                                  companions based on the input format.
-                                  [default: convert-files]
-  --ref-pdb FILE                  Reference PDB topology to use when the input
-                                  is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Output directory.  [default: ./result_irc/]
-  --hessian-calc-mode [finitedifference|analytical]
-                                  How the ML backend builds the Hessian
-                                  (Analytical or FiniteDifference); used unless
-                                  YAML sets calc.hessian_calc_mode. Defaults to
-                                  'FiniteDifference'.
-  --config FILE                   Base YAML configuration file applied before
-                                  explicit CLI options.
-  --show-config / --no-show-config
-                                  Print resolved configuration and continue
-                                  execution.  [default: no-show-config]
-  --dry-run / --no-dry-run        Validate options and print the execution plan
-                                  without running IRC.  [default: no-dry-run]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
-  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -h, --help                      Show this message and exit.
 ```

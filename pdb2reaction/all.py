@@ -2086,7 +2086,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "scan_preopt_override",
     type=click.BOOL,
     default=None,
-    help="Override scan --preopt flag. When omitted, this follows --preopt (default False).",
+    help="Override scan --preopt flag. Inherits from --preopt when omitted.",
 )
 @click.option(
     "--scan-endopt",
