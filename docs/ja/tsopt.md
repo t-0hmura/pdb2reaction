@@ -28,8 +28,8 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ## 出力の見方
 
 - `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
-- `result_tsopt/vib/final_imag_mode_*_trj.xyz`
-- `result_tsopt/vib/final_imag_mode_*.pdb`（PDB 入力の場合）
+- `result_tsopt/vib/imag_*_trj.xyz`
+- `result_tsopt/vib/imag_*.pdb`（PDB 入力の場合）
 
 ## よくある例
 
@@ -95,7 +95,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚振動数モードが1つになったら最終的な正確ヘシアンで振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみそのrootを使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFOモード**: RS-I-RFOを実行し、任意のヘシアン参照やR+S分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化してRS-I-RFOを再実行し、虚振動数モードが1つになるか上限に達するまで繰り返します。
-- **モード出力と変換**: 検出された虚振動数モードはすべて `vib/final_imag_mode_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` としても出力されます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
+- **モード出力と変換**: 検出された虚振動数モードはすべて `vib/imag_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` としても出力されます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -138,8 +138,8 @@ out_dir/ (デフォルト:./result_tsopt/)
 ├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
 ├─ optimization.pdb # rsirfo モードPDB コンパニオン（変換有効時、--dump）
 ├─ vib/
-│ ├─ final_imag_mode_±XXXX.Xcm-1_trj.xyz
-│ └─ final_imag_mode_±XXXX.Xcm-1.pdb
+│ ├─ imag_±XXXX.Xcm-1_trj.xyz
+│ └─ imag_±XXXX.Xcm-1.pdb
 └─.dimer_mode.dat # dimer モード方向シード
 ```
 

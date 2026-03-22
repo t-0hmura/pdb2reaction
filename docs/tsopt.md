@@ -28,8 +28,8 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ## Output checklist
 
 - `result_tsopt/final_geometry.pdb` (or `final_geometry.xyz`)
-- `result_tsopt/vib/final_imag_mode_*_trj.xyz`
-- `result_tsopt/vib/final_imag_mode_*.pdb` (for PDB inputs)
+- `result_tsopt/vib/imag_*_trj.xyz`
+- `result_tsopt/vib/imag_*.pdb` (for PDB inputs)
 
 ## Common examples
 
@@ -111,7 +111,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
  When `--flatten` is enabled and more than one imaginary mode remains after
  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
  imaginary mode remains or the flatten iteration cap is reached.
-- **Mode export & conversion**: all detected imaginary modes are written to `vib/final_imag_mode_*_trj.xyz`
+- **Mode export & conversion**: all detected imaginary modes are written to `vib/imag_*_trj.xyz`
  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
  trajectory and final geometry are also converted to PDB via the input template when `--dump`;
  Gaussian templates receive a `.gjf` companion for the final geometry only.
@@ -157,8 +157,8 @@ out_dir/ (default:./result_tsopt/)
 ├─ optimization_trj.xyz # RSIRFO-mode trajectory when --dump is True
 ├─ optimization.pdb # RSIRFO-mode PDB companion when conversion is enabled and --dump is True
 ├─ vib/
-│ ├─ final_imag_mode_±XXXX.Xcm-1_trj.xyz
-│ └─ final_imag_mode_±XXXX.Xcm-1.pdb
+│ ├─ imag_±XXXX.Xcm-1_trj.xyz
+│ └─ imag_±XXXX.Xcm-1.pdb
 └─.dimer_mode.dat # Dimer-mode orientation seed
 ```
 

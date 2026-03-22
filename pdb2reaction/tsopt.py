@@ -630,7 +630,7 @@ def _write_all_imaginary_modes(
         freq_name_counts[freq_key] = freq_name_counts.get(freq_key, 0) + 1
         serial = freq_name_counts[freq_key]
         suffix = "" if serial == 1 else f"_{serial:02d}"
-        stem = f"final_imag_mode_{freq:+.2f}cm-1{suffix}"
+        stem = f"imag_{freq:+.2f}cm-1{suffix}"
 
         out_trj = vib_dir / f"{stem}_trj.xyz"
         out_pdb = vib_dir / f"{stem}.pdb"
