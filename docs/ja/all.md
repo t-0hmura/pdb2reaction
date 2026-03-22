@@ -175,7 +175,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `False` |
+| `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `True` |
 | `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
 ### MLIP 計算機オプション
