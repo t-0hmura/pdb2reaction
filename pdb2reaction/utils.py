@@ -98,8 +98,10 @@ _original_click_echo = None
 
 
 def _patch_click_echo() -> None:
-    """Monkey-patch click.echo to shorten absolute paths in output."""
+    """Monkey-patch click.echo and sys.stdout to shorten absolute paths
+    and suppress consecutive blank lines in output."""
     import click as _click
+    import sys as _sys
     global _original_click_echo
     if _original_click_echo is not None:
         return  # already patched
@@ -113,6 +115,38 @@ def _patch_click_echo() -> None:
         _original_click_echo(message, **kwargs)
 
     _click.echo = _patched_echo
+
+    # Wrap sys.stdout to suppress consecutive blank lines and shorten paths
+    _real_stdout = _sys.stdout
+
+    class _FilteredStdout:
+        def __init__(self, stream):
+            self._stream = stream
+            self._last_was_blank = False
+
+        def write(self, s):
+            if _base_dir is not None and isinstance(s, str):
+                bd = str(_base_dir)
+                if bd in s:
+                    s = s.replace(bd + "/", "").replace(bd, ".")
+            # Suppress consecutive blank lines
+            if s == "\n":
+                if self._last_was_blank:
+                    return len(s)
+                self._last_was_blank = True
+            elif s.strip() == "":
+                pass  # whitespace-only, don't reset
+            else:
+                self._last_was_blank = False
+            return self._stream.write(s)
+
+        def flush(self):
+            self._stream.flush()
+
+        def __getattr__(self, name):
+            return getattr(self._stream, name)
+
+    _sys.stdout = _FilteredStdout(_real_stdout)
 
 
 def set_base_dir(path: Path | str | None) -> None:
