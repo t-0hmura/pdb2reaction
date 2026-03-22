@@ -440,7 +440,7 @@ def cli(ctx: click.Context) -> None:
     if not ctx.resilient_parsing:
         from .utils import set_base_dir
         set_base_dir(Path.cwd())
-        click.echo(f"pdb2reaction ver. {__version__}")
+        click.echo(f"pdb2reaction ver. {__version__}\n")
 
 
 # Pysisyphus log suppression is handled by DefaultGroup._silence_pysisyphus_loggers()
