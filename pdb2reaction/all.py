@@ -1885,7 +1885,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--preopt",
     "preopt",
     type=click.BOOL,
-    default=False,
+    default=True,
     show_default=True,
     help="If True, run initial single-structure optimizations of the pocket inputs.",
 )
