@@ -17,8 +17,8 @@ Options:
                                   provides charge metadata or --ligand-charge is
                                   supplied for PDB inputs.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (disables analytic Hessian).
-                                  [default: 1]
+                                  predictor (Hessian computation not supported
+                                  with workers>1).  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
@@ -27,11 +27,13 @@ Options:
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of link hydrogens (PDB
-                                  only).  [default: freeze-links]
-  --max-nodes INTEGER             Number of internal nodes (string has
-                                  max_nodes+2 images including endpoints).
+                                  input or XYZ/GJF with --ref-pdb).  [default:
+                                  freeze-links]
+  --max-nodes INTEGER             Maximum number of internal nodes (string has
+                                  up to max_nodes+2 images including endpoints).
                                   [default: 20]
-  --max-cycles INTEGER            Maximum optimization cycles.  [default: 300]
+  --max-cycles INTEGER            Maximum string optimizer cycles (GSM/DMF path
+                                  optimization).  [default: 300]
   --climb / --no-climb            Search for a transition state (climbing image)
                                   after path growth.  [default: climb]
   --opt-mode [grad|hess]          Single-structure optimizer for endpoint
@@ -63,15 +65,16 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running path optimization.  [default:
                                   no-dry-run]
-  --preopt / --no-preopt          If True, preoptimize each endpoint via the
-                                  selected single-structure optimizer
-                                  (LBFGS/RFO) before alignment and GSM.
-                                  [default: no-preopt]
-  --preopt-max-cycles INTEGER     Maximum cycles for endpoint preoptimization
-                                  (applies to the chosen optimizer; only used
-                                  when --preopt True).  [default: 10000]
-  --fix-ends / --no-fix-ends      Fix structures of input endpoints during GSM.
-                                  [default: no-fix-ends]
+  --preopt / --no-preopt          Preoptimize each endpoint via the selected
+                                  single-structure optimizer (LBFGS/RFO) before
+                                  alignment and path optimization.  [default:
+                                  no-preopt]
+  --preopt-max-cycles INTEGER     Maximum cycles for each endpoint
+                                  preoptimization pass (LBFGS or RFO; only used
+                                  when --preopt is enabled).  [default: 10000]
+  --fix-ends / --no-fix-ends      Fix structures of input endpoints during path
+                                  optimization (GSM/DMF).  [default: no-fix-
+                                  ends]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.

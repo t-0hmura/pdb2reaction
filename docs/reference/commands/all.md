@@ -35,13 +35,12 @@ Options:
                                   [default: 2.6]
   --radius-het2het FLOAT          Independent hetero–hetero cutoff (Å) for
                                   non‑C/H pairs.  [default: 0.0]
-  --include-H2O, --include-h2o BOOLEAN
-                                  Include waters (HOH/WAT/TIP3/SOL) in the
+  --include-h2o BOOLEAN           Include waters (HOH/WAT/TIP3/SOL) in the
                                   pocket.  [default: True]
   --exclude-backbone BOOLEAN      Remove backbone atoms on non‑substrate amino
                                   acids (with PRO/HYP safeguards).  [default:
                                   False]
-  --add-linkH BOOLEAN             Add link hydrogens for severed bonds (carbon-
+  --add-linkh BOOLEAN             Add link hydrogens for severed bonds (carbon-
                                   only) in pockets.  [default: True]
   --selected-resn TEXT            Force-include residues (comma/space separated;
                                   chain/insertion codes allowed).  [default: ""]
@@ -54,8 +53,8 @@ Options:
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (disables analytic Hessian).
-                                  [default: 1]
+                                  predictor (Hessian computation not supported
+                                  with workers>1).  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -b, --backend [uma|orb|mace|aimnet2]
@@ -65,10 +64,10 @@ Options:
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --verbose BOOLEAN               Enable INFO-level logging inside extractor.
                                   [default: True]
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
-                                  [default: 1]
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
   --freeze-links BOOLEAN          Freeze parent atoms of link hydrogens (PDB
-                                  only).  [default: True]
+                                  input or XYZ/GJF with --ref-pdb).  [default:
+                                  True]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --max-nodes INTEGER             Max internal nodes for **segment** GSM (String
@@ -118,7 +117,7 @@ Options:
                                   Completed stages whose output files already
                                   exist are skipped. Useful when a long pipeline
                                   was interrupted.  [default: no-resume]
-  --preopt BOOLEAN                If False, skip initial single-structure
+  --preopt BOOLEAN                If True, run initial single-structure
                                   optimizations of the pocket inputs.  [default:
                                   True]
   --hessian-calc-mode [finitedifference|analytical]

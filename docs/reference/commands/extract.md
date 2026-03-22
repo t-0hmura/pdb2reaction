@@ -25,17 +25,17 @@ Options:
                                   inputs -> pocket_{filename}.pdb.
   -r, --radius FLOAT              Cutoff (angstrom) around substrate atoms for
                                   pocket inclusion.  [default: 2.6]
-  --radius-het2het FLOAT          Cutoff (angstrom) for substrate-protein
-                                  hetero-atom proximity (non-C/H). 0 disables.
-                                  [default: 0]
-  --include-H2O / --no-include-H2O
+  --radius-het2het FLOAT          Cutoff (angstrom) for substrate hetero-atom
+                                  (non-C/H) to neighbor hetero-atom proximity. 0
+                                  disables.  [default: 0]
+  --include-h2o / --no-include-h2o
                                   Include waters (HOH/WAT/TIP3/SOL).  [default:
-                                  include-H2O]
+                                  include-h2o]
   --exclude-backbone / --no-exclude-backbone
                                   Delete main-chain atoms from non-substrate
                                   amino acids.  [default: no-exclude-backbone]
-  --add-linkH / --no-add-linkH    Add carbon-only link-H at 1.09 angstrom along
-                                  cut-bond directions.  [default: add-linkH]
+  --add-linkh / --no-add-linkh    Add carbon-only link-H at 1.09 angstrom along
+                                  cut-bond directions.  [default: add-linkh]
   --selected-resn TEXT            Comma/space-separated residue IDs to force-
                                   include.
   -l, --ligand-charge TEXT        Total charge number or per-resname mapping

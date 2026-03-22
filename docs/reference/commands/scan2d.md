@@ -17,8 +17,8 @@ Options:
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (disables analytic Hessian).
-                                  [default: 1]
+                                  predictor (Hessian computation not supported
+                                  with workers>1).  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
@@ -39,7 +39,8 @@ Options:
                                   [default: grad]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of link hydrogens (PDB
-                                  only).  [default: freeze-links]
+                                  input or XYZ/GJF with --ref-pdb).  [default:
+                                  freeze-links]
   --dump / --no-dump              Write inner scan trajectories per d1-step as
                                   TRJ under result_scan2d/grid/.  [default: no-
                                   dump]

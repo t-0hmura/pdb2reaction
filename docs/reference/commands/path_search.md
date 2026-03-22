@@ -22,19 +22,19 @@ Options:
                                   unless --ligand-charge derives it from PDB
                                   inputs.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (disables analytic Hessian).
-                                  [default: 1]
+                                  predictor (Hessian computation not supported
+                                  with workers>1).  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (PDB inputs only).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1)
-                                  (defaults from a .gjf template when available,
-                                  otherwise 1).
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1; defaults from a .gjf
+                                  template when available, otherwise 1).
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of link hydrogens (PDB
-                                  only).  [default: freeze-links]
+                                  input or XYZ/GJF with --ref-pdb).  [default:
+                                  freeze-links]
   --max-nodes INTEGER             Number of internal nodes (string has
                                   max_nodes+2 images including endpoints). Used
                                   for *segment* GSM unless overridden by YAML
@@ -70,8 +70,8 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running path search.  [default: no-
                                   dry-run]
-  --preopt / --no-preopt          If False, skip initial single-structure
-                                  optimizations of inputs.  [default: preopt]
+  --preopt / --no-preopt          If True, run initial single-structure
+                                  optimizations of inputs.  [default: no-preopt]
   --align / --no-align            After preoptimization, align all inputs to the
                                   *first* input and match freeze_atoms using the
                                   align_freeze_atoms API. When --align is True
