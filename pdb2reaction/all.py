@@ -185,7 +185,7 @@ def _run_cli_main(
     label = prefix or cmd_name
     try:
         sys.argv = ["pdb2reaction", cmd_name] + list(args)
-        _echo("\n")
+        _echo("")
         cli_obj.main(args=list(args), standalone_mode=False)
     except SystemExit as e:
         code = getattr(e, "code", 1)
@@ -204,7 +204,7 @@ def _run_cli_main(
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        _echo("\n")
+        _echo("")
 
 
 class CliArgBuilder:
@@ -3376,8 +3376,7 @@ def cli(
             scan_args.extend(scan_stage_literals)
 
         _echo()
-        _echo("[all] Invoking scan with arguments:")
-        _echo("  " + " ".join(scan_args))
+        _echo("[all] pdb2reaction scan " + " ".join(scan_args))
 
         _run_cli_main("scan", _scan_cli.cli, scan_args, on_nonzero="raise", prefix="all")
 
@@ -3532,8 +3531,7 @@ def cli(
                 po_args.extend(["--solvent-model", str(solvent_model)])
 
             _echo()
-            _echo(f"[all] Invoking path-opt for segment {idx}:")
-            _echo("  " + " ".join(po_args))
+            _echo("[all] pdb2reaction path-opt " + " ".join(po_args))
 
             _run_cli_main(
                 "path-opt",
@@ -3857,8 +3855,7 @@ def cli(
                 ps_args.extend(["--ref-pdb", str(ref_pdb_for_topology)])
 
         _echo()
-        _echo("[all] Invoking path_search with arguments:")
-        _echo("  " + " ".join(ps_args))
+        _echo("[all] pdb2reaction path-search " + " ".join(ps_args))
 
         _run_cli_main(
             "path_search",

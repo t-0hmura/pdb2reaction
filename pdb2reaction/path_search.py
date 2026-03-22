@@ -39,6 +39,7 @@ from Bio.PDB import PDBParser, PDBIO
 
 from .backends import create_calculator
 from .defaults import (
+    CALC_KW_DEFAULT,
     GEOM_KW_DEFAULT,
     UMA_CALC_KW,
     OPT_BASE_KW,
@@ -2054,7 +2055,7 @@ def cli(
         echo_stopt["out_dir"] = str(out_dir_path)
 
         click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc))
+        click.echo(pretty_block("calc", echo_calc, defaults=CALC_KW_DEFAULT))
         click.echo(pretty_block("gs",   echo_gs))
         click.echo(pretty_block("stopt", echo_stopt))
         if mep_mode_kind == "dmf":

@@ -28,6 +28,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
 from .defaults import (
+    CALC_KW_DEFAULT,
     GEOM_KW_DEFAULT,
     OPT_BASE_KW,
     LBFGS_KW,
@@ -332,7 +333,7 @@ def cli(
             echo_bias = dict(bias_cfg)
             echo_bond = dict(bond_cfg)
             click.echo(pretty_block("geom", echo_geom))
-            click.echo(pretty_block("calc", echo_calc))
+            click.echo(pretty_block("calc", echo_calc, defaults=CALC_KW_DEFAULT))
             click.echo(pretty_block("opt",  echo_opt))
             max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
             echo_sopt = build_sopt_kwargs(

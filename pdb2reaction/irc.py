@@ -27,7 +27,7 @@ import torch
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.backends import create_calculator
-from pdb2reaction.defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC
+from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC
 from pdb2reaction.utils import (
     apply_yaml_overrides,
     pretty_block,
@@ -382,7 +382,7 @@ def cli(
 
             # Pretty-print configuration (expand freeze_atoms for readability)
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-            click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
+            click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg), defaults=CALC_KW_DEFAULT))
             click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
             # --------------------------

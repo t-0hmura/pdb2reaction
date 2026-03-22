@@ -434,9 +434,13 @@ _DEFAULT_GROUP_KWARGS = {
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.version_option(version=__version__, prog_name="pdb2reaction")
+@click.option("--verbose/--no-verbose", "verbose_config", default=False,
+              help="Show full config dump (default: only non-default values).")
 @click.pass_context
-def cli(ctx: click.Context) -> None:
+def cli(ctx: click.Context, verbose_config: bool) -> None:
     if not ctx.resilient_parsing:
+        from .utils import set_verbose_config
+        set_verbose_config(verbose_config)
         click.echo(f"pdb2reaction ver. {__version__}\n")
 
 

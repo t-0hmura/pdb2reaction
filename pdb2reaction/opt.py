@@ -30,6 +30,7 @@ from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 
 from .defaults import (
     BIAS_KW,
+    CALC_KW_DEFAULT,
     GEOM_KW_DEFAULT,
     OPT_BASE_KW,
     LBFGS_KW,
@@ -594,7 +595,7 @@ def cli(
             # Pretty-print the resolved configuration
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-            click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
+            click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg), defaults=CALC_KW_DEFAULT))
             click.echo(pretty_block("opt", {**opt_cfg, "out_dir": str(out_dir_path)}))
             echo_sopt = dict(lbfgs_cfg if kind == "lbfgs" else rfo_cfg)
             echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)

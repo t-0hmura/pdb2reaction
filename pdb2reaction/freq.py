@@ -32,7 +32,7 @@ from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
 from .backends import create_calculator
-from .defaults import GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW
+from .defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW
 from .utils import (
     apply_yaml_overrides,
     convert_xyz_like_outputs,
@@ -762,7 +762,7 @@ def cli(
 
     # Pretty-print config summary
     click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
+    click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg), defaults=CALC_KW_DEFAULT))
     click.echo(pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
     thermo_block = {
         "temperature": thermo_cfg["temperature"],
