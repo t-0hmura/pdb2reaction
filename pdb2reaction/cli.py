@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from pathlib import Path
 
 import click
 
@@ -439,8 +440,9 @@ _DEFAULT_GROUP_KWARGS = {
 @click.pass_context
 def cli(ctx: click.Context, verbose_config: bool) -> None:
     if not ctx.resilient_parsing:
-        from .utils import set_verbose_config
+        from .utils import set_verbose_config, set_base_dir
         set_verbose_config(verbose_config)
+        set_base_dir(Path.cwd())
         click.echo(f"pdb2reaction ver. {__version__}\n")
 
 
