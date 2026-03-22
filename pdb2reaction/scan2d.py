@@ -173,7 +173,7 @@ def _build_scan_context(
     echo_opt["out_dir"] = str(out_dir_path)
     echo_bias = dict(bias_cfg)
     click.echo(pretty_block("geom", echo_geom))
-    click.echo(pretty_block("calc", echo_calc, defaults=CALC_KW_DEFAULT))
+    click.echo(pretty_block("calc", echo_calc))
     click.echo(pretty_block("opt", echo_opt))
     max_step_bohr_for_log = float(max_step_size) * ANG2BOHR
     echo_sopt = build_sopt_kwargs(

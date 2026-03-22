@@ -786,11 +786,11 @@ def cli(
         echo_stopt["out_dir"] = str(out_dir_path)
 
         click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc, defaults=CALC_KW_DEFAULT))
+        click.echo(pretty_block("calc", echo_calc))
         click.echo(pretty_block("gs", echo_gs))
         click.echo(pretty_block("stopt", echo_stopt))
         if mep_mode_kind == "dmf":
-            click.echo(pretty_block("dmf", dmf_cfg, defaults=DMF_KW))
+            click.echo(pretty_block("dmf", dmf_cfg))
         echo_opt = dict(single_opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
         echo_opt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{single_opt_kind}_opt"

@@ -762,7 +762,7 @@ def cli(
 
     # Pretty-print config summary
     click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
-    click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg), defaults=CALC_KW_DEFAULT))
+    click.echo(pretty_block("calc", format_geom_for_echo(calc_cfg)))
     click.echo(pretty_block("freq", {**freq_cfg, "out_dir": str(out_dir_path)}))
     thermo_block = {
         "temperature": thermo_cfg["temperature"],
