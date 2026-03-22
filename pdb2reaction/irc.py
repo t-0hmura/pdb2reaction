@@ -271,6 +271,7 @@ def cli(
     ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
+        calc = eulerpc = geometry = None
         try:
             time_start = time.perf_counter()
 

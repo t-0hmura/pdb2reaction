@@ -411,8 +411,11 @@ HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
 # RS-I-RFO defaults for TS optimization (heavy mode)
 # -----------------------------------------------
 
+# Keys from RFO_KW that are RFOptimizer-specific (not used by TSHessianOptimizer)
+_RFO_ONLY_KEYS = {"gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func", "rfo_overlaps"}
+
 RSIRFO_KW: Dict[str, Any] = {
-    **RFO_KW,
+    **{k: v for k, v in RFO_KW.items() if k not in _RFO_ONLY_KEYS},
     "thresh": "baker",
     "trust_max": 0.30,
     "roots": [0],
