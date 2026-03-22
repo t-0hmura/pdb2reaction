@@ -155,7 +155,7 @@ glossary
 - **RAM**: 16 GB以上推奨
 
 ### ソフトウェア
-- Python 3.11
+- Python >= 3.11
 - CUDA サポート付き PyTorch
 - CUDA 12.x ツールキット
 

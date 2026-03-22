@@ -241,7 +241,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
 | `--scan-preopt/--no-scan-preopt` | scan事前最適化 | `False` |
-| `--scan-endopt/--no-scan-endopt` | scanステージ終端最適化 | `True` |
+| `--scan-endopt/--no-scan-endopt` | scanステージ終端最適化 | `False` |
 
 ## 出力
 ```text
