@@ -255,7 +255,9 @@ python -m pdb2reaction --help
 
 ## Citation
 
-A preprint describing `pdb2reaction` is in preparation. Please check back for citation details once it is available.
+A preprint describing `pdb2reaction` is in preparation. Currently, please cite the software itself:
+
+> Ohmura, T. (2026). pdb2reaction (v0.3.2). Zenodo. [doi:10.5281/zenodo.19197878](https://doi.org/10.5281/zenodo.19197878)
 
 ---
 <!-- 

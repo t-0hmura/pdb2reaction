@@ -11,3 +11,4 @@ license: GPL-3.0
 repository-code: "https://github.com/t-0hmura/pdb2reaction"
 version: "0.3.2"
 date-released: "2026-03-24"
+doi: "10.5281/zenodo.19197878"
