@@ -208,7 +208,7 @@ lbfgs:
  max_step: 0.3 # maximum step length
  out_dir: ./result_scan2d/ # LBFGS-specific output directory
 rfo:
- trust_radius: 0.30 # trust-region radius
+ trust_radius: 0.10 # trust-region radius
  out_dir: ./result_scan2d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
