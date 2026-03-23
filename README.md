@@ -257,7 +257,18 @@ python -m pdb2reaction --help
 
 A preprint describing `pdb2reaction` is in preparation. Currently, please cite the software itself:
 
-> Ohmura, T. (2026). pdb2reaction (v0.3.2). Zenodo. [doi:10.5281/zenodo.19197878](https://doi.org/10.5281/zenodo.19197878)
+```bibtex
+@software{ohmura2026pdb2reaction,
+  author       = {Ohmura, Takuto},
+  title        = {pdb2reaction},
+  year         = {2026},
+  month        = {3},
+  version      = {0.3.2},
+  url          = {https://github.com/t-0hmura/pdb2reaction},
+  license      = {GPL-3.0},
+  doi          = {10.5281/zenodo.19197878}
+}
+```
 
 ---
 <!-- 
