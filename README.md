@@ -255,7 +255,7 @@ python -m pdb2reaction --help
 
 ## Citation
 
-A preprint describing `pdb2reaction` is in preparation. Currently, please cite the software itself:
+A preprint describing `pdb2reaction` is in preparation. Currently, if you find this work helpful for your research, please cite the software itself:
 
 ```bibtex
 @software{ohmura2026pdb2reaction,
@@ -281,4 +281,5 @@ A preprint describing `pdb2reaction` is in preparation. Currently, please cite t
 
 ## License
 
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.
+`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.  
+*This software is still under development. Please use it at your own risk.*
