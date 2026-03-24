@@ -282,4 +282,5 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 ## License
 
 `pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.  
-*This software is still under development. Please use it at your own risk.*
+
+***This software is still under development. Please use it at your own risk.***  
