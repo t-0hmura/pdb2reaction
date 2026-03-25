@@ -70,7 +70,7 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 ### Hessian evaluation
 
 `hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is automatically disabled when multiple inference workers are requested.
-- **Freeze atoms** – provide 0-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. The Hessian matrix either drops frozen degrees of freedom (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
+- **Freeze atoms** – provide 1-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. The Hessian matrix either drops frozen degrees of freedom (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian matrix in the model's native dtype (typically float32).
 - **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput. **Warning:** when `workers>1`, analytical Hessians are silently switched to finite differences (`force_fd=True`) even if `hessian_calc_mode="Analytical"` is set. No warning is printed — check your logs if Hessian timings are unexpectedly long.
 
@@ -222,7 +222,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
-| `freeze_atoms` | List of 0-based atom indices to freeze. | _None_ |
+| `freeze_atoms` | List of 1-based atom indices to freeze. | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |
 | `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `True` |
 | `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |

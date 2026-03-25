@@ -8,7 +8,7 @@
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
-- `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（0始まり）。
+- `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（1始まり）。
 - 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDBを参照して書き出します。
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
 
@@ -123,7 +123,7 @@ out_dir/
 
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
-- `freeze_atoms`（`[]`）: 0 始まりの凍結原子インデックス。CLI のリンク検出結果と自動的にマージされます
+- `freeze_atoms`（`[]`）: 1 始まりの凍結原子インデックス。CLI のリンク検出結果と自動的にマージされます
 
 ### `calc`
 - MLIP バックエンド設定（`model`、`task_name`、デバイス選択、近傍半径、ヘシアン形式など）
@@ -145,7 +145,7 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
+ freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1

@@ -444,6 +444,35 @@ def merge_freeze_atom_groups(*groups: Sequence[int]) -> List[int]:
     return sorted(merged)
 
 
+def yaml_freeze_to_internal(indices: List[int]) -> List[int]:
+    """Convert 1-based YAML freeze_atoms to 0-based internal indices."""
+    return sorted(i - 1 for i in indices if i > 0)
+
+
+def _parse_freeze_atoms(arg: Optional[str]) -> List[int]:
+    """Parse comma-separated 1-based indices (e.g., "1,3,5") into 0-based ints."""
+    if arg is None:
+        return []
+
+    items = [chunk.strip() for chunk in str(arg).split(",")]
+    indices: List[int] = []
+    for idx, chunk in enumerate(items, start=1):
+        if not chunk:
+            continue
+        try:
+            value = int(chunk)
+        except ValueError as exc:
+            raise click.BadParameter(
+                f"Invalid integer in --freeze-atoms entry #{idx}: '{chunk}'"
+            ) from exc
+        if value <= 0:
+            raise click.BadParameter(
+                f"--freeze-atoms expects 1-based positive indices; got {value}"
+            )
+        indices.append(value - 1)
+    return sorted(set(indices))
+
+
 def build_sopt_kwargs(
     kind: str,
     lbfgs_cfg: Dict[str, Any],
@@ -2351,7 +2380,7 @@ def merge_detected_freeze_links(
     detected = detect_freeze_links_logged(pdb_path)
     merged = merge_freeze_atom_indices(geom_cfg, detected)
     if merged:
-        click.echo(f"{prefix} Freeze atoms (0-based): {','.join(map(str, merged))}")
+        click.echo(f"{prefix} Freeze atoms (1-based): {','.join(str(i+1) for i in merged)}")
     return merged
 
 

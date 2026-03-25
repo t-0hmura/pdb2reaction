@@ -83,7 +83,7 @@ When pdb2reaction extracts a pocket from a larger structure, severed bonds are c
 - **Hessian**: frozen degrees of freedom are either removed (`return_partial_hessian: true`) or zeroed in the full matrix.
 - **Vibrational analysis**: when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA), diagonalizing only the active block of the Hessian.
 
-Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (0-based indices). CLI-detected link atoms are merged with YAML-specified atoms.
+Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (1-based indices). CLI-detected link atoms are merged with YAML-specified atoms.
 
 ## Three common workflow modes
 

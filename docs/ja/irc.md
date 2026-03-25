@@ -133,7 +133,7 @@ out_dir/ (デフォルト:./result_irc/)
 ```yaml
 geom:
  coord_type: cart # irc では cart に強制（YAML値は無視）
- freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
+ freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1

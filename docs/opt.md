@@ -9,7 +9,7 @@
 The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
-- With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (0-based indices).
+- With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (1-based indices).
 - Output conversion produces `final_geometry.pdb` (and `optimization.pdb` when dumping trajectories) using the input PDB as the topology reference.
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates,
 enabling format-aware PDB/GJF output conversion.
@@ -126,7 +126,7 @@ See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration
 
 ### `geom`
 - `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.
-- `freeze_atoms` (`[]`): Base 0-based frozen indices; automatically merged with CLI link detection.
+- `freeze_atoms` (`[]`): 1-based frozen indices; automatically merged with CLI link detection.
 
 ### `calc`
 - MLIP backend configuration (`model`, `task_name`, device selection, neighbor radii, Hessian format, etc.).
@@ -148,7 +148,7 @@ Extends `opt` with RFOptimizer fields: trust-region sizing (`trust_radius`, `tru
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
+ freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1

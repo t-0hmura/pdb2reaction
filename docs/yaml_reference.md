@@ -35,7 +35,7 @@ Geometry loading and coordinate handling.
 ```yaml
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
- freeze_atoms: [] # 0-based indices of atoms to freeze; merged with CLI --freeze-links detection
+ freeze_atoms: [] # 1-based indices of atoms to freeze; merged with CLI --freeze-links detection
 ```
 
 **Notes:**

@@ -155,7 +155,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 0-based frozen atoms merged with CLI/link detection
+ freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1

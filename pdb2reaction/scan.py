@@ -538,7 +538,8 @@ def cli(
 
                 stage_dir = _ensure_stage_dir(out_dir_path, k)
                 click.echo(f"[stage] Stage {k}/{K}")
-                click.echo(f"Targets (i,j,target Å): {tuples}")
+                tuples_1b = [(i+1, j+1, t) for (i, j, t) in tuples]
+                click.echo(f"Targets (i,j,target Å, 1-based): {tuples_1b}")
 
                 # Snapshot beginning geometry of this stage for bond-change comparison
                 start_geom_for_stage = _snapshot_geometry(geom)

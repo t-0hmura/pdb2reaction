@@ -84,7 +84,7 @@ pdb2reaction がポケットを抽出する際、切断された結合は**リ�
 - **ヘシアン**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
 - **振動解析**: 凍結原子がある場合、`freq` は自動的に部分ヘシアン振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
 
-凍結原子は `geom.freeze_atoms` YAML キー（0 始まりインデックス）で手動設定も可能です。CLI で検出されたリンク原子は YAML 指定の原子とマージされます。
+凍結原子は `geom.freeze_atoms` YAML キー（1 始まりインデックス）で手動設定も可能です。CLI で検出されたリンク原子は YAML 指定の原子とマージされます。
 
 ## 代表的な3つの使い方
 
