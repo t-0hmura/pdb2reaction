@@ -65,6 +65,9 @@ from .utils import (
     write_xyz_trj_with_energy,
     normalize_choice,
     cli_param_overridden,
+    yaml_freeze_to_internal,
+    _parse_freeze_atoms,
+    merge_freeze_atom_indices,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
 from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
@@ -446,6 +449,14 @@ def _optimize_single(
     help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
+    "--freeze-atoms",
+    "freeze_atoms_text",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
+)
+@click.option(
     "--max-nodes",
     type=int,
     default=20,
@@ -578,6 +589,7 @@ def cli(
     workers_per_node: int,
     spin: Optional[int],
     freeze_links_flag: bool,
+    freeze_atoms_text: Optional[str],
     max_nodes: int,
     max_cycles: int,
     climb: bool,
@@ -751,6 +763,18 @@ def cli(
             ],
         )
         _apply_single_opt_yaml_layer(override_layer_cfg)
+
+        # Convert 1-based YAML freeze_atoms to 0-based internal
+        if geom_cfg.get("freeze_atoms"):
+            geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
+        # Merge CLI --freeze-atoms (already 0-based)
+        try:
+            freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+        except click.BadParameter as e:
+            click.echo(f"ERROR: {e}", err=True)
+            sys.exit(1)
+        if freeze_atoms_cli:
+            merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
 
         # Use external Kabsch alignment; keep internal align disabled.
         stopt_cfg["align"] = False

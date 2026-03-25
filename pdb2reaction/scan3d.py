@@ -66,6 +66,9 @@ from .utils import (
     distance_A_from_coords,
     distance_tag,
     set_freeze_atoms_or_warn,
+    yaml_freeze_to_internal,
+    _parse_freeze_atoms,
+    merge_freeze_atom_indices,
 )
 from .scan_common import (
     add_scan_common_options,
@@ -153,6 +156,7 @@ def cli(
     relax_max_cycles: int,
     opt_mode: str,
     freeze_links: bool,
+    freeze_atoms_text: Optional[str],
     dump: bool,
     convert_files: bool,
     ref_pdb: Optional[Path],
@@ -230,6 +234,17 @@ def cli(
             freeze_links=freeze_links,
             set_charge_spin=(csv_path is None),
         )
+
+        # Merge CLI --freeze-atoms (already 0-based)
+        try:
+            freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+        except click.BadParameter as e:
+            click.echo(f"ERROR: {e}", err=True)
+            sys.exit(1)
+        if freeze_atoms_cli:
+            merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
+            freeze = list(geom_cfg.get("freeze_atoms", []))
+            calc_cfg["freeze_atoms"] = freeze
 
         if cli_param_overridden(ctx, "backend"):
             calc_cfg["backend"] = backend

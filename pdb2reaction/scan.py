@@ -64,6 +64,9 @@ from .utils import (
     make_snapshot_geometry,
     resolve_freeze_atoms,
     xyz_string_with_energy,
+    yaml_freeze_to_internal,
+    _parse_freeze_atoms,
+    merge_freeze_atom_indices,
 )
 from .cli_utils import run_cli
 from .bond_changes import has_bond_change
@@ -227,6 +230,7 @@ def cli(
     relax_max_cycles: int,
     opt_mode: str,
     freeze_links: bool,
+    freeze_atoms_text: Optional[str],
     dump: bool,
     convert_files: bool,
     ref_pdb: Optional[Path],
@@ -317,6 +321,17 @@ def cli(
                 allowed_hint="grad|hess",
             )
 
+            # Convert 1-based YAML freeze_atoms to 0-based internal
+            if geom_cfg.get("freeze_atoms"):
+                geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
+            # Merge CLI --freeze-atoms (already 0-based)
+            try:
+                freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+            except click.BadParameter as e:
+                click.echo(f"ERROR: {e}", err=True)
+                sys.exit(1)
+            if freeze_atoms_cli:
+                merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
             # Resolve freeze list before logging so printed config matches runtime.
             freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))

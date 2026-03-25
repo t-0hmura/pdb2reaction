@@ -56,6 +56,9 @@ from .utils import (
     parse_dist_freeze_list,
     parse_dist_freeze_spec,
     load_pdb_atom_metadata,
+    yaml_freeze_to_internal,
+    _parse_freeze_atoms,
+    merge_freeze_atom_indices,
 )
 from .cli_utils import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 from .freq import (
@@ -379,6 +382,14 @@ def _flatten_all_imag_modes_for_geom(
     help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
+    "--freeze-atoms",
+    "freeze_atoms_text",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
+)
+@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
@@ -475,6 +486,7 @@ def cli(
     one_based: bool,
     bias_k: float,
     freeze_links: bool,
+    freeze_atoms_text: Optional[str],
     convert_files: bool,
     ref_pdb: Optional[Path],
     max_cycles: int,
@@ -577,6 +589,17 @@ def cli(
                 ],
             )
 
+            # Convert 1-based YAML freeze_atoms to 0-based internal
+            if geom_cfg.get("freeze_atoms"):
+                geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
+            # Merge CLI --freeze-atoms (already 0-based)
+            try:
+                freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+            except click.BadParameter as e:
+                click.echo(f"ERROR: {e}", err=True)
+                sys.exit(1)
+            if freeze_atoms_cli:
+                merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
             # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
             resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))

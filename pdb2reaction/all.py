@@ -60,6 +60,7 @@ from .utils import (
     merge_freeze_atom_groups,
     prepare_input_structure,
     normalize_freeze_atoms,
+    yaml_freeze_to_internal,
     set_convert_file_enabled,
     resolve_charge_spin,
     load_yaml_dict,
@@ -601,7 +602,8 @@ def _set_yaml_freeze_atoms(yaml_cfg: Optional[Dict[str, Any]]) -> None:
     if not isinstance(geom_cfg, dict):
         _FREEZE_ATOMS_YAML = []
         return
-    _FREEZE_ATOMS_YAML = normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
+    raw = normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
+    _FREEZE_ATOMS_YAML = yaml_freeze_to_internal(raw)
 
 
 def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List[int]:

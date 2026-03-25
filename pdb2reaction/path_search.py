@@ -79,6 +79,9 @@ from .utils import (
     load_prepared_geometries,
     normalize_choice,
     cli_param_overridden,
+    yaml_freeze_to_internal,
+    _parse_freeze_atoms,
+    merge_freeze_atom_indices,
 )
 from .summary_log import write_summary_log
 from .trj2fig import run_trj2fig
@@ -1332,7 +1335,7 @@ def _merge_pair_to_full(pair_images: List[Any],
             for jj, pidx in enumerate(idx_sel):
                 full_i = match_tpl_idx[pidx]
                 if 0 <= full_i < Nfull:
-                    C[full_i] = Paligned[pidx]
+                    C[full_i] = Paligned[jj]
         else:
             P = np.array(pair_images[k].coords3d, dtype=float) * BOHR2ANG
             for j, full_i in enumerate(match_tpl_idx):
@@ -1632,6 +1635,14 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=True,
     help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
+@click.option(
+    "--freeze-atoms",
+    "freeze_atoms_text",
+    type=str,
+    default=None,
+    show_default=False,
+    help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
+)
 @click.option("--max-nodes", type=int, default=20, show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
@@ -1760,6 +1771,7 @@ def cli(
     workers_per_node: int,
     spin: Optional[int],
     freeze_links_flag: bool,
+    freeze_atoms_text: Optional[str],
     max_nodes: int,
     max_cycles: int,
     climb: bool,
@@ -2021,6 +2033,18 @@ def cli(
             ],
         )
         _apply_single_opt_yaml_layer(override_layer_cfg)
+
+        # Convert 1-based YAML freeze_atoms to 0-based internal
+        if geom_cfg.get("freeze_atoms"):
+            geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
+        # Merge CLI --freeze-atoms (already 0-based)
+        try:
+            freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+        except click.BadParameter as e:
+            click.echo(f"ERROR: {e}", err=True)
+            sys.exit(1)
+        if freeze_atoms_cli:
+            merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
 
         refine_mode_kind = search_cfg.get("refine_mode")
         if refine_mode_kind is None:

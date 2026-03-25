@@ -75,6 +75,9 @@ from .utils import (
     distance_A_from_coords,
     distance_tag,
     set_freeze_atoms_or_warn,
+    yaml_freeze_to_internal,
+    _parse_freeze_atoms,
+    merge_freeze_atom_indices,
 )
 from .scan_common import (
     add_scan_common_options,
@@ -157,6 +160,9 @@ def _build_scan_context(
         allowed_hint="grad|hess",
     )
 
+    # Convert 1-based YAML freeze_atoms to 0-based internal
+    if geom_cfg.get("freeze_atoms"):
+        geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
     freeze: List[int] = []
     if source_path is not None:
         freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
@@ -255,6 +261,7 @@ def cli(
     relax_max_cycles: int,
     opt_mode: str,
     freeze_links: bool,
+    freeze_atoms_text: Optional[str],
     dump: bool,
     convert_files: bool,
     ref_pdb: Optional[Path],
@@ -336,6 +343,17 @@ def cli(
                 source_path=source_path,
                 freeze_links=freeze_links,
             )
+
+            # Merge CLI --freeze-atoms (already 0-based)
+            try:
+                freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+            except click.BadParameter as e:
+                click.echo(f"ERROR: {e}", err=True)
+                sys.exit(1)
+            if freeze_atoms_cli:
+                merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
+                freeze = list(geom_cfg.get("freeze_atoms", []))
+                calc_cfg["freeze_atoms"] = freeze
 
             if cli_param_overridden(ctx, "backend"):
                 calc_cfg["backend"] = backend

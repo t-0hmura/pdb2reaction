@@ -129,6 +129,14 @@ def add_scan_common_options(
             help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
         ),
         click.option(
+            "--freeze-atoms",
+            "freeze_atoms_text",
+            type=str,
+            default=None,
+            show_default=False,
+            help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
+        ),
+        click.option(
             "--dump/--no-dump",
             "dump",
             default=dump_default,
