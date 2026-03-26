@@ -643,8 +643,12 @@ def _write_args_yaml_with_freeze_atoms(
     freeze_atoms: Sequence[int],
 ) -> Optional[Path]:
     """
-    Merge ``freeze_atoms`` into a YAML config under ``geom`` and write a temporary YAML file.
+    Write ``freeze_atoms`` into a YAML config under ``geom`` and produce a temporary YAML file.
     Returns the new YAML path, or the original ``args_yaml`` when no freeze atoms are provided.
+
+    ``freeze_atoms`` are 0-based internal indices. They are converted to 1-based
+    before writing so that downstream consumers (path_search, etc.) can apply
+    ``yaml_freeze_to_internal()`` consistently.
     """
     if not freeze_atoms:
         return args_yaml
@@ -658,7 +662,10 @@ def _write_args_yaml_with_freeze_atoms(
         geom_cfg = {}
     geom_cfg = dict(geom_cfg)
 
-    merge_freeze_atom_indices(geom_cfg, freeze_atoms)
+    # Overwrite (not merge) freeze_atoms: the caller already merged YAML +
+    # freeze-links atoms into a single 0-based list.  Convert to 1-based for
+    # the YAML file so that yaml_freeze_to_internal() in the consumer works.
+    geom_cfg["freeze_atoms"] = sorted(int(i) + 1 for i in freeze_atoms)
     cfg["geom"] = geom_cfg
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="tmp_path_search_"))
@@ -3345,7 +3352,7 @@ def cli(
             str(int(spin)),
             "--out-dir",
             str(scan_dir),
-            "--freeze-links" if freeze_links_flag else "--no-freeze-links",
+            "--freeze-links" if (freeze_links_flag and freeze_ref is not None) else "--no-freeze-links",
             "--convert-files" if convert_files else "--no-convert-files",
             "--preopt" if scan_preopt_use else "--no-preopt",
             "--endopt" if scan_endopt_use else "--no-endopt",
@@ -3503,7 +3510,7 @@ def cli(
                 "--out-dir",
                 str(seg_dir),
             ]
-            _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag))
+            _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
             _append_toggle_arg(po_args, "--climb", bool(climb))
             _append_toggle_arg(po_args, "--dump", bool(dump))
             _append_toggle_arg(po_args, "--convert-files", bool(convert_files))
@@ -3822,7 +3829,10 @@ def cli(
         ps_args.extend(["-q", str(q_int)])
         ps_args.extend(["-m", str(int(spin))])
 
-        _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag))
+        # Only pass --freeze-links when a PDB reference was available for
+        # link-parent detection.  For pure XYZ inputs without --ref-pdb,
+        # freeze_ref is None and freeze-links should not be activated.
+        _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
         ps_args.extend(["--max-nodes", str(int(max_nodes))])
         ps_args.extend(["--max-cycles", str(int(max_cycles))])
