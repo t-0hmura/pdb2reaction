@@ -49,6 +49,7 @@ from .defaults import (
     OUT_DIR_PATH_OPT,
 )
 from .utils import (
+    YamlFlowList,
     apply_yaml_overrides,
     deep_update,
     pretty_block,
@@ -882,7 +883,7 @@ def cli(
                     freeze_list = list(getattr(g, "freeze_atoms", []))
                 except Exception:
                     freeze_list = list(geom_cfg.get("freeze_atoms", []))
-                freeze_effective[prepared.source_path.name] = freeze_list
+                freeze_effective[prepared.source_path.name] = YamlFlowList(freeze_list)
             click.echo(pretty_block("freeze_atoms (effective)", freeze_effective))
 
         # Keep UMA freeze_atoms aligned with the resolved geometry freeze list.
