@@ -253,8 +253,10 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     except TypeError:
         return g
 
-    joined = ",".join(map(str, items))
-    g["freeze_atoms"] = f"[{joined}]" if items else "[]"
+    # Display as 1-based (internal is 0-based)
+    items_1based = [i + 1 for i in items]
+    joined = ",".join(map(str, items_1based))
+    g["freeze_atoms"] = f"[{joined}]" if items_1based else "[]"
     return g
 
 
