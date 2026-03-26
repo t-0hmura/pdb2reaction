@@ -883,8 +883,8 @@ def cli(
                     freeze_list = list(getattr(g, "freeze_atoms", []))
                 except Exception:
                     freeze_list = list(geom_cfg.get("freeze_atoms", []))
-                freeze_effective[prepared.source_path.name] = YamlFlowList(freeze_list)
-            click.echo(pretty_block("freeze_atoms (effective)", freeze_effective))
+                freeze_effective[prepared.source_path.name] = YamlFlowList([i + 1 for i in freeze_list])
+            click.echo(pretty_block("freeze_atoms (effective, 1-based)", freeze_effective))
 
         # Keep UMA freeze_atoms aligned with the resolved geometry freeze list.
         if geoms:
