@@ -294,7 +294,7 @@ def cli(
                         {
                             "source": scan_source,
                             "one_based": bool(scan_one_based),
-                            "pairs_0based": parsed,
+                            "pairs": parsed,
                         },
                     )
                 )
