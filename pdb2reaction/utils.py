@@ -209,6 +209,8 @@ def _to_yaml_safe(value: Any) -> Any:
         return out
     if isinstance(value, tuple):
         return [_to_yaml_safe(v) for v in value]
+    if isinstance(value, YamlFlowList):
+        return YamlFlowList([_to_yaml_safe(v) for v in value])
     if isinstance(value, list):
         return [_to_yaml_safe(v) for v in value]
     if isinstance(value, set):
