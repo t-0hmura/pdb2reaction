@@ -38,6 +38,7 @@ from .defaults import (
     OPT_MODE_ALIASES,
     UMA_CALC_KW,
     OUT_DIR_SCAN,
+    apply_backend_defaults,
 )
 from .backends import create_calculator
 from .opt import HarmonicBiasCalculator
@@ -313,6 +314,7 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
+            apply_backend_defaults(calc_cfg)
 
             kind = normalize_choice(
                 opt_mode,

@@ -365,6 +365,10 @@ def _build_calc_cfg(
         cfg["solvent"] = solvent
     if solvent_model is not None:
         cfg["solvent_model"] = solvent_model
+    # Apply backend-specific defaults (model, precision, etc.) when switching
+    # away from UMA.  Only overwrites keys that still hold UMA default values.
+    from .defaults import apply_backend_defaults
+    apply_backend_defaults(cfg)
     return cfg
 
 

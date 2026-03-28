@@ -93,6 +93,27 @@ AIMNET2_BACKEND_DEFAULTS: Dict[str, Any] = {
     "model": "aimnet2",
 }
 
+_BACKEND_DEFAULTS_MAP: Dict[str, Dict[str, Any]] = {
+    "orb": ORB_BACKEND_DEFAULTS,
+    "mace": MACE_BACKEND_DEFAULTS,
+    "aimnet2": AIMNET2_BACKEND_DEFAULTS,
+}
+
+
+def apply_backend_defaults(cfg: Dict[str, Any]) -> None:
+    """Apply backend-specific defaults to *cfg* in-place.
+
+    Only overwrite keys whose current value equals the UMA default
+    (i.e., the caller has not explicitly set them via CLI or YAML).
+    """
+    defaults = _BACKEND_DEFAULTS_MAP.get(cfg.get("backend", "uma"))
+    if defaults is None:
+        return
+    for key, val in defaults.items():
+        if key not in cfg or cfg[key] == CALC_KW_DEFAULT.get(key):
+            cfg[key] = val
+
+
 # -----------------------------------------------
 # Optimizer base (common to LBFGS & RFO)
 # -----------------------------------------------

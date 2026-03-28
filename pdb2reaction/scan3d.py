@@ -40,6 +40,7 @@ from .defaults import (
     RFO_KW,
     UMA_CALC_KW,
     OUT_DIR_SCAN3D,
+    apply_backend_defaults,
 )
 from .backends import create_calculator
 from .opt import HarmonicBiasCalculator
@@ -252,6 +253,7 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
+        apply_backend_defaults(calc_cfg)
 
         pdb_atom_meta: List[Dict[str, Any]] = []
         d1_label_csv = None

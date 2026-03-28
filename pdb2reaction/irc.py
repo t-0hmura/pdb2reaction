@@ -27,7 +27,7 @@ import torch
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.backends import create_calculator
-from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC
+from pdb2reaction.defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC, apply_backend_defaults
 from pdb2reaction.utils import (
     apply_yaml_overrides,
     pretty_block,
@@ -313,6 +313,7 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
+            apply_backend_defaults(calc_cfg)
             if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
                 calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
             if cli_param_overridden(ctx, "max_cycles") and max_cycles is not None:

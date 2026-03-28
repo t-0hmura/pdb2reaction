@@ -52,6 +52,7 @@ from .defaults import (
     BOND_KW,
     SEARCH_KW,
     OUT_DIR_PATH_SEARCH,
+    apply_backend_defaults,
 )
 from .path_opt import _optimize_single, _run_dmf_mep
 from .utils import (
@@ -2171,6 +2172,7 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
+        apply_backend_defaults(calc_cfg)
 
         shared_calc = create_calculator(**calc_cfg)
         for g in geoms:

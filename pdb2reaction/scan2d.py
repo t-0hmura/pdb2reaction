@@ -43,6 +43,7 @@ from .defaults import (
     RFO_KW,
     UMA_CALC_KW,
     OUT_DIR_SCAN2D,
+    apply_backend_defaults,
 )
 from .backends import create_calculator
 from .opt import HarmonicBiasCalculator
@@ -361,6 +362,7 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
+            apply_backend_defaults(calc_cfg)
 
             pdb_atom_meta: List[Dict[str, Any]] = []
             if source_path.suffix.lower() == ".pdb":

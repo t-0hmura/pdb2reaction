@@ -32,7 +32,7 @@ from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
 
 # local helpers from pdb2reaction
 from .backends import create_calculator
-from .defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW
+from .defaults import CALC_KW_DEFAULT, GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW, apply_backend_defaults
 from .utils import (
     apply_yaml_overrides,
     convert_xyz_like_outputs,
@@ -688,6 +688,7 @@ def cli(
         calc_cfg["solvent"] = solvent
     if cli_param_overridden(ctx, "solvent_model"):
         calc_cfg["solvent_model"] = solvent_model
+    apply_backend_defaults(calc_cfg)
     if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
     if cli_param_overridden(ctx, "max_write"):

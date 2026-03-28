@@ -47,6 +47,7 @@ from .defaults import (
     GS_KW,
     STOPT_KW,
     OUT_DIR_PATH_OPT,
+    apply_backend_defaults,
 )
 from .utils import (
     YamlFlowList,
@@ -900,6 +901,7 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
+        apply_backend_defaults(calc_cfg)
 
         # Shared calculator (reuse the same instance for all images)
         shared_calc = create_calculator(**calc_cfg)

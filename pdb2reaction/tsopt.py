@@ -47,6 +47,7 @@ from .defaults import (
     OUT_DIR_TSOPT,
     HESSIAN_DIMER_CLI_KW,
     RSIRFO_KW,
+    apply_backend_defaults,
 )
 from .utils import (
     resolve_freeze_atoms,
@@ -1540,6 +1541,7 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
+        apply_backend_defaults(calc_cfg)
         if cli_param_overridden(ctx, "max_cycles"):
             opt_cfg["max_cycles"] = int(max_cycles)
         if cli_param_overridden(ctx, "dump"):
