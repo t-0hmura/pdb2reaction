@@ -803,6 +803,15 @@ def cli(
             single_opt_cfg.get("max_cycles", preopt_max_cycles)
         )
 
+        # Apply backend/solvent CLI overrides early (before display)
+        if cli_param_overridden(ctx, "backend"):
+            calc_cfg["backend"] = backend
+        if cli_param_overridden(ctx, "solvent"):
+            calc_cfg["solvent"] = solvent
+        if cli_param_overridden(ctx, "solvent_model"):
+            calc_cfg["solvent_model"] = solvent_model
+        apply_backend_defaults(calc_cfg)
+
         # For display: resolved configuration
         out_dir_path = Path(stopt_cfg["out_dir"]).resolve()
         echo_geom = format_geom_for_echo(geom_cfg)
@@ -894,14 +903,7 @@ def cli(
             )
             calc_cfg["freeze_atoms"] = freeze_union
 
-        # Inject backend / solvent options into calc_cfg
-        if cli_param_overridden(ctx, "backend"):
-            calc_cfg["backend"] = backend
-        if cli_param_overridden(ctx, "solvent"):
-            calc_cfg["solvent"] = solvent
-        if cli_param_overridden(ctx, "solvent_model"):
-            calc_cfg["solvent_model"] = solvent_model
-        apply_backend_defaults(calc_cfg)
+        # (backend/solvent CLI overrides already applied above, before display)
 
         # Shared calculator (reuse the same instance for all images)
         shared_calc = create_calculator(**calc_cfg)
