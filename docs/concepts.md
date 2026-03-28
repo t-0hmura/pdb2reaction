@@ -102,7 +102,7 @@ Use this when you only have **one** structure, but you can define a scan that ge
 Typical command:
 
 ```bash
-pdb2reaction -i holo.pdb -c '308,309' \
+pdb2reaction -i holo.pdb -c '308,309' -l 'MMT:-1' \
  --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
 ```
 
@@ -112,7 +112,7 @@ Use this when you already have a TS candidate (or want a quick TS optimization o
 Typical command:
 
 ```bash
-pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' --tsopt
+pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 ```
 
 ---

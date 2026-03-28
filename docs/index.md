@@ -230,7 +230,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ### Charge and spin
 - Use `--ligand-charge` to specify ligand charges: `'SAM:1,GPP:-3'`
-- Use `-q/--charge` to override the total charge
+- Use `-q/--charge` to override the net charge
 - Spin multiplicity is set with `-m/--multiplicity` (default `1`)
 
 ### Boolean options

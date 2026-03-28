@@ -157,7 +157,7 @@ pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
 ```
 
 Key points:
@@ -218,7 +218,7 @@ Below are the most commonly used options across workflows.
 | `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT-only mode. |
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
 | `-l, --ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
-| `-q, --charge INT` | Hard override of total system charge. |
+| `-q, --charge INT` | Hard override of net system charge. |
 | `-m, --multiplicity INT` | Spin multiplicity (e.g., `1` for singlet). |
 | `-s, --scan-lists TEXT...` | Staged distance scans for single-input runs. |
 | `-o, --out-dir PATH` | Top-level output directory. |
@@ -296,10 +296,10 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 
 # Single structure with staged scan
-pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
+pdb2reaction -i SINGLE.pdb -c 'LIG' -l 'LIG:-1' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
 
 # TS-only optimization
-pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
+pdb2reaction -i TS.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
 **Essential options:**

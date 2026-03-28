@@ -157,7 +157,7 @@ pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA
 **詳細例**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
+pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
 ```
 
 補足:
@@ -296,10 +296,10 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 
 # 単一構造 + 段階的スキャン
-pdb2reaction -i SINGLE.pdb -c 'LIG' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
+pdb2reaction -i SINGLE.pdb -c 'LIG' -l 'LIG:-1' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
 
 # TS のみ最適化
-pdb2reaction -i TS.pdb -c 'LIG' --tsopt --thermo
+pdb2reaction -i TS.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
 **主要オプション一覧:**

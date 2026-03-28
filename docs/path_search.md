@@ -86,7 +86,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Repeat `-i`/`--input` for each file. | Required |
-| `-q, --charge INT` | Total charge. Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds (PDB inputs). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `-q, --charge INT` | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge` derivation succeeds (PDB inputs). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
@@ -167,7 +167,7 @@ geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
  freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
- charge: 0 # total charge (CLI/template override)
+ charge: 0 # net charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name

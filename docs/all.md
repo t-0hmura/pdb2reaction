@@ -83,7 +83,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,SAM`).
  - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`, and `--verbose`.
  - Per-input pocket PDBs are saved under `<out-dir>/pockets/`. When multiple structures are supplied, their pockets are unioned per residue selection.
- - The **first pocket’s total charge** is propagated to scan/MEP/TSOPT.
+ - The **first pocket’s net charge** is propagated to scan/MEP/TSOPT.
 
 2. **Optional staged scan (single-input only)**
  - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing an MLIP scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the pocket ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
@@ -142,8 +142,8 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-l, --ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted (recommended). Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `-q, --charge INT` | Force the total system charge (overrides `--ligand-charge`). | _None_ |
+| `-l, --ligand-charge TEXT` | Net charge or per-resname mapping used when `-q` is omitted (recommended). Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `-q, --charge INT` | Force the net system charge (overrides `--ligand-charge`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 
 ### Extraction Options
@@ -289,7 +289,7 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct total charge propagates to scan/MEP/TSOPT/DFT.
+- Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct net charge propagates to scan/MEP/TSOPT/DFT.
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
 - Convergence presets: `--thresh` defaults to `gau`; `--thresh-post` defaults to `baker`.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
