@@ -1086,6 +1086,11 @@ def _run_freq_for_state(
     if hess_mode:
         args.extend(["--hessian-calc-mode", str(hess_mode)])
 
+    # Pass backend so freq uses the same MLIP
+    _freq_backend = overrides.get("backend", "uma")
+    if _freq_backend != "uma":
+        args.extend(["--backend", _freq_backend])
+
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
     _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
@@ -1286,6 +1291,11 @@ def _run_tsopt_on_hei(
         if hess_mode:
             ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
 
+        # Pass backend from calc_cfg so tsopt uses the same MLIP
+        backend_name = calc_cfg.get("backend", "uma")
+        if backend_name != "uma":
+            ts_args.extend(["--backend", backend_name])
+
         if args_yaml is not None:
             ts_args.extend(["--config", str(args_yaml)])
         if ref_pdb is not None:
@@ -1402,6 +1412,11 @@ def _irc_and_match(
     _append_toggle_arg(irc_args, "--convert-files", bool(convert_files))
     if ref_pdb_template is not None:
         irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
+
+    # Pass backend from calc_cfg so IRC uses the same MLIP
+    backend_name = calc_cfg.get("backend", "uma")
+    if backend_name != "uma":
+        irc_args.extend(["--backend", backend_name])
 
     if args_yaml is not None:
         irc_args.extend(["--config", str(args_yaml)])
@@ -2304,6 +2319,7 @@ def cli(
     tsopt_overrides["flatten"] = bool(flatten)
 
     freq_overrides: Dict[str, Any] = {}
+    # backend will be injected after calc_cfg_shared is built (see below)
     if freq_max_write is not None:
         freq_overrides["max_write"] = int(freq_max_write)
     if freq_amplitude_ang is not None:
@@ -2664,6 +2680,11 @@ def cli(
         solvent=solvent if cli_param_overridden(ctx, "solvent") else None,
         solvent_model=solvent_model if cli_param_overridden(ctx, "solvent_model") else None,
     )
+
+    # Inject backend into freq_overrides so _run_freq_for_state passes it
+    _backend_shared = calc_cfg_shared.get("backend", "uma")
+    if _backend_shared != "uma":
+        freq_overrides["backend"] = _backend_shared
 
     # -------------------------------------------------------------------------
     # TSOPT-only single-structure mode
