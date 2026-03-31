@@ -3,7 +3,8 @@
 """
 MACE (mace-torch) backend for pdb2reaction.
 
-Requires: ``pip install mace-torch`` (separate env, conflicts with fairchem-core).
+Requires: ``pip install mace-torch`` (v0.3.8+ coexists with fairchem-core;
+older versions need a separate env due to e3nn pinning).
 """
 
 from __future__ import annotations
@@ -53,18 +54,28 @@ class MACECalculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "MACE backend requires torch and mace-torch. "
-                "Install with: pip install mace-torch (separate env required)"
+                "Install with: pip install mace-torch "
+                "(v0.3.8+ coexists with fairchem-core; older versions need separate env)"
             ) from exc
 
-        # Warn about potential UMA/MACE conflict
+        # Warn about potential UMA/MACE conflict (resolved in MACE v0.3.8+)
         try:
             import fairchem.core  # noqa: F401
-            warnings.warn(
-                "fairchem-core is installed alongside mace-torch. "
-                "These packages may conflict. If you encounter issues, "
-                "use separate environments for UMA and MACE backends.",
-                stacklevel=2,
-            )
+            try:
+                from importlib.metadata import version as _pkg_version
+                _mace_ver = _pkg_version("mace-torch")
+                from packaging.version import Version
+                _old_mace = Version(_mace_ver) < Version("0.3.8")
+            except Exception:
+                _old_mace = True  # assume old if we cannot determine version
+            if _old_mace:
+                warnings.warn(
+                    "fairchem-core is installed alongside mace-torch < v0.3.8. "
+                    "These packages conflict due to e3nn version pinning. "
+                    "Upgrade to mace-torch >= 0.3.8 (PR #589) or use "
+                    "separate environments for UMA and MACE backends.",
+                    stacklevel=2,
+                )
         except ImportError:
             pass
 
