@@ -42,7 +42,7 @@ pdb2reaction は複数の機械学習ポテンシャル (MLIP) バックエン�
 |---------|------|---------|-------|
 | **UMA**（デフォルト） | `-b uma` | 同梱 | 解析ヘシアン・マルチワーカー推論対応 |
 | **ORB** | `-b orb` | `pip install 'pdb2reaction[orb]'` | orb-models; 有限差分ヘシアンのみ |
-| **MACE** | `-b mace` | 別環境が必要（README 参照） | mace-torch; fairchem-core と競合 |
+| **MACE** | `-b mace` | `pip install 'pdb2reaction[mace]'` | mace-torch |
 | **AIMNet2** | `-b aimnet2` | `pip install 'pdb2reaction[aimnet2]'` | aimnet; 有限差分ヘシアンのみ |
 
 全バックエンド共通で `--solvent` オプションにより xTB ベースの暗黙溶媒補正を適用できます。

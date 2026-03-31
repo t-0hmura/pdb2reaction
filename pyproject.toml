@@ -65,6 +65,7 @@ dependencies = [
 
 [project.optional-dependencies]
 orb = ["orb-models"]
+mace = ["mace-torch"]
 aimnet2 = ["aimnet"]
 dft = [    
     "pyscf>=2.8.0",

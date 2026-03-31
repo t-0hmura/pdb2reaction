@@ -39,7 +39,7 @@ pdb2reaction opt -i input.pdb -q 0
 # ORB
 pdb2reaction opt -i input.pdb -q 0 -b orb
 
-# MACE（UMA とは別の環境を使用）
+# MACE
 pdb2reaction opt -i input.pdb -q 0 -b mace
 
 # AIMNet2
@@ -50,7 +50,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | 同梱 | あり | あり | fairchem による完全機能 |
 | **ORB** | `pip install 'pdb2reaction[orb]'` | なし（有限差分のみ） | なし | orb-models |
-| **MACE** | 別環境が必要（README 参照） | なし（有限差分のみ） | なし | fairchem-core と競合 |
+| **MACE** | `pip install 'pdb2reaction[mace]'` | なし（有限差分のみ） | なし | mace-torch |
 | **AIMNet2** | `pip install 'pdb2reaction[aimnet2]'` | なし（有限差分のみ） | なし | aimnet |
 
 ### 暗黙溶媒補正

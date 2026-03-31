@@ -39,7 +39,7 @@ pdb2reaction opt -i input.pdb -q 0
 # ORB
 pdb2reaction opt -i input.pdb -q 0 -b orb
 
-# MACE (use a separate environment from UMA)
+# MACE
 pdb2reaction opt -i input.pdb -q 0 -b mace
 
 # AIMNet2
@@ -50,7 +50,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | included | Yes | Yes | Full feature set via fairchem |
 | **ORB** | `pip install 'pdb2reaction[orb]'` | No (FD only) | No | orb-models |
-| **MACE** | separate env (see README) | No (FD only) | No | Conflicts with fairchem-core |
+| **MACE** | `pip install 'pdb2reaction[mace]'` | No (FD only) | No | mace-torch |
 | **AIMNet2** | `pip install 'pdb2reaction[aimnet2]'` | No (FD only) | No | aimnet |
 
 ### Implicit solvent correction

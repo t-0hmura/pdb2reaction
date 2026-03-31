@@ -108,15 +108,8 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 |-----------|------------|---------------|
 | **UMA** (default) | <https://github.com/facebookresearch/fairchem> | *(included)* |
 | **ORB** | <https://github.com/orbital-materials/orb-models> | `pip install pdb2reaction[orb]` |
-| **MACE** | <https://github.com/ACEsuit/mace> | see note below |
+| **MACE** | <https://github.com/ACEsuit/mace> | `pip install "pdb2reaction[mace]"` |
 | **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install pdb2reaction[aimnet2]` |
-
-> **Note:** MACE and UMA cannot coexist due to conflicting `e3nn` versions (`fairchem-core` requires `e3nn>=0.5`, `mace-torch` requires `e3nn==0.4.4`). To use MACE, uninstall `fairchem-core` first:
-> ```bash
-> pip uninstall fairchem-core
-> pip install mace-torch
-> ```
-> This means UMA will no longer be available in that environment. We recommend using a **separate conda environment** for MACE.
 
 ---
 
