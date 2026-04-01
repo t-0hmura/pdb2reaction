@@ -50,6 +50,7 @@ irc
 dft
 trj2fig
 energy_diagram
+bond_summary
 ja/all
 ja/extract
 ja/fix_altloc
@@ -66,6 +67,7 @@ ja/irc
 ja/dft
 ja/trj2fig
 ja/energy_diagram
+ja/bond_summary
 ```
 
 ```{toctree}

@@ -33,6 +33,7 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "extract": (".extract", "cli", "Extract a binding pocket."),
     "fix-altloc": (".fix_altloc", "cli", "Resolve PDB alternate locations."),
     "energy-diagram": (".energy_diagram", "cli", "Draw energy diagrams from values."),
+    "bond-summary": (".bond_summary", "cli", "Detect bond changes between structures."),
 }
 
 # Only the ``all`` subcommand is listed here because it uses Click's
@@ -405,6 +406,16 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-o",
             "--out",
             "--help-advanced",
+        }
+    ),
+    "bond-summary": frozenset(
+        {
+            "-i",
+            "--input",
+            "--device",
+            "--bond-factor",
+            "--one-based",
+            "--zero-based",
         }
     ),
 }
