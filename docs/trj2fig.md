@@ -87,8 +87,8 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
-- [path_search](path_search.md) -- MEP trajectories for profiling
+- [path-search](path-search.md) -- MEP trajectories for profiling
 - [irc](irc.md) -- IRC trajectories for profiling
 - [all](all.md) -- End-to-end workflow

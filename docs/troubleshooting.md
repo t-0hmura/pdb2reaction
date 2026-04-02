@@ -1,7 +1,7 @@
 # Troubleshooting
 
 This page collects common failure modes and practical fixes. It is written to be copy-and-paste friendly: search this page for the error message you see.
-If you want a symptom-first entrypoint, start with [Common Error Recipes](recipes_common_errors.md) and then return here for details.
+If you want a symptom-first entrypoint, start with [Common Error Recipes](recipes-common-errors.md) and then return here for details.
 
 ---
 

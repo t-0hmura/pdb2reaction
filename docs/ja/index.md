@@ -9,15 +9,15 @@
 :caption: Guides
 :hidden:
 
-getting_started
+getting-started
 installation
-quickstart_all
-quickstart_scan
-quickstart_tsopt_freq
+quickstart-all
+quickstart-scan
+quickstart-tsopt-freq
 concepts
-recipes_common_errors
+recipes-common-errors
 troubleshooting
-cli_conventions
+cli-conventions
 ```
 
 ```{toctree}
@@ -27,12 +27,12 @@ cli_conventions
 
 all
 extract
-fix_altloc
-add_elem_info
+fix-altloc
+add-elem-info
 opt
 tsopt
-path_opt
-path_search
+path-opt
+path-search
 scan
 scan2d
 scan3d
@@ -40,7 +40,7 @@ freq
 irc
 dft
 trj2fig
-energy_diagram
+energy-diagram
 ```
 
 ```{toctree}
@@ -48,8 +48,8 @@ energy_diagram
 :caption: Reference
 :hidden:
 
-yaml_reference
-uma_pysis
+yaml-reference
+uma-pysis
 glossary
 ```
 
@@ -60,12 +60,12 @@ glossary
 
 | トピック | ページ |
 |-------|------|
-| **はじめに** | [はじめに](getting_started.md) |
+| **はじめに** | [はじめに](getting-started.md) |
 | **インストール** | [インストール](installation.md) |
 | **主要概念とワークフロー概要** | [概念とワークフロー](concepts.md) |
-| **症状起点の切り分け導線** | [典型エラー別レシピ](recipes_common_errors.md) |
+| **症状起点の切り分け導線** | [典型エラー別レシピ](recipes-common-errors.md) |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
-| **CLI 規約と入力要件** | [CLI 規約](cli_conventions.md) |
+| **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
 
 ---
 
@@ -73,18 +73,18 @@ glossary
 
 | 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
-| 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart_all.md) |
-| 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart_scan.md) |
-| TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart_tsopt_freq.md) |
+| 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart-all.md) |
+| 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart-scan.md) |
+| TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart-tsopt-freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
 | タンパク質–リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt](opt.md) |
 | 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
-| 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path_search](path_search.md) |
+| 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path-search](path-search.md) |
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
-| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy_diagram](energy_diagram.md) |
-| 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes_common_errors.md) |
+| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
+| 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes-common-errors.md) |
 | 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
@@ -102,7 +102,7 @@ glossary
 | サブコマンド | 説明 |
 |---------|------|
 | [`extract`](extract.md) | タンパク質–リガンド複合体の活性部位ポケットからクラスターモデルを抽出 |
-| [`add-elem-info`](add_elem_info.md) | PDB の元素カラム（77–78）を修復 |
+| [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
 
 ### 構造最適化
 | サブコマンド | 説明 |
@@ -113,8 +113,8 @@ glossary
 ### 経路探索・最適化
 | サブコマンド | 説明 |
 |---------|------|
-| [`path-opt`](path_opt.md) | GSM または DMF による 1段階の MEP 最適化 |
-| [`path-search`](path_search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索 |
+| [`path-opt`](path-opt.md) | GSM または DMF による 1段階の MEP 最適化 |
+| [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索 |
 
 ### スキャン
 | サブコマンド | 説明 |
@@ -130,7 +130,7 @@ glossary
 | [`freq`](freq.md) | 振動解析と熱化学 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
-| [`energy-diagram`](energy_diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
+| [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
 
 ---
 
@@ -140,8 +140,8 @@ glossary
 |-------|------|
 | **CLI コマンドリファレンス** | [Command Reference](../reference/commands/index.md) |
 | **YAML スキーマ** | [YAML Schema](../reference/yaml.md) |
-| **YAML 設定オプション** | [YAML リファレンス](yaml_reference.md) |
-| **MLIP バックエンド設定** | [MLIP 計算機](uma_pysis.md) |
+| **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
+| **MLIP バックエンド設定** | [MLIP 計算機](uma-pysis.md) |
 | **用語** | [用語集](glossary.md) |
 
 ---
@@ -202,7 +202,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 ```
 
 ### YAML 設定
-すべてのオプションについては [YAML リファレンス](yaml_reference.md) を参照してください。
+すべてのオプションについては [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ---
 

@@ -30,7 +30,7 @@ Calculations use machine-learning interatomic potentials (MLIPs). The default ba
 
 The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small-molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
-On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma_pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
+On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
 ```{important}
 - Input PDB files must already contain **hydrogen atoms**.
@@ -39,7 +39,7 @@ On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large
 
 ```{tip}
 If you are new to the project, read [Concepts & Workflow](concepts.md) first.
-For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md).
+For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md).
 If you encounter an error during setup or runtime, refer to [Troubleshooting](troubleshooting.md).
 ```
 
@@ -51,9 +51,9 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 | **Charge mapping** | `-l 'SAM:1,GPP:-3'` | Colon separates name and charge; comma separates entries |
 | **Atom selectors** | `'TYR,285,CA'` or `'TYR 285 CA'` | Delimiters: space, comma, slash, backtick, backslash |
 
-For full details, see [CLI Conventions](cli_conventions.md).
+For full details, see [CLI Conventions](cli-conventions.md).
 
-[`path-search`](path_search.md) naming note: The CLI subcommand is `path-search`, while the documentation filename is [`path_search.md`](path_search.md).
+[`path-search`](path-search.md) naming note: The CLI subcommand is `path-search`, and the documentation filename is [`path-search.md`](path-search.md).
 
 
 ### Recommended tools for hydrogen addition
@@ -78,9 +78,9 @@ This software is still under development. Please use it at your own risk.
 
 For setup and dependency installation, see [Installation](installation.md).
 
-- [Quickstart: run `pdb2reaction all`](quickstart_all.md)
-- [Quickstart: run a single-structure staged scan with `pdb2reaction scan`](quickstart_scan.md)
-- [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart_tsopt_freq.md)
+- [Quickstart: run `pdb2reaction all`](quickstart-all.md)
+- [Quickstart: run a single-structure staged scan with `pdb2reaction scan`](quickstart-scan.md)
+- [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
 
 ---
 
@@ -130,7 +130,7 @@ Behavior:
 - takes two or more **full systems** in reaction order,
 - extracts cluster models for each structure,
 - performs a **recursive MEP search** via `path-search` by default (outputs under `path_search/`),
-- optionally switches to a **single-pass** [`path-opt`](path_opt.md) run with `--no-refine-path`,
+- optionally switches to a **single-pass** [`path-opt`](path-opt.md) run with `--no-refine-path`,
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
 
@@ -228,9 +228,9 @@ Below are the most commonly used options across workflows.
 | `--refine-path/--no-refine-path` | Recursive MEP refinement (default: enabled) vs single-pass. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
 | `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation). |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation). |
 
-For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml_reference.md).
+For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml-reference.md).
 
 ---
 
@@ -264,8 +264,8 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `extract` | Extract active-site pocket (cluster model) | [extract](extract.md) |
 | `opt` | Geometry optimization | [opt](opt.md) |
 | `tsopt` | Transition state optimization | [tsopt](tsopt.md) |
-| `path-opt` | MEP optimization (GSM/DMF) | [path_opt](path_opt.md) |
-| `path-search` | Recursive MEP search | [path_search](path_search.md) |
+| `path-opt` | MEP optimization (GSM/DMF) | [path-opt](path-opt.md) |
+| `path-search` | Recursive MEP search | [path-search](path-search.md) |
 | `scan` | 1D bond-length scan | [scan](scan.md) |
 | `scan2d` | 2D distance scan | [scan2d](scan2d.md) |
 | `scan3d` | 3D distance scan | [scan3d](scan3d.md) |
@@ -273,12 +273,12 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `freq` | Vibrational analysis | [freq](freq.md) |
 | `dft` | Single-point DFT | [dft](dft.md) |
 | `trj2fig` | Plot energy profiles | [trj2fig](trj2fig.md) |
-| `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy_diagram.md) |
-| `fix-altloc` | Resolve PDB alternate-location indicators | [fix_altloc](fix_altloc.md) |
-| `add-elem-info` | Repair PDB element columns | [add_elem_info](add_elem_info.md) |
+| `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy-diagram.md) |
+| `fix-altloc` | Resolve PDB alternate-location indicators | [fix-altloc](fix-altloc.md) |
+| `add-elem-info` | Repair PDB element columns | [add-elem-info](add-elem-info.md) |
 
 ```{tip}
-For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 ```
 
 ---
@@ -327,6 +327,6 @@ pdb2reaction all --help-advanced
 ```
 
 For `all`, `--help` is intentionally short. Use `--help-advanced` to see every option.
-For detailed MLIP backend options, see [MLIP Calculator](uma_pysis.md).
+For detailed MLIP backend options, see [MLIP Calculator](uma-pysis.md).
 
 If you encounter any issues, please open an Issue on the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).

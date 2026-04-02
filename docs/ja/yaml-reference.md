@@ -535,7 +535,7 @@ dft:
 - [all](all.md) - 一気通貫ワークフロー
 - [opt](opt.md) - 単一構造最適化
 - [tsopt](tsopt.md) - 遷移状態最適化
-- [path-search](path_search.md) - 再帰的 MEP 探索
+- [path-search](path-search.md) - 再帰的 MEP 探索
 - [freq](freq.md) - 振動解析
 - [dft](dft.md) - DFT計算
-- [uma_pysis](uma_pysis.md) - MLIP バックエンドの詳細
+- [uma-pysis](uma-pysis.md) - MLIP バックエンドの詳細

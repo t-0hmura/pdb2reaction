@@ -104,7 +104,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
- - ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+ - ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、ポケット（または抽出がスキップされた場合は全入力構造）で `tsopt`（内部で虚振動数チェック済み）→ EulerPC IRC を実行
@@ -113,7 +113,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 
 ### 電荷とスピンの優先順位
 
-電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。`all` コマンドでは、ポケット抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
+電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。`all` コマンドでは、ポケット抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
 
 **スピンの解決順序:** `--multiplicity`（CLI）→ `.gjf` テンプレート → デフォルト（1）
 
@@ -291,7 +291,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 | `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
 - マージ用の参照 PDB テンプレートは元の入力から自動的に導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に非公開です。
@@ -314,7 +314,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 
 | サブコマンド | YAML セクション |
 |------------|-----------------|
-| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
+| [`path-search`](path-search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
@@ -333,21 +333,21 @@ dft:
  grid_level: 6
 ```
 
-すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml_reference.md)** を参照してください。
+すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml-reference.md)** を参照してください。
 
 ---
 
 ## 関連項目
 
 - [インストール](installation.md) — セットアップと依存関係
-- [はじめに](getting_started.md) — 初回実行とワークフロー概要
+- [はじめに](getting-started.md) — 初回実行とワークフロー概要
 - [概念とワークフロー](concepts.md) — ポケット、セグメント、ステージの全体像
 - [extract](extract.md) — 単独のポケット抽出（`all` が内部で呼び出し）
-- [path-search](path_search.md) — 単独のMEP 探索（`all` が内部で呼び出し）
+- [path-search](path-search.md) — 単独のMEP 探索（`all` が内部で呼び出し）
 - [tsopt](tsopt.md) — 単独の TS 最適化（内部で虚振動数チェック済み）
 - [freq](freq.md) — 単独の振動解析（任意）
 - [dft](dft.md) — 単独の DFT 計算
-- [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
-- [YAML リファレンス](yaml_reference.md) — 全YAML設定オプション
+- [YAML リファレンス](yaml-reference.md) — 全YAML設定オプション
 - [用語集](glossary.md) — MEP、TS、IRC、GSM、DMFの定義

@@ -70,7 +70,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 - **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
 - **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードフラット化を実行します。各反復で検出された虚振動数モードをすべて除去してから再最適化します。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
-- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
+- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
 - **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 - **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` としても出力されます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
 - **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
@@ -119,7 +119,7 @@ out_dir/
 コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
 
 (ja-yaml-configuration-override-yaml)=
-設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
 
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
@@ -249,12 +249,12 @@ rfo:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 
 - [tsopt](tsopt.md) — 極小ではなく遷移状態（鞍点）を最適化
 - [freq](freq.md) — 最適化が極小に達したことを確認する振動解析
 - [extract](extract.md) — 最適化前にポケット PDB を生成
 - [all](all.md) — 端点を事前最適化する一気通貫ワークフロー
-- [YAML リファレンス](yaml_reference.md) — `opt`、`lbfgs`、`rfo` の完全な設定オプション
+- [YAML リファレンス](yaml-reference.md) — `opt`、`lbfgs`、`rfo` の完全な設定オプション
 - [用語集](glossary.md) — L-BFGS、RFOの定義

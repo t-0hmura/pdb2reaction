@@ -16,7 +16,7 @@
 
 When `--convert-files` is enabled (default), the command mirrors trajectories into `.pdb` companions when PDB references exist, and writes `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies a pocket-level PDB topology while keeping XYZ coordinates, and `--ref-full-pdb` enables full-template merges (XYZ/GJF inputs still do not produce PDB companions).
 
-If you only have **two** endpoints and do not need recursive refinement, [path-opt](path_opt.md) is the simpler option.
+If you only have **two** endpoints and do not need recursive refinement, [path-opt](path-opt.md) is the simpler option.
 
 ## Minimal example
 
@@ -142,19 +142,19 @@ out_dir/ (default:./result_path_search/)
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`).
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Provide at least two inputs; `click.BadParameter` is raised otherwise.
 - Repeat `--ref-full-pdb` once per file when providing multiple templates; with `--align`, only the first template is reused for merges.
 - All MLIP backends are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
 
-See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
-The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml_reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path_opt.md](path_opt.md)).
+See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path-opt.md](path-opt.md)).
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
-`opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml_reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
+`opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml-reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
 
 `bond` carries the MLIP-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
@@ -320,11 +320,11 @@ search:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
-- [path-opt](path_opt.md) — Single-pass MEP optimization (no recursive refinement)
+- [path-opt](path-opt.md) — Single-pass MEP optimization (no recursive refinement)
 - [tsopt](tsopt.md) — Optimize the HEI as a transition state
 - [extract](extract.md) — Generate pocket PDBs for path-search inputs
 - [all](all.md) — End-to-end workflow that calls path-search internally
-- [YAML Reference](yaml_reference.md) — Full `gs`, `dmf`, `bond`, `search` configuration options
+- [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `bond`, `search` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

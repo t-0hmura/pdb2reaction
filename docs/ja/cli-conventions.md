@@ -165,7 +165,7 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
-利用可能なすべてのオプションは [YAML リファレンス](yaml_reference.md) を参照してください。
+利用可能なすべてのオプションは [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ### 設定の優先順位
 
@@ -211,7 +211,7 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ## 関連項目
 
 - [インストール](installation.md) — セットアップと依存関係
-- [はじめに](getting_started.md) — 初回実行とワークフロー概要
-- [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
+- [はじめに](getting-started.md) — 初回実行とワークフロー概要
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
-- [YAML リファレンス](yaml_reference.md) — 全設定オプション
+- [YAML リファレンス](yaml-reference.md) — 全設定オプション

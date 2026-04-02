@@ -236,8 +236,8 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 - [opt](opt.md) -- MLIP バックエンドを使う単一構造最適化
-- [path_opt](path_opt.md) -- MLIP バックエンドを使う MEP 最適化
+- [path-opt](path-opt.md) -- MLIP バックエンドを使う MEP 最適化
 - [all](all.md) -- MLIP を複数段で使う一気通貫ワークフロー

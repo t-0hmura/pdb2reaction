@@ -4,17 +4,17 @@
 :maxdepth: 1
 :hidden:
 
-add_elem_info
+add-elem-info
 all
 dft
-energy_diagram
+energy-diagram
 extract
-fix_altloc
+fix-altloc
 freq
 irc
 opt
-path_opt
-path_search
+path-opt
+path-search
 scan
 scan2d
 scan3d
@@ -24,17 +24,17 @@ tsopt
 
 | Command | Page |
 |---|---|
-| `pdb2reaction add-elem-info` | [add-elem-info](add_elem_info.md) |
+| `pdb2reaction add-elem-info` | [add-elem-info](add-elem-info.md) |
 | `pdb2reaction all` | [all](all.md) |
 | `pdb2reaction dft` | [dft](dft.md) |
-| `pdb2reaction energy-diagram` | [energy-diagram](energy_diagram.md) |
+| `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
 | `pdb2reaction extract` | [extract](extract.md) |
-| `pdb2reaction fix-altloc` | [fix-altloc](fix_altloc.md) |
+| `pdb2reaction fix-altloc` | [fix-altloc](fix-altloc.md) |
 | `pdb2reaction freq` | [freq](freq.md) |
 | `pdb2reaction irc` | [irc](irc.md) |
 | `pdb2reaction opt` | [opt](opt.md) |
-| `pdb2reaction path-opt` | [path-opt](path_opt.md) |
-| `pdb2reaction path-search` | [path-search](path_search.md) |
+| `pdb2reaction path-opt` | [path-opt](path-opt.md) |
+| `pdb2reaction path-search` | [path-search](path-search.md) |
 | `pdb2reaction scan` | [scan](scan.md) |
 | `pdb2reaction scan2d` | [scan2d](scan2d.md) |
 | `pdb2reaction scan3d` | [scan3d](scan3d.md) |

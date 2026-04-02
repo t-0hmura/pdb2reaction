@@ -17,7 +17,7 @@
 
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML では `dimer` または `rsirfo` を直接指定してください。
 
-XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path_opt.md)、2 構造以上なら [path-search](path_search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
+XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
 ## 最小例
 
@@ -87,9 +87,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## ワークフロー
-- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
+- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
 - **構造ロードと freeze-links**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
-- **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+- **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 - **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚振動数モードが1つになったら最終的な正確ヘシアンで振動解析を行います。
@@ -144,13 +144,13 @@ out_dir/ (デフォルト:./result_tsopt/)
 ```
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `hess` = `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - 虚振動数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。複数残る場合は `root` がどの虚振動数モードを追跡するかに影響します。
-- 設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
+- 設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 
-共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
+共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
 
 ```yaml
 geom:
@@ -282,11 +282,11 @@ rsirfo:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
-- [path-search](path_search.md) — TS 候補（HEI）を特定するMEP 探索
+- [path-search](path-search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
 - [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖する一気通貫ワークフロー
-- [YAML リファレンス](yaml_reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
+- [YAML リファレンス](yaml-reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

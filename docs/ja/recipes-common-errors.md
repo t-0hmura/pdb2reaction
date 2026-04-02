@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 元素カラム欠落で抽出が止まる | 元の PDB に `add-elem-info` を適用してください | [トラブルシューティング](troubleshooting.md) |
 | 「電荷が必須」系エラー | `-q/--charge` と `-m/--multiplicity` を明示指定してください | [トラブルシューティング](troubleshooting.md) |
-| 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli_conventions.md) の電荷解決順序を再確認してください | [トラブルシューティング](troubleshooting.md) |
+| 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | [トラブルシューティング](troubleshooting.md) |
 | DMF モードの import エラー（`cyipopt`） | `conda install -c conda-forge cyipopt` を実行してください | [トラブルシューティング](troubleshooting.md) |
 | TSOPT/IRC が収束しない | `--tsopt-max-cycles` を増やし、`--step-size` を小さくしてください | [トラブルシューティング](troubleshooting.md) |
 | CUDA/GPU 実行時エラー | `torch.cuda.is_available()` と CUDA バージョンの整合を確認してください | [トラブルシューティング](troubleshooting.md) |
@@ -32,7 +32,7 @@
 - 最初の確認:
  - 対象状態に対して総電荷・多重度が妥当か。
  - `--ligand-charge` の残基キーが入力構造と一致しているか。
- - 結果が物理的に不自然な場合は [CLI 規約](cli_conventions.md) の電荷解決順序を再確認。
+ - 結果が物理的に不自然な場合は [CLI 規約](cli-conventions.md) の電荷解決順序を再確認。
 - 典型的な修正手順:
  - 重要な実行では `-q` / `-m` を明示し、scan/path/tsopt を再試行。
 

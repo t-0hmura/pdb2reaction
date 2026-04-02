@@ -105,4 +105,4 @@ pdb2reaction scan -i input.pdb -q 0 -s \
 
 ## 次の導線
 
-- 経路精密化は [all](all.md) または [path-search](path_search.md) を参照してください。
+- 経路精密化は [all](all.md) または [path-search](path-search.md) を参照してください。

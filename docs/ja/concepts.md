@@ -60,7 +60,7 @@ pdb2reaction は複数の機械学習ポテンシャル (MLIP) バックエン�
 - `-c/--center`: 基質の指定（残基ID、残基名、または基質のみのPDB）
 - `-r/--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`
 
-電荷とスピンの指定については [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
+電荷とスピンの指定については [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
 
 ### イメージ（Image）とセグメント（Segment）
 - **イメージ（Image）**: 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点に対応します。
@@ -143,9 +143,9 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 ## 次に読むページ
 
 ### 入門
-- [はじめに](getting_started.md) — クイックスタートとワークフロー概要
+- [はじめに](getting-started.md) — クイックスタートとワークフロー概要
 - [インストール](installation.md) — セットアップと依存関係
-- [典型エラー別レシピ](recipes_common_errors.md) — 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 
 ### 主要サブコマンド
@@ -153,11 +153,11 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 |------------|------|-------------|
 | `all` | 一気通貫ワークフロー | [all.md](all.md) |
 | `extract` | ポケット抽出 | [extract.md](extract.md) |
-| `path-search` | 再帰的 MEP 探索 | [path_search.md](path_search.md) |
+| `path-search` | 再帰的 MEP 探索 | [path-search.md](path-search.md) |
 | `tsopt` | TS 最適化 | [tsopt.md](tsopt.md) |
 | `freq` | 振動解析 | [freq.md](freq.md) |
 | `dft` | DFT 一点計算 | [dft.md](dft.md) |
 
 ### リファレンス
-- [YAML リファレンス](yaml_reference.md) — 全オプションの YAML 設定
+- [YAML リファレンス](yaml-reference.md) — 全オプションの YAML 設定
 - [用語集](glossary.md) — 用語リファレンス

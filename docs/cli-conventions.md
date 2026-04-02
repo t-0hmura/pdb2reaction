@@ -167,7 +167,7 @@ Advanced settings can be passed via layered YAML inputs:
 pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
-See [YAML Reference](yaml_reference.md) for all available options.
+See [YAML Reference](yaml-reference.md) for all available options.
 
 ### Configuration precedence
 
@@ -213,7 +213,7 @@ Default output directories:
 ## See Also
 
 - [Installation](installation.md) — Setup and dependency installation
-- [Getting Started](getting_started.md) — First run and workflow overview
-- [Common Error Recipes](recipes_common_errors.md) — Symptom-first failure routing
+- [Getting Started](getting-started.md) — First run and workflow overview
+- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Common errors and fixes
-- [YAML Reference](yaml_reference.md) — Complete configuration options
+- [YAML Reference](yaml-reference.md) — Complete configuration options

@@ -224,7 +224,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ---
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).
 - Waters can be excluded with `--no-include-h2o`.
@@ -236,11 +236,11 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [all](all.md) — End-to-end workflow that calls extract internally via `-c/--center`
-- [path-search](path_search.md) — MEP search on extracted pockets
+- [path-search](path-search.md) — MEP search on extracted pockets
 - [scan](scan.md) — Staged scan on extracted pockets
-- [add-elem-info](add_elem_info.md) — Fix missing PDB element columns before extraction
+- [add-elem-info](add-elem-info.md) — Fix missing PDB element columns before extraction
 - [Troubleshooting](troubleshooting.md) — Common extraction errors
 - [Glossary](glossary.md) — Definitions of Pocket, Cluster Model, Link Hydrogen

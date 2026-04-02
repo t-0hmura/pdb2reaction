@@ -180,7 +180,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 This is equivalent to two manual stages with a geometry reset between them, but avoids the need to script it yourself. Mixed 3-tuples and 4-tuples are accepted in the same literal.
 
 ## Workflow
-1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
+1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
  biasing so the starting point is relaxed.
 3. Parse stage targets from `-s/--scan-lists` (YAML/JSON file or inline literal), then normalize the
@@ -231,7 +231,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
- [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+ [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
  use `--dump` to control scan-stage trajectories.
 - `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
@@ -264,7 +264,7 @@ out_dir/ (default:./result_scan/)
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Provide multiple literals after a single `-s/--scan-lists` flag, or repeat the flag for each stage -- both forms are accepted (`multiple=True`).
  Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
@@ -388,10 +388,10 @@ bond:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [all](all.md) — End-to-end workflow with `--scan-lists` for single-structure inputs
-- [path-search](path_search.md) — MEP search using scan endpoints as intermediates
+- [path-search](path-search.md) — MEP search using scan endpoints as intermediates
 - [extract](extract.md) — Generate pocket PDBs before scanning
-- [YAML Reference](yaml_reference.md) — Full `bias` and `bond` configuration options
+- [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, Segment

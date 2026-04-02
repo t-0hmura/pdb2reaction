@@ -9,24 +9,24 @@
 :caption: Guides
 :hidden:
 
-getting_started
+getting-started
 installation
-quickstart_all
-quickstart_scan
-quickstart_tsopt_freq
+quickstart-all
+quickstart-scan
+quickstart-tsopt-freq
 concepts
-recipes_common_errors
+recipes-common-errors
 troubleshooting
-cli_conventions
-ja/getting_started
+cli-conventions
+ja/getting-started
 ja/installation
-ja/quickstart_all
-ja/quickstart_scan
-ja/quickstart_tsopt_freq
+ja/quickstart-all
+ja/quickstart-scan
+ja/quickstart-tsopt-freq
 ja/concepts
-ja/recipes_common_errors
+ja/recipes-common-errors
 ja/troubleshooting
-ja/cli_conventions
+ja/cli-conventions
 ```
 
 ```{toctree}
@@ -36,12 +36,12 @@ ja/cli_conventions
 
 all
 extract
-fix_altloc
-add_elem_info
+fix-altloc
+add-elem-info
 opt
 tsopt
-path_opt
-path_search
+path-opt
+path-search
 scan
 scan2d
 scan3d
@@ -49,16 +49,16 @@ freq
 irc
 dft
 trj2fig
-energy_diagram
-bond_summary
+energy-diagram
+bond-summary
 ja/all
 ja/extract
-ja/fix_altloc
-ja/add_elem_info
+ja/fix-altloc
+ja/add-elem-info
 ja/opt
 ja/tsopt
-ja/path_opt
-ja/path_search
+ja/path-opt
+ja/path-search
 ja/scan
 ja/scan2d
 ja/scan3d
@@ -66,8 +66,8 @@ ja/freq
 ja/irc
 ja/dft
 ja/trj2fig
-ja/energy_diagram
-ja/bond_summary
+ja/energy-diagram
+ja/bond-summary
 ```
 
 ```{toctree}
@@ -77,11 +77,11 @@ ja/bond_summary
 
 reference/commands/index
 reference/yaml
-yaml_reference
-uma_pysis
+yaml-reference
+uma-pysis
 glossary
-ja/yaml_reference
-ja/uma_pysis
+ja/yaml-reference
+ja/uma-pysis
 ja/glossary
 ```
 
@@ -100,12 +100,12 @@ ja/index
 
 | Topic | Page |
 |-------|------|
-| **Getting Started** | [Getting Started](getting_started.md) |
+| **Getting Started** | [Getting Started](getting-started.md) |
 | **Installation** | [Installation](installation.md) |
 | **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
-| **Symptom-first failure routing** | [Common Error Recipes](recipes_common_errors.md) |
+| **Symptom-first failure routing** | [Common Error Recipes](recipes-common-errors.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
-| **CLI conventions & input requirements** | [CLI Conventions](cli_conventions.md) |
+| **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
 
 ---
 
@@ -113,18 +113,18 @@ ja/index
 
 | Objectives | Command | Guide |
 |-------------------------|---------|-------|
-| First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart_all.md) |
-| Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart_scan.md) |
-| TS optimization and validation | `pdb2reaction tsopt` | [Quickstart: tsopt](quickstart_tsopt_freq.md) |
+| First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart-all.md) |
+| Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart-scan.md) |
+| TS optimization and validation | `pdb2reaction tsopt` | [Quickstart: tsopt](quickstart-tsopt-freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all](all.md) |
 | Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt](opt.md) |
 | Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
-| Search for minimum energy path | `pdb2reaction path-search` | [path_search](path_search.md) |
+| Search for minimum energy path | `pdb2reaction path-search` | [path-search](path-search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
-| Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy_diagram](energy_diagram.md) |
-| Diagnose failures by symptom | — | [Common Error Recipes](recipes_common_errors.md) |
+| Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
+| Diagnose failures by symptom | — | [Common Error Recipes](recipes-common-errors.md) |
 | Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
@@ -142,8 +142,8 @@ ja/index
 | Subcommand | Description |
 |------------|-------------|
 | [`extract`](extract.md) | Extract active-site pocket (cluster model) from protein–ligand complex |
-| [`fix-altloc`](fix_altloc.md) | Resolve PDB alternate locations |
-| [`add-elem-info`](add_elem_info.md) | Repair PDB element columns (77–78) |
+| [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
+| [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
 
 ### Geometry Optimization
 | Subcommand | Description |
@@ -154,8 +154,8 @@ ja/index
 ### Path Search & Optimization
 | Subcommand | Description |
 |------------|-------------|
-| [`path-opt`](path_opt.md) | Single-step MEP optimization via GSM or DMF (two structures) |
-| [`path-search`](path_search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
+| [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (two structures) |
+| [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
 
 ### Scans
 | Subcommand | Description |
@@ -171,7 +171,7 @@ ja/index
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
-| [`energy-diagram`](energy_diagram.md) | Draw an energy diagram from numeric values |
+| [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
 
 ---
 
@@ -181,8 +181,8 @@ ja/index
 |-------|------|
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
 | **YAML schema** | [YAML Schema](reference/yaml.md) |
-| **YAML configuration options** | [YAML Reference](yaml_reference.md) |
-| **MLIP backend settings** | [MLIP Calculator](uma_pysis.md) |
+| **YAML configuration options** | [YAML Reference](yaml-reference.md) |
+| **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
 
 ---
@@ -243,7 +243,7 @@ Boolean CLI options accept both toggle form (`--flag` / `--no-flag`) and explici
 ```
 
 ### YAML configuration
-See the [YAML Reference](yaml_reference.md) for all options.
+See the [YAML Reference](yaml-reference.md) for all options.
 
 ---
 

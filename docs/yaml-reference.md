@@ -536,7 +536,7 @@ dft:
 - [all](all.md) - End-to-end workflow
 - [opt](opt.md) - Single-structure optimization
 - [tsopt](tsopt.md) - Transition state optimization
-- [path-search](path_search.md) - Recursive MEP search
+- [path-search](path-search.md) - Recursive MEP search
 - [freq](freq.md) - Vibrational analysis
 - [dft](dft.md) - DFT calculations
-- [uma_pysis](uma_pysis.md) - MLIP backend details
+- [uma-pysis](uma-pysis.md) - MLIP backend details

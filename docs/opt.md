@@ -73,7 +73,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
   > **Naming note:** The CLI accepts `grad|lbfgs` and `hess|rfo`. In YAML, use `lbfgs` or `rfo` directly.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
-- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
+- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 - **Freeze atoms**: When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 - **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
@@ -122,7 +122,7 @@ out_dir/
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
 (yaml-configuration-override-yaml)=
-See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
+See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
 
 ### `geom`
 - `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.
@@ -252,12 +252,12 @@ rfo:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 
 - [tsopt](tsopt.md) — Optimize transition states (saddle points) instead of minima
 - [freq](freq.md) — Vibrational analysis to confirm optimization reached a minimum
 - [extract](extract.md) — Generate pocket PDBs before optimization
 - [all](all.md) — End-to-end workflow that pre-optimizes endpoints
-- [YAML Reference](yaml_reference.md) — Full `opt`, `lbfgs`, `rfo` configuration options
+- [YAML Reference](yaml-reference.md) — Full `opt`, `lbfgs`, `rfo` configuration options
 - [Glossary](glossary.md) — Definitions of L-BFGS, RFO

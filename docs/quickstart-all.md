@@ -35,6 +35,6 @@ pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ## Next step
 
-- Single-structure staged scan route: [Quickstart: `pdb2reaction scan`](quickstart_scan.md)
-- TS optimization and validation: [Quickstart: `pdb2reaction tsopt`](quickstart_tsopt_freq.md)
+- Single-structure staged scan route: [Quickstart: `pdb2reaction scan`](quickstart-scan.md)
+- TS optimization and validation: [Quickstart: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
 - Full option reference: [all](all.md)

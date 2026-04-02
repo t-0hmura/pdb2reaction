@@ -9,7 +9,7 @@
 - **Frozen atoms:** Supported via PHVA (Partial Hessian Vibrational Analysis).
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
 - **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value).
-- **Performance:** For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+- **Performance:** For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 
 `pdb2reaction freq` performs vibrational analysis with an MLIP backend (UMA by default), honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
 
@@ -76,7 +76,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
  `geom.freeze_atoms`; the merged list is echoed and propagated to the MLIP backend and PHVA.
 - **MLIP backend**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
  The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
- For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+ For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
  subspace with translation/rotation modes projected there. Both 3N×3N and active-block
  Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
@@ -133,14 +133,14 @@ out_dir/ (default:./result_freq/)
 - Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
  and dumps details when `--dump`.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI < override); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
 Provide mappings with merge order **defaults < config < explicit CLI < override**.
-Shared sections reuse [YAML Reference](yaml_reference.md).
+Shared sections reuse [YAML Reference](yaml-reference.md).
 An additional `thermo` section is supported for thermochemistry controls.
 
 ```yaml
@@ -175,11 +175,11 @@ thermo:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-frequency check; follow with IRC for endpoint validation)
 - [irc](irc.md) — IRC from TS (freq is often run on IRC endpoints for thermochemistry)
 - [dft](dft.md) — Single-point DFT for higher-level energy refinement
 - [all](all.md) — End-to-end workflow with `--thermo`
-- [YAML Reference](yaml_reference.md) — Full `freq` and `thermo` configuration options
+- [YAML Reference](yaml-reference.md) — Full `freq` and `thermo` configuration options
 - [Glossary](glossary.md) — Definitions of ZPE, Gibbs Energy, Enthalpy, Entropy

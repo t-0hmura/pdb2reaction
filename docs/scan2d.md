@@ -188,7 +188,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
- [YAML Reference](yaml_reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+ [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
  scan trajectory output is controlled by `--dump`.
 
 ### Section `bias`
@@ -210,7 +210,7 @@ out_dir/ (default:./result_scan2d/)
 ```
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend (UMA by default) reuses the same
  `HarmonicBiasCalculator` as the 1D scan.
@@ -246,7 +246,7 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-More YAML options for `opt` are available in [YAML Reference](yaml_reference.md).
+More YAML options for `opt` are available in [YAML Reference](yaml-reference.md).
 `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ## See Also
@@ -254,5 +254,5 @@ More YAML options for `opt` are available in [YAML Reference](yaml_reference.md)
 - [scan3d](scan3d.md) -- 3D distance-grid scan
 - [opt](opt.md) -- single-structure optimization before/after scans
 - [all](all.md) -- end-to-end workflow wrapper
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide

@@ -30,7 +30,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --df
 
 一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
 
-**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma_pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
+**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
 
 ```{important}
 - 入力 PDB ファイルには**水素原子**が含まれている必要があります。
@@ -39,7 +39,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --df
 
 ```{tip}
 初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。
-症状から切り分ける場合は、まず [典型エラー別レシピ](recipes_common_errors.md) を参照してください。
+症状から切り分ける場合は、まず [典型エラー別レシピ](recipes-common-errors.md) を参照してください。
 セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
 ```
 
@@ -51,9 +51,9 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --df
 | **電荷マッピング** | `-l 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
 | **原子セレクタ** | `'TYR,285,CA'` または `'TYR 285 CA'` | 区切り文字: 空白、カンマ、スラッシュ、バッククォート、バックスラッシュ |
 
-詳細は [CLI 規約](cli_conventions.md) を参照してください。
+詳細は [CLI 規約](cli-conventions.md) を参照してください。
 
-補足: CLI サブコマンド名は `path-search`（ハイフン区切り）ですが、ドキュメントファイル名は [`path_search.md`](path_search.md)（アンダースコア区切り）です。
+補足: CLI サブコマンド名は `path-search`（ハイフン区切り）で、ドキュメントファイル名は [`path-search.md`](path-search.md) です。
 
 
 ### 水素原子付与の推奨ツール
@@ -78,9 +78,9 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 セットアップと依存関係の詳細は [インストール](installation.md) を参照してください。
 
-- [クイックスタート: `pdb2reaction all`](quickstart_all.md)
-- [クイックスタート: `pdb2reaction scan` で単一構造の段階的スキャン](quickstart_scan.md)
-- [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart_tsopt_freq.md)
+- [クイックスタート: `pdb2reaction all`](quickstart-all.md)
+- [クイックスタート: `pdb2reaction scan` で単一構造の段階的スキャン](quickstart-scan.md)
+- [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart-tsopt-freq.md)
 
 ---
 
@@ -228,9 +228,9 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 | `--refine-path/--no-refine-path` | 再帰的 MEP 精密化（デフォルト: `True`） vs シングルパス |
 | `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO、デフォルト `grad`）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 |
 | `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照 |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照 |
 
-すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml_reference.md) を参照してください。
+すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ---
 
@@ -264,8 +264,8 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 | `extract` | 活性部位ポケットからクラスターモデルを抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |
-| `path-opt` | MEP最適化 (GSM/DMF) | [path_opt](path_opt.md) |
-| `path-search` | 再帰的 MEP 探索 | [path_search](path_search.md) |
+| `path-opt` | MEP最適化 (GSM/DMF) | [path-opt](path-opt.md) |
+| `path-search` | 再帰的 MEP 探索 | [path-search](path-search.md) |
 | `scan` | 1D結合長スキャン | [scan](scan.md) |
 | `scan2d` | 2D距離スキャン | [scan2d](scan2d.md) |
 | `scan3d` | 3D距離スキャン | [scan3d](scan3d.md) |
@@ -273,12 +273,12 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 | `freq` | 振動解析 | [freq](freq.md) |
 | `dft` | DFT 一点計算 | [dft](dft.md) |
 | `trj2fig` | エネルギープロファイルプロット | [trj2fig](trj2fig.md) |
-| `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy_diagram.md) |
-| `fix-altloc` | PDB代替位置指示子の解決 | [fix_altloc](fix_altloc.md) |
-| `add-elem-info` | PDB元素カラム修復 | [add_elem_info](add_elem_info.md) |
+| `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy-diagram.md) |
+| `fix-altloc` | PDB代替位置指示子の解決 | [fix-altloc](fix-altloc.md) |
+| `add-elem-info` | PDB元素カラム修復 | [add-elem-info](add-elem-info.md) |
 
 ```{tip}
-ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 ```
 
 ---
@@ -326,6 +326,6 @@ pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
 ```
 
-`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。UMA バックエンドの詳細オプションについては [MLIP バックエンド](uma_pysis.md) を参照してください。
+`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。UMA バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
 
 問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。

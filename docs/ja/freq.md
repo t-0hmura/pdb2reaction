@@ -9,7 +9,7 @@
 - **凍結原子:** PHVA（Partial Hessian Vibrational Analysis: 部分ヘシアン振動解析）として扱われます。
 - **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`_trj.xyz`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
 - **TS のチェック:** 適切に収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であることが期待されます。
-- **性能:** ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+- **性能:** ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 
 `pdb2reaction freq` は MLIP バックエンド（デフォルト: UMA）で振動解析を実行し、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力します。
 
@@ -71,7 +71,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 
 ## ワークフロー
 - **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` によりリンク水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、UMA と PHVA に伝播されます。
-- **MLIP バックエンド（デフォルト: UMA）**: ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+- **MLIP バックエンド（デフォルト: UMA）**: ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 - **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N ヘシアンと活性ブロックヘシアンの両方に対応し、振動数は cm⁻¹ で報告されます（負の値は虚振動数）。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。`--sort abs` を指定すると絶対値順にソートされます。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `_trj.xyz` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
 - **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。
@@ -116,13 +116,13 @@ out_dir/ (デフォルト:./result_freq/)
 コンソールには確定済みの `geom`/`calc`/`freq` 設定と熱化学設定の要約が出力されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - `--hessian-calc-mode` は **デフォルト < config < 明示CLI < override** の優先順位で解決されます。CLI で明示的に指定した値が最優先です。
 
 
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI < override** です。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
 
 ```yaml
 geom:
@@ -156,11 +156,11 @@ thermo:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — 遷移状態の最適化（内部で虚振動数チェック済み）。続けて IRC で端点の接続性を確認
 - [irc](irc.md) — TS からの IRC（端点での freq と組み合わせることが多い）
 - [dft](dft.md) — より高精度なエネルギー評価のための DFT 一点計算
 - [all](all.md) — `--thermo` を含む一気通貫ワークフロー
-- [YAML リファレンス](yaml_reference.md) — `freq` と `thermo` の設定オプション一覧
+- [YAML リファレンス](yaml-reference.md) — `freq` と `thermo` の設定オプション一覧
 - [用語集](glossary.md) — ZPE、ギブズ自由エネルギー、エンタルピー、エントロピーの定義

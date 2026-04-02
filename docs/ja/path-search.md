@@ -16,7 +16,7 @@
 
 `--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` がポケット PDB トポロジーを提供し（XYZ 座標は保持）、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では PDB コンパニオンは生成されません）。
 
-**2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path_opt.md) の方がシンプルです。
+**2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
 
 ## 最小例
 
@@ -144,20 +144,20 @@ out_dir/ (デフォルト:./result_path_search/)
 - コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`）が出力されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
 - 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - MLIP バックエンド（デフォルト: UMA）は全構造で共有・再利用されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
-設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml_reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については [概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）、`stopt` は `path-opt`（[path_opt.md](path_opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については [概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` のデフォルト値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 
-`opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml_reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
+`opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
 
 `bond` は UMA ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
@@ -323,11 +323,11 @@ search:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
-- [path-opt](path_opt.md) — 単一パスMEP最適化（再帰的精密化なし）
+- [path-opt](path-opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化
 - [extract](extract.md) — path-search入力用のポケットPDBを生成
 - [all](all.md) — 内部でpath-searchを呼び出す一気通貫ワークフロー
-- [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
+- [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

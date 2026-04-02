@@ -114,14 +114,14 @@ out_dir/ (default:./result_irc/)
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
-- For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+- For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 
-See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
-Shared sections reuse [YAML Reference](yaml_reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
+See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):
 - `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
@@ -177,11 +177,11 @@ irc:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
 - [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-frequency check is already included in `tsopt`)
 - [opt](opt.md) — Optimize IRC endpoints to true minima
 - [all](all.md) — End-to-end workflow that runs IRC after tsopt
-- [YAML Reference](yaml_reference.md) — Full `irc` configuration options
+- [YAML Reference](yaml-reference.md) — Full `irc` configuration options
 - [Glossary](glossary.md) — Definition of IRC (Intrinsic Reaction Coordinate)

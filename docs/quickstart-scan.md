@@ -105,4 +105,4 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 
 ## Next step
 
-- Feed scan results to path refinement with [all](all.md) or [path-search](path_search.md).
+- Feed scan results to path refinement with [all](all.md) or [path-search](path-search.md).

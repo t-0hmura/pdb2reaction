@@ -11,7 +11,7 @@
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 20`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**です。`tsopt`（内部で虚振動数チェック済み、**1 つ** であること）→ `irc` で検証します。
 
-`pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path_search.md) を使用してください。
+`pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path-search.md) を使用してください。
 
 MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
 
@@ -79,7 +79,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 
 ### 主要な挙動
 - **エンドポイント**: 入力は2構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で軌跡/HEIのPDB 出力が有効。
-- **電荷/スピン**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli_conventions.md#電荷の指定) を参照してください。
+- **電荷/スピン**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
 - **MEPセグメント**: `--max-nodes` は内部ノード数を制御します。GSM の場合、総画像数は `max_nodes + 2`（固定端点を含む）。DMF の場合、`max_nodes` はチェーン上の移動可能なイメージ数です。GSM成長およびクライミング精密化の収束プリセットは `--thresh-stopt` または `stopt.thresh`（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）で指定します。
 - **エンドポイント事前最適化**: `--thresh` は `--opt-mode` で選ばれた単一構造最適化（`opt.lbfgs.thresh` / `opt.rfo.thresh`）のみに適用されます。
 - **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
@@ -131,7 +131,7 @@ out_dir/
 コンソールには解決済みYAMLブロックが出力され、GSM/DMFのMEP進行状況とタイミングが報告されます。
 
 
-設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
 
 
 ### `geom`
@@ -150,7 +150,7 @@ out_dir/
 - StringOptimizer設定: type, `thresh`, `stop_in_when_full`, `scale_step`, `max_cycles`, dump系、`reparam_thresh`, `coord_diff_thresh`, `out_dir`, `print_every`。
 
 ### `opt.lbfgs` / `opt.rfo`
-- エンドポイント事前最適化の単一構造オプティマイザー設定。キーは [YAML リファレンス](yaml_reference.md) の `lbfgs` / `rfo` と同等で、YAML が CLI の `--preopt-max-cycles` を上書きします。
+- エンドポイント事前最適化の単一構造オプティマイザー設定。キーは [YAML リファレンス](yaml-reference.md) の `lbfgs` / `rfo` と同等で、YAML が CLI の `--preopt-max-cycles` を上書きします。
 
 ### YAML例（デフォルト値）
 ```yaml
@@ -297,12 +297,12 @@ opt:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 
-- [path-search](path_search.md) — 自動精密化を伴う再帰的MEP 探索（2+構造用）
+- [path-search](path-search.md) — 自動精密化を伴う再帰的MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEI を TS 候補として最適化（内部で虚振動数チェック済み）。続けて IRC で接続性を確認
 - [extract](extract.md) — path-opt入力用のポケットPDBを生成
 - [all](all.md) — 一気通貫ワークフロー（デフォルトでpath-searchを使用）
-- [YAML リファレンス](yaml_reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
+- [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

@@ -236,8 +236,8 @@ Common constructor keywords (defaults shown in the rightmost column):
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 - [opt](opt.md) -- Single-structure optimization using an MLIP backend
-- [path-opt](path_opt.md) -- MEP optimization with MLIP backend
+- [path-opt](path-opt.md) -- MEP optimization with MLIP backend
 - [all](all.md) -- End-to-end workflow using MLIP across stages

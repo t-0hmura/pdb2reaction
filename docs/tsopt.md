@@ -17,7 +17,7 @@
 
 > **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path_opt.md) (two structures) or [path-search](path_search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-frequency check) → `irc`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path-opt.md) (two structures) or [path-search](path-search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-frequency check) → `irc`.
 
 ## Minimal example
 
@@ -87,13 +87,13 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## Workflow
-- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
+- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 - **Geometry loading & freeze-links**: structures are read via
  `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
 - **MLIP Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
  evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
  frozen atoms are present.
- For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+ For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 - **Dimer mode details**:
  - The Hessian Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact
  Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
@@ -163,17 +163,17 @@ out_dir/ (default:./result_tsopt/)
 ```
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency detection threshold defaults to 5.0 cm⁻¹ (configurable via
  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
  manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
  memory usage and preserving correct active-space eigenvectors.
-- See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
+- See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
 
 Shared sections reuse
-[YAML Reference](yaml_reference.md). Keep the full block below intact if it already
+[YAML Reference](yaml-reference.md). Keep the full block below intact if it already
 matches your workflow—adjust only the values you need to change.
 
 ```yaml
@@ -306,11 +306,11 @@ rsirfo:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
-- [path-search](path_search.md) — MEP search that identifies TS candidates (HEI)
+- [path-search](path-search.md) — MEP search that identifies TS candidates (HEI)
 - [irc](irc.md) — Trace the reaction path from an optimized TS
 - [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-frequency check is already included in `tsopt`)
 - [all](all.md) — End-to-end workflow that chains extraction → MEP → tsopt → IRC (→ optional freq/DFT)
-- [YAML Reference](yaml_reference.md) — Full `hessian_dimer` (Hessian Guided Dimer) and `rsirfo` configuration options
+- [YAML Reference](yaml-reference.md) — Full `hessian_dimer` (Hessian Guided Dimer) and `rsirfo` configuration options
 - [Glossary](glossary.md) — Definitions of TS, Dimer, RS-I-RFO, Hessian

@@ -161,7 +161,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml_reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
 
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
@@ -182,7 +182,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 ```
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）が計算エンジンで、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
@@ -214,7 +214,7 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-`opt` の詳細は [YAML リファレンス](yaml_reference.md) を参照してください。
+`opt` の詳細は [YAML リファレンス](yaml-reference.md) を参照してください。
 `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
 
 ## 関連項目
@@ -222,5 +222,5 @@ bias:
 - [scan3d](scan3d.md) -- 3D 距離グリッドスキャン
 - [opt](opt.md) -- スキャン前後の単一構造最適化
 - [all](all.md) -- 一気通貫ワークフロー
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド

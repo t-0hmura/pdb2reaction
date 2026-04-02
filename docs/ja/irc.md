@@ -114,14 +114,14 @@ out_dir/ (デフォルト:./result_irc/)
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
-- ヘシアン評価モードの詳細は [MLIP 計算機](uma_pysis.md#ヘシアンモード) を参照してください。
+- ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 - `--freeze-links` は PDB 入力にのみ適用されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
 
 
-設定の優先順位は [CLI 規約: 設定の優先順位](cli_conventions.md#設定の優先順位) を参照してください。共通セクションについては [YAML リファレンス](yaml_reference.md) を参照してください。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `true` に強制されます（YAML/CLI より優先）。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `true` に強制されます（YAML/CLI より優先）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -177,11 +177,11 @@ irc:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行する一気通貫ワークフロー
-- [YAML リファレンス](yaml_reference.md) — `irc` の完全な設定オプション
+- [YAML リファレンス](yaml-reference.md) — `irc` の完全な設定オプション
 - [用語集](glossary.md) — IRC（固有反応座標）の定義

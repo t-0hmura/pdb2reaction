@@ -102,14 +102,14 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and an MLIP Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
   - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
- - For Hessian evaluation modes, see [MLIP Calculator](uma_pysis.md#hessian-evaluation).
+ - For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 
 6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
  - Skips the MEP/merge stages. Runs `tsopt` on the pocket (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
 
-Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
+Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 
 **Spin resolution:** `--multiplicity` (CLI) → `.gjf` template → default (1)
 
@@ -287,7 +287,7 @@ The YAML is a compact, machine-readable summary. Common top-level keys include:
 `summary.yaml` intentionally omits the formatted tables and filesystem tree that appear in `summary.log`.
 
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes_common_errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct net charge propagates to scan/MEP/TSOPT/DFT.
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
@@ -308,7 +308,7 @@ The effective YAML is forwarded to **every** invoked subcommand. Each tool reads
 
 | Subcommand | YAML Sections |
 |------------|---------------|
-| [`path-search`](path_search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
+| [`path-search`](path-search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
@@ -328,21 +328,21 @@ dft:
  grid_level: 6
 ```
 
-For a complete reference of all YAML options, see **[YAML Configuration Reference](yaml_reference.md)**.
+For a complete reference of all YAML options, see **[YAML Configuration Reference](yaml-reference.md)**.
 
 ---
 
 ## See Also
 
 - [Installation](installation.md) — Setup and dependency installation
-- [Getting Started](getting_started.md) — First run and workflow overview
+- [Getting Started](getting-started.md) — First run and workflow overview
 - [Concepts & Workflow](concepts.md) — Mental model of pockets, segments, and stages
 - [extract](extract.md) — Standalone pocket extraction (called internally by `all`)
-- [path-search](path_search.md) — Standalone MEP search (called internally by `all`)
+- [path-search](path-search.md) — Standalone MEP search (called internally by `all`)
 - [tsopt](tsopt.md) — Standalone TS optimization
 - [freq](freq.md) — Standalone vibrational analysis
 - [dft](dft.md) — Standalone DFT calculations
-- [Common Error Recipes](recipes_common_errors.md) — Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Common errors and fixes
-- [YAML Reference](yaml_reference.md) — Complete YAML configuration options
+- [YAML Reference](yaml-reference.md) — Complete YAML configuration options
 - [Glossary](glossary.md) — Definitions of MEP, TS, IRC, GSM, DMF

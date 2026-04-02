@@ -168,7 +168,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--zmin FLOAT`, `--zmax FLOAT` | 等値面の色範囲（kcal/mol） | 自動 |
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml_reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、軌跡出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、軌跡出力は `--dump` で制御します。
 
 ```yaml
 geom:
@@ -212,7 +212,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 ```
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）が計算エンジンで、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
@@ -225,5 +225,5 @@ out_dir/ (デフォルト:./result_scan3d/)
 - [scan2d](scan2d.md) -- 2D 距離グリッドスキャン
 - [opt](opt.md) -- スキャン前後の単一構造最適化
 - [all](all.md) -- 一気通貫ワークフロー
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド

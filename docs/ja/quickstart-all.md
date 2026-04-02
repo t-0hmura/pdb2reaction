@@ -35,6 +35,6 @@ pdb2reaction all -i R.pdb -i P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ## 次の導線
 
-- 単一構造の段階的スキャン: [クイックスタート: `pdb2reaction scan`](quickstart_scan.md)
-- TS 最適化と検証: [クイックスタート: `pdb2reaction tsopt`](quickstart_tsopt_freq.md)
+- 単一構造の段階的スキャン: [クイックスタート: `pdb2reaction scan`](quickstart-scan.md)
+- TS 最適化と検証: [クイックスタート: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
 - 全オプション: [all](all.md)

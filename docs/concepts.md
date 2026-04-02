@@ -19,7 +19,7 @@ Full system(s) (PDB/XYZ/GJF)
  │ │ ↓
  │ │ Ordered intermediates
  │ │ ↓
- │ └─ MEP search [`path-search`](path_search.md) or [`path-opt`](path_opt.md)
+ │ └─ MEP search [`path-search`](path-search.md) or [`path-opt`](path-opt.md)
  │ ↓
  │ MEP trajectory (mep_trj.xyz) + energy diagrams
  │ ↓
@@ -60,7 +60,7 @@ Pocket extraction is controlled by:
 - `-c/--center`: how to locate the substrate (residue IDs, residue names, or a substrate-only PDB).
 - `-r/--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`.
 
-For charge and spin specification, see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification).
+For charge and spin specification, see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification).
 
 ### Images and segments
 - **Image**: a single geometry (one “node”) along a chain-of-states path.
@@ -142,9 +142,9 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 ## Next steps
 
 ### Getting started
-- [Getting Started](getting_started.md) — quick start and workflow overview
+- [Getting Started](getting-started.md) — quick start and workflow overview
 - [Installation](installation.md) — setup and dependencies
-- [Common Error Recipes](recipes_common_errors.md) — symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
 
 ### Core subcommands
@@ -152,11 +152,11 @@ pdb2reaction -i ts_guess.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 |------------|---------|---------------|
 | `all` | End-to-end workflow | [all.md](all.md) |
 | `extract` | Pocket extraction | [extract.md](extract.md) |
-| `path-search` | Recursive MEP search | [path_search.md](path_search.md) |
+| `path-search` | Recursive MEP search | [path-search.md](path-search.md) |
 | `tsopt` | TS optimization | [tsopt.md](tsopt.md) |
 | `freq` | Vibrational analysis | [freq.md](freq.md) |
 | `dft` | Single-point DFT | [dft.md](dft.md) |
 
 ### Reference
-- [YAML Reference](yaml_reference.md) — complete YAML configuration options
+- [YAML Reference](yaml-reference.md) — complete YAML configuration options
 - [Glossary](glossary.md) — terminology reference

@@ -107,7 +107,7 @@ out_dir/ (デフォルト:./result_dft/)
 - 電荷・多重度（2S）、汎関数/基底、収束設定、出力ディレクトリも要約されます。
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。GPU リソースが検出されない場合に自動フォールバックさせるには `--engine auto` を使用してください。CPU のみで実行するには `--engine cpu` を指定します。
 - **Blackwell アーキテクチャ** GPU が検出された場合、GPU4PySCF が未対応の可能性があるため警告が出力されます。
@@ -151,9 +151,9 @@ dft:
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [freq](freq.md) — UMAベースの振動解析（DFT精密化の前に行うことが多い）
 - [all](all.md) — `--dft` を使用した一気通貫ワークフロー
-- [YAML リファレンス](yaml_reference.md) — `dft` の完全な設定オプション
+- [YAML リファレンス](yaml-reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

@@ -11,7 +11,7 @@
 - **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 20`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** Optimize the HEI with `tsopt` (includes imaginary-frequency check; expect **one** imaginary frequency) → `irc`.
 
-`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path_search.md).
+`pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path-search.md).
 
 > **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want a single-pass MEP without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
 
@@ -80,7 +80,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
-- **Charge/spin**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli_conventions.md#charge-specification) for details).
+- **Charge/spin**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images. For GSM, total images = `max_nodes + 2` (including fixed endpoints). For DMF, `max_nodes` sets the number of movable images along the chain. GSM growth and optional climbing-image refinement use the StringOptimizer convergence preset from `--thresh-stopt` or `stopt.thresh` (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Endpoint preoptimization**: `--thresh` controls only the single-structure endpoint optimizer selected by `--opt-mode` (`opt.lbfgs.thresh` / `opt.rfo.thresh`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
@@ -130,7 +130,7 @@ out_dir/
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
 
-See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration-precedence) for the full resolution order.
+See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
 ### `geom`
 - Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
 
@@ -147,7 +147,7 @@ See [CLI Conventions: Configuration precedence](cli_conventions.md#configuration
 - StringOptimizer settings: type labels, `thresh`, `stop_in_when_full`, `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
 
 ### `opt.lbfgs` / `opt.rfo`
-- Single-structure preoptimization settings for endpoints. Keys mirror the `lbfgs`/`rfo` sections in [YAML Reference](yaml_reference.md). YAML overrides CLI `--preopt-max-cycles`.
+- Single-structure preoptimization settings for endpoints. Keys mirror the `lbfgs`/`rfo` sections in [YAML Reference](yaml-reference.md). YAML overrides CLI `--preopt-max-cycles`.
 
 ### Example YAML (default value)
 ```yaml
@@ -294,12 +294,12 @@ opt:
 
 ## See Also
 
-- [Common Error Recipes](recipes_common_errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 
-- [path-search](path_search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
+- [path-search](path-search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
 - [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (includes imaginary-frequency check; follow with IRC)
 - [extract](extract.md) — Generate pocket PDBs for path-opt inputs
 - [all](all.md) — End-to-end workflow (uses path-search by default)
-- [YAML Reference](yaml_reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options
+- [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

@@ -226,7 +226,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ---
 
 ## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes_common_errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--radius` のデフォルトは 2.6 Å。`0` を指定すると空選択を避けるため内部で 0.001 Å にクランプされます。`--radius-het2het` もデフォルトでは無効（`0.0`）で、`0` 指定時は同様に 0.001 Å にクランプされます。
 - `--no-include-h2o` で水を除外できます。
@@ -238,11 +238,11 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes_common_errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [all](all.md) — `-c/--center` で内部的にextractを呼び出す一気通貫ワークフロー
-- [path-search](path_search.md) — 抽出されたポケットでのMEP 探索
+- [path-search](path-search.md) — 抽出されたポケットでのMEP 探索
 - [scan](scan.md) — 抽出されたポケットでの段階的スキャン
-- [add-elem-info](add_elem_info.md) — 抽出前に欠落したPDB元素カラムを修正
+- [add-elem-info](add-elem-info.md) — 抽出前に欠落したPDB元素カラムを修正
 - [トラブルシューティング](troubleshooting.md) — よくある抽出エラー
 - [用語集](glossary.md) — ポケット、クラスターモデル、リンク水素の定義
