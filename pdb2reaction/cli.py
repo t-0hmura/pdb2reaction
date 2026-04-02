@@ -30,7 +30,7 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "dft": (".dft", "cli", "Run single-point DFT."),
     "scan2d": (".scan2d", "cli", "Run 2D distance scan."),
     "scan3d": (".scan3d", "cli", "Run 3D distance scan."),
-    "extract": (".extract", "cli", "Extract a binding pocket."),
+    "extract": (".extract", "cli", "Extract an active site model."),
     "fix-altloc": (".fix_altloc", "cli", "Resolve PDB alternate locations."),
     "energy-diagram": (".energy_diagram", "cli", "Draw energy diagrams from values."),
     "bond-summary": (".bond_summary", "cli", "Detect bond changes between structures."),

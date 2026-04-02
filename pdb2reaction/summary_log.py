@@ -626,7 +626,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     annotations: Dict[str, str] = {Path(k).as_posix(): v for k, v in key_files.items()}
 
     default_notes = {
-        "pockets": "Extracted pocket PDBs",
+        "pockets": "Extracted active site model PDBs",
         "scan": "Staged scan outputs",
         "path_search": "Recursive GSM outputs",
         "path_opt": "Single-pass GSM outputs",

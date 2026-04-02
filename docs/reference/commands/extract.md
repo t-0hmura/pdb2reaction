@@ -5,7 +5,7 @@ pdb2reaction ver. 0.2.1.dev116+gff86b942a
 
 Usage: cli extract [OPTIONS]
 
-  Extract a binding pocket around substrate residues (from a PDB or residue
+  Extract an active site model around substrate residues (from a PDB or residue
   IDs/names), with biochemically aware truncation and optional link-H; supports
   multi-structure input and multi-MODEL output.
 
@@ -23,7 +23,7 @@ Options:
                             N paths for per-file output. If omitted: single
                             input -> pocket.pdb; multiple inputs ->
                             pocket_{filename}.pdb.
-  -r, --radius FLOAT        Cutoff (angstrom) around substrate atoms for pocket
+  -r, --radius FLOAT        Cutoff (angstrom) around substrate atoms for active site model
                             inclusion.  [default: 2.6]
   -l, --ligand-charge TEXT  Total charge number or per-resname mapping like
                             'GPP:-3,SAM:1'.

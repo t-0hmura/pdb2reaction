@@ -2376,7 +2376,7 @@ def cli(
                     seg_Es = [combined_all.energies[j] for j in idxs]
                     seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}_trj.xyz"
                     write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
-                    click.echo(f"[write] Wrote per-segment pocket trajectory → '{seg_trj}'")
+                    click.echo(f"[write] Wrote per-segment active site model trajectory → '{seg_trj}'")
                     if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
@@ -2400,7 +2400,7 @@ def cli(
                     hei_E = [combined_all.energies[imax_abs]]
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
                     write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
-                    click.echo(f"[write] Wrote segment HEI (pocket) → '{hei_trj}'")
+                    click.echo(f"[write] Wrote segment HEI (active site model) → '{hei_trj}'")
                     if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
@@ -2416,10 +2416,10 @@ def cli(
                                 err=True,
                             )
         except Exception as e:
-            click.echo(f"[write] WARNING: Failed to emit per-segment pocket outputs: {e}", err=True)
+            click.echo(f"[write] WARNING: Failed to emit per-segment active site model outputs: {e}", err=True)
 
         if do_merge:
-            click.echo("====== Full-system merge (pocket → templates) started ======\n")
+            click.echo("====== Full-system merge (active site model → templates) started ======\n")
             # With --align True, use only the first reference PDB for all pairs (replicate it).
             if align:
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:

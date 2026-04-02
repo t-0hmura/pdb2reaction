@@ -5,9 +5,9 @@ pdb2reaction ver. 0.2.1.dev116+gff86b942a
 
 Usage: cli all [OPTIONS]
 
-  Run pocket extraction → (optional single-structure staged scan) → MEP search →
+  Run active site model extraction → (optional single-structure staged scan) → MEP search →
   merge to full PDBs in one shot. If exactly one input is provided: (a) with
-  --scan-lists, run staged scan on the pocket (or full structure when extraction
+  --scan-lists, run staged scan on the active site model (or full structure when extraction
   is skipped) and use stage results as inputs for path_search; (b) with --tsopt
   True and no --scan-lists, run TSOPT-only mode.
 
@@ -29,7 +29,7 @@ Options:
                                   'A:123A'), or a residue-name list like
                                   'GPP,SAM'. When omitted, extraction is skipped
                                   and the **full input structure(s)** are used
-                                  directly as pockets.
+                                  directly as active site models.
   -o, --out-dir DIRECTORY         Top-level output directory for the pipeline.
                                   [default: result_all]
   -l, --ligand-charge TEXT        Total charge (number) or per-resname mapping
@@ -66,6 +66,6 @@ Options:
                                   '[(10,55,2.20),(23,34,1.80)]'. Indices refer
                                   to the original full input PDB (1-based). When
                                   extraction is used, they are auto-mapped to
-                                  the pocket after extraction.
+                                  the active site model after extraction.
   -h, --help                      Show this message and exit.
 ```

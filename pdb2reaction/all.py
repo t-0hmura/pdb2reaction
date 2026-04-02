@@ -442,9 +442,9 @@ def _pocket_key_to_index(pocket_pdb: Path) -> Dict[AtomKey, List[int]]:
                     for variant in _key_variants(key):
                         key2idx[variant].append(idx)
     except FileNotFoundError:
-        raise click.ClickException(f"[all] Pocket PDB not found: {pocket_pdb}")
+        raise click.ClickException(f"[all] Active site model PDB not found: {pocket_pdb}")
     if not key2idx:
-        raise click.ClickException(f"[all] Pocket PDB {pocket_pdb} has no ATOM/HETATM records.")
+        raise click.ClickException(f"[all] Active site model PDB {pocket_pdb} has no ATOM/HETATM records.")
     return dict(key2idx)
 
 
@@ -546,9 +546,9 @@ def _convert_scan_lists_to_pocket_indices(
         msg_key = _format_atom_key_for_msg(key)
         raise click.BadParameter(
             f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) references atom index {idx_one_based} "
-            f"(key {msg_key}) which is not present in the pocket after extraction. "
+            f"(key {msg_key}) which is not present in the active site model after extraction. "
             "Increase extraction coverage (e.g., --radius/--radius-het2het, --selected-resn, or set --exclude-backbone False), "
-            "or choose atoms that survive in the pocket."
+            "or choose atoms that survive in the active site model."
         )
 
     converted: List[List[Tuple[int, int, float]]] = []
@@ -1608,8 +1608,8 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 
 @click.command(
     help=(
-        "Run pocket extraction → (optional single-structure staged scan) → MEP search → merge to full PDBs in one shot.\n"
-        "If exactly one input is provided: (a) with --scan-lists, run staged scan on the pocket (or full structure "
+        "Run active site model extraction → (optional single-structure staged scan) → MEP search → merge to full PDBs in one shot.\n"
+        "If exactly one input is provided: (a) with --scan-lists, run staged scan on the active site model (or full structure "
         "when extraction is skipped) and use stage results as inputs for path_search; "
         "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode."
     ),
@@ -1655,7 +1655,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "a PDB path, a residue-ID list like '123,124' or 'A:123,B:456' "
         "(insertion codes OK: '123A' / 'A:123A'), "
         "or a residue-name list like 'GPP,SAM'. "
-        "When omitted, extraction is skipped and the **full input structure(s)** are used directly as pockets."
+        "When omitted, extraction is skipped and the **full input structure(s)** are used directly as active site models."
     ),
 )
 @click.option(
@@ -1688,7 +1688,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Include waters (HOH/WAT/TIP3/SOL) in the pocket.",
+    help="Include waters (HOH/WAT/TIP3/SOL) in the active site model.",
 )
 @click.option(
     "--exclude-backbone",
@@ -1704,7 +1704,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Add link hydrogens for severed bonds (carbon-only) in pockets.",
+    help="Add link hydrogens for severed bonds (carbon-only) in active site models.",
 )
 @click.option(
     "--selected-resn",
@@ -1915,7 +1915,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="If True, run initial single-structure optimizations of the pocket inputs.",
+    help="If True, run initial single-structure optimizations of the active site model inputs.",
 )
 @click.option(
     "--hessian-calc-mode",
@@ -2070,7 +2070,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "Multiple inline literals define sequential stages, e.g. "
         "'[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
         "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
-        "auto-mapped to the pocket after extraction."
+        "auto-mapped to the active site model after extraction."
     ),
 )
 @click.option(
@@ -2492,7 +2492,7 @@ def cli(
 
     if not skip_extract and not _extraction_skipped_by_resume:
         _echo_section(
-            f"====== [all] Stage 1/{stage_total} — Active-site pocket extraction (multi-structure union when applicable) started ======"
+            f"====== [all] Stage 1/{stage_total} — Active site model extraction (multi-structure union when applicable) started ======"
         )
         try:
             ex_res = extract_api(
@@ -2511,7 +2511,7 @@ def cli(
         except Exception as e:
             raise click.ClickException(f"[all] Extractor failed: {e}")
 
-        _echo("[all] Pocket files:")
+        _echo("[all] Active site model files:")
         for op in pocket_outputs:
             _echo(f"  - {op}")
 
@@ -2553,12 +2553,12 @@ def cli(
                     logger.debug("Failed to parse ligand_charge as float during resume: %s", exc)
         if resolved_charge is None and charge_override is None:
             raise click.ClickException(
-                "[resume] Cannot resolve charge from existing pocket files. "
+                "[resume] Cannot resolve charge from existing active site model files. "
                 "Provide -q/--charge explicitly when using --resume."
             )
     else:
         _echo_section(
-            f"====== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as pockets started ======"
+            f"====== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as active site models started ======"
         )
         first_input = input_paths[0].resolve()
         gjf_charge: Optional[int] = None
@@ -3340,7 +3340,7 @@ def cli(
                 scan_lists_raw, full_input_pdb, scan_input_pdb
             )
             _echo(
-                "[all] Remapped --scan-lists indices from the full PDB to the pocket ordering."
+                "[all] Remapped --scan-lists indices from the full PDB to the active site model ordering."
             )
 
         # For extracted pockets, scan stages are already 1-based and can be rebased
@@ -3424,7 +3424,7 @@ def cli(
                 "[all] No stage result structures found under scan/ "
                 "(looked for result.[pdb|xyz|gjf])."
             )
-        _echo("[all] Collected scan stage pocket files:")
+        _echo("[all] Collected scan stage active site model files:")
         for p in stage_results:
             _echo(f"  - {p}")
 
@@ -3457,7 +3457,7 @@ def cli(
                 pocket_ref_pdbs = candidate_pdbs
             else:
                 _echo(
-                    "[all] WARNING: pocket PDB snapshots for staged scan were not found; "
+                    "[all] WARNING: active site model PDB snapshots for staged scan were not found; "
                     "full-system merge will use input paths instead.",
                     err=True,
                 )
@@ -3950,7 +3950,7 @@ def cli(
         _echo(f"[all] Pocket-only outputs are under: {path_dir}")
     else:
         _echo(
-            "[all] path-opt mode produces pocket-level outputs only; full-system merge is not performed."
+            "[all] path-opt mode produces active site model-level outputs only; full-system merge is not performed."
         )
         _echo(f"[all] Aggregated products are under: {path_dir}")
     _echo("  - summary.yaml             (segment barriers, ΔE, labels)")
@@ -4082,7 +4082,7 @@ def cli(
         hei_pocket_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
         if hei_pocket_path is None:
             _echo(
-                f"[post] WARNING: HEI pocket file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
+                f"[post] WARNING: HEI active site model file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
                 err=True,
             )
             continue

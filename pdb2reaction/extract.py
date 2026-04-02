@@ -228,7 +228,7 @@ def _gather_extract_variadic(
 @click.command(
     name="extract",
     help=(
-        "Extract a binding pocket around substrate residues (from a PDB or "
+        "Extract an active site model around substrate residues (from a PDB or "
         "residue IDs/names), with biochemically aware truncation and optional "
         "link-H; supports multi-structure input and multi-MODEL output."
     ),
@@ -263,7 +263,7 @@ def _gather_extract_variadic(
 @click.option(
     "-r", "--radius",
     type=float, default=2.6, show_default=True,
-    help="Cutoff (angstrom) around substrate atoms for pocket inclusion.",
+    help="Cutoff (angstrom) around substrate atoms for active site model inclusion.",
 )
 @click.option(
     "--radius-het2het",
@@ -1311,7 +1311,7 @@ def log_charge_summary(prefix: str,
         _echo_info("%s Net ion charge: %+g", prefix, ion_total)
     else:
         _echo_info("%s Ion charges: (none)", prefix)
-    _echo_info("%s Total pocket charge: %+g", prefix, total)
+    _echo_info("%s Total active site model charge: %+g", prefix, total)
 
 
 # =========================== Cross-structure helpers ===========================
@@ -1688,7 +1688,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             with open(out_path, "w") as fh:
                 fh.write(content)
             outputs.append(out_path)
-            _echo_info("[extract:multi] Single‑model pocket saved to %s", out_path)
+            _echo_info("[extract:multi] Single‑model active site model saved to %s", out_path)
     else:
         buf_models: List[str] = []
         for m, text in enumerate(model_texts, start=1):
@@ -1703,7 +1703,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
                 fh.write(blk)
             fh.write("END\n")
         outputs.append(out_path)
-        _echo_info("[extract:multi] Multi‑MODEL pocket saved to %s", out_path)
+        _echo_info("[extract:multi] Multi‑MODEL active site model saved to %s", out_path)
 
     # ==== Charge summary (first model only) ====
     charge_summary = compute_charge_summary(
@@ -1878,7 +1878,7 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
                     "[extract] WARNING: Residue %s %d may be an amino acid "
                     "(has N, CA, C, O) but is not recognized as a standard residue name. "
                     "Backbone truncation was not applied. "
-                    "Consider preparing the pocket model manually.",
+                    "Consider preparing the active site model manually.",
                     resname, _resseq,
                 )
 
