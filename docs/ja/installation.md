@@ -37,7 +37,9 @@ huggingface-cli login
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB、MACE、AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b orb` を渡してください。[詳細なインストール手順](#詳細なインストール手順)の手順 7 を参照してください。
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b orb` を渡してください。[詳細なインストール手順](#詳細なインストール手順)の手順 7 を参照してください。
+>
+> **MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。MACE に切り替えるには `pip uninstall fairchem-core && pip install mace-torch` を実行してください。UMA と MACE は共存できません — 両方必要な場合は別の conda 環境を使用してください。
 
 - MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
  ```bash
@@ -119,7 +121,8 @@ huggingface-cli login
  # AIMNet2 バックエンド
  pip install "pdb2reaction[aimnet]"
 
- pip install --no-deps mace-torch      # MACE バックエンド (e3nn 競合のため --no-deps 必須)
+ # MACE バックエンド (UMA と競合 — 先に fairchem-core をアンインストール)
+ # pip uninstall fairchem-core && pip install mace-torch
  ```
 
  暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。

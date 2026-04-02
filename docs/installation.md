@@ -37,7 +37,9 @@ huggingface-cli login
 
 You only need to do this once per machine / environment.
 
-> **Tip:** UMA is the default MLIP backend. To use ORB, MACE, or AIMNet2 instead, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
+> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
+>
+> **MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). To switch to MACE, run `pip uninstall fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist — use separate conda environments if you need both.
 
 - If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
  ```bash
@@ -119,7 +121,8 @@ If you prefer to build the environment piece by piece:
  # AIMNet2 backend
  pip install "pdb2reaction[aimnet]"
 
- pip install --no-deps mace-torch      # MACE backend (--no-deps required due to e3nn conflict)
+ # MACE backend (conflicts with UMA — uninstall fairchem-core first)
+ # pip uninstall fairchem-core && pip install mace-torch
  ```
 
  To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.
