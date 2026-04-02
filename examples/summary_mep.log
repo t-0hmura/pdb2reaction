@@ -11,7 +11,7 @@ Thermochemistry    : True
 DFT single-point   : False
 Opt mode           : grad  (grad: lbfgs/dimer; hess: rfo/rsirfo)
 MEP mode           : gsm
-Code version       : pdb2reaction 0.3.2.dev64+g6e69c082d
+Code version       : pdb2reaction 0.3.3
 UMA model          : uma-s-1p1
 Total charge (ML)  : 0
 Multiplicity (2S+1): 1
