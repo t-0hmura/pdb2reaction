@@ -99,6 +99,7 @@ glossary
 | サブコマンド | 説明 |
 |---------|------|
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
+| [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
 
 ### 構造最適化
@@ -246,6 +247,9 @@ pdb2reaction --help
 
 # コマンドのヘルプ
 pdb2reaction <subcommand> --help
+
+# 詳細オプション（dry-run、内部チューニング等）
+pdb2reaction <subcommand> --help-advanced
 ```
 
 問題や機能リクエストについては、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) をご覧ください。

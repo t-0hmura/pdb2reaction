@@ -1,8 +1,8 @@
-# bond-summary
+# `bond-summary`
 
-Detect and report covalent bond changes between consecutive molecular structures.
+連続する分子構造間の共有結合変化を検出・報告します。
 
-## Synopsis
+## 書式
 
 ```bash
 pdb2reaction bond-summary -i R.xyz P.xyz
@@ -10,35 +10,32 @@ pdb2reaction bond-summary -i R.xyz TS.xyz P.xyz
 pdb2reaction bond-summary -i R.pdb IM1.pdb IM2.pdb P.pdb
 ```
 
-## Description
+## 説明
 
-`bond-summary` compares consecutive pairs of input structures and reports
-bonds that are formed or broken. For *N* input files it produces *N − 1*
-comparison blocks (A→B, B→C, …).
+`bond-summary` は入力構造の連続ペアを比較し、形成または切断された結合を報告します。*N* 個の入力ファイルに対して *N − 1* 個の比較ブロック（A→B, B→C, …）を生成します。
 
-Bond perception uses element-specific covalent radii with configurable
-tolerances. Distances are reported in Ångström.
+結合認識は元素固有の共有結合半径とスケーリングファクターを使用します。距離はオングストローム（Å）で報告されます。
 
-Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension).
+対応フォーマット: **XYZ**、**PDB**、**GJF**（拡張子から自動検出）。
 
-## Options
+## オプション
 
-| Option | Description | Default |
+| オプション | 説明 | デフォルト |
 |--------|-------------|---------|
-| `-i, --input FILE` | Input structure file (repeat for each file, ≥ 2 required) | — |
-| `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
-| `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
-| `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
+| `-i, --input FILE` | 入力構造ファイル（2つ以上必須） | — |
+| `--device TEXT` | 計算デバイス（`cpu`, `cuda`） | `cpu` |
+| `--bond-factor FLOAT` | 共有結合半径の和に対するスケーリングファクター | `1.20` |
+| `--one-based / --zero-based` | 出力の原子インデックス規約 | `--one-based` |
 
-## Examples
+## 例
 
-### Two-structure comparison
+### 2構造の比較
 
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
 ```
 
-Output:
+出力:
 ```
 ============================================================
   1.R.xyz  →  3.P.xyz
@@ -51,18 +48,16 @@ Bond broken (2):
   - H106-O107 : 1.034 Å --> 1.673 Å
 ```
 
-### Multi-structure (reaction pathway)
+### 多構造比較（反応経路）
 
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
 ```
 
-Produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.
+R→IM1, IM1→IM2, IM2→P の3つの比較ブロックが出力されます。
 
-## Notes
+## 注意事項
 
-- All input structures must have **identical atom counts and element ordering**.
-- Bond detection uses the same algorithm as the internal `bond_changes` module
-  used by the `all` workflow for IRC endpoint validation.
-- To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å),
-  increase `--bond-factor` (e.g., `1.30`).
+- すべての入力構造は**同一の原子数と元素順序**である必要があります。
+- 結合検出は `all` ワークフローの IRC 端点検証で使用される内部 `bond_changes` モジュールと同じアルゴリズムを使用します。
+- 境界的な結合（例: 金属配位 2.0–2.4 Å）の感度を調整するには、`--bond-factor` を大きくしてください（例: `1.30`）。

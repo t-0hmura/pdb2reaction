@@ -1,12 +1,12 @@
 # `trj2fig`
 
 ## Overview
-`trj2fig` converts an XYZ trajectory into polished energy profiles. By default it
+`trj2fig` converts an XYZ trajectory with energy values (obtained from the pdb2reaction workflow) into plot images. By default it
 reads the energies (in hartree) encoded in each frame’s comment line, converts them
 to kcal/mol or hartree, optionally references all values to a chosen frame, and
 exports the resulting series as static/interactive figures and CSV tables. The
-reference can be the first frame (`init`), the last frame when `--reverse-x` is
-used, or any explicit index. When you supply `-q/--charge` and/or
+reference can be the first frame or set manually (`-r`), and the last frame when `--reverse-x` is
+used. When you supply `-q/--charge` and/or
 `-m/--multiplicity`, all energies are recomputed for every frame with the
 MLIP backend (default UMA; see `-b/--backend`) using the provided charge/spin instead of the comment
 lines.

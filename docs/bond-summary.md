@@ -1,4 +1,4 @@
-# bond-summary
+# `bond-summary`
 
 Detect and report covalent bond changes between consecutive molecular structures.
 
