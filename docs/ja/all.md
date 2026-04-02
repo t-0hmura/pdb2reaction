@@ -117,7 +117,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 1. **活性部位モデル抽出**（`-c/--center` が指定された場合）
  - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,SAM`）で指定可能
  - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
- - 入力ごとの活性部位モデル PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、活性部位モデルは残基選択ごとに統合
+ - 入力ごとの活性部位モデル PDB は `<out-dir>/models/` に保存。複数構造が提供された場合、活性部位モデルは残基選択ごとに統合
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
@@ -288,7 +288,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 out_dir/ (デフォルト:./result_all/)
 ├─ summary.log # テキスト形式の結果要約
 ├─ summary.yaml # YAML 形式の結果要約
-├─ pockets/ # 抽出実行時の活性部位モデル PDB
+├─ models/ # 抽出実行時の活性部位モデル PDB
 ├─ scan/ # 段階的活性部位モデルスキャン結果（--scan-lists 提供時）
 ├─ path_search/ # MEP 結果（GSM/DMF）: 軌跡、マージ PDB、ダイアグラム、summary.yaml、セグメント別フォルダ
 ├─ path_search/post_seg_XX/ # 後処理出力（TS 最適化、IRC、freq、DFT、ダイアグラム）

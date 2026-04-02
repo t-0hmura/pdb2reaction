@@ -252,7 +252,7 @@ Typical `pdb2reaction all` output:
 result_all/
 ├── summary.log # User-friendly summary
 ├── summary.yaml # YAML-format summary
-├── pockets/ # Extracted cluster models
+├── models/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
 ├─┬ path_search/ # MEP trajectories and diagrams
 │ ├── mep_trj.xyz # MEP trajectory

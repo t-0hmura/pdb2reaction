@@ -82,7 +82,7 @@ def _run_dry_run_smoke(runner: CliRunner, fixtures: dict[str, Path]) -> int:
 
 def _run_extract_smoke(runner: CliRunner, fixtures: dict[str, Path]) -> None:
     with tempfile.TemporaryDirectory(prefix="pdb2reaction_extract_smoke_") as tmpdir:
-        output_pdb = Path(tmpdir) / "pocket.pdb"
+        output_pdb = Path(tmpdir) / "model.pdb"
         _invoke_or_raise(
             runner,
             [
@@ -99,7 +99,7 @@ def _run_extract_smoke(runner: CliRunner, fixtures: dict[str, Path]) -> None:
         )
         if not output_pdb.exists():
             raise RuntimeError(
-                "[core-cli-smoke] extract succeeded but output pocket was not created: "
+                "[core-cli-smoke] extract succeeded but output model was not created: "
                 f"{output_pdb}"
             )
 

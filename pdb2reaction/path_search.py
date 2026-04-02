@@ -1219,12 +1219,12 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
     return structs, aligned_coords, atoms_list, keymaps
 
 
-def _pocket_keys_from_pdb(pocket_pdb: Path) -> List[Tuple[str, str, str, str, str]]:
+def _model_keys_from_pdb(model_pdb: Path) -> List[Tuple[str, str, str, str, str]]:
     """
-    Return atom identity keys for a pocket PDB file.
+    Return atom identity keys for a model PDB file.
     """
     parser = PDBParser(QUIET=True)
-    st = parser.get_structure("pocket", str(pocket_pdb))
+    st = parser.get_structure("model", str(model_pdb))
     keys: List[Tuple[str, str, str, str, str]] = []
     for a in st.get_atoms():
         res = a.get_parent()
@@ -1252,7 +1252,7 @@ def _write_model_block(structure: PDB.Structure.Structure,
 
 def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
     """
-    Wrap pocket atom indices into REMARK lines with limited width.
+    Wrap model atom indices into REMARK lines with limited width.
     """
     s = ",".join(map(str, indices))
     out: List[str] = []
@@ -1270,7 +1270,7 @@ def _chunk_remark_indices(indices: List[int], width: int = 60) -> List[str]:
 
 
 def _merge_pair_to_full(pair_images: List[Any],
-                        pocket_ref_pdb: Path,
+                        model_ref_pdb: Path,
                         structA: PDB.Structure.Structure,
                         structB: PDB.Structure.Structure,
                         coordsA_aligned: np.ndarray,
@@ -1281,15 +1281,15 @@ def _merge_pair_to_full(pair_images: List[Any],
                         drop_first: bool = False,
                         seg_indices_for_frames: Optional[List[int]] = None,
                         seg_report_lookup: Optional[Dict[int, SegmentReport]] = None,
-                        include_pocket_indices_for_first_model: bool = False) -> Tuple[List[str], List[int]]:
+                        include_model_indices_for_first_image: bool = False) -> Tuple[List[str], List[int]]:
     """
-    Merge a pocket‑only trajectory for a *pair* into the corresponding full templates (A,B),
+    Merge a model‑only trajectory for a *pair* into the corresponding full templates (A,B),
     generating MODEL blocks and (optionally) writing a PDB. Returns (blocks, 1‑based active indices).
     """
-    pocket_keys = _pocket_keys_from_pdb(pocket_ref_pdb)
+    model_keys = _model_keys_from_pdb(model_ref_pdb)
 
     match_tpl_idx: List[int] = []
-    for k in pocket_keys:
+    for k in model_keys:
         ia = keymapA.get(k, None)
         ib = keymapB.get(k, None)
         if ia is None or ib is None:
@@ -1350,7 +1350,7 @@ def _merge_pair_to_full(pair_images: List[Any],
         remark_lines: List[str] = []
         remark_lines.append(f"PAIR_MERGE FRAC {tfrac:.6f}")
 
-        if include_pocket_indices_for_first_model and kk == 0:
+        if include_model_indices_for_first_image and kk == 0:
             remark_lines.extend(_chunk_remark_indices([i for i in active_one_based], width=60))
 
         seg_idx = seg_idx_seq[kk] if kk < len(seg_idx_seq) else 0
@@ -1382,27 +1382,27 @@ def _merge_pair_to_full(pair_images: List[Any],
 
 
 def _merge_final_and_write(final_images: List[Any],
-                           pocket_inputs: Sequence[Path],
+                           model_inputs: Sequence[Path],
                            ref_pdbs: Sequence[Path],
                            segments: List[SegmentReport],
                            out_dir: Path,
-                           pocket_ref_pdbs: Optional[Sequence[Path]] = None) -> None:
+                           model_ref_pdbs: Optional[Sequence[Path]] = None) -> None:
     """
-    Merge the entire pocket MEP into full templates (for all pairs) and write outputs.
+    Merge the entire model MEP into full templates (for all pairs) and write outputs.
     """
-    if len(ref_pdbs) != len(pocket_inputs):
+    if len(ref_pdbs) != len(model_inputs):
         raise click.BadParameter("--ref-full-pdb must match the number of --input after preprocessing (caller should replicate the first ref for all pairs when --align True).")
 
-    if pocket_ref_pdbs is None:
-        pocket_ref_pdbs = pocket_inputs
-    if len(pocket_ref_pdbs) != len(pocket_inputs):
+    if model_ref_pdbs is None:
+        model_ref_pdbs = model_inputs
+    if len(model_ref_pdbs) != len(model_inputs):
         raise click.BadParameter("--ref-pdb must match the number of --input after preprocessing.")
 
     structs, aligned_coords, _atoms_list, keymaps = _load_structures_and_chain_align(ref_pdbs)
 
     seg_lookup: Dict[int, SegmentReport] = {int(s.seg_index): s for s in segments if int(s.seg_index) > 0}
 
-    n_pairs = len(pocket_inputs) - 1
+    n_pairs = len(model_inputs) - 1
     groups: List[Tuple[int, List[Any]]] = []
     cur_idx = None
     cur_list: List[Any] = []
@@ -1430,7 +1430,7 @@ def _merge_final_and_write(final_images: List[Any],
     wrote_indices = False
 
     for gi, (pi, imgs) in enumerate(groups):
-        pocket_ref = Path(pocket_ref_pdbs[pi])
+        model_ref = Path(model_ref_pdbs[pi])
         structA = structs[pi]
         structB = structs[pi+1]
         coordsA = aligned_coords[pi]
@@ -1441,7 +1441,7 @@ def _merge_final_and_write(final_images: List[Any],
 
         blocks, active_one_based = _merge_pair_to_full(
             pair_images=imgs,
-            pocket_ref_pdb=pocket_ref,
+            model_ref_pdb=model_ref,
             structA=structA,
             structB=structB,
             coordsA_aligned=coordsA,
@@ -1452,7 +1452,7 @@ def _merge_final_and_write(final_images: List[Any],
             drop_first=(gi > 0),
             seg_indices_for_frames=seg_indices_for_frames,
             seg_report_lookup=seg_lookup,
-            include_pocket_indices_for_first_model=(not wrote_indices)
+            include_model_indices_for_first_image=(not wrote_indices)
         )
         if blocks:
             wrote_indices = True
@@ -1477,7 +1477,7 @@ def _merge_final_and_write(final_images: List[Any],
         # Determine pair index for this segment (assume consistent within the segment)
         pi_vals = sorted({int(getattr(im, "pair_index", 0)) for im in seg_frames})
         pi = pi_vals[0]
-        pocket_ref = Path(pocket_ref_pdbs[pi])
+        model_ref = Path(model_ref_pdbs[pi])
         structA = structs[pi]
         structB = structs[pi+1]
         coordsA = aligned_coords[pi]
@@ -1490,7 +1490,7 @@ def _merge_final_and_write(final_images: List[Any],
             seg_indices_for_frames = [seg_idx] * len(seg_frames)
             blocks, _ = _merge_pair_to_full(
                 pair_images=seg_frames,
-                pocket_ref_pdb=pocket_ref,
+                model_ref_pdb=model_ref,
                 structA=structA,
                 structB=structB,
                 coordsA_aligned=coordsA,
@@ -1501,7 +1501,7 @@ def _merge_final_and_write(final_images: List[Any],
                 drop_first=False,
                 seg_indices_for_frames=seg_indices_for_frames,
                 seg_report_lookup=seg_lookup,
-                include_pocket_indices_for_first_model=True,
+                include_model_indices_for_first_image=True,
             )
             out_seg = out_dir / f"mep_w_ref_seg_{seg_idx:02d}.pdb"
             with open(out_seg, "w") as f:
@@ -1520,7 +1520,7 @@ def _merge_final_and_write(final_images: List[Any],
                 hei_frame = seg_frames[imax]
                 blocks_hei, _ = _merge_pair_to_full(
                     pair_images=[hei_frame],
-                    pocket_ref_pdb=pocket_ref,
+                    model_ref_pdb=model_ref,
                     structA=structA,
                     structB=structB,
                     coordsA_aligned=coordsA,
@@ -1531,7 +1531,7 @@ def _merge_final_and_write(final_images: List[Any],
                     drop_first=False,
                     seg_indices_for_frames=[seg_idx],
                     seg_report_lookup=seg_lookup,
-                    include_pocket_indices_for_first_model=True,
+                    include_model_indices_for_first_image=True,
                 )
                 out_hei = out_dir / f"hei_w_ref_seg_{seg_idx:02d}.pdb"
                 with open(out_hei, "w") as f:
@@ -1746,7 +1746,7 @@ def _merge_final_and_write(final_images: List[Any],
 )
 @click.option(
     "--ref-pdb",
-    "pocket_ref_pdb_paths",
+    "model_ref_pdb_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     default=None,
@@ -1788,7 +1788,7 @@ def cli(
     preopt: bool,
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
-    pocket_ref_pdb_paths: Optional[Sequence[Path]],
+    model_ref_pdb_paths: Optional[Sequence[Path]],
     backend: str,
     solvent: str,
     solvent_model: str,
@@ -1827,18 +1827,18 @@ def cli(
             ref_parsed.append(p)
         ref_pdb_paths = tuple(ref_parsed)
 
-    pocket_ref_vals = collect_option_values(argv_all, ("--ref-pdb",))
-    if pocket_ref_vals:
-        pocket_ref_parsed: List[Path] = []
-        for tok in pocket_ref_vals:
+    model_ref_vals = collect_option_values(argv_all, ("--ref-pdb",))
+    if model_ref_vals:
+        model_ref_parsed: List[Path] = []
+        for tok in model_ref_vals:
             p = Path(tok)
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
                     f"Pocket reference PDB path '{tok}' not found or is a directory. "
                     f"When using '--ref-pdb', multiple files may follow a single option."
                 )
-            pocket_ref_parsed.append(p)
-        pocket_ref_pdb_paths = tuple(pocket_ref_parsed)
+            model_ref_parsed.append(p)
+        model_ref_pdb_paths = tuple(model_ref_parsed)
 
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -1874,7 +1874,7 @@ def cli(
                 if len(ref_pdb_paths) != len(input_paths):
                     raise click.BadParameter("--ref-full-pdb must be given for each --input (same count and order). "
                                              "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
-            if pocket_ref_pdb_paths and len(pocket_ref_pdb_paths) != len(input_paths):
+            if model_ref_pdb_paths and len(model_ref_pdb_paths) != len(input_paths):
                 raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
 
         p_list = [Path(p) for p in input_paths]
@@ -2179,14 +2179,14 @@ def cli(
             g.set_calculator(shared_calc)
 
         # If any input is PDB, treat as "PDB input" for final output handling.
-        # Fall back to --ref-pdb (pocket_ref_pdb_paths) when inputs are XYZ.
+        # Fall back to --ref-pdb (model_ref_pdb_paths) when inputs are XYZ.
         ref_pdb_for_segments: Optional[Path] = None
         for p in p_list:
             if p.suffix.lower() == ".pdb":
                 ref_pdb_for_segments = p.resolve()
                 break
-        if ref_pdb_for_segments is None and pocket_ref_pdb_paths:
-            for p in pocket_ref_pdb_paths:
+        if ref_pdb_for_segments is None and model_ref_pdb_paths:
+            for p in model_ref_pdb_paths:
                 if Path(p).suffix.lower() == ".pdb":
                     ref_pdb_for_segments = Path(p).resolve()
                     break
@@ -2431,11 +2431,11 @@ def cli(
 
             _merge_final_and_write(
                 final_images=list(combined_all.images),
-                pocket_inputs=[Path(p) for p in input_paths],
+                model_inputs=[Path(p) for p in input_paths],
                 ref_pdbs=ref_list_for_merge,
                 segments=combined_all.segments,
                 out_dir=out_dir_path,
-                pocket_ref_pdbs=[Path(p) for p in pocket_ref_pdb_paths] if pocket_ref_pdb_paths else None,
+                model_ref_pdbs=[Path(p) for p in model_ref_pdb_paths] if model_ref_pdb_paths else None,
             )
             click.echo("====== Full-system merge finished ======\n")
 

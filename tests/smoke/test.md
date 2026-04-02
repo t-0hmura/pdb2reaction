@@ -43,7 +43,7 @@ path commands use `--preopt False --climb False --max-nodes 5`.
 | 5 | Subcommand | `irc` | max-cycles 3 |
 | 6 | Subcommand | `dft` (hf/sto-3g) | `--engine cpu` |
 | 7 | Subcommand | `scan` (1D) | preopt/endopt False |
-| 8 | Subcommand | `scan2d` | extract pocket first |
+| 8 | Subcommand | `scan2d` | extract model first |
 | 9 | Subcommand | `scan3d` | |
 | 10 | Subcommand | `path-opt` (gsm) | max-nodes 5 |
 | 11 | Subcommand | `path-search` | max-nodes 5 |

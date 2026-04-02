@@ -26,7 +26,7 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 Given **(i) two or more PDB files** (R → ... → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
 
-- extracts an **active-site pocket** around user-defined substrates to build a **cluster model**,
+- extracts an **active-site model** around user-defined substrates to build a **cluster model**,
 - explores **minimum-energy paths (MEPs)** with GSM or DMF,
 - *optionally* optimizes **transition states**, runs **vibrational analysis**, **IRC**, and **single-point DFT**,
 
@@ -51,7 +51,7 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 - [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting_started.md) — Quick start and workflow overview
 - [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
-- [**Concepts & Workflow**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/concepts.md) — Key terms: pockets, templates, segments, and stages
+- [**Concepts & Workflow**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/concepts.md) — Key terms: models, templates, segments, and stages
 - [**CLI Command Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/reference/commands/index.md)
 - [**YAML Schema**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/reference/yaml.md)
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors and fixes
@@ -135,14 +135,14 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ### Step-by-step workflow
 
-**1. Extract active-site pocket (cluster model)** — [`extract`](docs/extract.md)
+**1. Extract active-site model (cluster model)** — [`extract`](docs/extract.md)
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 6.0
 ```
 
 **2. Optimize geometry** — [`opt`](docs/opt.md)
 ```bash
-pdb2reaction opt -i pocket.pdb -l 'SAM:1,GPP:-3'
+pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3'
 ```
 
 **3. MEP search** — [`path-search`](docs/path_search.md)
@@ -184,7 +184,7 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 
 | Subcommand | Role | Documentation |
 |---|---|---|
-| `extract` | Extract active-site pocket (cluster model) | [docs/extract.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/extract.md) |
+| `extract` | Extract active-site model (cluster model) | [docs/extract.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/extract.md) |
 | `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix_altloc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/fix_altloc.md) |
 | `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add_elem_info.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/add_elem_info.md) |
 

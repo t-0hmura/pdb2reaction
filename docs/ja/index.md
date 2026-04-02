@@ -214,7 +214,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 result_all/
 ├── summary.log # テキスト形式の結果要約
 ├── summary.yaml # YAML 形式の結果要約
-├── pockets/ # 抽出されたクラスターモデル
+├── models/ # 抽出されたクラスターモデル
 ├── scan/ # （オプション）スキャン結果
 ├─┬ path_search/ # MEP軌跡とダイアグラム
 │ ├── mep_trj.xyz # MEP軌跡

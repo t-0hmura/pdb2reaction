@@ -115,7 +115,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 1. **Active site model (binding pocket) extraction** (if `-c/--center` is provided)
  - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,SAM`).
  - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`, and `--verbose`.
- - Per-input active site model PDBs are saved under `<out-dir>/pockets/`. When multiple structures are supplied, their active site models are unioned per residue selection.
+ - Per-input active site model PDBs are saved under `<out-dir>/models/`. When multiple structures are supplied, their active site models are unioned per residue selection.
  - The **first active site model’s net charge** is propagated to scan/MEP/TSOPT.
 
 2. **Optional staged scan (single-input only)**
@@ -284,7 +284,7 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 out_dir/ (default:./result_all/)
 ├─ summary.log # formatted summary for quick inspection
 ├─ summary.yaml # YAML version summary
-├─ pockets/ # Extracted active site model PDBs when extraction runs
+├─ models/ # Extracted active site model PDBs when extraction runs
 ├─ scan/ # Staged active site model scan results (present when --scan-lists is provided)
 ├─ path_search/ # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
 ├─ path_search/post_seg_XX/ # Post-processing outputs (TS optimization, IRC, freq, DFT, diagrams)

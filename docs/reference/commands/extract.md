@@ -21,8 +21,8 @@ Options:
                             residue-name list like 'GPP,SAM'.  [required]
   -o, --output TEXT         Output PDB path(s). One path for multi-MODEL PDB, or
                             N paths for per-file output. If omitted: single
-                            input -> pocket.pdb; multiple inputs ->
-                            pocket_{filename}.pdb.
+                            input -> model.pdb; multiple inputs ->
+                            model_{filename}.pdb.
   -r, --radius FLOAT        Cutoff (angstrom) around substrate atoms for active site model
                             inclusion.  [default: 2.6]
   -l, --ligand-charge TEXT  Total charge number or per-resname mapping like

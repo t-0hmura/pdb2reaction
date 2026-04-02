@@ -32,21 +32,21 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
 ### 例
 ```bash
 # 最小（ID基準の基質）+ 明示的な総リガンド電荷
-pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l -3
+pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
 
 # PDBとして提供される基質; 残基名ごとの電荷マッピング
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
 
 # 名前基準の基質選択（すべてのマッチを含む）
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
 
 # ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
 pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
- -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+ -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 
 # ヘテロ-ヘテロ近接を有効にした複数構造から複数出力
 pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
- -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+ -o model1.pdb model2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 ```
 
 ## ワークフロー
@@ -84,7 +84,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 ### マルチ構造アンサンブル
 - 複数の入力 PDB を受け付けます（先頭/末尾で原子順序の一致を検証）。各構造は独立に処理され、選択残基の**和集合**を全モデルに適用することで出力の一貫性を保ちます。
 - 出力ポリシー:
- - `-o` なし & 複数入力 → 構造ごとに `pocket_<original_basename>.pdb`。
+ - `-o` なし & 複数入力 → 構造ごとに `model_<original_basename>.pdb`。
  - `-o` を1つだけ指定 → 単一のマルチMODEL PDB。
  - 入力数と同数の `-o` を指定 → 入力ごとに個別PDB。
 - 診断ログにモデルごとの全原子数/保持原子数と残基 ID を出力します。
@@ -102,7 +102,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | --- | --- | --- |
 | `-i, --input PATH...` | 1つ以上のタンパク質-リガンドPDB ファイル（同一の原子順序が必要） | 必須 |
 | `-c, --center SPEC` | 基質指定（PDB パス、残基ID、または残基名） | 必須 |
-| `-o, --output PATH...` | 活性部位モデル PDB 出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと。複数入力で `-o` 1つの場合は単一のマルチMODEL PDB を生成。N個の `-o` が N個の入力と一致する場合は N個の個別 PDB を生成。 | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
+| `-o, --output PATH...` | 活性部位モデル PDB 出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと。複数入力で `-o` 1つの場合は単一のマルチMODEL PDB を生成。N個の `-o` が N個の入力と一致する場合は N個の個別 PDB を生成。 | 自動（`model.pdb` または `model_<input>.pdb`） |
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
@@ -115,8 +115,8 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 ## 出力
 ```text
 <output>.pdb # TERレコード後にオプションのリンク水素を含む活性部位モデル PDB
- # 単一入力 → デフォルトでpocket.pdb
- # -oなしの複数入力 → 構造ごとにpocket_<original_basename>.pdb
+ # 単一入力 → デフォルトでmodel.pdb
+ # -oなしの複数入力 → 構造ごとにmodel_<original_basename>.pdb
  # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
  # 出力ディレクトリは自動作成されません。事前に存在を確認してください
 ```

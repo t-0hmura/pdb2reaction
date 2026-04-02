@@ -32,21 +32,21 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
 ### Examples
 ```bash
 # Minimal (ID-based substrate) with explicit total ligand charge
-pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l -3
+pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
 
 # Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
 
 # Name-based substrate selection including all matches (WARNING is logged)
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
 
 # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
 pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
- -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+ -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 
 # Multi-structure to multiple outputs with hetero-hetero proximity enabled
 pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
- -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+ -o model1.pdb model2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 ```
 
 ## Workflow
@@ -82,7 +82,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 ### Multi-structure ensembles
 - Accepts multiple input PDBs (identical atom ordering is validated at the head/tail of each file). Each structure is processed independently and the **union** of selected residues is applied to every model so that outputs remain consistent.
 - Output policy:
- - No `-o`, multiple inputs → per-file `pocket_<original_basename>.pdb`.
+ - No `-o`, multiple inputs → per-file `model_<original_basename>.pdb`.
  - One `-o` path → single multi-MODEL PDB.
  - N outputs where N == number of inputs → N individual PDBs.
 - Diagnostics echo raw vs. kept atom counts per model along with residue IDs.
@@ -100,7 +100,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | --- | --- | --- |
 | `-i, --input PATH...` | One or more protein–ligand PDB files (identical atom ordering required). | Required |
 | `-c, --center SPEC` | Substrate specification (PDB path, residue IDs, or residue names). | Required |
-| `-o, --output PATH...` | Active site model PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. With 1 `-o` and multiple inputs, creates a single multi-MODEL PDB. With N `-o` values matching N inputs, creates N separate PDBs. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
+| `-o, --output PATH...` | Active site model PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. With 1 `-o` and multiple inputs, creates a single multi-MODEL PDB. With N `-o` values matching N inputs, creates N separate PDBs. | Auto (`model.pdb` or `model_<input>.pdb`) |
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion. | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally 0.001 Å when zero) |
 | `--include-h2o/--no-include-h2o` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `True` |
@@ -113,8 +113,8 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 ## Outputs
 ```text
 <output>.pdb # Active site model PDB(s) with optional link hydrogens after a TER record
- # Single input → pocket.pdb by default
- # Multiple inputs without -o → pocket_<original_basename>.pdb per structure
+ # Single input → model.pdb by default
+ # Multiple inputs without -o → model_<original_basename>.pdb per structure
  # One -o path with multiple inputs → single multi-MODEL PDB
  # Output directories are not created automatically; ensure they exist
 ```

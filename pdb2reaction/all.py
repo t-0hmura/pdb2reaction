@@ -425,14 +425,14 @@ def _build_variant_occurrence_table(keys: Sequence[AtomKey]) -> List[Dict[AtomKe
     return per_atom
 
 
-def _pocket_key_to_index(pocket_pdb: Path) -> Dict[AtomKey, List[int]]:
+def _model_key_to_index(model_pdb: Path) -> Dict[AtomKey, List[int]]:
     """
-    Build mapping: structural atom key -> list of pocket indices (1-based by file order).
+    Build mapping: structural atom key -> list of model indices (1-based by file order).
     """
     key2idx: Dict[AtomKey, List[int]] = defaultdict(list)
     idx = 0
     try:
-        with open(pocket_pdb, "r", encoding="utf-8", errors="ignore") as fh:
+        with open(model_pdb, "r", encoding="utf-8", errors="ignore") as fh:
             for line in fh:
                 if line.startswith("ATOM") or line.startswith("HETATM"):
                     key = _parse_atom_key_from_line(line)
@@ -442,9 +442,9 @@ def _pocket_key_to_index(pocket_pdb: Path) -> Dict[AtomKey, List[int]]:
                     for variant in _key_variants(key):
                         key2idx[variant].append(idx)
     except FileNotFoundError:
-        raise click.ClickException(f"[all] Active site model PDB not found: {pocket_pdb}")
+        raise click.ClickException(f"[all] Active site model PDB not found: {model_pdb}")
     if not key2idx:
-        raise click.ClickException(f"[all] Active site model PDB {pocket_pdb} has no ATOM/HETATM records.")
+        raise click.ClickException(f"[all] Active site model PDB {model_pdb} has no ATOM/HETATM records.")
     return dict(key2idx)
 
 
@@ -502,14 +502,14 @@ def _format_scan_stage(stage: List[Tuple[int, int, float]]) -> str:
     return "[" + ", ".join(f"({i},{j},{target})" for (i, j, target) in stage) + "]"
 
 
-def _convert_scan_lists_to_pocket_indices(
+def _convert_scan_lists_to_model_indices(
     scan_lists_raw: Sequence[str],
     full_input_pdb: Path,
-    pocket_pdb: Path,
+    model_pdb: Path,
 ) -> List[List[Tuple[int, int, float]]]:
     """
-    Convert user-provided atom indices (based on the full input PDB) to pocket indices.
-    Returns the converted stages as lists of (i,j,target) with 1-based pocket indices.
+    Convert user-provided atom indices (based on the full input PDB) to model indices.
+    Returns the converted stages as lists of (i,j,target) with 1-based model indices.
 
     Structural keys (chainID, resName, resSeq, iCode, atomName, altLoc) are used instead of serial numbers,
     with per-variant occurrence counts to distinguish atoms that otherwise share the same key.
@@ -521,14 +521,14 @@ def _convert_scan_lists_to_pocket_indices(
     stages = _parse_scan_lists_literals(scan_lists_raw, atom_meta=full_atom_meta)
 
     orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
-    key_to_pocket_idx = _pocket_key_to_index(pocket_pdb)
+    key_to_model_idx = _model_key_to_index(model_pdb)
     variant_occ_table = _build_variant_occurrence_table(orig_keys_in_order)
 
     n_atoms_full = len(orig_keys_in_order)
 
-    def _map_full_index_to_pocket(idx_one_based: int, stage_idx: int, tuple_idx: int, side_label: str) -> int:
+    def _map_full_index_to_model(idx_one_based: int, stage_idx: int, tuple_idx: int, side_label: str) -> int:
         """
-        Convert a 1-based index from the full PDB into the pocket's 1-based index.
+        Convert a 1-based index from the full PDB into the model's 1-based index.
         Fall back in the order: strict match → ignore altloc → ignore iCode → ignore both,
         and use the atom index (occurrence count) when multiple atoms share a structural key.
         """
@@ -537,7 +537,7 @@ def _convert_scan_lists_to_pocket_indices(
         variant_occ = variant_occ_table[idx_one_based - 1]
         for variant in _key_variants(key):
             occurrence = variant_occ.get(variant)
-            indices = key_to_pocket_idx.get(variant)
+            indices = key_to_model_idx.get(variant)
             if occurrence is None or not indices:
                 continue
             if occurrence <= len(indices):
@@ -565,8 +565,8 @@ def _convert_scan_lists_to_pocket_indices(
                     f"beyond the input PDB atom count ({n_atoms_full})."
                 )
 
-            pi = _map_full_index_to_pocket(idx_i, stage_idx, tuple_idx, "i")
-            pj = _map_full_index_to_pocket(idx_j, stage_idx, tuple_idx, "j")
+            pi = _map_full_index_to_model(idx_i, stage_idx, tuple_idx, "i")
+            pj = _map_full_index_to_model(idx_j, stage_idx, tuple_idx, "j")
 
             stage_converted.append((pi, pj, target))
         converted.append(stage_converted)
@@ -1240,7 +1240,7 @@ def _run_tsopt_on_hei(
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Path, Any]:
     """
-    Run tsopt CLI on a HEI pocket structure; return (final_geom_path, ts_geom).
+    Run tsopt CLI on a HEI model structure; return (final_geom_path, ts_geom).
 
     Prefer the XYZ output to preserve coordinate precision between workflow steps, while still writing
     PDB/GJF companions when requested by the original input type.
@@ -1355,7 +1355,7 @@ def _irc_and_match(
     seg_idx: int,
     seg_dir: Path,
     ref_pdb_for_seg: Path,
-    seg_pocket_pdb: Path,
+    seg_model_pdb: Path,
     ref_pdb_template: Optional[Path],
     g_ts: Any,
     q_int: int,
@@ -1383,7 +1383,7 @@ def _irc_and_match(
       and ``finished_irc_trj.xyz``, together with a flag indicating whether the IRC
       trajectory should be reversed when constructing the global IRC plot.
     """
-    freeze_atoms: List[int] = _get_freeze_atoms(seg_pocket_pdb, freeze_links_flag)
+    freeze_atoms: List[int] = _get_freeze_atoms(seg_model_pdb, freeze_links_flag)
 
     irc_dir = seg_dir / "irc"
     ensure_dir(irc_dir)
@@ -1432,8 +1432,8 @@ def _irc_and_match(
     try:
         if finished_trj.exists() and (not finished_pdb.exists()):
             ref_for_conv: Optional[Path] = None
-            if seg_pocket_pdb.suffix.lower() == ".pdb":
-                ref_for_conv = seg_pocket_pdb
+            if seg_model_pdb.suffix.lower() == ".pdb":
+                ref_for_conv = seg_model_pdb
             elif ref_pdb_for_seg.suffix.lower() == ".pdb":
                 ref_for_conv = ref_pdb_for_seg
             if ref_for_conv is not None:
@@ -2202,7 +2202,7 @@ def cli(
     dft_engine: str,
 ) -> None:
     """
-    The **all** command composes `extract` → (optional `scan` on pocket or full input) → MEP search
+    The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
     (`path_search` with ``--refine-path True`` or concatenated `path-opt` otherwise) and hides ref-template
     bookkeeping.
     With single input:
@@ -2406,13 +2406,13 @@ def cli(
     skip_extract = center_spec is None or str(center_spec).strip() == ""
 
     out_dir = out_dir.resolve()
-    pockets_dir = out_dir / "pockets"
+    models_dir = out_dir / "models"
     path_dir = out_dir / ("path_search" if refine_path else "path_opt")
     scan_dir = _resolve_override_dir(out_dir / "scan", scan_out_dir)
     stage_total = 3
     ensure_dir(out_dir)
     if not skip_extract:
-        ensure_dir(pockets_dir)
+        ensure_dir(models_dir)
     if not single_tsopt_mode:
         ensure_dir(path_dir)
 
@@ -2476,18 +2476,18 @@ def cli(
 
     extract_inputs = tuple(final_inputs)
 
-    pocket_outputs: List[Path] = []
+    model_outputs: List[Path] = []
     if not skip_extract:
         for p in extract_inputs:
-            pocket_outputs.append((pockets_dir / f"pocket_{p.stem}.pdb").resolve())
+            model_outputs.append((models_dir / f"model_{p.stem}.pdb").resolve())
 
     resolved_charge: Optional[int] = None
 
-    # Resume: skip extraction if all pocket files already exist
+    # Resume: skip extraction if all model files already exist
     _extraction_skipped_by_resume = False
-    if not skip_extract and resume and _stage_done(pocket_outputs):
+    if not skip_extract and resume and _stage_done(model_outputs):
         _skip_msg("Stage 1 — Extraction")
-        _echo(f"[resume] Found existing pocket files: {[str(p) for p in pocket_outputs]}")
+        _echo(f"[resume] Found existing model files: {[str(p) for p in model_outputs]}")
         _extraction_skipped_by_resume = True
 
     if not skip_extract and not _extraction_skipped_by_resume:
@@ -2498,7 +2498,7 @@ def cli(
             ex_res = extract_api(
                 complex_pdb=[str(p) for p in extract_inputs],
                 center=center_spec,
-                output=[str(p) for p in pocket_outputs],
+                output=[str(p) for p in model_outputs],
                 radius=float(radius),
                 radius_het2het=float(radius_het2het),
                 include_h2o=bool(include_h2o),
@@ -2512,7 +2512,7 @@ def cli(
             raise click.ClickException(f"[all] Extractor failed: {e}")
 
         _echo("[all] Active site model files:")
-        for op in pocket_outputs:
+        for op in model_outputs:
             _echo(f"  - {op}")
 
         try:
@@ -2535,10 +2535,10 @@ def cli(
             "or --ligand-charge."
         )
         if ligand_charge is not None:
-            first_pocket = pocket_outputs[0] if pocket_outputs else None
-            if first_pocket and first_pocket.suffix.lower() == ".pdb":
+            first_model = model_outputs[0] if model_outputs else None
+            if first_model and first_model.suffix.lower() == ".pdb":
                 try:
-                    with prepare_input_structure(first_pocket) as prepared:
+                    with prepare_input_structure(first_model) as prepared:
                         resolved_charge = _derive_charge_from_ligand_charge(
                             prepared, ligand_charge, prefix="[resume]"
                         )
@@ -2653,8 +2653,8 @@ def cli(
 
     freeze_ref: Optional[Path] = None
     if freeze_links_flag:
-        if not skip_extract and pocket_outputs:
-            freeze_ref = pocket_outputs[0]
+        if not skip_extract and model_outputs:
+            freeze_ref = model_outputs[0]
         elif ref_pdb_for_topology is not None:
             freeze_ref = ref_pdb_for_topology
         else:
@@ -2698,7 +2698,7 @@ def cli(
         # MEP-related fields in downstream summaries.
         mep_mode_kind = "---"
 
-        ts_initial_pdb = pocket_outputs[0] if not skip_extract else input_paths[0].resolve()
+        ts_initial_pdb = model_outputs[0] if not skip_extract else input_paths[0].resolve()
 
         struct_dir = tsroot / "structures"
         freq_root = _resolve_override_dir(tsroot / "freq", freq_out_dir)
@@ -2758,7 +2758,7 @@ def cli(
                 seg_idx=1,
                 seg_dir=tsroot,
                 ref_pdb_for_seg=ts_pdb,
-                seg_pocket_pdb=ref_pdb_for_topology or ts_initial_pdb,
+                seg_model_pdb=ref_pdb_for_topology or ts_initial_pdb,
                 ref_pdb_template=_tsopt_ref,
                 g_ts=g_ts,
                 q_int=q_int,
@@ -2786,14 +2786,14 @@ def cli(
                 g_prod_irc, e_prod_irc = gL, eL
 
             ensure_dir(struct_dir)
-            pocket_ref = ref_pdb_for_topology or ts_initial_pdb
+            model_ref = ref_pdb_for_topology or ts_initial_pdb
             pR_irc = _save_single_geom_as_pdb_for_tools(
-                g_react_irc, pocket_ref, struct_dir, "reactant_irc"
+                g_react_irc, model_ref, struct_dir, "reactant_irc"
             )
             pP_irc = _save_single_geom_as_pdb_for_tools(
-                g_prod_irc, pocket_ref, struct_dir, "product_irc"
+                g_prod_irc, model_ref, struct_dir, "product_irc"
             )
-            pT = _save_single_geom_as_pdb_for_tools(gT, pocket_ref, struct_dir, "ts")
+            pT = _save_single_geom_as_pdb_for_tools(gT, model_ref, struct_dir, "ts")
 
             endpoint_opt_dir = tsroot / "endpoint_opt"
             ensure_dir(endpoint_opt_dir)
@@ -2846,10 +2846,10 @@ def cli(
             _echo(f"[endpoint-opt] Clean endpoint-opt working dir.")
 
             pR = _save_single_geom_as_pdb_for_tools(
-                g_react_opt, pocket_ref, struct_dir, "reactant"
+                g_react_opt, model_ref, struct_dir, "reactant"
             )
             pP = _save_single_geom_as_pdb_for_tools(
-                g_prod_opt, pocket_ref, struct_dir, "product"
+                g_prod_opt, model_ref, struct_dir, "product"
             )
 
             e_react = float(g_react_opt.energy)
@@ -3266,8 +3266,8 @@ def cli(
     # -------------------------------------------------------------------------
     # Stage 1b: optional staged scan (single-structure)
     # -------------------------------------------------------------------------
-    pockets_for_path: List[Path]
-    pocket_ref_pdbs: Optional[List[Path]] = None
+    models_for_path: List[Path]
+    model_ref_pdbs: Optional[List[Path]] = None
     # Resume: check if scan stage results already exist
     _scan_results_exist = (
         resume
@@ -3293,7 +3293,7 @@ def cli(
         if skip_extract:
             scan_input_pdb = Path(input_paths[0]).resolve()
         else:
-            scan_input_pdb = Path(pocket_outputs[0]).resolve()
+            scan_input_pdb = Path(model_outputs[0]).resolve()
         initial_path_for_path = scan_input_pdb
         initial_ref_pdb_for_path = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
         preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
@@ -3303,8 +3303,8 @@ def cli(
             if preopt_pdb.exists():
                 initial_ref_pdb_for_path = preopt_pdb
             _echo(f"[all] Using scan preopt XYZ as initial path endpoint: {initial_path_for_path}")
-        pockets_for_path = [initial_path_for_path] + stage_results_resumed
-        pocket_ref_pdbs = None
+        models_for_path = [initial_path_for_path] + stage_results_resumed
+        model_ref_pdbs = None
         if initial_ref_pdb_for_path is not None:
             candidate_pdbs_r: List[Path] = [initial_ref_pdb_for_path]
             missing_pdb_r = False
@@ -3319,7 +3319,7 @@ def cli(
                         missing_pdb_r = True
                         break
             if not missing_pdb_r:
-                pocket_ref_pdbs = candidate_pdbs_r
+                model_ref_pdbs = candidate_pdbs_r
         _echo(f"[resume] Collected {len(stage_results_resumed)} scan stage result(s) from previous run")
     elif is_single and has_scan:
         _echo_section("====== [all] Stage 1b — Staged scan on input started ======\n")
@@ -3334,16 +3334,16 @@ def cli(
                 scan_lists_raw, atom_meta=scan_atom_meta
             )
         else:
-            scan_input_pdb = Path(pocket_outputs[0]).resolve()
+            scan_input_pdb = Path(model_outputs[0]).resolve()
             full_input_pdb = Path(input_paths[0]).resolve()
-            converted_scan_stages = _convert_scan_lists_to_pocket_indices(
+            converted_scan_stages = _convert_scan_lists_to_model_indices(
                 scan_lists_raw, full_input_pdb, scan_input_pdb
             )
             _echo(
                 "[all] Remapped --scan-lists indices from the full PDB to the active site model ordering."
             )
 
-        # For extracted pockets, scan stages are already 1-based and can be rebased
+        # For extracted models, scan stages are already 1-based and can be rebased
         # to 0-based if the user explicitly requests it. For non-extracted inputs,
         # keep indices as provided and let scan.py interpret them via --one-based.
         if skip_extract:
@@ -3438,7 +3438,7 @@ def cli(
                 if preopt_pdb.exists():
                     initial_ref_pdb_for_path = preopt_pdb
                 _echo(f"[all] Using scan preopt XYZ as initial path endpoint: {initial_path_for_path}")
-        pockets_for_path = [initial_path_for_path] + stage_results
+        models_for_path = [initial_path_for_path] + stage_results
 
         if initial_ref_pdb_for_path is not None:
             candidate_pdbs: List[Path] = [initial_ref_pdb_for_path]
@@ -3454,7 +3454,7 @@ def cli(
                         missing_pdb = True
                         break
             if not missing_pdb:
-                pocket_ref_pdbs = candidate_pdbs
+                model_ref_pdbs = candidate_pdbs
             else:
                 _echo(
                     "[all] WARNING: active site model PDB snapshots for staged scan were not found; "
@@ -3463,9 +3463,9 @@ def cli(
                 )
     else:
         if skip_extract:
-            pockets_for_path = [p.resolve() for p in inputs_for_extract]
+            models_for_path = [p.resolve() for p in inputs_for_extract]
         else:
-            pockets_for_path = list(pocket_outputs)
+            models_for_path = list(model_outputs)
 
     # Determine availability of full-system templates for downstream merge/copies
     def _is_pdb(path: Path) -> bool:
@@ -3508,12 +3508,12 @@ def cli(
             f"====== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ======"
         )
 
-        if len(pockets_for_path) < 2:
+        if len(models_for_path) < 2:
             raise click.ClickException("[all] Need at least two structures for path-opt MEP concatenation.")
 
         combined_blocks: List[str] = []
         path_opt_segments: List[Dict[str, Any]] = []
-        for idx, (pL, pR) in enumerate(zip(pockets_for_path, pockets_for_path[1:]), start=1):
+        for idx, (pL, pR) in enumerate(zip(models_for_path, models_for_path[1:]), start=1):
             seg_dir = (path_dir / f"seg_{idx:03d}_mep").resolve()
             seg_tag = f"seg_{idx:03d}"
             po_args: List[str] = [
@@ -3541,8 +3541,8 @@ def cli(
             _append_toggle_arg(po_args, "--convert-files", bool(convert_files))
             _append_toggle_arg(po_args, "--preopt", bool(preopt))
             ref_pdb_for_seg: Optional[Path] = None
-            if pocket_ref_pdbs and len(pocket_ref_pdbs) >= idx:
-                ref_pdb_for_seg = pocket_ref_pdbs[idx - 1]
+            if model_ref_pdbs and len(model_ref_pdbs) >= idx:
+                ref_pdb_for_seg = model_ref_pdbs[idx - 1]
             elif ref_pdb_for_topology is not None:
                 ref_pdb_for_seg = ref_pdb_for_topology
             elif pL.suffix.lower() == ".pdb":
@@ -3597,10 +3597,10 @@ def cli(
             try:
                 seg_mep_trj = path_dir / f"mep_seg_{idx:02d}_trj.xyz"
                 shutil.copy2(seg_trj, seg_mep_trj)
-                if pockets_for_path[0].suffix.lower() == ".pdb":
+                if models_for_path[0].suffix.lower() == ".pdb":
                     _path_search._convert_to_pdb_logged(
                         seg_mep_trj,
-                        ref_pdb_path=pockets_for_path[0],
+                        ref_pdb_path=models_for_path[0],
                         out_path=path_dir / f"mep_seg_{idx:02d}.pdb",
                     )
             except Exception as e:
@@ -3680,9 +3680,9 @@ def cli(
             _echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
         try:
-            if pockets_for_path[0].suffix.lower() == ".pdb":
+            if models_for_path[0].suffix.lower() == ".pdb":
                 mep_pdb = _path_search._convert_to_pdb_logged(
-                    final_trj, ref_pdb_path=pockets_for_path[0], out_path=path_dir / "mep.pdb"
+                    final_trj, ref_pdb_path=models_for_path[0], out_path=path_dir / "mep.pdb"
                 )
                 if mep_pdb and mep_pdb.exists():
                     dst = out_dir / mep_pdb.name
@@ -3848,7 +3848,7 @@ def cli(
 
         ps_args: List[str] = []
 
-        for p in pockets_for_path:
+        for p in models_for_path:
             ps_args.extend(["-i", str(p)])
 
         ps_args.extend(["-q", str(q_int)])
@@ -3879,16 +3879,16 @@ def cli(
             ps_args.extend(["--solvent-model", str(solvent_model)])
 
         if gave_ref_pdb:
-            for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(pockets_for_path))):
+            for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(models_for_path))):
                 ps_args.extend(["--ref-full-pdb", str(p)])
-        # Pass --ref-pdb (pocket PDB snapshots) independently of --ref-full-pdb
+        # Pass --ref-pdb (active site model PDB snapshots) independently of --ref-full-pdb
         # so that path_search can convert XYZ outputs to PDB even without merge.
-        if pocket_ref_pdbs:
-            for p in pocket_ref_pdbs:
+        if model_ref_pdbs:
+            for p in model_ref_pdbs:
                 ps_args.extend(["--ref-pdb", str(p)])
         elif ref_pdb_for_topology is not None:
-            # Use CLI --ref-pdb for all inputs when no pocket PDB snapshots are available
-            for _ in pockets_for_path:
+            # Use CLI --ref-pdb for all inputs when no active site model PDB snapshots are available
+            for _ in models_for_path:
                 ps_args.extend(["--ref-pdb", str(ref_pdb_for_topology)])
 
         _echo()
@@ -4079,16 +4079,16 @@ def cli(
         post_segment_logs.append(segment_log)
 
         hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
-        hei_pocket_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
-        if hei_pocket_path is None:
+        hei_model_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
+        if hei_model_path is None:
             _echo(
                 f"[post] WARNING: HEI active site model file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
                 err=True,
             )
             continue
         ref_pdb_for_seg: Optional[Path] = None
-        if hei_pocket_path.suffix.lower() == ".pdb":
-            ref_pdb_for_seg = hei_pocket_path
+        if hei_model_path.suffix.lower() == ".pdb":
+            ref_pdb_for_seg = hei_model_path
         else:
             candidate_ref = hei_base.with_suffix(".pdb")
             if candidate_ref.exists():
@@ -4140,7 +4140,7 @@ def cli(
 
         elif do_tsopt:
             ts_pdb, g_ts = _run_tsopt_on_hei(
-                hei_pocket_path,
+                hei_model_path,
                 q_int,
                 spin,
                 calc_cfg_shared,
@@ -4157,7 +4157,7 @@ def cli(
                 seg_idx=seg_idx,
                 seg_dir=seg_dir,
                 ref_pdb_for_seg=ts_pdb,
-                seg_pocket_pdb=hei_pocket_path,
+                seg_model_pdb=hei_model_path,
                 ref_pdb_template=ref_pdb_for_seg,
                 g_ts=g_ts,
                 q_int=q_int,
@@ -4184,7 +4184,7 @@ def cli(
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
 
-            ref_struct_template = ref_pdb_for_seg or hei_pocket_path
+            ref_struct_template = ref_pdb_for_seg or hei_model_path
             pL_irc = _save_single_geom_as_pdb_for_tools(
                 gL, ref_struct_template, struct_dir, "reactant_irc"
             )
@@ -4295,16 +4295,16 @@ def cli(
                 )
 
         elif do_thermo or do_dft:
-            seg_pocket_path = _find_with_suffixes(
+            seg_model_path = _find_with_suffixes(
                 seg_root / f"mep_seg_{seg_idx:02d}", [".xyz", ".pdb"]
             )
 
             # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
             freeze_ref: Optional[Path] = ref_pdb_for_seg
-            if freeze_ref is None and seg_pocket_path is not None and seg_pocket_path.suffix.lower() == ".pdb":
-                freeze_ref = seg_pocket_path
-            elif freeze_ref is None and hei_pocket_path.suffix.lower() == ".pdb":
-                freeze_ref = hei_pocket_path
+            if freeze_ref is None and seg_model_path is not None and seg_model_path.suffix.lower() == ".pdb":
+                freeze_ref = seg_model_path
+            elif freeze_ref is None and hei_model_path.suffix.lower() == ".pdb":
+                freeze_ref = hei_model_path
 
             freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)
 
@@ -4326,7 +4326,7 @@ def cli(
 
             try:
                 g_ts = geom_loader(
-                    hei_pocket_path,
+                    hei_model_path,
                     coord_type=DEFAULT_COORD_TYPE,
                     freeze_atoms=freeze_atoms,
                 )
@@ -4346,7 +4346,7 @@ def cli(
             gR.set_calculator(calc)
             g_ts.set_calculator(calc)
 
-            ref_for_structs = ref_pdb_for_seg or (seg_pocket_path if seg_pocket_path is not None else hei_pocket_path)
+            ref_for_structs = ref_pdb_for_seg or (seg_model_path if seg_model_path is not None else hei_model_path)
             pL = _save_single_geom_as_pdb_for_tools(
                 gL, ref_for_structs, struct_dir, "reactant_mep"
             )

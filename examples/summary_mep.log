@@ -234,8 +234,8 @@ Freeze atoms (1-based): 1,16,32,54,71,145,157,198,213,227,234,288,294,321,329,38
   │  ├─ mep_w_ref_seg_03.pdb
   │  ├─ summary.log
   │  └─ summary.yaml
-  ├─ pockets/  # Extracted pocket PDBs
-  │  └─ {pocket_1.R.pdb,pocket_3.P.pdb}
+  ├─ models/  # Extracted active site model PDBs
+  │  └─ {model_1.R.pdb,model_3.P.pdb}
   ├─ energy_diagram_G_UMA_all.png  # UMA Gibbs R–TS–P (all segments)
   ├─ energy_diagram_MEP.png  # Compressed MEP diagram
   ├─ energy_diagram_UMA_all.png  # UMA R–TS–P energies (all segments)

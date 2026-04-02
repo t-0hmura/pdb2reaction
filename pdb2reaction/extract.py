@@ -1,10 +1,10 @@
 # pdb2reaction/extract.py
 
 """
-Automated binding-pocket (active-site) extraction from protein-substrate complexes.
+Automated active-site model extraction from protein-substrate complexes.
 
 Example:
-    pdb2reaction extract -i complex.pdb -c '123' -o pocket.pdb -l=-3
+    pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l=-3
 
 For detailed documentation, see: docs/extract.md
 """
@@ -257,7 +257,7 @@ def _gather_extract_variadic(
     type=str, multiple=True, default=(),
     help=(
         "Output PDB path(s). One path for multi-MODEL PDB, or N paths for per-file output. "
-        "If omitted: single input -> pocket.pdb; multiple inputs -> pocket_{filename}.pdb."
+        "If omitted: single input -> model.pdb; multiple inputs -> model_{filename}.pdb."
     ),
 )
 @click.option(
@@ -619,7 +619,7 @@ def select_residues(complex_struct,
                     include_h2o: bool,
                     exclude_backbone: bool) -> Tuple[Set[Tuple], Set[Tuple]]:
     """
-    Select pocket residues around the substrate.
+    Select model residues around the substrate.
 
     Selection rule
     --------------
@@ -1180,14 +1180,14 @@ def compute_charge_summary(structure,
                            substrate_ids: Set[Tuple],
                            ligand_charge: float | str | Dict[str, float] | None = None) -> Dict[str, Any]:
     """
-    Compute pocket charge summary.
+    Compute model charge summary.
 
     Args
     ----
     structure : Bio.PDB.Structure.Structure
         The (first) structure to evaluate.
     selected_ids : set[tuple]
-        Residues included in the pocket.
+        Residues included in the model.
     substrate_ids : set[tuple]
         Residues designated as substrate.
     ligand_charge : float | str | dict[str,float] | None
@@ -1753,12 +1753,12 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
 
     The CLI entry point is the ``cli()`` Click command, which builds the
     Namespace and calls this function.  For programmatic use, build the
-    Namespace manually or use :func:`extract_pocket`.
+    Namespace manually or use :func:`extract_model`.
 
     Args
     ----
     args : argparse.Namespace
-        Parsed arguments (required; use ``extract_pocket()`` for keyword API).
+        Parsed arguments (required; use ``extract_model()`` for keyword API).
     api : bool
         If True, return a structured result dictionary; if False (CLI), return None.
 
@@ -1770,7 +1770,7 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     if args is None:
         raise TypeError(
             "extract() requires an argparse.Namespace; "
-            "use the 'pdb2reaction extract' CLI or extract_pocket() for keyword API."
+            "use the 'pdb2reaction extract' CLI or extract_model() for keyword API."
         )
 
     _configure_extract_logger(bool(args.verbose))
@@ -1792,13 +1792,13 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     # default output names
     if args.output_pdb is None:
         if len(args.complex_pdb) > 1:
-            # multiple inputs → per-file outputs: pocket_{original_filename}.pdb
+            # multiple inputs → per-file outputs: model_{original_filename}.pdb
             args.output_pdb = [
-                f"pocket_{os.path.splitext(os.path.basename(p))[0]}.pdb"
+                f"model_{os.path.splitext(os.path.basename(p))[0]}.pdb"
                 for p in args.complex_pdb
             ]
         else:
-            args.output_pdb = ['pocket.pdb']
+            args.output_pdb = ['model.pdb']
 
     # Single-structure path
     if len(args.complex_pdb) == 1:
@@ -1963,7 +1963,7 @@ def extract_api(complex_pdb: List[str],
         or a residue‑name list 'GPP,SAM'.
     output : list[str] | None
         Output path(s): one path for multi‑MODEL PDB, or N paths for per‑file outputs.
-        If None, defaults to ['pocket.pdb'].
+        If None, defaults to ['model.pdb'].
     radius : float
         Atom–atom cutoff (Å) for inclusion around substrate atoms.
     radius_het2het : float
@@ -1988,7 +1988,7 @@ def extract_api(complex_pdb: List[str],
         Same structure as `extract(..., api=True)`.
     """
     if not output:
-        output = ['pocket.pdb']
+        output = ['model.pdb']
     ns = argparse.Namespace(
         complex_pdb=complex_pdb,
         substrate_pdb=center,
