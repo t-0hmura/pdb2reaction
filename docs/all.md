@@ -42,7 +42,7 @@ It supports three modes:
 - **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists`. The (staged) scan generates an ordered set of intermediates that become MEP endpoints.
 
   - One `--scan-lists` literal runs a single scan stage.
-  - Multiple stages are passed by repeating `--scan-lists`.
+  - Multiple stages are passed as multiple arguments to a single `-s/--scan-lists` (e.g. `-s '[(…)]' '[(…)]'`).
 ```{tip}
 For large active site models, the single-structure scan workflow (`--scan-lists`) tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate, leading to overestimated barriers. The scan workflow avoids this by starting from a single structure and driving only the relevant coordinates, minimizing irrelevant structural noise. This effect becomes more pronounced as the model size increases.
 ```
@@ -74,7 +74,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 
 ```bash
 pdb2reaction all -i 1.R.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
- --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
  --tsopt --thermo --out-dir ./result_scan
 ```
 
@@ -98,8 +98,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' \
 
 # Single-structure staged scan followed by GSM/DMF + TSOPT/freq/DFT
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
- --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
  --opt-mode hess --tsopt --thermo --dft
 
 # TSOPT-only workflow (no path search)
@@ -120,7 +119,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 2. **Optional staged scan (single-input only)**
  - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing an MLIP scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the active site model ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
- - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals by repeating `--scan-lists`.
+ - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals as arguments to a single `-s/--scan-lists` (e.g. `-s '[(…)]' '[(…)]'`).
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on active site models (recursive GSM/DMF)**

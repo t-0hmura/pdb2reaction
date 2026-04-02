@@ -145,13 +145,13 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
 ```
 
 Key points:
@@ -160,7 +160,7 @@ Key points:
 - Each tuple `(i, j, target_Å)` is:
  - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1-based atom index,
  - automatically remapped to the cluster-model indices.
-- Supplying one `--scan-lists` literal runs a single scan stage; multiple literals run sequential stages. Pass multiple literals by repeating `--scan-lists`.
+- Supplying one `-s/--scan-lists` literal runs a single scan stage; multiple literals run sequential stages (e.g. `-s '[(…)]' '[(…)]'`).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow refines the concatenated stages with recursive `path-search`.
 - With `--no-refine-path`, it instead performs a single-pass `path-opt` chain and skips the recursive refiner (no merged `mep_w_ref*.pdb`).

@@ -145,13 +145,13 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --out-dir ./re
 **最小例**
 
 ```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
 **詳細例**
 
 ```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
 ```
 
 補足:
@@ -160,7 +160,7 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 S
 - 各タプル `(i, j, target_Å)` は:
  - `'TYR,285,CA'` のようなPDB原子セレクター文字列（**区切り文字**: スペース/カンマ/スラッシュ/バッククォート/バックスラッシュ ` ` `,` `/` `` ` `` `\`）**または**1始まりの原子インデックス
  - クラスターモデルのインデックスに自動的に再マッピング
-- 1 つの `--scan-lists` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます。複数ステージは `--scan-lists` を繰り返して指定してください
+- 1 つの `-s/--scan-lists` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます（例: `-s '[(…)]' '[(…)]'`）
 - 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
 - デフォルトの `all` ワークフローは連結されたステージを再帰的 `path-search` で精密化
 - `--no-refine-path` を使用すると、シングルパス `path-opt` チェーンを実行し、再帰的精密化をスキップ（マージされた `mep_w_ref*.pdb` なし）
