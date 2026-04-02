@@ -249,7 +249,7 @@ Typical `pdb2reaction all` output:
 ```
 result_all/
 ├── summary.log # Text summary
-├── summary.yaml # YAML summary
+├── summary.json # JSON summary
 ├── models/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
 ├─┬ path_search/ # MEP trajectories and diagrams

@@ -108,8 +108,8 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 |-----------|------------|---------------|
 | **UMA** (default) | <https://github.com/facebookresearch/fairchem> | *(included)* |
 | **ORB** | <https://github.com/orbital-materials/orb-models> | `pip install "pdb2reaction[orb]"` |
-| **MACE** | <https://github.com/ACEsuit/mace> | `pip install "pdb2reaction[mace]"` |
-| **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install "pdb2reaction[aimnet2]"` |
+| **MACE** | <https://github.com/ACEsuit/mace> | `pip install --no-deps mace-torch` |
+| **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install "pdb2reaction[aimnet]"` |
 
 ---
 

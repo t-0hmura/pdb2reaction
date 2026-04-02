@@ -303,6 +303,13 @@ def _gather_extract_variadic(
     default=True, show_default=True,
     help="Enable INFO-level logging.",
 )
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json next to the output PDB.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -317,6 +324,7 @@ def cli(
     selected_resn: str,
     ligand_charge: Optional[str],
     verbose: bool,
+    out_json: bool,
 ) -> None:
     # Recover variadic values after -i / -o from extra args (supports
     # space-separated syntax: ``-i a.pdb b.pdb`` in addition to ``-i a.pdb -i b.pdb``).
@@ -343,7 +351,40 @@ def cli(
         ligand_charge=ligand_charge,
         verbose=verbose,
     )
-    extract(ns)
+    result = extract(ns, api=out_json)
+
+    if out_json and result is not None:
+        from pathlib import Path as _Path
+        from .utils import write_result_json
+
+        # Determine output directory from the first output PDB path
+        first_output = (output_list or ["model.pdb"])[0]
+        out_dir = _Path(first_output).resolve().parent
+
+        counts = result.get("counts", [{}])
+        first_counts = counts[0] if counts else {}
+        charge_summary = result.get("charge_summary", {})
+
+        result_data = {
+            "status": "ok",
+            "n_atoms_raw": first_counts.get("raw_atoms"),
+            "n_atoms_extracted": first_counts.get("kept_atoms"),
+            "total_charge": charge_summary.get("total_charge"),
+            "protein_charge": charge_summary.get("protein_charge"),
+            "ligand_total_charge": charge_summary.get("ligand_total_charge"),
+            "ion_total_charge": charge_summary.get("ion_total_charge"),
+            "ion_charges": charge_summary.get("ion_charges"),
+            "unknown_residue_charges": charge_summary.get("unknown_residue_charges"),
+            "n_link_hydrogens": result.get("n_link_hydrogens", 0),
+            "files": {_Path(o).name: str(o) for o in result.get("outputs", [])},
+            "center": substrate_pdb,
+            "radius": radius,
+            "exclude_backbone": exclude_backbone,
+            "include_h2o": include_h2o,
+            "ligand_charge_input": ligand_charge,
+            "input_files": [str(p) for p in input_list],
+        }
+        write_result_json(out_dir, result_data, command="extract")
 
 
 def load_structure(path: str, name: str) -> PDB.Structure.Structure:
@@ -1714,11 +1755,14 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     )
     log_charge_summary("[extract:multi]", charge_summary)
 
+    n_linkh = len(ref_targets) if args.add_linkh and ref_targets else 0
+
     if api==True:
         return {
             "outputs": outputs,
             "counts": model_counts,
             "charge_summary": charge_summary,
+            "n_link_hydrogens": n_linkh,
         }
     else:
         return
@@ -1927,11 +1971,14 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         )
         log_charge_summary("[extract]", charge_summary)
         
+        n_linkh = len(link_coords) if args.add_linkh else 0
+
         if api:
             return {
                 "outputs": outputs,
                 "counts": [{"raw_atoms": raw, "kept_atoms": kept_atoms}],
                 "charge_summary": charge_summary,
+                "n_link_hydrogens": n_linkh,
             }
         else:
             return

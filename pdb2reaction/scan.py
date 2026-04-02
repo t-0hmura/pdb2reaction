@@ -215,6 +215,13 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     show_default=True,
     help="After each stage, run an additional unbiased optimization of the stage result.",
 )
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -241,6 +248,7 @@ def cli(
     preopt: bool,
     print_parsed: bool,
     endopt: bool,
+    out_json: bool,
     backend: str,
     solvent: str,
     solvent_model: str,
@@ -480,6 +488,12 @@ def cli(
 
             # Build UMA calculator (only uma_pysis is supported)
             base_calc = create_calculator(**calc_cfg)
+            try:
+                import torch as _torch
+                _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+                click.echo(f"[calc] Resolved device: {_resolved_dev}")
+            except Exception:
+                pass
 
             # ------------------------------------------------------------------
             # Optional preoptimization WITHOUT bias
@@ -577,11 +591,13 @@ def cli(
                     "target_distances_A": [float(f"{x:.3f}") for x in rT],
                     "per_pair_step_A": [float(f"{x:.3f}") for x in step_widths],
                     "num_steps": int(Nsteps),
+                    "converged": None,  # updated after relaxation / endopt
                     "bond_change": {"changed": None, "summary": ""},
                 }
                 stages_summary.append(srec)
 
                 trj_blocks: List[str] = []
+                stage_energies: List[Optional[float]] = []
                 stage_trj_path = stage_dir / "scan_trj.xyz"
                 stage_trj_path.write_text("")  # truncate
 
@@ -610,6 +626,10 @@ def cli(
                             click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.")
                         except OptimizationError as e:
                             click.echo(f"[stage {k}] endopt OptimizationError — {e}")
+                        srec["converged"] = getattr(end_optimizer, 'is_converged', None) if 'end_optimizer' in dir() else None
+
+                    # No scan steps: empty energy trajectory
+                    srec["energies_hartree"] = []
 
                     # Bond changes: start vs final (possibly endopt)
                     try:
@@ -629,6 +649,11 @@ def cli(
                     with open(final_xyz, "w") as f:
                         f.write(xyz_string_with_energy(geom))
                     click.echo(f"[write] Wrote '{final_xyz}'.")
+                    # Capture final energy directly from geometry object
+                    try:
+                        srec["final_energy_hartree"] = float(geom.energy) if geom.energy is not None else None
+                    except Exception:
+                        srec["final_energy_hartree"] = None
                     if convert_xyz_like_outputs(
                         final_xyz,
                         prepared_input,
@@ -679,6 +704,7 @@ def cli(
                         click.echo(f"[stage {k}] step {s}: OptimizationError — {e}")
 
                     trj_blocks.append(xyz_string_with_energy(geom))
+                    stage_energies.append(float(geom.energy) if geom.energy is not None else None)
                     with open(stage_trj_path, "a") as _tf:
                         _tf.write(trj_blocks[-1])
 
@@ -704,6 +730,13 @@ def cli(
                         click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.")
                     except OptimizationError as e:
                         click.echo(f"[stage {k}] endopt OptimizationError — {e}")
+
+                # Record convergence of the last optimizer (endopt if used, else last scan step)
+                _last_opt = end_optimizer if (endopt and 'end_optimizer' in dir()) else optimizer
+                srec["converged"] = getattr(_last_opt, 'is_converged', None)
+
+                # Store per-step energies in stage record
+                srec["energies_hartree"] = stage_energies
 
                 # Bond changes: start vs final (possibly endopt)
                 try:
@@ -747,6 +780,11 @@ def cli(
                 with open(final_xyz, "w") as f:
                     f.write(xyz_string_with_energy(geom))
                 click.echo(f"[write] Wrote '{final_xyz}'.")
+                # Capture final energy directly from geometry object
+                try:
+                    srec["final_energy_hartree"] = float(geom.energy) if geom.energy is not None else None
+                except Exception:
+                    srec["final_energy_hartree"] = None
                 if convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
@@ -790,5 +828,49 @@ def cli(
             click.echo("====== Scan finished ======\n")
 
             click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start))
+
+            # result.json (if --out-json)
+            if out_json:
+                from .utils import write_result_json
+                json_stages = []
+                for srec in stages_summary:
+                    stage_entry: Dict[str, Any] = {
+                        "index": srec["index"],
+                        "n_steps": srec["num_steps"],
+                        "converged": srec.get("converged"),
+                        "bond_changes": srec.get("bond_change", {}),
+                        "pairs_1based": srec.get("pairs_1based"),
+                        "initial_distances_angstrom": srec.get("initial_distances_A"),
+                        "target_distances_angstrom": srec.get("target_distances_A"),
+                    }
+                    # Final energy: use value captured directly from geometry object
+                    stage_entry["final_energy_hartree"] = srec.get("final_energy_hartree")
+                    # Per-step energy trajectory
+                    stage_entry["energies_hartree"] = srec.get("energies_hartree", [])
+                    json_stages.append(stage_entry)
+                result_data: Dict[str, Any] = {
+                    "status": "completed",
+                    "charge": resolved_charge,
+                    "spin": resolved_spin,
+                    "backend": calc_cfg.get("backend", backend),
+                    "model": calc_cfg.get("model"),
+                    "solvent": calc_cfg.get("solvent", "none"),
+                    "preopt": bool(preopt),
+                    "max_step_size_angstrom": float(max_step_size),
+                    "n_stages": len(stages_summary),
+                    "stages": json_stages,
+                    "files": {
+                        "scan_trj_xyz": "scan_trj.xyz",
+                    },
+                }
+                for ext in (".pdb",):
+                    f = out_dir_path / f"scan{ext}"
+                    if f.exists():
+                        result_data["files"][f"scan_{ext[1:]}"] = f.name
+                write_result_json(
+                    out_dir_path, result_data,
+                    command="scan",
+                    elapsed_seconds=time.perf_counter() - time_start,
+                )
 
         run_cli(_run, label="scan")

@@ -462,6 +462,13 @@ def _flatten_all_imag_modes_for_geom(
     help="Print resolved configuration and continue execution.",
 )
 @click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
+@click.option(
     "--dry-run/--no-dry-run",
     "dry_run",
     default=False,
@@ -499,6 +506,7 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    out_json: bool,
     backend: str,
     solvent: str,
     solvent_model: str,
@@ -689,6 +697,12 @@ def cli(
             # Attach UMA calculator
             base_calc = create_calculator(**calc_cfg)
             geometry.set_calculator(base_calc)
+            try:
+                import torch as _torch
+                _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+                click.echo(f"[calc] Resolved device: {_resolved_dev}")
+            except Exception:
+                pass
 
             resolved_dist_freeze: List[Tuple[int, int, float]] = []
             if dist_freeze:
@@ -855,8 +869,56 @@ def cli(
                 final_xyz_path=final_xyz_path,
             )
 
-            # summary.md and key_* outputs are disabled.
             click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start))
+
+            # 7) result.json (if --out-json)
+            if out_json:
+                from .utils import write_result_json
+                result_data = {
+                    "status": "converged" if last_optimizer.is_converged else "not_converged",
+                    "energy_hartree": float(geometry.energy) if geometry.energy is not None else None,
+                    "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
+                    "opt_mode": opt_cfg.get("opt_mode", opt_mode),
+                    "backend": backend,
+                    "charge": calc_cfg["charge"],
+                    "spin": calc_cfg["spin"],
+                    "model": calc_cfg.get("model"),
+                    "n_atoms": len(geometry.atoms),
+                    "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                    "solvent": calc_cfg.get("solvent", "none"),
+                    "thresh": opt_cfg.get("thresh", "gau"),
+                    "max_cycles": opt_cfg.get("max_cycles"),
+                    "input_file": str(source_path),
+                    "files": {
+                        "final_geometry_xyz": str(final_xyz_path.name),
+                    },
+                }
+                if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
+                    result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
+                    result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
+                # Convergence thresholds (numeric values for the named preset)
+                if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
+                    result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
+                # Final step convergence values
+                if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
+                    result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
+                    result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
+                # Add PDB/GJF if generated
+                for ext in (".pdb", ".gjf"):
+                    f = out_dir_path / f"final_geometry{ext}"
+                    if f.exists():
+                        result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
+                # Add trajectory files if they exist
+                for name in ("optimization_trj.xyz", "optimization.pdb"):
+                    _tf = out_dir_path / name
+                    if _tf.exists():
+                        key = name.replace(".", "_").replace("-", "_")
+                        result_data["files"][key] = name
+                write_result_json(
+                    out_dir_path, result_data,
+                    command="opt",
+                    elapsed_seconds=time.perf_counter() - time_start,
+                )
 
     run_cli(
         _run,

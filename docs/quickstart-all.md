@@ -27,7 +27,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 ## What to check
 
 - `result_all/summary.log`
-- `result_all/summary.yaml`
+- `result_all/summary.json`
 - `result_all/path_search/mep.pdb` (or segment outputs under `result_all/path_search/seg_*/`)
 
 ## Tips

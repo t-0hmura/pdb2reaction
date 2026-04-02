@@ -7,7 +7,7 @@
 ### At a glance
 - **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
-- **Outputs:** `mep_trj.xyz` (main trajectory), `summary.yaml` (segment-by-segment results), and optional plots/merged PDBs when enabled.
+- **Outputs:** `mep_trj.xyz` (main trajectory), `summary.json` (segment-by-segment results), and optional plots/merged PDBs when enabled.
 - **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--no-preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
 
@@ -28,7 +28,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 ## Output checklist
 
 - `result_path_search/mep_trj.xyz`
-- `result_path_search/summary.yaml`
+- `result_path_search/summary.json`
 - `result_path_search/summary.log`
 - `result_path_search/mep_plot.png` (when plotting succeeds)
 
@@ -133,7 +133,7 @@ out_dir/ (default:./result_path_search/)
 ├─ mep.pdb # PDB companion when inputs were PDB templates and conversion is enabled
 ├─ mep_w_ref.pdb # Merged full-system MEP (requires ref PDB/template)
 ├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist (requires ref PDB)
-├─ summary.yaml # Barrier and classification summary for every recursive segment
+├─ summary.json # Barrier and classification summary for every recursive segment
 ├─ summary.log # Text summary
 ├─ mep_plot.png # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
 ├─ energy_diagram_MEP.png # Static export of the MEP state-energy diagram (relative to reactant)

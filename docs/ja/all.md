@@ -61,7 +61,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 ## 出力の見方
 
 - `result_all/summary.log`
-- `result_all/summary.yaml`
+- `result_all/summary.json`
 - `result_all/path_search/mep.pdb`（または `result_all/path_search/seg_*/`）
 
 ## よくある例
@@ -286,13 +286,21 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 ## 出力
 ```text
 out_dir/ (デフォルト:./result_all/)
-├─ summary.log # 結果要約
-├─ summary.yaml # YAML 結果要約
-├─ models/ # 抽出実行時の活性部位モデル PDB
-├─ scan/ # 段階的活性部位モデルスキャン結果（--scan-lists 提供時）
-├─ path_search/ # MEP 結果（GSM/DMF）: 軌跡、マージ PDB、ダイアグラム、summary.yaml、セグメント別フォルダ
-├─ path_search/post_seg_XX/ # 後処理出力（TS 最適化、IRC、freq、DFT、ダイアグラム）
-└─ tsopt_single/ # TSOPT のみ出力（IRC エンドポイントとオプションの freq/DFT ディレクトリ）
+├─ summary.log                  # 結果要約
+├─ summary.json                 # JSON 結果
+├─ models/                      # 抽出実行時の活性部位モデル PDB
+├─ scan/                        # 段階的スキャン結果（--scan-lists 提供時）
+├─ seg_XX/                      # セグメント XX の TS 最適化・IRC 後の構造
+│  ├─ reactant.{pdb,xyz,gjf}   #   出力形式は入力形式と一致
+│  ├─ ts.{pdb,xyz,gjf}
+│  └─ product.{pdb,xyz,gjf}
+├─ path_search/                 # MEP 結果（GSM/DMF）: 軌跡、マージ PDB、ダイアグラム
+│  └─ post_seg_XX/              # 後処理: TS 最適化、IRC、freq、DFT
+│     ├─ structures/            # IRC 端点の最適化済み R/TS/P 構造
+│     ├─ irc/                   # IRC 軌道とプロット
+│     ├─ ts/                    # TS 最適化出力と振動解析
+│     └─ freq/                  # 振動数・熱化学（R, TS, P）
+└─ tsopt_single/                # TSOPT のみ出力（IRC エンドポイント）
 ```
 
 
@@ -322,13 +330,13 @@ out_dir/ (デフォルト:./result_all/)
 - **[4] エネルギーダイアグラム（概要）** – MEP/UMA/Gibbs/DFT 系の図表と、任意の横断サマリー表。
 - **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
 
-### `summary.yaml` の読み方
-YAML 結果要約の代表的なトップレベルキーは以下のとおりです。
+### `summary.json` の読み方
+JSON 結果の代表的なトップレベルキーは以下のとおりです。
 - `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
 - `segments` – `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` を含むセグメント配列。
 - `energy_diagrams`（任意） – `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` などを含む図表データ。
 
-`summary.yaml` には `summary.log` にある整形テーブルやファイルツリーは含まれません。
+`summary.json` には `summary.log` にある整形テーブルやファイルツリーは含まれません。
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
@@ -339,7 +347,7 @@ YAML 結果要約の代表的なトップレベルキーは以下のとおりで
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。
-- **`--resume`**: 同じコマンドに `--resume` を付けて再実行すると、出力ファイルが既に存在するステージをスキップします。各ステージはセンチネルファイルで判定されます（MEP は `summary.yaml`、TSOPT/IRC は `final_geometry.*` + `finished_irc_trj.xyz`、freq/DFT は `R/`+`TS/`+`P/` ディレクトリ）。resume 時に抽出がスキップされた場合は `-q/--charge` または `--ligand-charge` を明示的に指定してください。
+- **`--resume`**: 同じコマンドに `--resume` を付けて再実行すると、出力ファイルが既に存在するステージをスキップします。各ステージはセンチネルファイルで判定されます（MEP は `summary.json`、TSOPT/IRC は `final_geometry.*` + `finished_irc_trj.xyz`、freq/DFT は `R/`+`TS/`+`P/` ディレクトリ）。resume 時に抽出がスキップされた場合は `-q/--charge` または `--ligand-charge` を明示的に指定してください。
 
 
 `all` は YAML の多層指定をサポートします:

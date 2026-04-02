@@ -240,7 +240,7 @@ For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Refer
 Every `pdb2reaction all` run writes:
 
 - `summary.log` – text summary, and
-- `summary.yaml` – YAML summary.
+- `summary.json` – YAML summary.
 
 They typically contain:
 
@@ -249,7 +249,7 @@ They typically contain:
 - per-segment barrier heights and key bond changes,
 - energies from the MLIP backend, thermochemistry, and DFT post-processing (where enabled).
 
-Each segment directory under `path_search/` also gets its own `summary.log` and `summary.yaml`, so you can inspect local refinements independently.
+Each segment directory under `path_search/` also gets its own `summary.log` and `summary.json`, so you can inspect local refinements independently.
 
 ---
 

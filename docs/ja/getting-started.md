@@ -240,7 +240,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 `pdb2reaction all` を実行すると、以下のサマリーファイルが出力されます。
 
 - `summary.log` – 結果要約
-- `summary.yaml` – YAML 結果要約
+- `summary.json` – JSON 結果
 
 主な記載内容:
 
@@ -249,7 +249,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 - セグメントごとの障壁高さと主要な結合変化
 - UMA、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
 
-`path_search/` 配下の各セグメントディレクトリにも `summary.log` と `summary.yaml` があり、個別のセグメントの精密化結果を確認できます。
+`path_search/` 配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
 
 ---
 

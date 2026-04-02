@@ -556,6 +556,13 @@ def _optimize_single(
     help="Validate options and print the execution plan without running path optimization.",
 )
 @click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
+@click.option(
     "--preopt/--no-preopt",
     default=False,
     show_default=True,
@@ -605,6 +612,7 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    out_json: bool,
     preopt: bool,
     preopt_max_cycles: int,
     fix_ends: bool,
@@ -907,6 +915,12 @@ def cli(
 
         # Shared calculator (reuse the same instance for all images)
         shared_calc = create_calculator(**calc_cfg)
+        try:
+            import torch as _torch
+            _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+            click.echo(f"[calc] Resolved device: {_resolved_dev}")
+        except Exception:
+            pass
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
@@ -1031,6 +1045,49 @@ def cli(
                 sys.exit(5)
 
             click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
+
+            # result.json (if --out-json) — DMF path
+            if out_json:
+                from .utils import write_result_json
+                from pysisyphus.constants import AU2KCALPERMOL as _AU2KCAL
+                _dmf_energies = list(dmf_res.energies)
+                _dmf_hei = int(dmf_res.hei_idx)
+                _dmf_hei_E = float(_dmf_energies[_dmf_hei])
+                _dmf_e0 = float(_dmf_energies[0])
+                _dmf_eN = float(_dmf_energies[-1])
+                _barrier = (_dmf_hei_E - _dmf_e0) * _AU2KCAL
+                _delta = (_dmf_eN - _dmf_e0) * _AU2KCAL
+                _dmf_converged = getattr(dmf_res, 'is_converged', None)
+                result_data: Dict[str, Any] = {
+                    "status": "converged" if _dmf_converged else ("not_converged" if _dmf_converged is False else "completed"),
+                    "mep_mode": "dmf",
+                    "charge": calc_cfg["charge"],
+                    "spin": calc_cfg["spin"],
+                    "model": calc_cfg.get("model"),
+                    "solvent": calc_cfg.get("solvent", "none"),
+                    "preopt": bool(preopt),
+                    "reactant_energy_hartree": float(_dmf_e0),
+                    "product_energy_hartree": float(_dmf_eN),
+                    "image_energies_hartree": [float(e) for e in _dmf_energies],
+                    "n_images": len(_dmf_energies),
+                    "hei_index": _dmf_hei,
+                    "hei_energy_hartree": _dmf_hei_E,
+                    "barrier_kcal": round(_barrier, 6),
+                    "delta_kcal": round(_delta, 6),
+                    "files": {
+                        "final_geometries_trj_xyz": "final_geometries_trj.xyz",
+                        "hei_xyz": "hei.xyz",
+                    },
+                }
+                for ext in (".pdb", ".gjf"):
+                    f = out_dir_path / f"hei{ext}"
+                    if f.exists():
+                        result_data["files"][f"hei_{ext[1:]}"] = f.name
+                write_result_json(
+                    out_dir_path, result_data,
+                    command="path-opt",
+                    elapsed_seconds=time.perf_counter() - time_start,
+                )
             return
 
         for g in geoms:
@@ -1162,6 +1219,49 @@ def cli(
 
         # summary.md and key_* outputs are disabled.
         click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start))
+
+        # result.json (if --out-json) — GSM path
+        if out_json:
+            from .utils import write_result_json
+            from pysisyphus.constants import AU2KCALPERMOL as _AU2KCAL
+            _gsm_energies = list(map(float, energies))
+            _gsm_hei = int(hei_idx)
+            _gsm_hei_E = float(_gsm_energies[_gsm_hei])
+            _gsm_e0 = float(_gsm_energies[0])
+            _gsm_eN = float(_gsm_energies[-1])
+            _barrier = (_gsm_hei_E - _gsm_e0) * _AU2KCAL
+            _delta = (_gsm_eN - _gsm_e0) * _AU2KCAL
+            _converged = getattr(optimizer, 'is_converged', None) if 'optimizer' in dir() else None
+            result_data_gsm: Dict[str, Any] = {
+                "status": "converged" if _converged else ("not_converged" if _converged is False else "completed"),
+                "mep_mode": "gsm",
+                "charge": calc_cfg["charge"],
+                "spin": calc_cfg["spin"],
+                "model": calc_cfg.get("model"),
+                "solvent": calc_cfg.get("solvent", "none"),
+                "preopt": bool(preopt),
+                "reactant_energy_hartree": float(_gsm_e0),
+                "product_energy_hartree": float(_gsm_eN),
+                "image_energies_hartree": [float(e) for e in _gsm_energies],
+                "n_images": len(_gsm_energies),
+                "hei_index": _gsm_hei,
+                "hei_energy_hartree": _gsm_hei_E,
+                "barrier_kcal": round(_barrier, 6),
+                "delta_kcal": round(_delta, 6),
+                "files": {
+                    "final_geometries_trj_xyz": "final_geometries_trj.xyz",
+                    "hei_xyz": "hei.xyz",
+                },
+            }
+            for ext in (".pdb", ".gjf"):
+                f = out_dir_path / f"hei{ext}"
+                if f.exists():
+                    result_data_gsm["files"][f"hei_{ext[1:]}"] = f.name
+            write_result_json(
+                out_dir_path, result_data_gsm,
+                command="path-opt",
+                elapsed_seconds=time.perf_counter() - time_start,
+            )
 
     except OptimizationError as e:
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)

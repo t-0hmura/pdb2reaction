@@ -53,7 +53,14 @@ def _load_geom(path: str):
     "--one-based/--zero-based", default=True, show_default=True,
     help="Use 1-based atom indices in output.",
 )
-def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one_based: bool) -> None:
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Print machine-readable JSON to stdout instead of text.",
+)
+def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one_based: bool, out_json: bool) -> None:
     """Detect and summarize bond changes between consecutive structure pairs.
 
     \b
@@ -73,21 +80,40 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
             raise click.FileError(f, hint="File not found.")
         geoms.append((p.name, _load_geom(f)))
 
+    comparisons_json: List[dict] = []
+
     for idx in range(len(geoms) - 1):
         name1, g1 = geoms[idx]
         name2, g2 = geoms[idx + 1]
 
-        click.echo(f"{'=' * 60}")
-        click.echo(f"  {name1}  →  {name2}")
-        click.echo(f"{'=' * 60}")
+        if not out_json:
+            click.echo(f"{'=' * 60}")
+            click.echo(f"  {name1}  →  {name2}")
+            click.echo(f"{'=' * 60}")
 
         try:
             result = compare_structures(g1, g2, device=device, bond_factor=bond_factor)
-            summary = summarize_changes(g2, result, one_based=one_based)
-            click.echo(summary)
+            if out_json:
+                comparisons_json.append({
+                    "structure_a": name1,
+                    "structure_b": name2,
+                    "bonds_formed": len(result.formed_covalent),
+                    "bonds_broken": len(result.broken_covalent),
+                })
+            else:
+                summary = summarize_changes(g2, result, one_based=one_based)
+                click.echo(summary)
         except AssertionError as e:
             click.echo(f"  ERROR: {e}", err=True)
         except Exception as e:
             click.echo(f"  ERROR: {e}", err=True)
 
-        click.echo()
+        if not out_json:
+            click.echo()
+
+    if out_json:
+        import json as _json
+        click.echo(_json.dumps(
+            {"status": "ok", "comparisons": comparisons_json},
+            indent=2, ensure_ascii=False,
+        ))

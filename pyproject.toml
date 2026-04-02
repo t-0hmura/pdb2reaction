@@ -65,8 +65,7 @@ dependencies = [
 
 [project.optional-dependencies]
 orb = ["orb-models"]
-mace = ["mace-torch"]
-aimnet2 = ["aimnet"]
+aimnet = ["aimnet>=0.1.0"]
 dft = [    
     "pyscf>=2.8.0",
     "gpu4pyscf-cuda12x>=1.5.2; platform_machine == 'x86_64'",

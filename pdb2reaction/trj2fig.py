@@ -294,7 +294,8 @@ def run_trj2fig(
     backend: str = "uma",
     solvent: str = "none",
     solvent_model: str = "alpb",
-) -> None:
+) -> dict:
+    """Run trj2fig and return a summary dict with energies and output paths."""
     traj = input_path.expanduser().resolve()
     if not traj.is_file():
         raise FileNotFoundError(traj)
@@ -313,6 +314,11 @@ def run_trj2fig(
 
     out_paths = [Path(o).expanduser().resolve() for o in outs]
     save_outputs(out_paths, fig, energies, values, unit, is_delta)
+
+    return {
+        "energies_hartree": energies,
+        "out_paths": out_paths,
+    }
 
 
 def main() -> None:
@@ -397,6 +403,13 @@ def main() -> None:
               help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
               show_default=True, help="xTB solvent model.")
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to the output directory.",
+)
 def cli(
     input_path: Path,
     outs: Tuple[Path, ...],
@@ -409,10 +422,27 @@ def cli(
     backend: str,
     solvent: str,
     solvent_model: str,
+    out_json: bool,
 ) -> None:
     # Combine outputs from -o with positional filenames that follow the options
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
         all_outs = [Path("energy.png")]
-    run_trj2fig(input_path, all_outs, unit, reference, reverse_x, charge, multiplicity,
-                backend=backend, solvent=solvent, solvent_model=solvent_model)
+    info = run_trj2fig(input_path, all_outs, unit, reference, reverse_x, charge, multiplicity,
+                       backend=backend, solvent=solvent, solvent_model=solvent_model)
+
+    if out_json:
+        from .utils import write_result_json
+
+        energies = info["energies_hartree"]
+        written_paths = info["out_paths"]
+        out_dir = written_paths[0].parent if written_paths else Path.cwd()
+
+        result_data = {
+            "status": "ok",
+            "n_frames": len(energies),
+            "min_energy_hartree": float(min(energies)) if energies else None,
+            "max_energy_hartree": float(max(energies)) if energies else None,
+            "files": {p.name: str(p) for p in written_paths},
+        }
+        write_result_json(out_dir, result_data, command="trj2fig")

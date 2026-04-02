@@ -117,9 +117,9 @@ huggingface-cli login
  pip install "pdb2reaction[orb]"
 
  # AIMNet2 バックエンド
- pip install "pdb2reaction[aimnet2]"
+ pip install "pdb2reaction[aimnet]"
 
- pip install "pdb2reaction[mace]"      # MACE バックエンド
+ pip install --no-deps mace-torch      # MACE バックエンド (e3nn 競合のため --no-deps 必須)
  ```
 
  暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。

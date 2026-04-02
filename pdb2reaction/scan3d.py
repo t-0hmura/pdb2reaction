@@ -141,6 +141,13 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     show_default=True,
     help="Print parsed scan targets after resolving --scan-lists.",
 )
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -170,6 +177,7 @@ def cli(
     baseline: str,
     zmin: Optional[float],
     zmax: Optional[float],
+    out_json: bool,
     backend: str,
     solvent: str,
     solvent_model: str,
@@ -353,6 +361,12 @@ def cli(
             set_freeze_atoms_or_warn(geom_outer, freeze, context="scan3d")
 
             base_calc = create_calculator(**calc_cfg)
+            try:
+                import torch as _torch
+                _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+                click.echo(f"[calc] Resolved device: {_resolved_dev}")
+            except Exception:
+                pass
             biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
 
             # Optional pre-optimization of the starting structure
@@ -931,6 +945,45 @@ def cli(
 
         click.echo("====== 3D Scan finished ======\n")
         click.echo(format_elapsed("[time] Elapsed Time for 3D Scan", time_start))
+
+        # result.json (if --out-json)
+        if out_json:
+            from .utils import write_result_json, atom_label_from_meta
+            min_energy = float(df["energy_hartree"].min()) if (not df.empty and "energy_hartree" in df.columns) else None
+            result_data: Dict[str, Any] = {
+                "status": "completed",
+                "charge": charge_val,
+                "spin": spin_val,
+                "backend": calc_cfg.get("backend", backend),
+                "model": calc_cfg.get("model"),
+                "solvent": calc_cfg.get("solvent", "none"),
+                "n_grid_points": len(df),
+                "min_energy_hartree": min_energy,
+                "files": {
+                    "scan3d_density_html": "scan3d_density.html",
+                },
+            }
+            if csv_path is None:
+                _pair1: Dict[str, Any] = {"i": int(i1 + 1), "j": int(j1 + 1), "low": float(low1), "high": float(high1)}
+                _pair2: Dict[str, Any] = {"i": int(i2 + 1), "j": int(j2 + 1), "low": float(low2), "high": float(high2)}
+                _pair3: Dict[str, Any] = {"i": int(i3 + 1), "j": int(j3 + 1), "low": float(low3), "high": float(high3)}
+                if pdb_atom_meta:
+                    _pair1["label_i"] = atom_label_from_meta(pdb_atom_meta, i1)
+                    _pair1["label_j"] = atom_label_from_meta(pdb_atom_meta, j1)
+                    _pair2["label_i"] = atom_label_from_meta(pdb_atom_meta, i2)
+                    _pair2["label_j"] = atom_label_from_meta(pdb_atom_meta, j2)
+                    _pair3["label_i"] = atom_label_from_meta(pdb_atom_meta, i3)
+                    _pair3["label_j"] = atom_label_from_meta(pdb_atom_meta, j3)
+                result_data["pair1"] = _pair1
+                result_data["pair2"] = _pair2
+                result_data["pair3"] = _pair3
+                result_data["grid_shape"] = [len(d1_values), len(d2_values), len(d3_values)]
+                result_data["files"]["surface_csv"] = "surface.csv"
+            write_result_json(
+                final_dir, result_data,
+                command="scan3d",
+                elapsed_seconds=time.perf_counter() - time_start,
+            )
 
     try:
         if csv_path is None:

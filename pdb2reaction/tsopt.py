@@ -228,6 +228,12 @@ def _calc_gradient(geom, uma_kwargs: dict) -> np.ndarray:
     """
     calc = create_calculator(**uma_kwargs)
     geom.set_calculator(calc)
+    try:
+        import torch as _torch
+        _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+        click.echo(f"[calc] Resolved device: {_resolved_dev}")
+    except Exception:
+        pass
     g = np.array(geom.gradient, dtype=float).reshape(-1)
     geom.set_calculator(None)
     return g
@@ -855,6 +861,12 @@ class HessianDimer:
         dimer = Dimer(**dimer_kwargs)
 
         self.geom.set_calculator(dimer)
+        try:
+            import torch as _torch
+            _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+            click.echo(f"[calc] Resolved device: {_resolved_dev}")
+        except Exception:
+            pass
 
         # LBFGS kwargs: enforce thresh/max_cycles/out_dir/dump; allow others
         lbfgs_kwargs = dict(self.lbfgs_kwargs)
@@ -1433,6 +1445,13 @@ def _build_rsirfo_kwargs(
     help="Validate options and print the execution plan without running TS optimization.",
 )
 @click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
+@click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
@@ -1466,6 +1485,7 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    out_json: bool,
     hessian_calc_mode: Optional[str],
     backend: str,
     solvent: str,
@@ -1735,6 +1755,58 @@ def cli(
                     else:
                         click.echo("[convert] WARNING: 'optimization_all_trj.xyz' not found; skipping conversion.", err=True)
 
+                # Collect result data for --out-json (dimer mode)
+                if out_json:
+                    _dimer_energy = _calc_energy(runner.geom, dict(calc_cfg))
+                    _dimer_device = _torch_device(calc_cfg.get("device", "auto"))
+                    _dimer_H = _calc_full_hessian_torch(runner.geom, dict(calc_cfg), _dimer_device)
+                    _dimer_freqs, _ = _frequencies_cm_and_modes(
+                        _dimer_H,
+                        runner.geom.atomic_numbers,
+                        runner.geom.cart_coords.reshape(-1, 3),
+                        _dimer_device,
+                        freeze_idx=list(geom_cfg.get("freeze_atoms", [])) or None,
+                    )
+                    del _dimer_H
+                    _dimer_neg_thresh = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
+                    _dimer_imag = [float(f) for f in _dimer_freqs if f < -abs(_dimer_neg_thresh)]
+                    _tsopt_result_data = {
+                        "status": "converged",
+                        "energy_hartree": _dimer_energy,
+                        "n_imaginary_modes": len(_dimer_imag),
+                        "imaginary_frequencies_cm": _dimer_imag,
+                        "opt_mode": "dimer",
+                        "n_atoms": len(runner.geom.atomic_numbers),
+                        "n_opt_cycles": runner._cycles_spent,
+                        "backend": calc_cfg.get("backend", backend),
+                        "charge": calc_cfg["charge"],
+                        "spin": calc_cfg["spin"],
+                        "model": calc_cfg.get("model"),
+                        "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                        "solvent": calc_cfg.get("solvent", "none"),
+                        "thresh": opt_cfg.get("thresh") if 'opt_cfg' in dir() else simple_cfg.get("thresh"),
+                        "max_cycles": opt_cfg.get("max_cycles") if 'opt_cfg' in dir() else simple_cfg.get("max_cycles"),
+                        "input_file": str(input_path),
+                        "files": {"final_geometry_xyz": "final_geometry.xyz"},
+                    }
+                    for ext in (".pdb", ".gjf"):
+                        f = out_dir_path / f"final_geometry{ext}"
+                        if f.exists():
+                            _tsopt_result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
+                    # Add trajectory files if they exist
+                    for _trj_name in ("optimization_all_trj.xyz", "optimization_all.pdb"):
+                        _tf = out_dir_path / _trj_name
+                        if _tf.exists():
+                            _key = _trj_name.replace(".", "_").replace("-", "_")
+                            _tsopt_result_data["files"][_key] = _trj_name
+                    # List imaginary mode vib files
+                    _vib_dir = out_dir_path / "vib"
+                    if _vib_dir.exists():
+                        _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
+                            f"vib/{f.name}" for f in _vib_dir.iterdir() if f.suffix in ('.xyz', '.pdb')
+                        ])
+                    del _dimer_freqs, _dimer_energy, _dimer_device
+
             else:
                 # RS-I-RFO (hess)
                 #  - Build geometry now and attach UMA calculator
@@ -1745,6 +1817,12 @@ def cli(
 
                 calc = create_calculator(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
                 geometry.set_calculator(calc)
+                try:
+                    import torch as _torch
+                    _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+                    click.echo(f"[calc] Resolved device: {_resolved_dev}")
+                except Exception:
+                    pass
 
                 # Construct RSIRFO optimizer
                 rsirfo_kwargs = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
@@ -1887,8 +1965,66 @@ def cli(
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
+                # Collect result data for --out-json (rsirfo mode)
+                if out_json:
+                    _rsirfo_imag = [float(f) for f in freqs_cm if f < -abs(neg_freq_thresh_cm)]
+                    _rsirfo_energy = float(geometry.energy) if geometry.energy is not None else None
+                    _tsopt_result_data = {
+                        "status": "converged" if last_optimizer.is_converged else "not_converged",
+                        "energy_hartree": _rsirfo_energy,
+                        "n_imaginary_modes": len(_rsirfo_imag),
+                        "imaginary_frequencies_cm": _rsirfo_imag,
+                        "opt_mode": "rsirfo",
+                        "n_atoms": len(geometry.atoms),
+                        "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
+                        "backend": calc_cfg.get("backend", backend),
+                        "charge": calc_cfg["charge"],
+                        "spin": calc_cfg["spin"],
+                        "model": calc_cfg.get("model"),
+                        "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                        "solvent": calc_cfg.get("solvent", "none"),
+                        "thresh": opt_cfg.get("thresh") if 'opt_cfg' in dir() else simple_cfg.get("thresh"),
+                        "max_cycles": opt_cfg.get("max_cycles") if 'opt_cfg' in dir() else simple_cfg.get("max_cycles"),
+                        "input_file": str(input_path),
+                        "files": {"final_geometry_xyz": str(final_xyz_path.name)},
+                    }
+                    # Convergence details from optimizer
+                    if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
+                        _tsopt_result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
+                        _tsopt_result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
+                    if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
+                        _tsopt_result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
+                    if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
+                        _tsopt_result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
+                        _tsopt_result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
+                    for ext in (".pdb", ".gjf"):
+                        f = out_dir_path / f"final_geometry{ext}"
+                        if f.exists():
+                            _tsopt_result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
+                    # Add trajectory files if they exist
+                    for _trj_name in ("optimization_trj.xyz", "optimization.pdb"):
+                        _tf = out_dir_path / _trj_name
+                        if _tf.exists():
+                            _key = _trj_name.replace(".", "_").replace("-", "_")
+                            _tsopt_result_data["files"][_key] = _trj_name
+                    # List imaginary mode vib files
+                    _vib_dir = out_dir_path / "vib"
+                    if _vib_dir.exists():
+                        _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
+                            f"vib/{f.name}" for f in _vib_dir.iterdir() if f.suffix in ('.xyz', '.pdb')
+                        ])
+
             # summary.md and key_* outputs are disabled.
             click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start))
+
+            # result.json (if --out-json)
+            if out_json:
+                from .utils import write_result_json
+                write_result_json(
+                    out_dir_path, _tsopt_result_data,
+                    command="tsopt",
+                    elapsed_seconds=time.perf_counter() - time_start,
+                )
 
         except ZeroStepLength:
             click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)

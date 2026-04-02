@@ -235,7 +235,7 @@ Freeze atoms (1-based): 1,16,32,54,71,145,157,198,213,227,234,288,294,349,356,37
   │  ├─ mep_w_ref_seg_01.pdb
   │  ├─ mep_w_ref_seg_03.pdb
   │  ├─ summary.log
-  │  └─ summary.yaml
+  │  └─ summary.json
   ├─ models/  # Extracted active site model PDBs
   │  └─ {model_1.R.pdb}
   ├─ scan/  # Staged scan outputs
@@ -256,7 +256,7 @@ Freeze atoms (1-based): 1,16,32,54,71,145,157,198,213,227,234,288,294,349,356,37
   ├─ mep_trj.xyz
   ├─ mep_w_ref.pdb
   ├─ summary.log
-  ├─ summary.yaml
+  ├─ summary.json
   ├─ ts_seg_01.pdb
   ├─ ts_seg_01.xyz
   ├─ ts_seg_03.pdb

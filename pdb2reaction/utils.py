@@ -2474,3 +2474,105 @@ def load_prepared_geometries(
         geoms.append(g)
 
     return geoms
+
+
+# ---------------------------------------------------------------------------
+# result.json writer
+# ---------------------------------------------------------------------------
+
+
+def _collect_environment_info() -> dict:
+    """Collect compute environment info (CPU, RAM, GPU, VRAM, resolved device)."""
+    import platform
+    env: dict = {}
+    try:
+        import torch
+        cuda_ok = torch.cuda.is_available()
+        env["device"] = "cuda" if cuda_ok else "cpu"
+        if cuda_ok:
+            try:
+                env["gpu_name"] = torch.cuda.get_device_name(0)
+                props = torch.cuda.get_device_properties(0)
+                vram = getattr(props, "total_memory", None) or getattr(props, "total_mem", None)
+                if vram:
+                    env["gpu_vram_gb"] = round(vram / 1e9, 1)
+            except Exception:
+                pass
+            env["cuda_version"] = getattr(torch.version, "cuda", None) or "unknown"
+    except Exception:
+        env["device"] = "cpu"
+    try:
+        import os
+        # CPU model
+        cpu_info = platform.processor()
+        if not cpu_info or cpu_info == "x86_64":
+            try:
+                with open("/proc/cpuinfo") as f:
+                    for line in f:
+                        if "model name" in line:
+                            cpu_info = line.split(":")[1].strip()
+                            break
+            except Exception:
+                pass
+        env["cpu"] = cpu_info or "unknown"
+        env["n_cpus"] = os.cpu_count()
+        # RAM
+        try:
+            import psutil
+            env["ram_gb"] = round(psutil.virtual_memory().total / 1e9, 1)
+        except ImportError:
+            pass
+    except Exception:
+        pass
+    return env
+
+
+def write_result_json(
+    out_dir: Path,
+    data: dict,
+    *,
+    command: str,
+    elapsed_seconds: Optional[float] = None,
+    filename: str = "result.json",
+) -> Optional[Path]:
+    """Write a machine-readable result.json for a subcommand.
+
+    The ``data`` dict is augmented with common envelope fields
+    (``command``, ``pdb2reaction_version``, ``status``, ``elapsed_seconds``,
+    ``out_dir``, ``files``, ``environment``) and serialized as indented JSON.
+
+    Returns the path to the written file, or None on failure.
+    """
+    import json as _json
+    try:
+        from pdb2reaction._version import __version__
+    except Exception:
+        __version__ = "unknown"
+
+    data.setdefault("command", command)
+    data.setdefault("pdb2reaction_version", __version__)
+    data.setdefault("out_dir", str(out_dir))
+    if elapsed_seconds is not None:
+        data["elapsed_seconds"] = round(elapsed_seconds, 3)
+    data.setdefault("environment", _collect_environment_info())
+
+    # Convert Path objects to strings
+    def _to_json(obj):
+        if isinstance(obj, Path):
+            return str(obj)
+        if isinstance(obj, dict):
+            return {k: _to_json(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [_to_json(i) for i in obj]
+        return obj
+
+    data = _to_json(data)
+
+    dest = Path(out_dir) / filename
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with open(dest, "w", encoding="utf-8") as f:
+            _json.dump(data, f, indent=2, ensure_ascii=False)
+        return dest
+    except Exception:
+        return None

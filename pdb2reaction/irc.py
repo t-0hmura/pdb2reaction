@@ -229,6 +229,13 @@ def _echo_convert_trj_if_exists(
     show_default=True,
     help="Validate options and print the execution plan without running IRC.",
 )
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
@@ -258,6 +265,7 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    out_json: bool,
     backend: str,
     solvent: str,
     solvent_model: str,
@@ -421,6 +429,12 @@ def cli(
 
             calc = create_calculator(**calc_cfg)
             geometry.set_calculator(calc)
+            try:
+                import torch as _torch
+                _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+                click.echo(f"[calc] Resolved device: {_resolved_dev}")
+            except Exception:
+                pass
 
             # Seed cached TS Hessian if available (from tsopt in ``all`` workflow)
             from .hessian_cache import load as _hess_load, store as _hess_store
@@ -500,6 +514,70 @@ def cli(
 
             # summary.md and key_* outputs are disabled.
             click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start))
+
+            # result.json (if --out-json)
+            if out_json:
+                from .utils import write_result_json
+                _all_e = eulerpc.all_energies
+                _n_fwd = len(getattr(eulerpc, "forward_energies", [])) if hasattr(eulerpc, "forward_energies") else 0
+                _n_bwd = len(getattr(eulerpc, "backward_energies", [])) if hasattr(eulerpc, "backward_energies") else 0
+                _ts_e = float(eulerpc.ts_energy) if hasattr(eulerpc, "ts_energy") else None
+                # Forward endpoint = first element of all_energies (reactant side)
+                # Backward endpoint = last element of all_energies (product side)
+                _e_reactant = float(_all_e[0]) if len(_all_e) > 0 else None
+                _e_product = float(_all_e[-1]) if len(_all_e) > 0 else None
+                _irc_files = {}
+                for _fn in ("finished_irc_trj.xyz", "forward_irc_trj.xyz", "backward_irc_trj.xyz"):
+                    _fp = out_dir_path / f"{suffix_prefix}{_fn}"
+                    if _fp.exists():
+                        _irc_files[_fn.replace("_trj.xyz", "")] = _fp.name
+                for _fn in ("finished_irc.pdb", "forward_irc.pdb", "backward_irc.pdb"):
+                    _fp = out_dir_path / f"{suffix_prefix}{_fn}"
+                    if _fp.exists():
+                        _irc_files[_fn.replace(".pdb", "_pdb")] = _fp.name
+                result_data = {
+                    "status": "completed",
+                    "n_frames_forward": _n_fwd,
+                    "n_frames_backward": _n_bwd,
+                    "n_frames_total": len(_all_e),
+                    "energy_reactant_hartree": _e_reactant,
+                    "energy_ts_hartree": _ts_e,
+                    "energy_product_hartree": _e_product,
+                    "forward_converged": getattr(eulerpc, 'forward_is_converged', None),
+                    "backward_converged": getattr(eulerpc, 'backward_is_converged', None),
+                    "charge": calc_cfg["charge"],
+                    "spin": calc_cfg["spin"],
+                    "model": calc_cfg.get("model"),
+                    "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                    "solvent": calc_cfg.get("solvent", "none"),
+                    "step_length": irc_cfg.get("step_length"),
+                    "max_cycles": irc_cfg.get("max_cycles"),
+                    "input_file": str(input_path),
+                    "files": _irc_files,
+                }
+
+                # Bond changes between IRC endpoints
+                try:
+                    from .bond_changes import compare_structures
+                    _irc_first = out_dir_path / "finished_first.xyz"
+                    _irc_last = out_dir_path / "finished_last.xyz"
+                    if _irc_first.exists() and _irc_last.exists():
+                        _g1 = geom_loader(str(_irc_first))
+                        _g2 = geom_loader(str(_irc_last))
+                        _bc = compare_structures(_g1, _g2, device="cpu")
+                        _elems = [a.capitalize() for a in _g1.atoms]
+                        result_data["bond_changes"] = {
+                            "formed": [f"{_elems[i]}{i+1}-{_elems[j]}{j+1}" for i, j in sorted(_bc.formed_covalent)],
+                            "broken": [f"{_elems[i]}{i+1}-{_elems[j]}{j+1}" for i, j in sorted(_bc.broken_covalent)],
+                        }
+                except Exception:
+                    pass
+
+                write_result_json(
+                    out_dir_path, result_data,
+                    command="irc",
+                    elapsed_seconds=time.perf_counter() - time_start,
+                )
 
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)

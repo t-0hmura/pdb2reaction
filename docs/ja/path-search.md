@@ -7,7 +7,7 @@
 ### 要点
 - **想定場面:** R → … → P のように **2 構造以上**を入力として、自動精密化を含めた連続 MEP を構築したい場合に使います。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
-- **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.yaml`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
+- **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.json`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
 - **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--no-preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
 
@@ -28,7 +28,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 ## 出力の見方
 
 - `result_path_search/mep_trj.xyz`
-- `result_path_search/summary.yaml`
+- `result_path_search/summary.json`
 - `result_path_search/summary.log`
 - `result_path_search/mep_plot.png`（プロット生成時）
 
@@ -133,7 +133,7 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
 ├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
-├─ summary.yaml # すべての再帰セグメントの障壁と分類サマリー
+├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
 ├─ mep_plot.png # ΔEプロファイル（kcal/mol、反応物基準）
 ├─ energy_diagram_MEP.png # MEP状態エネルギーダイアグラムの静的エクスポート

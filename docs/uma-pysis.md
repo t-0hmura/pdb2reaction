@@ -89,8 +89,8 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | included | Yes | Yes | Full feature set via fairchem |
 | **ORB** | `pip install "pdb2reaction[orb]"` | No (FD only) | No | orb-models |
-| **MACE** | `pip install "pdb2reaction[mace]"` | No (FD only) | No | mace-torch |
-| **AIMNet2** | `pip install "pdb2reaction[aimnet2]"` | No (FD only) | No | aimnet |
+| **MACE** | `pip install --no-deps mace-torch` | No (FD only) | No | mace-torch |
+| **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | No (FD only) | No | aimnet |
 
 ### Implicit solvent correction
 

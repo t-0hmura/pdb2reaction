@@ -369,6 +369,13 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="Print resolved configuration and continue execution.",
 )
 @click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
+@click.option(
     "--dry-run/--no-dry-run",
     "dry_run",
     default=False,
@@ -392,6 +399,7 @@ def cli(
     engine: str,
     config_yaml: Optional[Path],
     show_config: bool,
+    out_json: bool,
     dry_run: bool,
 ) -> None:
     config_yaml, override_yaml, used_legacy_yaml = resolve_yaml_sources(
@@ -690,6 +698,38 @@ def cli(
                 sys.exit(3)
 
             click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start))
+
+            # result.json (if --out-json)
+            if out_json:
+                from .utils import write_result_json
+                result_data: Dict[str, Any] = {
+                    "status": "converged" if converged else "not_converged",
+                    "charge": resolved_charge,
+                    "spin": multiplicity,
+                    "n_atoms": mol.natm if 'mol' in dir() else None,
+                    "grid_level": dft_cfg.get("grid_level"),
+                    "conv_tol": dft_cfg.get("conv_tol"),
+                    "max_cycle": dft_cfg.get("max_cycle"),
+                    "input_file": str(input_path),
+                    "energy_hartree": e_h,
+                    "energy_kcal_per_mol": e_kcal,
+                    "xc_functional": xc,
+                    "basis_set": basis,
+                    "engine": engine_label,
+                    "used_gpu": bool(using_gpu),
+                    "converged": converged,
+                    "charges": {k: v for k, v in charges.items()},
+                    "spin_densities": {k: v for k, v in spins.items()},
+                    "files": {
+                        "result_yaml": "result.yaml",
+                        "input_geometry_xyz": "input_geometry.xyz",
+                    },
+                }
+                write_result_json(
+                    out_dir_path, result_data,
+                    command="dft",
+                    elapsed_seconds=time.perf_counter() - time_start,
+                )
 
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)

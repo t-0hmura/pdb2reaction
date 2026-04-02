@@ -212,7 +212,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 ```
 result_all/
 ├── summary.log # 結果要約
-├── summary.yaml # YAML 結果要約
+├── summary.json # JSON 結果
 ├── models/ # 抽出されたクラスターモデル
 ├── scan/ # （オプション）スキャン結果
 ├─┬ path_search/ # MEP軌跡とダイアグラム

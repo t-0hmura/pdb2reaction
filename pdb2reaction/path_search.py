@@ -25,7 +25,7 @@ import re
 
 import click
 import numpy as np
-import yaml
+import json
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
@@ -2680,9 +2680,27 @@ def cli(
         if diagram_payload is not None:
             summary["energy_diagrams"] = [diagram_payload]
 
-        with open(out_dir_path / "summary.yaml", "w") as f:
-            yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        click.echo(f"[write] Wrote '{out_dir_path / 'summary.yaml'}'.")
+        # Enrich summary with metadata (inline to avoid circular import from all.py)
+        try:
+            from pdb2reaction._version import __version__
+        except Exception:
+            __version__ = "unknown"
+        summary["pdb2reaction_version"] = __version__
+        summary["pipeline_mode"] = "path-search"
+        summary["status"] = "success" if summary.get("energy_diagrams") else "partial"
+        summary["mlip_backend"] = calc_cfg.get("model", "unknown")
+        summary["charge"] = calc_cfg.get("charge")
+        summary["spin"] = calc_cfg.get("spin")
+        summary["command"] = command_str
+        try:
+            from .utils import _collect_environment_info
+            summary["environment"] = _collect_environment_info()
+        except Exception:
+            pass
+
+        with open(out_dir_path / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+        click.echo(f"[write] Wrote '{out_dir_path / 'summary.json'}'.")
 
         try:
             try:

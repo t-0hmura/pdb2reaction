@@ -364,6 +364,12 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
     kw = dict(uma_kwargs or {})
     kw["out_hess_torch"] = True
     calc = create_calculator(**kw)
+    try:
+        import torch as _torch
+        _resolved_dev = "cuda" if _torch.cuda.is_available() else "cpu"
+        click.echo(f"[calc] Resolved device: {_resolved_dev}")
+    except Exception:
+        pass
     results = calc.get_hessian(geom.atoms, geom.cart_coords)
 
     # Keep Geometry cache in sync so optimizers/freq analysis can share one Hessian
@@ -593,6 +599,13 @@ CALC_KW = FREQ_CALC_KW
     show_default=True,
     help="Validate options and print the execution plan without running frequency analysis.",
 )
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json to out_dir.",
+)
 # Hessian calculation mode
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
@@ -629,6 +642,7 @@ def cli(
     dump: bool,
     show_config: bool,
     dry_run: bool,
+    out_json: bool,
     # hessian
     hessian_calc_mode: Optional[str],
     # backend
@@ -881,6 +895,7 @@ def cli(
         # --------------------------
         # 4) Thermochemistry summary
         # --------------------------
+        _thermo_data = None  # populated below if thermoanalysis succeeds
         try:
             from thermoanalysis.QCData import QCData
             from thermoanalysis.thermo import thermochemistry
@@ -968,6 +983,21 @@ def cli(
                     yaml.safe_dump(payload, f, sort_keys=False, allow_unicode=True)
                 click.echo(f"[dump] Wrote thermoanalysis summary → {out_yaml}")
 
+            _thermo_data = {
+                "electronic_energy_ha": EE,
+                "zpe_correction_ha": ZPE,
+                "thermal_correction_energy_ha": dE_therm,
+                "thermal_correction_enthalpy_ha": dH_therm,
+                "thermal_correction_free_energy_ha": dG_therm,
+                "sum_EE_and_ZPE_ha": sum_EE_ZPE,
+                "sum_EE_and_thermal_energy_ha": sum_EE_thermal_E,
+                "sum_EE_and_thermal_enthalpy_ha": sum_EE_thermal_H,
+                "sum_EE_and_thermal_free_energy_ha": sum_EE_thermal_G,
+                "E_thermal_cal_per_mol": E_thermal_cal,
+                "Cv_cal_per_mol_K": Cv_cal_per_Kmol,
+                "S_cal_per_mol_K": S_cal_per_Kmol,
+            }
+
         except ImportError:
             click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.", err=True)
         except Exception as e:
@@ -979,6 +1009,40 @@ def cli(
         click.echo(f"[DONE] Wrote modes and list → {out_dir_path}")
 
         click.echo(format_elapsed("[time] Elapsed Time for Freq", time_start))
+
+        # result.json (if --out-json)
+        if out_json:
+            from .utils import write_result_json
+            _all_freqs = [float(f) for f in freqs_cm]
+            _imag_freqs = [f for f in _all_freqs if f < 0.0]
+            result_data = {
+                "status": "completed",
+                "n_modes": len(_all_freqs),
+                "n_imaginary": len(_imag_freqs),
+                "frequencies_cm": _all_freqs,
+                "imaginary_frequencies_cm": _imag_freqs,
+                "thermochemistry": _thermo_data,
+                "backend": calc_cfg.get("backend", backend),
+                "charge": calc_cfg["charge"],
+                "spin": calc_cfg["spin"],
+                "model": calc_cfg.get("model"),
+                "n_atoms": len(geometry.atomic_numbers),
+                "n_freeze_atoms": len(freeze_list) if 'freeze_list' in dir() else 0,
+                "solvent": calc_cfg.get("solvent", "none"),
+                "temperature_K": thermo_cfg.get("temperature", 298.15) if 'thermo_cfg' in dir() else 298.15,
+                "pressure_atm": thermo_cfg.get("pressure_atm", 1.0) if 'thermo_cfg' in dir() else 1.0,
+                "input_file": str(input_path),
+                "files": {
+                    "frequencies_txt": "frequencies_cm-1.txt",
+                },
+            }
+            if _thermo_data is not None and bool(thermo_cfg.get("dump", False)):
+                result_data["files"]["thermoanalysis_yaml"] = "thermoanalysis.yaml"
+            write_result_json(
+                out_dir_path, result_data,
+                command="freq",
+                elapsed_seconds=time.perf_counter() - time_start,
+            )
 
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)

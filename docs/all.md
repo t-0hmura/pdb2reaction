@@ -59,7 +59,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 ## Output checklist
 
 - `result_all/summary.log`
-- `result_all/summary.yaml`
+- `result_all/summary.json`
 - `result_all/path_search/mep.pdb` (or `result_all/path_search/seg_*/`)
 
 ## Common examples
@@ -282,13 +282,21 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 ## Outputs
 ```text
 out_dir/ (default:./result_all/)
-├─ summary.log # Text summary
-├─ summary.yaml # YAML version summary
-├─ models/ # Extracted active site model PDBs when extraction runs
-├─ scan/ # Staged active site model scan results (present when --scan-lists is provided)
-├─ path_search/ # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams, summary.yaml, per-segment folders
-├─ path_search/post_seg_XX/ # Post-processing outputs (TS optimization, IRC, freq, DFT, diagrams)
-└─ tsopt_single/ # TSOPT-only outputs with IRC endpoints and optional freq/DFT directories
+├─ summary.log                  # Text summary
+├─ summary.json                 # JSON results
+├─ models/                      # Extracted active site model PDBs when extraction runs
+├─ scan/                        # Staged scan results (present when --scan-lists is provided)
+├─ seg_XX/                      # Refined TS and optimized IRC endpoints of segment XX
+│  ├─ reactant.{pdb,xyz,gjf}   #   Output format matches input format
+│  ├─ ts.{pdb,xyz,gjf}
+│  └─ product.{pdb,xyz,gjf}
+├─ path_search/                 # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams
+│  └─ post_seg_XX/              # Post-processing: TSOPT, IRC, freq, DFT per segment
+│     ├─ structures/            # Optimized R/TS/P structures (IRC endpoints)
+│     ├─ irc/                   # IRC trajectories and plots
+│     ├─ ts/                    # TS optimization output and vibrational analysis
+│     └─ freq/                  # Frequency and thermochemistry (R, TS, P)
+└─ tsopt_single/                # TSOPT-only outputs with IRC endpoints
 ```
 - Console logs summarizing active site model charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
 
@@ -316,13 +324,13 @@ The log is organized into numbered sections:
 - **[4] Energy diagrams (overview)** – diagram tables for MEP/MLIP/Gibbs/DFT series plus an optional cross-method summary table.
 - **[5] Output directory structure** – a compact tree of generated files with inline annotations.
 
-### Reading `summary.yaml`
-The YAML summary contains structured data. Common top-level keys include:
+### Reading `summary.json`
+The JSON summary contains structured data. Common top-level keys include:
 - `out_dir`, `n_images`, `n_segments` – run metadata and total counts.
 - `segments` – list of per-segment entries with `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, and `bond_changes`.
 - `energy_diagrams` (optional) – diagram payloads with `labels`, `energies_kcal`, `energies_au`, `ylabel`, and `image` paths.
 
-`summary.yaml` intentionally omits the formatted tables and filesystem tree that appear in `summary.log`.
+`summary.json` intentionally omits the formatted tables and filesystem tree that appear in `summary.log`.
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
@@ -333,7 +341,7 @@ The YAML summary contains structured data. Common top-level keys include:
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists` or `--tsopt`.
-- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.yaml` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge` explicitly so the charge can be resolved without re-running the extractor.
+- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.json` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge` explicitly so the charge can be resolved without re-running the extractor.
 
 
 `all` supports layered YAML:

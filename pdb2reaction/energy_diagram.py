@@ -194,6 +194,13 @@ _ALL_FLAGS = (
     show_default=True,
     help="Y-axis label.",
 )
+@click.option(
+    "--out-json/--no-out-json",
+    "out_json",
+    default=False,
+    show_default=True,
+    help="Write machine-readable result.json next to the output image.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -201,6 +208,7 @@ def cli(
     output_path: Path,
     label_x: Sequence[str],
     label_y: str,
+    out_json: bool,
 ) -> None:
     # Click with ignore_unknown_options may not capture all variadic
     # positional values after -i / --label-x.  Re-parse from ctx.args
@@ -239,3 +247,13 @@ def cli(
     )
     fig.write_image(str(out_img), scale=2)
     click.echo(f"[energy-diagram] Saved -> {out_img}")
+
+    if out_json:
+        from .utils import write_result_json
+
+        result_data = {
+            "status": "ok",
+            "n_points": len(energies),
+            "files": {out_img.name: str(out_img)},
+        }
+        write_result_json(out_img.parent, result_data, command="energy-diagram")

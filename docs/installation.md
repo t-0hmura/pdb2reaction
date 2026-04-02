@@ -117,9 +117,9 @@ If you prefer to build the environment piece by piece:
  pip install "pdb2reaction[orb]"
 
  # AIMNet2 backend
- pip install "pdb2reaction[aimnet2]"
+ pip install "pdb2reaction[aimnet]"
 
- pip install "pdb2reaction[mace]"      # MACE backend
+ pip install --no-deps mace-torch      # MACE backend (--no-deps required due to e3nn conflict)
  ```
 
  To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.

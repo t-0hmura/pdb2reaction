@@ -16,6 +16,7 @@ from collections import defaultdict
 from typing import List, Sequence, Optional, Tuple, Dict, Any
 
 import gc
+import json
 import torch
 import logging
 import signal
@@ -54,6 +55,7 @@ from .utils import (
     collect_option_values,
     collect_single_option_values,
     convert_xyz_like_outputs,
+    convert_xyz_to_gjf,
     deep_update,
     detect_freeze_links_logged,
     format_elapsed,
@@ -687,20 +689,20 @@ def _write_args_yaml_with_freeze_atoms(
 # ---------- Post-processing helpers ----------
 
 
-def _read_summary(summary_yaml: Path) -> List[Dict[str, Any]]:
+def _read_summary(summary_path: Path) -> List[Dict[str, Any]]:
     """
-    Read path_search/summary.yaml and return segments list (empty if not found).
+    Read path_search/summary.json and return segments list (empty if not found).
     """
     try:
-        if not summary_yaml.exists():
+        if not summary_path.exists():
             return []
-        data = yaml.safe_load(summary_yaml.read_text(encoding="utf-8")) or {}
+        data = json.loads(summary_path.read_text(encoding="utf-8")) or {}
         segs = data.get("segments", []) or []
         if not isinstance(segs, list):
             return []
         return segs
     except Exception as exc:
-        logger.debug("Failed to read summary YAML %s: %s", summary_yaml, exc)
+        logger.debug("Failed to read summary JSON %s: %s", summary_path, exc)
         return []
 
 
@@ -783,6 +785,208 @@ def _save_single_geom_as_pdb_for_tools(
 
     return xyz_trj
 
+
+def _copy_structures_to_seg_dir(
+    state_structs: Dict[str, Any],
+    out_dir: Path,
+    seg_idx: int,
+    input_suffix: str,
+    prepared_input: Any = None,
+    ref_pdb_path: Optional[Path] = None,
+) -> Path:
+    """Copy R/TS/P structures to ``out_dir/seg_XX/`` in the input format.
+
+    Parameters
+    ----------
+    state_structs : dict
+        ``{"R": xyz_path, "TS": xyz_path, "P": xyz_path}``
+    input_suffix : str
+        Original input file suffix (e.g. ``".pdb"``, ``".xyz"``, ``".gjf"``).
+    prepared_input :
+        ``PreparedInputStructure`` holding a GJF template (optional).
+    ref_pdb_path :
+        Reference PDB for coordinate conversion (optional).
+
+    Returns
+    -------
+    Path to the created ``seg_XX/`` directory.
+    """
+    seg_dir = out_dir / f"seg_{seg_idx:02d}"
+    seg_dir.mkdir(parents=True, exist_ok=True)
+
+    name_map = {"R": "reactant", "TS": "ts", "P": "product"}
+
+    for key, src_xyz in state_structs.items():
+        src = Path(src_xyz)
+        if not src.exists():
+            continue
+        dst_name = name_map.get(key, key.lower())
+
+        if input_suffix == ".pdb":
+            src_pdb = src.with_suffix(".pdb")
+            if src_pdb.exists():
+                shutil.copy2(src_pdb, seg_dir / f"{dst_name}.pdb")
+            else:
+                shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+        elif input_suffix == ".gjf":
+            if (
+                prepared_input is not None
+                and getattr(prepared_input, "gjf_template", None) is not None
+            ):
+                try:
+                    convert_xyz_to_gjf(
+                        src,
+                        prepared_input.gjf_template,
+                        seg_dir / f"{dst_name}.gjf",
+                    )
+                except Exception:
+                    shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+            else:
+                shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+        else:
+            shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+
+    return seg_dir
+
+
+def _enrich_summary(
+    summary: dict,
+    *,
+    version: str,
+    pipeline_mode: str,
+    mlip_backend: str,
+    charge: int,
+    spin: int,
+    command: str = "",
+    post_segments: Optional[list] = None,
+    config: Optional[dict] = None,
+    freeze_atoms: Optional[str] = None,
+) -> dict:
+    """Add machine-readable metadata to summary dict for AI agent consumption.
+
+    The resulting dict is written as summary.json and is intended to be the
+    single machine-readable output consumed by MCP tools and AI agents.
+    It should contain ALL information present in summary.log.
+    """
+    from pdb2reaction._version import __version__
+
+    segments = summary.get("segments", [])
+    reactive = [s for s in segments if s.get("kind") != "bridge"]
+    n_reactive = len(reactive)
+
+    # Determine status
+    has_diagrams = bool(summary.get("energy_diagrams"))
+    status = "success" if has_diagrams else ("partial" if segments else "failed")
+
+    # Rate-limiting step (highest barrier among reactive segments)
+    best_method = None
+    rls = None
+    if reactive:
+        for diag in reversed(summary.get("energy_diagrams", [])):
+            name = diag.get("name", "")
+            if "G_UMA" in name and "all" in name:
+                best_method = "UMA_Gibbs"
+                break
+            elif "UMA" in name and "all" in name:
+                best_method = "UMA"
+                break
+        if best_method is None:
+            best_method = "MEP"
+
+        max_barrier = -1e9
+        for s in reactive:
+            b = s.get("barrier_kcal", 0) or 0
+            if b > max_barrier:
+                max_barrier = b
+                rls = {"segment": s.get("index"), "barrier_kcal": round(b, 2), "method": best_method}
+
+    # Overall reaction energy from the best all-segment diagram
+    overall_rxn_e = None
+    for diag in reversed(summary.get("energy_diagrams", [])):
+        name = diag.get("name", "")
+        if "all" in name:
+            energies = diag.get("energies_kcal", [])
+            if len(energies) >= 2:
+                overall_rxn_e = round(energies[-1] - energies[0], 2)
+                break
+
+    # Core metadata
+    summary["pdb2reaction_version"] = __version__
+    summary["pipeline_mode"] = pipeline_mode
+    summary["status"] = status
+    summary["mlip_backend"] = mlip_backend
+    summary["charge"] = charge
+    summary["spin"] = spin
+    summary["n_segments_reactive"] = n_reactive
+    if rls:
+        summary["rate_limiting_step"] = rls
+    if overall_rxn_e is not None:
+        summary["overall_reaction_energy_kcal"] = overall_rxn_e
+    if command:
+        summary["command"] = command
+
+    # Pipeline config (mirrors summary.log header)
+    if config:
+        summary["config"] = config
+    if freeze_atoms:
+        summary["freeze_atoms"] = freeze_atoms
+
+    # Per-segment post-processing results (TS freq, IRC, UMA/Gibbs/DFT energies, structures)
+    if post_segments:
+        summary["post_segments"] = _json_safe(post_segments)
+
+    # Key output file paths for AI agent consumption
+    if "out_dir" in summary:
+        module_dir = Path(summary["out_dir"])   # path_search/ or tsopt_single/
+        root = module_dir.parent                 # the actual out_dir (result/)
+        key_files: Dict[str, Any] = {}
+        # Check for common output files in module dir (MEP-related)
+        for name, desc in [
+            ("summary.log", "Human-readable results summary"),
+            ("mep_trj.xyz", "Full MEP trajectory"),
+            ("mep.pdb", "Full MEP as PDB"),
+            ("mep_plot.png", "MEP energy plot"),
+        ]:
+            if (module_dir / name).exists():
+                key_files[name] = desc
+        # Check for common output files in root dir
+        for name, desc in [
+            ("irc_plot_all.png", "Aggregated IRC plot"),
+            ("summary.log", "Human-readable results summary (root copy)"),
+        ]:
+            if (root / name).exists():
+                key_files.setdefault(name, desc)
+        # seg_XX directories (in root)
+        if root.exists():
+            for child in sorted(root.iterdir()):
+                if child.is_dir() and child.name.startswith("seg_"):
+                    seg_files = [f.name for f in sorted(child.iterdir()) if f.is_file()]
+                    key_files[child.name] = {
+                        "description": f"R/TS/P structures for {child.name}",
+                        "files": seg_files,
+                    }
+        if key_files:
+            summary["key_output_files"] = key_files
+
+    # Environment info
+    try:
+        from .utils import _collect_environment_info
+        summary.setdefault("environment", _collect_environment_info())
+    except Exception:
+        pass
+
+    return summary
+
+
+def _json_safe(obj):
+    """Recursively convert Path objects to strings for JSON serialization."""
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(item) for item in obj]
+    return obj
 
 
 def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[Path]:
@@ -2725,10 +2929,10 @@ def cli(
             irc_plot_path: Optional[Path] = tsroot / "irc" / "irc_plot.png"
             if not irc_plot_path.exists():
                 irc_plot_path = None
-            # Reload energies from existing summary.yaml
+            # Reload energies from existing summary.json
             e_react = e_prod = eT = 0.0
             try:
-                _s = load_yaml_dict(tsroot / "summary.yaml")
+                _s = json.loads((tsroot / "summary.json").read_text(encoding="utf-8"))
                 for _ed in (_s or {}).get("energy_diagrams", []):
                     if isinstance(_ed, dict) and "TSOPT" in str(_ed.get("ylabel", "") or _ed.get("title_note", "")):
                         _elist = _ed.get("energies_au", [])
@@ -2736,7 +2940,7 @@ def cli(
                             e_react, eT, e_prod = float(_elist[0]), float(_elist[1]), float(_elist[2])
                             break
             except Exception:
-                _echo("[resume] WARNING: Could not reload energies from summary.yaml; "
+                _echo("[resume] WARNING: Could not reload energies from summary.json; "
                       "energy diagram may show zeros", err=True)
         else:
             _tsopt_ref = ref_pdb_for_topology or (ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None)
@@ -3055,7 +3259,7 @@ def cli(
                         err=True,
                     )
 
-        # Build summary.yaml for TSOPT-only runs, mirroring path_search/path_opt outputs
+        # Build summary.json for TSOPT-only runs, mirroring path_search/path_opt outputs
         bond_cfg = dict(_path_search.BOND_KW)
         bond_summary = ""
         if g_react_opt is not None and g_prod_opt is not None:
@@ -3103,11 +3307,29 @@ def cli(
         }
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
+        _enrich_summary(
+            summary,
+            version="",
+            pipeline_mode="tsopt-only",
+            mlip_backend=calc_cfg_shared.get("model", "unknown"),
+            charge=q_int,
+            spin=spin,
+            command=command_str,
+            config={
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": tsopt_opt_mode_default,
+                "mep_mode": mep_mode_kind,
+            },
+            freeze_atoms=_freeze_atoms_for_log(),
+        )
         try:
-            with open(tsroot / "summary.yaml", "w") as f:
-                yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-            _echo(f"[write] Wrote '{tsroot / 'summary.yaml'}'.")
-            _copy_logged(tsroot / "summary.yaml", out_dir / "summary.yaml", label="summary.yaml")
+            with open(tsroot / "summary.json", "w") as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+            _echo(f"[write] Wrote '{tsroot / 'summary.json'}'.")
+            _copy_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json")
             try:
                 ts_freq_info = (
                     _read_imaginary_frequency(freq_root / "TS") if do_thermo else None
@@ -3204,13 +3426,50 @@ def cli(
                     "post_segments": [segment_log],
                     "key_files": {},
                 }
+                # Copy R/TS/P to seg_01/ BEFORE writing summary.log (so tree includes seg_01/)
+                try:
+                    _input_suffix = first_input.suffix.lower() if first_input else ".xyz"
+                    _tsonly_structs = {"R": pR, "TS": pT, "P": pP}
+                    _seg_out = _copy_structures_to_seg_dir(
+                        _tsonly_structs, out_dir, 1, _input_suffix,
+                    )
+                    _echo(f"[all] Wrote R/TS/P for segment 01 → {_seg_out}")
+                except Exception as e:
+                    _echo(
+                        f"[all] WARNING: Failed to copy structures in TSOPT-only mode: {e}",
+                        err=True,
+                    )
+
+                # Refresh summary.json with post_segments and key_output_files
+                summary["post_segments"] = _json_safe([segment_log])
+                # Rebuild key_output_files now that seg_01/ exists
+                try:
+                    _kf: Dict[str, Any] = {}
+                    for _n, _d in [("summary.log", "Human-readable results summary"),
+                                   ("irc_plot_all.png", "Aggregated IRC plot")]:
+                        if (out_dir / _n).exists():
+                            _kf[_n] = _d
+                    for _child in sorted(out_dir.iterdir()) if out_dir.exists() else []:
+                        if _child.is_dir() and _child.name.startswith("seg_"):
+                            _kf[_child.name] = {"files": sorted(f.name for f in _child.iterdir() if f.is_file())}
+                    if _kf:
+                        summary["key_output_files"] = _kf
+                except Exception:
+                    pass
+                try:
+                    with open(tsroot / "summary.json", "w") as f:
+                        json.dump(summary, f, indent=2, ensure_ascii=False)
+                    _copy_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
+                except Exception:
+                    pass
+
                 write_summary_log(tsroot / "summary.log", summary_payload)
                 _copy_logged(tsroot / "summary.log", out_dir / "summary.log", label="summary.log", echo=False)
             except Exception as e:
                 _echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
         except Exception as e:
             _echo(
-                f"[write] WARNING: Failed to write summary.yaml for TSOPT-only run: {e}",
+                f"[write] WARNING: Failed to write summary.json for TSOPT-only run: {e}",
                 err=True,
             )
 
@@ -3238,21 +3497,6 @@ def cli(
         except Exception as e:
             _echo(
                 f"[all] WARNING: Failed to mirror IRC plot in TSOPT-only mode: {e}",
-                err=True,
-            )
-
-        try:
-            ts_xyz_copy = out_dir / "ts_seg_01.xyz"
-            write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_xyz_copy)
-            _echo(f"[all] Wrote TS structure → {ts_xyz_copy}")
-            ts_pdb = pT.with_suffix(".pdb")
-            if ts_pdb.exists():
-                ts_pdb_copy = out_dir / "ts_seg_01.pdb"
-                shutil.copy2(ts_pdb, ts_pdb_copy)
-                _echo(f"[all] Copied TS structure → {ts_pdb_copy}")
-        except Exception as e:
-            _echo(
-                f"[all] WARNING: Failed to write TS structure in TSOPT-only mode: {e}",
                 err=True,
             )
 
@@ -3499,7 +3743,7 @@ def cli(
     # -------------------------------------------------------------------------
     _mep_skipped_by_resume = (
         resume
-        and _yaml_valid(path_dir / "summary.yaml", required_keys=("segments",))
+        and _yaml_valid(path_dir / "summary.json", required_keys=("segments",))
     )
     if not refine_path and _mep_skipped_by_resume:
         _skip_msg("Stage 2 — MEP search (path-opt)")
@@ -3765,12 +4009,30 @@ def cli(
         }
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
+        _enrich_summary(
+            summary,
+            version="",
+            pipeline_mode="path-opt",
+            mlip_backend=calc_cfg_shared.get("model", "unknown"),
+            charge=q_int,
+            spin=spin,
+            command=command_str,
+            config={
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": tsopt_opt_mode_default,
+                "mep_mode": mep_mode_kind,
+            },
+            freeze_atoms=_freeze_atoms_for_log(),
+        )
         try:
-            with open(path_dir / "summary.yaml", "w") as f:
-                yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-            _echo(f"[write] Wrote '{path_dir / 'summary.yaml'}'.")
+            with open(path_dir / "summary.json", "w") as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+            _echo(f"[write] Wrote '{path_dir / 'summary.json'}'.")
         except Exception as e:
-            _echo(f"[write] WARNING: Failed to write summary.yaml for path-opt branch: {e}", err=True)
+            _echo(f"[write] WARNING: Failed to write summary.json for path-opt branch: {e}", err=True)
 
         try:
             for name in (
@@ -3778,7 +4040,7 @@ def cli(
                 "energy_diagram_MEP.png",
                 "mep.pdb",
                 "mep_w_ref.pdb",
-                "summary.yaml",
+                "summary.json",
                 "summary.log",
             ):
                 src = path_dir / name
@@ -3908,7 +4170,7 @@ def cli(
                 "energy_diagram_MEP.png",
                 "mep.pdb",
                 "mep_w_ref.pdb",
-                "summary.yaml",
+                "summary.json",
                 "summary.log",
             ):
                 src = path_dir / name
@@ -3953,16 +4215,16 @@ def cli(
             "[all] path-opt mode produces active site model-level outputs only; full-system merge is not performed."
         )
         _echo(f"[all] Aggregated products are under: {path_dir}")
-    _echo("  - summary.yaml             (segment barriers, ΔE, labels)")
+    _echo("  - summary.json             (segment barriers, ΔE, labels)")
     _echo(
         "  - energy_diagram_MEP.png / energy_diagram.* (copied summary at <out-dir>/)"
     )
     _echo_section("====== [all] Pipeline (core path) successfully finished ======\n")
 
-    summary_yaml = path_dir / "summary.yaml"
-    summary_loaded = load_yaml_dict(summary_yaml) if summary_yaml.exists() else {}
+    summary_path = path_dir / "summary.json"
+    summary_loaded = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
     summary: Dict[str, Any] = summary_loaded if isinstance(summary_loaded, dict) else {}
-    segments = _read_summary(summary_yaml)
+    segments = _read_summary(summary_path)
     if not energy_diagrams:
         existing_diagrams = summary.get("energy_diagrams", [])
         if isinstance(existing_diagrams, list):
@@ -4122,9 +4384,9 @@ def cli(
                         break
             # Reload energies from existing summary if available
             try:
-                _seg_summary_yaml = path_dir / "summary.yaml"
-                if _seg_summary_yaml.is_file():
-                    _seg_summary = load_yaml_dict(_seg_summary_yaml)
+                _seg_summary_path = path_dir / "summary.json"
+                if _seg_summary_path.is_file():
+                    _seg_summary = json.loads(_seg_summary_path.read_text(encoding="utf-8"))
                     for _ed in (_seg_summary or {}).get("energy_diagrams", []):
                         if isinstance(_ed, dict) and _ed.get("ylabel", "").startswith("UMA"):
                             _e_list = _ed.get("energies_kcal", [])
@@ -4132,7 +4394,7 @@ def cli(
                                 energy_diagrams.append(_ed)
                                 break
             except Exception as exc:
-                logger.debug("Failed to reload energy diagrams from %s: %s", path_dir / "summary.yaml", exc)
+                logger.debug("Failed to reload energy diagrams from %s: %s", path_dir / "summary.json", exc)
             # Try to load IRC trajectory for all-segment aggregation
             _irc_trj = seg_dir / "irc" / "finished_irc_trj.xyz"
             if _irc_trj.is_file():
@@ -4280,17 +4542,14 @@ def cli(
             }
 
             try:
-                ts_xyz_copy = out_dir / f"ts_seg_{seg_idx:02d}.xyz"
-                write_xyz_trj_with_energy([gT], [float(gT.energy)], ts_xyz_copy)
-                _echo(f"[all] Wrote TS structure for segment {seg_idx:02d} → {ts_xyz_copy}")
-                ts_pdb = pT.with_suffix(".pdb")
-                if ts_pdb.exists():
-                    ts_pdb_copy = out_dir / f"ts_seg_{seg_idx:02d}.pdb"
-                    shutil.copy2(ts_pdb, ts_pdb_copy)
-                    _echo(f"[all] Copied TS structure for segment {seg_idx:02d} → {ts_pdb_copy}")
+                _input_suffix = first_input.suffix.lower() if first_input else ".xyz"
+                _seg_out = _copy_structures_to_seg_dir(
+                    state_structs, out_dir, seg_idx, _input_suffix,
+                )
+                _echo(f"[all] Wrote R/TS/P for segment {seg_idx:02d} → {_seg_out}")
             except Exception as e:
                 _echo(
-                    f"[all] WARNING: Failed to write TS structure for segment {seg_idx:02d}: {e}",
+                    f"[all] WARNING: Failed to copy structures for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
 
@@ -4724,25 +4983,44 @@ def cli(
             irc_trj_for_all, out_dir / "irc_plot_all.png"
         )
 
-    # Refresh summary.yaml with final energy diagram metadata (including aggregated diagrams)
+    # Refresh summary.json with final energy diagram metadata (including aggregated diagrams)
     try:
         summary["energy_diagrams"] = list(energy_diagrams)
-        with open(path_dir / "summary.yaml", "w") as f:
-            yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
-        _echo(f"[write] Updated '{path_dir / 'summary.yaml'}' with energy diagrams.")
+        _enrich_summary(
+            summary,
+            version="",
+            pipeline_mode="path-search" if refine_path else "path-opt",
+            mlip_backend=calc_cfg_shared.get("model", "unknown"),
+            charge=q_int,
+            spin=spin,
+            command=command_str,
+            post_segments=post_segment_logs,
+            config={
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": tsopt_opt_mode_default,
+                "mep_mode": mep_mode_kind,
+            },
+            freeze_atoms=_freeze_atoms_for_log(),
+        )
+        with open(path_dir / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+        _echo(f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams.")
         try:
-            dst_summary = out_dir / "summary.yaml"
-            shutil.copy2(path_dir / "summary.yaml", dst_summary)
-            _echo(f"[all] Copied summary.yaml → {dst_summary}")
+            dst_summary = out_dir / "summary.json"
+            shutil.copy2(path_dir / "summary.json", dst_summary)
+            _echo(f"[all] Copied summary.json → {dst_summary}")
         except Exception as e:
             _echo(
-                f"[all] WARNING: Failed to mirror summary.yaml to {out_dir}: {e}",
+                f"[all] WARNING: Failed to mirror summary.json to {out_dir}: {e}",
                 err=True,
             )
         _write_pipeline_summary_log(post_segment_logs)
     except Exception as e:
         _echo(
-            f"[write] WARNING: Failed to refresh summary.yaml with energy diagram metadata: {e}",
+            f"[write] WARNING: Failed to refresh summary.json with energy diagram metadata: {e}",
             err=True,
         )
 
