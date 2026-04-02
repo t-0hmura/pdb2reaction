@@ -139,7 +139,7 @@ glossary
 | トピック | ページ |
 |-------|------|
 | **CLI コマンドリファレンス** | [Command Reference](../reference/commands/index.md) |
-| **YAML スキーマ** | [YAML Schema](../reference/yaml.md) |
+| **Python API リファレンス** | [Python API](../reference/yaml.md) |
 | **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP 計算機](uma-pysis.md) |
 | **用語** | [用語集](glossary.md) |

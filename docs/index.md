@@ -177,7 +177,7 @@ ja/index
 | Topic | Page |
 |-------|------|
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
-| **YAML schema** | [YAML Schema](reference/yaml.md) |
+| **Python API reference** | [Python API](reference/yaml.md) |
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
 | **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |

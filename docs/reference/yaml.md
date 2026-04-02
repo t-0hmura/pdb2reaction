@@ -1,99 +1,119 @@
-# YAML Schema
+# Python API Reference
 
-## Top-level Keys
+This page documents the most useful public Python APIs for programmatic use. These functions can be imported and used without the CLI.
 
-| Key |
-|---|
-| `extract` |
-| `calc` |
-| `path_search` |
-| `scan` |
-| `tsopt` |
-| `freq` |
-| `dft` |
+---
 
-## Starter Template
+## Bond Change Detection
 
-```yaml
-# Starter config for `pdb2reaction all`
-
-extract:
-  radius: 2.6
-  radius_het2het: 0.0
-
-calc:
-  workers: 1
-  workers_per_node: 1
-
-path_search:
-  mep_mode: gsm
-  max_nodes: 20
-  max_cycles: 300
-
-scan:
-  max_step_size: 0.2
-  bias_k: 300.0
-  relax_max_cycles: 10000
-
-tsopt:
-  max_cycles: 10000
-
-freq:
-  max_write: 10
-  amplitude_ang: 0.8
-  n_frames: 20
-  sort: value
-  temperature: 298.15
-  pressure_atm: 1.0
-
-dft:
-  func_basis: wb97m-v/def2-tzvpd
-  max_cycle: 100
-  conv_tol: 1.0e-9
-  grid_level: 3
+```python
+from pdb2reaction.bond_changes import compare_structures, has_bond_change, summarize_changes
 ```
 
-## Scalar Defaults
+| Function | Description |
+|----------|-------------|
+| `compare_structures(geom1, geom2, device="cuda", bond_factor=1.20)` | Detect covalent bonds formed or broken between two pysisyphus geometries. Returns a `BondChangeResult` with `formed_covalent` and `broken_covalent` (sets of 0-based index pairs). |
+| `has_bond_change(geom_start, geom_end, bond_cfg)` | Convenience wrapper: returns `(has_changes: bool, summary_text: str)`. `bond_cfg` accepts keys: `device`, `bond_factor`, `margin_fraction`, `delta_fraction`. |
+| `summarize_changes(geom, result, one_based=True)` | Build a human-readable report of bond changes with distances in Angstrom. |
 
-| Key | Type | Default |
-|---|---|---|
-| `extract.radius` | `float` | `2.6` |
-| `extract.radius_het2het` | `float` | `0.0` |
-| `calc.workers` | `int` | `1` |
-| `calc.workers_per_node` | `int` | `1` |
-| `path_search.mep_mode` | `str` | `'gsm'` |
-| `path_search.max_nodes` | `int` | `20` |
-| `path_search.max_cycles` | `int` | `300` |
-| `scan.max_step_size` | `float` | `0.2` |
-| `scan.bias_k` | `float` | `300.0` |
-| `scan.relax_max_cycles` | `int` | `10000` |
-| `tsopt.max_cycles` | `int` | `10000` |
-| `freq.max_write` | `int` | `10` |
-| `freq.amplitude_ang` | `float` | `0.8` |
-| `freq.n_frames` | `int` | `20` |
-| `freq.sort` | `str` | `'value'` |
-| `freq.temperature` | `float` | `298.15` |
-| `freq.pressure_atm` | `float` | `1.0` |
-| `dft.func_basis` | `str` | `'wb97m-v/def2-tzvpd'` |
-| `dft.max_cycle` | `int` | `100` |
-| `dft.conv_tol` | `float` | `1e-09` |
-| `dft.grid_level` | `int` | `3` |
+---
 
-## Scan Spec Shapes
+## Active Site Model Extraction
 
-Accepted by `scan`, `scan2d`, and `scan3d` with `-s/--scan-lists`.
-
-```yaml
-# scan (1D staged)
-one_based: false
-stages:
-  - - [1, 2, 1.65]
-  - - [2, 3, 2.30]
-
-# scan2d / scan3d
-one_based: false
-pairs:
-  - [1, 2, 1.40, 2.20]
-  - [2, 3, 1.20, 2.00]
-  - [3, 4, 1.00, 1.80]  # required only for scan3d
+```python
+from pdb2reaction.extract import extract_api, compute_charge_summary, load_structure
 ```
+
+| Function | Description |
+|----------|-------------|
+| `extract_api(complex_pdb, center, output=None, radius=2.6, ...)` | Extract active site model from PDB. Accepts PDB path(s), substrate center spec, and extraction options. Returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`. |
+| `compute_charge_summary(structure, selected_ids, substrate_ids, ligand_charge=None)` | Compute total model charge from amino acid, ion, and ligand contributions. Returns dict with `total_charge`, `protein_charge`, etc. |
+| `load_structure(path, name)` | Load a PDB file into a Biopython `Structure` object. |
+
+---
+
+## MLIP Calculator Factory
+
+```python
+from pdb2reaction.backends import create_calculator, create_ase_calculator
+```
+
+| Function | Description |
+|----------|-------------|
+| `create_calculator(backend="uma", **kwargs)` | Create a PySisyphus-compatible MLIP calculator. Backends: `uma`, `orb`, `mace`, `aimnet2`. Supports `solvent`, `solvent_model` kwargs. |
+| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows). |
+
+---
+
+## Energy Diagram & Trajectory Utilities
+
+```python
+from pdb2reaction.utils import build_energy_diagram, read_xyz_energies, convert_xyz_to_pdb
+```
+
+| Function | Description |
+|----------|-------------|
+| `build_energy_diagram(energies, labels, ylabel="ΔE")` | Create a Plotly energy diagram figure with horizontal state segments and dotted connectors. |
+| `read_xyz_energies(path)` | Extract energies (hartree) from the comment line of each frame in an XYZ trajectory. |
+| `convert_xyz_to_pdb(xyz_path, ref_pdb_path, out_pdb_path)` | Overlay XYZ coordinates onto a reference PDB topology template. Supports multi-frame trajectories. |
+| `read_xyz_first_last(trj_path)` | Read first and last frames from an XYZ trajectory. Returns `(elements, first_coords_A, last_coords_A)`. |
+
+---
+
+## Structure Alignment
+
+```python
+from pdb2reaction.align_freeze_atoms import kabsch_R_t, align_and_refine_pair_inplace
+```
+
+| Function | Description |
+|----------|-------------|
+| `kabsch_R_t(P, Q)` | Kabsch algorithm: find rotation `R` and translation `t` minimizing RMSD between (N,3) point sets. |
+| `align_and_refine_pair_inplace(g_ref, g_mob, ...)` | Rigid Kabsch alignment + iterative scan-and-relax for a pair of geometries. |
+
+---
+
+## PDB Utilities
+
+```python
+from pdb2reaction.add_elem_info import guess_element, assign_elements
+from pdb2reaction.fix_altloc import has_altloc, fix_altloc_file
+```
+
+| Function | Description |
+|----------|-------------|
+| `guess_element(atom_name, resname, is_het)` | Infer element symbol from PDB atom name + residue name. |
+| `assign_elements(in_pdb, out_pdb)` | Populate element columns (77-78) for all ATOM/HETATM records. |
+| `has_altloc(pdb_path)` | Check if a PDB file contains alternate location characters. |
+| `fix_altloc_file(in_path, out_path)` | Resolve alternate locations by keeping highest-occupancy conformer. |
+
+---
+
+## Charge & Spin Resolution
+
+```python
+from pdb2reaction.utils import resolve_charge_spin, detect_freeze_links
+```
+
+| Function | Description |
+|----------|-------------|
+| `resolve_charge_spin(prepared_inputs, charge, spin, ...)` | Resolve charge/spin from CLI args, ligand metadata, and GJF templates. Returns `(charge, spin)`. |
+| `detect_freeze_links(pdb_path)` | Identify 0-based atom indices of link-parent atoms for LKH/HL link hydrogens. |
+
+---
+
+## Configuration Defaults
+
+```python
+from pdb2reaction.defaults import CALC_KW_DEFAULT, LBFGS_KW, RFO_KW, IRC_KW, FREQ_KW
+```
+
+All default configuration dictionaries can be imported and overridden for programmatic use. See [YAML Reference](../yaml-reference.md) for the full list of keys.
+
+---
+
+## See Also
+
+- [YAML Reference](../yaml-reference.md) — Complete YAML configuration options
+- [CLI Command Reference](commands/index.md) — CLI subcommand help
+- [MLIP Calculator](../uma-pysis.md) — Backend configuration details
