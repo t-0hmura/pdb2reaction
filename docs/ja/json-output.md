@@ -47,7 +47,7 @@ cat result_opt/result.json | python -m json.tool
 | `energy_hartree` | float | 最終エネルギー (Hartree) |
 | `n_opt_cycles` | int | 最適化サイクル数 |
 | `opt_mode` | string | `"grad"` / `"hess"` |
-| `backend` | string | MLIP バックエンド |
+| `backend` | string | MLIP バックエンド (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`) |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
@@ -75,6 +75,7 @@ cat result_opt/result.json | python -m json.tool
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
+収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードでは `n_opt_cycles` のみ提供されます。
 
 ### `freq`
 
@@ -87,9 +88,15 @@ cat result_opt/result.json | python -m json.tool
 | `imaginary_frequencies_cm` | float[] | 負の振動数のみ |
 | `thermochemistry` | object\|null | 熱化学データ（下表参照） |
 | `backend` | string | MLIP バックエンド |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
+| `model` | string | MLIP モデル名 |
 | `n_atoms` | int | 原子数 |
+| `n_freeze_atoms` | int | 凍結原子数 |
+| `solvent` | string | 暗黙溶媒 or `"none"` |
 | `temperature_K` | float | 温度 (K) |
 | `pressure_atm` | float | 圧力 (atm) |
+| `input_file` | string | 入力ファイル名 |
 | `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
 
 **`thermochemistry`** (thermoanalysis 利用不可時は null):
@@ -114,13 +121,24 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"completed"` |
-| `n_frames_forward` / `backward` / `total` | int | IRC フレーム数 |
+| `n_frames_forward` | int | 前方 IRC フレーム数 |
+| `n_frames_backward` | int | 後方 IRC フレーム数 |
+| `n_frames_total` | int | 全フレーム数 |
 | `energy_reactant_hartree` | float | 反応物エネルギー |
 | `energy_ts_hartree` | float | TS エネルギー |
 | `energy_product_hartree` | float | 生成物エネルギー |
-| `forward_converged` / `backward_converged` | bool | IRC 収束判定 |
+| `forward_converged` | bool | 前方 IRC 収束? |
+| `backward_converged` | bool | 後方 IRC 収束? |
 | `backend` | string | MLIP バックエンド |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
+| `model` | string | MLIP モデル名 |
+| `n_freeze_atoms` | int | 凍結原子数 |
+| `solvent` | string | 暗黙溶媒 or `"none"` |
 | `bond_changes` | object | `{formed: [...], broken: [...]}` |
+| `step_length` | float | IRC ステップ長 (Bohr) |
+| `max_cycles` | int | 最大 IRC ステップ数 |
+| `input_file` | string | 入力ファイル名 |
 | `files` | object | 軌跡ファイル (xyz + pdb) |
 
 ### `scan`
@@ -129,33 +147,56 @@ cat result_opt/result.json | python -m json.tool
 |-----------|------|------|
 | `status` | string | `"completed"` |
 | `n_stages` | int | スキャンステージ数 |
-| `stages` | object[] | ステージごとのデータ |
+| `stages` | object[] | ステージごとのデータ（下記参照） |
 | `backend` | string | MLIP バックエンド |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
 | `files` | object | 出力ファイル |
 
-**`stages[]`**: `n_steps`, `converged`, `pairs_1based`, `energies_hartree`, `final_energy_hartree`, `bond_changes`
+**`stages[]`**:
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `n_steps` | int | ステップ数 |
+| `converged` | bool | 拘束最適化の収束? |
+| `pairs_1based` | list | 原子ペア (1-based) |
+| `initial_distances_angstrom` | list | 初期距離 |
+| `target_distances_angstrom` | list | 目標距離 |
+| `final_energy_hartree` | float | 最終エネルギー |
+| `energies_hartree` | float[] | ステップごとのエネルギー |
+| `bond_changes` | object | 検出された結合変化 |
 
 ### `scan2d` / `scan3d`
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `status` | string | `"completed"` |
 | `n_grid_points` | int | グリッド点数 |
 | `grid_shape` | int[] | グリッド次元 |
-| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` |
+| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`) |
 | `min_energy_hartree` | float | 表面最小エネルギー |
 | `backend` | string | MLIP バックエンド |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
 | `files` | object | CSV + プロットファイル |
 
 ### `path-opt`
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `status` | string | `"converged"` / `"not_converged"` / `"completed"` |
 | `converged` | bool | 収束判定 |
 | `mep_mode` | string | `"dmf"` / `"gsm"` |
+| `backend` | string | MLIP バックエンド |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
+| `model` | string | MLIP モデル名 |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
+| `n_images` | int | イメージ数 |
+| `hei_index` | int | 最高エネルギーイメージのインデックス |
+| `hei_energy_hartree` | float | HEI エネルギー |
 | `barrier_kcal` | float | 前方障壁 (kcal/mol) |
 | `delta_kcal` | float | 反応エネルギー (kcal/mol) |
-| `backend` | string | MLIP バックエンド |
 | `files` | object | 軌跡 + HEI ファイル |
 
 ### `dft`
@@ -172,20 +213,53 @@ cat result_opt/result.json | python -m json.tool
 | `n_atoms` | int | 原子数 |
 | `grid_level` | int | DFT グリッドレベル |
 | `conv_tol` | float | SCF 収束閾値 |
+| `input_file` | string | 入力ファイル名 |
+| `files` | object | `{"result_yaml": "result.yaml"}` |
 
 ### `extract`
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"ok"` |
+| `n_atoms_raw` | int | 入力 PDB の原子数 |
 | `n_atoms_extracted` | int | 抽出後の原子数 |
 | `total_charge` | float | 合計電荷 |
 | `protein_charge` | float | タンパク質電荷 |
 | `ligand_total_charge` | float | リガンド電荷合計 |
 | `ion_total_charge` | float | イオン電荷合計 |
+| `ion_charges` | list | `[[名前, 電荷], ...]` |
 | `unknown_residue_charges` | object | `{残基名: 電荷}` |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
+| `input_files` | string[] | 入力 PDB パス |
+
+### `trj2fig`
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `status` | string | `"ok"` |
+| `n_frames` | int | 軌跡フレーム数 |
+| `min_energy_hartree` | float | フレーム中の最小エネルギー |
+| `max_energy_hartree` | float | フレーム中の最大エネルギー |
+| `backend` | string | MLIP バックエンド |
+| `files` | object | 出力プロットファイル |
+
+### `energy-diagram`
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `status` | string | `"ok"` |
+| `n_points` | int | エネルギーデータ点数 |
+| `files` | object | 出力ダイアグラムファイル |
+
+### `bond-summary`
+
+`--out-json` 有効時、`bond-summary` は JSON を**標準出力**に出力します（ファイルではなく）:
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `status` | string | `"ok"` |
+| `comparisons` | object[] | ペアごとの比較（`structure_a`, `structure_b`, `bonds_formed`, `bonds_broken`） |
 
 ## `summary.json` (`path-search` / `all`)
 
@@ -194,9 +268,12 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"success"` / `"partial"` |
+| `n_segments` | int | セグメント数 |
 | `segments` | object[] | セグメントごとの障壁、反応エネルギー、結合変化 |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | モデル名 |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |
 
 `all` はさらに以下を含みます:
@@ -206,6 +283,7 @@ cat result_opt/result.json | python -m json.tool
 | `rate_limiting_step` | object | 律速段階のセグメント番号と障壁 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
+| `key_output_files` | object | 主要出力ファイル一覧 |
 
 ## 使用例
 
@@ -221,6 +299,7 @@ if result["status"] == "converged":
     print(f"Energy: {result['energy_hartree']:.6f} Hartree")
 else:
     print(f"Not converged after {result['n_opt_cycles']} cycles")
+    print(f"Max force: {result['final_max_force']:.6f}")
 ```
 
 ### jq

@@ -222,6 +222,34 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `radius` | float | Extraction radius (angstrom) |
 | `input_files` | string[] | Input PDB paths |
 
+### `trj2fig`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"ok"` |
+| `n_frames` | int | Number of trajectory frames |
+| `min_energy_hartree` | float | Minimum energy across frames |
+| `max_energy_hartree` | float | Maximum energy across frames |
+| `backend` | string | MLIP backend |
+| `files` | object | Output plot files |
+
+### `energy-diagram`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"ok"` |
+| `n_points` | int | Number of energy data points |
+| `files` | object | Output diagram files |
+
+### `bond-summary`
+
+When `--out-json` is enabled, `bond-summary` prints JSON to **stdout** (not a file):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"ok"` |
+| `comparisons` | object[] | Per-pair comparison with `structure_a`, `structure_b`, `bonds_formed`, `bonds_broken` |
+
 ## `summary.json` (`path-search` / `all`)
 
 The `all` and `path-search` commands write `summary.json` with a richer structure:
