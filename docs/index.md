@@ -75,9 +75,11 @@ ja/bond-summary
 
 reference/commands/index
 yaml-reference
+json-output
 uma-pysis
 glossary
 ja/yaml-reference
+ja/json-output
 ja/uma-pysis
 ja/glossary
 ```

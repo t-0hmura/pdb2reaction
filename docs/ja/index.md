@@ -49,6 +49,7 @@ bond-summary
 :hidden:
 
 yaml-reference
+json-output
 uma-pysis
 glossary
 ```
