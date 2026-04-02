@@ -54,7 +54,8 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
 ## 最小例
 
 ```bash
-pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
+ --out-dir ./result_all
 ```
 
 ## 出力の見方

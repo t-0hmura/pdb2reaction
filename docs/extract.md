@@ -41,10 +41,12 @@ pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb -l 'GPP:-3,SA
 pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb -l 'GPP:-3,SAM:1'
 
 # Multi-structure to single multi-MODEL output with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
+ -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 
 # Multi-structure to multiple outputs with hetero-hetero proximity enabled
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
+ -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 ```
 
 ## Workflow

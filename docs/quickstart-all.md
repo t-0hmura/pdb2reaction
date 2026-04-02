@@ -13,7 +13,8 @@ Run the end-to-end workflow once from two full PDB structures.
 ## Minimal command
 
 ```bash
-pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --out-dir ./result_all
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ --out-dir ./result_all
 ```
 
 If you want post-processing in the same run:

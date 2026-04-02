@@ -116,7 +116,8 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 **Richer example**
 
 ```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 Behavior:
@@ -145,13 +146,18 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
+ '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
+ '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+ --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
 ```
 
 Key points:
@@ -184,7 +190,8 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 **Richer example**
 
 ```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft --out-dir ./result_tsopt_only
+pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+ --tsopt --thermo --dft --out-dir ./result_tsopt_only
 ```
 
 Behavior:

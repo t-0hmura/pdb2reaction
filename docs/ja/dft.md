@@ -67,7 +67,9 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <nu
 pdb2reaction dft -i input.pdb -q 0 -m 1 --func-basis 'wb97m-v/6-31g**'
 
 # より厳密な制御、大きい基底、CPUのみバックエンド
-pdb2reaction dft -i input.pdb -q 1 -m 2 --func-basis 'wb97m-v/def2-tzvpd' --max-cycle 150 --conv-tol 1e-9 --engine cpu
+pdb2reaction dft -i input.pdb -q 1 -m 2 \
+ --func-basis 'wb97m-v/def2-tzvpd' --max-cycle 150 \
+ --conv-tol 1e-9 --engine cpu
 ```
 
 ## ワークフロー

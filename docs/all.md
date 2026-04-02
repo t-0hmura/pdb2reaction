@@ -52,7 +52,8 @@ For large active site models, the single-structure scan workflow (`--scan-lists`
 ## Minimal example
 
 ```bash
-pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
+ --out-dir ./result_all
 ```
 
 ## Output checklist

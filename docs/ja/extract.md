@@ -41,10 +41,12 @@ pdb2reaction extract -i complex.pdb -c substrate.pdb -o pocket.pdb -l 'GPP:-3,SA
 pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o pocket.pdb -l 'GPP:-3,SAM:1'
 
 # ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
+ -o pocket_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 
 # ヘテロ-ヘテロ近接を有効にした複数構造から複数出力
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
+ -o pocket1.pdb pocket2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
 ```
 
 ## ワークフロー
