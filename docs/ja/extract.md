@@ -122,6 +122,29 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 - API利用（`extract_api`）では `{"outputs": [...], "counts": [...], "charge_summary": {...}}` を返します。
 
 
+## MCPB 等で生成された非標準残基を含む系
+
+Amber の `MCPB.py`（Metal Center Parameter Builder）等で金属配位残基のパラメータを生成した場合、金属配位アミノ酸に非標準の残基名（`HD1`, `HE1`, `CM1`, `AP1` 等）が割り当てられます。これらは `extract` の内部辞書 `AMINO_ACIDS` に含まれないため、**主鎖原子の切断・リンク水素の付加が正しく行われません**。
+
+このような系では、`extract` の実行時に以下のような警告が表示されます:
+
+```
+[extract] WARNING: Residue HD1 83 may be an amino acid (has N, CA, C, O)
+but is not recognized as a standard residue name.
+Backbone truncation was not applied.
+Consider preparing the pocket model manually.
+```
+
+```{important}
+非標準残基を含む系では、**ポケットモデルを手動で構築する**ことを推奨します。
+手動構築の手順:
+
+1. 活性部位周辺の残基を選定し、切断箇所を決定する
+2. 切断された共有結合の親原子（残る側の原子）に、リンク水素を付加する
+3. リンク水素は残基名 `LKH`（チェーン `L`）、原子名 `HL` で記述する
+4. 結合方向に沿って **1.09 Å** の位置に配置する
+```
+
 ## 付録: PDB 命名規則と内部参照リスト
 
 この付録は、`extract` が **非標準の残基名/原子名** により残基分類や電荷割り当てを誤る場合の調査用です。入力が標準的な PDB 命名に従っている場合、多くのユーザーは読み飛ばして問題ありません。
