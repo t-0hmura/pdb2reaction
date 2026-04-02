@@ -74,7 +74,7 @@ ja/bond-summary
 :hidden:
 
 reference/commands/index
-reference/yaml
+reference/api-reference
 yaml-reference
 uma-pysis
 glossary
@@ -177,7 +177,7 @@ ja/index
 | Topic | Page |
 |-------|------|
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
-| **Python API reference** | [Python API](reference/yaml.md) |
+| **Python API reference** | [Python API](reference/api-reference.md) |
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
 | **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
