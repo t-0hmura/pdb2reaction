@@ -373,8 +373,7 @@ For a complete reference of all YAML options, see **[YAML Configuration Referenc
 ## See Also
 
 - [Installation](installation.md) — Setup and dependency installation
-- [Getting Started](getting-started.md) — First run and workflow overview
-- [Getting Started](getting-started.md) — Mental model of active site models, segments, and stages
+- [Getting Started](getting-started.md) — First run, workflow overview, and key concepts
 - [extract](extract.md) — Standalone active site model extraction (called internally by `all`)
 - [path-search](path-search.md) — Standalone MEP search (called internally by `all`)
 - [tsopt](tsopt.md) — Standalone TS optimization

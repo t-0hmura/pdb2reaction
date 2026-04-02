@@ -86,7 +86,7 @@ stages:
 ### 2. 実行
 
 ```bash
-pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 ```
 
 ---
