@@ -74,7 +74,6 @@ ja/bond-summary
 :hidden:
 
 reference/commands/index
-reference/api-reference
 yaml-reference
 uma-pysis
 glossary
@@ -177,7 +176,6 @@ ja/index
 | Topic | Page |
 |-------|------|
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
-| **Python API reference** | [Python API](reference/api-reference.md) |
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
 | **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
@@ -250,8 +248,8 @@ See the [YAML Reference](yaml-reference.md) for all options.
 Typical `pdb2reaction all` output:
 ```
 result_all/
-├── summary.log # User-friendly summary
-├── summary.yaml # YAML-format summary
+├── summary.log # Text summary
+├── summary.yaml # YAML summary
 ├── models/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
 ├─┬ path_search/ # MEP trajectories and diagrams

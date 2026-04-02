@@ -34,7 +34,7 @@ Public API:
 - `compare_structures(geom1, geom2, device='cuda', bond_factor=1.20, margin_fraction=0.05, delta_fraction=0.05) -> BondChangeResult`
   Detects formed and broken covalent bonds. Returns sets of zero-based index pairs and (by default) the full distance matrices (`numpy.ndarray`) in the same units as the inputs (Bohr in pysisyphus).
 - `summarize_changes(geom, result, one_based: bool = True) -> str`
-  Builds a human-readable report:
+  Builds a text report:
   - Sections: “Bond formed” and “Bond broken” (with counts).
   - Lines formatted as `ElemI-ElemJ` with atom indices (1-based by default, e.g., `C1-O2`).
   - If `result.distances_1/2` are present, prints bond lengths as `D1 Å --> D2 Å`, converting from Bohr using `pysisyphus.constants.BOHR2ANG`.

@@ -282,7 +282,7 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 ## Outputs
 ```text
 out_dir/ (default:./result_all/)
-├─ summary.log # formatted summary for quick inspection
+├─ summary.log # Text summary
 ├─ summary.yaml # YAML version summary
 ├─ models/ # Extracted active site model PDBs when extraction runs
 ├─ scan/ # Staged active site model scan results (present when --scan-lists is provided)
@@ -317,7 +317,7 @@ The log is organized into numbered sections:
 - **[5] Output directory structure** – a compact tree of generated files with inline annotations.
 
 ### Reading `summary.yaml`
-The YAML is a compact, YAML-format summary. Common top-level keys include:
+The YAML summary contains structured data. Common top-level keys include:
 - `out_dir`, `n_images`, `n_segments` – run metadata and total counts.
 - `segments` – list of per-segment entries with `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, and `bond_changes`.
 - `energy_diagrams` (optional) – diagram payloads with `labels`, `energies_kcal`, `energies_au`, `ylabel`, and `image` paths.

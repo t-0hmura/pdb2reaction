@@ -286,8 +286,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 ## 出力
 ```text
 out_dir/ (デフォルト:./result_all/)
-├─ summary.log # テキスト形式の結果要約
-├─ summary.yaml # YAML 形式の結果要約
+├─ summary.log # 結果要約
+├─ summary.yaml # YAML 結果要約
 ├─ models/ # 抽出実行時の活性部位モデル PDB
 ├─ scan/ # 段階的活性部位モデルスキャン結果（--scan-lists 提供時）
 ├─ path_search/ # MEP 結果（GSM/DMF）: 軌跡、マージ PDB、ダイアグラム、summary.yaml、セグメント別フォルダ
@@ -323,7 +323,7 @@ out_dir/ (デフォルト:./result_all/)
 - **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
 
 ### `summary.yaml` の読み方
-YAML はプログラムから処理しやすい形式の要約です。代表的なトップレベルキーは以下のとおりです。
+YAML 結果要約の代表的なトップレベルキーは以下のとおりです。
 - `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
 - `segments` – `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` を含むセグメント配列。
 - `energy_diagrams`（任意） – `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` などを含む図表データ。

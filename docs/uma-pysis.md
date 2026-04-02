@@ -28,6 +28,45 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (h
 - Coordinates are supplied in **bohr**; the wrapper converts to Angstrom for UMA and converts energies/derivatives back to hartree / hartree bohr⁻¹ / hartree bohr⁻².
 - Attach the calculator to a `pysisyphus` geometry object or call it directly as above.
 
+## Python API: Calculator Factory
+
+The `backends` module provides a factory for creating MLIP calculators programmatically:
+
+```python
+from pdb2reaction.backends import create_calculator, create_ase_calculator
+```
+
+| Function | Description |
+|----------|-------------|
+| `create_calculator(backend="uma", **kwargs)` | Create a PySisyphus-compatible MLIP calculator. Accepts `charge`, `spin`, `model`, `device`, `solvent`, `solvent_model`, `hessian_calc_mode`, `freeze_atoms`, and other backend-specific kwargs. Unknown keys are silently filtered per-backend. |
+| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows and ASE-based tools). Same kwargs as `create_calculator`. |
+
+### Example
+
+```python
+from pdb2reaction.backends import create_calculator
+
+# UMA calculator with analytical Hessians
+calc = create_calculator(
+    backend="uma",
+    charge=0,
+    spin=1,
+    device="auto",
+    hessian_calc_mode="Analytical",
+)
+
+# ORB calculator with implicit solvent
+calc_orb = create_calculator(
+    backend="orb",
+    charge=-1,
+    spin=1,
+    solvent="water",
+    solvent_model="alpb",
+)
+```
+
+The returned calculator implements the pysisyphus calculator interface (`get_energy`, `get_forces`, `get_hessian`). All methods accept `(atoms: List[str], coords: np.ndarray)` where coords are in **Bohr** and return dicts with `"energy"` (hartree), `"forces"` (hartree/bohr), and `"hessian"` (hartree/bohr²).
+
 ## Backend selection
 
 Select a backend with `-b/--backend` on any command, or set `calc.backend` in YAML:

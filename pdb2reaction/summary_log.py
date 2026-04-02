@@ -1,7 +1,7 @@
 # pdb2reaction/summary_log.py
 
 """
-User-friendly summary log writer used by ``path_search`` and ``all``.
+Summary log writer used by ``path_search`` and ``all``.
 
 The goal is to provide a compact, readable ``summary.log`` alongside the
 ``summary.yaml``. The log aggregates MEP details, segment barriers, 
@@ -339,7 +339,7 @@ def _format_diag_row(
 
 
 def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
-    """Write a User-friendly summary.log at ``dest`` from a pre-collected payload."""
+    """Write summary.log at ``dest`` from a pre-collected payload."""
 
     root_out = payload.get("root_out_dir") or "-"
     root_out_path = Path(root_out) if root_out not in (None, "-") else None

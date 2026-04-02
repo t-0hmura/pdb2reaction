@@ -239,8 +239,8 @@ For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Refer
 
 Every `pdb2reaction all` run writes:
 
-- `summary.log` – formatted summary for quick inspection, and
-- `summary.yaml` – YAML-format summary.
+- `summary.log` – text summary, and
+- `summary.yaml` – YAML summary.
 
 They typically contain:
 

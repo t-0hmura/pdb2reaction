@@ -28,6 +28,45 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (H
 - 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
 - `pysisyphus` の geometry オブジェクトにアタッチするか、上記のように直接呼び出せます。
 
+## Python API: Calculator Factory
+
+`backends` モジュールは MLIP 計算機をプログラムから生成するファクトリを提供します:
+
+```python
+from pdb2reaction.backends import create_calculator, create_ase_calculator
+```
+
+| Function | Description |
+|----------|-------------|
+| `create_calculator(backend="uma", **kwargs)` | Create a PySisyphus-compatible MLIP calculator. Accepts `charge`, `spin`, `model`, `device`, `solvent`, `solvent_model`, `hessian_calc_mode`, `freeze_atoms`, and other backend-specific kwargs. Unknown keys are silently filtered per-backend. |
+| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows and ASE-based tools). Same kwargs as `create_calculator`. |
+
+### 例
+
+```python
+from pdb2reaction.backends import create_calculator
+
+# 解析ヘシアン付き UMA 計算機
+calc = create_calculator(
+    backend="uma",
+    charge=0,
+    spin=1,
+    device="auto",
+    hessian_calc_mode="Analytical",
+)
+
+# 暗黙溶媒付き ORB 計算機
+calc_orb = create_calculator(
+    backend="orb",
+    charge=-1,
+    spin=1,
+    solvent="water",
+    solvent_model="alpb",
+)
+```
+
+返される計算機は pysisyphus の計算機インターフェース（`get_energy`, `get_forces`, `get_hessian`）を実装しています。すべてのメソッドは `(atoms: List[str], coords: np.ndarray)` を受け取り、coords は **Bohr** 単位です。戻り値は `"energy"`（Hartree）、`"forces"`（Hartree/Bohr）、`"hessian"`（Hartree/Bohr²）を含む dict です。
+
 ## バックエンド選択
 
 任意のコマンドで `-b/--backend` を指定するか、YAML で `calc.backend` を設定します:

@@ -134,7 +134,7 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ summary.yaml # すべての再帰セグメントの障壁と分類サマリー
-├─ summary.log # 人間が読めるサマリー
+├─ summary.log # 結果要約
 ├─ mep_plot.png # ΔEプロファイル（kcal/mol、反応物基準）
 ├─ energy_diagram_MEP.png # MEP状態エネルギーダイアグラムの静的エクスポート
 └─ seg_000_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報

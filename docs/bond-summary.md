@@ -67,6 +67,34 @@ Produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.
 - To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å),
   increase `--bond-factor` (e.g., `1.30`).
 
+## Python API
+
+The bond change detection functions can also be used programmatically:
+
+```python
+from pdb2reaction.bond_changes import compare_structures, has_bond_change, summarize_changes
+```
+
+| Function | Description |
+|----------|-------------|
+| `compare_structures(geom1, geom2, device="cuda", bond_factor=1.20)` | Detect covalent bonds formed or broken between two pysisyphus geometries. Returns a `BondChangeResult` with `formed_covalent` and `broken_covalent` (sets of 0-based index pairs). |
+| `has_bond_change(geom_start, geom_end, bond_cfg)` | Convenience wrapper: returns `(has_changes: bool, summary_text: str)`. `bond_cfg` accepts keys: `device`, `bond_factor`, `margin_fraction`, `delta_fraction`. |
+| `summarize_changes(geom, result, one_based=True)` | Format bond changes as a text report with distances in Angstrom. |
+
+### Example
+
+```python
+from pysisyphus.helpers import geom_loader
+from pdb2reaction.bond_changes import has_bond_change
+
+geom_r = geom_loader("R.xyz")
+geom_p = geom_loader("P.xyz")
+
+changed, summary = has_bond_change(geom_r, geom_p, {"device": "cpu", "bond_factor": 1.20})
+if changed:
+    print(summary)
+```
+
 ---
 
 ## See Also

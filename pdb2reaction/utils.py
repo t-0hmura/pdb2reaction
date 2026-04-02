@@ -83,7 +83,7 @@ register_yaml_representers()
 
 
 def pretty_block(title: str, content: Dict[str, Any]) -> str:
-    """Return a YAML-formatted block with an underlined title."""
+    """Return a YAML block with an underlined title."""
     if not content:
         return ""  # suppress empty blocks entirely
     if _base_dir is not None:

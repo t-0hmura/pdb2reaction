@@ -134,7 +134,7 @@ out_dir/ (default:./result_path_search/)
 ├─ mep_w_ref.pdb # Merged full-system MEP (requires ref PDB/template)
 ├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist (requires ref PDB)
 ├─ summary.yaml # Barrier and classification summary for every recursive segment
-├─ summary.log # User-friendly summary
+├─ summary.log # Text summary
 ├─ mep_plot.png # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
 ├─ energy_diagram_MEP.png # Static export of the MEP state-energy diagram (relative to reactant)
 └─ seg_000_*/ # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment

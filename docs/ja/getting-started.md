@@ -239,8 +239,8 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 `pdb2reaction all` を実行すると、以下のサマリーファイルが出力されます。
 
-- `summary.log` – テキスト形式の結果要約
-- `summary.yaml` – YAML 形式の結果要約
+- `summary.log` – 結果要約
+- `summary.yaml` – YAML 結果要約
 
 主な記載内容:
 
