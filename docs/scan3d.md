@@ -26,9 +26,9 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 - `result_scan3d/scan3d_density.html`
 
 ## Common examples
-1. Run from a YAML spec.
-2. Run with an inline literal.
-3. Enable `--dump` to keep inner d3 trajectories per `(d1,d2)` slice.
+1. **Run from a YAML spec file** -- see [Examples](#examples) below.
+2. **Run with an inline literal** -- see [Examples](#examples) below.
+3. **Enable `--dump`** to keep inner d3 trajectories per `(d1,d2)` slice -- see [Examples](#examples) below.
 
 > **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `-s/--scan-lists`.
 

@@ -186,10 +186,10 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 
 ## 出力ディレクトリ
 
-`--out-dir` で結果の保存先を指定します：
+`-o/--out-dir` で結果の保存先を指定します：
 
 ```bash
---out-dir ./my_results/ # カスタム出力ディレクトリ
+-o ./my_results/ # カスタム出力ディレクトリ
 ```
 
 デフォルトの出力ディレクトリ：

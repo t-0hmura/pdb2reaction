@@ -26,9 +26,9 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml --out-dir ./result_scan3d/
 - `result_scan3d/scan3d_density.html`
 
 ## よくある例
-1. YAML spec から実行する。
-2. `--scan-lists` を使う。
-3. `--dump` を有効にして `(d1,d2)` ごとの d3 軌跡を保存する。
+1. **YAML spec から実行する** — 下記の[例](#例)を参照。
+2. **インラインリテラルを使う** — 下記の[例](#例)を参照。
+3. **`--dump` を有効にして** `(d1,d2)` ごとの d3 軌跡を保存する — 下記の[例](#例)を参照。
 
 > **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
@@ -67,7 +67,7 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
 
-## YAML/JSON spec ファイルの書式（推奨）
+## YAML/JSON スペックファイルの書式（推奨）
 
 ```yaml
 one_based: true # 任意。未指定時は CLI の --one-based を使用
@@ -79,11 +79,11 @@ pairs:
 
 - `pairs` は必須で、ちょうど 3 つの四つ組を含む必要があります。
 - 各四つ組は `(i, j, low_Å, high_Å)` です。
-- インデックスは整数または PDB セレクタのどちらでも指定できます（`--scan-lists` と同じ）。
+- インデックスは整数または PDB セレクタのどちらでも指定できます（インラインリテラルと同じ）。
 
-## `--scan-lists` の書式
+## インライン Python リテラルの書式
 
-`--scan-lists` は **1 つの Python リテラル文字列**として CLI に渡します。シェルのクォート処理に注意が必要です。
+`-s/--scan-lists` に **1 つのインライン Python リテラル文字列**を渡すこともできます。シェルのクォート処理に注意が必要です。
 
 ### 基本構造
 
@@ -178,7 +178,7 @@ calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- device: auto # UMA device selection
+ device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap

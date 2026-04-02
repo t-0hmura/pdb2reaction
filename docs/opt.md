@@ -6,7 +6,7 @@
 
 `pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). For PDB inputs, link-hydrogen parents are automatically frozen.
 
-The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
+The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (1-based indices).
@@ -250,7 +250,7 @@ rfo:
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source
  hessian_recalc: 500 # rebuild Hessian every N steps
- hessian_recalc_adapt: null # adaptive Hessian rebuild limit
+ hessian_recalc_adapt: null # adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
  alpha0: 1.0 # initial micro step
  max_micro_cycles: 50 # micro-iteration limit
@@ -260,7 +260,7 @@ rfo:
  gdiis_thresh: 0.0025 # GDIIS acceptance threshold
  gediis_thresh: 0.01 # GEDIIS acceptance threshold
  gdiis_test_direction: true # test descent direction before DIIS
- adapt_step_func: true # adaptive step scaling
+ adapt_step_func: true # adaptive step scaling toggle
 ```
 
 ---

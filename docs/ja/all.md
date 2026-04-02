@@ -19,21 +19,21 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
 ```text
 全系入力 (PDB/XYZ/GJF)
  │
- ├─ (任意) 活性部位モデル抽出 [extract] ← --center/-c を使う場合は PDB が必要
+ ├─ (任意) 活性部位モデル抽出 [`extract`](extract.md) ← --center/-c を使う場合は PDB が必要
  │ ↓
  │ 活性部位モデル/クラスターモデル (PDB)
  │ │
- │ ├─ (任意) 段階的スキャン [scan] ← 単一構造ワークフロー
+ │ ├─ (任意) 段階的スキャン [`scan`](scan.md) ← 単一構造ワークフロー
  │ │ ↓
  │ │ 順序付けられた中間体
  │ │ ↓
- │ └─ MEP 探索 [path-search] または [path-opt]
+ │ └─ MEP 探索 [`path-search`](path-search.md) または [`path-opt`](path-opt.md)
  │ ↓
  │ MEP 経路 (mep_trj.xyz) + エネルギーダイアグラム
  │ ↓
- └─ (任意) TS 最適化 + IRC [tsopt] → [irc]
- └─ (任意) 熱化学 [freq]
- └─ (任意) DFT 一点計算 [dft]
+ └─ (任意) TS 最適化 + IRC [`tsopt`](tsopt.md) → [`irc`](irc.md)
+ └─ (任意) 熱化学 [`freq`](freq.md)
+ └─ (任意) DFT 一点計算 [`dft`](dft.md)
 ```
 
 各ステージはサブコマンドとして単独実行できます。また `pdb2reaction all` を使うと、複数ステージをまとめて実行できます。
@@ -127,7 +127,8 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 3. **活性部位モデルでの MEP 探索（再帰的 GSM/DMF）**
  - 抽出された活性部位モデル（または抽出をスキップした場合は元の全構造）で `path-search` を実行（出力は `<out-dir>/path_search/`）
- - `--no-refine-path` を指定すると、再帰的精密化なしのシングルパス `path-opt` GSM/DMF チェーンに切り替わる
+ - `--refine-path False` を指定すると、再帰的精密化なしのシングルパス `path-opt` GSM/DMF チェーンに切り替わる
+ - 複数入力 PDB の場合、全系テンプレートが参照マージ用に `path-search` に自動的に渡されます。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
 
 4. **活性部位モデルを全系にマージ**
  - 参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref*.pdb` とセグメントごとの `mep_w_ref_seg_XX.pdb` が `<out-dir>/path_search/` に出力される
@@ -215,8 +216,8 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | UMA並列度（workers > 1 で解析ヘシアン無効） | `1`, `1` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有UMAヘシアンエンジン | `FiniteDifference` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ） | `1`, `1` |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP ヘシアンエンジン | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
@@ -236,6 +237,8 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT のデフォルト（`hess` → `rsirfo`）の順で決まります。
+
+例: `--opt-mode grad --opt-mode-post hess` は、経路最適化に LBFGS、TS 精密化に RS-I-RFO を使用します。
 
 ### TSOPT 上書き
 
@@ -286,30 +289,14 @@ out_dir/ (デフォルト:./result_all/)
 ├─ summary.log # テキスト形式の結果要約
 ├─ summary.yaml # YAML 形式の結果要約
 ├─ pockets/ # 抽出実行時の活性部位モデル PDB
-├─ scan/ # 段階的活性部位モデルスキャン結果（--scan-lists提供時）
-├─ path_search/ # MEP結果: 軌跡、マージPDB、ダイアグラム
-├─ path_search/post_seg_XX/ # 後処理出力（TS最適化、IRC、freq、DFT）
-└─ tsopt_single/ # TSOPT のみ出力とIRCエンドポイント
+├─ scan/ # 段階的活性部位モデルスキャン結果（--scan-lists 提供時）
+├─ path_search/ # MEP 結果（GSM/DMF）: 軌跡、マージ PDB、ダイアグラム、summary.yaml、セグメント別フォルダ
+├─ path_search/post_seg_XX/ # 後処理出力（TS 最適化、IRC、freq、DFT、ダイアグラム）
+└─ tsopt_single/ # TSOPT のみ出力（IRC エンドポイントとオプションの freq/DFT ディレクトリ）
 ```
 
 
 - コンソールには電荷解決結果、YAML 設定、MEP 進行状況、各ステージの所要時間が出力されます。
-
-### `summary.log` の読み方
-ログは番号付きセクションで構成されます:
-- **[1] グローバル MEP 概要** – イメージ/セグメント数、MEP 軌跡プロットのパス、MEP 全体のエネルギーダイアグラム。
-- **[2] セグメント別MEPサマリー（UMAパス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。
-- **[3] セグメント別後処理（TSOPT / Thermo / DFT）** – TS 虚振動数チェック、IRC 出力、UMA/熱化学/DFT のエネルギーテーブル。
-- **[4] エネルギーダイアグラム（概要）** – MEP/UMA/Gibbs/DFT 系の図表と、任意の横断サマリー表。
-- **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
-
-### `summary.yaml` の読み方
-YAML はプログラムから処理しやすい形式の要約です。代表的なトップレベルキーは以下のとおりです。
-- `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
-- `segments` – `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` を含むセグメント配列。
-- `energy_diagrams`（任意） – `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` などを含む図表データ。
-
-`summary.yaml` には `summary.log` にある整形テーブルやファイルツリーは含まれません。
 
 ### エネルギーダイアグラムの命名規則
 
@@ -326,6 +313,22 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 | `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（UMA ギブズ） |
 | `energy_diagram_DFT_all.png` | 全セグメント + DFT | 全セグメント統合（DFT） |
 | `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
+
+### `summary.log` の読み方
+ログは番号付きセクションで構成されます:
+- **[1] グローバル MEP 概要** – イメージ/セグメント数、MEP 軌跡プロットのパス、MEP 全体のエネルギーダイアグラム。
+- **[2] セグメント別MEPサマリー（UMAパス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。
+- **[3] セグメント別後処理（TSOPT / Thermo / DFT）** – TS 虚振動数チェック、IRC 出力、UMA/熱化学/DFT のエネルギーテーブル。
+- **[4] エネルギーダイアグラム（概要）** – MEP/UMA/Gibbs/DFT 系の図表と、任意の横断サマリー表。
+- **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
+
+### `summary.yaml` の読み方
+YAML はプログラムから処理しやすい形式の要約です。代表的なトップレベルキーは以下のとおりです。
+- `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
+- `segments` – `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` を含むセグメント配列。
+- `energy_diagrams`（任意） – `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` などを含む図表データ。
+
+`summary.yaml` には `summary.log` にある整形テーブルやファイルツリーは含まれません。
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
@@ -357,6 +360,7 @@ YAML はプログラムから処理しやすい形式の要約です。代表的
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
 | [`dft`](dft.md) | `dft` |
 
+> **注記:** CLI 値の後に適用されます。
 
 **最小例:**
 ```yaml

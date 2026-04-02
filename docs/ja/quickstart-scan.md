@@ -1,4 +1,4 @@
-# クイックスタート: `pdb2reaction all` — 単一構造スキャンワークフロー
+# クイックスタート: `pdb2reaction scan` — 単一構造スキャンワークフロー
 
 ## 目的
 
@@ -99,7 +99,7 @@ pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 ## 補足
 
-- `-s/--scan-lists` は YAML/JSON ファイルパスとインライン Python リテラルの両方を受け付けます。
+- `-s/--scan-lists` は YAML/JSON ファイルパスまたはインライン Python リテラルを受け付けます（両方を同時に指定することはできません）。
 - 詳細オプションは `pdb2reaction scan --help-advanced` で確認できます。
 - 入力フォーマットの詳細は [scan](scan.md) を参照してください。
 

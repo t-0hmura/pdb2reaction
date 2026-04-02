@@ -4,10 +4,12 @@
 
 > **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
+`pdb2reaction dft` は PySCF（CPU）または GPU4PySCF（GPU）を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
+
 バックエンドは `--engine` で制御します:
-- `gpu`（デフォルト）: GPU4PySCF を使用します。**GPU が利用できない場合はエラーになります。**
-- `cpu`: CPU PySCF を強制的に使用します。
-- `auto`（移植性重視の場合に推奨）: GPU4PySCF を試行し、GPU が利用できない場合は CPU PySCF にフォールバックします。
+- `gpu`（デフォルト）: GPU4PySCF を使用します。**GPU が利用できない場合はエラーになります。** GPU アクセラレーションを保証したい本番計算に最適です。
+- `cpu`: CPU PySCF を強制的に使用します。GPU が利用できない場合や、決定的な CPU のみの実行が必要な場合（移植性やデバッグなど）に使用します。
+- `auto`（移植性重視の場合に推奨）: GPU4PySCF を試行し、GPU が利用できない場合は CPU PySCF にフォールバックします。異種ハードウェアで実行される可能性のあるスクリプトに最適です。
 
 > **注意:** デフォルトの基底関数 `def2-tzvpd` はトリプルゼータのディフューズ拡張セットであり、大きな系では計算コストが高くなります。探索的な計算には小さい基底（例: `6-31g**` や `def2-svp`）を検討してください。
 
@@ -155,7 +157,7 @@ dft:
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
-- [freq](freq.md) — UMAベースの振動解析（DFT精密化の前に行うことが多い）
+- [freq](freq.md) — MLIPベースの振動解析（DFT精密化の前に行うことが多い）
 - [all](all.md) — `--dft` を使用した一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

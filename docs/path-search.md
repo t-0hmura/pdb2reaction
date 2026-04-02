@@ -321,6 +321,7 @@ search:
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 
 - [path-opt](path-opt.md) — Single-pass MEP optimization (no recursive refinement)
 - [tsopt](tsopt.md) — Optimize the HEI as a transition state

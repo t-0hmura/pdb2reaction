@@ -48,8 +48,8 @@ This page provides definitions for abbreviations and technical terms used throug
 | **MACE** | MACE | Equivariant message-passing MLIP. Selected with `-b mace`. |
 | **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2. Selected with `-b aimnet2`. |
 | **xTB** | Extended Tight Binding | A semi-empirical quantum chemistry method. In pdb2reaction, used for implicit solvation correction via `--solvent`. |
-| **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. |
-| **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. |
+| **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. Selected with `--hessian-calc-mode Analytical`. |
+| **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
 
 ---
 
@@ -59,9 +59,9 @@ This page provides definitions for abbreviations and technical terms used throug
 |------|-----------|-------------|
 | **QM** | Quantum Mechanics | First-principles electronic structure calculations (DFT, HF, post-HF, etc.). |
 | **DFT** | Density Functional Theory | A quantum-mechanical method that models electronic structure via electron density functionals. |
-| **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates; used for vibrational analysis and TS optimization. |
+| **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates. Eigenvalues yield vibrational frequencies; eigenvectors yield vibrational modes (displacement vectors). Used for vibrational analysis and TS optimization. |
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for higher-level energy refinement. |
-| **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. |
+| **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |
 
 ---
 
@@ -72,8 +72,8 @@ This page provides definitions for abbreviations and technical terms used throug
 | **PDB** | Protein Data Bank | A file format and database for macromolecular 3D structures. |
 | **XYZ** | — | A simple text format listing atomic symbols and Cartesian coordinates. |
 | **GJF** | Gaussian Job File | An input format for Gaussian; pdb2reaction reads charge/multiplicity and coordinates from these files. |
-| **Active Site Model** | Active Site Model (Binding Pocket) | A truncated structure around the substrate(s) used to reduce system size for MEP/TS search. Also called "cluster model". |
-| **Cluster Model** | — | Synonym for active site model; a computationally tractable subset of the full enzyme–substrate complex. |
+| **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. |
+| **Cluster Model** | — | The computational subsystem cut from the active site model and capped with link hydrogens. Used to reduce system size for MEP/TS search. |
 | **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
 | **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 

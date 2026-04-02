@@ -198,7 +198,7 @@ calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- device: auto # UMA device selection
+ device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap

@@ -168,6 +168,7 @@ ja/index
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 | [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
+| [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |
 
 ---
 

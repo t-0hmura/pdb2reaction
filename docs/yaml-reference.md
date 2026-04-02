@@ -68,7 +68,7 @@ calc:
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
  return_partial_hessian: true  # Return active-DOF block Hessian
  print_timing: true # Print Hessian timing breakdown
- print_vram: true # Print CUDA VRAM usage during Hessian
+ print_vram: true # Print CUDA VRAM usage during Hessian (UMA backend only)
  # Solvent correction (xTB)
  solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
@@ -433,6 +433,7 @@ DFT calculation settings.
 dft:
  func: wb97m-v # Exchange-correlation functional
  basis: def2-tzvpd # Basis set name
+ func_basis: null # Combined "FUNC/BASIS" string (overrides func/basis)
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level

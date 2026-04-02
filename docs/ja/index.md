@@ -40,6 +40,7 @@ irc
 dft
 trj2fig
 energy-diagram
+bond-summary
 ```
 
 ```{toctree}
@@ -112,7 +113,7 @@ glossary
 | サブコマンド | 説明 |
 |---------|------|
 | [`path-opt`](path-opt.md) | GSM または DMF による 1段階の MEP 最適化（2構造から） |
-| [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索 |
+| [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2構造以上） |
 
 ### スキャン
 | サブコマンド | 説明 |
@@ -129,6 +130,7 @@ glossary
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
 | [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
+| [`bond-summary`](bond-summary.md) | 連続構造間の共有結合変化を検出・レポート |
 
 ---
 
@@ -235,7 +237,7 @@ result_all/
 
 ## ライセンス
 
-`pdb2reaction` **GNU General Public License version 3 (GPL-3.0)** の下で配布されています。
+`pdb2reaction` は **GNU General Public License version 3 (GPL-3.0)** の下で配布されています。
 
 ---
 

@@ -13,6 +13,8 @@
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path-search.md) を使用してください。
 
+> **`path-opt` と `path-search` の使い分け:** 端点が 2 構造だけで再帰精密化が不要な場合は `path-opt` を使います。2 構造以上を入力し、結合変化のある領域を自動で再帰精密化したい場合は `path-search` を使います。
+
 MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
 
 ```{note}
@@ -95,7 +97,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 | テンプレート/`1` |
-| `--freeze-links/--no-freeze-links` | PDBのみ: リンクH親を凍結（YAMLとマージ） | `True` |
+| `--freeze-links/--no-freeze-links` | PDBのみ: リンクH親を凍結（YAMLとマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--max-nodes INT` | 内部ノード数（ストリングイメージ = `max_nodes + 2`） | `20` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）またはDMF（ダイレクトフラックス）経路生成器を選択 | `gsm` |
 | `--max-cycles INT` | オプティマイザーマクロイテレーション上限 | `300` |
@@ -103,7 +105,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--dump/--no-dump` | MEP軌跡/リスタートをダンプ | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`grad` = LBFGS、`hess` = RFO） | `grad` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian入力用のXYZ/TRJ → PDB/GJFコンパニオン出力の切り替え | `True` |
-| `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー | _None_ |
+| `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持し PDB 変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
 | `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
@@ -201,7 +203,7 @@ stopt:
  out_dir: ./result_path_opt/ # output directory
  print_every: 10 # logging stride
 dmf:
- max_cycles: 300 # DMF/IPOPT の最大反復数
+ max_cycles: 300 # maximum DMF/IPOPT iterations
  correlated: true # correlated DMF propagation
  sequential: true # sequential DMF execution
  fbenm_only_endpoints: false # run FB-ENM beyond endpoints
@@ -211,22 +213,22 @@ dmf:
  fix_planes: true # enforce planar constraints
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
- corr0_scale: 1.1 # Correlation scale for corr0
- corr1_scale: 1.5 # Correlation scale for corr1
- corr2_scale: 1.6 # Correlation scale for corr2
- eps: 0.05 # Correlation epsilon
- pivotal: true # Pivotal residue handling
- single: true # Single-atom pivots
- remove_fourmembered: true # Prune four-membered rings
+ corr0_scale: 1.1 # correlation scale for corr0
+ corr1_scale: 1.5 # correlation scale for corr1
+ corr2_scale: 1.6 # correlation scale for corr2
+ eps: 0.05 # correlation epsilon
+ pivotal: true # pivotal residue handling
+ single: true # single-atom pivots
+ remove_fourmembered: true # prune four-membered rings
  dmf_options:
- remove_rotation_and_translation: false # Keep rigid-body motions
- mass_weighted: false # Toggle mass weighting
- parallel: false # Enable parallel DMF
- eps_vel: 0.01 # Velocity tolerance
- eps_rot: 0.01 # Rotational tolerance
- beta: 10.0 # Beta parameter for DMF
- update_teval: false # Update transition evaluation
- k_fix: 300.0 # Harmonic constant for restraints
+ remove_rotation_and_translation: false # keep rigid-body motions
+ mass_weighted: false # toggle mass weighting
+ parallel: false # enable parallel DMF
+ eps_vel: 0.01 # velocity tolerance
+ eps_rot: 0.01 # rotational tolerance
+ beta: 10.0 # beta parameter for DMF
+ update_teval: false # update transition evaluation
+ k_fix: 300.0 # harmonic constant for restraints
 opt:
  lbfgs:
  thresh: gau # LBFGS convergence preset

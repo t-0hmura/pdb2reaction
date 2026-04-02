@@ -124,6 +124,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on active site models (recursive GSM/DMF)**
+ - Runs `path-search` on the extracted active site models (or the original full structures when extraction is skipped); outputs go to `<out-dir>/path_search/`.
  - Use `--refine-path False` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
  - For multi-input PDB runs, the full-system templates are automatically passed to `path-search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
@@ -142,7 +143,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 ### Charge and spin precedence
 
-Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
+Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details). In the `all` command, charge derivation from active site model extraction (when `-c` is specified) acts as an additional priority layer.
 
 **Spin resolution:** `--multiplicity` (CLI) → `.gjf` template → default (1)
 

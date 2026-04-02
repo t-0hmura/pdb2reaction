@@ -88,7 +88,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 
 ## ワークフロー
 - **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
-- **構造ロードと freeze-links**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
+- **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
 - **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 - **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
@@ -112,7 +112,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。dimer（dimerループ）/rsirfo（RS-IRFO後）に適用 | `False` |
+| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、ヘシアン行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-I-RFO（収束後）の両方に適用 | `False` |
 | `--hessian-calc-mode CHOICE` | MLIPヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -145,10 +145,10 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- `--opt-mode` はワークフロー選択用です（デフォルト: `hess` = `rsirfo`）。YAML キーを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
-- 虚振動数モード検出の閾値はデフォルトで約 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。複数残る場合は `root` がどの虚振動数モードを追跡するかに影響します。
+- 虚振動数モード検出の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。
+- `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
+- PHVAの並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 - 設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
-- PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 
 共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更することを推奨します。
 
@@ -163,7 +163,10 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
+ backend: uma # MLIP backend (uma | orb | mace | aimnet2)
+ solvent: none # implicit solvent for xTB correction (e.g. water)
+ solvent_model: alpb # xTB solvent model (alpb | cpcmx)
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges

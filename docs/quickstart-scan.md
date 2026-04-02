@@ -1,4 +1,4 @@
-# Quickstart: `pdb2reaction all` — single-structure scan workflow
+# Quickstart: `pdb2reaction scan` — single-structure scan workflow
 
 ## Goal
 

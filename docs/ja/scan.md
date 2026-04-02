@@ -266,7 +266,7 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges
@@ -358,7 +358,7 @@ rfo:
 bias:
  k: 300 # harmonic bias strength (eV·Å⁻²)
 bond:
- device: cuda # UMA device for bond analysis
+ device: cuda # MLIP device for bond analysis
  bond_factor: 1.2 # covalent-radius scaling
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds

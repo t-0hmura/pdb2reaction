@@ -5,7 +5,7 @@
 > **要約:** MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
 
 ### 要点
-- **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。
+- **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。注: `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
 - **凍結原子:** PHVA（Partial Hessian Vibrational Analysis: 部分ヘシアン振動解析）として扱われます。
 - **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`_trj.xyz`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
 - **TS のチェック:** 適切に収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であることが期待されます。
@@ -71,7 +71,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 
 ## ワークフロー
 - **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` によりリンク水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、UMA と PHVA に伝播されます。
-- **MLIP バックエンド（デフォルト: UMA）**: ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
+- **MLIP バックエンド（デフォルト: UMA）**: MLIP バックエンドは原子が凍結されている場合、部分（活性）ヘシアンブロックを返すことがあります。ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 - **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N ヘシアンと活性ブロックヘシアンの両方に対応し、振動数は cm⁻¹ で報告されます（負の値は虚振動数）。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。`--sort abs` を指定すると絶対値順にソートされます。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `_trj.xyz` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
 - **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。
@@ -86,7 +86,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--workers INT` | MLIP予測器の並列度（workers > 1 で解析ヘシアン無効） | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結し `geom.freeze_atoms` にマージ | `True` |
+| `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結し `geom.freeze_atoms` にマージ。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--max-write INT` | エクスポートするモード数 | `10` |
 | `--amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
 | `--n-frames INT` | モードアニメーションのフレーム数 | `20` |
@@ -133,7 +133,7 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges

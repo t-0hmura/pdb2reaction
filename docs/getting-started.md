@@ -226,10 +226,10 @@ Below are the most commonly used options across workflows.
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
 | `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
 | `--dft/--no-dft` | Perform single-point DFT calculations. |
-| `--refine-path/--no-refine-path` | Recursive MEP refinement (default: enabled) vs single-pass. |
+| `--refine-path/--no-refine-path` | Recursive MEP refinement (default: `True`) vs single-pass. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
-| `--mep-mode gsm\|dmf` | MEP method: Growing String Method or Direct Max Flux. |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method. For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation). |
+| `--mep-mode gsm\|dmf` | MEP method (default: `gsm`): Growing String Method or Direct Max Flux. |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method (default: `FiniteDifference`). For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation). |
 
 For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml-reference.md).
 

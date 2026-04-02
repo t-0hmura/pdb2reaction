@@ -238,9 +238,10 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 ### Section `bias`
 - `k` (`300`): Harmonic strength in eV·Å⁻².
 
+(section-bond)=
 ### Section `bond`
 MLIP-based bond-change detection shared with `path-search`:
-- `device` (`"cuda"`): MLIP device for graph analysis.
+- `device` (`"cuda"`): MLIP device for bond analysis.
 - `bond_factor` (`1.20`): Covalent-radius scaling for cutoff.
 - `margin_fraction` (`0.05`): Fractional tolerance for comparisons.
 - `delta_fraction` (`0.05`): Minimum relative change to flag formation/breaking.

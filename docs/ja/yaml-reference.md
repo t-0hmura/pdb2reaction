@@ -60,7 +60,7 @@ calc:
  max_neigh: null # Maximum neighbors for graph construction
  radius: null # Cutoff radius for neighbor search
  r_edges: false # Store radial edges
- workers: 1 # UMA inference workers (workers>1 disables analytical Hessians)
+ workers: 1 # MLIP inference workers (workers>1 disables analytical Hessians; UMA backend only)
  workers_per_node: 1 # Workers per node for parallel predictor
  out_hess_torch: true # Return Hessian as torch.Tensor
  hessian_double: true # Assemble/return Hessian in float64
@@ -187,10 +187,10 @@ gs:
  fix_last: true # Keep last endpoint fixed
  max_nodes: 20 # Maximum string nodes (internal images)
  perp_thresh: 0.005 # Perpendicular displacement threshold
- reparam_check: rms # Reparametrization check metric
- reparam_every: 1 # Reparametrization stride
- reparam_every_full: 1 # Full reparametrization stride
- param: equi # Parametrization scheme
+ reparam_check: rms # Reparameterization check metric
+ reparam_every: 1 # Reparameterization stride
+ reparam_every_full: 1 # Full reparameterization stride
+ param: equi # Parameterization scheme
  max_micro_cycles: 10 # Micro-iteration limit
  reset_dlc: true # Rebuild delocalized coordinates each step
  climb: true # Enable climbing image
@@ -462,7 +462,7 @@ MLIPベースの結合変化検出。
 
 ```yaml
 bond:
- device: cuda # UMA device for bond analysis
+ device: cuda # MLIP device for bond analysis
  bond_factor: 1.2 # Covalent-radius scaling for cutoff
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking

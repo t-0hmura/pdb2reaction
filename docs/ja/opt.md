@@ -68,7 +68,8 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 
 ## ワークフロー
 - **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
-- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードフラット化を実行します。各反復で検出された虚振動数モードをすべて除去してから再最適化します。
+  > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
+- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードフラット化を実行します。`opt` では、各反復で検出された虚振動数モードをすべてフラット化し、虚振動数モードがなくなるか内部ループ上限に達するまで繰り返します。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
 - **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
 - **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
@@ -131,7 +132,8 @@ out_dir/
 
 ### `opt`
 LBFGSとRFOの両方で使用される共有オプティマイザー制御:
-- `thresh` プリセット、`max_cycles`、`print_every`、`min_step_norm`、収束切り替え（`rms_force` など）、`converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
+- `thresh` プリセット（Gaussian 系または Baker 系）。プリセットは `pdb2reaction/opt.py` に記載されている力/ステップ閾値に変換されます。
+- `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
@@ -224,7 +226,7 @@ lbfgs:
 rfo:
  thresh: gau # RFOptimizer convergence preset
  max_cycles: 10000 # iteration cap
- print_every: 100 # logging stride
+ print_every: 100 # logging stride (matches shared opt defaults)
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate
  rms_force: null # explicit RMS force target

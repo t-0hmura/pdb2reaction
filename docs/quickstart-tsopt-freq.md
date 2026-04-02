@@ -25,11 +25,11 @@ pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 - `result_tsopt/final_geometry.pdb` — optimized TS structure
 - `result_tsopt/vib/` — animation files for the imaginary-frequency normal mode (`imag_*.xyz`, `.pdb`)
-- Terminal output: **n=1** with a sufficiently large imaginary frequency (|ν| ≥ 100 cm⁻¹) indicates a good TS candidate
+- Terminal output: **n=1** with a sufficiently large imaginary frequency (|ν| ≥ 100 cm⁻¹) indicates a good TS candidate. If multiple imaginary frequencies remain, consider using `--flatten`
 
 ## 2. (Optional) Separate frequency analysis
 
-A standalone `freq` run is useful when you want full vibrational frequency output or thermochemistry corrections (`--thermo` in the `all` command). If you only need the imaginary-frequency check, the `tsopt` output above is sufficient.
+A standalone `freq` run is useful when you want full vibrational frequency output or thermochemistry corrections (zero-point energy (ZPE), Gibbs free energy, etc.; `--thermo` in the `all` command). If you only need the imaginary-frequency check, the `tsopt` output above is sufficient.
 
 ```bash
 pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
@@ -37,7 +37,7 @@ pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./res
 
 ## Tips
 
-- Using `--hessian-calc-mode Analytical` is recommended when VRAM is sufficient.
+- Using `--hessian-calc-mode Analytical` is recommended when VRAM is sufficient (default: `FiniteDifference`).
 - Check full options with `pdb2reaction tsopt --help-advanced` and `pdb2reaction freq --help-advanced`.
 
 ## Next step

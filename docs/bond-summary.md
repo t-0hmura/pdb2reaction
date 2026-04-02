@@ -66,3 +66,13 @@ Produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.
   used by the `all` workflow for IRC endpoint validation.
 - To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å),
   increase `--bond-factor` (e.g., `1.30`).
+
+---
+
+## See Also
+
+- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
+- [irc](irc.md) -- IRC trajectories whose endpoints are validated by bond detection
+- [all](all.md) -- End-to-end workflow that uses bond-change validation internally
+- [trj2fig](trj2fig.md) -- Visualise energy profiles from trajectories

@@ -92,7 +92,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結 | `True` |
+| `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
 | `--max-nodes INT` | MEPセグメントごとの内部ノード | `20` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
@@ -174,7 +174,7 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges
@@ -213,7 +213,7 @@ stopt:
  out_dir: ./result_path_search/ # output directory
  print_every: 10 # logging stride
 dmf:
- max_cycles: 300 # DMF/IPOPT の最大反復数
+ max_cycles: 300 # maximum DMF/IPOPT iterations
  correlated: true # correlated DMF propagation
  sequential: true # sequential DMF execution
  fbenm_only_endpoints: false # run FB-ENM beyond endpoints
@@ -223,22 +223,22 @@ dmf:
  fix_planes: true # enforce planar constraints
  cfbenm_options:
  bond_scale: 1.25 # CFB-ENM bond cutoff scaling
- corr0_scale: 1.1 # Correlation scale for corr0
- corr1_scale: 1.5 # Correlation scale for corr1
- corr2_scale: 1.6 # Correlation scale for corr2
- eps: 0.05 # Correlation epsilon
- pivotal: true # Pivotal residue handling
- single: true # Single-atom pivots
- remove_fourmembered: true # Prune four-membered rings
+ corr0_scale: 1.1 # correlation scale for corr0
+ corr1_scale: 1.5 # correlation scale for corr1
+ corr2_scale: 1.6 # correlation scale for corr2
+ eps: 0.05 # correlation epsilon
+ pivotal: true # pivotal residue handling
+ single: true # single-atom pivots
+ remove_fourmembered: true # prune four-membered rings
  dmf_options:
- remove_rotation_and_translation: false # Keep rigid-body motions
- mass_weighted: false # Toggle mass weighting
- parallel: false # Enable parallel DMF
- eps_vel: 0.01 # Velocity tolerance
- eps_rot: 0.01 # Rotational tolerance
- beta: 10.0 # Beta parameter for DMF
- update_teval: false # Update transition evaluation
- k_fix: 300.0 # Harmonic constant for restraints
+ remove_rotation_and_translation: false # keep rigid-body motions
+ mass_weighted: false # toggle mass weighting
+ parallel: false # enable parallel DMF
+ eps_vel: 0.01 # velocity tolerance
+ eps_rot: 0.01 # rotational tolerance
+ beta: 10.0 # beta parameter for DMF
+ update_teval: false # update transition evaluation
+ k_fix: 300.0 # harmonic constant for restraints
 opt:
  lbfgs:
  thresh: gau # LBFGS convergence preset
@@ -324,6 +324,7 @@ search:
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 
 - [path-opt](path-opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化

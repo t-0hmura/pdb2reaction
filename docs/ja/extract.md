@@ -102,7 +102,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | --- | --- | --- |
 | `-i, --input PATH...` | 1つ以上のタンパク質-リガンドPDB ファイル（同一の原子順序が必要） | 必須 |
 | `-c, --center SPEC` | 基質指定（PDB パス、残基ID、または残基名） | 必須 |
-| `-o, --output PATH...` | 活性部位モデル PDB 出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
+| `-o, --output PATH...` | 活性部位モデル PDB 出力。1パス ⇒ マルチMODEL、Nパス ⇒ 入力ごと。複数入力で `-o` 1つの場合は単一のマルチMODEL PDB を生成。N個の `-o` が N個の入力と一致する場合は N個の個別 PDB を生成。 | 自動（`pocket.pdb` または `pocket_<input>.pdb`） |
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
@@ -118,6 +118,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
  # 単一入力 → デフォルトでpocket.pdb
  # -oなしの複数入力 → 構造ごとにpocket_<original_basename>.pdb
  # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
+ # 出力ディレクトリは自動作成されません。事前に存在を確認してください
 ```
 - verboseモードが有効な場合、モデル#1の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録
 - 出力ディレクトリは自動作成されません。必要に応じて事前に作成してください。
@@ -134,7 +135,7 @@ Amber の `MCPB.py`（Metal Center Parameter Builder）等で金属配位残基�
 [extract] WARNING: Residue HD1 83 may be an amino acid (has N, CA, C, O)
 but is not recognized as a standard residue name.
 Backbone truncation was not applied.
-Consider preparing the pocket model manually.
+Consider preparing the active site model manually.
 ```
 
 ```{important}

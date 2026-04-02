@@ -90,7 +90,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 - **Geometry loading & freeze-links**: structures are read via
  `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
-- **MLIP Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
+- **MLIP Hessians (default: UMA)**: `--hessian-calc-mode` toggles between analytical and finite-difference
  evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
  frozen atoms are present.
  For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
@@ -182,11 +182,14 @@ geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
  freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
- charge: 0 # net charge (CLI/template override)
+ charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
  device: auto # MLIP device selection
+ backend: uma # MLIP backend (uma | orb | mace | aimnet2)
+ solvent: none # implicit solvent for xTB correction (e.g. water)
+ solvent_model: alpb # xTB solvent model (alpb | cpcmx)
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges

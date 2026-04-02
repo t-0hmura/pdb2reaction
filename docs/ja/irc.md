@@ -6,7 +6,7 @@
 
 ### 要点
 - **入力:** TS 構造（最適化・検証済みが望ましい）。
-- **主要パラメータ:** `--step-size`（非質量加重デカルト座標でのステップ長）、`--max-cycles`（ステップ数）。
+- **主要パラメータ:** `--step-size`（非質量加重デカルト Bohr でのステップ長）、`--max-cycles`（ステップ数）。
 - **強制上書き:** IRC はマージ後に `geom.coord_type = cart` を強制します（YAML 設定より優先）。`calc.return_partial_hessian` は `true` に強制されます（partial Hessian、pysisyphus で active-DOF 処理）。
 
 `pdb2reaction irc` は MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに保たれています。CLI で公開されていないパラメータは YAML で指定することで、再現性のある実行が可能です。
@@ -74,7 +74,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 
 ## ワークフロー
 1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。注: `geom.coord_type` は YAML/CLI の設定に関わらず `cart`（デカルト座標）に強制され、`calc.return_partial_hessian` は `true`（partial Hessian、active-DOF 処理）に強制されます。
-2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐が実行されます。各ステップでは質量重み付き最急降下予測子と修正子ステップを使用します。
+2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐が実行されます。各ステップではエネルギーベースの予測子と修正子ステップを使用します。
 3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡が XYZ ファイルとして書き込まれます。参照 PDB が利用可能な場合、PDB コンパニオンも生成されます（`--convert-files`）。
 
 ## CLI オプション
@@ -91,7 +91,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--root INT` | 初期変位の虚振動数モードインデックス（YAML が `irc.root` を指定していない場合に使用） | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
-| `--freeze-links/--no-freeze-links` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ） | `True` |
+| `--freeze-links/--no-freeze-links` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
 | `--convert-files/--no-convert-files` | 参照 PDB が利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか | `True` |
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
@@ -118,10 +118,10 @@ out_dir/ (デフォルト:./result_irc/)
 
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
 - ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
-- `--freeze-links` は PDB 入力にのみ適用されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
+- `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
 
-
-設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `true` に強制されます（YAML/CLI より優先）。
+設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
+共通セクションでは [YAML リファレンス](yaml-reference.md) のジオメトリ/計算機キーを再利用します。`--freeze-links` は PDB 入力で `geom.freeze_atoms` を拡張し、`--hessian-calc-mode` と CLI の charge/spin 値はマージ済み `calc` ブロックを補完します。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `true` に強制されます（YAML/CLI マージ後）。
 
 `irc` キー（括弧内はデフォルト）:
 - `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
@@ -139,7 +139,7 @@ calc:
  spin: 1 # spin multiplicity 2S+1
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
  task_name: omol # UMA task name
- device: auto # UMA device selection
+ device: auto # MLIP device selection
  max_neigh: null # maximum neighbors for graph construction
  radius: null # cutoff radius for neighbor search
  r_edges: false # store radial edges
