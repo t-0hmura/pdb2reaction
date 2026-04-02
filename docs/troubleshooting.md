@@ -57,9 +57,9 @@ Tip:
 
 ---
 
-### “My pocket is empty / missing important residues”
+### “My active site model (binding pocket) is empty / missing important residues”
 Symptoms:
-- The extracted pocket is unexpectedly small.
+- The extracted active site model is unexpectedly small.
 - Key catalytic residues are missing.
 
 Fixes to try:
@@ -191,10 +191,10 @@ Fixes to try:
 
 ## Performance / stability tips
 
-- **Out of memory (VRAM)**: reduce pocket size (`--radius`), reduce nodes (`--max-nodes`), or use lighter optimizer settings (`--opt-mode grad`).
+- **Out of memory (VRAM)**: reduce active site model size (`--radius`), reduce nodes (`--max-nodes`), or use lighter optimizer settings (`--opt-mode grad`).
 - **Analytical Hessian is slow or causes OOM**: keep the default `FiniteDifference` mode. Only use `--hessian-calc-mode Analytical` if you have ample VRAM (16 GB+ recommended for 500+ atom systems).
 - **Workers > 1**: improves UMA throughput on HPC, but disables the analytical Hessian evaluation.
-- **Large systems (1000+ atoms)**: consider extracting a smaller pocket (`--radius 2.5`) or running on multi-GPU setups.
+- **Large systems (1000+ atoms)**: consider extracting a smaller active site model (`--radius 2.5`) or running on multi-GPU setups.
 
 ---
 

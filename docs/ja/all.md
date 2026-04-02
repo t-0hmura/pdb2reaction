@@ -4,26 +4,57 @@
 
 `pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。典型的なフローは次のとおりです。
 
-ポケット抽出 →（任意）段階的 MLIP スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→ 全系へのマージ →（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+活性部位モデル（バインディングポケット）抽出 →（任意）段階的スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
 
 MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
 
 ```{important}
-`--tsopt` の出力は **TS 候補** です。`all` は自動的に IRC による検証まで実行しますが、結果の虚振動モードと端点極小は必ず目視で確認してください。
+`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると、これらを虚振動数チェックで検証済みの最適化 TS 構造に精密化し、続いて IRC でエンドポイントを検証します。結果の虚振動モードと端点極小は必ず目視で確認してください。
 ```
+
+## ワークフローの全体像
+
+多くのケースでは次の流れになります。
+
+```text
+全系入力 (PDB/XYZ/GJF)
+ │
+ ├─ (任意) 活性部位モデル抽出 [extract] ← --center/-c を使う場合は PDB が必要
+ │ ↓
+ │ 活性部位モデル/クラスターモデル (PDB)
+ │ │
+ │ ├─ (任意) 段階的スキャン [scan] ← 単一構造ワークフロー
+ │ │ ↓
+ │ │ 順序付けられた中間体
+ │ │ ↓
+ │ └─ MEP 探索 [path-search] または [path-opt]
+ │ ↓
+ │ MEP 経路 (mep_trj.xyz) + エネルギーダイアグラム
+ │ ↓
+ └─ (任意) TS 最適化 + IRC [tsopt] → [irc]
+ └─ (任意) 熱化学 [freq]
+ └─ (任意) DFT 一点計算 [dft]
+```
+
+各ステージはサブコマンドとして単独実行できます。また `pdb2reaction all` を使うと、複数ステージをまとめて実行できます。
 
 主なモードは 3 つあります。
 
-- **end-to-end（複数構造）** — 反応順に並べた 2 構造以上（PDB/GJF/XYZ）と基質定義を与えます。`all` がポケット抽出 → GSM/DMF による MEP 探索 → 全系テンプレートへのマージまで実行し、必要に応じてセグメントごとに TSOPT / freq / DFT を行います。
-- **単一構造 + 段階的スキャン** — 1 つの構造に対して `--scan-lists` を 1 つ以上与えます。スキャンで得られた中間体列を MEP の端点として用います。
- - `--scan-lists` を 1 つだけ渡すと 1 ステージになります。
- - 複数ステージは `--scan-lists` を繰り返して指定します。
-- **TSOPT のみ（ポケット TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合はポケットを抽出し、その系で TS 最適化（内部で虚振動数チェック済み）+ IRC（必要に応じて freq / DFT）のみ実行します。
+- **end-to-end（複数構造）** — 反応順に並べた 2 構造以上（PDB/GJF/XYZ）と基質定義を与えます。`all` が活性部位モデル抽出 → GSM/DMF による MEP 探索 → 全系テンプレートへのマージまで実行し、必要に応じてセグメントごとに TSOPT / freq / DFT を行います。
+- **単一構造 + 段階的スキャン** — 1 つの構造に対して `--scan-lists` を 1 つ以上与えます。（段階的）スキャンで得られた中間体列を MEP の端点として用います。
+
+  - `--scan-lists` を 1 つだけ渡すと 1 ステージになります。
+  - 複数ステージは `--scan-lists` を繰り返して指定します。
+```{tip}
+大規模な活性部位モデルでは、単一構造スキャンワークフロー（`--scan-lists`）の方が、複数構造 MEP ワークフローよりも信頼性の高い反応障壁を得やすい傾向があります。複数の PDB を入力すると、反応座標と無関係な領域の構造差異が蓄積し、障壁を過大評価する可能性があります。スキャンワークフローは単一構造から出発して関連する座標のみを駆動するため、無関係な構造ノイズを最小化できます。この影響はモデルサイズが大きくなるほど顕著になります。
+```
+
+- **TSOPT のみ（活性部位モデル TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合は活性部位モデルを抽出し、その系で TS 最適化（内部で虚振動数チェック済み）+ IRC（必要に応じて freq / DFT）のみ実行します。
 
 ## 最小例
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" --out-dir ./result_all
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" --out-dir ./result_all
 ```
 
 ## 出力の見方
@@ -37,15 +68,16 @@ pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" --out-dir ./re
 1. TS 最適化（内部で虚振動数チェック済み）・IRC・熱化学・DFT まで一括実行する。
 
 ```bash
-pdb2reaction all -i R.pdb -i P.pdb -c "SAM,GPP" -l "SAM:1,GPP:-3" \
- --tsopt --thermo --dft --out-dir ./result_all
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
+ --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
 2. 単一構造 + 段階的スキャンを実行する。
 
 ```bash
-pdb2reaction all -i A.pdb -c "308,309" --scan-lists "[(12,45,1.35)]" --scan-lists "[(10,55,2.20)]" \
- --multiplicity 1 --out-dir ./result_scan_all
+pdb2reaction all -i 1.R.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
+ --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+ --tsopt --thermo --out-dir ./result_scan
 ```
 
 テンプレートがある場合の XYZ/TRJ → PDB/GJF 変換（付随ファイルの生成）は、全ステージ共通の `--convert-files/--no-convert-files`（デフォルト: `True`）で制御できます。
@@ -60,20 +92,21 @@ pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|ma
 
 ### 例
 ```bash
-# 明示的なリガンド電荷と後処理を伴う複数構造アンサンブル
-pdb2reaction all -i reactant.pdb -i product.pdb -c 'GPP,SAM' \
- -l 'GPP:-3,SAM:1' --multiplicity 1 --freeze-links \
+# 明示的なリガンド電荷と後処理を伴う複数構造 MEP
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' \
+ -l 'SAM:1,GPP:-3' --multiplicity 1 --freeze-links \
  --max-nodes 10 --max-cycles 100 --climb --opt-mode grad \
- --out-dir ./result_all --tsopt --thermo --dft
+ --out-dir ./result_mep --tsopt --thermo --dft
 
 # 単一構造段階的スキャン + GSM/DMF + TSOPT/freq/DFT
-pdb2reaction all -i single.pdb -c '308,309' \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
+ --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
  --opt-mode hess --tsopt --thermo --dft
 
 # TSOPT のみワークフロー（経路探索なし）
-pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
- -l 'GPP:-3,SAM:1' --tsopt --thermo --dft
+pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
+ -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 
 ## ワークフロー
@@ -81,39 +114,39 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 0. **事前チェック**（自動）
  - `all` は全 PDB 入力に対し、他の処理の前に `add-elem-info`（PDB 列 77–78 の元素記号を補完）と `fix-altloc`（代替配座の解消）を自動実行します。個別のサブコマンド（`extract`、`opt` など）を使用する場合は、必要に応じてこれらを手動で実行してください。
 
-1. **活性部位ポケット抽出**（`-c/--center` が指定された場合）
+1. **活性部位モデル抽出**（`-c/--center` が指定された場合）
  - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,SAM`）で指定可能
  - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
- - 入力ごとのポケット PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、ポケットは残基選択ごとに統合
- - **最初のポケットの総電荷**がスキャン/MEP/TSOPT に伝播
+ - 入力ごとの活性部位モデル PDB は `<out-dir>/pockets/` に保存。複数構造が提供された場合、活性部位モデルは残基選択ごとに統合
+ - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
- - 各 `--scan-lists` 引数は UMA スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序（1始まり）を参照し、ポケット順序に自動変換されます。PDB 入力の場合、`i`/`j` は整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用可能です。セレクタはスペース/カンマ/スラッシュ/バッククォート/バックスラッシュ（` ` `,` `/` `` ` `` `\`）を区切り文字として受け付け、トークン順序は任意です（フォールバックは resname, resseq, atom と仮定）。
+ - 各 `--scan-lists` 引数は UMA スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序（1始まり）を参照し、活性部位モデル順序に自動変換されます。PDB 入力の場合、`i`/`j` は整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用可能です。セレクタはスペース/カンマ/スラッシュ/バッククォート/バックスラッシュ（` ` `,` `/` `` ` `` `\`）を区切り文字として受け付け、トークン順序は任意です（フォールバックは resname, resseq, atom と仮定）。
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは `--scan-lists` を繰り返して指定します。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
-3. **ポケットでの MEP 探索（再帰的 GSM/DMF）**
- - 抽出されたポケット（または抽出をスキップした場合は元の全構造）で `path-search` を実行（出力は `<out-dir>/path_search/`）
+3. **活性部位モデルでの MEP 探索（再帰的 GSM/DMF）**
+ - 抽出された活性部位モデル（または抽出をスキップした場合は元の全構造）で `path-search` を実行（出力は `<out-dir>/path_search/`）
  - `--no-refine-path` を指定すると、再帰的精密化なしのシングルパス `path-opt` GSM/DMF チェーンに切り替わる
 
-4. **ポケットを全系にマージ**
+4. **活性部位モデルを全系にマージ**
  - 参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref*.pdb` とセグメントごとの `mep_w_ref_seg_XX.pdb` が `<out-dir>/path_search/` に出力される
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI ポケットで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化してセグメントエネルギーダイアグラムを出力。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化してセグメントエネルギーダイアグラムを出力。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
  - ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
- - MEP/マージステージをスキップし、ポケット（または抽出がスキップされた場合は全入力構造）で `tsopt`（内部で虚振動数チェック済み）→ EulerPC IRC を実行
+ - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt`（内部で虚振動数チェック済み）→ EulerPC IRC を実行
  - 高エネルギー側の IRC 終端を反応物 (R) として識別し、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成
 
 
 ### 電荷とスピンの優先順位
 
-電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。`all` コマンドでは、ポケット抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
+電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。`all` コマンドでは、活性部位モデル抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
 
 **スピンの解決順序:** `--multiplicity`（CLI）→ `.gjf` テンプレート → デフォルト（1）
 
@@ -151,18 +184,18 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
 | `-m, --multiplicity INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
 
-### ポケット抽出オプション
+### 活性部位モデル抽出オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
-| `-r, --radius FLOAT` | ポケット包含カットオフ（Å） | `2.6` |
+| `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
 | `--include-H2O/--no-include-H2O` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkH/--no-add-linkH` | 切断結合にリンク水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基 | `""` |
-| `--freeze-links/--no-freeze-links` | ポケットPDBでリンクHの親を凍結 | `True` |
+| `--freeze-links/--no-freeze-links` | 活性部位モデルPDBでリンクHの親を凍結 | `True` |
 | `--verbose/--no-verbose` | 抽出器のINFOログを有効化 | `True` |
 
 ### MEP 探索オプション
@@ -175,7 +208,7 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--preopt/--no-preopt` | MEP前にポケット端点を事前最適化 | `True` |
+| `--preopt/--no-preopt` | MEP前に活性部位モデル端点を事前最適化 | `True` |
 | `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
 ### MLIP 計算機オプション
@@ -195,6 +228,10 @@ pdb2reaction all -i reactant.pdb -c 'GPP,SAM' \
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化（内部で虚振動数チェック済み）+ IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/Pで振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
+
+```{warning}
+`--dft` による DFT 一点計算（PySCF/GPU4PySCF）は、約 500 原子を超えるモデルでは計算コストが非常に大きくなります。そのような系では、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。
+```
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
@@ -248,8 +285,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 out_dir/ (デフォルト:./result_all/)
 ├─ summary.log # テキスト形式の結果要約
 ├─ summary.yaml # YAML 形式の結果要約
-├─ pockets/ # 抽出実行時の入力ごとのポケット PDB
-├─ scan/ # 段階的ポケットスキャン結果（--scan-lists提供時）
+├─ pockets/ # 抽出実行時の活性部位モデル PDB
+├─ scan/ # 段階的活性部位モデルスキャン結果（--scan-lists提供時）
 ├─ path_search/ # MEP結果: 軌跡、マージPDB、ダイアグラム
 ├─ path_search/post_seg_XX/ # 後処理出力（TS最適化、IRC、freq、DFT）
 └─ tsopt_single/ # TSOPT のみ出力とIRCエンドポイント
@@ -341,8 +378,8 @@ dft:
 
 - [インストール](installation.md) — セットアップと依存関係
 - [はじめに](getting-started.md) — 初回実行とワークフロー概要
-- [概念とワークフロー](concepts.md) — ポケット、セグメント、ステージの全体像
-- [extract](extract.md) — 単独のポケット抽出（`all` が内部で呼び出し）
+- [はじめに](getting-started.md) — 活性部位モデル、セグメント、ステージの全体像
+- [extract](extract.md) — 単独の活性部位モデル抽出（`all` が内部で呼び出し）
 - [path-search](path-search.md) — 単独のMEP 探索（`all` が内部で呼び出し）
 - [tsopt](tsopt.md) — 単独の TS 最適化（内部で虚振動数チェック済み）
 - [freq](freq.md) — 単独の振動解析（任意）

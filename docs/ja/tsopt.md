@@ -88,7 +88,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 
 ## ワークフロー
 - **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
-- **構造ロードと freeze-links**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[概念: リンク水素と凍結原子](concepts.md#リンク水素と凍結原子) を参照）。
+- **構造ロードと freeze-links**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
 - **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
 - **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
@@ -150,7 +150,9 @@ out_dir/ (デフォルト:./result_tsopt/)
 - 設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、GPU メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 
-共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。下記ブロックが既にワークフローに合っている場合は、必要な値だけ変更することを推奨します。
+共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更することを推奨します。
+
+### 共通設定（両モード共通）
 
 ```yaml
 geom:
@@ -187,6 +189,13 @@ opt:
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_tsopt/ # output directory
+```
+
+### Dimer モード（`--opt-mode grad`）
+
+`--opt-mode grad`（Hessian Guided Dimer + LBFGS）で使用します。
+
+```yaml
 hessian_dimer:
  thresh_loose: gau_loose # loose convergence preset
  thresh: baker # main convergence preset
@@ -246,9 +255,20 @@ hessian_dimer:
  double_damp: true # double damping safeguard
  mu_reg: null # regularization strength
  max_mu_reg_adaptions: 10 # cap on mu adaptations
+```
+
+### RS-I-RFO モード（`--opt-mode hess`、デフォルト）
+
+`--opt-mode hess`（RS-I-RFO、デフォルト）で使用します。
+
+```yaml
 rsirfo:
  thresh: baker # RS-IRFO convergence preset
  max_cycles: 10000 # iteration cap
+ trust_radius: 0.10 # trust-region radius
+ trust_update: true # enable trust-region updates
+ trust_min: 0.0001 # minimum trust radius
+ trust_max: 0.20 # maximum trust radius
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate

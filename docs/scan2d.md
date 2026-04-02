@@ -219,7 +219,7 @@ out_dir/ (default:./result_scan2d/)
 - The bias is always removed before final energies are recorded so you can reuse
  `surface.csv` in downstream fitting or visualization scripts.
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
- PDB inputs, keeping extracted pockets rigid.
+ PDB inputs, keeping extracted active site models rigid.
 
 
 ```yaml

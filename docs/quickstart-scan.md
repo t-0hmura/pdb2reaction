@@ -1,40 +1,19 @@
-# Quickstart: `pdb2reaction scan` — single-structure staged scan
+# Quickstart: `pdb2reaction all` — single-structure scan workflow
 
 ## Goal
 
-Run a staged scan from a single structure by driving one or more bond distances.
+Run the full workflow from a single structure by driving one or more bond distances via `--scan-lists`.
 
 ## Prerequisites
 
-- Input structure: `input.pdb`
-- Charge and multiplicity (`-q`, `-m`) for the target state
+- Input structure: `.pdb`
+- Charge (`-q/--charge` or `-l/--ligand-charge`) and multiplicity (`-m`) for the target state
 
 ---
 
-## Method A: YAML spec file (recommended for complex scans)
+## Method A: `-s/--scan-lists` inline literal (quick one-liners)
 
-### 1. Prepare `scan.yaml`
-
-Define each stage in order:
-
-```yaml
-one_based: true
-stages:
- - [["TYR,285,CA", "SAM,309,C10", 1.35]]
- - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
-```
-
-### 2. Run scan
-
-```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
-```
-
----
-
-## Method B: `-s/--scan-lists` inline literal (quick one-liners)
-
-`-s/--scan-lists` also accepts Python-literal strings directly on the command line.
+`-s/--scan-lists` accepts Python-literal strings directly on the command line.
 
 ### Basic syntax
 
@@ -88,6 +67,27 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 ```
 
 > **Tip:** Use `--print-parsed` to verify that your scan targets were parsed correctly before a full run.
+
+---
+
+## Method B: YAML spec file (for complex scans)
+
+### 1. Prepare `scan.yaml`
+
+Define each stage in order:
+
+```yaml
+one_based: true
+stages:
+ - [["TYR,285,CA", "SAM,309,C10", 1.35]]
+ - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
+```
+
+### 2. Run scan
+
+```bash
+pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
+```
 
 ---
 

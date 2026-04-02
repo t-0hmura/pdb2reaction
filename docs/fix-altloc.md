@@ -78,7 +78,7 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 ## Integration with `all` workflow
 When running the `pdb2reaction all` workflow, `fix-altloc` is automatically
 invoked as a preflight step **after** `add-elem-info` (if element fields were
-missing) and **before** pocket extraction. This ensures that:
+missing) and **before** active site model extraction. This ensures that:
 1. Element symbols are populated first
 2. Alternate locations are resolved to a single conformer
 3. The extraction step receives clean, unambiguous coordinates

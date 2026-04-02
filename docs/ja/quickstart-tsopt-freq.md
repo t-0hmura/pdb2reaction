@@ -6,8 +6,8 @@ TS 候補を最適化し、一次鞍点（first-order saddle point）である�
 
 ## 事前に必要なもの
 
-- TS 候補構造: `ts_guess.pdb`
-- 対象状態に対応した電荷・多重度（`-q`, `-m`）
+- TS 候補構造: `.pdb`
+- 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
 
 ## 1. TS 最適化
 
@@ -37,7 +37,7 @@ pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./res
 
 ## 補足
 
-- VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を推奨します（デフォルトは `FiniteDifference`）。
+- VRAM に余裕がある場合は `--hessian-calc-mode Analytical` の使用を推奨します（デフォルトは `FiniteDifference`）。
 - 全オプションは `pdb2reaction tsopt --help-advanced` と `pdb2reaction freq --help-advanced` を参照してください。
 
 ## 次の導線

@@ -71,5 +71,5 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
-- [extract](extract.md) -- Pocket extraction after element-column repair
+- [extract](extract.md) -- Active site model extraction after element-column repair
 - [all](all.md) -- End-to-end workflow entrypoint

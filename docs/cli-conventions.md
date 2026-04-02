@@ -92,7 +92,7 @@ For PDB inputs, `--ligand-charge` lets you specify charges only for non-standard
 
 ### Charge resolution order
 1. `-q/--charge` (explicit CLI override) — highest priority
-2. Pocket extraction (sums amino acids, ions, `--ligand-charge`)
+2. Active site model (binding pocket) extraction (sums amino acids, ions, `--ligand-charge`)
 3. `--ligand-charge` as fallback (when extraction skipped)
 4. `.gjf` template metadata
 5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge`)
@@ -154,7 +154,7 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 - Multiple PDBs must have **identical atoms in the same order** (only coordinates may differ)
 
 ### XYZ and GJF files
-- Can be used when pocket extraction is skipped (omit `-c/--center`)
+- Can be used when active site model extraction is skipped (omit `-c/--center`)
 - `.gjf` files can provide charge/spin defaults from embedded metadata
 
 ---

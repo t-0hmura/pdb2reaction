@@ -270,7 +270,7 @@ out_dir/ (default:./result_scan/)
  Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
  (space/comma/slash/backtick/backslash) and unordered tokens.
-- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
+- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are always
  written. Concatenated scan trajectories (`scan_trj.xyz` and `scan.pdb` for
  PDB inputs with conversion enabled) are also always written. The `--dump`
@@ -392,6 +392,6 @@ bond:
 
 - [all](all.md) — End-to-end workflow with `--scan-lists` for single-structure inputs
 - [path-search](path-search.md) — MEP search using scan endpoints as intermediates
-- [extract](extract.md) — Generate pocket PDBs before scanning
+- [extract](extract.md) — Generate active site model (binding pocket) PDBs before scanning
 - [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, Segment

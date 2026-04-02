@@ -8,24 +8,24 @@ For full details, keep [Troubleshooting](troubleshooting.md) open in parallel.
 | Symptom | Start here | Then read |
 | --- | --- | --- |
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | [Troubleshooting](troubleshooting.md) |
-| "Charge is required" errors | Set `-q/--charge` and `-m/--multiplicity` explicitly | [Troubleshooting](troubleshooting.md) |
+| "Charge is required" errors | Set `-q/--charge` or `-l/--ligand-charge` explicitly | [Troubleshooting](troubleshooting.md) |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | [Troubleshooting](troubleshooting.md) |
 | DMF mode import errors (`cyipopt`) | Install `cyipopt` in the active environment | [Troubleshooting](troubleshooting.md) |
-| TSOPT/IRC does not converge | Reduce step aggressiveness, increase cycles, validate TS quality first | [Troubleshooting](troubleshooting.md) |
+| TSOPT/IRC does not converge | For LBFGS/Dimer: adjust `max_step`. For RFO/RS-I-RFO: adjust `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | [Troubleshooting](troubleshooting.md) |
 | CUDA/GPU runtime mismatch | Verify `torch.cuda.is_available()` and CUDA build pairing | [Troubleshooting](troubleshooting.md) |
 | Plot export failures | Install Chrome runtime for Plotly export | [Troubleshooting](troubleshooting.md) |
 
 ## Recipe 1: Extraction fails before MEP starts
 
 Signal:  
-- Errors mention missing element symbols, atom-count mismatch, or empty pockets.  
+- Errors mention missing element symbols, atom-count mismatch, or empty active site models.  
 
 First checks:  
 - Confirm all inputs are prepared by the same workflow and atom ordering is consistent.  
 - Ensure element columns are present before running `extract` or `all`.  
 
 Typical fix path:  
-- Repair elements -> rerun extraction -> confirm pocket size and residue inclusion.  
+- Repair elements -> rerun extraction -> confirm active site model size and residue inclusion.  
 
 ## Recipe 2: Charge/spin validation fails
 
@@ -38,7 +38,7 @@ First checks:
 - Verify the resolution rules in [CLI Conventions](cli-conventions.md) when results look physically inconsistent.  
 
 Typical fix path:  
-- Prefer explicit `-q` and `-m` for critical runs, then retry scan/path/tsopt.   
+- Prefer explicit `-q/--charge` or `-l/--ligand-charge` and `-m` for critical runs, then retry scan/path/tsopt.   
 
 ## Recipe 3: Environment blockers
 
@@ -59,7 +59,7 @@ Signal:
 
 First checks:  
 - Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹.  
-- Reduce optimizer aggressiveness and increase cycle limits.  
+- For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycle limits.  
 
 Typical fix path:
 - Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.

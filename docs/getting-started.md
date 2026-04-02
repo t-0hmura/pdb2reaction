@@ -2,33 +2,33 @@
 
 ## Overview
 
-`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** using machine-learning interatomic potentials (MLIPs).
+`pdb2reaction` is a Python CLI toolkit for **modeling enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs).
 
 In many workflows, a **single command** like the one below is enough to generate a useful initial reaction path:
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 ---
 You can also run **Minimum Energy Path (MEP) search → Transition State (TS) optimization → Intrinsic Reaction Coordinate (IRC) → thermochemistry → single-point DFT** in a single run by adding `--tsopt --thermo --dft`:
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
 
 Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
 
-- extracts an **active-site pocket** around user-defined substrates to build a **cluster model**,
+- extracts an **active site model (binding pocket)** around user-defined substrates to build a **cluster model**,
 - explores **minimum-energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single-point DFT calculations**.
 
-Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Implicit solvent corrections can be applied with `--solvent` (powered by xTB). Typical use cases include:
+Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Typical use cases include:
 
 - **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be prohibitively slow
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
 - **High-throughput screening** of reaction pathways across substrate variants or enzyme mutants
 
-The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small-molecule systems. When you skip pocket extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
+The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
 On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
@@ -38,7 +38,6 @@ On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large
 ```
 
 ```{tip}
-If you are new to the project, read [Concepts & Workflow](concepts.md) first.
 For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md).
 If you encounter an error during setup or runtime, refer to [Troubleshooting](troubleshooting.md).
 ```
@@ -53,9 +52,6 @@ If you encounter an error during setup or runtime, refer to [Troubleshooting](tr
 
 For full details, see [CLI Conventions](cli-conventions.md).
 
-[`path-search`](path-search.md) naming note: The CLI subcommand is `path-search`, and the documentation filename is [`path-search.md`](path-search.md).
-
-
 ### Recommended tools for hydrogen addition
 
 If your PDB lacks hydrogen atoms, use one of the following tools before running pdb2reaction:
@@ -65,12 +61,10 @@ If your PDB lacks hydrogen atoms, use one of the following tools before running 
 | **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | Fast, widely used for crystallographic structures |
 | **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | Adds hydrogens and assigns partial charges |
 | **Open Babel** | `obabel input.pdb -O output.pdb -h` | General-purpose cheminformatics toolkit |
+| **PyMOL** | `h_add` (in PyMOL) | Molecular visualization tool with hydrogen addition |
+| **tleap** (AmberTools) | `tleap -f leapin` | Amber force-field preparation tool |
 
 To ensure identical atom ordering across multiple PDB inputs, apply the same hydrogen-addition tool with consistent settings to all structures.
-
-```{warning}
-This software is still under development. Please use it at your own risk.
-```
 
 ---
 
@@ -116,13 +110,13 @@ Use this when you already have several full PDB structures along a putative reac
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 Behavior:
@@ -151,13 +145,13 @@ Provide a single `-i` together with `--scan-lists`:
 **Minimal example**
 
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
 **Richer example**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
 ```
 
 Key points:
@@ -239,7 +233,7 @@ For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Refer
 Every `pdb2reaction all` run writes:
 
 - `summary.log` – formatted summary for quick inspection, and
-- `summary.yaml` – machine-readable YAML summary.
+- `summary.yaml` – YAML-format summary.
 
 They typically contain:
 
@@ -261,7 +255,7 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | Subcommand | Role | Documentation |
 |------------|------|---------------|
 | `all` | End-to-end workflow | [all](all.md) |
-| `extract` | Extract active-site pocket (cluster model) | [extract](extract.md) |
+| `extract` | Extract active site model (cluster model) | [extract](extract.md) |
 | `opt` | Geometry optimization | [opt](opt.md) |
 | `tsopt` | Transition state optimization | [tsopt](tsopt.md) |
 | `path-opt` | MEP optimization (GSM/DMF) | [path-opt](path-opt.md) |
@@ -289,17 +283,18 @@ For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluat
 
 ```bash
 # Basic MEP search (2+ structures)
-pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' -l 'SUB:-1'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 
 # Full workflow with post-processing
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 
 # Single structure with staged scan
-pdb2reaction -i SINGLE.pdb -c 'LIG' -l 'LIG:-1' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 
 # TS-only optimization
-pdb2reaction -i TS.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
+pdb2reaction -i TS.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo
 ```
 
 **Essential options:**
@@ -307,7 +302,7 @@ pdb2reaction -i TS.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 | Option | Purpose |
 |--------|---------|
 | `-i` | Input structure(s) |
-| `-c` | Substrate definition for pocket extraction |
+| `-c` | Substrate definition for active site model extraction |
 | `-l, --ligand-charge` | Substrate charges (e.g., `'SAM:1,GPP:-3'`) |
 | `--tsopt` | Enable TS optimization + IRC |
 | `--thermo` | Run vibrational analysis |

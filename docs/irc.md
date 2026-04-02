@@ -118,7 +118,7 @@ out_dir/ (default:./result_irc/)
 
 - The MLIP backend is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
 - For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
-- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
+- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
 
 See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
 Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.

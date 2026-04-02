@@ -1,38 +1,17 @@
-# クイックスタート: `pdb2reaction scan` — 単一構造の段階的スキャン
+# クイックスタート: `pdb2reaction all` — 単一構造スキャンワークフロー
 
 ## 目的
 
-単一構造に対して、原子間距離を段階的にスキャン（拘束付き緩和）します。
+単一構造から `--scan-lists` で原子間距離を段階的にスキャンし、フルワークフローを実行します。
 
 ## 事前に必要なもの
 
-- 入力構造: `input.pdb`
-- 対象状態に対応した電荷・多重度（`-q`, `-m`）
+- 入力構造: `.pdb`
+- 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
 
 ---
 
-## 方法 A: `-s scan.yaml`（YAMLファイル、複雑なスキャンに推奨）
-
-### 1. `scan.yaml` を作成
-
-ステージごとの目標距離（単位: Å）を順番に定義します。
-
-```yaml
-one_based: true
-stages:
- - [["TYR,285,CA", "SAM,309,C10", 1.35]]
- - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
-```
-
-### 2. 実行
-
-```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
-```
-
----
-
-## 方法 B: `-s`（CLIインライン指定）
+## 方法 A: `-s`（CLIインライン指定）
 
 `-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。
 
@@ -88,6 +67,27 @@ pdb2reaction scan -i input.pdb -q 0 -s \
 ```
 
 > **Tip:** `--print-parsed` を付けると、スキャン対象が正しくパースされたか実行前に確認できます。
+
+---
+
+## 方法 B: `-s scan.yaml`（YAMLファイル、複雑なスキャンに推奨）
+
+### 1. `scan.yaml` を作成
+
+ステージごとの目標距離（単位: Å）を順番に定義します。
+
+```yaml
+one_based: true
+stages:
+ - [["TYR,285,CA", "SAM,309,C10", 1.35]]
+ - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
+```
+
+### 2. 実行
+
+```bash
+pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
+```
 
 ---
 

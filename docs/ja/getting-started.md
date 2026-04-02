@@ -2,27 +2,27 @@
 
 ## 概要
 
-`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB 構造** から **酵素反応経路** を自動的に構築する Python 製の CLI ツールキットです。
+`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB 構造から酵素反応経路をモデリング** する Python 製の CLI ツールキットです。
 
 多くのケースで、次のような **1 コマンド** から反応経路の初期案を得られます。
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 ---
 さらに `--tsopt --thermo --dft` を追加すると、**最小エネルギー経路（MEP: Minimum Energy Path）探索 → 遷移状態（TS: Transition State）最適化 → 固有反応座標（IRC: Intrinsic Reaction Coordinate） → 振動解析・熱化学 → DFT 一点計算** までまとめて実行できます。
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
 
 入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt` を与えると、`pdb2reaction` が次を自動化します。
 
-- ユーザーが指定した基質の周辺から **活性部位ポケット**（抽出範囲）を切り出し、計算用の **クラスターモデル**（Cluster Model）を構築
+- ユーザーが指定した基質の周辺から **活性部位モデル（バインディングポケット）** を切り出し、計算用の **クラスターモデル**（Cluster Model）を構築
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
 - 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
 
-ポテンシャルエネルギー面（PES: Potential Energy Surface）の計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。`--solvent` オプションで xTB ベースの暗黙溶媒補正を適用することも可能です。想定される主な用途は以下の通りです。
+ポテンシャルエネルギー面（PES: Potential Energy Surface）の計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。想定される主な用途は以下の通りです。
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 - 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
@@ -38,7 +38,6 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --df
 ```
 
 ```{tip}
-初めて使う場合は、まず [概念とワークフロー](concepts.md) を読むと全体像が掴みやすいです。
 症状から切り分ける場合は、まず [典型エラー別レシピ](recipes-common-errors.md) を参照してください。
 セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
 ```
@@ -53,9 +52,6 @@ pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo --df
 
 詳細は [CLI 規約](cli-conventions.md) を参照してください。
 
-補足: CLI サブコマンド名は `path-search`（ハイフン区切り）で、ドキュメントファイル名は [`path-search.md`](path-search.md) です。
-
-
 ### 水素原子付与の推奨ツール
 
 PDB に水素原子がない場合は、pdb2reaction を実行する前に次のいずれかを使ってください。
@@ -65,12 +61,10 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 | **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | 高速、結晶構造に広く使用 |
 | **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | 水素を追加し部分電荷を割り当て |
 | **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用ケモインフォマティクスツールキット |
+| **PyMOL** | `h_add`（PyMOL 内） | 分子可視化ツール（水素付加機能あり） |
+| **tleap** (AmberTools) | `tleap -f leapin` | Amber 力場準備ツール |
 
 複数の PDB 入力で同一の原子順序を確保するには、すべての構造に同じ水素付与ツールを一貫した設定で適用してください。
-
-```{warning}
-このソフトウェアはまだ開発中です。自己責任でご使用ください。
-```
 
 ---
 
@@ -116,13 +110,13 @@ pdb2reaction all [OPTIONS]...
 **最小例**
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 **詳細例**
 
 ```bash
-pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --out-dir ./result_all --tsopt --thermo --dft
 ```
 
 処理の流れ:
@@ -151,13 +145,13 @@ pdb2reaction -i R.pdb I1.pdb I2.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --out-d
 **最小例**
 
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
 **詳細例**
 
 ```bash
-pdb2reaction -i SINGLE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --scan-lists '[("TYR 285 CA","SAM 309 C10",2.20),("TYR 285 CB","SAM 309 C11",1.80)]' --scan-lists '[("TYR 285 CB","SAM 309 C11",1.20)]' --multiplicity 1 --out-dir ./result_scan_all --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' --scan-lists '[("GPP 321 H11","GLU 186 OE2",0.90)]' --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
 ```
 
 補足:
@@ -238,8 +232,8 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 
 `pdb2reaction all` を実行すると、以下のサマリーファイルが出力されます。
 
-- `summary.log` – 人間が読みやすい形式の結果要約
-- `summary.yaml` – 機械可読な YAML 形式の結果要約
+- `summary.log` – テキスト形式の結果要約
+- `summary.yaml` – YAML 形式の結果要約
 
 主な記載内容:
 
@@ -261,7 +255,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 | サブコマンド | 役割 | ドキュメント |
 |------------|------|------------|
 | `all` | 一気通貫ワークフロー | [all](all.md) |
-| `extract` | 活性部位ポケットからクラスターモデルを抽出 | [extract](extract.md) |
+| `extract` | 活性部位モデルとしてクラスターモデルを抽出 | [extract](extract.md) |
 | `opt` | 構造最適化 | [opt](opt.md) |
 | `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |
 | `path-opt` | MEP最適化 (GSM/DMF) | [path-opt](path-opt.md) |
@@ -289,17 +283,18 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt --thermo
 
 ```bash
 # 基本的な MEP 探索（2 構造以上）
-pdb2reaction -i R.pdb P.pdb -c 'SUBSTRATE' -l 'SUB:-1'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 
 # 後処理付きフルワークフロー
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 
 # 単一構造 + 段階的スキャン
-pdb2reaction -i SINGLE.pdb -c 'LIG' -l 'LIG:-1' --scan-lists '[("RES1,100,CA","LIG,200,C1",2.0)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 
 # TS のみ最適化
-pdb2reaction -i TS.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
+pdb2reaction -i TS.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo
 ```
 
 **主要オプション一覧:**
@@ -307,7 +302,7 @@ pdb2reaction -i TS.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 | オプション | 用途 |
 |----------|------|
 | `-i` | 入力構造 |
-| `-c` | 活性部位ポケット抽出用の基質定義 |
+| `-c` | 活性部位モデル抽出用の基質定義 |
 | `-l, --ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
 | `--tsopt` | TS 最適化 + IRC を有効化 |
 | `--thermo` | 振動解析を実行 |

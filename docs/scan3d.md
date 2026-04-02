@@ -244,7 +244,7 @@ out_dir/ (default:./result_scan3d/)
 - 3D visualization uses RBF interpolation on a 50×50×50 grid with
  semi-transparent step-colored isosurfaces (no cross-sectional planes).
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
- PDB inputs, keeping extracted pockets rigid.
+ PDB inputs, keeping extracted active site models rigid.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

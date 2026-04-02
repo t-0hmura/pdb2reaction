@@ -14,7 +14,6 @@ installation
 quickstart-all
 quickstart-scan
 quickstart-tsopt-freq
-concepts
 recipes-common-errors
 troubleshooting
 cli-conventions
@@ -23,7 +22,6 @@ ja/installation
 ja/quickstart-all
 ja/quickstart-scan
 ja/quickstart-tsopt-freq
-ja/concepts
 ja/recipes-common-errors
 ja/troubleshooting
 ja/cli-conventions
@@ -102,7 +100,6 @@ ja/index
 |-------|------|
 | **Getting Started** | [Getting Started](getting-started.md) |
 | **Installation** | [Installation](installation.md) |
-| **Key terms & workflow overview** | [Concepts & Workflow](concepts.md) |
 | **Symptom-first failure routing** | [Common Error Recipes](recipes-common-errors.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
 | **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
@@ -117,15 +114,14 @@ ja/index
 | Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart-scan.md) |
 | TS optimization and validation | `pdb2reaction tsopt` | [Quickstart: tsopt](quickstart-tsopt-freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all](all.md) |
-| Extract QM region from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
+| Extract active site as cluster model from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
 | Optimize a single structure | `pdb2reaction opt` | [opt](opt.md) |
 | Find and optimize a transition state | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
-| Search for minimum energy path | `pdb2reaction path-search` | [path-search](path-search.md) |
+| Search for minimum energy path to obtain TS candidate | `pdb2reaction path-search` | [path-search](path-search.md) |
 | Run IRC from a transition state | `pdb2reaction irc` | [irc](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
 | Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
 | Diagnose failures by symptom | — | [Common Error Recipes](recipes-common-errors.md) |
-| Understand the big picture (concepts & terms) | — | [Concepts & Workflow](concepts.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
 
@@ -141,20 +137,20 @@ ja/index
 ### Structure Preparation
 | Subcommand | Description |
 |------------|-------------|
-| [`extract`](extract.md) | Extract active-site pocket (cluster model) from protein–ligand complex |
+| [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
 | [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
 
 ### Geometry Optimization
 | Subcommand | Description |
 |------------|-------------|
-| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS / RFO + optional flatten) |
-| [`tsopt`](tsopt.md) | Transition state optimization (Dimer / RS-I-RFO, optional flatten) |
+| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS or RFO. [+ optional flatten]) |
+| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-I-RFO. [+ optional flatten]) |
 
 ### Path Search & Optimization
 | Subcommand | Description |
 |------------|-------------|
-| [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (two structures) |
+| [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
 | [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
 
 ### Scans
@@ -190,9 +186,9 @@ ja/index
 ## System Requirements
 
 ### Hardware
-- **OS**: Linux (Ubuntu 20.04+ or CentOS 8+ tested)
+- **OS**: Linux
 - **GPU**: CUDA 12.x compatible
-- **VRAM**: Minimum 8 GB (16 GB+ recommended for 1000+ atoms)
+- **VRAM**: Minimum 8 GB recommended
 - **RAM**: 16 GB+ recommended
 
 ### Software
@@ -206,32 +202,33 @@ ja/index
 
 ### Basic MEP search
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 ### Full workflow with TS optimization
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 ```
 
-### Single-structure scan mode
+### Full workflow from reaction coordinates scan with single structure.
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
-### TS-only optimization
+### Full workflow from single TS candidate structure.
 ```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt
 ```
 
 ---
 
-## Key Concepts
+## Key flags in input
 
 ### Charge and spin
-- Use `--ligand-charge` to specify ligand charges: `'SAM:1,GPP:-3'`
+- Use `-l/--ligand-charge` to specify ligand charges: `'SAM:1,GPP:-3'`
 - Use `-q/--charge` to override the net charge
 - Spin multiplicity is set with `-m/--multiplicity` (default `1`)
 
@@ -252,8 +249,8 @@ See the [YAML Reference](yaml-reference.md) for all options.
 Typical `pdb2reaction all` output:
 ```
 result_all/
-├── summary.log # Human-readable summary
-├── summary.yaml # Machine-readable summary
+├── summary.log # User-friendly summary
+├── summary.yaml # YAML-format summary
 ├── pockets/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
 ├─┬ path_search/ # MEP trajectories and diagrams

@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Extract a cluster model (active-site pocket) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge` for non-standard residue charges.
+> **Summary:** Extract a cluster model (active site model (binding pocket)) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge` for non-standard residue charges.
 
 ### At a glance
 - **Input:** One or more complex PDBs with consistent atom ordering (ensemble mode supported).
@@ -11,7 +11,7 @@
 - **Truncation & capping:** trims residues/segments and optionally adds link hydrogens (`--add-linkh` by default).
 - **Charges:** unknown residues default to 0 unless `--ligand-charge` supplies a total charge or per-resname mapping.
 
-`pdb2reaction extract` creates an active-site pocket (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
+`pdb2reaction extract` creates an active site model (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
 
 If you run into misclassification (e.g., unusual residue/atom naming), see the appendix below on naming requirements and the internal reference lists.
 
@@ -98,7 +98,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 | --- | --- | --- |
 | `-i, --input PATH...` | One or more protein–ligand PDB files (identical atom ordering required). | Required |
 | `-c, --center SPEC` | Substrate specification (PDB path, residue IDs, or residue names). | Required |
-| `-o, --output PATH...` | Pocket PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. With 1 `-o` and multiple inputs, creates a single multi-MODEL PDB. With N `-o` values matching N inputs, creates N separate PDBs. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
+| `-o, --output PATH...` | Active site model PDB output(s). One path ⇒ multi-MODEL, N paths ⇒ per input. With 1 `-o` and multiple inputs, creates a single multi-MODEL PDB. With N `-o` values matching N inputs, creates N separate PDBs. | Auto (`pocket.pdb` or `pocket_<input>.pdb`) |
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion. | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally 0.001 Å when zero) |
 | `--include-h2o/--no-include-h2o` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `True` |
@@ -110,7 +110,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' -o pocket1.pdb po
 
 ## Outputs
 ```text
-<output>.pdb # Pocket PDB(s) with optional link hydrogens after a TER record
+<output>.pdb # Active site model PDB(s) with optional link hydrogens after a TER record
  # Single input → pocket.pdb by default
  # Multiple inputs without -o → pocket_<original_basename>.pdb per structure
  # One -o path with multiple inputs → single multi-MODEL PDB
@@ -130,11 +130,11 @@ When such residues are detected, `extract` will display a warning:
 [extract] WARNING: Residue HD1 83 may be an amino acid (has N, CA, C, O)
 but is not recognized as a standard residue name.
 Backbone truncation was not applied.
-Consider preparing the pocket model manually.
+Consider preparing the active site model manually.
 ```
 
 ```{important}
-For systems containing non-standard residues, **manual pocket model construction is recommended**.
+For systems containing non-standard residues, **manual active site model construction is recommended**.
 Steps:
 
 1. Select residues around the active site and determine truncation points
@@ -232,6 +232,16 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 - Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
 - INFO logs summarize residue selection, truncation counts, and charge breakdowns.
 
+## Link hydrogen and frozen atoms
+
+When pdb2reaction extracts an active site model from a larger structure, severed bonds are capped with **link hydrogens**. By default (`--freeze-links`), the parent atoms of these link hydrogens are frozen during optimization and path searches to prevent unphysical rearrangement at the boundary.
+
+- **Forces**: frozen atoms receive zeroed forces.
+- **Hessian**: frozen degrees of freedom are either removed (`return_partial_hessian: true`) or zeroed in the full matrix.
+- **Vibrational analysis**: when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA), diagonalizing only the active block of the Hessian.
+
+Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (1-based indices). CLI-detected link atoms are merged with YAML-specified atoms.
+
 ---
 
 ## See Also
@@ -239,8 +249,8 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [all](all.md) — End-to-end workflow that calls extract internally via `-c/--center`
-- [path-search](path-search.md) — MEP search on extracted pockets
-- [scan](scan.md) — Staged scan on extracted pockets
+- [path-search](path-search.md) — MEP search on extracted active site models
+- [scan](scan.md) — Staged scan on extracted active site models
 - [add-elem-info](add-elem-info.md) — Fix missing PDB element columns before extraction
 - [Troubleshooting](troubleshooting.md) — Common extraction errors
-- [Glossary](glossary.md) — Definitions of Pocket, Cluster Model, Link Hydrogen
+- [Glossary](glossary.md) — Definitions of Active Site Model, Cluster Model, Link Hydrogen

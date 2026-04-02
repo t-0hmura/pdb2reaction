@@ -14,7 +14,6 @@ installation
 quickstart-all
 quickstart-scan
 quickstart-tsopt-freq
-concepts
 recipes-common-errors
 troubleshooting
 cli-conventions
@@ -62,7 +61,6 @@ glossary
 |-------|------|
 | **はじめに** | [はじめに](getting-started.md) |
 | **インストール** | [インストール](installation.md) |
-| **主要概念とワークフロー概要** | [概念とワークフロー](concepts.md) |
 | **症状起点の切り分け導線** | [典型エラー別レシピ](recipes-common-errors.md) |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
 | **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
@@ -77,15 +75,14 @@ glossary
 | 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart-scan.md) |
 | TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart-tsopt-freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
-| タンパク質–リガンド複合体からQM領域を抽出 | `pdb2reaction extract` | [extract](extract.md) |
+| タンパク質–リガンド複合体から活性部位をクラスターモデルとして抽出 | `pdb2reaction extract` | [extract](extract.md) |
 | 単一構造を最適化 | `pdb2reaction opt` | [opt](opt.md) |
 | 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
-| 最小エネルギー経路を探索 | `pdb2reaction path-search` | [path-search](path-search.md) |
+| 最小エネルギー経路を探索し TS 候補を取得 | `pdb2reaction path-search` | [path-search](path-search.md) |
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
 | 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
 | 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes-common-errors.md) |
-| 全体像（概念・用語）を把握したい | — | [概念とワークフロー](concepts.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
 
@@ -101,19 +98,19 @@ glossary
 ### 構造準備
 | サブコマンド | 説明 |
 |---------|------|
-| [`extract`](extract.md) | タンパク質–リガンド複合体の活性部位ポケットからクラスターモデルを抽出 |
+| [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
 
 ### 構造最適化
 | サブコマンド | 説明 |
 |---------|------|
-| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS / RFO + 任意flatten） |
-| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer / RS-I-RFO、flattenは任意） |
+| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS or RFO。[+ 任意flatten]） |
+| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer or RS-I-RFO。[+ 任意flatten]） |
 
 ### 経路探索・最適化
 | サブコマンド | 説明 |
 |---------|------|
-| [`path-opt`](path-opt.md) | GSM または DMF による 1段階の MEP 最適化 |
+| [`path-opt`](path-opt.md) | GSM または DMF による 1段階の MEP 最適化（2構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索 |
 
 ### スキャン
@@ -149,9 +146,9 @@ glossary
 ## システム要件
 
 ### ハードウェア
-- **OS**: Linux（Ubuntu 20.04+、CentOS 8+で動作確認）
+- **OS**: Linux
 - **GPU**: CUDA 12.x 互換
-- **VRAM**: 最小 8 GB（1000 原子以上では 16 GB 以上推奨）
+- **VRAM**: 最小 8 GB 推奨
 - **RAM**: 16 GB以上推奨
 
 ### ソフトウェア
@@ -165,32 +162,33 @@ glossary
 
 ### 基本的な MEP 探索
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 ### TS 最適化を含む完全ワークフロー
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 ```
 
-### 単一構造スキャンモード
+### 単一構造からの反応座標スキャンによるフルワークフロー
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
-### TS 最適化のみ
+### 単一 TS 候補構造からのフルワークフロー
 ```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt
 ```
 
 ---
 
-## 重要な概念
+## 入力の主要フラグ
 
 ### 電荷とスピン
-- 基質残基の電荷を指定するには `--ligand-charge` を使用: `'SAM:1,GPP:-3'`
+- 基質残基の電荷を指定するには `-l/--ligand-charge` を使用: `'SAM:1,GPP:-3'`
 - 総電荷を上書きするには `-q/--charge` を使用
 - スピン多重度（Spin Multiplicity）は `-m/--multiplicity`（デフォルト: 1 = 一重項）で設定
 

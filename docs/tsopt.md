@@ -89,7 +89,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ## Workflow
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 - **Geometry loading & freeze-links**: structures are read via
- `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
+ `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
 - **MLIP Hessians**: `--hessian-calc-mode` toggles between analytical and finite-difference
  evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
  frozen atoms are present.
@@ -173,8 +173,9 @@ out_dir/ (default:./result_tsopt/)
 - See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
 
 Shared sections reuse
-[YAML Reference](yaml-reference.md). Keep the full block below intact if it already
-matches your workflow—adjust only the values you need to change.
+[YAML Reference](yaml-reference.md). Adjust only the values you need to change.
+
+### Shared configuration (common to both modes)
 
 ```yaml
 geom:
@@ -211,6 +212,13 @@ opt:
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_tsopt/ # output directory
+```
+
+### Dimer mode (`--opt-mode grad`)
+
+Used with `--opt-mode grad` (Hessian Guided Dimer + LBFGS translation).
+
+```yaml
 hessian_dimer:
  thresh_loose: gau_loose # loose convergence preset
  thresh: baker # main convergence preset
@@ -270,9 +278,20 @@ hessian_dimer:
  double_damp: true # double damping safeguard
  mu_reg: null # regularization strength
  max_mu_reg_adaptions: 10 # cap on mu adaptations
+```
+
+### RS-I-RFO mode (`--opt-mode hess`, default)
+
+Used with `--opt-mode hess` (RS-I-RFO, the default).
+
+```yaml
 rsirfo:
  thresh: baker # RS-IRFO convergence preset
  max_cycles: 10000 # iteration cap
+ trust_radius: 0.10 # trust-region radius
+ trust_update: true # enable trust-region updates
+ trust_min: 0.0001 # minimum trust radius
+ trust_max: 0.20 # maximum trust radius
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate

@@ -6,8 +6,8 @@ Optimize a TS candidate and verify that it is a first-order saddle point.
 
 ## Prerequisites
 
-- TS candidate geometry: `ts_guess.pdb`
-- Charge and multiplicity (`-q`, `-m`) for the target state
+- TS candidate geometry: `.pdb`
+- Charge (`-q/--charge` or `-l/--ligand-charge`) and multiplicity (`-m`) for the target state
 
 ## 1. TS optimization
 
@@ -37,7 +37,7 @@ pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./res
 
 ## Tips
 
-- Use `--hessian-calc-mode Analytical` when VRAM is sufficient.
+- Using `--hessian-calc-mode Analytical` is recommended when VRAM is sufficient.
 - Check full options with `pdb2reaction tsopt --help-advanced` and `pdb2reaction freq --help-advanced`.
 
 ## Next step

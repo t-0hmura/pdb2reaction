@@ -5,9 +5,9 @@ Detect and report covalent bond changes between consecutive molecular structures
 ## Synopsis
 
 ```bash
-pdb2reaction bond-summary -i R.xyz -i P.xyz
-pdb2reaction bond-summary -i R.xyz -i TS.xyz -i P.xyz
-pdb2reaction bond-summary -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb
+pdb2reaction bond-summary -i R.xyz P.xyz
+pdb2reaction bond-summary -i R.xyz TS.xyz P.xyz
+pdb2reaction bond-summary -i R.pdb IM1.pdb IM2.pdb P.pdb
 ```
 
 ## Description
@@ -35,7 +35,7 @@ Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension).
 ### Two-structure comparison
 
 ```bash
-pdb2reaction bond-summary -i 1.R.xyz -i 3.P.xyz
+pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
 ```
 
 Output:
@@ -54,7 +54,7 @@ Bond broken (2):
 ### Multi-structure (reaction pathway)
 
 ```bash
-pdb2reaction bond-summary -i 1.R.xyz -i 3.IM1.xyz -i 5.IM2.xyz -i 7.P.xyz
+pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
 ```
 
 Produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.

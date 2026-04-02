@@ -65,17 +65,17 @@ This page provides definitions for abbreviations and technical terms used throug
 
 ---
 
-## Structural Biology & Pocket Extraction
+## Structural Biology & Active Site Model Extraction
 
 | Term | Full Name | Description |
 |------|-----------|-------------|
 | **PDB** | Protein Data Bank | A file format and database for macromolecular 3D structures. |
 | **XYZ** | — | A simple text format listing atomic symbols and Cartesian coordinates. |
 | **GJF** | Gaussian Job File | An input format for Gaussian; pdb2reaction reads charge/multiplicity and coordinates from these files. |
-| **Pocket** | Active-site Pocket | A truncated structure around the substrate(s) used to reduce system size for MEP/TS search. Also called "cluster model". |
-| **Cluster Model** | — | Synonym for pocket; a computationally tractable subset of the full enzyme–substrate complex. |
-| **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting a pocket from a larger structure. |
-| **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during pocket extraction with `--exclude-backbone`. |
+| **Active Site Model** | Active Site Model (Binding Pocket) | A truncated structure around the substrate(s) used to reduce system size for MEP/TS search. Also called "cluster model". |
+| **Cluster Model** | — | Synonym for active site model; a computationally tractable subset of the full enzyme–substrate complex. |
+| **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
+| **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 
 ---
 
@@ -120,7 +120,7 @@ This page provides definitions for abbreviations and technical terms used throug
 
 - [Getting Started](getting-started.md) — installation and a first run
 - [Installation](installation.md) — setup and dependencies
-- [Concepts & Workflow](concepts.md) — how pocket extraction, MEP search, and post-processing fit together
+- [all](all.md) — how active site model extraction, MEP search, and post-processing fit together
 - [Common Error Recipes](recipes-common-errors.md) — symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — common errors and fixes
 - [YAML Reference](yaml-reference.md) — configuration file format

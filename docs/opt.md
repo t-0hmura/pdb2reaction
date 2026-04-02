@@ -74,7 +74,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
-- **Freeze atoms**: When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Concepts: Link hydrogen](concepts.md#link-hydrogen-and-frozen-atoms)).
+- **Freeze atoms**: When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
 - **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
 
@@ -144,7 +144,8 @@ Extends `opt` with L-BFGS specifics: `keep_last`, `beta`, `gamma_mult`, `max_ste
 ### `rfo`
 Extends `opt` with RFOptimizer fields: trust-region sizing (`trust_radius`, `trust_min`, `trust_max`, `trust_update`), `max_energy_incr`, Hessian management (`hessian_update`, `hessian_init`, `hessian_recalc`, `hessian_recalc_adapt`, `small_eigval_thresh`), micro-iteration controls (`alpha0`, `max_micro_cycles`, `rfo_overlaps`), DIIS helpers (`gdiis`, `gediis`, thresholds, `gdiis_test_direction`), and `adapt_step_func`.
 
-### Example YAML
+### Shared configuration (common to both modes)
+
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
@@ -183,6 +184,13 @@ opt:
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_opt/ # output directory
+```
+
+### L-BFGS mode (`--opt-mode grad`)
+
+Used with `--opt-mode grad` (L-BFGS optimizer).
+
+```yaml
 lbfgs:
  thresh: gau # LBFGS convergence preset
  max_cycles: 10000 # iteration limit
@@ -209,6 +217,13 @@ lbfgs:
  double_damp: true # double damping safeguard
  mu_reg: null # regularization strength
  max_mu_reg_adaptions: 10 # cap on mu adaptations
+```
+
+### RFO mode (`--opt-mode hess`)
+
+Used with `--opt-mode hess` (RFO optimizer).
+
+```yaml
 rfo:
  thresh: gau # RFOptimizer convergence preset
  max_cycles: 10000 # iteration cap
@@ -257,7 +272,7 @@ rfo:
 
 - [tsopt](tsopt.md) — Optimize transition states (saddle points) instead of minima
 - [freq](freq.md) — Vibrational analysis to confirm optimization reached a minimum
-- [extract](extract.md) — Generate pocket PDBs before optimization
+- [extract](extract.md) — Generate active site model (binding pocket) PDBs before optimization
 - [all](all.md) — End-to-end workflow that pre-optimizes endpoints
 - [YAML Reference](yaml-reference.md) — Full `opt`, `lbfgs`, `rfo` configuration options
 - [Glossary](glossary.md) — Definitions of L-BFGS, RFO
