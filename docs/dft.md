@@ -13,7 +13,7 @@ The backend is controlled by `--engine`:
 
 > **Note:** The default basis `def2-tzvpd` is a triple-zeta diffuse-augmented set and is computationally expensive for large systems. Consider a smaller basis (e.g., `6-31g**` or `def2-svp`) for exploratory calculations.
 
-> **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install pdb2reaction[dft]`.
+> **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
 > **System size limit:** DFT single-point calculations are practical only for systems up to **~500 atoms**. Larger systems will require prohibitive compute time and memory. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
 

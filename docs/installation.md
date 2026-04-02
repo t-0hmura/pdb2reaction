@@ -37,7 +37,7 @@ huggingface-cli login
 
 You only need to do this once per machine / environment.
 
-> **Tip:** UMA is the default MLIP backend. To use ORB, MACE, or AIMNet2 instead, install the corresponding extra (e.g. `pip install 'pdb2reaction[orb]'`) and pass `--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
+> **Tip:** UMA is the default MLIP backend. To use ORB, MACE, or AIMNet2 instead, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
 
 - If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
  ```bash
@@ -114,12 +114,12 @@ If you prefer to build the environment piece by piece:
 
  ```bash
  # ORB backend
- pip install 'pdb2reaction[orb]'
+ pip install "pdb2reaction[orb]"
 
  # AIMNet2 backend
- pip install 'pdb2reaction[aimnet2]'
+ pip install "pdb2reaction[aimnet2]"
 
- pip install 'pdb2reaction[mace]'      # MACE backend
+ pip install "pdb2reaction[mace]"      # MACE backend
  ```
 
  To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.

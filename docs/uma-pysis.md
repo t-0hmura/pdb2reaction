@@ -49,9 +49,9 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | Backend | Install | Analytical Hessian | Multi-worker | Notes |
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | included | Yes | Yes | Full feature set via fairchem |
-| **ORB** | `pip install 'pdb2reaction[orb]'` | No (FD only) | No | orb-models |
-| **MACE** | `pip install 'pdb2reaction[mace]'` | No (FD only) | No | mace-torch |
-| **AIMNet2** | `pip install 'pdb2reaction[aimnet2]'` | No (FD only) | No | aimnet |
+| **ORB** | `pip install "pdb2reaction[orb]"` | No (FD only) | No | orb-models |
+| **MACE** | `pip install "pdb2reaction[mace]"` | No (FD only) | No | mace-torch |
+| **AIMNet2** | `pip install "pdb2reaction[aimnet2]"` | No (FD only) | No | aimnet |
 
 ### Implicit solvent correction
 
