@@ -240,7 +240,7 @@ For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Refer
 Every `pdb2reaction all` run writes:
 
 - `summary.log` – text summary, and
-- `summary.json` – YAML summary.
+- `summary.json` – JSON summary.
 
 They typically contain:
 

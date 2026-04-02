@@ -545,6 +545,7 @@ def cli(
                     "energy_product_hartree": _e_product,
                     "forward_converged": getattr(eulerpc, 'forward_is_converged', None),
                     "backward_converged": getattr(eulerpc, 'backward_is_converged', None),
+                    "backend": calc_cfg.get("backend", backend),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
                     "model": calc_cfg.get("model"),

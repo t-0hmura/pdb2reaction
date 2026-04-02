@@ -703,7 +703,7 @@ def cli(
             if out_json:
                 from .utils import write_result_json
                 result_data: Dict[str, Any] = {
-                    "status": "converged" if converged else "not_converged",
+                    "converged": converged,
                     "charge": resolved_charge,
                     "spin": multiplicity,
                     "n_atoms": mol.natm if 'mol' in dir() else None,
@@ -717,7 +717,6 @@ def cli(
                     "basis_set": basis,
                     "engine": engine_label,
                     "used_gpu": bool(using_gpu),
-                    "converged": converged,
                     "charges": {k: v for k, v in charges.items()},
                     "spin_densities": {k: v for k, v in spins.items()},
                     "files": {

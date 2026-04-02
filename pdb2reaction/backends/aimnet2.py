@@ -3,7 +3,7 @@
 """
 AIMNet2 backend for pdb2reaction.
 
-Requires: ``pip install "pdb2reaction[aimnet2]"`` (aimnet).
+Requires: ``pip install "pdb2reaction[aimnet]"`` (aimnet).
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class AIMNet2Calculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "AIMNet2 backend requires torch and aimnet. "
-                "Install with: pip install \"pdb2reaction[aimnet2]\""
+                "Install with: pip install \"pdb2reaction[aimnet]\""
             ) from exc
 
         super().__init__(
@@ -77,7 +77,7 @@ class AIMNet2Calculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "AIMNet2 backend requires aimnet. "
-                "Install with: pip install \"pdb2reaction[aimnet2]\""
+                "Install with: pip install \"pdb2reaction[aimnet]\""
             ) from exc
 
         kwargs_variants = _unique_ordered(
@@ -204,7 +204,7 @@ class AIMNet2ASECalculator:
         except Exception as exc:
             raise BackendError(
                 "AIMNet2 backend requires aimnet. "
-                "Install with: pip install \"pdb2reaction[aimnet2]\""
+                "Install with: pip install \"pdb2reaction[aimnet]\""
             ) from exc
 
         if str(device).lower() == "auto":

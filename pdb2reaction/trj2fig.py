@@ -443,6 +443,7 @@ def cli(
             "n_frames": len(energies),
             "min_energy_hartree": float(min(energies)) if energies else None,
             "max_energy_hartree": float(max(energies)) if energies else None,
+            "backend": backend,
             "files": {p.name: str(p) for p in written_paths},
         }
         write_result_json(out_dir, result_data, command="trj2fig")

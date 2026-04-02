@@ -1060,7 +1060,9 @@ def cli(
                 _dmf_converged = getattr(dmf_res, 'is_converged', None)
                 result_data: Dict[str, Any] = {
                     "status": "converged" if _dmf_converged else ("not_converged" if _dmf_converged is False else "completed"),
+                    "converged": _dmf_converged,
                     "mep_mode": "dmf",
+                    "backend": calc_cfg.get("backend", backend),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
                     "model": calc_cfg.get("model"),
@@ -1234,7 +1236,9 @@ def cli(
             _converged = getattr(optimizer, 'is_converged', None) if 'optimizer' in dir() else None
             result_data_gsm: Dict[str, Any] = {
                 "status": "converged" if _converged else ("not_converged" if _converged is False else "completed"),
+                "converged": _converged,
                 "mep_mode": "gsm",
+                "backend": calc_cfg.get("backend", backend),
                 "charge": calc_cfg["charge"],
                 "spin": calc_cfg["spin"],
                 "model": calc_cfg.get("model"),
