@@ -1,8 +1,8 @@
-# クイックスタート: `pdb2reaction scan` — 単一構造スキャンワークフロー
+# クイックスタート: 単一構造スキャンワークフロー（`--scan-lists`）
 
 ## 目的
 
-単一構造から `--scan-lists` で原子間距離を段階的にスキャンし、フルワークフローを実行します。
+`pdb2reaction all` のフルワークフローを、`-s/--scan-lists` で原子間距離を駆動して単一構造から実行します。段階的スキャン → MEP 精密化 → （任意）TS 最適化 + IRC が自動で連鎖します。
 
 ## 事前に必要なもの
 
@@ -11,7 +11,7 @@
 
 ---
 
-## 方法 A: `-s`（CLIインライン指定）
+## 方法 A: `-s/--scan-lists` インラインリテラル
 
 `-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。
 
@@ -21,10 +21,11 @@
 
 ```bash
 # 単一ステージ、整数原子インデックス（デフォルトで1-based）
-pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' -o ./result_scan
+pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' -o ./result_scan
 
 # 単一ステージ、PDBセレクタ文字列
-pdb2reaction scan -i input.pdb -q 0 -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
+pdb2reaction -i input.pdb -q 0 \
+ -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
 ```
 
 ### PDBセレクタ
@@ -45,7 +46,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -
 ```bash
 # ステージ1: 1つの結合を 1.35 Å に駆動
 # ステージ2: 2つの結合を同時に駆動
-pdb2reaction scan -i input.pdb -q 0 -s \
+pdb2reaction -i input.pdb -q 0 -s \
   '[("TYR,285,CA","SAM,309,C10",1.35)]' \
   '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
   -o ./result_scan
@@ -70,7 +71,7 @@ pdb2reaction scan -i input.pdb -q 0 -s \
 
 ---
 
-## 方法 B: `-s scan.yaml`（YAMLファイル、複雑なスキャンに推奨）
+## 方法 B: YAML スペックファイル（複雑なスキャン向け）
 
 ### 1. `scan.yaml` を作成
 
@@ -86,23 +87,24 @@ stages:
 ### 2. 実行
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
+pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 ```
 
 ---
 
 ## まず確認する出力
 
-- `result_scan/stage_01/result.pdb`
-- `result_scan/stage_02/result.pdb`（複数ステージの場合）
-- `scan_trj.xyz` / `scan.pdb`（常に生成されます）
+- `result_scan/summary.log`
+- `result_scan/path_search/mep.pdb`（精密化後の MEP）
+- `result_scan/scan/stage_01/result.pdb`（ステージごとのスキャン結果）
 
 ## 補足
 
 - `-s/--scan-lists` は YAML/JSON ファイルパスまたはインライン Python リテラルを受け付けます（両方を同時に指定することはできません）。
-- 詳細オプションは `pdb2reaction scan --help-advanced` で確認できます。
-- 入力フォーマットの詳細は [scan](scan.md) を参照してください。
+- `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
+- 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 
 ## 次の導線
 
-- 経路精密化は [all](all.md) または [path-search](path-search.md) を参照してください。
+- 全オプション: [all](all.md)
+- TS 最適化と検証: [クイックスタート: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)

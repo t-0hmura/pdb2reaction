@@ -1,8 +1,8 @@
-# Quickstart: `pdb2reaction scan` — single-structure scan workflow
+# Quickstart: single-structure scan workflow (`--scan-lists`)
 
 ## Goal
 
-Run the full workflow from a single structure by driving one or more bond distances via `--scan-lists`.
+Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `-s/--scan-lists`. This automatically chains: staged scan → MEP refinement → (optional) TS optimization + IRC.
 
 ## Prerequisites
 
@@ -21,10 +21,11 @@ Each literal is a list of `(atom1, atom2, target_Å)` triples. One literal = one
 
 ```bash
 # Single stage, integer atom indices (1-based by default)
-pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' -o ./result_scan
+pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' -o ./result_scan
 
 # Single stage, PDB selector strings
-pdb2reaction scan -i input.pdb -q 0 -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
+pdb2reaction -i input.pdb -q 0 \
+ -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
 ```
 
 ### PDB selectors
@@ -45,7 +46,7 @@ Pass multiple literals — each becomes one sequential stage:
 ```bash
 # Stage 1: drive one bond to 1.35 Å
 # Stage 2: drive two bonds simultaneously
-pdb2reaction scan -i input.pdb -q 0 -s \
+pdb2reaction -i input.pdb -q 0 -s \
   '[("TYR,285,CA","SAM,309,C10",1.35)]' \
   '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
   -o ./result_scan
@@ -83,26 +84,27 @@ stages:
  - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
 ```
 
-### 2. Run scan
+### 2. Run
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
+pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 ```
 
 ---
 
 ## What to check
 
-- `result_scan/stage_01/result.pdb`
-- `result_scan/stage_02/result.pdb` (if multiple stages)
-- Concatenated scan trajectories (`scan_trj.xyz`, `scan.pdb`) are always written
+- `result_scan/summary.log`
+- `result_scan/path_search/mep.pdb` (MEP after refinement)
+- `result_scan/scan/stage_01/result.pdb` (per-stage scan results)
 
 ## Notes
 
 - `-s/--scan-lists` accepts either a YAML/JSON file path or inline Python literals (not both at once).
-- Use `pdb2reaction scan --help-advanced` to inspect all scan controls.
-- For full input-format details, see [scan](scan.md).
+- Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.
+- For the standalone `scan` subcommand (without MEP refinement), see [scan](scan.md).
 
 ## Next step
 
-- Feed scan results to path refinement with [all](all.md) or [path-search](path-search.md).
+- Full option reference: [all](all.md)
+- TS optimization and validation: [Quickstart: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
