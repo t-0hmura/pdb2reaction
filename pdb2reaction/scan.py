@@ -608,6 +608,7 @@ def cli(
                     if endopt:
                         geom.set_calculator(base_calc)
                         click.echo(f"[stage {k}] endopt (unbiased) ...")
+                        end_optimizer = None
                         try:
                             end_optimizer = make_sopt_optimizer(
                                 geom,
@@ -626,7 +627,7 @@ def cli(
                             click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.")
                         except OptimizationError as e:
                             click.echo(f"[stage {k}] endopt OptimizationError — {e}")
-                        srec["converged"] = getattr(end_optimizer, 'is_converged', None) if 'end_optimizer' in dir() else None
+                        srec["converged"] = getattr(end_optimizer, 'is_converged', None) if end_optimizer is not None else None
 
                     # No scan steps: empty energy trajectory
                     srec["energies_hartree"] = []
@@ -712,6 +713,7 @@ def cli(
                 if endopt:
                     geom.set_calculator(base_calc)
                     click.echo(f"[stage {k}] endopt (unbiased) ...")
+                    end_optimizer = None
                     try:
                         end_optimizer = make_sopt_optimizer(
                             geom,
@@ -732,7 +734,7 @@ def cli(
                         click.echo(f"[stage {k}] endopt OptimizationError — {e}")
 
                 # Record convergence of the last optimizer (endopt if used, else last scan step)
-                _last_opt = end_optimizer if (endopt and 'end_optimizer' in dir()) else optimizer
+                _last_opt = end_optimizer if (endopt and end_optimizer is not None) else optimizer
                 srec["converged"] = getattr(_last_opt, 'is_converged', None)
 
                 # Store per-step energies in stage record

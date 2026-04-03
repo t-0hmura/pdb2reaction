@@ -209,7 +209,7 @@ def _mode_direction_by_root(H: torch.Tensor,
 
         # Convert mass-weighted → Cartesian & normalize
         masses_amu_t = (masses_au_t / AMU2AU).to(dtype=Hmw_proj.dtype, device=Hmw_proj.device)
-        m3 = torch.repeat_interleave(masses_amu_t, 3)
+        m3 = torch.repeat_interleave(masses_amu_t, 3).clamp(min=1e-10)
         inv_sqrt_m = torch.sqrt(1.0 / m3)
         v = inv_sqrt_m * u_mw
         v = v / torch.linalg.norm(v)
@@ -415,7 +415,7 @@ def _mw_tr_project_active_inplace(H: torch.Tensor,
     with torch.no_grad():
         # mass-weight
         masses_amu_t = (masses_act_au_t / AMU2AU).to(dtype=H.dtype, device=H.device)
-        m3 = torch.repeat_interleave(masses_amu_t, 3)
+        m3 = torch.repeat_interleave(masses_amu_t, 3).clamp(min=1e-10)
         inv_sqrt_m_col = torch.sqrt(1.0 / m3).view(1, -1)
         inv_sqrt_m_row = inv_sqrt_m_col.view(-1, 1)
         H.mul_(inv_sqrt_m_row)
@@ -1784,8 +1784,8 @@ def cli(
                         "model": calc_cfg.get("model"),
                         "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
                         "solvent": calc_cfg.get("solvent", "none"),
-                        "thresh": opt_cfg.get("thresh") if 'opt_cfg' in dir() else simple_cfg.get("thresh"),
-                        "max_cycles": opt_cfg.get("max_cycles") if 'opt_cfg' in dir() else simple_cfg.get("max_cycles"),
+                        "thresh": opt_cfg.get("thresh", simple_cfg.get("thresh")),
+                        "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
                         "input_file": str(input_path),
                         "files": {"final_geometry_xyz": "final_geometry.xyz"},
                     }
@@ -1983,8 +1983,8 @@ def cli(
                         "model": calc_cfg.get("model"),
                         "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
                         "solvent": calc_cfg.get("solvent", "none"),
-                        "thresh": opt_cfg.get("thresh") if 'opt_cfg' in dir() else simple_cfg.get("thresh"),
-                        "max_cycles": opt_cfg.get("max_cycles") if 'opt_cfg' in dir() else simple_cfg.get("max_cycles"),
+                        "thresh": opt_cfg.get("thresh", simple_cfg.get("thresh")),
+                        "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
                         "input_file": str(input_path),
                         "files": {"final_geometry_xyz": str(final_xyz_path.name)},
                     }

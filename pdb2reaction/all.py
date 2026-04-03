@@ -2608,6 +2608,7 @@ def cli(
     _set_yaml_freeze_atoms(yaml_cfg)
 
     skip_extract = center_spec is None or str(center_spec).strip() == ""
+    first_input = input_paths[0].resolve() if input_paths else None
 
     out_dir = out_dir.resolve()
     models_dir = out_dir / "models"
@@ -3069,7 +3070,7 @@ def cli(
                 energy_diagrams.append(diag_payload)
 
         # ── Release GPU memory before freq/thermo/DFT ──
-        for _g in (gL, gR, gT, g_react_irc, g_prod_irc, g_react_opt, g_prod_opt):
+        for _g in [locals().get(n) for n in ("gL", "gR", "gT", "g_react_irc", "g_prod_irc", "g_react_opt", "g_prod_opt")]:
             if _g is not None and hasattr(_g, "calculator"):
                 _g.calculator = None
         gc.collect()
