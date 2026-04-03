@@ -2555,7 +2555,7 @@ def write_result_json(
         data["elapsed_seconds"] = round(elapsed_seconds, 3)
     data.setdefault("environment", _collect_environment_info())
 
-    # Convert Path objects to strings
+    # Convert non-serializable objects for json.dump
     def _to_json(obj):
         if isinstance(obj, Path):
             return str(obj)
@@ -2563,6 +2563,22 @@ def write_result_json(
             return {k: _to_json(v) for k, v in obj.items()}
         if isinstance(obj, (list, tuple)):
             return [_to_json(i) for i in obj]
+        # numpy scalar / array
+        try:
+            import numpy as _np
+            if isinstance(obj, _np.generic):
+                return obj.item()
+            if isinstance(obj, _np.ndarray):
+                return obj.tolist()
+        except ImportError:
+            pass
+        # torch tensor
+        try:
+            import torch as _th
+            if isinstance(obj, _th.Tensor):
+                return obj.detach().cpu().tolist()
+        except ImportError:
+            pass
         return obj
 
     data = _to_json(data)

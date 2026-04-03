@@ -706,7 +706,7 @@ def cli(
                     "converged": converged,
                     "charge": resolved_charge,
                     "spin": multiplicity,
-                    "n_atoms": mol.natm if 'mol' in dir() else None,
+                    "n_atoms": mol.natm,
                     "grid_level": dft_cfg.get("grid_level"),
                     "conv_tol": dft_cfg.get("conv_tol"),
                     "max_cycle": dft_cfg.get("max_cycle"),
