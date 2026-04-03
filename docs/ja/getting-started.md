@@ -367,6 +367,6 @@ pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
 ```
 
-`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。UMA バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
+`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。MLIP バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
 
 問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。

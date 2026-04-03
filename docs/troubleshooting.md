@@ -200,6 +200,8 @@ Fixes to try:
 
 ## Choosing a backend
 
+Benchmark: LBFGS geometry optimization, 29-177 atom cluster models, NVIDIA RTX 5080 (16 GB VRAM).
+
 | Backend | Accuracy | Speed (median s/step) | VRAM usage | Notes |
 |---------|----------|----------------------|------------|-------|
 | **UMA-s1p1** | Good | 0.03 s | ~2 GB | Default. Fast, good for exploration |
