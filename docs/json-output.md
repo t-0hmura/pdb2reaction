@@ -37,6 +37,12 @@ Every `result.json` automatically includes:
 | `n_cpus` | int | `32` |
 | `ram_gb` | float | `133.7` |
 
+## Error handling
+
+If a job fails (e.g., crash, OOM, convergence failure leading to `sys.exit`), **no `result.json` is written**. The absence of `result.json` indicates failure. Check the `.out` log file for error details.
+
+For jobs that complete but did not converge, `result.json` is written with `"status": "not_converged"` and the final force/step values, allowing an AI agent to decide whether to retry with more cycles.
+
 ## Subcommand schemas
 
 ### `opt`
@@ -61,7 +67,7 @@ Every `result.json` automatically includes:
 | `final_rms_force` | float | Last RMS gradient |
 | `final_max_step` | float | Last max displacement (Bohr) |
 | `final_rms_step` | float | Last RMS displacement |
-| `convergence_thresholds` | object | Numeric thresholds for the named preset |
+| `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}` (Hartree/Bohr) |
 | `files` | object | Output file map |
 
 ### `tsopt`
@@ -71,7 +77,7 @@ All fields from `opt`, plus:
 | Field | Type | Description |
 |-------|------|-------------|
 | `n_imaginary_modes` | int | Number of imaginary frequencies |
-| `imaginary_frequencies_cm` | float[] | Imaginary frequencies (cm$^{-1}$, negative) |
+| `imaginary_frequencies_cm` | float[] | Imaginary frequencies (cm⁻¹, negative) |
 | `opt_mode` | string | `"rsirfo"` or `"dimer"` |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
@@ -84,7 +90,7 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `status` | string | `"completed"` |
 | `n_modes` | int | Total normal modes |
 | `n_imaginary` | int | Imaginary frequency count |
-| `frequencies_cm` | float[] | All frequencies (cm$^{-1}$) |
+| `frequencies_cm` | float[] | All frequencies (cm⁻¹) |
 | `imaginary_frequencies_cm` | float[] | Negative frequencies only |
 | `thermochemistry` | object\|null | Thermodynamic data (see below) |
 | `backend` | string | MLIP backend |

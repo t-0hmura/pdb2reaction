@@ -154,4 +154,20 @@ huggingface-cli login
  pdb2reaction --version
  ```
 
- インストールされたバージョンが表示されます。
+ インストールされたバージョンが表示されます。GPU アクセスの確認:
+
+ ```bash
+ python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+ ```
+
+ `CUDA: False` の場合、CUDA モジュールのロードと PyTorch ビルドの CUDA バージョンを確認してください。
+
+## 動作確認済み環境
+
+| Python | PyTorch | CUDA | GPU | 状態 |
+|--------|---------|------|-----|------|
+| 3.11 | 2.6.0 | 12.6 | RTX 4090 / A100 | 確認済み |
+| 3.11 | 2.8.0 | 12.9 | RTX 5080 | 確認済み |
+| 3.12 | 2.8.0 | 12.9 | RTX 5080 | 確認済み |
+
+PyTorch は CUDA ドライバーバージョンに合わせたビルドが必要です。互換性は [PyTorch Get Started](https://pytorch.org/get-started/locally/) で確認してください。CPU のみの実行もサポートされますが、大幅に遅くなります（10-100 倍）。

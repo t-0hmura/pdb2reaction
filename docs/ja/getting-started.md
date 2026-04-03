@@ -32,6 +32,45 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 **HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
 
+### パイプライン概要
+
+`all` サブコマンドは以下のステージを自動実行します:
+
+```text
+PDB (R, P)
+  |
+  v
+[extract]  活性部位モデル抽出（クラスターモデル）
+  |
+  v
+[path-search]  MEP 探索 (GSM or DMF)
+  |         出力: mep.pdb, energy_diagram.png, summary.json
+  v
+[tsopt]  TS 最適化 (RS-I-RFO or Hessian Guided Dimer)
+  |       出力: final_geometry.xyz, vib/imag_*.pdb
+  v
+[irc]  固有反応座標
+  |     出力: finished_irc.pdb, structures/reactant.xyz, structures/product.xyz
+  v
+[freq]  振動解析 + 熱化学 (R, TS, P)
+  |      出力: frequencies_cm-1.txt, thermoanalysis.yaml
+  v
+[dft]  一点 DFT エネルギー（オプション, --dft）
+        出力: result.yaml
+```
+
+各ステージは単独のサブコマンドとしても実行できます。`all` はこれらを統合し、`summary.json` と `summary.log` を出力します。
+
+### 主要な出力ファイル
+
+| ファイル | 説明 |
+|---------|------|
+| `summary.json` | 機械可読な結果（障壁、エネルギー、結合変化、環境情報） |
+| `summary.log` | ディレクトリツリー付きテキストサマリ |
+| `seg_XX/` | 反応ステップごとの IRC 最適化 R/TS/P 構造 |
+| `mep.pdb` | PyMOL/VMD で表示可能な MEP 軌跡 |
+| `energy_diagram_*.png` | エネルギープロファイル図（電子/Gibbs 補正） |
+
 ```{important}
 - 入力 PDB ファイルには**水素原子**が含まれている必要があります。
 - 複数の PDB を提供する場合、**同じ原子が同じ順序**で含まれている必要があります（座標のみが異なる状態）。一致しない場合はエラーになります。
@@ -247,7 +286,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 - 実行した CLI コマンド
 - MEP 全体の統計（最大障壁、経路長など）
 - セグメントごとの障壁高さと主要な結合変化
-- UMA、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
+- MLIP バックエンド、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
 
 `path_search/` 配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
 

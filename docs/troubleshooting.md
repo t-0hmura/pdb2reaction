@@ -198,6 +198,37 @@ Fixes to try:
 
 ---
 
+## Choosing a backend
+
+| Backend | Accuracy | Speed (median s/step) | VRAM usage | Notes |
+|---------|----------|----------------------|------------|-------|
+| **UMA-s1p1** | Good | 0.03 s | ~2 GB | Default. Fast, good for exploration |
+| **UMA-s1p2** | Better | 0.08 s | ~4 GB | Higher accuracy, 2-3x slower |
+| **UMA-m1p1** | Better | 0.22 s | ~8 GB | Medium model, heavy VRAM |
+| **MACE** | Best | 0.37 s | ~4 GB | Highest accuracy but requires separate env (e3nn conflict) |
+| **ORB** | Variable | 0.02 s | ~2 GB | Fastest, but higher failure rate on complex reactions |
+
+**Recommendations:**
+- Start with UMA-s1p1 for rapid screening, then validate key results with MACE or UMA-s1p2.
+- For S~N~2 / methyltransfer reactions, MACE tends to outperform UMA.
+- ORB is fast but unreliable for multi-step reactions (frequent SVD failures in path optimization).
+
+## GPU memory (VRAM) requirements
+
+Approximate VRAM usage by system size:
+
+| Atoms | LBFGS opt | Hessian (analytical) | Hessian (finite diff) |
+|-------|-----------|---------------------|-----------------------|
+| 50 | ~2 GB | ~3 GB | ~2 GB |
+| 100 | ~3 GB | ~6 GB | ~3 GB |
+| 200 | ~4 GB | ~12 GB | ~4 GB |
+| 500 | ~6 GB | OOM on 16 GB | ~6 GB |
+
+If you encounter `torch.cuda.OutOfMemoryError`:
+- Use `--hessian-calc-mode FiniteDifference` (slower but lower VRAM)
+- Reduce cluster model size with a smaller `--radius`
+- Use a smaller model (`--model uma-s-1p1` instead of `uma-m-1p1`)
+
 ## How to report an issue
 
 When asking for help, include:

@@ -154,4 +154,20 @@ If you prefer to build the environment piece by piece:
  pdb2reaction --version
  ```
 
- This should display the installed version.
+ This should display the installed version. To verify GPU access:
+
+ ```bash
+ python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+ ```
+
+ If `CUDA: False`, check that the correct CUDA module is loaded and the PyTorch build matches your CUDA driver version.
+
+## Tested configurations
+
+| Python | PyTorch | CUDA | GPU | Status |
+|--------|---------|------|-----|--------|
+| 3.11 | 2.6.0 | 12.6 | RTX 4090 / A100 | Tested |
+| 3.11 | 2.8.0 | 12.9 | RTX 5080 | Tested |
+| 3.12 | 2.8.0 | 12.9 | RTX 5080 | Tested |
+
+PyTorch must be built for your CUDA driver version. Check compatibility at [PyTorch Get Started](https://pytorch.org/get-started/locally/). CPU-only execution is supported but significantly slower (10-100x).

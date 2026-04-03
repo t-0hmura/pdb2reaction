@@ -32,6 +32,45 @@ The CLI is designed to generate **multi-step enzymatic reaction mechanisms** wit
 
 On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
+### Pipeline overview
+
+The `all` subcommand runs the following stages automatically:
+
+```text
+PDB (R, P)
+  |
+  v
+[extract]  Active site model extraction (cluster model)
+  |
+  v
+[path-search]  MEP search (GSM or DMF)
+  |         Produces: mep.pdb, energy_diagram.png, summary.json
+  v
+[tsopt]  TS optimization (RS-I-RFO or Hessian Guided Dimer)
+  |       Produces: final_geometry.xyz, vib/imag_*.pdb
+  v
+[irc]  Intrinsic Reaction Coordinate
+  |     Produces: finished_irc.pdb, structures/reactant.xyz, structures/product.xyz
+  v
+[freq]  Vibrational analysis + thermochemistry (R, TS, P)
+  |      Produces: frequencies_cm-1.txt, thermoanalysis.yaml
+  v
+[dft]  Single-point DFT energy (optional, --dft)
+        Produces: result.yaml
+```
+
+Each stage can also be run as a standalone subcommand. The `all` command orchestrates them and produces a unified `summary.json` and `summary.log`.
+
+### Key output files
+
+| File | Description |
+|------|-------------|
+| `summary.json` | Machine-readable results (barriers, energies, bond changes, environment) |
+| `summary.log` | Human-readable text summary with directory tree |
+| `seg_XX/` | IRC-optimized R/TS/P structures per reaction step |
+| `mep.pdb` | Merged MEP trajectory viewable in PyMOL/VMD |
+| `energy_diagram_*.png` | Energy profile plots (electronic / Gibbs-corrected) |
+
 ```{important}
 - Input PDB files must already contain **hydrogen atoms**.
 - When you provide multiple PDBs, they must contain **the same atoms in the same order** (only coordinates may differ); otherwise an error is raised.

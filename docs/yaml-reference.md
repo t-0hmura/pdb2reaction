@@ -1,5 +1,31 @@
 # YAML Reference
 
+## Configuration precedence
+
+Settings are resolved in the following order (highest priority first):
+
+1. **CLI flags** (e.g., `-q -1`, `--thresh gau_loose`)
+2. **YAML file** (passed via `-y`/`--yaml`)
+3. **Built-in defaults** (defined in `defaults.py`)
+
+For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.
+
+## Common CLI-to-YAML mapping
+
+| CLI flag | YAML key | Section |
+|----------|----------|---------|
+| `-q` / `--charge` | `charge` | `calc` |
+| `-m` / `--multiplicity` | `spin` | `calc` |
+| `-b` / `--backend` | `backend` | `calc` |
+| `--model` | `model` | `calc` |
+| `--solvent` | `solvent` | `calc` |
+| `--device` | `device` | `calc` |
+| `--thresh` | `thresh` | `opt` |
+| `--max-cycles` | `max_cycles` | `opt` |
+| `--dump` | `dump` | `opt` |
+| `--opt-mode` | `opt_mode` | `opt` (tsopt) |
+| `--freeze-atoms` | `freeze_atoms` | `geom` |
+| `--coord-type` | `coord_type` | `geom` |
 
 ## Overview
 

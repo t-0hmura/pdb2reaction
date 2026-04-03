@@ -49,13 +49,12 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 ## Documentation
 
-- [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting_started.md) — Quick start and workflow overview
+- [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting-started.md) — Quick start and workflow overview
 - [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
-- [**Concepts & Workflow**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/concepts.md) — Key terms: models, templates, segments, and stages
-- [**CLI Command Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/reference/commands/index.md)
-- [**YAML Schema**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/reference/yaml.md)
-- [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors and fixes
-- **Full command index**: [docs/index.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/index.md)
+- [**YAML Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/yaml-reference.md) — Configuration options
+- [**JSON Output Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/json-output.md) — Machine-readable result.json schema
+- [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
+- **Full documentation**: [docs/index.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/index.md)
 
 ***This software is still under development. Please use it at your own risk.***
 
@@ -272,13 +271,23 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 ```
 
 ---
-<!-- 
+
+## Known limitations
+
+- **MACE and UMA cannot coexist** in the same environment due to an `e3nn` version conflict. Use separate conda environments.
+- **DFT single-point** (`pdb2reaction dft`) is practical up to ~500 atoms; larger systems may require fragmentation.
+- **ORB backend** has a higher failure rate on multi-step reactions (SVD failures in path optimization).
+- **CPU-only execution** is supported but 10-100x slower than GPU.
+
+---
+
 ## References
 
-[1] Wood, B. M., Dzamba, M., Fu, X., Gao, M., Shuaibi, M., Barroso-Luque, L., Abdelmaqsoud, K., Gharakhanyan, V., Kitchin, J. R., Levine, D. S., Michel, K., Sriram, A., Cohen, T., Das, A., Rizvi, A., Sahoo, S. J., Ulissi, Z. W., & Zitnick, C. L. (2025). UMA: A Family of Universal Models for Atoms. https://arxiv.org/abs/2506.23971  
-[2] Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. International Journal of Quantum Chemistry, 121(3). https://doi.org/10.1002/qua.26390
+[1] Wood, B. M., Dzamba, M., Fu, X., et al. (2025). UMA: A Family of Universal Models for Atoms. *arXiv:2506.23971*.
+[2] Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. *Int. J. Quantum Chem.*, 121(3). https://doi.org/10.1002/qua.26390
+[3] Batatia, I., Kovacs, D. P., Simm, G. N. C., Ortner, C., & Csanyi, G. (2022). MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields. *NeurIPS 2022*.
 
---- -->
+---
 
 ## License
 

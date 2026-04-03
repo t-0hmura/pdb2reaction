@@ -1,5 +1,31 @@
 # YAML 設定リファレンス
 
+## 設定の優先順位
+
+設定は以下の優先順位で解決されます（高い順）:
+
+1. **CLI フラグ**（例: `-q -1`, `--thresh gau_loose`）
+2. **YAML ファイル**（`-y`/`--yaml` で指定）
+3. **組み込みデフォルト**（`defaults.py` で定義）
+
+例: YAML で `charge: 0` を設定し、CLI で `-q -1` を渡した場合、電荷は `-1` になります。
+
+## 主要な CLI→YAML マッピング
+
+| CLI フラグ | YAML キー | セクション |
+|----------|----------|---------|
+| `-q` / `--charge` | `charge` | `calc` |
+| `-m` / `--multiplicity` | `spin` | `calc` |
+| `-b` / `--backend` | `backend` | `calc` |
+| `--model` | `model` | `calc` |
+| `--solvent` | `solvent` | `calc` |
+| `--device` | `device` | `calc` |
+| `--thresh` | `thresh` | `opt` |
+| `--max-cycles` | `max_cycles` | `opt` |
+| `--dump` | `dump` | `opt` |
+| `--opt-mode` | `opt_mode` | `opt` (tsopt) |
+| `--freeze-atoms` | `freeze_atoms` | `geom` |
+| `--coord-type` | `coord_type` | `geom` |
 
 ## 概要
 

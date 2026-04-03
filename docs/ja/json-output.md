@@ -37,6 +37,12 @@ cat result_opt/result.json | python -m json.tool
 | `n_cpus` | int | `32` |
 | `ram_gb` | float | `133.7` |
 
+## エラー処理
+
+ジョブが失敗した場合（クラッシュ、OOM、収束失敗による `sys.exit` など）、**`result.json` は生成されません**。`result.json` の不在が失敗を示します。エラーの詳細は `.out` ログファイルを確認してください。
+
+収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されます。
+
 ## サブコマンド別スキーマ
 
 ### `opt`
@@ -61,7 +67,7 @@ cat result_opt/result.json | python -m json.tool
 | `final_rms_force` | float | 最終 RMS gradient |
 | `final_max_step` | float | 最終 max 変位 (Bohr) |
 | `final_rms_step` | float | 最終 RMS 変位 |
-| `convergence_thresholds` | object | 収束閾値の数値 |
+| `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}` (Hartree/Bohr) |
 | `files` | object | 出力ファイルマップ |
 
 ### `tsopt`
@@ -71,7 +77,7 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `n_imaginary_modes` | int | 虚振動数 |
-| `imaginary_frequencies_cm` | float[] | 虚振動数 (cm$^{-1}$, 負の値) |
+| `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
@@ -84,7 +90,7 @@ cat result_opt/result.json | python -m json.tool
 | `status` | string | `"completed"` |
 | `n_modes` | int | 全基準振動数 |
 | `n_imaginary` | int | 虚振動数 |
-| `frequencies_cm` | float[] | 全振動数 (cm$^{-1}$) |
+| `frequencies_cm` | float[] | 全振動数 (cm⁻¹) |
 | `imaginary_frequencies_cm` | float[] | 負の振動数のみ |
 | `thermochemistry` | object\|null | 熱化学データ（下表参照） |
 | `backend` | string | MLIP バックエンド |
