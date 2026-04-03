@@ -92,11 +92,34 @@ pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 ---
 
-## まず確認する出力
+## 期待される出力
 
-- `result_scan/summary.log`
-- `result_scan/path_search/mep.pdb`（精密化後の MEP）
-- `result_scan/scan/stage_01/result.pdb`（ステージごとのスキャン結果）
+```text
+result_scan/
+├── summary.log
+├── summary.json
+├── scan/
+│   ├── preopt/                    # 事前最適化構造
+│   ├── stage_01/                  # スキャンステージ 1
+│   │   ├── scan_trj.xyz
+│   │   └── scan.pdb
+│   └── stage_02/                  # ステージ 2（マルチステージ時）
+└── path_search/                   # MEP 精密化
+    ├── mep.pdb
+    └── energy_diagram_uma_all.png
+```
+
+**確認ポイント:**
+
+1. `scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
+2. `path_search/mep.pdb` — 精密化後の MEP 軌跡
+3. `summary.log` — 障壁高さと結合変化
+
+**ヒント:** `--print-parsed --dry-run` でスキャン設定を事前確認:
+
+```bash
+pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run
+```
 
 ## 補足
 

@@ -14,14 +14,15 @@ Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust m
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
 # 2) Install pdb2reaction
-# 3) Install a headless Chrome for Plotly figure export
+# 3) Install headless Chrome for Plotly static image export (PNG)
+#    Downloads ~150 MB Chromium binary; requires internet access.
 
 pip install torch --index-url https://download.pytorch.org/whl/cu129
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. Either:
+Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded (requires a free HF account with read-only token; you may need to accept the UMA model license at <https://huggingface.co/facebook/UMA>). Either:
 
 ```bash
 # Hugging Face CLI

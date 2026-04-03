@@ -24,11 +24,47 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-## What to check
+## Expected output
 
-- `result_all/summary.log`
-- `result_all/summary.json`
-- `result_all/path_search/mep.pdb` (or segment outputs under `result_all/path_search/seg_*/`)
+A successful run produces a directory like:
+
+```text
+result_all/
+├── summary.log                    # Human-readable summary
+├── summary.json                   # Machine-readable results
+├── path_search/
+│   ├── mep.pdb                    # Merged MEP trajectory
+│   ├── energy_diagram_uma_all.png # Energy profile
+│   ├── summary.json               # Path-search results
+│   └── post_seg_01/               # Post-processing (if --tsopt)
+│       ├── ts/final_geometry.pdb
+│       ├── irc/finished_irc.pdb
+│       └── freq/
+└── seg_01/                        # IRC-optimized R/TS/P structures
+    ├── reactant.pdb
+    ├── ts.pdb
+    └── product.pdb
+```
+
+**What to check:**
+
+1. `summary.log` — look for `status: success` and the barrier height (kcal/mol)
+2. `seg_01/*.pdb` — open in PyMOL to verify the R/TS/P structures make chemical sense
+3. `energy_diagram_*.png` — the energy profile should show a clear barrier
+
+**Sample terminal output (successful run):**
+
+```
+[all] Elapsed for Whole Pipeline: 00:05:06.123
+```
+
+If `--tsopt` is enabled, you should also see:
+
+```
+[Imaginary modes] n=1  ([-425.9])
+```
+
+One imaginary mode with |frequency| > 100 cm⁻¹ indicates a valid TS.
 
 ## Tips
 

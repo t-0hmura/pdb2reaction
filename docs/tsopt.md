@@ -162,6 +162,16 @@ out_dir/ (default:./result_tsopt/)
 └─.dimer_mode.dat # Dimer-mode orientation seed
 ```
 
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 2 | Zero step length (step norm below minimum) |
+| 3 | Optimizer failure |
+| 130 | Keyboard interrupt |
+| 1 | Unexpected error |
+
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency detection threshold defaults to 5.0 cm⁻¹ (configurable via

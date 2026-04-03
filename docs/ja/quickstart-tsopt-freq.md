@@ -21,11 +21,23 @@ pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 [Imaginary modes] n=1  ([-593.1])
 ```
 
-## まず確認する出力
+## 期待される出力
 
-- `result_tsopt/final_geometry.pdb` — 最適化済み TS 構造
-- `result_tsopt/vib/` — 虚振動モード（変位ベクトル）のアニメーションファイル（`imag_*.xyz`, `.pdb`）
-- ターミナル出力: **n=1** かつ十分な大きさの虚振動数（|ν| >= 100 cm⁻¹）であれば良好な TS 候補です。虚振動数が複数残る場合は `--flatten` の適用を検討してください
+```text
+result_tsopt/
+├── final_geometry.xyz     # 最適化済み TS
+├── final_geometry.pdb     # PDB 形式（入力が PDB の場合）
+└── vib/
+    ├── imag_-593.10cm-1.pdb       # 虚振動モードアニメーション
+    └── imag_-593.10cm-1_trj.xyz
+```
+
+**確認ポイント:**
+
+1. ターミナル出力: **`n=1`** かつ |振動数| >= 100 cm⁻¹ で有効な一次鞍点
+2. `vib/imag_*.pdb` — PyMOL でアニメーション; 期待される結合の切断/形成に対応する振動であること
+3. `n=0`（虚振動なし）: 極小に収束。別の初期構造を試す
+4. `n>1`（複数の虚振動）: `--flatten-max-iter 3` で余分なモードの平坦化を試行
 
 ## 2.（任意）個別の振動解析
 

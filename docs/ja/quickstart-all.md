@@ -24,11 +24,46 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-## まず確認する出力
+## 期待される出力
 
-- `result_all/summary.log`
-- `result_all/summary.json`
-- `result_all/path_search/mep.pdb`（または `result_all/path_search/seg_*/`）
+成功時のディレクトリ構造:
+
+```text
+result_all/
+├── summary.log                    # テキストサマリ
+├── summary.json                   # 機械可読な結果
+├── path_search/
+│   ├── mep.pdb                    # MEP 軌跡
+│   ├── energy_diagram_uma_all.png # エネルギープロファイル
+│   └── post_seg_01/               # 後処理（--tsopt 時）
+│       ├── ts/final_geometry.pdb
+│       ├── irc/finished_irc.pdb
+│       └── freq/
+└── seg_01/                        # IRC 最適化 R/TS/P 構造
+    ├── reactant.pdb
+    ├── ts.pdb
+    └── product.pdb
+```
+
+**確認ポイント:**
+
+1. `summary.log` — `status: success` と障壁高さ (kcal/mol)
+2. `seg_01/*.pdb` — PyMOL で R/TS/P 構造を確認
+3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
+
+**成功時のターミナル出力例:**
+
+```
+[all] Elapsed for Whole Pipeline: 00:05:06.123
+```
+
+`--tsopt` が有効な場合:
+
+```
+[Imaginary modes] n=1  ([-425.9])
+```
+
+|振動数| >= 100 cm⁻¹ の虚振動 1 つが有効な TS を示します。
 
 ## 補足
 

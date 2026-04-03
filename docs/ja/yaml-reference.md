@@ -307,6 +307,12 @@ stopt:
 
 ## TS 最適化セクション
 
+TS 最適化は `--opt-mode` で**2 つのアルゴリズム**を切り替えます:
+- `--opt-mode dimer`（または `grad`）→ `hessian_dimer` セクション
+- `--opt-mode rsirfo`（または `hess`、デフォルト）→ `rsirfo` セクション
+
+共通オプティマイザ設定（`thresh`, `max_cycles`, `dump`）は上記 `opt` セクションから読み込まれます。
+
 ### `hessian_dimer`
 
 Hessian Guided Dimer TS 最適化（tsopt --opt-mode grad）。
@@ -470,6 +476,9 @@ dft:
 ---
 
 ## スキャン関連セクション
+
+スキャン座標は `-s/--scan-lists`（インラインまたは YAML ファイル）で指定します（メイン YAML 設定ではありません）。
+構文の詳細は[クイックスタート: スキャン](quickstart-scan.md)を参照してください。
 
 ### `bias`
 

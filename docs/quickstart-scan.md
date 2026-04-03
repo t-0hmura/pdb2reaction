@@ -92,11 +92,34 @@ pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 ---
 
-## What to check
+## Expected output
 
-- `result_scan/summary.log`
-- `result_scan/path_search/mep.pdb` (MEP after refinement)
-- `result_scan/scan/stage_01/result.pdb` (per-stage scan results)
+```text
+result_scan/
+├── summary.log
+├── summary.json
+├── scan/
+│   ├── preopt/                    # Pre-optimized structure
+│   ├── stage_01/                  # Scan stage 1 results
+│   │   ├── scan_trj.xyz          # Scan trajectory
+│   │   └── scan.pdb
+│   └── stage_02/                  # Scan stage 2 (if multi-stage)
+└── path_search/                   # MEP refinement
+    ├── mep.pdb
+    └── energy_diagram_uma_all.png
+```
+
+**What to check:**
+
+1. `scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
+2. `path_search/mep.pdb` — the refined MEP trajectory
+3. `summary.log` — barrier heights and bond change summary
+
+**Tip:** Use `--print-parsed` to verify scan targets before a full run:
+
+```bash
+pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run
+```
 
 ## Notes
 

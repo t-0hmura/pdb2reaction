@@ -113,6 +113,14 @@ out_dir/ (default:./result_irc/)
 ```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 130 | Keyboard interrupt |
+| 1 | Unexpected error |
+
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 

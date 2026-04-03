@@ -14,14 +14,15 @@
 ```bash
 # 1) CUDA 対応の PyTorchビルドをインストール
 # 2) pdb2reactionをインストール
-# 3) Plotly図表エクスポート用のヘッドレスChromeをインストール
+# 3) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
+#    ~150 MB の Chromium バイナリをダウンロード（インターネット接続必要）
 
 pip install torch --index-url https://download.pytorch.org/whl/cu129
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-最後に、UMAモデルをダウンロードできるように **Hugging Face Hub** にログインします:
+最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします（無料の HF アカウントと読み取り専用トークンが必要。<https://huggingface.co/facebook/UMA> でモデルライセンスの承認が必要な場合あり）:
 
 ```bash
 # Hugging Face CLI

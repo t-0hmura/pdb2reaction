@@ -307,6 +307,12 @@ stopt:
 
 ## TS Optimization Sections
 
+TS optimization uses **two mutually exclusive** algorithm sections, selected by `--opt-mode`:
+- `--opt-mode dimer` (or `grad`) → uses `hessian_dimer` section
+- `--opt-mode rsirfo` (or `hess`, default) → uses `rsirfo` section
+
+Shared optimizer settings (`thresh`, `max_cycles`, `dump`) are read from the `opt` section above.
+
 ### `hessian_dimer`
 
 Hessian Guided Dimer TS optimization settings (tsopt --opt-mode grad).
@@ -470,6 +476,9 @@ dft:
 ---
 
 ## Scan Sections
+
+Scan coordinates are specified via `-s/--scan-lists` (inline or YAML file), **not** in the main YAML config.
+See [Quickstart: scan workflow](quickstart-scan.md) for scan coordinate syntax (PDB selectors, multi-stage).
 
 ### `bias`
 

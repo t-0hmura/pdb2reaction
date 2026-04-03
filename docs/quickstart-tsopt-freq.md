@@ -21,11 +21,23 @@ pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 [Imaginary modes] n=1  ([-593.1])
 ```
 
-## What to check
+## Expected output
 
-- `result_tsopt/final_geometry.pdb` — optimized TS structure
-- `result_tsopt/vib/` — animation files for the imaginary-frequency normal mode (`imag_*.xyz`, `.pdb`)
-- Terminal output: **n=1** with a sufficiently large imaginary frequency (|ν| ≥ 100 cm⁻¹) indicates a good TS candidate. If multiple imaginary frequencies remain, consider using `--flatten`
+```text
+result_tsopt/
+├── final_geometry.xyz     # Optimized TS geometry
+├── final_geometry.pdb     # PDB format (if input was PDB)
+└── vib/
+    ├── imag_-593.10cm-1.pdb       # Imaginary mode animation
+    └── imag_-593.10cm-1_trj.xyz   # Trajectory format
+```
+
+**What to check:**
+
+1. Terminal output: **`n=1`** with |frequency| >= 100 cm⁻¹ indicates a valid first-order saddle point
+2. `vib/imag_*.pdb` — open in PyMOL and animate; the mode should correspond to the expected bond-breaking/forming
+3. If `n=0` (no imaginary mode): the optimization converged to a minimum, not a TS. Try a different initial guess
+4. If `n>1` (multiple imaginary modes): use `--flatten-max-iter 3` to attempt flattening extra modes
 
 ## 2. (Optional) Separate frequency analysis
 
