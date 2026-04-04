@@ -7,7 +7,7 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-# Multi-structure MEP (bornyl diphosphate synthase: SAM + GPP + Mg²⁺)
+# Multi-structure MEP (methyltransferase: SAM + GPP + Mg²⁺)
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 ```bash
@@ -25,7 +25,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
-> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines using bornyl diphosphate synthase (bezA).
+> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines using methyltransferase (bezA).
 
 ---
 
@@ -128,7 +128,7 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ## Quick Examples
 
-The examples below use bornyl diphosphate synthase (bezA) with substrates SAM, GPP, and Mg²⁺. Complete working scripts are in [`examples/`](examples/).
+The examples below use methyltransferase (bezA) with substrates SAM, GPP, and Mg²⁺. Complete working scripts are in [`examples/`](examples/).
 
 ### Full workflow (multi-structure MEP)
 ```bash
