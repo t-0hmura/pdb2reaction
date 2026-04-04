@@ -135,7 +135,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
  - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化してセグメントエネルギーダイアグラムを出力。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
- - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと UMA Gibbs ダイアグラムを取得
+ - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
  - ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
@@ -313,12 +313,12 @@ out_dir/ (デフォルト:./result_all/)
 | ファイル名 | 生成タイミング | 内容 |
 |---|---|---|
 | `energy_diagram_MEP.png` | path-opt/path-search 完了時 | 全セグメント MEP 障壁（生の GSM/DMF 値） |
-| `energy_diagram_UMA.png` | セグメントごとの tsopt+IRC 完了時 | R→TS→P（UMA エネルギー） |
-| `energy_diagram_G_UMA.png` | セグメントごとの thermo 完了時 | R→TS→P（UMA ギブズ自由エネルギー） |
+| `energy_diagram_UMA.png` | セグメントごとの tsopt+IRC 完了時 | R→TS→P（MLIP エネルギー） |
+| `energy_diagram_G_UMA.png` | セグメントごとの thermo 完了時 | R→TS→P（MLIP ギブズ自由エネルギー） |
 | `energy_diagram_DFT.png` | セグメントごとの DFT 完了時 | R→TS→P（DFT エネルギー） |
-| `energy_diagram_G_DFT_plus_UMA.png` | セグメントごとの DFT+thermo 完了時 | R→TS→P（DFT エネルギー + UMA 熱補正） |
-| `energy_diagram_UMA_all.png` | 全セグメント集約時 | 全セグメント統合（UMA） |
-| `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（UMA ギブズ） |
+| `energy_diagram_G_DFT_plus_UMA.png` | セグメントごとの DFT+thermo 完了時 | R→TS→P（DFT エネルギー + MLIP 熱補正） |
+| `energy_diagram_UMA_all.png` | 全セグメント集約時 | 全セグメント統合（MLIP） |
+| `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（MLIP ギブズ） |
 | `energy_diagram_DFT_all.png` | 全セグメント + DFT | 全セグメント統合（DFT） |
 | `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
 
@@ -326,8 +326,8 @@ out_dir/ (デフォルト:./result_all/)
 ログは番号付きセクションで構成されます:
 - **[1] グローバル MEP 概要** – イメージ/セグメント数、MEP 軌跡プロットのパス、MEP 全体のエネルギーダイアグラム。
 - **[2] セグメント別MEPサマリー（MLIPパス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。
-- **[3] セグメント別後処理（TSOPT / Thermo / DFT）** – TS 虚振動数チェック、IRC 出力、UMA/熱化学/DFT のエネルギーテーブル。
-- **[4] エネルギーダイアグラム（概要）** – MEP/UMA/Gibbs/DFT 系の図表と、任意の横断サマリー表。
+- **[3] セグメント別後処理（TSOPT / Thermo / DFT）** – TS 虚振動数チェック、IRC 出力、MLIP/熱化学/DFT のエネルギーテーブル。
+- **[4] エネルギーダイアグラム（概要）** – MEP/MLIP/Gibbs/DFT 系の図表と、任意の横断サマリー表。
 - **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
 
 ### `summary.json` の読み方
