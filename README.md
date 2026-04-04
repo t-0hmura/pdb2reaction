@@ -7,7 +7,7 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-# bezA: methyl transfer (SAM→GPP) + proton abstraction (Glu) — two-step mechanism
+# bezA (GPP C6-methyltransferase): methyl transfer (SAM→GPP C6) + proton abstraction (E170)
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 ```bash
@@ -25,7 +25,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
-> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines. The example system is geranyl pyrophosphate methyltransferase bezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: methyl transfer from SAM to GPP followed by proton abstraction by a glutamate residue.
+> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP).
 
 ---
 
@@ -128,7 +128,7 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ## Quick Examples
 
-The examples below use geranyl pyrophosphate methyltransferase bezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step enzymatic reaction (methyl transfer from SAM to GPP, then proton abstraction by Glu). Complete working scripts are in [`examples/`](examples/).
+The examples below use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step mechanism: electrophilic methyl transfer from SAM to GPP C6 (via C7 carbocation), then proton abstraction by E170. Complete working scripts are in [`examples/`](examples/).
 
 ### Full workflow (multi-structure MEP)
 ```bash
