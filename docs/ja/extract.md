@@ -25,6 +25,7 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--exclude-backbone/--no-exclude-backbone]
  [--add-linkh/--no-add-linkh]
  [--selected-resn LIST]
+ [--modified-residue LIST]
  [-l, --ligand-charge MAP_OR_NUMBER]
  [--verbose/--no-verbose]
 ```
@@ -109,6 +110,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基（オプションのチェーン/挿入コード付きID） | `""` |
+| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。電荷省略時は 0。 | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `-v, --verbose/--no-verbose` | INFOレベルログを出力（`True`）または警告のみ（`False`） | `True` |
 
@@ -138,8 +140,22 @@ Backbone truncation was not applied.
 Consider preparing the active site model manually.
 ```
 
+### `--modified-residue` オプション
+
+`--modified-residue` を使用すると、非標準の残基名をアミノ酸として登録でき、主鎖切断と電荷割り当てが自動的に適用されます。修飾アミノ酸残基で非標準の3文字コードを持つもの（リン酸化セリン、メチル化残基、特殊な名前の D-アミノ酸、MCPB でリネームされた金属配位残基など）に有用です。
+
+```bash
+# HD1, HD2, HD3 をアミノ酸として扱う（電荷はデフォルトで 0）
+pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
+  --modified-residue 'HD1,HD2,HD3'
+
+# 各修飾残基に明示的な電荷を指定
+pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
+  --modified-residue 'HD1:0,SEP:-2'
+```
+
 ```{important}
-非標準残基を含む系では、**活性部位モデルを手動で構築する**ことを推奨します。
+`--modified-residue` で対応できない場合は、**活性部位モデルを手動で構築する**ことを推奨します。
 手動構築の手順:
 
 1. 活性部位周辺の残基を選定し、切断箇所を決定する

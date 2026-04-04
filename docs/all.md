@@ -191,6 +191,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
 | `--add-linkH/--no-add-linkH` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
+| `--modified-residue TEXT` | Comma-separated residue names (with optional charge) to treat as amino acids for backbone truncation and charge assignment (e.g., `HD1,HD2,HD3` or `HD1:0,SEP:-2`). | `""` |
 | `--freeze-links/--no-freeze-links` | Freeze link parents in active site model PDBs. | `True` |
 | `--verbose/--no-verbose` | Enable INFO-level extractor logging. | `True` |
 

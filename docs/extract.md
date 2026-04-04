@@ -25,6 +25,7 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--exclude-backbone/--no-exclude-backbone]
  [--add-linkh/--no-add-linkh]
  [--selected-resn LIST]
+ [--modified-residue LIST]
  [-l, --ligand-charge MAP_OR_NUMBER]
  [--verbose/--no-verbose]
 ```
@@ -107,6 +108,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `False` |
 | `--add-linkh/--no-add-linkh` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `True` |
 | `--selected-resn TEXT` | Force-include residues (IDs with optional chains/insertion codes). | `""` |
+| `--modified-residue TEXT` | Comma-separated residue names (with optional charge) to treat as amino acids for backbone truncation and charge assignment (e.g., `HD1,HD2,HD3` or `HD1:0,SEP:-2`). Charge defaults to 0 when omitted. | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | _None_ |
 | `-v, --verbose/--no-verbose` | Emit INFO-level logging (`True`) or keep warnings only (`False`). | `True` |
 
@@ -135,8 +137,22 @@ Backbone truncation was not applied.
 Consider preparing the active site model manually.
 ```
 
+### `--modified-residue` option
+
+Use `--modified-residue` to register non-standard residue names as amino acids so that backbone truncation and charge assignment are applied automatically. This is useful for modified amino acid residues that have non-standard three-letter codes (e.g., phosphoserine, methylated residues, D-amino acids with unusual names, or MCPB-renamed metal-coordinating residues).
+
+```bash
+# Treat HD1, HD2, HD3 as amino acids (charge defaults to 0)
+pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
+  --modified-residue 'HD1,HD2,HD3'
+
+# Specify explicit charges for each modified residue
+pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
+  --modified-residue 'HD1:0,SEP:-2'
+```
+
 ```{important}
-For systems containing non-standard residues, **manual active site model construction is recommended**.
+If `--modified-residue` does not cover your use case, **manual active site model construction is recommended**.
 Steps:
 
 1. Select residues around the active site and determine truncation points

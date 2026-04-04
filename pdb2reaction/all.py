@@ -1918,6 +1918,17 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Force-include residues (comma/space separated; chain/insertion codes allowed).",
 )
 @click.option(
+    "--modified-residue",
+    type=str,
+    default="",
+    show_default=True,
+    help=(
+        "Comma-separated residue names (with optional charge) to treat as amino acids "
+        "for backbone truncation and charge assignment. "
+        "Examples: 'HD1,HD2,HD3' or 'HD1:0,SEP:-2'."
+    ),
+)
+@click.option(
     "-l",
     "--ligand-charge",
     type=str,
@@ -2349,6 +2360,7 @@ def cli(
     exclude_backbone: bool,
     add_linkh: bool,
     selected_resn: str,
+    modified_residue: str,
     ligand_charge: Optional[str],
     charge_override: Optional[int],
     workers: int,
@@ -2710,6 +2722,7 @@ def cli(
                 exclude_backbone=bool(exclude_backbone),
                 add_linkh=bool(add_linkh),
                 selected_resn=selected_resn or "",
+                modified_residue=modified_residue or "",
                 ligand_charge=ligand_charge,
                 verbose=bool(verbose),
             )
