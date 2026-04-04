@@ -43,7 +43,7 @@ PDB (R, P)
 [extract]  活性部位モデル抽出（クラスターモデル）
   |
   v
-[path-search]  MEP 探索 (GSM or DMF)
+[path-opt]  MEP 探索 (GSM); `--refine-path` で再帰的 path-search に切替
   |         出力: mep.pdb, energy_diagram.png, summary.json
   v
 [tsopt]  TS 最適化 (RS-I-RFO or Hessian Guided Dimer)
