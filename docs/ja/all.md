@@ -51,7 +51,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
 
 - **TSOPT のみ（活性部位モデル TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合は活性部位モデルを抽出し、その系で TS 最適化（内部で虚振動数チェック済み）+ IRC（必要に応じて freq / DFT）のみ実行します。
 
-> **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに bezA（メチル基転移酵素）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
+> **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに bezA（ゲラニルピロリン酸メチル基転移酵素; [Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
 
 ## 最小例
 
