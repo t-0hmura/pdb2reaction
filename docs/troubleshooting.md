@@ -69,6 +69,18 @@ Fixes to try:
 
 ---
 
+### Non-standard residues not truncated correctly
+
+If the extracted active site model contains modified amino acid residues (e.g., phosphoserine, methylated lysine, D-amino acids) with non-standard three-letter codes, backbone truncation and link-hydrogen placement will not be applied to them by default. Use `--modified-residue` to register them:
+
+```bash
+pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o pocket.pdb
+```
+
+If `--modified-residue` is insufficient (e.g., the residue has an unusual backbone topology), construct the active site model manually and pass it directly to downstream commands (`opt`, `tsopt`, `path-opt`, etc.).
+
+---
+
 ## Charge / spin problems
 
 ### “Charge is required …” (non-GJF inputs)

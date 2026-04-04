@@ -69,6 +69,18 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 
 ---
 
+### 非標準残基が正しく切断されない
+
+抽出された活性部位モデルに非標準の3文字コードを持つ修飾アミノ酸残基（リン酸化セリン、メチル化リシンなど）が含まれている場合、デフォルトでは主鎖切断やリンク水素付加が適用されません。`--modified-residue` で登録してください:
+
+```bash
+pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o pocket.pdb
+```
+
+`--modified-residue` で対応できない場合（残基の主鎖トポロジーが特殊な場合など）は、活性部位モデルを手動で構築し、下流のコマンド（`opt`、`tsopt`、`path-opt` など）に直接渡してください。
+
+---
+
 ## 電荷 / スピンの問題
 
 ### 「電荷が必須」系のエラー（非 GJF 入力）
