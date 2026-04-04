@@ -245,6 +245,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).
+- If the extracted active site model is too small, calculated energies and barriers may be unreliable. In such cases, increasing the extraction radius (e.g., `-r 4.0` or higher) can improve accuracy by including more of the protein environment.
 - Waters can be excluded with `--no-include-h2o`.
 - Backbone trimming plus capping respect chain breaks and PRO/HYP safeguards as outlined above; non-amino residues never lose backbone-like atom names.
 - Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
