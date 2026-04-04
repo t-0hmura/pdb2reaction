@@ -7,7 +7,7 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-# Multi-structure MEP (geranyl pyrophosphate methyltransferase bezA: SAM + GPP + Mg²⁺)
+# bezA: methyl transfer (SAM→GPP) + proton abstraction (Glu) — two-step mechanism
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 ```bash
@@ -25,7 +25,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
-> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines using geranyl pyrophosphate methyltransferase bezA [4].
+> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines. The example system is geranyl pyrophosphate methyltransferase bezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: methyl transfer from SAM to GPP followed by proton abstraction by a glutamate residue.
 
 ---
 
@@ -128,7 +128,7 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ## Quick Examples
 
-The examples below use geranyl pyrophosphate methyltransferase bezA [4] with substrates SAM, GPP, and Mg²⁺. Complete working scripts are in [`examples/`](examples/).
+The examples below use geranyl pyrophosphate methyltransferase bezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step enzymatic reaction (methyl transfer from SAM to GPP, then proton abstraction by Glu). Complete working scripts are in [`examples/`](examples/).
 
 ### Full workflow (multi-structure MEP)
 ```bash
@@ -288,15 +288,6 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 - **DFT single-point** (`pdb2reaction dft`) is practical up to ~500 atoms; larger systems may require fragmentation.
 - **ORB backend** has a higher failure rate on multi-step reactions (SVD failures in path optimization).
 - **CPU-only execution** is supported but 10-100x slower than GPU.
-
----
-
-## References
-
-[1] Wood, B. M., Dzamba, M., Fu, X., et al. (2025). UMA: A Family of Universal Models for Atoms. *arXiv:2506.23971*.
-[2] Steinmetzer, J., Kupfer, S., & Gräfe, S. (2021). pysisyphus: Exploring potential energy surfaces in ground and excited states. *Int. J. Quantum Chem.*, 121(3). https://doi.org/10.1002/qua.26390
-[3] Batatia, I., Kovacs, D. P., Simm, G. N. C., Ortner, C., & Csanyi, G. (2022). MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields. *NeurIPS 2022*.
-[4] Tsutsumi, T., Yamamoto, M., Shoji, M., & Shigeta, Y. (2022). Structural and Molecular Basis of the Catalytic Mechanism of Geranyl Pyrophosphate Methyltransferase. *Angew. Chem. Int. Ed.*, 61, e202111217. https://doi.org/10.1002/anie.202111217
 
 ---
 
