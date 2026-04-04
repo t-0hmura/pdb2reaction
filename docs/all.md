@@ -49,6 +49,8 @@ For large active site models, the single-structure scan workflow (`--scan-lists`
 
 - **TSOPT-only active site model TS optimization** — Provide a single input structure, omit `--scan-lists`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
+> **Working examples:** The [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory contains complete `all` workflow scripts for bezA (bornyl diphosphate synthase), covering both multi-structure MEP and scan-based pipelines.
+
 ## Minimal example
 
 ```bash

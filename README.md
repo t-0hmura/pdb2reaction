@@ -7,20 +7,25 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+# Multi-structure MEP (bornyl diphosphate synthase: SAM + GPP + Mg²⁺)
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
-    --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
+# Scan mode (single structure → staged bond scans → MEP)
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
+                 '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 ---
 
 The full workflow — **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** — can be run in one command:
 
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
+
+> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines using bornyl diphosphate synthase (bezA).
 
 ---
 
@@ -51,6 +56,7 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 - [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting-started.md) — Quick start and workflow overview
 - [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
+- [**Examples**](examples/) — Working `all` workflow scripts (MEP and scan pipelines) for bezA
 - [**YAML Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/yaml-reference.md) — Configuration options
 - [**JSON Output Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/json-output.md) — Machine-readable result.json schema
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
@@ -122,21 +128,25 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ## Quick Examples
 
-### Full workflow (multi-structure)
+The examples below use bornyl diphosphate synthase (bezA) with substrates SAM, GPP, and Mg²⁺. Complete working scripts are in [`examples/`](examples/).
+
+### Full workflow (multi-structure MEP)
 ```bash
-pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft
+pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --out-dir result_mep
 ```
 
-### Scan mode (single structure)
+### Scan mode (single structure → staged bond scans → MEP)
 ```bash
-pdb2reaction -i R.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
-    --scan-lists '[("TYR,285,CA","SAM,309,C10",2.20)]'
+pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
+                 '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+    --tsopt --thermo --out-dir result_scan
 ```
 
 ### TS optimization only
 ```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt
 ```
 
@@ -144,7 +154,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 **1. Extract active-site model (cluster model)** — [`extract`](docs/extract.md)
 ```bash
-pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 6.0
+pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -r 6.0
 ```
 
 **2. Optimize geometry** — [`opt`](docs/opt.md)
@@ -152,9 +162,9 @@ pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 6.0
 pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3'
 ```
 
-**3. MEP search** — [`path-search`](docs/path_search.md)
+**3. MEP search** — [`path-opt`](docs/path_opt.md)
 ```bash
-pdb2reaction path-search -i R.pdb P.pdb -l 'SAM:1,GPP:-3'
+pdb2reaction path-opt -i R_model.pdb P_model.pdb -l 'SAM:1,GPP:-3'
 ```
 
 **4. TS optimization** — [`tsopt`](docs/tsopt.md)
