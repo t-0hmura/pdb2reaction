@@ -45,6 +45,7 @@ from . import path_opt as _path_opt
 from . import tsopt as _tsopt
 from . import freq as _freq_cli
 from . import dft as _dft_cli
+from .align_freeze_atoms import align_and_refine_sequence_inplace
 from .backends import create_calculator
 from .defaults import GEOM_KW_DEFAULT, OUT_DIR_ALL, UMA_CALC_KW as _UMA_CALC_KW
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
@@ -74,6 +75,7 @@ from .utils import (
     ensure_dir,
     parse_scan_list_triples,
     close_matplotlib_figures,
+    convert_xyz_to_pdb,
     _derive_charge_from_ligand_charge,
     write_xyz_trj_with_energy,
     read_xyz_as_blocks,
@@ -3725,6 +3727,42 @@ def cli(
             models_for_path = [p.resolve() for p in inputs_for_extract]
         else:
             models_for_path = list(model_outputs)
+
+    # --- Global pre-alignment for coordinate continuity across segments ---
+    if not refine_path and len(models_for_path) >= 2:
+        _fa = _freeze_atoms_for_log()
+        if _fa:
+            try:
+                _echo("[all] Pre-aligning all input structures to first frame...")
+                _align_dir = path_dir / "pre_align"
+                ensure_dir(_align_dir)
+                _geoms = [geom_loader(str(p), coord_type=DEFAULT_COORD_TYPE) for p in models_for_path]
+                for _g in _geoms:
+                    _g.freeze_atoms = np.array(_fa, dtype=int)
+                _align_calc = create_calculator(**calc_cfg_shared)
+                align_and_refine_sequence_inplace(
+                    _geoms, shared_calc=_align_calc,
+                    out_dir=_align_dir / "refine", verbose=True,
+                )
+                del _align_calc
+                _new_models: List[Path] = []
+                for _i, (_g, _orig) in enumerate(zip(_geoms, models_for_path)):
+                    _xyz = _align_dir / f"{_i:03d}.xyz"
+                    _xyz.write_text(_g.as_xyz() + "\n")
+                    if _orig.suffix.lower() == ".pdb":
+                        _pdb = _align_dir / f"{_i:03d}.pdb"
+                        convert_xyz_to_pdb(_xyz, _orig, _pdb)
+                        _new_models.append(_pdb)
+                    else:
+                        _new_models.append(_xyz)
+                models_for_path = _new_models
+                _echo("[all] Pre-alignment completed.")
+            except Exception as e:
+                _echo(
+                    f"[all] WARNING: Pre-alignment failed: {e}. "
+                    "Continuing with original files.",
+                    err=True,
+                )
 
     # Determine availability of full-system templates for downstream merge/copies
     def _is_pdb(path: Path) -> bool:
