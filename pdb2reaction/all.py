@@ -1767,6 +1767,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--scan-lists",
         "-b",
         "--backend",
+        "--refine-path",
         "-o",
         "--help-advanced",
     }
