@@ -4,7 +4,7 @@
 
 `pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。典型的なフローは次のとおりです。
 
-活性部位モデル（バインディングポケット）抽出 →（任意）段階的スキャン → 再帰的 MEP 探索（`path-search`, GSM/DMF）→（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）
+活性部位モデル（バインディングポケット）抽出 →（任意）段階的スキャン → MEP 探索（`path-opt`, GSM/DMF）→（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）。`--refine-path` を追加すると再帰的 `path-search` に切り替わります。
 
 MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
 
@@ -27,7 +27,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
  │ │ ↓
  │ │ 順序付けられた中間体
  │ │ ↓
- │ └─ MEP 探索 [`path-search`](path-search.md) または [`path-opt`](path-opt.md)
+ │ └─ MEP 探索 [`path-opt`](path-opt.md) または [`path-search`](path-search.md)
  │ ↓
  │ MEP 経路 (mep_trj.xyz) + エネルギーダイアグラム
  │ ↓
@@ -62,7 +62,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 
 - `result_all/summary.log`
 - `result_all/summary.json`
-- `result_all/path_search/mep.pdb`（または `result_all/path_search/seg_*/`）
+- `result_all/path_opt/mep.pdb`（`--refine-path` 使用時は `result_all/path_search/`）
 
 ## よくある例
 
@@ -125,9 +125,9 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
-3. **活性部位モデルでの MEP 探索（再帰的 GSM/DMF）**
- - 抽出された活性部位モデル（または抽出をスキップした場合は元の全構造）で `path-search` を実行（出力は `<out-dir>/path_search/`）
- - `--refine-path False` を指定すると、再帰的精密化なしのシングルパス `path-opt` GSM/DMF チェーンに切り替わる
+3. **活性部位モデルでの MEP 探索（GSM/DMF）**
+ - デフォルトでは、抽出された活性部位モデル（または抽出をスキップした場合は元の全構造）で `path-opt` GSM/DMF を実行（出力は `<out-dir>/path_opt/`）
+ - `--refine-path` を指定すると、再帰的 `path-search` に切り替わり、多段階反応を自動検出して各素反応の詳細な MEP を構築します（出力は `<out-dir>/path_search/`）。複雑な多段階反応では手動での試行錯誤が必要な場合があります。
  - 複数入力 PDB の場合、全系テンプレートが参照マージ用に `path-search` に自動的に渡されます。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
 
 4. **活性部位モデルを全系にマージ**
@@ -210,7 +210,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP前に活性部位モデル端点を事前最適化 | `True` |
-| `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
+| `--refine-path/--no-refine-path` | True の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `False` |
 
 ### MLIP 計算機オプション
 
@@ -294,7 +294,7 @@ out_dir/ (デフォルト:./result_all/)
 │  ├─ reactant.{pdb,xyz,gjf}   #   出力形式は入力形式と一致
 │  ├─ ts.{pdb,xyz,gjf}
 │  └─ product.{pdb,xyz,gjf}
-├─ path_search/                 # MEP 結果（GSM/DMF）: 軌跡、マージ PDB、ダイアグラム
+├─ path_opt/                    # MEP 結果（GSM/DMF、デフォルト）; --refine-path 時は path_search/
 │  └─ post_seg_XX/              # 後処理: TS 最適化、IRC、freq、DFT
 │     ├─ structures/            # IRC 端点の最適化済み R/TS/P 構造
 │     ├─ irc/                   # IRC 軌道とプロット

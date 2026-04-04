@@ -104,7 +104,7 @@ result_scan/
 │   │   ├── scan_trj.xyz
 │   │   └── scan.pdb
 │   └── stage_02/                  # ステージ 2（マルチステージ時）
-└── path_search/                   # MEP 精密化
+└── path_opt/                      # MEP 探索（デフォルト）; --refine-path 時は path_search/
     ├── mep.pdb
     └── energy_diagram_uma_all.png
 ```
@@ -112,7 +112,7 @@ result_scan/
 **確認ポイント:**
 
 1. `scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
-2. `path_search/mep.pdb` — 精密化後の MEP 軌跡
+2. `path_opt/mep.pdb` — 最適化後の MEP 軌跡
 3. `summary.log` — 障壁高さと結合変化
 
 **ヒント:** `--print-parsed --dry-run` でスキャン設定を事前確認:

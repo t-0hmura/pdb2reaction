@@ -254,13 +254,13 @@ result_all/
 ├── summary.json # JSON summary
 ├── models/ # Extracted cluster models
 ├── scan/ # (Optional) scan results
-├─┬ path_search/ # MEP trajectories and diagrams
+├─┬ path_opt/ # MEP trajectories and diagrams (default)
 │ ├── mep_trj.xyz # MEP trajectory
 │ ├── mep.pdb # MEP in PDB format
-│ ├── mep_w_ref.pdb # MEP merged with full system
 │ ├── mep_plot.png # Energy profile plot
 │ └── seg_*/ # Per-segment details
-└┬── path_search/post_seg_*/ # Post-processing outputs
+│ # (with --refine-path: path_search/ instead, includes mep_w_ref.pdb)
+└┬── path_opt/post_seg_*/ # Post-processing outputs
  ├── tsopt/ # TS optimization results
  ├── irc/ # IRC trajectories
  ├── freq/ # Vibrational analysis

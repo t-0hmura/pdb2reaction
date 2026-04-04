@@ -32,10 +32,10 @@ A successful run produces a directory like:
 result_all/
 ├── summary.log                    # Human-readable summary
 ├── summary.json                   # Machine-readable results
-├── path_search/
+├── path_opt/
 │   ├── mep.pdb                    # Merged MEP trajectory
 │   ├── energy_diagram_uma_all.png # Energy profile
-│   ├── summary.json               # Path-search results
+│   ├── summary.json               # Path-opt results
 │   └── post_seg_01/               # Post-processing (if --tsopt)
 │       ├── ts/final_geometry.pdb
 │       ├── irc/finished_irc.pdb

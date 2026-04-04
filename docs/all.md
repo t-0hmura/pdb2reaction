@@ -4,7 +4,7 @@
 
 `pdb2reaction all` runs the entire workflow end-to-end:
 
-Active site model extraction → (optional) staged scan → recursive MEP search (`path-search`, GSM/DMF) → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). The default MLIP backend is UMA; select an alternative with `-b/--backend`.
+Active site model extraction → (optional) staged scan → MEP search (`path-opt`, GSM/DMF) → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). Add `--refine-path` to use recursive `path-search` instead. The default MLIP backend is UMA; select an alternative with `-b/--backend`.
 
 ```{important}
 The `all` workflow **without `--tsopt`** produces **TS candidates** (Highest-Energy Images from MEP search). Adding `--tsopt` refines these into optimized TS structures validated by imaginary-frequency check, followed by IRC for endpoint validation. Always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.
@@ -60,7 +60,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 
 - `result_all/summary.log`
 - `result_all/summary.json`
-- `result_all/path_search/mep.pdb` (or `result_all/path_search/seg_*/`)
+- `result_all/path_opt/mep.pdb` (or `result_all/path_search/` when `--refine-path` is used)
 
 ## Common examples
 
@@ -123,13 +123,13 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals as arguments to a single `-s/--scan-lists` (e.g. `-s '[(…)]' '[(…)]'`).
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
-3. **MEP search on active site models (recursive GSM/DMF)**
- - Runs `path-search` on the extracted active site models (or the original full structures when extraction is skipped); outputs go to `<out-dir>/path_search/`.
- - Use `--refine-path False` to switch to a single-pass `path-opt` GSM/DMF chain without the recursive refiner.
+3. **MEP search on active site models (GSM/DMF)**
+ - By default, runs `path-opt` GSM/DMF on the extracted active site models (or the original full structures when extraction is skipped); outputs go to `<out-dir>/path_opt/`.
+ - Add `--refine-path` to switch to recursive `path-search`, which automatically detects multistep reactions and builds a detailed MEP for each elementary step (outputs go to `<out-dir>/path_search/`).  Complex multistep mechanisms may require manual trial-and-error to obtain a satisfactory pathway.
  - For multi-input PDB runs, the full-system templates are automatically passed to `path-search` for reference merging. Single-structure scan runs reuse the original full PDB template for every stage.
 
-4. **Merge active site models back to the full systems**
- - When reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`.
+4. **Merge active site models back to the full systems** (only with `--refine-path`)
+ - When `--refine-path` is used and reference PDB templates exist, merged `mep_w_ref*.pdb` and per-segment `mep_w_ref_seg_XX.pdb` files are emitted under `<out-dir>/path_search/`. In the default `path-opt` mode, full-system merge is not performed.
 
 5. **Optional per-segment post-processing** (only for reactive segments — segments with bond changes; bridge segments are skipped)
  - `--tsopt`: run TS optimization on each HEI active site model, follow with EulerPC-based IRC, then re-optimize IRC endpoints with `--thresh-post` (default `baker`). The endpoint optimization working directory is automatically deleted after completion.
@@ -205,7 +205,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. | `True` |
-| `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--refine-path/--no-refine-path` | If True, run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `False` |
 
 ### MLIP Calculator Options
 
@@ -290,7 +290,7 @@ out_dir/ (default:./result_all/)
 │  ├─ reactant.{pdb,xyz,gjf}   #   Output format matches input format
 │  ├─ ts.{pdb,xyz,gjf}
 │  └─ product.{pdb,xyz,gjf}
-├─ path_search/                 # MEP results (GSM/DMF): trajectories, merged PDBs, diagrams
+├─ path_opt/                    # MEP results (GSM/DMF, default); path_search/ when --refine-path
 │  └─ post_seg_XX/              # Post-processing: TSOPT, IRC, freq, DFT per segment
 │     ├─ structures/            # Optimized R/TS/P structures (IRC endpoints)
 │     ├─ irc/                   # IRC trajectories and plots

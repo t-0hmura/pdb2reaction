@@ -216,13 +216,13 @@ result_all/
 ├── summary.json # JSON 結果
 ├── models/ # 抽出されたクラスターモデル
 ├── scan/ # （オプション）スキャン結果
-├─┬ path_search/ # MEP軌跡とダイアグラム
+├─┬ path_opt/ # MEP軌跡とダイアグラム（デフォルト）
 │ ├── mep_trj.xyz # MEP軌跡
 │ ├── mep.pdb # PDB形式のMEP
-│ ├── mep_w_ref.pdb # 全系とマージされたMEP
 │ ├── mep_plot.png # エネルギープロファイルプロット
 │ └── seg_*/ # セグメントごとの詳細
-└┬── path_search/post_seg_*/ # 後処理出力
+│ # （--refine-path 指定時: path_search/ に変更、mep_w_ref.pdb を含む）
+└┬── path_opt/post_seg_*/ # 後処理出力
  ├── tsopt/ # TS最適化結果
  ├── irc/ # IRC軌跡
  ├── freq/ # 振動モード

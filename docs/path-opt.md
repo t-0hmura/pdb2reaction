@@ -13,7 +13,7 @@
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path-search.md).
 
-> **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want a single-pass MEP without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
+> **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want MEP optimization without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
 
 An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
 
@@ -300,6 +300,6 @@ opt:
 - [path-search](path-search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
 - [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (includes imaginary-frequency check; follow with IRC)
 - [extract](extract.md) — Generate active site model (binding pocket) PDBs for path-opt inputs
-- [all](all.md) — End-to-end workflow (uses path-search by default)
+- [all](all.md) — End-to-end workflow (uses path-opt by default; add `--refine-path` for recursive path-search)
 - [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

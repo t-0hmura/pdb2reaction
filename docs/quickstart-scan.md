@@ -104,7 +104,7 @@ result_scan/
 │   │   ├── scan_trj.xyz          # Scan trajectory
 │   │   └── scan.pdb
 │   └── stage_02/                  # Scan stage 2 (if multi-stage)
-└── path_search/                   # MEP refinement
+└── path_opt/                      # MEP search (default); path_search/ with --refine-path
     ├── mep.pdb
     └── energy_diagram_uma_all.png
 ```
@@ -112,7 +112,7 @@ result_scan/
 **What to check:**
 
 1. `scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
-2. `path_search/mep.pdb` — the refined MEP trajectory
+2. `path_opt/mep.pdb` — the optimized MEP trajectory
 3. `summary.log` — barrier heights and bond change summary
 
 **Tip:** Use `--print-parsed` to verify scan targets before a full run:

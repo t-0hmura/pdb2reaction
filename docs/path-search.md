@@ -16,6 +16,8 @@
 
 When `--convert-files` is enabled (default), the command mirrors trajectories into `.pdb` companions when PDB references exist, and writes `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies an active site model (binding pocket)-level PDB topology while keeping XYZ coordinates, and `--ref-full-pdb` enables full-template merges (XYZ/GJF inputs still do not produce PDB companions).
 
+The recursive decomposition automatically detects multistep reactions and builds a detailed MEP for each elementary step.  However, complex multistep mechanisms may require manual trial-and-error—adjusting input intermediates, scan specifications, or convergence thresholds—to obtain a satisfactory pathway.
+
 If you only have **two** endpoints and do not need recursive refinement, [path-opt](path-opt.md) is the simpler option.
 
 ## Minimal example

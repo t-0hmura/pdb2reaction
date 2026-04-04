@@ -16,6 +16,8 @@
 
 `--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` が活性部位モデル（バインディングポケット） PDB トポロジーを提供し（XYZ 座標は保持）、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では PDB コンパニオンは生成されません）。
 
+再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。ただし、複雑な多段階反応の検出は困難な場合があり、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
+
 **2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
 
 ## 最小例
@@ -96,7 +98,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 | `--max-nodes INT` | MEPセグメントごとの内部ノード | `20` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
-| `--opt-mode TEXT` | HEI±1/kinkノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO） | `grad` |
+| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO） | `grad` |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）またはDMF（direct flux） | `gsm` |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小点へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |
@@ -119,7 +121,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギーイメージ（HEI）を取得。
 2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
-3. **kink vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *キンク*（kink: 共有結合変化を伴わない構造変化区間）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **反応セグメント**（共有結合変化を伴う区間に対して GSM/DMF で精密化するセグメント）を起動。
+3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **反応セグメント**（共有結合変化を伴う区間に対して GSM/DMF で精密化するセグメント）を起動。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジセグメント（隣接するサブパス間の RMSD ギャップを埋めるために挿入される補間 MEP）を挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
 6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。

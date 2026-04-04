@@ -2055,10 +2055,10 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--refine-path",
     "refine_path",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
     help=(
-        "If True, run recursive path_search on the full ordered series; if False, run a single-pass "
+        "If True, run recursive path_search on the full ordered series; if False (default), run a single-pass "
         "path-opt GSM between each adjacent pair and concatenate the segments (no path_search)."
     ),
 )
@@ -2407,15 +2407,15 @@ def cli(
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
-    (`path_search` with ``--refine-path True`` or concatenated `path-opt` otherwise) and hides ref-template
-    bookkeeping.
+    (concatenated `path-opt` by default, or recursive `path_search` with ``--refine-path True``) and hides
+    ref-template bookkeeping.
     With single input:
-      - with --scan-lists: run staged scan and use stage results as inputs for path_search,
-      - with --tsopt True and no --scan-lists: run TSOPT-only mode (no path_search).
+      - with --scan-lists: run staged scan and use stage results as inputs for path-opt (or path_search),
+      - with --tsopt True and no --scan-lists: run TSOPT-only mode (no MEP search).
 
-    With ``--refine-path True`` (default), the recursive ``path_search`` workflow is used. When ``False``,
-    a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are
-    concatenated into the final MEP without invoking ``path_search``.
+    By default, a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments
+    are concatenated into the final MEP.  With ``--refine-path True``, the recursive ``path_search``
+    workflow is used instead.
     """
     argv_all = sys.argv[1:]
 
@@ -2596,7 +2596,7 @@ def cli(
     if dry_run:
         _echo("[all] Dry-run mode: no extraction/search/post-processing was executed.")
         _echo(
-            "[all] Planned stages: extract -> optional scan -> path_search/path_opt -> optional tsopt/irc/freq/dft."
+            "[all] Planned stages: extract -> optional scan -> path_opt/path_search -> optional tsopt/irc/freq/dft."
         )
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
