@@ -113,8 +113,8 @@ out_dir/ (デフォルト:./result_dft/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。CPU のみで実行するには `--engine cpu` を指定します。
-- **Blackwell アーキテクチャ** GPU が検出された場合、GPU4PySCF が未対応の可能性があるため警告が出力されます。
-- GPU4PySCF のコンパイル済みホイールは Blackwell を未サポートの場合があり、非 x86 環境ではソースビルドが必要です。該当環境では CPU バックエンドまたは自身でのビルドを推奨します（参照: https://github.com/pyscf/gpu4pyscf）。
+- **Blackwell アーキテクチャ GPU**（RTX 50xx）: GPU4PySCF は小規模な系（~100原子）でもメモリ不足エラーが発生する場合があります。これらの GPU では `--engine cpu` または外部 DFT プログラム（ORCA, Gaussian）を使用してください。
+- GPU4PySCF のコンパイル済みホイールは非 x86 環境では動作しない場合があります。ソースからビルドしてください（参照: https://github.com/pyscf/gpu4pyscf）。
 - 密度フィッティングは常に PySCF のデフォルト設定で試行されます（補助基底の推定は未実装）。
 - YAML 入力ファイルのルートはマッピングでなければなりません。`dft` セクションは任意です。マッピング以外のルートは `load_yaml_dict` でエラーになります。
 - IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当列は `null` となり警告が出力されます。
