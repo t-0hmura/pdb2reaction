@@ -9,8 +9,6 @@
 The backend is controlled by `--engine`:
 - `gpu` (default): Uses GPU4PySCF. **Raises an error if GPU is unavailable.** Best for production runs on GPU-equipped nodes where you want to guarantee GPU acceleration.
 - `cpu`: Forces CPU PySCF. Use when no GPU is available or when you need deterministic CPU-only execution (e.g., portability or debugging).
-- `auto` (recommended for portability): Attempts GPU4PySCF first, falls back to CPU PySCF if GPU is unavailable. Ideal for scripts that may run on heterogeneous hardware.
-
 > **Note:** The default basis `def2-tzvpd` is a triple-zeta diffuse-augmented set and is computationally expensive for large systems. Consider a smaller basis (e.g., `6-31g**` or `def2-svp`) for exploratory calculations.
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
@@ -22,7 +20,7 @@ In addition to total energies, the command reports Mulliken, meta-Löwdin, and I
 ## Minimal example
 
 ```bash
-pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
+pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
 ```
 
 ## Output checklist
@@ -38,7 +36,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --func-basis 'wb97m-v/def2-tzvpd' --conv-tol 1e-10 --max-cycle 200 \
- --engine auto --out-dir ./result_dft_tight
+ --engine gpu --out-dir ./result_dft_tight
 ```
 
 2. Force CPU backend for portability.
@@ -51,7 +49,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine cpu --out-dir ./result_dft_cpu
 
 ```bash
 pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
- --engine auto --out-dir ./result_dft_ligand
+ --engine gpu --out-dir ./result_dft_ligand
 ```
 
 ## Usage
@@ -59,7 +57,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+ [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
@@ -76,7 +74,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/_trj.xyz/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
-2. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF; `cpu` forces CPU; `auto` tries GPU then CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
+2. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing the energy (in hartree and kcal/mol), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options
@@ -91,7 +89,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--conv-tol FLOAT` | SCF convergence tolerance in hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `-o, --out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
-| `--engine [gpu\|cpu\|auto]` | Backend policy: GPU4PySCF first, CPU only, or auto. | `gpu` |
+| `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). | `gpu` |
 | `--convert-files/--no-convert-files` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
@@ -115,7 +113,7 @@ out_dir/ (default:./result_dft/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- `--engine gpu` (default) requires GPU4PySCF and **raises an error** if a GPU is unavailable. Use `--engine auto` for automatic fallback to CPU PySCF when GPU resources are not detected, or `--engine cpu` to force CPU-only execution.
+- `--engine gpu` (default) requires GPU4PySCF and **raises an error** if GPU is unavailable. Use `--engine cpu` to force CPU-only execution.
 - If **Blackwell architecture** GPUs are detected, a warning is emitted because current GPU4PySCF may be unsupported.
 - Compiled GPU4PySCF wheels may not support Blackwell-architecture GPUs, and non-x86 systems require compiling from source; we recommend using the CPU backend or building GPU4PySCF yourself in these situations. (see https://github.com/pyscf/gpu4pyscf)
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).

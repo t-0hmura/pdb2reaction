@@ -266,7 +266,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--dft-engine [gpu\|cpu\|auto]` | バックエンド（`auto` はGPU優先） | `gpu` |
+| `--dft-engine [gpu\|cpu]` | DFTバックエンド: gpu (GPU4PySCF) または cpu (PySCF) | `gpu` |
 | `--dft-out-dir PATH` | DFT出力ディレクトリ上書き | _None_ |
 | `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-tzvpd` |
 | `--dft-max-cycle INT` | 最大SCFサイクル | `100` |

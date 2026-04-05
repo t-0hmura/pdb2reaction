@@ -171,8 +171,8 @@ Options:
                                   1e-9.
   --dft-grid-level INTEGER        Override dft --grid-level value. Defaults to
                                   3.
-  --dft-engine [gpu|cpu|auto]     Preferred DFT backend: GPU (default), CPU, or
-                                  auto (try GPU then CPU).  [default: gpu]
+  --dft-engine [gpu|cpu]          DFT backend: gpu (GPU4PySCF, raises error if
+                                  unavailable) or cpu (PySCF).  [default: gpu]
   -s, --scan-lists TEXT           Scan targets: inline Python literal or a
                                   YAML/JSON spec file path. Multiple inline
                                   literals define sequential stages, e.g.

@@ -349,10 +349,10 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
 @click.option("-o", "--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
     "--engine",
-    type=click.Choice(["gpu", "cpu", "auto"], case_sensitive=False),
+    type=click.Choice(["gpu", "cpu"], case_sensitive=False),
     default="gpu",
     show_default=True,
-    help="Preferred SCF backend: GPU (strict), CPU, or auto (try GPU then CPU if unavailable).",
+    help="SCF backend: gpu (GPU4PySCF, raises error if unavailable) or cpu (PySCF).",
 )
 @click.option(
     "--config",
@@ -543,13 +543,22 @@ def cli(
 
             mol = gto.Mole()
             mol.verbose = int(dft_cfg.get("verbose", 4))
-            mol.build(
+            # def2 family includes Stuttgart ECPs for heavy elements (Z>=21);
+            # must set mol.ecp explicitly or PySCF uses all-electron treatment.
+            _ecp = dft_cfg.get("ecp", None)
+            if _ecp is None and basis.lower().startswith("def2"):
+                _ecp = basis
+            _build_kw: Dict[str, Any] = dict(
                 atom=atoms_list,
                 unit="Angstrom",
                 charge=int(resolved_charge),
                 spin=int(spin2s),
                 basis=basis,
             )
+            if _ecp:
+                _build_kw["ecp"] = _ecp
+                click.echo(f"[dft] Using ECP: {_ecp}")
+            mol.build(**_build_kw)
 
             # --------------------------
             # 4) Activate GPU & build SCF object
@@ -579,7 +588,7 @@ def cli(
             # --------------------------------------------------
 
 
-            if engine in ("gpu", "auto"):
+            if engine == "gpu":
                 try:
                     from gpu4pyscf import dft as gdf
                     mf = make_ks(gdf)
@@ -589,16 +598,12 @@ def cli(
                     e_tot = mf.kernel()
 
                 except Exception as e:
-                    if engine == "gpu":
-                        raise click.ClickException(f"[gpu] GPU backend unavailable: {e}")
-                    click.echo(
-                        f"[gpu] WARNING: GPU backend unavailable ({e}); falling back to CPU.",
+                    raise click.ClickException(
+                        f"[gpu] GPU backend failed: {e}. "
+                        "Use --engine cpu to explicitly run on CPU."
                     )
-                    using_gpu = False
-                    engine_label = "pyscf(cpu)"
-                    engine = "cpu"
 
-            if not using_gpu:
+            if engine == "cpu":
                 from pyscf import dft as pdft
                 mf = make_ks(pdft)
                 mf = _configure_scf_object(mf, dft_cfg, xc)

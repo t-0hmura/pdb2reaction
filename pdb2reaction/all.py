@@ -2272,10 +2272,10 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 )
 @click.option(
     "--dft-engine",
-    type=click.Choice(["gpu", "cpu", "auto"], case_sensitive=False),
+    type=click.Choice(["gpu", "cpu"], case_sensitive=False),
     default="gpu",
     show_default=True,
-    help="Preferred DFT backend: GPU (default), CPU, or auto (try GPU then CPU).",
+    help="DFT backend: gpu (GPU4PySCF, raises error if unavailable) or cpu (PySCF).",
 )
 @click.option(
     "-s", "--scan-lists",

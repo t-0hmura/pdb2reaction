@@ -262,7 +262,7 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--dft-engine [gpu\|cpu\|auto]` | Preferred backend (`auto` tries GPU then CPU). | `gpu` |
+| `--dft-engine [gpu\|cpu]` | DFT backend: gpu (GPU4PySCF) or cpu (PySCF). | `gpu` |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
 | `--dft-func-basis TEXT` | Functional/basis pair. | `wb97m-v/def2-tzvpd` |
 | `--dft-max-cycle INT` | Maximum SCF iterations. | `100` |

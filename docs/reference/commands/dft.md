@@ -36,9 +36,8 @@ Options:
   --grid-level INTEGER            Numerical integration grid level (PySCF
                                   grids.level).  [default: 3]
   -o, --out-dir TEXT              Output directory.  [default: ./result_dft/]
-  --engine [gpu|cpu|auto]         Preferred SCF backend: GPU (strict), CPU, or
-                                  auto (try GPU then CPU if unavailable).
-                                  [default: gpu]
+  --engine [gpu|cpu]              SCF backend: gpu (GPU4PySCF, raises error if
+                                  unavailable) or cpu (PySCF).  [default: gpu]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

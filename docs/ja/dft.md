@@ -9,7 +9,6 @@
 バックエンドは `--engine` で制御します:
 - `gpu`（デフォルト）: GPU4PySCF を使用します。**GPU が利用できない場合はエラーになります。** GPU アクセラレーションを保証したい本番計算に最適です。
 - `cpu`: CPU PySCF を強制的に使用します。GPU が利用できない場合や、決定的な CPU のみの実行が必要な場合（移植性やデバッグなど）に使用します。
-- `auto`（移植性重視の場合に推奨）: GPU4PySCF を試行し、GPU が利用できない場合は CPU PySCF にフォールバックします。異種ハードウェアで実行される可能性のあるスクリプトに最適です。
 
 > **注意:** デフォルトの基底関数 `def2-tzvpd` はトリプルゼータのディフューズ拡張セットであり、大きな系では計算コストが高くなります。探索的な計算には小さい基底（例: `6-31g**` や `def2-svp`）を検討してください。
 
@@ -22,7 +21,7 @@
 ## 最小例
 
 ```bash
-pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
+pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
 ```
 
 ## 出力の見方
@@ -38,7 +37,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine auto --out-dir ./result_dft
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --func-basis 'wb97m-v/def2-tzvpd' --conv-tol 1e-10 --max-cycle 200 \
- --engine auto --out-dir ./result_dft_tight
+ --engine gpu --out-dir ./result_dft_tight
 ```
 
 2. 移植性重視で CPU バックエンドを強制する。
@@ -51,7 +50,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine cpu --out-dir ./result_dft_cpu
 
 ```bash
 pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
- --engine auto --out-dir ./result_dft_ligand
+ --engine gpu --out-dir ./result_dft_ligand
 ```
 
 ## 使用法
@@ -59,7 +58,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu|auto] [--convert-files/--no-convert-files] \
+ [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
@@ -76,7 +75,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 
 ## ワークフロー
 1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/_trj.xyz/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートされます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT 段階自体は PDB/GJF 出力を生成しません。
-2. **SCFビルド** – `--func-basis` を汎関数と基底に解析し、密度フィッティングは PySCF のデフォルト設定で自動的に有効化されます。`--engine` でGPU/CPUの優先度を制御します（`gpu` はGPU4PySCF必須、`cpu` はCPU固定、`auto` はGPU→CPUの順）。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
+2. **SCFビルド** – `--func-basis` を汎関数と基底に解析し、密度フィッティングは PySCF のデフォルト設定で自動的に有効化されます。`--engine` でGPU/CPUを制御します（`gpu` はGPU4PySCF必須でエラー終了、`cpu` はCPU固定）。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
 3. **電子密度解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとのMulliken/meta-Löwdin/IAO電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
 
 ## CLI オプション
@@ -91,7 +90,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--conv-tol FLOAT` | SCF収束許容値（Hartree） | `1e-9` |
 | `--grid-level INT` | PySCF数値積分グリッドレベル | `3` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
-| `--engine [gpu\|cpu\|auto]` | バックエンドポリシー: GPU4PySCF優先、CPUのみ、または自動 | `gpu` |
+| `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF) | `gpu` |
 | `--convert-files/--no-convert-files` | インターフェースの一貫性のために受け付けるが、`dft` では PDB/GJF 出力は生成されない | `True` |
 | `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
@@ -113,7 +112,7 @@ out_dir/ (デフォルト:./result_dft/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。GPU リソースが検出されない場合に自動フォールバックさせるには `--engine auto` を使用してください。CPU のみで実行するには `--engine cpu` を指定します。
+- `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。CPU のみで実行するには `--engine cpu` を指定します。
 - **Blackwell アーキテクチャ** GPU が検出された場合、GPU4PySCF が未対応の可能性があるため警告が出力されます。
 - GPU4PySCF のコンパイル済みホイールは Blackwell を未サポートの場合があり、非 x86 環境ではソースビルドが必要です。該当環境では CPU バックエンドまたは自身でのビルドを推奨します（参照: https://github.com/pyscf/gpu4pyscf）。
 - 密度フィッティングは常に PySCF のデフォルト設定で試行されます（補助基底の推定は未実装）。
