@@ -168,6 +168,9 @@ calc:
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
  return_partial_hessian: true # allow partial Hessians
+ backend: uma # MLIP backend: uma, orb, mace, aimnet2
+ solvent: none # implicit solvent name (e.g. water) or none
+ solvent_model: alpb # xTB solvent model: alpb or cpcmx
 freq:
  amplitude_ang: 0.8 # displacement amplitude for modes (Å)
  n_frames: 20 # number of frames per mode

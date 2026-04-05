@@ -226,7 +226,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 (section-bond)=
 ### セクション `bond`
 `path-search` と共通の UMA ベース結合変化検出:
-- `device`（`"cuda"`）: 結合解析用 UMA デバイス。
+- `device`（`"auto"`）: 結合解析用 UMA デバイス。
 - `bond_factor`（`1.20`）: 共有結合半径のスケーリング係数。
 - `margin_fraction`（`0.05`）: 比較時の相対許容値。
 - `delta_fraction`（`0.05`）: 結合の形成・切断を判定する最小相対変化量。
@@ -358,7 +358,7 @@ rfo:
 bias:
  k: 300 # harmonic bias strength (eV·Å⁻²)
 bond:
- device: cuda # MLIP device for bond analysis
+ device: auto # MLIP device for bond analysis
  bond_factor: 1.2 # covalent-radius scaling
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds

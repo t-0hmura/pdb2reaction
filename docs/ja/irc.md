@@ -147,6 +147,9 @@ calc:
  freeze_atoms: null # calculator-level frozen atoms
  hessian_calc_mode: FiniteDifference # Hessian mode selection
  return_partial_hessian: true # irc では true に強制（partial Hessian、active-DOF 処理）
+ backend: uma # MLIP backend: uma, orb, mace, aimnet2
+ solvent: none # implicit solvent name (e.g. water) or none
+ solvent_model: alpb # xTB solvent model: alpb or cpcmx
 irc:
  step_length: 0.1 # integration step length
  max_cycles: 125 # maximum steps along IRC

@@ -72,7 +72,7 @@ from pdb2reaction.bond_changes import compare_structures, has_bond_change, summa
 
 | Function | Description |
 |----------|-------------|
-| `compare_structures(geom1, geom2, device="cuda", bond_factor=1.20)` | Detect covalent bonds formed or broken between two pysisyphus geometries. Returns a `BondChangeResult` with `formed_covalent` and `broken_covalent` (sets of 0-based index pairs). |
+| `compare_structures(geom1, geom2, device="auto", bond_factor=1.20)` | Detect covalent bonds formed or broken between two pysisyphus geometries. Returns a `BondChangeResult` with `formed_covalent` and `broken_covalent` (sets of 0-based index pairs). |
 | `has_bond_change(geom_start, geom_end, bond_cfg)` | Convenience wrapper: returns `(has_changes: bool, summary_text: str)`. `bond_cfg` accepts keys: `device`, `bond_factor`, `margin_fraction`, `delta_fraction`. |
 | `summarize_changes(geom, result, one_based=True)` | Format bond changes as a text report with distances in Angstrom. |
 

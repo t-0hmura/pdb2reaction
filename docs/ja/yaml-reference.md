@@ -497,7 +497,7 @@ MLIPベースの結合変化検出。
 
 ```yaml
 bond:
- device: cuda # MLIP device for bond analysis
+ device: auto # MLIP device for bond analysis
  bond_factor: 1.2 # Covalent-radius scaling for cutoff
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking

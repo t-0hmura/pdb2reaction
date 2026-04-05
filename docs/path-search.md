@@ -303,7 +303,7 @@ opt:
  gdiis_test_direction: true # test descent direction before DIIS
  adapt_step_func: true # adaptive step scaling toggle
 bond:
- device: cuda # MLIP device for bond analysis
+ device: auto # MLIP device for bond analysis
  bond_factor: 1.2 # covalent-radius scaling
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds

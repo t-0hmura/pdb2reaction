@@ -224,6 +224,7 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 | `freq` | Vibrational frequency analysis + thermochemistry | [docs/freq.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/freq.md) |
 | `irc` | IRC calculation (EulerPC) | [docs/irc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/irc.md) |
 | `dft` | Single-point DFT (GPU4PySCF / PySCF) | [docs/dft.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/dft.md) |
+| `bond-summary` | Compare structures and report bond changes | [docs/bond-summary.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/bond-summary.md) |
 
 ### Visualization
 

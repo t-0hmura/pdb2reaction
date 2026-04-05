@@ -1831,6 +1831,8 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     _configure_extract_logger(bool(args.verbose))
 
     # Augment AMINO_ACIDS with user-specified modified residues
+    # Save original state so repeated API calls don't accumulate mutations.
+    _amino_acids_snapshot = dict(AMINO_ACIDS)
     _mod_res = getattr(args, 'modified_residue', '') or ''
     if _mod_res:
         for token in _mod_res.replace(' ', ',').split(','):
@@ -1998,6 +2000,9 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         
         n_linkh = len(link_coords) if args.add_linkh else 0
 
+        # Restore AMINO_ACIDS before returning (prevent global mutation across API calls).
+        AMINO_ACIDS.clear()
+        AMINO_ACIDS.update(_amino_acids_snapshot)
         if api:
             return {
                 "outputs": outputs,
@@ -2009,6 +2014,9 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             return
 
     # Multi-structure path
+    # Restore AMINO_ACIDS before returning (prevent global mutation across API calls).
+    AMINO_ACIDS.clear()
+    AMINO_ACIDS.update(_amino_acids_snapshot)
     return extract_multi(args, api=api)
 
 

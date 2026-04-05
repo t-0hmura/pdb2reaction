@@ -241,7 +241,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 (section-bond)=
 ### Section `bond`
 MLIP-based bond-change detection shared with `path-search`:
-- `device` (`"cuda"`): MLIP device for bond analysis.
+- `device` (`"auto"`): MLIP device for bond analysis.
 - `bond_factor` (`1.20`): Covalent-radius scaling for cutoff.
 - `margin_fraction` (`0.05`): Fractional tolerance for comparisons.
 - `delta_fraction` (`0.05`): Minimum relative change to flag formation/breaking.
@@ -379,7 +379,7 @@ rfo:
 bias:
  k: 300 # harmonic bias strength (eV·Å⁻²)
 bond:
- device: cuda # MLIP device for bond analysis
+ device: auto # MLIP device for bond analysis
  bond_factor: 1.2 # covalent-radius scaling
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds
