@@ -1392,6 +1392,10 @@ def _run_dft_for_state(
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
     # Run DFT as a real subprocess to avoid libcusolver conflict with torch.
+    # Free GPU memory before spawning subprocess.
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     import subprocess as _sp
     cmd = [sys.executable, "-m", "pdb2reaction", "dft"] + list(args)
     _echo(f"\n[dft] subprocess: {' '.join(cmd)}")
