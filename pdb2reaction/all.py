@@ -1391,7 +1391,17 @@ def _run_dft_for_state(
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
-    _run_cli_main("dft", _dft_cli.cli, args, on_nonzero="warn", prefix="dft")
+    # Run DFT as a real subprocess to avoid libcusolver conflict with torch.
+    import subprocess as _sp
+    cmd = [sys.executable, "-m", "pdb2reaction", "dft"] + list(args)
+    _echo(f"\n[dft] subprocess: {' '.join(cmd)}")
+    proc = _sp.run(cmd, capture_output=True, text=True)
+    if proc.stdout:
+        _echo(proc.stdout.rstrip())
+    if proc.returncode != 0:
+        _echo(f"[dft] WARNING: dft exited with code {proc.returncode}", err=True)
+        if proc.stderr:
+            _echo(proc.stderr.rstrip(), err=True)
     y = out_dir / "result.yaml"
     if y.exists():
         try:
