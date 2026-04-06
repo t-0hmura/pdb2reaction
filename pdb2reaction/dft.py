@@ -298,7 +298,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, _trj.xyz, etc.; loaded via pysisyphus.helpers.geom_loader).",
+    help="Input structure file (.pdb, .xyz, _trj.xyz, etc.).",
 )
 @click.option(
     "-q",
