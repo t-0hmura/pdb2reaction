@@ -590,6 +590,17 @@ def cli(
 
             if engine == "gpu":
                 try:
+                    import cupy as _cp
+                    _dev_id = _cp.cuda.runtime.getDevice()
+                    _props = _cp.cuda.runtime.getDeviceProperties(_dev_id)
+                    _dev_name = _props["name"]
+                    if isinstance(_dev_name, bytes):
+                        _dev_name = _dev_name.decode()
+                    click.echo(f"[dft] Using GPU device {_dev_id}: {_dev_name}")
+                except Exception:
+                    pass
+
+                try:
                     from gpu4pyscf import dft as gdf
                     mf = make_ks(gdf)
                     using_gpu = True
@@ -604,6 +615,9 @@ def cli(
                     )
 
             if engine == "cpu":
+                from pyscf import lib as _pyscf_lib
+                click.echo(f"[dft] PySCF is using {_pyscf_lib.num_threads()} threads on CPU.")
+
                 from pyscf import dft as pdft
                 mf = make_ks(pdft)
                 mf = _configure_scf_object(mf, dft_cfg, xc)
