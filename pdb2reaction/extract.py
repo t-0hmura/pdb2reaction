@@ -154,24 +154,24 @@ AMINO_ACIDS: Dict[str, int] = {
 ION: Dict[str, int] = {
     # +1
     "LI": +1, "NA": +1, "K": +1, "RB": +1, "CS": +1, "TL": +1, "AG": +1, "CU1": +1,
-    "Ag": +1, "K+": +1, "NA+": +1, "NH4": +1, "H3O+": +1,
+    "Ag": +1, "K+": +1, "Na+": +1, "NH4": +1, "H3O+": +1, "HE+": +1, "HZ+": +1, "Tl": +1,
 
     # +2
     "MG": +2, "CA": +2, "SR": +2, "BA": +2, "MN": +2, "FE2": +2, "CO": +2, "NI": +2,
-    "CU": +2, "ZN": +2, "CD": +2, "HG": +2, "PB": +2, "BE": +2, "PD": +2, "PT": +2,
-    "SN": +2, "RA": +2, "YB2": +2, "V2+": +2, 
+    "CU": +2, "ZN": +2, "CD": +2, "HG": +2, "PB": +2, "Be": +2, "PD": +2, "PT": +2,
+    "Sn": +2, "Ra": +2, "YB2": +2, "V2+": +2,
 
     # +3
     "FE": +3, "AU3": +3, "AL": +3, "GA": +3, "IN": +3,
-    "CE": +3, "CR": +3, "DY": +3, "EU": +3, "EU3": +3, "ER": +3,
-    "GD3": +3, "LA": +3, "LU": +3, "ND": +3, "PR": +3, "SM": +3, "TB": +3,
-    "TM": +3, "Y": +3, "PU": +3, 
+    "CE": +3, "Ce": +3, "CR": +3, "Cr": +3, "Dy": +3, "EU": +3, "EU3": +3, "Er": +3,
+    "GD3": +3, "LA": +3, "LU": +3, "Nd": +3, "PR": +3, "SM": +3, "Sm": +3, "TB": +3,
+    "Tm": +3, "Y": +3, "Pu": +3,
 
     # +4
-    "U4+": +4, "TH": +4, "HF": +4, "ZR": +4,
+    "U4+": +4, "Th": +4, "Hf": +4, "Zr": +4,
 
     # -1
-    "F": -1, "CL": -1, "BR": -1, "I": -1, "CL-": -1, "IOD": -1,
+    "F": -1, "CL": -1, "BR": -1, "I": -1, "Cl-": -1, "IOD": -1,
 }
 
 DISULFIDE_CUTOFF = 2.5   # Å Sγ–Sγ (SG–SG)
@@ -1834,13 +1834,13 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     # Save original state so repeated API calls don't accumulate mutations.
     _amino_acids_snapshot = dict(AMINO_ACIDS)
     try:
-        return _extract_body(args, api, _amino_acids_snapshot)
+        return _extract_body(args, api)
     finally:
         AMINO_ACIDS.clear()
         AMINO_ACIDS.update(_amino_acids_snapshot)
 
 
-def _extract_body(args, api, _amino_acids_snapshot):
+def _extract_body(args, api):
     """Inner body of extract(), separated for try/finally AMINO_ACIDS restoration."""
     _mod_res = getattr(args, 'modified_residue', '') or ''
     if _mod_res:

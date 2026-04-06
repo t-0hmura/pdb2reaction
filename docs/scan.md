@@ -114,7 +114,7 @@ Each literal is a Python list of triples `(atom1, atom2, target_Å)`:
 
 - Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
 - Each triple drives the distance between `atom1`–`atom2` toward `target_Å`.
-- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `-s/--scan-lists` flag. You may also repeat the flag -- both forms are accepted (`multiple=True`).
+- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `-s/--scan-lists` flag.
 
 ### Specifying atoms
 
@@ -160,7 +160,7 @@ Pass multiple literals after a single `-s/--scan-lists` flag. Each literal becom
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-Stages run sequentially; each starts from the previous stage's relaxed result. You may either repeat the `-s/--scan-lists` flag for each stage or supply all stage literals after a single flag -- both forms are accepted (`multiple=True`).
+Stages run sequentially; each starts from the previous stage's relaxed result.
 
 ### Bidirectional scan (4-tuple)
 
@@ -267,7 +267,7 @@ out_dir/ (default:./result_scan/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Provide multiple literals after a single `-s/--scan-lists` flag, or repeat the flag for each stage -- both forms are accepted (`multiple=True`).
+- Provide multiple literals after a single `-s/--scan-lists` flag.
  Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
  (space/comma/slash/backtick/backslash) and unordered tokens.

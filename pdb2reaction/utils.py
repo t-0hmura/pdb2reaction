@@ -961,6 +961,7 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
 
+    atom_line_set = set(atom_line_indices)
     first_write = True  # Track whether we've written the first frame
     for step, frame in enumerate(traj):
         positions = frame.get_positions()  # (N, 3) in Ångström
@@ -975,7 +976,7 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         frame_lines: list[str] = []
         atom_idx = 0
         for line_idx, line in enumerate(ref_lines):
-            if line_idx in set(atom_line_indices):
+            if line_idx in atom_line_set:
                 x, y, z = positions[atom_idx]
                 # PDB coordinate columns: 31-38 (x), 39-46 (y), 47-54 (z)
                 new_line = line[:30] + f"{x:8.3f}{y:8.3f}{z:8.3f}" + line[54:]
