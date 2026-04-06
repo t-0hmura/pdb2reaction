@@ -3213,6 +3213,20 @@ def cli(
                 _echo(f"[resume] WARNING: Failed to reload DFT results; re-running DFT: {e}", err=True)
                 _tsonly_dft_done = False
         elif do_dft:
+            # ── Aggressively release GPU memory before DFT subprocess ──
+            for _varname in (
+                "g_ts", "g_react_opt", "g_prod_opt",
+                "calc", "tR", "tT", "tP", "thermo_payloads",
+            ):
+                if _varname in locals() and locals()[_varname] is not None:
+                    try:
+                        del locals()[_varname]
+                    except Exception:
+                        pass
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             _echo()
             _echo("[dft] Single TSOPT: DFT on R/TS/P")
             dft_jobs = [
@@ -4849,6 +4863,22 @@ def cli(
                     )
 
         if do_dft and not _seg_dft_done:
+            # ── Aggressively release GPU memory before DFT subprocess ──
+            for _obj in (
+                locals().get("gL"), locals().get("gR"), locals().get("gT"),
+                locals().get("g_ts"), locals().get("g_react_opt"), locals().get("g_prod_opt"),
+                locals().get("calc"),
+            ):
+                if _obj is not None:
+                    if hasattr(_obj, "calculator"):
+                        _obj.calculator = None
+                    if hasattr(_obj, "results"):
+                        _obj.results = {}
+            del _obj
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             if not (p_react and p_ts and p_prod):
                 _echo(
                     f"[dft] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping DFT.",
