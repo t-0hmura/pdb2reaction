@@ -1346,6 +1346,21 @@ def _read_imaginary_frequency(freq_dir: Path) -> Optional[Dict[str, Any]]:
 
 
 
+def _dft_succeeded(result: Dict[str, Any]) -> bool:
+    """Return True only if DFT converged and produced a valid energy."""
+    return bool(result) and not result.get("_dft_failed", True)
+
+
+def _dft_energy_ha(result: Dict[str, Any]) -> Optional[float]:
+    """Extract DFT energy in hartree, or None if DFT failed."""
+    if not _dft_succeeded(result):
+        return None
+    try:
+        return float((result.get("energy") or {}).get("hartree"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _run_dft_for_state(
     pdb_path: Path,
     q_int: int,
@@ -1409,11 +1424,17 @@ def _run_dft_for_state(
     y = out_dir / "result.yaml"
     if y.exists():
         try:
-            return yaml.safe_load(y.read_text(encoding="utf-8")) or {}
+            data = yaml.safe_load(y.read_text(encoding="utf-8")) or {}
         except Exception as exc:
             logger.debug("Failed to parse DFT result YAML %s: %s", y, exc)
-            return {}
-    return {}
+            data = {}
+    else:
+        data = {}
+    # Mark DFT success/failure based on convergence
+    converged = (data.get("energy") or {}).get("converged", False)
+    data["_dft_converged"] = bool(converged)
+    data["_dft_failed"] = not bool(converged) or proc.returncode != 0
+    return data
 
 
 def _run_dft_sequence(
@@ -3245,31 +3266,30 @@ def cli(
                 ref_pdb_for_tsopt_only,
                 convert_files,
             )
-            dR = dft_payloads.get("R")
-            dT = dft_payloads.get("TS")
-            dP = dft_payloads.get("P")
-            try:
-                eR_dft = float(
-                    ((dR or {}).get("energy", {}) or {}).get("hartree", e_react)
-                )
-                eT_dft = float(
-                    ((dT or {}).get("energy", {}) or {}).get("hartree", eT)
-                )
-                eP_dft = float(
-                    ((dP or {}).get("energy", {}) or {}).get("hartree", e_prod)
-                )
-                diag_payload = _write_segment_energy_diagram(
-                    tsroot / "energy_diagram_DFT",
-                    labels=["R", "TS", "P"],
-                    energies_au=[eR_dft, eT_dft, eP_dft],
-                    title_note=f"({dft_func_basis_use} // UMA)",
-                )
-                if diag_payload:
-                    energy_diagrams.append(diag_payload)
-            except Exception as e:
-                _echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
+            dR = dft_payloads.get("R") or {}
+            dT = dft_payloads.get("TS") or {}
+            dP = dft_payloads.get("P") or {}
+            eR_dft = _dft_energy_ha(dR)
+            eT_dft = _dft_energy_ha(dT)
+            eP_dft = _dft_energy_ha(dP)
+            _dft_all_ok = all(e is not None for e in (eR_dft, eT_dft, eP_dft))
+            if not _dft_all_ok:
+                _failed_states = [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None]
+                _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
+            if _dft_all_ok:
+                try:
+                    diag_payload = _write_segment_energy_diagram(
+                        tsroot / "energy_diagram_DFT",
+                        labels=["R", "TS", "P"],
+                        energies_au=[eR_dft, eT_dft, eP_dft],
+                        title_note=f"({dft_func_basis_use} // UMA)",
+                    )
+                    if diag_payload:
+                        energy_diagrams.append(diag_payload)
+                except Exception as e:
+                    _echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
 
-            if do_thermo:
+            if do_thermo and _dft_all_ok:
                 try:
                     dG_R = float(
                         (thermo_payloads.get("R", {}) or {}).get(
@@ -3365,6 +3385,8 @@ def cli(
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
                 "dft": do_dft,
+                "dft_status": "failed" if (do_dft and not _dft_all_ok) else ("converged" if (do_dft and _dft_all_ok) else None),
+                "dft_func_basis": dft_func_basis_use if do_dft else None,
                 "opt_mode": tsopt_opt_mode_default,
                 "mep_mode": mep_mode_kind,
             },
@@ -3421,20 +3443,26 @@ def cli(
                         "delta_kcal": (GP - GR) * AU2KCALPERMOL,
                     }
                 if do_dft:
-                    segment_log["dft"] = {
-                        "labels": ["R", "TS", "P"],
-                        "energies_au": [eR_dft, eT_dft, eP_dft],
-                        "energies_kcal": [
-                            0.0,
-                            (eT_dft - eR_dft) * AU2KCALPERMOL,
-                            (eP_dft - eR_dft) * AU2KCALPERMOL,
-                        ],
-                        "diagram": str(tsroot / "energy_diagram_DFT.png"),
-                        "structures": {"R": pR, "TS": pT, "P": pP},
-                        "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
-                        "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
-                    }
-                    if do_thermo:
+                    if _dft_all_ok:
+                        segment_log["dft"] = {
+                            "labels": ["R", "TS", "P"],
+                            "energies_au": [eR_dft, eT_dft, eP_dft],
+                            "energies_kcal": [
+                                0.0,
+                                (eT_dft - eR_dft) * AU2KCALPERMOL,
+                                (eP_dft - eR_dft) * AU2KCALPERMOL,
+                            ],
+                            "diagram": str(tsroot / "energy_diagram_DFT.png"),
+                            "structures": {"R": pR, "TS": pT, "P": pP},
+                            "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
+                            "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
+                        }
+                    else:
+                        segment_log["dft"] = {
+                            "status": "failed",
+                            "failed_states": [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None],
+                        }
+                    if do_thermo and _dft_all_ok:
                         segment_log["gibbs_dft_uma"] = {
                             "labels": ["R", "TS", "P"],
                             "energies_au": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
@@ -4334,6 +4362,7 @@ def cli(
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
                 "dft": do_dft,
+                "dft_func_basis": dft_func_basis_use if do_dft else None,
                 "opt_mode": opt_mode.lower() if opt_mode else None,
                 "mep_mode": mep_mode_kind,
                 "uma_model": calc_cfg_shared.get("model"),
@@ -4903,26 +4932,22 @@ def cli(
                     ref_pdb_for_seg,
                     convert_files,
                 )
-                dR = dft_payloads.get("R")
-                dT = dft_payloads.get("TS")
-                dP = dft_payloads.get("P")
-                try:
-                    eR_dft = float(
-                        ((dR or {}).get("energy", {}) or {}).get(
-                            "hartree", uma_ref_energies.get("R", np.nan)
-                        )
-                    )
-                    eT_dft = float(
-                        ((dT or {}).get("energy", {}) or {}).get(
-                            "hartree", uma_ref_energies.get("TS", np.nan)
-                        )
-                    )
-                    eP_dft = float(
-                        ((dP or {}).get("energy", {}) or {}).get(
-                            "hartree", uma_ref_energies.get("P", np.nan)
-                        )
-                    )
-                    if all(map(np.isfinite, [eR_dft, eT_dft, eP_dft])):
+                dR = dft_payloads.get("R") or {}
+                dT = dft_payloads.get("TS") or {}
+                dP = dft_payloads.get("P") or {}
+                eR_dft = _dft_energy_ha(dR)
+                eT_dft = _dft_energy_ha(dT)
+                eP_dft = _dft_energy_ha(dP)
+                _dft_all_ok = all(e is not None for e in (eR_dft, eT_dft, eP_dft))
+                if not _dft_all_ok:
+                    _failed_states = [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None]
+                    _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
+                    segment_log["dft"] = {
+                        "status": "failed",
+                        "failed_states": _failed_states,
+                    }
+                if _dft_all_ok:
+                    try:
                         diag_payload = _write_segment_energy_diagram(
                             seg_dir / "energy_diagram_DFT",
                             labels=["R", f"TS{seg_idx}", "P"],
@@ -4945,18 +4970,13 @@ def cli(
                             "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
                             "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
                         }
-                    else:
+                    except Exception as e:
                         _echo(
-                            "[dft] WARNING: some DFT energies missing; diagram skipped.",
+                            f"[dft] WARNING: failed to build DFT diagram: {e}",
                             err=True,
                         )
-                except Exception as e:
-                    _echo(
-                        f"[dft] WARNING: failed to build DFT diagram: {e}",
-                        err=True,
-                    )
 
-                if do_thermo:
+                if do_thermo and _dft_all_ok:
                     try:
                         dG_R = float(
                             (thermo_payloads.get("R", {}) or {}).get(
