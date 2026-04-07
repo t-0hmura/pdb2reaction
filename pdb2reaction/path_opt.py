@@ -934,16 +934,19 @@ def cli(
                 ref_pdb_for_preopt = Path(ref_pdb).resolve()
 
             preopt_out_dir = out_dir_path
+            _seg_prefix = ""
             if (
                 out_dir_path.name.startswith("seg_")
                 and out_dir_path.parent.name == "path_opt"
             ):
                 preopt_out_dir = out_dir_path.parent
                 preopt_out_dir.mkdir(parents=True, exist_ok=True)
+                # Include segment name in tag to avoid overwriting across segments
+                _seg_prefix = out_dir_path.name.split("_mep")[0] + "_"
 
             new_geoms = []
             for i, g in enumerate(geoms):
-                tag = f"init{i:02d}"
+                tag = f"{_seg_prefix}init{i:02d}"
                 try:
                     g_opt = _optimize_single(
                         g,
