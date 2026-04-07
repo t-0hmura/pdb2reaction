@@ -275,8 +275,9 @@ def cli(
         needs_pdb = source_path.suffix.lower() == ".pdb"
         needs_gjf = prepared_input.is_gjf
         ref_pdb = source_path.resolve() if needs_pdb else None
+        time_start = time.perf_counter()
+        out_dir_path = Path(out_dir).resolve()
         def _run() -> None:
-            time_start = time.perf_counter()
 
             # ------------------------------------------------------------------
             # 1) Assemble configuration (defaults ← CLI ← YAML) - create fresh copies for merging
@@ -875,4 +876,4 @@ def cli(
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
 
-        run_cli(_run, label="scan")
+        run_cli(_run, label="scan", out_dir=out_dir_path, command="scan", time_start=time_start)

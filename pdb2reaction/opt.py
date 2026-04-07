@@ -920,6 +920,7 @@ def cli(
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
 
+    out_dir_path = Path(out_dir).resolve()
     run_cli(
         _run,
         label="optimization",
@@ -927,4 +928,7 @@ def cli(
         zero_step_msg="ERROR: Step length fell below the minimum allowed (ZeroStepLength).",
         opt_exc=OptimizationError,
         opt_msg="ERROR: Optimization failed - {exc}",
+        out_dir=out_dir_path,
+        command="opt",
+        time_start=time_start,
     )

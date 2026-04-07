@@ -72,7 +72,7 @@ from .utils import (
     merge_freeze_atom_indices,
 )
 from .align_freeze_atoms import align_and_refine_sequence_inplace
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 
 logger = logging.getLogger(__name__)
 
@@ -1268,12 +1268,14 @@ def cli(
             )
 
     except OptimizationError as e:
+        _write_error_json(out_dir_path, "path-opt", e, "OptimizationError", time_start)
         click.echo(f"ERROR: Path optimization failed — {e}", err=True)
         sys.exit(3)
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
+        _write_error_json(out_dir_path, "path-opt", e, "UnhandledError", time_start)
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo(
             "Unhandled error during path optimization:\n"

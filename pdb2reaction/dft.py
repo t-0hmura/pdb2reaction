@@ -38,7 +38,7 @@ from .utils import (
     YamlFlowList,
     cli_param_overridden,
 )
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 from .defaults import GEOM_KW_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -755,6 +755,7 @@ def cli(
         except click.ClickException:
             raise
         except Exception as e:
+            _write_error_json(out_dir_path, "dft", e, "UnhandledError", time_start)
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "), err=True)
             sys.exit(1)

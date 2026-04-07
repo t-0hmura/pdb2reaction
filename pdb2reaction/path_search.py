@@ -2757,6 +2757,7 @@ def cli(
         # --------------------------
         click.echo(format_elapsed("[time] Elapsed for Path Search", time_start))
 
+    out_dir_path = Path(out_dir).resolve()
     try:
         run_cli(
             _run,
@@ -2765,6 +2766,9 @@ def cli(
             zero_step_msg="ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).",
             opt_exc=OptimizationError,
             opt_msg="ERROR: Path search failed — {exc}",
+            out_dir=out_dir_path,
+            command="path_search",
+            time_start=time_start,
         )
     finally:
         for prepared in prepared_inputs:

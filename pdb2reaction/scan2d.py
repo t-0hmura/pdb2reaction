@@ -85,6 +85,7 @@ from .scan_common import (
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
+from .cli_utils import _write_error_json
 
 logger = logging.getLogger(__name__)
 
@@ -1074,6 +1075,7 @@ def cli(
             click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
+            _write_error_json(out_dir_path, "scan2d", e, "UnhandledError", time_start)
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             click.echo(
                 "Unhandled exception during 2D scan:\n"

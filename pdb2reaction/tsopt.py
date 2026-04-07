@@ -65,7 +65,7 @@ from .utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
 )
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 from .freq import (
     _torch_device,
     _safe_masses_amu,
@@ -2026,16 +2026,19 @@ def cli(
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
 
-        except ZeroStepLength:
+        except ZeroStepLength as e:
+            _write_error_json(out_dir_path, "tsopt", e, "ZeroStepLength", time_start)
             click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
             sys.exit(2)
         except OptimizationError as e:
+            _write_error_json(out_dir_path, "tsopt", e, "OptimizationError", time_start)
             click.echo(f"ERROR: Optimization failed — {e}", err=True)
             sys.exit(3)
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
+            _write_error_json(out_dir_path, "tsopt", e, "UnhandledError", time_start)
             import traceback
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             click.echo("Unhandled error during optimization:\n" + textwrap.indent(tb, "  "), err=True)

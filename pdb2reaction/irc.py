@@ -42,7 +42,7 @@ from pdb2reaction.utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
 )
-from pdb2reaction.cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
+from pdb2reaction.cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 
 logger = logging.getLogger(__name__)
 
@@ -584,6 +584,7 @@ def cli(
             click.echo("Interrupted by user.", err=True)
             sys.exit(130)
         except Exception as e:
+            _write_error_json(out_dir_path, "irc", e, "UnhandledError", time_start)
             tb = textwrap.indent("".join(__import__("traceback").format_exception(type(e), e, e.__traceback__)), "  ")
             click.echo("Unhandled exception during IRC:\n" + tb, err=True)
             sys.exit(1)

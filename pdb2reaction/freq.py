@@ -49,7 +49,7 @@ from .utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
 )
-from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg
+from .cli_utils import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 
 logger = logging.getLogger(__name__)
 
@@ -1048,6 +1048,7 @@ def cli(
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
+        _write_error_json(out_dir_path, "freq", e, "UnhandledError", time_start)
         import traceback
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled error during frequency analysis:\n" + textwrap.indent(tb, "  "), err=True)

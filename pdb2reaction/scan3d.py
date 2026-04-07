@@ -77,6 +77,7 @@ from .scan_common import (
     resolve_yaml_sources,
 )
 from .scan2d import _build_scan_context
+from .cli_utils import _write_error_json
 
 logger = logging.getLogger(__name__)
 
@@ -1012,6 +1013,7 @@ def cli(
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
+        _write_error_json(Path(out_dir).resolve(), "scan3d", e, "UnhandledError", None)
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)
