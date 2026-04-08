@@ -104,7 +104,7 @@ result_scan/
 │   │   ├── scan_trj.xyz          # Scan trajectory
 │   │   └── scan.pdb
 │   └── stage_02/                  # Scan stage 2 (if multi-stage)
-└── path_opt/                      # MEP search (default); path_search/ with --refine-path
+└── path_search/                   # MEP search (default, recursive); path_opt/ with --refine-path False
     ├── mep.pdb
     └── energy_diagram_uma_all.png
 ```

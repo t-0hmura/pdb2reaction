@@ -331,6 +331,6 @@ search:
 - [path-opt](path-opt.md) — 単一パスMEP最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEIを遷移状態として最適化
 - [extract](extract.md) — path-search入力用の活性部位モデルPDBを生成
-- [all](all.md) — 一気通貫ワークフロー（デフォルトで path-opt を使用; `--refine-path` で再帰的 path-search に切替）
+- [all](all.md) — 一気通貫ワークフロー（デフォルトで再帰的 path-search を使用; `--refine-path False` で path-opt に切替）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義

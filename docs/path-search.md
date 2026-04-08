@@ -328,6 +328,6 @@ search:
 - [path-opt](path-opt.md) — Single-pass MEP optimization (no recursive refinement)
 - [tsopt](tsopt.md) — Optimize the HEI as a transition state
 - [extract](extract.md) — Generate active site model PDBs for path-search inputs
-- [all](all.md) — End-to-end workflow (uses path-opt by default; `--refine-path` for recursive path-search)
+- [all](all.md) — End-to-end workflow (uses recursive path-search by default; `--refine-path False` for single-pass path-opt)
 - [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `bond`, `search` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

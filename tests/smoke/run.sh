@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
+#PBS -N smoke_p2r
+#PBS -q default
+#PBS -l nodes=1:ppn=8:gpus=1,mem=60GB,walltime=4:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+cd "${PBS_O_WORKDIR:-.}"
+if [ -n "${PBS_O_WORKDIR:-}" ]; then
+  . /home/apps/Modules/init/profile.sh
+  module load cuda/12.9
+  source /home/tohmura/miniconda3/etc/profile.d/conda.sh
+  conda activate p2r
+  export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+fi
 set -euo pipefail
 # pdb2reaction smoke tests — GPU required
 # Coverage: all subcommands, input formats, --ref-pdb, solvent, dry-run, utilities.
+
+# Clean previous results
+rm -rf test* p_complex_model.pdb model_r.pdb r_complex_elem.pdb r_complex_fixalt.pdb
 
 # --- Subcommand tests (individual) ---
 
@@ -41,20 +57,20 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --out
 
 # --- Input format tests (all command) ---
 
-# test12: all (pdb+pdb)
-pdb2reaction -i r.pdb p.pdb -q -1 --max-cycles 5 --thresh gau_loose --out-dir test12 > test12.out 2>&1
+# test12: all (pdb+pdb, --no-refine-path for single-pass path-opt)
+pdb2reaction -i r.pdb p.pdb -q -1 --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
 
-# test13: all (xyz+xyz, --ref-pdb for PDB conversion)
-pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --max-cycles 5 --thresh gau_loose --out-dir test13 > test13.out 2>&1
+# test13: all (xyz+xyz, --ref-pdb for PDB conversion, --no-refine-path for single-pass path-opt)
+pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
 
-# test14: all (gjf+gjf)
-pdb2reaction -i r.gjf p.gjf --max-cycles 5 --thresh gau_loose --out-dir test14 > test14.out 2>&1
+# test14: all (gjf+gjf, --no-refine-path for single-pass path-opt)
+pdb2reaction -i r.gjf p.gjf --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
 
 # test15: all (scan-lists, pdb)
-pdb2reaction -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --out-dir test15 > test15.out 2>&1
+pdb2reaction -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test15 > test15.out 2>&1
 
 # test16: all (scan-lists, xyz)
-pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --out-dir test16 > test16.out 2>&1
+pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test16 > test16.out 2>&1
 
 # --- Complex system tests ---
 
@@ -62,23 +78,23 @@ pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh g
 pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thresh gau_loose --out-dir test17 > test17.out 2>&1
 
 # test18: all (complex, extract + scan-lists)
-pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --out-dir test18 > test18.out 2>&1
+pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
 
-# test19: all (complex, multi-input)
-pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --out-dir test19 > test19.out 2>&1
+# test19: all (complex, multi-input, --no-refine-path for single-pass path-opt)
+pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
 
 # --- TSOPT-only mode ---
 
 # test20: all (ts input, --tsopt + --thermo)
-pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --max-cycles 100 --thresh gau --out-dir test20 > test20.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --max-cycles 100 --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
 
 # test21: all (ts input, --tsopt, opt-mode hess)
-pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles 5 --thresh gau_loose --out-dir test21 > test21.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test21 > test21.out 2>&1
 
 # --- MEP mode ---
 
-# test22: all (pdb+pdb, mep-mode dmf)
-pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --max-cycles 5 --thresh gau_loose --out-dir test22 > test22.out 2>&1
+# test22: all (pdb+pdb, mep-mode dmf, --no-refine-path for single-pass path-opt)
+pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
 
 # --- TSOPT for complex systems ---
 
@@ -154,5 +170,5 @@ pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --ou
 
 # --- refine-path ---
 
-# test41: all (pdb+pdb, --refine-path)
-pdb2reaction -i r.pdb p.pdb -q -1 --refine-path true --max-cycles 5 --thresh gau_loose --out-dir test41 > test41.out 2>&1
+# test41: all (pdb+pdb, --refine-path — now the default, kept explicit for clarity)
+pdb2reaction -i r.pdb p.pdb -q -1 --refine-path true --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1

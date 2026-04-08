@@ -165,8 +165,8 @@ Behavior:
 
 - takes two or more **full systems** in reaction order,
 - extracts cluster models for each structure,
-- performs **MEP search** via [`path-opt`](path-opt.md) by default (outputs under `path_opt/`),
-- optionally switches to a **recursive** [`path-search`](path-search.md) run with `--refine-path`,
+- performs **recursive MEP search** via [`path-search`](path-search.md) by default (outputs under `path_search/`),
+- optionally falls back to single-pass [`path-opt`](path-opt.md) with `--refine-path False` (outputs under `path_opt/`),
 - when PDB templates are available, merges the cluster-model MEP back into the **full system**,
 - optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
 
@@ -209,8 +209,8 @@ Key points:
  - automatically remapped to the cluster-model indices.
 - Supplying one `-s/--scan-lists` literal runs a single scan stage; multiple literals run sequential stages (e.g. `-s '[(…)]' '[(…)]'`).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
-- The default `all` workflow runs `path-opt` on the concatenated stages.
-- With `--refine-path`, it instead uses recursive `path-search` with automatic refinement (merged `mep_w_ref*.pdb` when PDB templates are available).
+- The default `all` workflow runs recursive `path-search` with automatic refinement (merged `mep_w_ref*.pdb` when PDB templates are available).
+- With `--refine-path False`, it instead uses single-pass `path-opt` on the concatenated stages.
 
 This mode is useful for building reaction paths starting from a single structure.
 
@@ -267,7 +267,7 @@ Below are the most commonly used options across workflows.
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
 | `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
 | `--dft/--no-dft` | Perform single-point DFT calculations. |
-| `--refine-path/--no-refine-path` | Enable recursive `path-search` instead of `path-opt` (default: `False`). |
+| `--refine-path/--no-refine-path` | Use recursive `path-search` (default: `True`). Set to `False` for single-pass `path-opt`. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
 | `--mep-mode gsm\|dmf` | MEP method (default: `gsm`): Growing String Method or Direct Max Flux. |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method (default: `FiniteDifference`). For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation). |
@@ -290,7 +290,7 @@ They typically contain:
 - per-segment barrier heights and key bond changes,
 - energies from the MLIP backend, thermochemistry, and DFT post-processing (where enabled).
 
-Each segment directory under `path_opt/` (or `path_search/` when `--refine-path` is used) also gets its own `summary.log` and `summary.json`, so you can inspect local refinements independently.
+Each segment directory under `path_search/` (or `path_opt/` when `--refine-path False` is used) also gets its own `summary.log` and `summary.json`, so you can inspect local refinements independently.
 
 ---
 

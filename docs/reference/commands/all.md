@@ -99,11 +99,11 @@ Options:
   --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/GJF
                                   companions based on the input format.
                                   [default: True]
-  --refine-path BOOLEAN           If True, run recursive path_search on the full
-                                  ordered series; if False (default), run a
-                                  single-pass path-opt GSM between each adjacent
-                                  pair and concatenate the segments (no
-                                  path_search).  [default: False]
+  --refine-path BOOLEAN           Run recursive path_search on the full ordered
+                                  series (default). Use --refine-path False to
+                                  run a single-pass path-opt GSM between each
+                                  adjacent pair and concatenate the segments (no
+                                  path_search).  [default: True]
   --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when
                                   not provided.

@@ -300,6 +300,6 @@ opt:
 - [path-search](path-search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
 - [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (includes imaginary-frequency check; follow with IRC)
 - [extract](extract.md) — Generate active site model (binding pocket) PDBs for path-opt inputs
-- [all](all.md) — End-to-end workflow (uses path-opt by default; add `--refine-path` for recursive path-search)
+- [all](all.md) — End-to-end workflow (uses recursive path-search by default; add `--refine-path False` for single-pass path-opt)
 - [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI

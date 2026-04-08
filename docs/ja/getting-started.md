@@ -45,7 +45,7 @@ PDB (R, P)
 [extract]  活性部位モデル抽出（クラスターモデル）
   |
   v
-[path-opt]  MEP 探索 (GSM); `--refine-path` で再帰的 path-search に切替
+[path-search]  MEP 探索（再帰的 path-search、デフォルト）; `--refine-path False` で path-opt に切替
   |         出力: mep.pdb, energy_diagram.png, summary.json
   v
 [tsopt]  TS 最適化 (RS-I-RFO or Hessian Guided Dimer)
@@ -165,8 +165,8 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 - 反応順に並んだ 2 つ以上の**完全系**を受け取る
 - 各構造から触媒クラスターモデルを抽出
-- デフォルトで `path-opt` による **MEP 探索**を実行（出力は `path_opt/`）
-- `--refine-path` を指定すると**再帰的** `path-search` に切り替え
+- デフォルトで**再帰的** `path-search` による **MEP 探索**を実行（出力は `path_search/`）
+- `--refine-path False` を指定すると単一パス `path-opt` に切り替え（出力は `path_opt/`）
 - PDB テンプレートがある場合、クラスターモデル MEP を**完全系**にマージ
 - 必要に応じて各セグメントで TS 最適化、IRC、振動解析、DFT 一点計算を実行
 
@@ -209,8 +209,8 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  - クラスターモデルのインデックスに自動的に再マッピング
 - 1 つの `-s/--scan-lists` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます（例: `-s '[(…)]' '[(…)]'`）
 - 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
-- デフォルトの `all` ワークフローは連結されたステージを `path-opt` で処理
-- `--refine-path` を使用すると、再帰的 `path-search` による自動精密化に切り替え（PDB テンプレートがある場合はマージされた `mep_w_ref*.pdb` を生成）
+- デフォルトの `all` ワークフローは再帰的 `path-search` による自動精密化で処理（PDB テンプレートがある場合はマージされた `mep_w_ref*.pdb` を生成）
+- `--refine-path False` を指定すると、連結されたステージを単一パス `path-opt` で処理
 
 このモードは単一構造から反応経路を構築するのに便利です。
 
@@ -267,7 +267,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 | `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |
 | `--thermo/--no-thermo` | 振動解析と熱化学を実行 |
 | `--dft/--no-dft` | DFT 一点計算を実行 |
-| `--refine-path/--no-refine-path` | `path-opt` の代わりに再帰的 `path-search` を有効化（デフォルト: `False`） |
+| `--refine-path/--no-refine-path` | 再帰的 `path-search` を使用（デフォルト: `True`）。`False` で単一パス `path-opt` に切替 |
 | `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO、デフォルト `grad`）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 |
 | `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照 |
@@ -290,7 +290,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 - セグメントごとの障壁高さと主要な結合変化
 - MLIP バックエンド、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
 
-`path_opt/`（`--refine-path` 使用時は `path_search/`）配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
+`path_search/`（`--refine-path False` 使用時は `path_opt/`）配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
 
 ---
 

@@ -104,7 +104,7 @@ result_scan/
 │   │   ├── scan_trj.xyz
 │   │   └── scan.pdb
 │   └── stage_02/                  # ステージ 2（マルチステージ時）
-└── path_opt/                      # MEP 探索（デフォルト）; --refine-path 時は path_search/
+└── path_search/                   # MEP 探索（デフォルト、再帰的）; --refine-path False 時は path_opt/
     ├── mep.pdb
     └── energy_diagram_uma_all.png
 ```

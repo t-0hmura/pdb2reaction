@@ -259,7 +259,7 @@ result_all/
 │ ├── mep.pdb # MEP in PDB format
 │ ├── mep_plot.png # Energy profile plot
 │ └── seg_*/ # Per-segment details
-│ # (with --refine-path: path_search/ instead, includes mep_w_ref.pdb)
+│ # (default: path_search/ with mep_w_ref.pdb; --refine-path False: path_opt/ instead)
 └┬── path_opt/post_seg_*/ # Post-processing outputs
  ├── tsopt/ # TS optimization results
  ├── irc/ # IRC trajectories

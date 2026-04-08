@@ -221,7 +221,7 @@ result_all/
 │ ├── mep.pdb # PDB形式のMEP
 │ ├── mep_plot.png # エネルギープロファイルプロット
 │ └── seg_*/ # セグメントごとの詳細
-│ # （--refine-path 指定時: path_search/ に変更、mep_w_ref.pdb を含む）
+│ # （デフォルト: path_search/、mep_w_ref.pdb を含む; --refine-path False 時は path_opt/）
 └┬── path_opt/post_seg_*/ # 後処理出力
  ├── tsopt/ # TS最適化結果
  ├── irc/ # IRC軌跡

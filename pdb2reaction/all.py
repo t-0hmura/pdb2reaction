@@ -2104,11 +2104,12 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--refine-path",
     "refine_path",
     type=click.BOOL,
-    default=False,
+    default=True,
     show_default=True,
     help=(
-        "If True, run recursive path_search on the full ordered series; if False (default), run a single-pass "
-        "path-opt GSM between each adjacent pair and concatenate the segments (no path_search)."
+        "Run recursive path_search on the full ordered series (default). "
+        "Use --refine-path False to run a single-pass path-opt GSM between each adjacent pair "
+        "and concatenate the segments (no path_search)."
     ),
 )
 @click.option(
@@ -2457,15 +2458,15 @@ def cli(
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
-    (concatenated `path-opt` by default, or recursive `path_search` with ``--refine-path True``) and hides
+    (recursive `path_search` by default, or concatenated `path-opt` with ``--refine-path False``) and hides
     ref-template bookkeeping.
     With single input:
-      - with --scan-lists: run staged scan and use stage results as inputs for path-opt (or path_search),
+      - with --scan-lists: run staged scan and use stage results as inputs for path_search (or path-opt),
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no MEP search).
 
-    By default, a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments
-    are concatenated into the final MEP.  With ``--refine-path True``, the recursive ``path_search``
-    workflow is used instead.
+    By default, the recursive ``path_search`` workflow is used.  With ``--refine-path False``, a single-pass
+    ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are concatenated into the
+    final MEP.
     """
     argv_all = sys.argv[1:]
 
