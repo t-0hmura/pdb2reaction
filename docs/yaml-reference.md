@@ -5,7 +5,7 @@
 Settings are resolved in the following order (highest priority first):
 
 1. **CLI flags** (e.g., `-q -1`, `--thresh gau_loose`)
-2. **YAML file** (passed via `-y`/`--yaml`)
+2. **YAML file** (passed via `--config`)
 3. **Built-in defaults** (defined in `defaults.py`)
 
 For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.

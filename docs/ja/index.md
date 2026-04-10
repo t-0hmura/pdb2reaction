@@ -6,7 +6,7 @@
 
 ```{toctree}
 :maxdepth: 2
-:caption: Guides
+:caption: ガイド
 :hidden:
 
 getting-started
@@ -21,7 +21,7 @@ cli-conventions
 
 ```{toctree}
 :maxdepth: 2
-:caption: Commands
+:caption: コマンド
 :hidden:
 
 all
@@ -45,7 +45,7 @@ bond-summary
 
 ```{toctree}
 :maxdepth: 2
-:caption: Reference
+:caption: リファレンス
 :hidden:
 
 yaml-reference
@@ -139,7 +139,7 @@ glossary
 
 | トピック | ページ |
 |-------|------|
-| **CLI コマンドリファレンス** | [Command Reference](../reference/commands/index.md) |
+| **CLI コマンドリファレンス** | [コマンドリファレンス](../reference/commands/index.md) |
 | **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP 計算機](uma-pysis.md) |
 | **用語** | [用語集](glossary.md) |
