@@ -256,7 +256,7 @@ Approximate VRAM usage by system size:
 If you encounter `torch.cuda.OutOfMemoryError`:
 - Use `--hessian-calc-mode FiniteDifference` (slower but lower VRAM)
 - Reduce cluster model size with a smaller `--radius`
-- Use a smaller model (`--model uma-s-1p1` instead of `uma-m-1p1`)
+- Use a smaller model (`calc.model: uma-s-1p1` in your YAML config instead of `uma-m-1p1`)
 
 ## How to report an issue
 

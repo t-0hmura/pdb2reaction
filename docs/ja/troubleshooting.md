@@ -248,7 +248,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 | 200 | ~4 GB | ~12 GB | ~4 GB |
 | 500 | ~6 GB | 16 GB で OOM | ~6 GB |
 
-`torch.cuda.OutOfMemoryError` の場合: `--hessian-calc-mode FiniteDifference`、`--radius` の縮小、小さいモデル（`uma-s-1p1`）を検討してください。
+`torch.cuda.OutOfMemoryError` の場合: `--hessian-calc-mode FiniteDifference`、`--radius` の縮小、小さいモデル（YAML設定で `calc.model: uma-s-1p1`）を検討してください。
 
 ## 不具合報告のときに添えると助かる情報
 

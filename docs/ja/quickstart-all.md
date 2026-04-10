@@ -32,7 +32,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 result_all/
 ├── summary.log                    # テキストサマリ
 ├── summary.json                   # 機械可読な結果
-├── path_opt/
+├── path_search/
 │   ├── mep.pdb                    # MEP 軌跡
 │   ├── energy_diagram_uma_all.png # エネルギープロファイル
 │   └── post_seg_01/               # 後処理（--tsopt 時）
