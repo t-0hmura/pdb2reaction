@@ -196,7 +196,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 - スピン多重度（Spin Multiplicity）は `-m/--multiplicity`（デフォルト: 1 = 一重項）で設定
 
 ### ブール値オプション
-ブール値 CLI オプションは `--flag` / `--no-flag` と `--flag True/False` の両方を受理します（新規スクリプトでは toggle 形式を推奨）:
+ブール値 CLI オプションは `--flag` / `--no-flag` と `--flag True/False` の両方を受理します（新規スクリプトでは `--flag` / `--no-flag` 形式を推奨）:
 ```bash
 --tsopt --thermo --no-dft
 --tsopt True --thermo yes --dft 0
@@ -258,4 +258,4 @@ pdb2reaction <subcommand> --help-advanced
 
 ---
 
-*Note: 本ドキュメントは現在整備中のため、一部未完成の箇所や今後変更される箇所がある可能性があります。*
+*Note: 本ドキュメントは整備中です。一部未完成の箇所や今後変更される箇所があります。*

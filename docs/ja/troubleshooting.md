@@ -220,7 +220,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 - **VRAM 不足**: `--radius` の値を減らして活性部位モデルを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
 - **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は十分な VRAM がある場合のみ使用してください（500 原子以上では 16 GB 以上推奨）
-- **workers > 1**: HPC で UMA のスループットは改善しますが、解析ヘシアンは無効になります
+- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンは無効になります
 - **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 
 ---

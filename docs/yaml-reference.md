@@ -507,7 +507,7 @@ bond:
 
 ## Example: Complete Configuration File
 
-Below is a comprehensive example combining multiple sections:
+Below is a complete example combining multiple sections:
 
 ```yaml
 # pdb2reaction configuration example

@@ -860,7 +860,10 @@ def cli(
             order = np.argsort(freqs_cm)
 
         n_write = int(min(freq_cfg["max_write"], len(order)))
-        click.echo(f"[INFO] Total modes: {len(freqs_cm)}  → write first {n_write} modes ({freq_cfg['sort']} ascending).")
+        _imag = [f for f in freqs_cm if f < 0]
+        _freq_str = ", ".join(f"{float(freqs_cm[j]):+.1f}" for j in order)
+        click.echo(f"[freq] {len(freqs_cm)} modes ({len(_imag)} imaginary): [{_freq_str}] cm⁻¹")
+        click.echo(f"[INFO] Writing first {n_write} modes ({freq_cfg['sort']} ascending).")
 
         # Reference PDB (only when input is PDB)
         ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None

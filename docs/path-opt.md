@@ -15,7 +15,7 @@
 
 > **When to use `path-opt` vs `path-search`:** Use `path-opt` when you have exactly 2 endpoint structures and want MEP optimization without recursive refinement. Use `path-search` when you have 2 or more structures and want automatic recursive refinement of regions with bond changes.
 
-An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string well-behaved; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
+An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string stable; if you define `freeze_atoms`, only those atoms are used for the RMSD fit (the transform is still applied to all atoms).
 
 ```{note}
 **Frozen atoms in DMF mode** use `HarmonicFixAtoms` (harmonic restraints with k=300 eV/Å²) instead of pysisyphus's hard coordinate freeze used by GSM. This means frozen atoms in DMF can move slightly from their reference positions, which differs from the rigid freeze in GSM mode.

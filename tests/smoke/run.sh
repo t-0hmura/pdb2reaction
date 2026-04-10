@@ -8,7 +8,7 @@ cd "${PBS_O_WORKDIR:-.}"
 if [ -n "${PBS_O_WORKDIR:-}" ]; then
   . /home/apps/Modules/init/profile.sh
   module load cuda/12.9
-  source /home/tohmura/miniconda3/etc/profile.d/conda.sh
+  source /data2/tohmura/miniconda3/etc/profile.d/conda.sh
   conda activate p2r
   export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 fi
@@ -43,7 +43,7 @@ pdb2reaction dft -i h2.gjf --func-basis 'hf/sto-3g' --grid-level 0 --conv-tol 1e
 pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test7 > test7.out 2>&1
 
 # test8: scan2d (extract model first)
-pdb2reaction extract -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --include-H2O -o p_complex_model.pdb
+pdb2reaction extract -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --include-h2o -o p_complex_model.pdb
 pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4)]" --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test8 > test8.out 2>&1
 
 # test9: scan3d

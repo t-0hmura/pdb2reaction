@@ -150,7 +150,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 - 設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
 
-共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更することを推奨します。
+共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更してください。
 
 ### 共通設定（両モード共通）
 
@@ -299,6 +299,10 @@ rsirfo:
  min_line_search: true # enforce minimum line-search step
  max_line_search: true # enforce maximum line-search step
  assert_neg_eigval: false # require a negative eigenvalue at convergence
+```
+
+```{tip}
+TS 収束が遅い場合や最適化中に TS モードが失われる場合は、`rsirfo` セクションの `hessian_recalc` を小さくしてみてください（例: 50--200）。正確なヘシアン再計算の頻度を上げることで、追加のヘシアン評価コストと引き換えに堅牢性が向上します。
 ```
 
 ---

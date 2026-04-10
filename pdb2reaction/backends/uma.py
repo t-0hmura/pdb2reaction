@@ -311,11 +311,11 @@ class UMACalculator(MLIPCalculator):
         """Convert Hessian from eV/Å² to Hartree/Bohr² (torch version)."""
         n = H.size(0)
         H = H.view(n * 3, n * 3)
+        if self.hessian_double:
+            H = H.to(dtype=torch.float64)
         _t = H.T.clone()
         H.add_(_t).mul_(0.5)
         del _t
-        if self.hessian_double:
-            H = H.to(dtype=torch.float64)
         H.mul_(H_EVAA_2_AU)
         if self.out_hess_torch:
             return H.detach()

@@ -26,11 +26,11 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 
 Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Typical use cases include:
 
-- **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be prohibitively slow
+- **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be too slow
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
 - **High-throughput screening** of reaction pathways across substrate variants or enzyme mutants
 
-The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual intervention. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
+The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual setup. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
 
 On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
@@ -154,7 +154,7 @@ Use this when you already have several full PDB structures along a putative reac
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
-**Richer example**
+**Extended example**
 
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -192,7 +192,7 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
-**Richer example**
+**Extended example**
 
 ```bash
 pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -228,7 +228,7 @@ Provide exactly one PDB and enable `--tsopt`:
 pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
 ```
 
-**Richer example**
+**Extended example**
 
 ```bash
 pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \

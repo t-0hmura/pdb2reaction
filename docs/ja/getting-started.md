@@ -28,11 +28,11 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 - 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
-- 基質バリアントや酵素変異体にわたる**反応経路のハイスループット計算**
+- 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
 一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
 
-**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にもスケールできます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
+**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にも対応できます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
 
 ### パイプライン概要
 
@@ -101,7 +101,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 |--------|------------|------|
 | **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | 高速、結晶構造に広く使用 |
 | **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | 水素を追加し部分電荷を割り当て |
-| **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用ケモインフォマティクスツールキット |
+| **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用化学情報処理ツールキット |
 | **PyMOL** | `h_add`（PyMOL 内） | 分子可視化ツール（水素付加機能あり） |
 | **tleap** (AmberTools) | `tleap -f leapin` | Amber 力場準備ツール |
 

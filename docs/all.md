@@ -229,7 +229,7 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
 
 ```{warning}
-The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) can become prohibitively expensive for models exceeding ~500 atoms. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
+The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) are very expensive for models exceeding ~500 atoms. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
 ```
 | `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |

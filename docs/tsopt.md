@@ -6,7 +6,7 @@
 
 ### At a glance
 - **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
-- **Modes:** `hess` (`rsirfo`) = RS‑I‑RFO (default, generally more robust). `grad` (`dimer`) = Hessian Guided Dimer (often cheaper per step).
+- **Modes:** `hess` (`rsirfo`) = RS‑I‑RFO (default, more reliable for most systems). `grad` (`dimer`) = Hessian Guided Dimer (lower cost per step).
 - **Quality control:** `tsopt` includes a final imaginary-frequency check (look for n=1 in the output). The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
 - **Optional cleanup:** `--flatten` (default: disabled) controls surplus-imaginary-mode cleanup.
 - **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
@@ -332,6 +332,10 @@ rsirfo:
  min_line_search: true # enforce minimum line-search step
  max_line_search: true # enforce maximum line-search step
  assert_neg_eigval: false # require a negative eigenvalue at convergence
+```
+
+```{tip}
+If TS convergence is slow or the TS mode is lost during optimization, try lowering `hessian_recalc` (e.g., to 50--200) in the `rsirfo` section. More frequent exact Hessian recalculations improve robustness at the cost of additional Hessian evaluations.
 ```
 
 ---

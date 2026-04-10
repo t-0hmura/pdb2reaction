@@ -451,6 +451,7 @@ RSIRFO_KW: Dict[str, Any] = {
     "min_line_search": True,
     "max_line_search": True,
     "assert_neg_eigval": False,
+    "track_mode_by_overlap": False,
 }
 
 # -----------------------------------------------

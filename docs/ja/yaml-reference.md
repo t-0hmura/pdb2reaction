@@ -106,7 +106,7 @@ calc:
 - `backend` で MLIP エンジンを選択。UMA（デフォルト）は解析ヘシアンとマルチワーカー推論に対応。他のバックエンドは有限差分ヘシアンを使用。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
-- VRAMが十分な場合は `hessian_calc_mode: Analytical` を推奨します。
+- VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
 - `workers > 1` の場合、解析ヘシアンは無効化されます。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
