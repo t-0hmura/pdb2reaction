@@ -298,7 +298,8 @@ out_dir/ (default:./result_all/)
 │     ├─ structures/            # Optimized R/TS/P structures (IRC endpoints)
 │     ├─ irc/                   # IRC trajectories and plots
 │     ├─ ts/                    # TS optimization output and vibrational analysis
-│     └─ freq/                  # Frequency and thermochemistry (R, TS, P)
+│     ├─ freq/                  # Frequency and thermochemistry (R, TS, P)
+│     └─ dft/                   # DFT single-point results (when --dft is enabled)
 └─ tsopt_single/                # TSOPT-only outputs with IRC endpoints
 ```
 - Console logs summarizing active site model charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
@@ -386,8 +387,11 @@ For a complete reference of all YAML options, see **[YAML Configuration Referenc
 - [Installation](installation.md) — Setup and dependency installation
 - [Getting Started](getting-started.md) — First run, workflow overview, and key concepts
 - [extract](extract.md) — Standalone active site model extraction (called internally by `all`)
-- [path-search](path-search.md) — Standalone MEP search (called internally by `all`)
+- [scan](scan.md) — Standalone staged distance scan
+- [path-opt](path-opt.md) — Single-pass MEP optimization (GSM/DMF)
+- [path-search](path-search.md) — Recursive MEP search (called internally by `all`)
 - [tsopt](tsopt.md) — Standalone TS optimization
+- [irc](irc.md) — Standalone IRC calculation
 - [freq](freq.md) — Standalone vibrational analysis
 - [dft](dft.md) — Standalone DFT calculations
 - [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing

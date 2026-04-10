@@ -302,7 +302,8 @@ out_dir/ (デフォルト:./result_all/)
 │     ├─ structures/            # IRC 端点の最適化済み R/TS/P 構造
 │     ├─ irc/                   # IRC 軌道とプロット
 │     ├─ ts/                    # TS 最適化出力と振動解析
-│     └─ freq/                  # 振動数・熱化学（R, TS, P）
+│     ├─ freq/                  # 振動数・熱化学（R, TS, P）
+│     └─ dft/                   # DFT 一点計算結果（--dft 有効時）
 └─ tsopt_single/                # TSOPT のみ出力（IRC エンドポイント）
 ```
 
@@ -394,9 +395,12 @@ dft:
 - [インストール](installation.md) — セットアップと依存関係
 - [はじめに](getting-started.md) — 初回実行、ワークフロー概要、主要概念
 - [extract](extract.md) — 単独の活性部位モデル抽出（`all` が内部で呼び出し）
-- [path-search](path-search.md) — 単独のMEP 探索（`all` が内部で呼び出し）
-- [tsopt](tsopt.md) — 単独の TS 最適化（内部で虚振動数チェック済み）
-- [freq](freq.md) — 単独の振動解析（任意）
+- [scan](scan.md) — 単独の段階的距離スキャン
+- [path-opt](path-opt.md) — 単一パス MEP 最適化（GSM/DMF）
+- [path-search](path-search.md) — 再帰的 MEP 探索（`all` が内部で呼び出し）
+- [tsopt](tsopt.md) — 単独の TS 最適化
+- [irc](irc.md) — 単独の IRC 計算
+- [freq](freq.md) — 単独の振動解析
 - [dft](dft.md) — 単独の DFT 計算
 - [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
