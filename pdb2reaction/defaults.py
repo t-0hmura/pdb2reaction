@@ -163,7 +163,7 @@ RFO_KW: Dict[str, Any] = {
     "trust_radius": 0.10,
     "trust_update": True,
     "trust_min": 1e-4,
-    "trust_max": 0.20,
+    "trust_max": 0.10,
     "max_energy_incr": None,
     "hessian_update": "bfgs",
     "hessian_init": "calc",
@@ -438,7 +438,7 @@ _RFO_ONLY_KEYS = {"gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_tes
 RSIRFO_KW: Dict[str, Any] = {
     **{k: v for k, v in RFO_KW.items() if k not in _RFO_ONLY_KEYS},
     "thresh": "baker",
-    "trust_max": 0.20,
+    "trust_max": 0.10,
     "roots": [0],
     "hessian_ref": None,
     "rx_modes": None,
