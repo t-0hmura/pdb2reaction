@@ -143,6 +143,16 @@ out_dir/ (デフォルト:./result_tsopt/)
 └─.dimer_mode.dat # dimer モード方向シード
 ```
 
+## 終了コード
+
+| コード | 意味 |
+|------|---------|
+| 0 | 成功 |
+| 2 | ゼロステップ長（ステップノルムが最小値以下） |
+| 3 | オプティマイザー失敗 |
+| 130 | キーボード割り込み |
+| 1 | 予期しないエラー |
+
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 虚振動数モード検出の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。
@@ -299,6 +309,11 @@ rsirfo:
  min_line_search: true # enforce minimum line-search step
  max_line_search: true # enforce maximum line-search step
  assert_neg_eigval: false # require a negative eigenvalue at convergence
+ track_mode_by_overlap: false # ステップ間の固有ベクトル重なりで TS モードを追跡
+```
+
+```{tip}
+最適化中に TS モードが別のルートに切り替わる場合（例: 複数の虚振動数が存在する場合）は `rsirfo.track_mode_by_overlap: true` を設定してください。
 ```
 
 ```{tip}

@@ -118,7 +118,7 @@ result_scan/
 **ヒント:** `--print-parsed --dry-run` でスキャン設定を事前確認:
 
 ```bash
-pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run
+pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run
 ```
 
 ## 補足

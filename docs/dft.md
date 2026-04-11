@@ -110,6 +110,16 @@ out_dir/ (default:./result_dft/)
 - It also summarizes charge, multiplicity, spin (2S), functional, basis,
  convergence knobs, and resolved output directory.
 
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Unexpected error |
+| 2 | Import failure (PySCF or GPU4PySCF not installed) |
+| 3 | SCF not converged |
+| 130 | Keyboard interrupt |
+
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 

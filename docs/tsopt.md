@@ -332,6 +332,11 @@ rsirfo:
  min_line_search: true # enforce minimum line-search step
  max_line_search: true # enforce maximum line-search step
  assert_neg_eigval: false # require a negative eigenvalue at convergence
+ track_mode_by_overlap: false # track TS mode via eigenvector overlap between steps
+```
+
+```{tip}
+Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during optimization (e.g., when multiple imaginary frequencies are present).
 ```
 
 ```{tip}
