@@ -126,36 +126,36 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ## Workflow
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
- run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
- `--ligand-charge` is provided, the structure is treated as an enzyme–substrate
- complex and `extract.py`’s charge summary derives the total charge before the
- scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
- structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
- stored in `surface.csv` with indices `i = j = -1`.
+    run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
+    `--ligand-charge` is provided, the structure is treated as an enzyme–substrate
+    complex and `extract.py`’s charge summary derives the total charge before the
+    scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
+    structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
+    stored in `surface.csv` with indices `i = j = -1`.
 2. Parse targets from `-s/--scan-lists` (YAML/JSON file or inline literal) into two quadruples, normalize indices
- (1-based by default). For PDB inputs, each atom entry can be an integer index
- or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
- slashes, backticks, or backslashes, and token order is flexible (fallback
- assumes resname, resseq, atom). Construct linear grids with
- `ceil(|high − low| / h) + 1` points (both endpoints included), where
- `h = --max-step-size`. Zero-length spans collapse to a single point.
- Each axis is then reordered so that the distance closest to the preoptimized
- geometry is indexed as `i = 0` / `j = 0`.
+    (1-based by default). For PDB inputs, each atom entry can be an integer index
+    or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
+    slashes, backticks, or backslashes, and token order is flexible (fallback
+    assumes resname, resseq, atom). Construct linear grids with
+    `ceil(|high − low| / h) + 1` points (both endpoints included), where
+    `h = --max-step-size`. Zero-length spans collapse to a single point.
+    Each axis is then reordered so that the distance closest to the preoptimized
+    geometry is indexed as `i = 0` / `j = 0`.
 3. Iterate over every `d1[i]` (nearest-first ordering). For each value, relax
- the system with **only the d₁ restraint** active, snapshot that geometry, then
- run the inner loop over `d2[j]` with **both restraints** applied starting from
- the nearest previously converged structure.
+    the system with **only the d₁ restraint** active, snapshot that geometry, then
+    run the inner loop over `d2[j]` with **both restraints** applied starting from
+    the nearest previously converged structure.
 4. At each `(i, j)` pair, store the biased-optimization result under
- `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
- evaluate the MLIP energy without bias. Optional per-outer-step inner
- trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
+    `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
+    evaluate the MLIP energy without bias. Optional per-outer-step inner
+    trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
- `i,j,d1_label,d2_label,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
- reference via `--baseline {min|first}`. With `--baseline first`, the reference
- is the first grid entry (`i = j = 0` after reordering), not necessarily
- `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
- `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
- clamp the color scale.
+    `i,j,d1_label,d2_label,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
+    reference via `--baseline {min|first}`. With `--baseline first`, the reference
+    is the first grid entry (`i = j = 0` after reordering), not necessarily
+    `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
+    `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
+    clamp the color scale.
 
 ## CLI options
 | Option | Description | Default |
@@ -188,8 +188,8 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
- [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
- scan trajectory output is controlled by `--dump`.
+  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  scan trajectory output is controlled by `--dump`.
 
 ### Section `bias`
 - `k` (`300`): Harmonic strength in eV·Å⁻².
@@ -213,13 +213,13 @@ out_dir/ (default:./result_scan2d/)
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend (UMA by default) reuses the same
- `HarmonicBiasCalculator` as the 1D scan.
+  `HarmonicBiasCalculator` as the 1D scan.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
- trust radii; Optimizer scratch files live under temporary directories.
+  trust radii; Optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
- `surface.csv` in downstream fitting or visualization scripts.
+  `surface.csv` in downstream fitting or visualization scripts.
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
- PDB inputs, keeping extracted active site models rigid.
+  PDB inputs, keeping extracted active site models rigid.
 
 
 ```yaml

@@ -151,7 +151,7 @@ glossary
 ### ハードウェア
 - **OS**: Linux
 - **GPU**: CUDA 12.x 互換
-- **VRAM**: 最小 8 GB 推奨
+- **VRAM**: 8 GB 以上推奨
 - **RAM**: 16 GB以上推奨
 
 ### ソフトウェア
@@ -168,22 +168,23 @@ glossary
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
-### TS 最適化を含む完全ワークフロー
+### MEP 探索からの TS 最適化を含むワークフロー
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 ```
 
-### 単一構造からの反応座標スキャンによるフルワークフロー
+### 単一構造からの反応座標スキャンによるワークフロー
 ```bash
 pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+ --tsopt --thermo --dft
 ```
 
-### 単一 TS 候補構造からのフルワークフロー
+### 単一 TS 候補構造からのワークフロー
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --tsopt
+ --tsopt --thermo --dft
 ```
 
 ---

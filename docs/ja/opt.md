@@ -134,6 +134,7 @@ out_dir/
 LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 - `thresh` プリセット（Gaussian 系または Baker 系）。プリセットは `pdb2reaction/opt.py` に記載されている力/ステップ閾値に変換されます。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
+- エネルギープラトーによるフォールバック収束（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジがフラット化した場合に収束を宣言します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
@@ -179,10 +180,23 @@ opt:
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束 (v0.3.5 新機能)
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
+ energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_opt/ # output directory
+```
+
+```{note}
+**エネルギープラトーによるフォールバック収束 (v0.3.5 新機能)。** `energy_plateau: true`
+のとき、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が
+`energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
+下回ると、オプティマイザーは収束したと判定します。MLIP の力のノイズフロア
+（~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を上回る
+場合でも、無駄にサイクルを消費するのを防ぎます。chain-of-states オプティマイザー
+（イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
 ```
 
 ### L-BFGS モード（`--opt-mode grad`）
@@ -204,6 +218,9 @@ lbfgs:
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
+ energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
@@ -237,6 +254,9 @@ rfo:
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
+ energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
@@ -244,7 +264,7 @@ rfo:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius (bohr); v0.3.5 で 0.20 から 0.10 に変更
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source

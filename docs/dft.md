@@ -104,11 +104,11 @@ out_dir/ (default:./result_dft/)
 ```
 - `result.yaml` expands to:
  - `energy`: energy in hartree and kcal/mol, convergence flag, wall time, engine metadata
- (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
+  (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
  - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
 - It also summarizes charge, multiplicity, spin (2S), functional, basis,
- convergence knobs, and resolved output directory.
+  convergence knobs, and resolved output directory.
 
 ## Exit codes
 

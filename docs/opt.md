@@ -136,6 +136,7 @@ See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration
 Shared optimizer controls used by both LBFGS and RFO:
 - `thresh` presets (Gaussian-like or Baker rule). Presets translate to the force/step thresholds documented in `pdb2reaction/opt.py`.
 - `max_cycles`, `print_every` (`100`), `min_step_norm` (`1e-8`), `assert_min_step`, convergence toggles (`rms_force`, etc.), RMSD-based `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
+- Energy plateau fallback (`energy_plateau`, `energy_plateau_thresh`, `energy_plateau_window`) — declares convergence when the recent energy range flattens (useful when MLIP force noise prevents force-based convergence; see note below).
 - Dumping/bookkeeping fields (`dump`, `dump_restart`, `prefix`, `out_dir`).
 
 ### `lbfgs`
@@ -180,10 +181,23 @@ opt:
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # fallback convergence when the energy range flattens (new in v0.3.5)
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
+ energy_plateau_window: 50 # number of most recent steps inspected for the plateau
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_opt/ # output directory
+```
+
+```{note}
+**Energy plateau fallback (new in v0.3.5).** When `energy_plateau: true`, the optimizer
+is declared converged if the energy range (max − min) over the last
+`energy_plateau_window` steps falls below `energy_plateau_thresh`
+(default `1×10⁻⁴ au ≈ 0.06 kcal/mol` over 50 steps). This prevents wasted cycles when
+the MLIP force noise floor (~4×10⁻⁴ au) exceeds the force-based convergence threshold
+(e.g. `baker` max_force = 3×10⁻⁴ au). The fallback is skipped for chain-of-states
+optimizers, which store per-image energy arrays.
 ```
 
 ### L-BFGS mode (`--opt-mode grad`)
@@ -205,6 +219,9 @@ lbfgs:
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # fallback convergence when the energy range flattens
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
+ energy_plateau_window: 50 # number of most recent steps inspected
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
@@ -238,6 +255,9 @@ rfo:
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # fallback convergence when the energy range flattens
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
+ energy_plateau_window: 50 # number of most recent steps inspected
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
@@ -245,7 +265,7 @@ rfo:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius (bohr); reduced from 0.20 in v0.3.5
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source

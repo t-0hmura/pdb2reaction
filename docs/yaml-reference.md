@@ -134,11 +134,25 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
+ energy_plateau: true # Declare convergence when the energy range flattens (see note below)
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); fallback convergence threshold for the plateau check
+ energy_plateau_window: 50 # Number of most recent steps inspected for the plateau check
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
  prefix: "" # Filename prefix
  out_dir: ./result_opt/ # Output directory
 ```
+
+**Energy plateau fallback (new in v0.3.5):**
+When `energy_plateau: true`, the optimizer declares convergence if the energy range
+(max − min) over the last `energy_plateau_window` steps falls below
+`energy_plateau_thresh` (default `1e-4` au ≈ 0.06 kcal/mol over 50 steps). This prevents
+wasted cycles when the MLIP force noise floor (typically ~4×10⁻⁴ au) exceeds the
+force-based convergence threshold (e.g. `baker` max_force = 3×10⁻⁴ au), so the force
+criterion can never be satisfied even though the energy has clearly flattened.
+The fallback is **skipped** for chain-of-states (COS) optimizers such as `stopt`,
+`gs`, and DMF, because those store per-image energy arrays rather than a single scalar
+trace.
 
 **Convergence Presets:**
 
@@ -181,7 +195,7 @@ rfo:
  trust_radius: 0.10 # Trust-region radius
  trust_update: true # Enable trust-region updates
  trust_min: 0.0001 # Minimum trust radius
- trust_max: 0.20 # Maximum trust radius
+ trust_max: 0.10 # Maximum trust radius (bohr); reduced from 0.20 in v0.3.5
  max_energy_incr: null # Allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.

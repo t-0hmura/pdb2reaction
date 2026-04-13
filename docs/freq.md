@@ -71,28 +71,28 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 
 ## Workflow
 - **Geometry loading & freeze handling**: structures are read via
- `pysisyphus.helpers.geom_loader`. For PDB inputs, `--freeze-links` detects link
- hydrogens and freezes their parent atoms, then merges the resulting indices with
- `geom.freeze_atoms`; the merged list is echoed and propagated to the MLIP backend and PHVA.
+  `pysisyphus.helpers.geom_loader`. For PDB inputs, `--freeze-links` detects link
+  hydrogens and freezes their parent atoms, then merges the resulting indices with
+  `geom.freeze_atoms`; the merged list is echoed and propagated to the MLIP backend and PHVA.
 - **MLIP backend**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
- The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
- For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+  The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
+  For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
- subspace with translation/rotation modes projected there. Both 3N×3N and active-block
- Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
+  subspace with translation/rotation modes projected there. Both 3N×3N and active-block
+  Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
 - **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
- value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
- (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `_trj.xyz`
- animations are produced for every input; `.pdb` animations are written only when a PDB
- template exists **and** `--convert-files` remains enabled (ASE conversion is used as a
- fallback).
+  value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
+  (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `_trj.xyz`
+  animations are produced for every input; `.pdb` animations are written only when a PDB
+  template exists **and** `--convert-files` remains enabled (ASE conversion is used as a
+  fallback).
 - **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (EE, ZPE, E/H/G
- corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
- atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
- also written.
+  corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
+  atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
+  also written.
 - **Performance & exit behavior**: the implementation minimizes GPU memory usage by keeping
- a single Hessian resident.
- Keyboard interrupts exit with code 130; other failures print a traceback and exit with code 1.
+  a single Hessian resident.
+  Keyboard interrupts exit with code 130; other failures print a traceback and exit with code 1.
 
 ## CLI options
 | Option | Description | Default |
@@ -144,7 +144,7 @@ out_dir/ (default:./result_freq/)
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
- and dumps details when `--dump`.
+  and dumps details when `--dump`.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI < override); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
 Provide mappings with merge order **defaults < config < explicit CLI < override**.

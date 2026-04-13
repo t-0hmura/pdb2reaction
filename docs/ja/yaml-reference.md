@@ -134,11 +134,24 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
+ energy_plateau: true # エネルギーがフラット化した場合にフォールバック収束を宣言（下記注記を参照）
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
+ energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
  prefix: "" # Filename prefix
  out_dir: ./result_opt/ # Output directory
 ```
+
+**エネルギープラトーによるフォールバック収束 (v0.3.5 新機能):**
+`energy_plateau: true` の場合、直近 `energy_plateau_window` ステップのエネルギーレンジ
+（max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）
+を下回ると、オプティマイザーは収束したと判定します。MLIP の力のノイズフロア
+（典型的には ~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を
+上回る場合でも、エネルギーが明らかにフラット化していれば無駄なサイクルを消費せずに
+停止できます。
+chain-of-states（COS）オプティマイザー（`stopt`、`gs`、DMF など）はイメージごとの
+エネルギー配列を保持するため、このフォールバックは**スキップ**されます。
 
 **収束プリセット:**
 
@@ -181,7 +194,7 @@ rfo:
  trust_radius: 0.10 # Trust-region radius
  trust_update: true # Enable trust-region updates
  trust_min: 0.0001 # Minimum trust radius
- trust_max: 0.20 # Maximum trust radius
+ trust_max: 0.10 # Maximum trust radius (bohr); v0.3.5 で 0.20 から 0.10 に変更
  max_energy_incr: null # Allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.

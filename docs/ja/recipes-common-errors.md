@@ -12,6 +12,7 @@
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | [トラブルシューティング](troubleshooting.md) |
 | DMF モードの import エラー（`cyipopt`） | `conda install -c conda-forge cyipopt` を実行してください | [トラブルシューティング](troubleshooting.md) |
 | TSOPT/IRC が収束しない | LBFGS/Dimer: `max_step` を調整。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を調整。サイクル上限を増やし、TS 品質を確認 | [トラブルシューティング](troubleshooting.md) |
+| opt/TSOPT が `max_cycles` で停止し、`max(force)` が閾値をわずかに超える | 通常は `opt.energy_plateau` フォールバック（v0.3.5 新機能）が自動で処理します。手動回避は `--thresh gau` または `--thresh gau_loose` | [トラブルシューティング](troubleshooting.md) |
 | CUDA/GPU 実行時エラー | `torch.cuda.is_available()` と CUDA バージョンの整合を確認してください | [トラブルシューティング](troubleshooting.md) |
 | 図の出力失敗 | `plotly_get_chrome -y` で Chrome ランタイムを導入してください | [トラブルシューティング](troubleshooting.md) |
 
@@ -53,5 +54,6 @@
 - 最初の確認:
  - TS 候補が虚振動数 1 本（|ν| >= 100 cm⁻¹）のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。
  - LBFGS/Dimer の場合 `max_step`、RFO/RS-I-RFO の場合 `trust_radius`/`trust_min`/`trust_max` が厳し過ぎないか。サイクル上限の確認も。
+ - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけでエネルギーがフラット化している場合、`opt.energy_plateau` フォールバック（v0.3.5 新機能）が自動で収束と判定するはずです。効かない場合は `--thresh gau` または `--thresh gau_loose` で力の閾値を緩めてください。
 - 典型的な修正手順:
  - 小規模ケースで条件を詰め、安定化後に本番条件へ戻す。

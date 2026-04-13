@@ -131,30 +131,30 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ## Workflow
 1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
- embedded Gaussian templates, and optionally run an unbiased preoptimization
- when `--preopt`. If `-q` is omitted but `--ligand-charge` is provided, the
- structure is treated as an enzyme–substrate complex and `extract.py`’s charge
- summary derives the total charge before scanning (for PDB inputs, or XYZ/GJF
- when `--ref-pdb` is supplied).
+    embedded Gaussian templates, and optionally run an unbiased preoptimization
+    when `--preopt`. If `-q` is omitted but `--ligand-charge` is provided, the
+    structure is treated as an enzyme–substrate complex and `extract.py`’s charge
+    summary derives the total charge before scanning (for PDB inputs, or XYZ/GJF
+    when `--ref-pdb` is supplied).
 2. Parse targets from `-s/--scan-lists` (YAML/JSON file or inline literal; default 1-based indices unless
- `--zero-based` is passed) into three quadruples. For PDB inputs, each
- atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
- delimiters may be spaces, commas, slashes, backticks, or backslashes, and
- token order is flexible (fallback assumes resname, resseq, atom). Build each linear grid using
- `h = --max-step-size` and reorder the values so the ones closest to the
- starting distances are visited first.
+    `--zero-based` is passed) into three quadruples. For PDB inputs, each
+    atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
+    delimiters may be spaces, commas, slashes, backticks, or backslashes, and
+    token order is flexible (fallback assumes resname, resseq, atom). Build each linear grid using
+    `h = --max-step-size` and reorder the values so the ones closest to the
+    starting distances are visited first.
 3. Outer loop over `d1[i]`: relax with only the d₁ restraint active, starting
- from the previously scanned geometry whose d₁ value is closest. Snapshot that
- structure.
+    from the previously scanned geometry whose d₁ value is closest. Snapshot that
+    structure.
 4. Middle loop over `d2[j]`: relax with d₁ and d₂ restraints, starting from the
- closest (d₁, d₂) geometry. Snapshot that result.
+    closest (d₁, d₂) geometry. Snapshot that result.
 5. Inner loop over `d3[k]`: relax with all three restraints, measure the
- unbiased energy (bias removed for evaluation), and write the constrained
- geometry and convergence flag.
+    unbiased energy (bias removed for evaluation), and write the constrained
+    geometry and convergence flag.
 6. After the scan completes, assemble `surface.csv`, apply the kcal/mol
- baseline shift (`--baseline {min|first}`), and generate a 3D RBF-interpolated
- isosurface plot (`scan3d_density.html`) honoring `--zmin/--zmax`. When
- `--csv` is provided, only this plotting step runs.
+    baseline shift (`--baseline {min|first}`), and generate a 3D RBF-interpolated
+    isosurface plot (`scan3d_density.html`) honoring `--zmin/--zmax`. When
+    `--csv` is provided, only this plotting step runs.
 
 ## CLI options
 | Option | Description | Default |
@@ -188,8 +188,8 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
- [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
- scan trajectory output is controlled by `--dump`.
+  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  scan trajectory output is controlled by `--dump`.
 
 ```yaml
 geom:
@@ -236,15 +236,15 @@ out_dir/ (default:./result_scan3d/)
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend (UMA by default) reuses the same
- `HarmonicBiasCalculator` as the 1D/2D scans.
+  `HarmonicBiasCalculator` as the 1D/2D scans.
 - Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
- trust radii; optimizer scratch files live under temporary directories.
+  trust radii; optimizer scratch files live under temporary directories.
 - `--baseline` defaults to the global minimum; `--baseline first` anchors the
- `(i,j,k)=(0,0,0)` grid point when present.
+  `(i,j,k)=(0,0,0)` grid point when present.
 - 3D visualization uses RBF interpolation on a 50×50×50 grid with
- semi-transparent step-colored isosurfaces (no cross-sectional planes).
+  semi-transparent step-colored isosurfaces (no cross-sectional planes).
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
- PDB inputs, keeping extracted active site models rigid.
+  PDB inputs, keeping extracted active site models rigid.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

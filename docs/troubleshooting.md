@@ -29,9 +29,9 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 Fix:
 - Run:
 
- ```bash
- pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
- ```
+  ```bash
+  pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
+  ```
 
 - Then re-run `extract` / `all` using the updated PDB.
 
@@ -78,9 +78,9 @@ Symptoms:
 Fix:
 - If the extracted active site model is too small, calculated energies and barriers may be unreliable. Increase the extraction radius (e.g., `-r 4.0` or higher) to include more of the protein environment:
 
- ```bash
- pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0
- ```
+  ```bash
+  pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0
+  ```
 
 ---
 
@@ -104,15 +104,15 @@ Many stages need a net charge when the input is not `.gjf`. If you omit `-q/--ch
 Fix:
 - Provide charge and multiplicity explicitly:
 
- ```bash
- pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
- ```
+  ```bash
+  pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
+  ```
 
 - Or (when using extraction) provide a residue-name mapping:
 
- ```bash
- pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
- ```
+  ```bash
+  pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+  ```
 
 ---
 
@@ -125,9 +125,9 @@ Symptoms:
 Fix:
 - Log in once per environment/machine:
 
- ```bash
- huggingface-cli login
- ```
+  ```bash
+  huggingface-cli login
+  ```
 
 - On HPC, ensure your home directory (or HF cache directory) is writable from compute nodes.
 
@@ -142,10 +142,10 @@ Fixes:
 - Install a PyTorch build matching your cluster CUDA runtime.
 - Confirm GPU visibility:
 
- ```bash
- nvidia-smi
- python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
- ```
+  ```bash
+  nvidia-smi
+  python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
+  ```
 
 ---
 
@@ -155,9 +155,9 @@ If you use DMF (`--mep-mode dmf`) and see errors importing IPOPT/cyipopt:
 Fix:
 - Install `cyipopt` from conda-forge (recommended) before installing `pdb2reaction`:
 
- ```bash
- conda install -c conda-forge cyipopt
- ```
+  ```bash
+  conda install -c conda-forge cyipopt
+  ```
 
 ---
 
@@ -167,13 +167,30 @@ If figure export fails and you see Plotly/Chrome-related errors:
 Fix:
 - Install a headless Chrome once:
 
- ```bash
- plotly_get_chrome -y
- ```
+  ```bash
+  plotly_get_chrome -y
+  ```
 
 ---
 
 ## Calculation / convergence problems
+
+### Optimization reaches `max_cycles` with `max(force)` slightly above the threshold
+
+Symptoms:
+- The optimizer runs until `max_cycles` is hit, and the final summary shows that `max(force)` or `rms(force)` is just above the target (e.g. 4×10⁻⁴ au vs `baker` 3×10⁻⁴ au).
+- The energy, on the other hand, has clearly flattened and oscillates at the 10⁻⁵–10⁻⁴ au level.
+
+Why it happens:
+- MLIP gradient/force evaluations carry a small stochastic noise floor (typically ~4×10⁻⁴ au for UMA-class models). This noise floor can exceed the force-based convergence criterion (`baker` = 3×10⁻⁴ au), so the force threshold can never be satisfied even though the geometry has already converged.
+
+Fixes to try:
+- The **energy plateau fallback** (new in v0.3.5) should handle this automatically: `opt.energy_plateau: true` declares convergence when the energy range over the last `opt.energy_plateau_window` (default 50) steps falls below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`). No user action is required in most cases.
+- If you need to override the automatic fallback, loosen the force threshold manually: `--thresh gau` (the default for `opt`) or `--thresh gau_loose`.
+- You can also tune `opt.energy_plateau_thresh` / `opt.energy_plateau_window` from YAML, or disable the fallback with `opt.energy_plateau: false`.
+- Note: the plateau fallback is **skipped for chain-of-states optimizers** (`path-opt`, `path-search` string/GSM/DMF stages) because they store per-image energies rather than a single scalar energy trace.
+
+---
 
 ### TS optimization fails to converge
 

@@ -43,19 +43,21 @@ You only need to do this once per machine / environment.
 > **MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). To switch to MACE, run `pip uninstall fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist — use separate conda environments if you need both.
 
 - If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
- ```bash
- # Create and activate a dedicated conda environment
- conda create -n pdb2reaction python=3.11 -y
- conda activate pdb2reaction
 
- # Install cyipopt (required for the DMF method in MEP search)
- conda install -c conda-forge cyipopt -y
- ```
+  ```bash
+  # Create and activate a dedicated conda environment
+  conda create -n pdb2reaction python=3.11 -y
+  conda activate pdb2reaction
+
+  # Install cyipopt (required for the DMF method in MEP search)
+  conda install -c conda-forge cyipopt -y
+  ```
 
 - If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch, like this:
- ```bash
- module load cuda/12.9
- ```
+
+  ```bash
+  module load cuda/12.9
+  ```
 
 
 ## Step-by-step installation
@@ -64,111 +66,102 @@ If you prefer to build the environment piece by piece:
 
 1. **Load CUDA (if you use environment modules on an HPC cluster)**
 
- ```bash
- module load cuda/12.9
- ```
+    ```bash
+    module load cuda/12.9
+    ```
 
 2. **Create and activate a conda environment**
 
- ```bash
- conda create -n pdb2reaction python=3.11 -y
- conda activate pdb2reaction
- ```
+    ```bash
+    conda create -n pdb2reaction python=3.11 -y
+    conda activate pdb2reaction
+    ```
 
 3. **Install cyipopt**
- Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search. You can skip this step if you only use GSM.
+    Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search. You can skip this step if you only use GSM.
 
- ```bash
- conda install -c conda-forge cyipopt -y
- ```
+    ```bash
+    conda install -c conda-forge cyipopt -y
+    ```
 
 4. **Install PyTorch with the right CUDA build**
 
- For CUDA 12.9:
+    For CUDA 12.9:
 
- ```bash
- pip install torch --index-url https://download.pytorch.org/whl/cu129
- ```
+    ```bash
+    pip install torch --index-url https://download.pytorch.org/whl/cu129
+    ```
 
- (You may use another compatible version if your cluster recommends it.)
+    PyTorch must be built for your CUDA driver version. Check compatibility at [PyTorch Get Started](https://pytorch.org/get-started/locally/). CPU-only execution is supported but significantly slower (10-100x).
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
- ```bash
- pip install pdb2reaction
- plotly_get_chrome -y
- ```
+    ```bash
+    pip install pdb2reaction
+    plotly_get_chrome -y
+    ```
 
 6. **Log in to Hugging Face Hub (UMA model)**
 
- ```bash
- huggingface-cli login
- ```
+    ```bash
+    huggingface-cli login
+    ```
 
- See also:
+    See also:
 
- - <https://github.com/facebookresearch/fairchem>
- - <https://huggingface.co/facebook/UMA>
- - <https://huggingface.co/docs/hub/security-tokens>
+    - <https://github.com/facebookresearch/fairchem>
+    - <https://huggingface.co/facebook/UMA>
+    - <https://huggingface.co/docs/hub/security-tokens>
 
 7. **(Optional) Install additional MLIP backends**
 
- pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
+    pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
 
- ```bash
- # ORB backend
- pip install "pdb2reaction[orb]"
+    ```bash
+    # ORB backend
+    pip install "pdb2reaction[orb]"
 
- # AIMNet2 backend
- pip install "pdb2reaction[aimnet]"
+    # AIMNet2 backend
+    pip install "pdb2reaction[aimnet]"
 
- # MACE backend (conflicts with UMA — uninstall fairchem-core first)
- # pip uninstall fairchem-core && pip install mace-torch
- ```
+    # MACE backend (conflicts with UMA — uninstall fairchem-core first)
+    pip uninstall fairchem-core && pip install mace-torch
+    ```
 
- To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.
+    To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.
 
- #### Installing xTB
+    #### Installing xTB
 
- **For ALPB solvation model** (recommended starting point):
+    **For ALPB solvation model** (recommended starting point):
 
- ```bash
- conda install -c conda-forge xtb
- ```
+    ```bash
+    conda install -c conda-forge xtb
+    ```
 
- **For CPCM-X solvation model** (requires building from source):
+    **For CPCM-X solvation model** (requires building from source):
 
- ```bash
- git clone --depth 1 https://github.com/grimme-lab/xtb.git
- cd xtb
- cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
- make -C build -j8
- ```
+    ```bash
+    git clone --depth 1 https://github.com/grimme-lab/xtb.git
+    cd xtb
+    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
+    make -C build -j8
+    ```
 
- Requires GCC >= 10. Set `CPXHOME` to `build/_deps/cpcmx-src/` at runtime.
+    Requires GCC >= 10. Set `CPXHOME` to `build/_deps/cpcmx-src/` at runtime.
 
- To use a custom xTB binary, set the `xtb_cmd` key in your YAML config or use `calc.xtb_cmd` in Python.
+    To use a custom xTB binary, set the `xtb_cmd` key in your YAML config or use `calc.xtb_cmd` in Python.
 
 8. **Verify installation**
 
- ```bash
- pdb2reaction --version
- ```
+    ```bash
+    pdb2reaction --version
+    ```
 
- This should display the installed version. To verify GPU access:
+    This should display the installed version. To verify GPU access:
 
- ```bash
- python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
- ```
+    ```bash
+    python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+    ```
 
- If `CUDA: False`, check that the correct CUDA module is loaded and the PyTorch build matches your CUDA driver version.
+    If `CUDA: False`, check that the correct CUDA module is loaded and the PyTorch build matches your CUDA driver version.
 
-## Tested configurations
-
-| Python | PyTorch | CUDA | GPU | Status |
-|--------|---------|------|-----|--------|
-| 3.11 | 2.6.0 | 12.6 | RTX 4090 / A100 | Tested |
-| 3.11 | 2.8.0 | 12.9 | RTX 5080 | Tested |
-| 3.12 | 2.8.0 | 12.9 | RTX 5080 | Tested |
-
-PyTorch must be built for your CUDA driver version. Check compatibility at [PyTorch Get Started](https://pytorch.org/get-started/locally/). CPU-only execution is supported but significantly slower (10-100x).

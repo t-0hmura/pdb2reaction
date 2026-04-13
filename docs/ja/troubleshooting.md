@@ -29,9 +29,9 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 対処:
 - 次を実行して element 列（元素記号列）を補完します。
 
- ```bash
- pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
- ```
+  ```bash
+  pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb
+  ```
 
 - その後、`extract` / `all` を補完後の PDB で再実行します。
 
@@ -78,9 +78,9 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 対処:
 - 抽出された活性部位モデルが小さすぎると、エネルギーや障壁の計算値が不正確になることがあります。抽出半径を大きくする（例: `-r 4.0` 以上）ことで、タンパク質環境をより多く含めて精度を改善できます:
 
- ```bash
- pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0
- ```
+  ```bash
+  pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0
+  ```
 
 ---
 
@@ -104,15 +104,15 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 対処:
 - 電荷と多重度を明示する:
 
- ```bash
- pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
- ```
+  ```bash
+  pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1
+  ```
 
 - あるいは（抽出ありの場合）残基名ごとの電荷マッピングを与える:
 
- ```bash
- pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
- ```
+  ```bash
+  pdb2reaction -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'
+  ```
 
 ---
 
@@ -125,9 +125,9 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 対処:
 - 環境/マシンごとに一度ログインします。
 
- ```bash
- huggingface-cli login
- ```
+  ```bash
+  huggingface-cli login
+  ```
 
 - HPC では、計算ノードから HF キャッシュ（ホームディレクトリ等）に書き込み可能か確認してください。
 
@@ -142,10 +142,10 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 - クラスターの CUDA と整合する PyTorch を入れます。
 - GPU が見えているか確認します:
 
- ```bash
- nvidia-smi
- python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
- ```
+  ```bash
+  nvidia-smi
+  python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"
+  ```
 
 ---
 
@@ -155,9 +155,9 @@ DMF（`--mep-mode dmf`）を使うときに IPOPT/cyipopt の import エラー�
 対処:
 - `pdb2reaction` を入れる前に conda-forge から `cyipopt` を入れるのが簡単です。
 
- ```bash
- conda install -c conda-forge cyipopt
- ```
+  ```bash
+  conda install -c conda-forge cyipopt
+  ```
 
 ---
 
@@ -167,13 +167,30 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処:
 - headless Chrome を一度入れます。
 
- ```bash
- plotly_get_chrome -y
- ```
+  ```bash
+  plotly_get_chrome -y
+  ```
 
 ---
 
 ## 計算 / 収束の問題
+
+### 最適化が `max_cycles` に達し、`max(force)` が閾値をわずかに超える
+
+症状:
+- オプティマイザーが `max_cycles` 上限まで回りきり、最終サマリで `max(force)` や `rms(force)` が目標をわずかに上回る（例: `baker` の 3×10⁻⁴ au に対して 4×10⁻⁴ au）。
+- 一方で、エネルギー自体は明らかにフラット化しており、10⁻⁵–10⁻⁴ au レベルで振動している。
+
+原因:
+- MLIP の勾配（力）計算には小さな確率的ノイズフロアがあり（UMA 系で典型的に ~4×10⁻⁴ au）、これが力ベースの収束閾値（`baker` = 3×10⁻⁴ au）を上回る場合があります。その結果、構造はすでに収束しているにもかかわらず、力閾値を満たすことができません。
+
+対処:
+- **エネルギープラトーによるフォールバック収束**（v0.3.5 新機能）が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
+- 自動フォールバックを上書きしたい場合は、力の閾値を手動で緩めてください: `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose`。
+- `opt.energy_plateau_thresh` / `opt.energy_plateau_window` は YAML からチューニングでき、`opt.energy_plateau: false` で無効化できます。
+- 注意: このプラトーフォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM/DMF 段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
+
+---
 
 ### TS 最適化が収束しない
 

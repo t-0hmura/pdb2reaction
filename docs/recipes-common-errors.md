@@ -12,6 +12,7 @@ For full details, keep [Troubleshooting](troubleshooting.md) open in parallel.
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | [Troubleshooting](troubleshooting.md) |
 | DMF mode import errors (`cyipopt`) | Run `conda install -c conda-forge cyipopt` | [Troubleshooting](troubleshooting.md) |
 | TSOPT/IRC does not converge | For LBFGS/Dimer: adjust `max_step`. For RFO/RS-I-RFO: adjust `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | [Troubleshooting](troubleshooting.md) |
+| Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback (new in v0.3.5). Manual workaround: use `--thresh gau` or `--thresh gau_loose` | [Troubleshooting](troubleshooting.md) |
 | CUDA/GPU runtime mismatch | Verify `torch.cuda.is_available()` and CUDA build pairing | [Troubleshooting](troubleshooting.md) |
 | Plot export failures | Run `plotly_get_chrome -y` to install headless Chrome | [Troubleshooting](troubleshooting.md) |
 
@@ -60,6 +61,7 @@ Signal:
 First checks:  
 - Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹, and the corresponding imaginary mode shows displacement along the reaction coordinate.  
 - For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycle limits.  
+- If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), the `opt.energy_plateau` fallback (new in v0.3.5) should already mark this as converged. If it does not, loosen the force threshold with `--thresh gau` or `--thresh gau_loose`.  
 
 Typical fix path:
 - Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.

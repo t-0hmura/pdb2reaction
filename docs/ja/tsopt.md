@@ -198,10 +198,22 @@ opt:
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束 (v0.3.5 新機能)
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
+ energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_tsopt/ # output directory
+```
+
+```{note}
+**エネルギープラトーによるフォールバック収束 (v0.3.5 新機能)。** RS-I-RFO は共通の
+`energy_plateau` 設定を参照します。直近 `energy_plateau_window` ステップ（デフォルト 50）の
+エネルギーレンジ（max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）
+を下回ると収束と判定されます。大規模 TS 系では MLIP の力のノイズフロア（~4×10⁻⁴ au）が
+`baker` max_force 閾値（3×10⁻⁴ au）を上回ることがあり、エネルギーがすでにフラット化していても
+力ベース判定に到達しないことがあります。無効化するには `energy_plateau: false` を指定してください。
 ```
 
 ### Dimer モード（`--opt-mode grad`）
@@ -281,7 +293,7 @@ rsirfo:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius (bohr); v0.3.5 で 0.20 から 0.10 に変更（大規模系での鞍点近傍振動の抑制）
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate
@@ -293,6 +305,9 @@ rsirfo:
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
+ energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix

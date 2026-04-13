@@ -75,15 +75,15 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 
 ### 例
 - **活性部位モデルのみ**の2つのエンドポイント間のMEP:
- ```bash
- pdb2reaction path-search -i reactant.pdb product.pdb -q 0
- ```
+  ```bash
+  pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+  ```
 - YAML 上書きとマージされた全系出力を使用した**マルチステップ**探索:
- ```bash
- pdb2reaction path-search \
- -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
- --ref-full-pdb holo_template.pdb --out-dir ./run_ps
- ```
+  ```bash
+  pdb2reaction path-search \
+  -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+  --ref-full-pdb holo_template.pdb --out-dir ./run_ps
+  ```
 
 
 ## CLI オプション
@@ -289,7 +289,7 @@ opt:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source

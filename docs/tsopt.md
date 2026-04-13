@@ -89,32 +89,32 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ## Workflow
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 - **Geometry loading & freeze-links**: structures are read via
- `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
+  `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
 - **MLIP Hessians (default: UMA)**: `--hessian-calc-mode` toggles between analytical and finite-difference
- evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
- frozen atoms are present.
- For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+  evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
+  frozen atoms are present.
+  For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
 - **Dimer mode details**:
  - The Hessian Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact
- Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
- eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
+  Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
+  eigenpair when `root == 0` (falling back to `torch.linalg.eigh`).
  - When enabled (`--flatten`), the flatten loop updates the stored active Hessian via
- Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
- displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
- once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
- performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
- computed for frequency analysis.
+  Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
+  displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
+  once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
+  performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
+  computed for frequency analysis.
  - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
- follow the most negative mode (`root = 0`).
+  follow the most negative mode (`root = 0`).
 - **RS-I-RFO mode**: runs the RS-I-RFO optimizer with optional Hessian reference files,
- R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
- When `--flatten` is enabled and more than one imaginary mode remains after
- convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
- imaginary mode remains or the flatten iteration cap is reached.
+  R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section.
+  When `--flatten` is enabled and more than one imaginary mode remains after
+  convergence, the workflow flattens extra modes and reruns RS-I-RFO until only one
+  imaginary mode remains or the flatten iteration cap is reached.
 - **Mode export & conversion**: all detected imaginary modes are written to `vib/imag_*_trj.xyz`
- and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
- trajectory and final geometry are also converted to PDB via the input template when `--dump`;
- Gaussian templates receive a `.gjf` companion for the final geometry only.
+  and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization
+  trajectory and final geometry are also converted to PDB via the input template when `--dump`;
+  Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## CLI options
 | Option | Description | Default |
@@ -175,11 +175,11 @@ out_dir/ (default:./result_tsopt/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency detection threshold defaults to 5.0 cm⁻¹ (configurable via
- `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
+  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
- manually editing YAML mode mappings.
+  manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
- memory usage and preserving correct active-space eigenvectors.
+  memory usage and preserving correct active-space eigenvectors.
 - See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
 
 Shared sections reuse
@@ -221,10 +221,24 @@ opt:
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # fallback convergence when the energy range flattens (new in v0.3.5)
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
+ energy_plateau_window: 50 # number of most recent steps inspected
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_tsopt/ # output directory
+```
+
+```{note}
+**Energy plateau fallback (new in v0.3.5).** The RS-I-RFO optimizer honours the
+shared `energy_plateau` setting: if the energy range (max − min) over the last
+`energy_plateau_window` (default 50) steps falls below `energy_plateau_thresh`
+(default `1×10⁻⁴ au ≈ 0.06 kcal/mol`), the run is declared converged. This is
+especially useful for large TS systems where the MLIP force noise floor
+(~4×10⁻⁴ au) exceeds the `baker` max_force threshold (3×10⁻⁴ au), making the
+force criterion unreachable even though the energy has plainly flattened. Set
+`energy_plateau: false` to disable.
 ```
 
 ### Dimer mode (`--opt-mode grad`)
@@ -304,7 +318,7 @@ rsirfo:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius (bohr); reduced from 0.20 in v0.3.5 to damp near-saddle oscillations on large systems
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate
@@ -316,6 +330,9 @@ rsirfo:
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
  line_search: true # enable line search
+ energy_plateau: true # fallback convergence when the energy range flattens
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
+ energy_plateau_window: 50 # number of most recent steps inspected
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix

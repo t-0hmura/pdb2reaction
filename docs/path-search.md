@@ -74,15 +74,15 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 
 ### Examples
 - **Active site model-only** MEP between two endpoints:
- ```bash
- pdb2reaction path-search -i reactant.pdb product.pdb -q 0
- ```
+  ```bash
+  pdb2reaction path-search -i reactant.pdb product.pdb -q 0
+  ```
 - **Multistep** search with YAML overrides and merged full-system output:
- ```bash
- pdb2reaction path-search \
- -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
- --ref-full-pdb holo_template.pdb --out-dir ./run_ps
- ```
+  ```bash
+  pdb2reaction path-search \
+  -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
+  --ref-full-pdb holo_template.pdb --out-dir ./run_ps
+  ```
 
 ## CLI options
 | Option | Description | Default |
@@ -118,7 +118,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 ## Workflow
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
 2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
-   > **Default:** When `--refine-mode` is omitted, it defaults to `peak` for GSM and `minima` for DMF.
+    > **Default:** When `--refine-mode` is omitted, it defaults to `peak` for GSM and `minima` for DMF.
 3. **Decide between kink vs. refinement**:
  - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink* -- a conformational rearrangement with no bond breaking or formation (see [Glossary](glossary.md)): insert `search.kink_max_nodes` linear nodes and optimize each individually.
  - Otherwise, the region is a *reactive segment* -- a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
@@ -286,7 +286,7 @@ opt:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source

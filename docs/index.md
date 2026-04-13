@@ -189,7 +189,7 @@ ja/index
 ### Hardware
 - **OS**: Linux
 - **GPU**: CUDA 12.x compatible
-- **VRAM**: Minimum 8 GB recommended
+- **VRAM**: 8 GB+ recommended
 - **RAM**: 16 GB+ recommended
 
 ### Software
@@ -206,22 +206,23 @@ ja/index
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
-### Full workflow with TS optimization
+### Workflow from MEP search with TS optimization 
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft
 ```
 
-### Full workflow from reaction coordinates scan with single structure.
+### Workflow from reaction coordinates scan with single structure.
 ```bash
 pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+ -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+ --tsopt --thermo --dft
 ```
 
-### Full workflow from single TS candidate structure.
+### Workflow from single TS candidate structure.
 ```bash
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --tsopt
+ --tsopt --thermo --dft
 ```
 
 ---

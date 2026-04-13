@@ -182,24 +182,24 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 ## Workflow
 1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
- biasing so the starting point is relaxed.
+    biasing so the starting point is relaxed.
 3. Parse stage targets from `-s/--scan-lists` (YAML/JSON file or inline literal), then normalize the
- `(i, j)` indices (1-based by default). When the input is a PDB, each entry
- may be either an integer index or an atom selector string like `'TYR,285,CA'`;
- selector fields can be separated by spaces, commas, slashes, backticks, or
- backslashes and may be in any order (fallback assumes resname, resseq, atom).
- Compute the per-bond displacement
- `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
- `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
+    `(i, j)` indices (1-based by default). When the input is a PDB, each entry
+    may be either an integer index or an atom selector string like `'TYR,285,CA'`;
+    selector fields can be separated by spaces, commas, slashes, backticks, or
+    backslashes and may be in any order (fallback assumes resname, resseq, atom).
+    Compute the per-bond displacement
+    `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
+    `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
 4. March through all steps, updating the temporary targets, applying the
- harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with the MLIP backend.
- Optimizer cycles are capped by `--relax-max-cycles` unless YAML specifies `opt.max_cycles`.
+    harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with the MLIP backend.
+    Optimizer cycles are capped by `--relax-max-cycles` unless YAML specifies `opt.max_cycles`.
 5. After the last step of each stage, optionally run an unbiased relaxation
- (`--endopt`) before reporting covalent bond changes and writing the
- `result.*` files.
+    (`--endopt`) before reporting covalent bond changes and writing the
+    `result.*` files.
 6. Repeat for every stage. Concatenated scan trajectories (`scan_trj.xyz` and
- `scan.pdb`) are always written; `--dump` controls per-step optimizer
- trajectory files only.
+    `scan.pdb`) are always written; `--dump` controls per-step optimizer
+    trajectory files only.
 
 ## CLI options
 | Option | Description | Default |
@@ -231,8 +231,8 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
- [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
- use `--dump` to control scan-stage trajectories.
+  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  use `--dump` to control scan-stage trajectories.
 - `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ### Section `bias`
@@ -268,14 +268,14 @@ out_dir/ (default:./result_scan/)
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Provide multiple literals after a single `-s/--scan-lists` flag.
- Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
- PDB inputs, `i`/`j` can be selector strings with flexible delimiters
- (space/comma/slash/backtick/backslash) and unordered tokens.
+  Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
+  PDB inputs, `i`/`j` can be selector strings with flexible delimiters
+  (space/comma/slash/backtick/backslash) and unordered tokens.
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are always
- written. Concatenated scan trajectories (`scan_trj.xyz` and `scan.pdb` for
- PDB inputs with conversion enabled) are also always written. The `--dump`
- flag controls only per-step optimizer trajectory files.
+  written. Concatenated scan trajectories (`scan_trj.xyz` and `scan.pdb` for
+  PDB inputs with conversion enabled) are also always written. The `--dump`
+  flag controls only per-step optimizer trajectory files.
 
 
 ```yaml
@@ -360,7 +360,7 @@ rfo:
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
- trust_max: 0.20 # maximum trust radius
+ trust_max: 0.10 # maximum trust radius
  max_energy_incr: null # allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source

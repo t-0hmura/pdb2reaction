@@ -43,19 +43,21 @@ huggingface-cli login
 > **MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。MACE に切り替えるには `pip uninstall fairchem-core && pip install mace-torch` を実行してください。UMA と MACE は共存できません — 両方必要な場合は別の conda 環境を使用してください。
 
 - MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
- ```bash
- # 専用のconda環境を作成してアクティブ化
- conda create -n pdb2reaction python=3.11 -y
- conda activate pdb2reaction
 
- # cyipoptをインストール（MEP 探索のDMF法に必要）
- conda install -c conda-forge cyipopt -y
- ```
+  ```bash
+  # 専用のconda環境を作成してアクティブ化
+  conda create -n pdb2reaction python=3.11 -y
+  conda activate pdb2reaction
+
+  # cyipoptをインストール（MEP 探索のDMF法に必要）
+  conda install -c conda-forge cyipopt -y
+  ```
 
 - *環境モジュール*を使用する HPC クラスターでは、PyTorch をインストールする**前に** CUDA をロードしてください。
- ```bash
- module load cuda/12.9
- ```
+
+  ```bash
+  module load cuda/12.9
+  ```
 
 
 ## 詳細なインストール手順
@@ -64,111 +66,102 @@ huggingface-cli login
 
 1. **CUDAをロード（HPCで環境モジュールを使用する場合）**
 
- ```bash
- module load cuda/12.9
- ```
+    ```bash
+    module load cuda/12.9
+    ```
 
 2. **conda環境を作成してアクティブ化**
 
- ```bash
- conda create -n pdb2reaction python=3.11 -y
- conda activate pdb2reaction
- ```
+    ```bash
+    conda create -n pdb2reaction python=3.11 -y
+    conda activate pdb2reaction
+    ```
 
 3. **cyipopt をインストール**
- MEP 探索で DMF 法（`--mep-mode dmf`）を使用する場合に必要です。GSM のみを使用する場合はスキップできます。
+    MEP 探索で DMF 法（`--mep-mode dmf`）を使用する場合に必要です。GSM のみを使用する場合はスキップできます。
 
- ```bash
- conda install -c conda-forge cyipopt -y
- ```
+    ```bash
+    conda install -c conda-forge cyipopt -y
+    ```
 
 4. **適切なCUDAビルドのPyTorchをインストール**
 
- CUDA 12.9の場合:
+    CUDA 12.9の場合:
 
- ```bash
- pip install torch --index-url https://download.pytorch.org/whl/cu129
- ```
+    ```bash
+    pip install torch --index-url https://download.pytorch.org/whl/cu129
+    ```
 
- （クラスターが推奨する場合は別の互換バージョンを使用できます。）
+    PyTorch は CUDA ドライバーバージョンに合わせたビルドが必要です。互換性は [PyTorch Get Started](https://pytorch.org/get-started/locally/) で確認してください。CPU のみの実行もサポートされますが、大幅に遅くなります（10-100 倍）。
 
 5. **`pdb2reaction` 本体と可視化用Chromeをインストール**
 
- ```bash
- pip install pdb2reaction
- plotly_get_chrome -y
- ```
+    ```bash
+    pip install pdb2reaction
+    plotly_get_chrome -y
+    ```
 
 6. **Hugging Face Hub (UMAモデル) にログイン**
 
- ```bash
- huggingface-cli login
- ```
+    ```bash
+    huggingface-cli login
+    ```
 
- 参照:
+    参照:
 
- - <https://github.com/facebookresearch/fairchem>
- - <https://huggingface.co/facebook/UMA>
- - <https://huggingface.co/docs/hub/security-tokens>
+    - <https://github.com/facebookresearch/fairchem>
+    - <https://huggingface.co/facebook/UMA>
+    - <https://huggingface.co/docs/hub/security-tokens>
 
 7. **（任意）追加の MLIP バックエンドをインストール**
 
- pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
+    pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
 
- ```bash
- # ORB バックエンド
- pip install "pdb2reaction[orb]"
+    ```bash
+    # ORB バックエンド
+    pip install "pdb2reaction[orb]"
 
- # AIMNet2 バックエンド
- pip install "pdb2reaction[aimnet]"
+    # AIMNet2 バックエンド
+    pip install "pdb2reaction[aimnet]"
 
- # MACE バックエンド (UMA と競合 — 先に fairchem-core をアンインストール)
- # pip uninstall fairchem-core && pip install mace-torch
- ```
+    # MACE バックエンド (UMA と競合 — 先に fairchem-core をアンインストール)
+    pip uninstall fairchem-core && pip install mace-torch
+    ```
 
- 暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。
+    暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。
 
- #### xTB のインストール
+    #### xTB のインストール
 
- **ALPB 溶媒和モデルの場合**（推奨の出発点）:
+    **ALPB 溶媒和モデルの場合**（推奨の出発点）:
 
- ```bash
- conda install -c conda-forge xtb
- ```
+    ```bash
+    conda install -c conda-forge xtb
+    ```
 
- **CPCM-X 溶媒和モデルの場合**（ソースからのビルドが必要）:
+    **CPCM-X 溶媒和モデルの場合**（ソースからのビルドが必要）:
 
- ```bash
- git clone --depth 1 https://github.com/grimme-lab/xtb.git
- cd xtb
- cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
- make -C build -j8
- ```
+    ```bash
+    git clone --depth 1 https://github.com/grimme-lab/xtb.git
+    cd xtb
+    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
+    make -C build -j8
+    ```
 
- GCC >= 10 が必要です。実行時に `CPXHOME` を `build/_deps/cpcmx-src/` に設定してください。
+    GCC >= 10 が必要です。実行時に `CPXHOME` を `build/_deps/cpcmx-src/` に設定してください。
 
- カスタム xTB バイナリを使用するには、YAML 設定で `xtb_cmd` キーを設定するか、Python で `calc.xtb_cmd` を使用してください。
+    カスタム xTB バイナリを使用するには、YAML 設定で `xtb_cmd` キーを設定するか、Python で `calc.xtb_cmd` を使用してください。
 
 8. **インストールの確認**
 
- ```bash
- pdb2reaction --version
- ```
+    ```bash
+    pdb2reaction --version
+    ```
 
- インストールされたバージョンが表示されます。GPU アクセスの確認:
+    インストールされたバージョンが表示されます。GPU アクセスの確認:
 
- ```bash
- python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
- ```
+    ```bash
+    python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+    ```
 
- `CUDA: False` の場合、CUDA モジュールのロードと PyTorch ビルドの CUDA バージョンを確認してください。
+    `CUDA: False` の場合、CUDA モジュールのロードと PyTorch ビルドの CUDA バージョンを確認してください。
 
-## 動作確認済み環境
-
-| Python | PyTorch | CUDA | GPU | 状態 |
-|--------|---------|------|-----|------|
-| 3.11 | 2.6.0 | 12.6 | RTX 4090 / A100 | 確認済み |
-| 3.11 | 2.8.0 | 12.9 | RTX 5080 | 確認済み |
-| 3.12 | 2.8.0 | 12.9 | RTX 5080 | 確認済み |
-
-PyTorch は CUDA ドライバーバージョンに合わせたビルドが必要です。互換性は [PyTorch Get Started](https://pytorch.org/get-started/locally/) で確認してください。CPU のみの実行もサポートされますが、大幅に遅くなります（10-100 倍）。
