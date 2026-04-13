@@ -1,0 +1,11 @@
+model_A
+R,TS,P
+0,22.8,-26.1
+
+model_B
+R,TS1,IM_1
+0,20.9,1.5
+
+model_Ba
+IM_2a,TS2a,Pa
+0,3.9,-7.1
